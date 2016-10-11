@@ -3,17 +3,22 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>groupId</groupId>
-    <artifactId>JIngest</artifactId>
-    <version>1.0-SNAPSHOT</version>
+
+    <!-- Arifact name  and version information -->
+    <groupId>net.snowflake</groupId>
+    <artifactId>ingest-sdk</artifactId>
+    <version>0.1-SNAPSHOT</version>
+
     <dependencies>
 
+        <!-- Snowflake JDBC used to connect to the service-->
         <dependency>
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc</artifactId>
             <version>2.8.1</version>
         </dependency>
 
+        <!-- ORMLite which is used to make storing objects to SQLite less painful -->
         <dependency>
             <groupId>com.j256.ormlite</groupId>
             <artifactId>ormlite-core</artifactId>
@@ -26,12 +31,14 @@
             <version>5.0</version>
         </dependency>
 
+        <!-- SQLite JDBC so that we can have a local store of active files -->
         <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.14.2.1</version>
         </dependency>
 
+        <!-- Log4J so that we can keep track of all client-side events -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -44,14 +51,13 @@
             <version>2.7</version>
         </dependency>
 
+        <!-- JUnit so that we can make some basic unit tests -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.11</version>
             <scope>test</scope>
         </dependency>
-
-
 
     </dependencies>
 </project>
