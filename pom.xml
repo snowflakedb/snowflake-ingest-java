@@ -25,7 +25,7 @@
             <version>1.0.1</version>
         </dependency>
 
-        <!-- Log4J so that we can keep track of all client-side events -->
+        <!-- Log4J2 will be our default backend for logging -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -36,6 +36,20 @@
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-core</artifactId>
             <version>2.7</version>
+        </dependency>
+
+        <!-- Log4J Bridge to SFL4J -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.7</version>
+        </dependency>
+
+        <!-- the SLF4J Api -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.21</version>
         </dependency>
 
         <!-- JUnit so that we can make some basic unit tests -->
