@@ -1,6 +1,5 @@
 package net.snowflake.ingest.utils;
 
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -235,7 +234,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
    * @return an array containing all elements of this queue
    * @throws ArrayStoreException - if the element
    */
-  @NotNull public Object[] toArray()
+  public Object[] toArray()
   {
     //allocate a new array for our objects
     Object[] ret = new Object[occupied];
@@ -293,7 +292,6 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
    * @return an instance of ring iterator
    */
 
-  @NotNull
   public Iterator<E> iterator()
   {
     return new RingIterator(this);
