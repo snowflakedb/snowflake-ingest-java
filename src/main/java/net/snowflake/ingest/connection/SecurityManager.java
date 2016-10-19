@@ -1,23 +1,29 @@
 package net.snowflake.ingest.connection;
 
+import com.sun.istack.internal.logging.Logger;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 
 import java.security.KeyPair;
+import java.text.MessageFormat;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
 
 /**
  * @author obabarinsa
  * This class manages creating and automatically renewing the JWT token
  * @since 1.6
  */
-public class SecurityManager implements AutoCloseable
+final class SecurityManager implements AutoCloseable
 {
+
+  //the logger for SecurityManager
+  private static final Logger LOGGER =  Logger.getLogger(SecurityManager.class);
 
   //the token lifetime is 59 minutes
   private static final float LIFETIME = 59;
@@ -36,7 +42,6 @@ public class SecurityManager implements AutoCloseable
 
   //this will create a task responsible for automatically regenerating our key
   private ScheduledExecutorService keyRenewer;
-
 
   //the token itself
   private AtomicReference<String> token;
@@ -66,7 +71,6 @@ public class SecurityManager implements AutoCloseable
     //generate our key renewal thread
     keyRenewer = Executors.newScheduledThreadPool(1);
 
-
     //we haven't yet failed to regenerate our token
     regenFailed = new AtomicBoolean();
 
@@ -89,6 +93,7 @@ public class SecurityManager implements AutoCloseable
 
     //set the issuer to the fully qualified username
     claims.setIssuer(account + "." + user);
+    LOGGER.log(Level.INFO, "Creating Token with Issuer {0}", account + "." + user);
 
     //the lifetime of the token is 59
     claims.setExpirationTimeMinutesInTheFuture(LIFETIME);
@@ -101,14 +106,13 @@ public class SecurityManager implements AutoCloseable
 
     //set the payload of the web signature to a json version of our claims
     websig.setPayload(claims.toJson());
+    LOGGER.log(Level.INFO, "Claims JSON is {0}", claims.toJson());
 
     //sign the signature with our private key
     websig.setKey(keyPair.getPrivate());
 
-
     //sign using RSA-SHA256
     websig.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
-
 
     //the new token we want to use
     String newToken;
@@ -120,6 +124,7 @@ public class SecurityManager implements AutoCloseable
     catch(Exception e)
     {
       regenFailed.set(true);
+      LOGGER.severe("Failed to regenerate token! Exception is as follows", e);
       throw new SecurityException();
     }
 
@@ -137,6 +142,7 @@ public class SecurityManager implements AutoCloseable
     //if we failed to regenerate the token at some point, throw
     if(regenFailed.get())
     {
+      LOGGER.severe("getToken request failed due to token regeneration failure");
       throw new SecurityException();
     }
 
