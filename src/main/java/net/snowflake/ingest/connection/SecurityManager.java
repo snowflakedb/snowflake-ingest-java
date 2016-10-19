@@ -1,19 +1,17 @@
 package net.snowflake.ingest.connection;
 
-import com.sun.istack.internal.logging.Logger;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
 
 import java.security.KeyPair;
-import java.text.MessageFormat;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
-
+import java.util.logging.Logger;
 /**
  * @author obabarinsa
  * This class manages creating and automatically renewing the JWT token
@@ -23,7 +21,7 @@ final class SecurityManager implements AutoCloseable
 {
 
   //the logger for SecurityManager
-  private static final Logger LOGGER =  Logger.getLogger(SecurityManager.class);
+  private static final Logger LOGGER =  Logger.getLogger(SecurityManager.class.getName());
 
   //the token lifetime is 59 minutes
   private static final float LIFETIME = 59;
@@ -124,7 +122,7 @@ final class SecurityManager implements AutoCloseable
     catch(Exception e)
     {
       regenFailed.set(true);
-      LOGGER.severe("Failed to regenerate token! Exception is as follows", e);
+      LOGGER.log(Level.SEVERE, "Failed to regenerate token! Exception is as follows : {0}", e.getMessage());
       throw new SecurityException();
     }
 

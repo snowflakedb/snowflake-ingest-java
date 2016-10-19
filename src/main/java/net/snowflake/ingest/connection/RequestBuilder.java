@@ -9,11 +9,11 @@ import org.apache.http.client.utils.URIBuilder;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,11 +26,11 @@ import org.apache.http.entity.StringEntity;
  * be sending
  * @author obabarinsa
  */
-final class MessageBuilder
+final class RequestBuilder
 {
 
   //a logger for all of our needs in this class
-  private static final Logger LOGGER = Logger.getLogger(MessageBuilder.class.getName());
+  private static final Logger LOGGER = Logger.getLogger(RequestBuilder.class.getName());
 
   //the name of the target account
   private String account;
@@ -89,19 +89,19 @@ final class MessageBuilder
   }
 
   /**
-   * MessageBuilder - general usage constructor
+   * RequestBuilder - general usage constructor
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
    * @param keyPair - the Public/Private key pair we'll use to authenticate
    */
-  MessageBuilder(String accountName, String userName, KeyPair keyPair)
+  RequestBuilder(String accountName, String userName, KeyPair keyPair)
   {
     this(accountName, userName, keyPair,
         DEFAULT_SCHEME, DEFAULT_HOST, DEFAULT_PORT);
   }
 
   /**
-   * MessageBuilder - this constructor is for testing purposes only
+   * RequestBuilder - this constructor is for testing purposes only
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
    * @param keyPair - our auth credentials
@@ -109,7 +109,7 @@ final class MessageBuilder
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    */
-  MessageBuilder(String accountName,
+  RequestBuilder(String accountName,
                  String userName,
                  KeyPair keyPair,
                  String schemeName,
@@ -134,7 +134,7 @@ final class MessageBuilder
     scheme = schemeName;
     host = hostName;
 
-    LOGGER.info(MessageFormat.format("Creating a MessageBuilder with arguments : " +
+    LOGGER.info(MessageFormat.format("Creating a RequestBuilder with arguments : " +
         "Account : {0}, User : {1}, Scheme : {2}, Host : {3}, Port : {4}", account,
         user, scheme, host, port));
   }
@@ -226,6 +226,7 @@ final class MessageBuilder
     //set the path for the URI
     builder.setPath(String.format(HISTORY_ENDPOINT_FORMAT, table));
 
+    LOGGER.log(Level.INFO, "Final History URIBuilder - {0}", builder.toString());
     //build the final URI
     return builder.build();
   }
@@ -240,7 +241,7 @@ final class MessageBuilder
     //if the files argument is null, throw
     if(files == null)
     {
-      LOGGER.info("Null files argument in MessageBuilder");
+      LOGGER.info("Null files argument in RequestBuilder");
       throw new IllegalArgumentException();
     }
 
