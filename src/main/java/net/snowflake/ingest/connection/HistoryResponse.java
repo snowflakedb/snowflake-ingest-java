@@ -1,5 +1,7 @@
 package net.snowflake.ingest.connection;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -49,6 +51,19 @@ public class HistoryResponse
 
     //the most recent time at which data was inserted
     public String lastInsertTime;
+
+
+    //returns the last insert time as a Timestamp
+    public LocalDate getLastInsertTime()
+    {
+      return LocalDate.parse(lastInsertTime, DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    //returns the time received as a date time
+    public LocalDate getTimeReceived()
+    {
+      return LocalDate.parse(timeReceived, DateTimeFormatter.ISO_DATE_TIME);
+    }
 
     //how many rows have we inserted so far
     public Long rowsInserted;
