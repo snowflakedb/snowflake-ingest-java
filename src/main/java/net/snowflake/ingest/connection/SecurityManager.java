@@ -15,9 +15,9 @@ import java.util.logging.Logger;
 /**
  * @author obabarinsa
  * This class manages creating and automatically renewing the JWT token
- * @since 1.6
+ * @since 1.8
  */
-final class SecurityManager implements AutoCloseable
+final class SecurityManager
 {
 
   //the logger for SecurityManager
@@ -147,12 +147,4 @@ final class SecurityManager implements AutoCloseable
     return token.get();
   }
 
-  /**
-   * This is an empty close method for the sake of making
-   * this class autocloseable
-   */
-  public void close()
-  {
-
-  }
 }

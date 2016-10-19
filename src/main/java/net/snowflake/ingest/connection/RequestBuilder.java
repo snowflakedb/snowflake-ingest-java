@@ -13,12 +13,13 @@ import java.security.KeyPair;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class handles constructing the URIs for our
@@ -30,7 +31,7 @@ final class RequestBuilder
 {
 
   //a logger for all of our needs in this class
-  private static final Logger LOGGER = Logger.getLogger(RequestBuilder.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(RequestBuilder.class.getName());
 
   //the name of the target account
   private String account;
@@ -226,7 +227,7 @@ final class RequestBuilder
     //set the path for the URI
     builder.setPath(String.format(HISTORY_ENDPOINT_FORMAT, table));
 
-    LOGGER.log(Level.INFO, "Final History URIBuilder - {0}", builder.toString());
+    LOGGER.info("Final History URIBuilder - {0}", builder.toString());
     //build the final URI
     return builder.build();
   }
@@ -257,7 +258,7 @@ final class RequestBuilder
     //if we have an exception we need to log and throw
     catch (Exception e)
     {
-      LOGGER.severe("Unable to Generate JSON Body for Insert request");
+      LOGGER.error("Unable to Generate JSON Body for Insert request");
       throw new RuntimeException();
     }
   }
@@ -282,7 +283,7 @@ final class RequestBuilder
    * @param files a list of files
    * @return a post request with all the data we need
    */
-  public HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<FileWrapper> files)
+  HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<FileWrapper> files)
   throws URISyntaxException
   {
     //make the insert URI
@@ -307,7 +308,7 @@ final class RequestBuilder
    * @param table a fully qualified table name
    * @return a get request with all the data we need
    */
-  public HttpGet generateHistoryRequest(UUID requestId, String table)
+  HttpGet generateHistoryRequest(UUID requestId, String table)
   throws URISyntaxException
   {
     //make the history URI
