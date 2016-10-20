@@ -3,6 +3,8 @@ package net.snowflake.ingest.connection;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.KeyPair;
 import java.util.concurrent.Executors;
@@ -10,8 +12,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 /**
  * @author obabarinsa
  * This class manages creating and automatically renewing the JWT token
@@ -21,7 +21,7 @@ final class SecurityManager
 {
 
   //the logger for SecurityManager
-  private static final Logger LOGGER =  Logger.getLogger(SecurityManager.class.getName());
+  private static final Logger LOGGER =  LoggerFactory.getLogger(SecurityManager.class.getName());
 
   //the token lifetime is 59 minutes
   private static final float LIFETIME = 59;
@@ -91,7 +91,7 @@ final class SecurityManager
 
     //set the issuer to the fully qualified username
     claims.setIssuer(account + "." + user);
-    LOGGER.log(Level.INFO, "Creating Token with Issuer {0}", account + "." + user);
+    LOGGER.info("Creating Token with Issuer {0}", account + "." + user);
 
     //the lifetime of the token is 59
     claims.setExpirationTimeMinutesInTheFuture(LIFETIME);
@@ -104,7 +104,7 @@ final class SecurityManager
 
     //set the payload of the web signature to a json version of our claims
     websig.setPayload(claims.toJson());
-    LOGGER.log(Level.INFO, "Claims JSON is {0}", claims.toJson());
+    LOGGER.info("Claims JSON is {0}", claims.toJson());
 
     //sign the signature with our private key
     websig.setKey(keyPair.getPrivate());
@@ -122,7 +122,7 @@ final class SecurityManager
     catch(Exception e)
     {
       regenFailed.set(true);
-      LOGGER.log(Level.SEVERE, "Failed to regenerate token! Exception is as follows : {0}", e.getMessage());
+      LOGGER.error("Failed to regenerate token! Exception is as follows : {0}", e.getMessage());
       throw new SecurityException();
     }
 
@@ -140,7 +140,7 @@ final class SecurityManager
     //if we failed to regenerate the token at some point, throw
     if(regenFailed.get())
     {
-      LOGGER.severe("getToken request failed due to token regeneration failure");
+      LOGGER.error("getToken request failed due to token regeneration failure");
       throw new SecurityException();
     }
 

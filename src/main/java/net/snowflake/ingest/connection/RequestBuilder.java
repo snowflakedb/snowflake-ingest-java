@@ -83,7 +83,7 @@ final class RequestBuilder
    * A simple POJO for generating our POST body to the insert endpoint
    * @author obabarinsa
    */
-  static class InsertPOJO
+  static class InsertRequest
   {
     //the list of files we're loading
     public List<FileWrapper> files;
@@ -247,7 +247,7 @@ final class RequestBuilder
     }
 
     //create pojo
-    InsertPOJO pojo = new InsertPOJO();
+    InsertRequest pojo = new InsertRequest();
     pojo.files = files;
 
     //serialize to a string
@@ -282,6 +282,7 @@ final class RequestBuilder
    * @param stage a fully qualified stage name
    * @param files a list of files
    * @return a post request with all the data we need
+   * @throws URISyntaxException if the URI components provided are improper
    */
   HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<FileWrapper> files)
   throws URISyntaxException
@@ -307,6 +308,7 @@ final class RequestBuilder
    * @param requestId a UUID we will use to label this request
    * @param table a fully qualified table name
    * @return a get request with all the data we need
+   * @throws URISyntaxException - If the URI components provided are improper
    */
   HttpGet generateHistoryRequest(UUID requestId, String table)
   throws URISyntaxException

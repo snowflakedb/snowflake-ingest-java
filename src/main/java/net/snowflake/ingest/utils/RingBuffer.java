@@ -1,13 +1,15 @@
 package net.snowflake.ingest.utils;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.NoSuchElementException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 /**
  * @author obabarinsa
@@ -20,7 +22,7 @@ import java.util.logging.Logger;
 public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 {
   //LOGGER for this class
-  private static final Logger LOGGER = Logger.getLogger(RingBuffer.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(RingBuffer.class.getName());
 
   //the underlying array of objects where we'll store data in this ring buffer
   private final E[] buffer;
@@ -45,7 +47,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
    @SuppressWarnings("unchecked")
   public RingBuffer(int capacity)
   {
-    LOGGER.log(Level.INFO, "Constructing RingBuffer with capacity {0}", capacity);
+    LOGGER.info("Constructing RingBuffer with capacity {0}", capacity);
     //if the capacity is less than 1, throw
     if(capacity < 1)
     {

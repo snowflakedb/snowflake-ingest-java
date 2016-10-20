@@ -1,0 +1,111 @@
+package net.snowflake.ingest.connection;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.ingest.utils.BackOffException;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.StatusLine;
+import org.apache.http.util.EntityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+/**
+ * This class handles taking the HttpResponses we've gotten
+ * back, and producing an appropriate response object for usage
+ */
+class ServiceResponseHandler
+{
+  //Create a logger for this class
+  private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
+
+  //the object mapper we use for deserialization
+  protected static ObjectMapper mapper = new ObjectMapper();
+
+
+  //If there are additional properties in the JSON, do NOT fail
+  static
+  {
+    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+  }
+
+
+  /**
+   * isStatusOK - Checks if we have a status in the 2xx range
+   * @param statusLine - the status line containing the code
+   * @returns whether the status x is in the range [200, 300)
+   */
+
+  private static boolean isStatusOK(StatusLine statusLine)
+  {
+    //If the status is 200 (OK) or greater but less than 300 (Multiple Choices) we're good
+    return statusLine.getStatusCode() >= HttpStatus.SC_OK
+        && statusLine.getStatusCode() < HttpStatus.SC_MULTIPLE_CHOICES;
+  }
+
+  /**
+   * Given an HTTPResponse object - attempts to deserialize it into
+   * an InsertResponse object
+   * @param - the HTTPResponse we want to distill into an InsertResponse
+   * @returns An InsertResponse with all of the parsed out information
+   * @throws IOException - if our entity is somehow corrupt or we can't get it
+   */
+  static InsertResponse unmarshallInsertResponse(HttpResponse response)
+  throws IOException
+  {
+    //we can't unmarshall a null response
+    if(response == null)
+    {
+      LOGGER.warn("Null argument to unmarshallInsertResponse");
+      throw new IllegalArgumentException();
+    }
+
+    //Grab the status line from the response
+    StatusLine statusLine = response.getStatusLine();
+
+    //If we didn't get a good status code, handle it
+    if(!isStatusOK(statusLine))
+    {
+
+      //Exception status
+      LOGGER.warn("Exception Status Message found in unmarshallInsert Response  - {0}",
+          statusLine.getStatusCode());
+
+      handleExceptionalStatus(statusLine);
+      return null;
+    }
+
+    //grab the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    //Read out the blob entity into a class
+    return mapper.readValue(blob, InsertResponse.class);
+  }
+
+  /**
+   *handleExceptionStatusCode - throws the correct error for a status
+   * @param statusLine the status line we want to check
+   * @throws BackOffException -- if we have a 503 exception
+   * @throws IOException - if we don't know what it is
+   */
+  private static void handleExceptionalStatus(StatusLine statusLine) throws IOException
+  {
+    //if we have a 503 exception throw a backoff
+    switch(statusLine.getStatusCode())
+    {
+      //If we have a 503, BACKOFF
+      case HttpStatus.SC_SERVICE_UNAVAILABLE:
+        LOGGER.warn("503 Status hit, backoff");
+        throw new BackOffException();
+
+      //We don't know how to respond now...
+      default:
+        LOGGER.error("Status code {0} found in response from service", statusLine.getStatusCode());
+        throw new IOException();
+
+    }
+
+  }
+}

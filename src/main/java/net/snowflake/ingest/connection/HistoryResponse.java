@@ -53,7 +53,11 @@ public class HistoryResponse
     public String lastInsertTime;
 
 
-    //returns the last insert time as a Timestamp
+    /**
+     * getLastInsertTime - converts the ISO formatted lastInsertTime string
+     * into a LocalDate
+     * @returns a LocalDate object representation of our current time
+     */
     public LocalDate getLastInsertTime()
     {
       return LocalDate.parse(lastInsertTime, DateTimeFormatter.ISO_DATE_TIME);
