@@ -91,7 +91,7 @@ final class SecurityManager
 
     //set the issuer to the fully qualified username
     claims.setIssuer(account + "." + user);
-    LOGGER.info("Creating Token with Issuer {0}", account + "." + user);
+    LOGGER.info("Creating Token with Issuer {}", account + "." + user);
 
     //the lifetime of the token is 59
     claims.setExpirationTimeMinutesInTheFuture(LIFETIME);
@@ -104,7 +104,7 @@ final class SecurityManager
 
     //set the payload of the web signature to a json version of our claims
     websig.setPayload(claims.toJson());
-    LOGGER.info("Claims JSON is {0}", claims.toJson());
+    LOGGER.info("Claims JSON is {}", claims.toJson());
 
     //sign the signature with our private key
     websig.setKey(keyPair.getPrivate());
@@ -122,7 +122,7 @@ final class SecurityManager
     catch(Exception e)
     {
       regenFailed.set(true);
-      LOGGER.error("Failed to regenerate token! Exception is as follows : {0}", e.getMessage());
+      LOGGER.error("Failed to regenerate token! Exception is as follows : {}", e.getMessage());
       throw new SecurityException();
     }
 
@@ -133,6 +133,7 @@ final class SecurityManager
 
   /**
    * getToken - returns we've most recently generated
+   * @return the string version of a valid JWT token
    * @throws SecurityException if we failed to regenerate a token since the last call
    */
   public String getToken()

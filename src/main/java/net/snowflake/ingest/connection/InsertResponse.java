@@ -10,9 +10,9 @@ import java.util.UUID;
 public class InsertResponse
 {
   /**
-   * Status - this represents the different responses
+   * Response - this represents the different responses
    * that the service can return to us
-   * @author
+   * @author obabarinsa
    */
   public static enum Response
   {
@@ -26,13 +26,12 @@ public class InsertResponse
   //the response we got back from the service
   //NOTE: This is NOT the HTTP response code
 
-
   //the requestId given to us by the user
   public String requestId;
 
   /**
    * getRequestUUID - the requestId as a UUID
-   * @returns UUID version of the requestId
+   * @return UUID version of the requestId
    */
   public UUID getRequestUUID()
   {

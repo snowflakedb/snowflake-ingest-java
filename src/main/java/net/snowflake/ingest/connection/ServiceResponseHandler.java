@@ -16,7 +16,7 @@ import java.io.IOException;
  * This class handles taking the HttpResponses we've gotten
  * back, and producing an appropriate response object for usage
  */
-class ServiceResponseHandler
+public final class ServiceResponseHandler
 {
   //Create a logger for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
@@ -35,7 +35,7 @@ class ServiceResponseHandler
   /**
    * isStatusOK - Checks if we have a status in the 2xx range
    * @param statusLine - the status line containing the code
-   * @returns whether the status x is in the range [200, 300)
+   * @return whether the status x is in the range [200, 300)
    */
 
   private static boolean isStatusOK(StatusLine statusLine)
@@ -46,19 +46,21 @@ class ServiceResponseHandler
   }
 
   /**
-   * Given an HTTPResponse object - attempts to deserialize it into
+   * unmarshallInsertResponse
+   * Given an HttpResponse object - attempts to deserialize it into
    * an InsertResponse object
-   * @param - the HTTPResponse we want to distill into an InsertResponse
-   * @returns An InsertResponse with all of the parsed out information
+   * @param response the HTTPResponse we want to distill into an InsertResponse
+   * @return An InsertResponse with all of the parsed out information
    * @throws IOException - if our entity is somehow corrupt or we can't get it
+   * @throws BackOffException if we have a 503 response
    */
-  static InsertResponse unmarshallInsertResponse(HttpResponse response)
+  public static InsertResponse unmarshallInsertResponse(HttpResponse response)
   throws IOException
   {
     //we can't unmarshall a null response
     if(response == null)
     {
-      LOGGER.warn("Null argument to unmarshallInsertResponse");
+      LOGGER.warn("Null argument passed to unmarshallInsertResponse");
       throw new IllegalArgumentException();
     }
 
@@ -70,7 +72,7 @@ class ServiceResponseHandler
     {
 
       //Exception status
-      LOGGER.warn("Exception Status Message found in unmarshallInsert Response  - {0}",
+      LOGGER.warn("Exceptional Status Code found in unmarshallInsert Response  - {}",
           statusLine.getStatusCode());
 
       handleExceptionalStatus(statusLine);
@@ -83,6 +85,50 @@ class ServiceResponseHandler
     //Read out the blob entity into a class
     return mapper.readValue(blob, InsertResponse.class);
   }
+
+
+  /**
+   * unmarshallHistoryResponse
+   * Given an HttpResponse object - attempts to deserialize it into
+   * a HistoryResponse object
+   * @param response the HttpResponse object we are trying to deserialize
+   * @return a HistoryResponse with all the parsed out information
+   * @throws IOException - if we have an uncategorized network issue
+   * @throws BackOffException - if have a 503 issue
+   */
+  public static HistoryResponse unmarshallHistoryResponse(HttpResponse response)
+  throws IOException
+  {
+    //we can't unmarshall a null response
+    if(response == null)
+    {
+      LOGGER.warn("Null response passed to unmarshallHistoryResponse");
+      throw new IllegalArgumentException();
+    }
+
+    //Grab the status line
+    StatusLine line = response.getStatusLine();
+
+    if(!isStatusOK(line))
+    {
+      //A network issue occurred!
+      LOGGER.warn("Exceptional Status Code found in unmarshallHistoryResponse - {}",
+          line.getStatusCode());
+
+      //handle the exceptional status code
+      handleExceptionalStatus(line);
+      return null;
+    }
+
+    //grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+
+    //read out our blob into a pojo
+    return mapper.readValue(blob, HistoryResponse.class);
+
+  }
+
 
   /**
    *handleExceptionStatusCode - throws the correct error for a status
@@ -102,7 +148,7 @@ class ServiceResponseHandler
 
       //We don't know how to respond now...
       default:
-        LOGGER.error("Status code {0} found in response from service", statusLine.getStatusCode());
+        LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
         throw new IOException();
 
     }

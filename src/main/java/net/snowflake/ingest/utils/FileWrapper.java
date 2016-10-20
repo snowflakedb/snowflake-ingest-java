@@ -27,7 +27,7 @@ public class FileWrapper
     }
 
     //if we have a negative file size, throw
-    if(filesize != null && filesize.longValue() >= 0)
+    if(filesize != null && filesize.longValue() < 0)
     {
       throw new IllegalArgumentException();
     }
@@ -48,6 +48,7 @@ public class FileWrapper
 
   /**
    * getPath - returns the path of this file
+   * @return the file path
    */
   public String getPath()
   {
@@ -56,6 +57,7 @@ public class FileWrapper
 
   /**
    * getSize - get the size of this file
+   * @return the file size
    */
   public Long getSize()
   {

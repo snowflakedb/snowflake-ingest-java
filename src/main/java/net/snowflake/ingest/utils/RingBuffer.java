@@ -42,12 +42,12 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   /**
    * Constructs a ring buffer with a specified size
    * @param capacity the maximum capacity of this buff
-   * @throws IllegalArgumentException if capacity < 1
+   * @throws IllegalArgumentException if capacity is less than 1
    */
    @SuppressWarnings("unchecked")
   public RingBuffer(int capacity)
   {
-    LOGGER.info("Constructing RingBuffer with capacity {0}", capacity);
+    LOGGER.info("Constructing RingBuffer with capacity {}", capacity);
     //if the capacity is less than 1, throw
     if(capacity < 1)
     {

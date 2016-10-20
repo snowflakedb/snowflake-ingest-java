@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  * be sending
  * @author obabarinsa
  */
-final class RequestBuilder
+public final class RequestBuilder
 {
 
   //a logger for all of our needs in this class
@@ -95,7 +95,7 @@ final class RequestBuilder
    * @param userName - the username of the entity loading files
    * @param keyPair - the Public/Private key pair we'll use to authenticate
    */
-  RequestBuilder(String accountName, String userName, KeyPair keyPair)
+  public RequestBuilder(String accountName, String userName, KeyPair keyPair)
   {
     this(accountName, userName, keyPair,
         DEFAULT_SCHEME, DEFAULT_HOST, DEFAULT_PORT);
@@ -110,7 +110,7 @@ final class RequestBuilder
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    */
-  RequestBuilder(String accountName,
+   RequestBuilder(String accountName,
                  String userName,
                  KeyPair keyPair,
                  String schemeName,
@@ -136,7 +136,7 @@ final class RequestBuilder
     host = hostName;
 
     LOGGER.info(MessageFormat.format("Creating a RequestBuilder with arguments : " +
-        "Account : {0}, User : {1}, Scheme : {2}, Host : {3}, Port : {4}", account,
+        "Account : {}, User : {}, Scheme : {}, Host : {}, Port : {}", account,
         user, scheme, host, port));
   }
 
@@ -171,7 +171,7 @@ final class RequestBuilder
     builder.addParameter(REQUEST_ID, requestId.toString());
 
     //Log the base url
-    LOGGER.info(MessageFormat.format("Base URL  as generated so far : {0}", builder.toString()));
+    LOGGER.info(MessageFormat.format("Base URL  as generated so far : {}", builder.toString()));
 
     return builder;
   }
@@ -227,7 +227,7 @@ final class RequestBuilder
     //set the path for the URI
     builder.setPath(String.format(HISTORY_ENDPOINT_FORMAT, table));
 
-    LOGGER.info("Final History URIBuilder - {0}", builder.toString());
+    LOGGER.info("Final History URIBuilder - {}", builder.toString());
     //build the final URI
     return builder.build();
   }
@@ -284,7 +284,7 @@ final class RequestBuilder
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
-  HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<FileWrapper> files)
+  public HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<FileWrapper> files)
   throws URISyntaxException
   {
     //make the insert URI
@@ -310,7 +310,7 @@ final class RequestBuilder
    * @return a get request with all the data we need
    * @throws URISyntaxException - If the URI components provided are improper
    */
-  HttpGet generateHistoryRequest(UUID requestId, String table)
+  public HttpGet generateHistoryRequest(UUID requestId, String table)
   throws URISyntaxException
   {
     //make the history URI

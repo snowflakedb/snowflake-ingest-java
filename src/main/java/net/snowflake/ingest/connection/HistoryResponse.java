@@ -56,7 +56,7 @@ public class HistoryResponse
     /**
      * getLastInsertTime - converts the ISO formatted lastInsertTime string
      * into a LocalDate
-     * @returns a LocalDate object representation of our current time
+     * @return a LocalDate object representation of our current time
      */
     public LocalDate getLastInsertTime()
     {
