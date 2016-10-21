@@ -1,5 +1,6 @@
 package net.snowflake.ingest;
 
+import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.InsertResponse;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
@@ -181,14 +182,44 @@ public class SimpleIngestManager
     if(requestId == null)
     {
       requestId = UUID.randomUUID();
-
     }
+
+    //send the request and get a response....
     HttpResponse response =  httpClient.execute(
         builder.generateInsertRequest(requestId,
             table, stage, files));
 
-    LOGGER.info("Attempting to unmarshall response {}", response);
+    LOGGER.info("Attempting to unmarshall insert response - {}", response);
     return ServiceResponseHandler.unmarshallInsertResponse(response);
+  }
+
+
+  /**
+   * getHistory - pings the service to see the current ingest history for this table
+   * @param requestId a UUID we use to label the request, if null, one is generated for the user
+   * @return a response showing the available ingest history from the service
+   * @throws BackOffException - if we have a 503 response
+   * @throws IOException - if we have some other network failure
+   * @throws URISyntaxException - if the provided account name
+   * was illegal and caused a URI construction failure
+   */
+  public HistoryResponse getHistory(UUID requestId)
+  throws URISyntaxException, IOException
+  {
+    //if we have no requestId generate one
+    if(requestId == null)
+    {
+      requestId = UUID.randomUUID();
+    }
+
+    //send the request and get a response...
+    HttpResponse response = httpClient.execute(
+      builder.generateHistoryRequest(requestId, table)
+    );
+
+
+    LOGGER.info("Attempting to unmarshall history response - {}", response);
+    return ServiceResponseHandler.unmarshallHistoryResponse(response);
   }
 
 
