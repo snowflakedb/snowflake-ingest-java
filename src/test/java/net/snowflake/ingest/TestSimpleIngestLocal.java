@@ -5,6 +5,7 @@ import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.InsertResponse;
 import net.snowflake.ingest.utils.FileWrapper;
 import org.apache.commons.codec.binary.Base64;
+import org.junit.Test;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -22,6 +23,8 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 
 /**
  * TestSimpleIngestLocal - this class tests whether or not we are
@@ -31,8 +34,6 @@ public class TestSimpleIngestLocal extends TestCase
 {
   //The encryption algorithm we will use to generate keys
   private final static String ALGORITHM = "RSA";
-
-  //the base
 
   //the name of the file we want to push
   private static final String FILENAME = "/tmp/data/letters.csv";
@@ -45,6 +46,9 @@ public class TestSimpleIngestLocal extends TestCase
 
   //the user who is going to be ingesting these files
   private static final String USER = "snowman";
+
+  //administrative user
+  private static final String ADMIN = "admin";
 
   //the password of this test user
   private static final String PASSWORD = "test";
@@ -64,6 +68,8 @@ public class TestSimpleIngestLocal extends TestCase
 
   //the connection we will use for queries
   private final Connection conn;
+
+  //the Administrative connection
 
   //the name of our target DB
   private static final String DATABASE = "testdb";
@@ -96,12 +102,14 @@ public class TestSimpleIngestLocal extends TestCase
    * TestSimpleIngestLocal - makes a new instance of
    * this test class by creating a sql connection to the database
    */
-  TestSimpleIngestLocal()
+  public TestSimpleIngestLocal()
   throws ClassNotFoundException, SQLException,
       NoSuchAlgorithmException, NoSuchProviderException
   {
     //create a connection
-    conn = getConnection();
+    conn = getConnection(USER);
+
+
     //generate a keypair
     keypair = generateKeyPair();
     //make an ingest manager
@@ -126,17 +134,18 @@ public class TestSimpleIngestLocal extends TestCase
 
   /**
    * Gets a JDBC connection to the service
+   * @param user user name
    * @return a valid JDBC connection
    */
-  private Connection getConnection()
+  private Connection getConnection(String user)
   throws ClassNotFoundException, SQLException
   {
     //check first to see if we have the Snowflake JDBC
-    Class.forName("net.snowflake.client.driver.SnowflakeDriver");
+    Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
 
     //build our properties
     Properties props = new Properties();
-    props.put("user", USER);
+    props.put("user", user);
     props.put("password", PASSWORD);
     props.put("account", ACCOUNT);
     props.put("ssl", SSL);
@@ -182,7 +191,6 @@ public class TestSimpleIngestLocal extends TestCase
   private void createTempStageDir()
   {
     final String base = "/tmp/data";
-    final Path basedir = Paths.get(base);
     try
     {
       Files.createDirectories(Paths.get(base));
@@ -247,13 +255,24 @@ public class TestSimpleIngestLocal extends TestCase
     createTempStageDir();
     makeLocalFile();
 
+
+    //use the right database
+    doQuery("use database " + DATABASE);
+
+    //use the right schema
+    doQuery("use schema " + SCHEMA);
+
+    //assume the necessary privileges
+    doQuery("use role accountadmin");
+
     //create the target stage
     doQuery("create or replace stage " + quote(STAGE) +
-            " url='file://tmp/data'");
+            " url='file:///tmp/data/'");
 
     //create the target
     doQuery("create or replace table " + quote(TABLE) +
             " (c1 string)");
+
     String pk = getPublicKeyString();
 
     doQuery("alter user " + USER +
@@ -261,9 +280,27 @@ public class TestSimpleIngestLocal extends TestCase
   }
 
   /**
+   * Attempts to sleep and fetch the history afterwards
+   * @return the history object or null if an error happened
+   */
+  private HistoryResponse sleepAndFetchHistory()
+  {
+    try
+    {
+
+      Thread.sleep(500);
+      return manager.getHistory(null);
+    }
+    catch (Exception e)
+    {
+      return null;
+    }
+  }
+
+  /**
    * testLoadSingle -- succeeds if we load a single file
    */
-  protected void testLoadSingle()
+  public void testLoadSingle()
   throws Exception
   {
     //keeps track of whether we've loaded the file
@@ -278,17 +315,46 @@ public class TestSimpleIngestLocal extends TestCase
     //assert that we successfully enqueued
     assertTrue(insertResponse.responseCode == InsertResponse.Response.SUCCESS);
 
+    //create a new thread
     ExecutorService service = Executors.newSingleThreadExecutor();
 
-    Future<Boolean> result = service.submit(() ->
+    //fork off waiting for a load to the service
+    Future<?> result = service.submit(() ->
         {
+          //we spin here forever
           while(true)
           {
-            Thread.sleep(1000);
-            HistoryResponse response = manager.get
+            HistoryResponse response = sleepAndFetchHistory();
+
+            if (response != null && response.files != null)
+            {
+              for (HistoryResponse.FileEntry entry : response.files)
+              {
+                //if we have a complete file that we've loaded with the same name..
+                if (entry.path != null && entry.complete && entry.path.contains(BASE_FILENAME))
+                {
+                  //we can return true!
+                  return;
+                }
+              }
+            }
           }
         }
     );
+
+    //try to wait until the future is done
+    try
+    {
+      //wait up to 1 minutes to load
+      result.get(1, TimeUnit.MINUTES);
+      loaded = true;
+    }
+    finally
+    {
+      assertTrue(loaded);
+    }
+
+
   }
 
 }

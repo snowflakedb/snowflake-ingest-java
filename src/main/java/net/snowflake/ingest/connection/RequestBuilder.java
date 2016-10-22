@@ -135,9 +135,9 @@ public final class RequestBuilder
     scheme = schemeName;
     host = hostName;
 
-    LOGGER.info(MessageFormat.format("Creating a RequestBuilder with arguments : " +
+    LOGGER.info("Creating a RequestBuilder with arguments : " +
         "Account : {}, User : {}, Scheme : {}, Host : {}, Port : {}", account,
-        user, scheme, host, port));
+        user, scheme, host, port);
   }
 
 
