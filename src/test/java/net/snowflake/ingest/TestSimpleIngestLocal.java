@@ -5,6 +5,7 @@ import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.InsertResponse;
 import net.snowflake.ingest.utils.FileWrapper;
 import org.apache.commons.codec.binary.Base64;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedWriter;
@@ -13,24 +14,26 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.*;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import static junit.framework.TestCase.assertTrue;
 
 
 /**
  * TestSimpleIngestLocal - this class tests whether or not we are
  * successfully able to create a local file, push it to snowflake,
  */
-public class TestSimpleIngestLocal extends TestCase
+public class TestSimpleIngestLocal
 {
   //The encryption algorithm we will use to generate keys
   private final static String ALGORITHM = "RSA";
@@ -58,6 +61,9 @@ public class TestSimpleIngestLocal extends TestCase
 
   //the host name
   private static final String HOST = "localhost";
+
+  //the scheme name
+  private static final String SCHEME = "http";
 
   //the actual connection string
   private static final String CONNECT_STRING =
@@ -114,7 +120,7 @@ public class TestSimpleIngestLocal extends TestCase
     keypair = generateKeyPair();
     //make an ingest manager
     manager = new SimpleIngestManager(ACCOUNT, USER,
-        FQ_TABLE,FQ_STAGE, keypair);
+        FQ_TABLE,FQ_STAGE, keypair, SCHEME, HOST, PORT);
   }
 
   /**
@@ -248,7 +254,8 @@ public class TestSimpleIngestLocal extends TestCase
   /**
    * Creates the stages and files we'll use for this test
    */
-  protected void setUp()
+  @Before
+  public void setup()
   throws Exception
   {
     //create the temporary directory and local file
@@ -300,9 +307,11 @@ public class TestSimpleIngestLocal extends TestCase
   /**
    * testLoadSingle -- succeeds if we load a single file
    */
+  @Test
   public void testLoadSingle()
   throws Exception
   {
+
     //keeps track of whether we've loaded the file
     boolean loaded = false;
 
@@ -353,8 +362,6 @@ public class TestSimpleIngestLocal extends TestCase
     {
       assertTrue(loaded);
     }
-
-
   }
 
 }
