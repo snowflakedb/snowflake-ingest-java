@@ -269,9 +269,6 @@ public class TestSimpleIngestLocal
     //use the right schema
     doQuery("use schema " + SCHEMA);
 
-    //assume the necessary privileges
-    doQuery("use role accountadmin");
-
     //create the target stage
     doQuery("create or replace stage " + quote(STAGE) +
             " url='file:///tmp/data/'");
@@ -280,10 +277,18 @@ public class TestSimpleIngestLocal
     doQuery("create or replace table " + quote(TABLE) +
             " (c1 string)");
 
+    doQuery("grant insert on table " + quote(TABLE) + " to accountadmin" );
+
     String pk = getPublicKeyString();
 
+    //assume the necessary privileges
+    doQuery("use role accountadmin");
+
+    //set the public key
     doQuery("alter user " + USER +
             " set RSA_PUBLIC_KEY='" + pk + "'");
+
+    doQuery("use role sysadmin");
   }
 
   /**
