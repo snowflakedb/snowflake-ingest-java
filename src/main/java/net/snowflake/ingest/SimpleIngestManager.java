@@ -36,22 +36,47 @@ public class SimpleIngestManager
   private HttpClient httpClient;
 
   //the account in which the user lives
-  private final String account;
+  private String account;
 
   //the username of the user
-  private final String user;
+  private String user;
 
   //the fully qualfied name of the table
-  private final String table;
+  private String table;
 
   //the fully qualified name of the stage
-  private final String stage;
+  private String stage;
 
   //the keypair we're using for authentication
-  private final KeyPair keyPair;
+  private KeyPair keyPair;
 
   //the request builder who handles building the HttpRequests we send
   private final RequestBuilder builder;
+
+
+  /**
+   * init - Does the basic work of constructing a SimpleIngestManager that
+   * is common across all constructors
+   * @param account The account into which we're loading
+   * @param user the user performing this load
+   * @param table the fully qualified name of the table
+   * @param stage the fully qualfied name of the stage
+   * @param keyPair the KeyPair we'll use to sign JWT tokens
+   */
+  private void init(String account, String user, String table,
+                             String stage, KeyPair keyPair)
+  {
+    //set up our reference variables
+    this.account = account;
+    this.user = user;
+    this.table = table;
+    this.stage = stage;
+    this.keyPair = keyPair;
+
+    //make our client for sending requests
+    httpClient = HttpClients.createDefault();
+    //make the request builder we'll use to build messages to the service
+  }
 
   /**
    * Constructs a SimpleIngestManager for a given user in a specific account
@@ -69,19 +94,44 @@ public class SimpleIngestManager
                              String stage, KeyPair keyPair)
   {
     LOGGER.info("Entering SimpleIngestManger Constructor");
-    //set up our reference variables
-    this.account = account;
-    this.user = user;
-    this.table = table;
-    this.stage = stage;
-    this.keyPair = keyPair;
 
-    //make the request builder we'll use to build messages to the service
+    //call our initializer method
+    init(account, user, table, stage, keyPair);
+
+    //create the request builder
     this.builder = new RequestBuilder(account, user, keyPair);
 
-    //make our client for sending requests
-    httpClient = HttpClients.createDefault();
     LOGGER.info("Exiting SimpleIngestManger Constructor");
+  }
+
+
+  /**
+   * Constructs a SimpleIngestManager for a given user in a specific account
+   * In addition, this also takes takes the target table and source stage
+   * Finally, it also requires a valid KeyPair object registered with
+   * Snowflake DB
+   * @param account the account into which we're loading
+   * @param user the user performing this load
+   * @param table the fully qualified name of the table
+   * @param stage the fully qualfied name of the stage
+   * @param keyPair the KeyPair we'll use to sign JWT tokens
+   * @param schemeName http or https
+   * @param hostName the hostname
+   * @param port the port number
+   */
+  public SimpleIngestManager(String account, String user, String table,
+                             String stage, KeyPair keyPair, String schemeName,
+                             String hostName, int port)
+  {
+    LOGGER.info("Entering SimpleIngestManger Constructor");
+
+    //call our initializer method
+    init(account, user, table, stage, keyPair);
+
+    //make the request builder we'll use to build messages to the service
+    builder = new RequestBuilder(account, user, keyPair, schemeName, hostName, port);
+
+    LOGGER.info("Exiting SimpleIngestManager Constructor");
   }
 
 
@@ -178,15 +228,16 @@ public class SimpleIngestManager
   public IngestResponse ingestFiles(List<FileWrapper> files, UUID requestId)
   throws URISyntaxException, IOException
   {
-    //if we have no requestId generate one for the user
-    if(requestId == null)
-    {
-      requestId = UUID.randomUUID();
-    }
+
+    //the request id we want to send with this payload
+    UUID request =  requestId == null? UUID.randomUUID() : requestId;
+
+    //We're about to send this request number
+    LOGGER.info("Sending Request UUID - ", request.toString());
 
     //send the request and get a response....
     HttpResponse response =  httpClient.execute(
-        builder.generateInsertRequest(requestId,
+        builder.generateInsertRequest(request,
             table, stage, files));
 
     LOGGER.info("Attempting to unmarshall insert response - {}", response);

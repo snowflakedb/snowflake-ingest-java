@@ -110,7 +110,7 @@ public final class RequestBuilder
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    */
-   RequestBuilder(String accountName,
+   public RequestBuilder(String accountName,
                  String userName,
                  KeyPair keyPair,
                  String schemeName,
@@ -135,9 +135,9 @@ public final class RequestBuilder
     scheme = schemeName;
     host = hostName;
 
-    LOGGER.info(MessageFormat.format("Creating a RequestBuilder with arguments : " +
+    LOGGER.info("Creating a RequestBuilder with arguments : " +
         "Account : {}, User : {}, Scheme : {}, Host : {}, Port : {}", account,
-        user, scheme, host, port));
+        user, scheme, host, port);
   }
 
 
@@ -152,6 +152,7 @@ public final class RequestBuilder
     //We can't make a request with no id
     if(requestId == null)
     {
+      LOGGER.error("RequestId is null!");
       throw new IllegalArgumentException();
     }
 
@@ -171,7 +172,7 @@ public final class RequestBuilder
     builder.addParameter(REQUEST_ID, requestId.toString());
 
     //Log the base url
-    LOGGER.info(MessageFormat.format("Base URL  as generated so far : {}", builder.toString()));
+    LOGGER.info("Base URL as generated so far : {}", builder.toString());
 
     return builder;
   }
@@ -189,6 +190,7 @@ public final class RequestBuilder
     //if the table name is null, we have to abort
     if(table == null)
     {
+      LOGGER.error("Table argument is null");
       throw new IllegalArgumentException();
     }
 
@@ -289,6 +291,7 @@ public final class RequestBuilder
   {
     //make the insert URI
     URI insertURI = makeInsertURI(requestId, table, stage);
+    LOGGER.info("Created Insert Request : {} ", insertURI);
 
     //Make the post request
     HttpPost post = new HttpPost(insertURI);

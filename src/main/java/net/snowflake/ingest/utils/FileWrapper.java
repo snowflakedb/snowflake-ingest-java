@@ -1,5 +1,8 @@
 package net.snowflake.ingest.utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A Wrapper for a file path in the target stage as well as an
  * optional size
@@ -7,6 +10,10 @@ package net.snowflake.ingest.utils;
  */
 public class FileWrapper
 {
+
+  //a logger for this class
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileWrapper.class);
+
   //the name of this file in the stage
   private String path;
 
@@ -23,12 +30,14 @@ public class FileWrapper
     //the filepath shouldn't be null
     if(filepath == null)
     {
+      LOGGER.error("Null filepath provided");
       throw new IllegalArgumentException();
     }
 
     //if we have a negative file size, throw
     if(filesize != null && filesize.longValue() < 0)
     {
+      LOGGER.error("Negative file size provided");
       throw new IllegalArgumentException();
     }
 

@@ -72,6 +72,9 @@ final class SecurityManager
     //we haven't yet failed to regenerate our token
     regenFailed = new AtomicBoolean();
 
+    //we have to keep around the keys
+    this.keyPair = keypair;
+
     //generate our first token
     regenerateToken();
 
