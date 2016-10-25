@@ -114,7 +114,6 @@ public class SimpleIngestManager
    * @param user the user performing this load
    * @param table the fully qualified name of the table
    * @param stage the fully qualfied name of the stage
-   * @param
    * @param keyPair the KeyPair we'll use to sign JWT tokens
    * @param schemeName http or https
    * @param hostName the hostname
