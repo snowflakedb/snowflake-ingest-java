@@ -21,7 +21,7 @@ final class SecurityManager
 {
 
   //the logger for SecurityManager
-  private static final Logger LOGGER =  LoggerFactory.getLogger(SecurityManager.class.getName());
+  private static final Logger LOGGER =  LoggerFactory.getLogger(SecurityManager.class);
 
   //the token lifetime is 59 minutes
   private static final float LIFETIME = 59;
@@ -38,9 +38,6 @@ final class SecurityManager
   //the name of the user who will be loading the files
   private String user;
 
-  //this will create a task responsible for automatically regenerating our key
-  private ScheduledExecutorService keyRenewer;
-
   //the token itself
   private AtomicReference<String> token;
 
@@ -49,14 +46,17 @@ final class SecurityManager
 
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair
+   * with a specified time to renew the token
    * @param accountname - the snowflake account name of this user
    * @param username - the snowflake username of the current user
-   * @param keypair - the public/private key pair we're using to connect
+   * @param keyPair - the public/private key pair we're using to connect
+   * @param timeTillRenewal - the time measure until we renew the token
+   * @param unit the unit by which timeTillRenewal is measured
    */
-  public SecurityManager(String accountname, String username, KeyPair keypair)
+  SecurityManager(String accountname, String username, KeyPair keyPair, int timeTillRenewal, TimeUnit unit)
   {
     //if any of our arguments are null, throw an exception
-    if(accountname == null || username == null || keypair == null)
+    if(accountname == null || username == null || keyPair == null)
     {
       throw new IllegalArgumentException();
     }
@@ -67,25 +67,37 @@ final class SecurityManager
     token = new AtomicReference<>();
 
     //generate our key renewal thread
-    keyRenewer = Executors.newScheduledThreadPool(1);
+    ScheduledExecutorService keyRenewer = Executors.newScheduledThreadPool(1);
 
     //we haven't yet failed to regenerate our token
     regenFailed = new AtomicBoolean();
 
     //we have to keep around the keys
-    this.keyPair = keypair;
+    this.keyPair = keyPair;
 
     //generate our first token
     regenerateToken();
 
     //schedule all future renewals
     keyRenewer.scheduleAtFixedRate(this::regenerateToken,
-        RENEWAL_INTERVAL,
-        RENEWAL_INTERVAL, TimeUnit.MINUTES);
+        timeTillRenewal,
+        timeTillRenewal, unit);
   }
 
   /**
-   * Regenerates our Token given our current user, account and keypair
+   * Creates a SecurityManager entity for a given account, user and KeyPair
+   * with the default time to renew (54 minutes)
+   * @param accountname - the snowflake account name of this user
+   * @param username - the snowflake username of the current user
+   * @param keyPair - the public/private key pair we're using to connect
+   */
+  SecurityManager(String accountname, String username, KeyPair keyPair)
+  {
+    this(accountname,username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES);
+  }
+
+  /**
+   * regenerateToken - Regenerates our Token given our current user, account and keypair
    */
   private void regenerateToken()
   {
@@ -139,7 +151,7 @@ final class SecurityManager
    * @return the string version of a valid JWT token
    * @throws SecurityException if we failed to regenerate a token since the last call
    */
-  public String getToken()
+  String getToken()
   {
     //if we failed to regenerate the token at some point, throw
     if(regenFailed.get())

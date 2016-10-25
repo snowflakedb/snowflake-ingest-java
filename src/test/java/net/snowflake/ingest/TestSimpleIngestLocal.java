@@ -1,8 +1,7 @@
 package net.snowflake.ingest;
 
-import junit.framework.TestCase;
 import net.snowflake.ingest.connection.HistoryResponse;
-import net.snowflake.ingest.connection.InsertResponse;
+import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.utils.FileWrapper;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Before;
@@ -15,18 +14,26 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.*;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertTrue;
 
 
 /**
@@ -324,10 +331,10 @@ public class TestSimpleIngestLocal
     FileWrapper myFile = new FileWrapper(BASE_FILENAME, null);
 
     //get an insert response after we submit
-    InsertResponse insertResponse = manager.ingestFile(myFile, null);
+    IngestResponse insertResponse = manager.ingestFile(myFile, null);
 
     //assert that we successfully enqueued
-    assertTrue(insertResponse.responseCode == InsertResponse.Response.SUCCESS);
+    assertTrue(insertResponse.responseCode == IngestResponse.Response.SUCCESS);
 
     //create a new thread
     ExecutorService service = Executors.newSingleThreadExecutor();

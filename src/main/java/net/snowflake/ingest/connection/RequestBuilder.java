@@ -10,7 +10,6 @@ import org.apache.http.client.utils.URIBuilder;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyPair;
-import java.text.MessageFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -83,7 +82,7 @@ public final class RequestBuilder
    * A simple POJO for generating our POST body to the insert endpoint
    * @author obabarinsa
    */
-  static class InsertRequest
+  static class IngestRequest
   {
     //the list of files we're loading
     public List<FileWrapper> files;
@@ -249,7 +248,7 @@ public final class RequestBuilder
     }
 
     //create pojo
-    InsertRequest pojo = new InsertRequest();
+    IngestRequest pojo = new IngestRequest();
     pojo.files = files;
 
     //serialize to a string
