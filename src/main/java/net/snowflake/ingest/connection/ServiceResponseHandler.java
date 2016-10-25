@@ -48,13 +48,13 @@ public final class ServiceResponseHandler
   /**
    * unmarshallInsertResponse
    * Given an HttpResponse object - attempts to deserialize it into
-   * an InsertResponse object
-   * @param response the HTTPResponse we want to distill into an InsertResponse
-   * @return An InsertResponse with all of the parsed out information
+   * an IngestResponse object
+   * @param response the HTTPResponse we want to distill into an IngestResponse
+   * @return An IngestResponse with all of the parsed out information
    * @throws IOException - if our entity is somehow corrupt or we can't get it
    * @throws BackOffException if we have a 503 response
    */
-  public static InsertResponse unmarshallInsertResponse(HttpResponse response)
+  public static IngestResponse unmarshallInsertResponse(HttpResponse response)
   throws IOException
   {
     //we can't unmarshall a null response
@@ -83,7 +83,7 @@ public final class ServiceResponseHandler
     String blob = EntityUtils.toString(response.getEntity());
 
     //Read out the blob entity into a class
-    return mapper.readValue(blob, InsertResponse.class);
+    return mapper.readValue(blob, IngestResponse.class);
   }
 
 

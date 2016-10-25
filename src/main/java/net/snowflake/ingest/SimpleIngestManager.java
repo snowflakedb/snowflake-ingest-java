@@ -1,7 +1,7 @@
 package net.snowflake.ingest;
 
 import net.snowflake.ingest.connection.HistoryResponse;
-import net.snowflake.ingest.connection.InsertResponse;
+import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.BackOffException;
@@ -156,7 +156,7 @@ public class SimpleIngestManager
    * @throws URISyntaxException - if the provided account name
    * was illegal and caused a URI construction failure
    */
-  public InsertResponse ingestFile(FileWrapper file, UUID requestId)
+  public IngestResponse ingestFile(FileWrapper file, UUID requestId)
   throws URISyntaxException, IOException
   {
     return ingestFiles(Collections.singletonList(file), requestId);
@@ -175,7 +175,7 @@ public class SimpleIngestManager
    * was illegal and caused a URI construction failure
    */
 
-  public InsertResponse ingestFiles(List<FileWrapper> files, UUID requestId)
+  public IngestResponse ingestFiles(List<FileWrapper> files, UUID requestId)
   throws URISyntaxException, IOException
   {
     //if we have no requestId generate one for the user

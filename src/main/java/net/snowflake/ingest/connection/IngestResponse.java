@@ -3,11 +3,11 @@ package net.snowflake.ingest.connection;
 import java.util.UUID;
 
 /**
- * InsertResponse - an object which contains a successful
+ * IngestResponse - an object which contains a successful
  * response from the service for the insert request
  * @author obabarinsa
  */
-public class InsertResponse
+public class IngestResponse
 {
   /**
    * Response - this represents the different responses
