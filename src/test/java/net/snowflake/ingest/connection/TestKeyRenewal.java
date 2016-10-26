@@ -16,8 +16,6 @@ import java.util.concurrent.TimeUnit;
  */
 public class TestKeyRenewal
 {
-
-
   //generate our keys using RSA
   private static final String ALGORITHM = "RSA";
   /**
