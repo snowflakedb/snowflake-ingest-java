@@ -33,19 +33,22 @@ Adding as a Dependency
 ======================
 You can add the Snowflake Ingest Service SDK by adding the following to your project
 
-    .. code-block:: xml
-        <!-- Add this to your Maven project's pom.xml -->
-        <dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-ingest-sdk</artifactId>
-            <version>{version}</version>
-        </dependency>
+.. code-block:: xml
 
-    .. code-block:: groovy
-        // in Gradle project
-        dependencies {
-            compile 'net.snowflake:snowflake-ingest-sdk:{version}'
-        }
+    <!-- Add this to your Maven project's pom.xml -->
+    <dependency>
+        <groupId>net.snowflake</groupId>
+        <artifactId>snowflake-ingest-sdk</artifactId>
+        <version>{version}</version>
+    </dependency>
+
+
+.. code-block:: groovy
+
+    // in Gradle project
+    dependencies {
+        compile 'net.snowflake:snowflake-ingest-sdk:{version}'
+    }
 
 
 Building From Source
