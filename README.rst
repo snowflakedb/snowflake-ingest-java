@@ -4,7 +4,7 @@ Snowflake Ingest Service Java SDK
 .. image:: http://img.shields.io/:license-Apache%202-brightgreen.svg
     :target: http://www.apache.org/licenses/LICENSE-2.0.txt
 
-the Snowflake Ingest Service SDK allows users to ingest files
+The Snowflake Ingest Service SDK allows users to ingest files
 into their Snowflake data warehouse in a programmatic fashion via key-pair
 authentication.
 
@@ -27,5 +27,18 @@ Maven (Developers only)
 ------
 This SDK is developed as a `Maven <maven.apache.org>`_ project.
 As a result, you'll need to install maven to build the projects and, run tests.
+
+
+Adding as a Maven Dependency
+======================
+You can add the Snowflake Ingest Service SDK by adding the following to your pom.xml
+
+..code-block: xml
+
+    <dependency>
+        <groupId>net.snowflake</groupId>
+        <artifactId>snowflake-ingest-sdk</artifactId>
+        <version>{version}</version>
+    </dependency>
 
 

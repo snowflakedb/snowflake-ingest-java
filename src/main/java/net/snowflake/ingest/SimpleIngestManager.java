@@ -136,7 +136,7 @@ public class SimpleIngestManager
 
 
   /**
-   * getAccount - Gives back the name of the accont
+   * getAccount - Gives back the name of the account
    * that this IngestManager is targeting
    * @return the name of the account
    */
