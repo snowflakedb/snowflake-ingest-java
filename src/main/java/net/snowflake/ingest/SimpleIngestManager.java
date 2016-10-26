@@ -241,7 +241,7 @@ public class SimpleIngestManager
             table, stage, files));
 
     LOGGER.info("Attempting to unmarshall insert response - {}", response);
-    return ServiceResponseHandler.unmarshallInsertResponse(response);
+    return ServiceResponseHandler.unmarshallIngestResponse(response);
   }
 
 

@@ -46,7 +46,7 @@ public final class ServiceResponseHandler
   }
 
   /**
-   * unmarshallInsertResponse
+   * unmarshallIngestResponse
    * Given an HttpResponse object - attempts to deserialize it into
    * an IngestResponse object
    * @param response the HTTPResponse we want to distill into an IngestResponse
@@ -54,13 +54,13 @@ public final class ServiceResponseHandler
    * @throws IOException - if our entity is somehow corrupt or we can't get it
    * @throws BackOffException if we have a 503 response
    */
-  public static IngestResponse unmarshallInsertResponse(HttpResponse response)
+  public static IngestResponse unmarshallIngestResponse(HttpResponse response)
   throws IOException
   {
     //we can't unmarshall a null response
     if(response == null)
     {
-      LOGGER.warn("Null argument passed to unmarshallInsertResponse");
+      LOGGER.warn("Null argument passed to unmarshallIngestResponse");
       throw new IllegalArgumentException();
     }
 
