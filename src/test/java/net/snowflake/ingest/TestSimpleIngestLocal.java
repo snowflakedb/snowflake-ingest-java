@@ -57,9 +57,6 @@ public class TestSimpleIngestLocal
   //the user who is going to be ingesting these files
   private static final String USER = "snowman";
 
-  //administrative user
-  private static final String ADMIN = "admin";
-
   //the password of this test user
   private static final String PASSWORD = "test";
 
@@ -101,7 +98,7 @@ public class TestSimpleIngestLocal
   private final String FQ_TABLE =
       DATABASE + "." + SCHEMA + "." + quote(TABLE);
 
-  //the fully qualfied stage name
+  //the fully qualified stage name
   private final String FQ_STAGE =
       DATABASE + "." + SCHEMA + "." + quote(STAGE);
 
@@ -170,7 +167,7 @@ public class TestSimpleIngestLocal
   /**
    * Creates a local file for loading into our table
    * @return URI of this file
-   * @throws IOException
+   * @throws IOException If we can't write the file
    */
   private URI makeLocalFile()
   throws IOException
