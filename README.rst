@@ -56,9 +56,13 @@ Building From Source
 If you would like to build this project from source you can run the following to install
 the artifact to your local maven repository.
 
+.. code-block:: bash
+
     mvn install
 
 If you would just like to build the jar in the source directory, you can run
+
+.. code-block:: bash
 
     mvn package
 
