@@ -33,7 +33,7 @@ Adding as a Maven Dependency
 ======================
 You can add the Snowflake Ingest Service SDK by adding the following to your pom.xml
 
-..code-block: xml
+..code-block:: xml
 
     <dependency>
         <groupId>net.snowflake</groupId>
