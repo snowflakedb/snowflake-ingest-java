@@ -142,6 +142,7 @@ final class SecurityManager
     }
 
     //atomically update the string
+    LOGGER.info("Created new JWT  - {}", newToken);
     token.set(newToken);
   }
 
