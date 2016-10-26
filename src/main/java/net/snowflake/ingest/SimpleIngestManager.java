@@ -87,7 +87,7 @@ public class SimpleIngestManager
    * @param account The account into which we're loading
    * @param user the user performing this load
    * @param table the fully qualified name of the table
-   * @param stage the fully qualfied name of the stage
+   * @param stage the fully qualified name of the stage
    * @param keyPair the KeyPair we'll use to sign JWT tokens
    */
   public SimpleIngestManager(String account, String user, String table,
@@ -119,7 +119,7 @@ public class SimpleIngestManager
    * @param hostName the hostname
    * @param port the port number
    */
-  public SimpleIngestManager(String account, String user, String table,
+   SimpleIngestManager(String account, String user, String table,
                              String stage, KeyPair keyPair, String schemeName,
                              String hostName, int port)
   {
