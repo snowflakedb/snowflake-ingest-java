@@ -1,5 +1,5 @@
 Snowflake Ingest Service Java SDK
-**********************************
+*********************************
 
 .. image:: http://img.shields.io/:license-Apache%202-brightgreen.svg
     :target: http://www.apache.org/licenses/LICENSE-2.0.txt

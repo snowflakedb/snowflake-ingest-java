@@ -30,6 +30,151 @@ import java.util.stream.Collectors;
 public class SimpleIngestManager
 {
 
+  /**
+   * This Builder allows someone to configure a SimpleIngestManager
+   * prior to instantiating the manager
+   * @author obabarinsa
+   */
+
+  public static class Builder {
+
+    //the account name we want to use
+    private String account;
+
+    //the user who will be loading data
+    private String user;
+
+    //the fully qualified table name
+    private String table;
+
+    //the fully qualified stage name
+    private String stage;
+
+    //the key pair we want to use to authenticate
+    private KeyPair keypair;
+
+    /**
+     * getAccount - returns the name of the account this builder will inject into the
+     * IngestManager
+     * @return account name
+     */
+    public String getAccount()
+    {
+      return account;
+    }
+
+    /**
+     * setAccount - set the account for the ingest manager and return this builder
+     * @param account the account which will be loading into this table
+     * @return this builder object
+     */
+    public Builder setAccount(String account)
+    {
+      this.account = account;
+      return this;
+    }
+
+    /**
+     * getUser - get the user who will be loading using the ingest service
+     * @return the user name
+     */
+    public String getUser()
+    {
+      return user;
+    }
+
+    /**
+     * setUser - sets the user who will be loading with the ingest manager
+     * @param user the user who will be loading
+     * @return the current builder with the user set
+     */
+    public Builder setUser(String user)
+    {
+      this.user = user;
+      return this;
+    }
+
+
+    /**
+     * getTable - get the target table for the ingest manager this builder will create
+     * @return the target table for this ingest manager
+     */
+    public String getTable()
+    {
+      return table;
+    }
+
+
+    /**
+     * setTable - sets the table into which the SimpleIngestManager will be loading
+     * @param table the target table for the ingest manager
+     * @return the current builder with the target table set
+     */
+    public Builder setTable(String table)
+    {
+      this.table = table;
+      return this;
+    }
+
+
+    /**
+     * getStage - the fully qualified stage name in which files are stored
+     * @return the stage name
+     */
+    public String getStage()
+    {
+      return stage;
+    }
+
+
+    /**
+     * setStage - sets the fully qualified stage name where our data lives
+     * @param stage the stage where our data lives
+     * @return the current builder with the fully qualified stage name set
+     */
+    public Builder setStage(String stage)
+    {
+      this.stage = stage;
+      return this;
+    }
+
+
+    /**
+     * getKeyPair - returns the key-pair we're using for authentication
+     * @return the RSA 2048 key-pair we use to sign tokens
+     */
+    public KeyPair getKeypair()
+    {
+      return keypair;
+    }
+
+
+    /**
+     * setKeypair - sets the RSA 2048 bit keypair we'll be using for token signing
+     * @param keypair the keypair we'll be using for auth
+     * @return the current builder with the key set
+     */
+    public Builder setKeypair(KeyPair keypair)
+    {
+      this.keypair = keypair;
+      return this;
+    }
+
+    /**
+     * build - returns a new instance of SimpleIngestManager using the information
+     * set in this builder object
+     */
+    public SimpleIngestManager build()
+    {
+      return new SimpleIngestManager(account, user, table, stage, keypair);
+    }
+
+  }
+
+
+
+
+
   //logger object for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(SimpleIngestManager.class);
   //HTTP Client that we use for sending requests to the service
