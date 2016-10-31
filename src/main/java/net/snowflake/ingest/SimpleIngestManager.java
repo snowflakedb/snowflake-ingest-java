@@ -5,7 +5,7 @@ import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.BackOffException;
-import net.snowflake.ingest.utils.FileWrapper;
+import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -325,9 +325,9 @@ public class SimpleIngestManager
    * wrapFilepaths - convenience method to take a list of filenames and
    * produce a list of FileWrappers with unset size
    * @param filenames the filenames you want to wrap up
-   * @return a corresponding list of FileWrapper objects
+   * @return a corresponding list of StagedFileWrapper objects
    */
-  public static List<FileWrapper> wrapFilepaths(List<String> filenames)
+  public static List<StagedFileWrapper> wrapFilepaths(List<String> filenames)
   {
     //if we get a null, throw
     if(filenames == null)
@@ -336,7 +336,7 @@ public class SimpleIngestManager
     }
 
     return filenames.parallelStream()
-        .map(fname -> new FileWrapper(fname, null)).collect(Collectors.toList());
+        .map(fname -> new StagedFileWrapper(fname, null)).collect(Collectors.toList());
 
   }
 
@@ -351,7 +351,7 @@ public class SimpleIngestManager
    * @throws URISyntaxException - if the provided account name
    * was illegal and caused a URI construction failure
    */
-  public IngestResponse ingestFile(FileWrapper file, UUID requestId)
+  public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId)
   throws URISyntaxException, IOException
   {
     return ingestFiles(Collections.singletonList(file), requestId);
@@ -370,7 +370,7 @@ public class SimpleIngestManager
    * was illegal and caused a URI construction failure
    */
 
-  public IngestResponse ingestFiles(List<FileWrapper> files, UUID requestId)
+  public IngestResponse ingestFiles(List<StagedFileWrapper> files, UUID requestId)
   throws URISyntaxException, IOException
   {
 

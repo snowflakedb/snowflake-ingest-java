@@ -2,7 +2,7 @@ package net.snowflake.ingest;
 
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;
-import net.snowflake.ingest.utils.FileWrapper;
+import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Before;
 import org.junit.Test;
@@ -325,7 +325,7 @@ public class TestSimpleIngestLocal
     boolean loaded = false;
 
     //create a file wrapper
-    FileWrapper myFile = new FileWrapper(BASE_FILENAME, null);
+    StagedFileWrapper myFile = new StagedFileWrapper(BASE_FILENAME, null);
 
     //get an insert response after we submit
     IngestResponse insertResponse = manager.ingestFile(myFile, null);

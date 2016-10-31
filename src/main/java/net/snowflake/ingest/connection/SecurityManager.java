@@ -44,6 +44,9 @@ final class SecurityManager
   //Did we fail to regenerate our token at some point?
   private AtomicBoolean regenFailed;
 
+  //the thread we use for renewing all tokens
+  private static final ScheduledExecutorService keyRenewer = Executors.newScheduledThreadPool(1);
+
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair
    * with a specified time to renew the token
@@ -65,9 +68,6 @@ final class SecurityManager
 
     //create our automatic reference to a string (our token)
     token = new AtomicReference<>();
-
-    //generate our key renewal thread
-    ScheduledExecutorService keyRenewer = Executors.newScheduledThreadPool(1);
 
     //we haven't yet failed to regenerate our token
     regenFailed = new AtomicBoolean();

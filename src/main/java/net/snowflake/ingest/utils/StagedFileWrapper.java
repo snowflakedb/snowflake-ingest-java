@@ -4,15 +4,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A Wrapper for a file path in the target stage as well as an
+ * RemoteFileWrapper for a file path in the target stage as well as an
  * optional size
  * @author obabarinsa
  */
-public class FileWrapper
+public class StagedFileWrapper
 {
 
   //a logger for this class
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileWrapper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(StagedFileWrapper.class);
 
   //the name of this file in the stage
   private String path;
@@ -21,11 +21,11 @@ public class FileWrapper
   private Long size;
 
   /**
-   * FileWrapper - just wraps the path of a file and its size for serialization
+   * StagedFileWrapper - just wraps the path of a file and its size for serialization
    * @param filepath the filepath for this file
    * @param filesize the size of this file
    */
-  public FileWrapper(String filepath, Long filesize)
+  public StagedFileWrapper(String filepath, Long filesize)
   {
     //the filepath shouldn't be null
     if(filepath == null)
@@ -47,10 +47,10 @@ public class FileWrapper
   }
 
   /**
-   * FileWrapper - just setting the path without a size
+   * StagedFileWrapper - just setting the path without a size
    * @param filepath the filepath for this file
    */
-  public FileWrapper(String filepath)
+  public StagedFileWrapper(String filepath)
   {
     this(filepath, null);
   }

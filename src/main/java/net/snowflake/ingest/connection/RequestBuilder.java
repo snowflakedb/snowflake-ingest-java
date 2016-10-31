@@ -1,6 +1,6 @@
 package net.snowflake.ingest.connection;
 
-import net.snowflake.ingest.utils.FileWrapper;
+import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -85,7 +85,7 @@ public final class RequestBuilder
   static class IngestRequest
   {
     //the list of files we're loading
-    public List<FileWrapper> files;
+    public List<StagedFileWrapper> files;
   }
 
   /**
@@ -238,7 +238,7 @@ public final class RequestBuilder
    * @param files the list of files we want to send
    * @return the string json blob
    */
-  private String generateFilesJSON(List<FileWrapper> files)
+  private String generateFilesJSON(List<StagedFileWrapper> files)
   {
     //if the files argument is null, throw
     if(files == null)
@@ -285,7 +285,7 @@ public final class RequestBuilder
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
-  public HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<FileWrapper> files)
+  public HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<StagedFileWrapper> files)
   throws URISyntaxException
   {
     //make the insert URI
