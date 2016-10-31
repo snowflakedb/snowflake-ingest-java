@@ -11,7 +11,7 @@ authentication.
 Prerequisites
 =============
 
-Java 8
+Java 8+
 ------
 
 The Snowflake Ingest Service SDK can only be used with Java 8 or higher. Backwards
