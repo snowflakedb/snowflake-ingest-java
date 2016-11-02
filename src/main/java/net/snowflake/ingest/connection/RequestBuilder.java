@@ -60,7 +60,7 @@ public final class RequestBuilder
   private final String host;
 
   //the endpoint format string for inserting files
-  private static final String INSERT_ENDPOINT_FORMAT = "/v1/data/tables/%s/insertFiles";
+  private static final String INGEST_ENDPOINT_FORMAT = "/v1/data/tables/%s/insertFiles";
 
   //the endpoint for history queries
   private static final String HISTORY_ENDPOINT_FORMAT = "/v1/data/tables/%s/insertReport";
@@ -200,7 +200,7 @@ public final class RequestBuilder
     builder.setParameter(STAGE_PARAMETER, stage);
 
     //add the path for the URI
-    builder.setPath(String.format(INSERT_ENDPOINT_FORMAT, table));
+    builder.setPath(String.format(INGEST_ENDPOINT_FORMAT, table));
 
     //build the final URI
     return builder.build();
