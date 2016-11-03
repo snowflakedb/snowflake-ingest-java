@@ -7,11 +7,12 @@ import java.util.List;
 /**
  * HistoryResponse - an object containing a response
  * we've received from the history endpoint
+ *
  * @author obabarinsa
  */
 public class HistoryResponse
 {
-   //the name of the table we're for which we're responding
+  //the name of the table we're for which we're responding
   public String table;
 
   //the statistics reported back by the service
@@ -24,8 +25,9 @@ public class HistoryResponse
   public List<FileEntry> files;
 
   /**
-   *  HistoryStats - The statistics reported back by the service
+   * HistoryStats - The statistics reported back by the service
    * about the currently loading set of files
+   *
    * @author obabarinsa
    */
   public static class HistoryStats
@@ -56,6 +58,7 @@ public class HistoryResponse
     /**
      * getLastInsertTime - converts the ISO formatted lastInsertTime string
      * into a LocalDate
+     *
      * @return a LocalDate object representation of our current time
      */
     public LocalDate getLastInsertTime()

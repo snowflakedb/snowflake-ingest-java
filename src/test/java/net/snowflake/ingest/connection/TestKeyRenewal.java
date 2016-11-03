@@ -1,14 +1,15 @@
 package net.snowflake.ingest.connection;
 
 import org.junit.Test;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 /**
  * TestKeyRenewal - tests whether or not the SecurityManager
@@ -18,6 +19,7 @@ public class TestKeyRenewal
 {
   //generate our keys using RSA
   private static final String ALGORITHM = "RSA";
+
   /**
    * Evaluates whether or not we are actually renewing tokens
    */
@@ -26,7 +28,7 @@ public class TestKeyRenewal
       throws NoSuchProviderException, NoSuchAlgorithmException, InterruptedException
   {
     //first we need to create a keypair
-    KeyPairGenerator keyGen =  KeyPairGenerator.getInstance(ALGORITHM);
+    KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
     //we need a 2048 bit RSA key for this test
     keyGen.initialize(2048);
     //generate the actual keys

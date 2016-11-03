@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 /**
  * RemoteFileWrapper for a file path in the target stage as well as an
  * optional size
+ *
  * @author obabarinsa
  */
 public class StagedFileWrapper
@@ -22,20 +23,21 @@ public class StagedFileWrapper
 
   /**
    * StagedFileWrapper - just wraps the path of a file and its size for serialization
+   *
    * @param filepath the filepath for this file
    * @param filesize the size of this file
    */
   public StagedFileWrapper(String filepath, Long filesize)
   {
     //the filepath shouldn't be null
-    if(filepath == null)
+    if (filepath == null)
     {
       LOGGER.error("Null filepath provided");
       throw new IllegalArgumentException();
     }
 
     //if we have a negative file size, throw
-    if(filesize != null && filesize.longValue() < 0)
+    if (filesize != null && filesize.longValue() < 0)
     {
       LOGGER.error("Negative file size provided");
       throw new IllegalArgumentException();
@@ -48,6 +50,7 @@ public class StagedFileWrapper
 
   /**
    * StagedFileWrapper - just setting the path without a size
+   *
    * @param filepath the filepath for this file
    */
   public StagedFileWrapper(String filepath)
@@ -57,6 +60,7 @@ public class StagedFileWrapper
 
   /**
    * getPath - returns the path of this file
+   *
    * @return the file path
    */
   public String getPath()
@@ -66,6 +70,7 @@ public class StagedFileWrapper
 
   /**
    * getSize - get the size of this file
+   *
    * @return the file size
    */
   public Long getSize()

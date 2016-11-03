@@ -106,14 +106,14 @@ public class TestSimpleIngestLocal
   private final SimpleIngestManager manager;
 
   //our keypair
-  private final KeyPair keypair ;
+  private final KeyPair keypair;
 
   /**
    * TestSimpleIngestLocal - makes a new instance of
    * this test class by creating a sql connection to the database
    */
   public TestSimpleIngestLocal()
-  throws ClassNotFoundException, SQLException,
+      throws ClassNotFoundException, SQLException,
       NoSuchAlgorithmException, NoSuchProviderException
   {
     //create a connection
@@ -124,17 +124,18 @@ public class TestSimpleIngestLocal
     keypair = generateKeyPair();
     //make an ingest manager
     manager = new SimpleIngestManager(ACCOUNT, USER,
-        FQ_TABLE,FQ_STAGE, keypair, SCHEME, HOST, PORT);
+        FQ_TABLE, FQ_STAGE, keypair, SCHEME, HOST, PORT);
   }
 
   /**
    * Generates an RSA keypair for use in this test
+   *
    * @return a valid RSA keypair
    * @throws NoSuchAlgorithmException if we don't have an RSA algo
-   * @throws NoSuchProviderException if we can't use SHA1PRNG for randomization
+   * @throws NoSuchProviderException  if we can't use SHA1PRNG for randomization
    */
   private KeyPair generateKeyPair()
-  throws NoSuchProviderException, NoSuchAlgorithmException
+      throws NoSuchProviderException, NoSuchAlgorithmException
   {
     KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
     SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
@@ -144,11 +145,12 @@ public class TestSimpleIngestLocal
 
   /**
    * Gets a JDBC connection to the service
+   *
    * @param user user name
    * @return a valid JDBC connection
    */
   private Connection getConnection(String user)
-  throws ClassNotFoundException, SQLException
+      throws ClassNotFoundException, SQLException
   {
     //check first to see if we have the Snowflake JDBC
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
@@ -166,11 +168,12 @@ public class TestSimpleIngestLocal
 
   /**
    * Creates a local file for loading into our table
+   *
    * @return URI of this file
    * @throws IOException If we can't write the file
    */
   private URI makeLocalFile()
-  throws IOException
+      throws IOException
   {
     File file = new File(FILENAME);
 
@@ -183,7 +186,7 @@ public class TestSimpleIngestLocal
       //populate it with some data
       FileWriter fw = new FileWriter(file.getAbsoluteFile());
       BufferedWriter bw = new BufferedWriter(fw);
-      for(char letter = 'a'; letter <= 'z'; letter++ )
+      for (char letter = 'a'; letter <= 'z'; letter++)
       {
         bw.write(letter + "\n");
       }
@@ -204,8 +207,7 @@ public class TestSimpleIngestLocal
     try
     {
       Files.createDirectories(Paths.get(base));
-    }
-    catch (IOException e)
+    } catch (IOException e)
     {
       throw new IllegalStateException("create temp dir failed", e);
     }
@@ -214,6 +216,7 @@ public class TestSimpleIngestLocal
 
   /**
    * Try to execute a query and throw if we fail
+   *
    * @param query the query in question
    */
   private void doQuery(String query)
@@ -231,12 +234,13 @@ public class TestSimpleIngestLocal
 
   /**
    * Generate the public key as a string
+   *
    * @return the public key as a string
    */
   private String getPublicKeyString()
-  throws NoSuchAlgorithmException, InvalidKeySpecException
+      throws NoSuchAlgorithmException, InvalidKeySpecException
   {
-    KeyFactory keyFactory  = KeyFactory.getInstance(ALGORITHM);
+    KeyFactory keyFactory = KeyFactory.getInstance(ALGORITHM);
     final PublicKey pk = keypair.getPublic();
     X509EncodedKeySpec spec =
         keyFactory.getKeySpec(pk, X509EncodedKeySpec.class);
@@ -244,10 +248,9 @@ public class TestSimpleIngestLocal
   }
 
 
-
-
   /**
    * Simple helper method to escape a string via quotes
+   *
    * @return quoted string
    */
   private static String quote(String arg)
@@ -260,7 +263,7 @@ public class TestSimpleIngestLocal
    */
   @Before
   public void setup()
-  throws Exception
+      throws Exception
   {
     //create the temporary directory and local file
     createTempStageDir();
@@ -275,13 +278,13 @@ public class TestSimpleIngestLocal
 
     //create the target stage
     doQuery("create or replace stage " + quote(STAGE) +
-            " url='file:///tmp/data/'");
+        " url='file:///tmp/data/'");
 
     //create the target
     doQuery("create or replace table " + quote(TABLE) +
-            " (c1 string)");
+        " (c1 string)");
 
-    doQuery("grant insert on table " + quote(TABLE) + " to accountadmin" );
+    doQuery("grant insert on table " + quote(TABLE) + " to accountadmin");
 
     String pk = getPublicKeyString();
 
@@ -290,13 +293,14 @@ public class TestSimpleIngestLocal
 
     //set the public key
     doQuery("alter user " + USER +
-            " set RSA_PUBLIC_KEY='" + pk + "'");
+        " set RSA_PUBLIC_KEY='" + pk + "'");
 
     doQuery("use role sysadmin");
   }
 
   /**
    * Attempts to sleep and fetch the history afterwards
+   *
    * @return the history object or null if an error happened
    */
   private HistoryResponse sleepAndFetchHistory()
@@ -306,8 +310,7 @@ public class TestSimpleIngestLocal
 
       Thread.sleep(500);
       return manager.getHistory(null);
-    }
-    catch (Exception e)
+    } catch (Exception e)
     {
       return null;
     }
@@ -318,7 +321,7 @@ public class TestSimpleIngestLocal
    */
   @Test
   public void testLoadSingle()
-  throws Exception
+      throws Exception
   {
 
     //keeps track of whether we've loaded the file
@@ -340,7 +343,7 @@ public class TestSimpleIngestLocal
     Future<?> result = service.submit(() ->
         {
           //we spin here forever
-          while(true)
+          while (true)
           {
             HistoryResponse response = sleepAndFetchHistory();
 
@@ -366,8 +369,7 @@ public class TestSimpleIngestLocal
       //wait up to 1 minutes to load
       result.get(1, TimeUnit.MINUTES);
       loaded = true;
-    }
-    finally
+    } finally
     {
       assertTrue(loaded);
     }

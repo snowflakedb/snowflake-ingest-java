@@ -7,17 +7,16 @@ import org.slf4j.LoggerFactory;
 import java.util.AbstractCollection;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Queue;
 import java.util.NoSuchElementException;
+import java.util.Queue;
 
 
 /**
  * @author obabarinsa
- *
- * This class implements a generic ring buffer class which we can use
- * to keep track of a finite amount of data.
- *
- * For the ingest service, this is mostly used for window
+ *         <p>
+ *         This class implements a generic ring buffer class which we can use to keep track of a finite amount of data.
+ *         <p>
+ *         For the ingest service, this is mostly used for window
  */
 public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 {
@@ -41,15 +40,16 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
   /**
    * Constructs a ring buffer with a specified size
+   *
    * @param capacity the maximum capacity of this buff
    * @throws IllegalArgumentException if capacity is less than 1
    */
-   @SuppressWarnings("unchecked")
+  @SuppressWarnings("unchecked")
   public RingBuffer(int capacity)
   {
     LOGGER.info("Constructing RingBuffer with capacity {}", capacity);
     //if the capacity is less than 1, throw
-    if(capacity < 1)
+    if (capacity < 1)
     {
       throw new IllegalArgumentException();
     }
@@ -73,6 +73,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   /**
    * Returns the next valid position into the underlying array
    * - wraps if the we are at the end of the logical array
+   *
    * @param index the index for which we need a successor
    */
 
@@ -85,12 +86,13 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   /**
    * offer - attempts to add an object to the queue,
    * if the queue is at capacity, return false
+   *
    * @param obj what we're trying to append to the queue
    * @return whether or not we added the object to the queue
    */
   public boolean offer(E obj)
   {
-    if(capacity == occupied)
+    if (capacity == occupied)
     {
       return false;
     }
@@ -106,6 +108,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
   /**
    * add - appends an element to the end of this queue
+   *
    * @param obj - the object we're trying to add to the queue
    * @return always returns true if it doesn't throw
    * @throws IllegalStateException if we are at capacity
@@ -113,7 +116,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   public boolean add(E obj)
   {
     //check to see if we're at capacity
-    if(capacity == occupied)
+    if (capacity == occupied)
     {
       throw new IllegalStateException();
     }
@@ -131,9 +134,10 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
    * peek - Returns the element currently under the read pointer
    * Does NOT update the read position
    * If there is no valid element, return null
-   */  public E peek()
+   */
+  public E peek()
   {
-    if(occupied == 0)
+    if (occupied == 0)
     {
       return null;
     }
@@ -143,12 +147,13 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   /**
    * element Returns the element current under the read pointer
    * Does NOT update the read position
+   *
    * @throws IllegalStateException if we have no valid readable objects
    */
 
   public E element()
   {
-    if(occupied == 0)
+    if (occupied == 0)
     {
       throw new IllegalStateException();
     }
@@ -159,12 +164,13 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   /**
    * remove - returns the current head of this queue and removes it
    * This *does* update the read position
+   *
    * @return the object which was formerly the head of this queue
    * @throws NoSuchElementException if we have no items to be consumed
    */
   public E remove()
   {
-    if(occupied == 0)
+    if (occupied == 0)
     {
       throw new NoSuchElementException();
     }
@@ -181,11 +187,12 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   /**
    * poll - returns the head of this queue and removes it from the queue.
    * If no element exists returns null
+   *
    * @return the former head of this queue
    */
   public E poll()
   {
-    if(occupied == 0)
+    if (occupied == 0)
     {
       return null;
     }
@@ -200,6 +207,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
   /**
    * isEmpty - are there any items we can get from this queue?
+   *
    * @return whether or not there are any consumable items in this buffer
    */
   public boolean isEmpty()
@@ -209,6 +217,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
   /**
    * getCapacity - gives back the capacity of this buffer
+   *
    * @return the capacity of this buffer
    */
   public int getCapacity()
@@ -218,6 +227,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
   /**
    * size - returns the number of occupied slots in this queue
+   *
    * @return the number of slots currently in use in this buffer
    */
   public int size()
@@ -242,6 +252,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
   /**
    * toArray - builds an array containing all objects in this queue
+   *
    * @return an array containing all elements of this queue
    * @throws ArrayStoreException - if the element
    */
@@ -253,7 +264,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
     //copy our read pointer
     int needle = readIdx;
     //for each occupied slot ...
-    for(int i = 0; i < occupied; i++)
+    for (int i = 0; i < occupied; i++)
     {
       //copy over a reference to the object
       ret[i] = buffer[needle];
@@ -267,6 +278,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
   /**
    * contains - checks whether or not an object is in this queue
+   *
    * @param obj the needle we're searching for in the queue
    * @return did we find an object equal to this one in the queue
    */
@@ -275,15 +287,15 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
     //copy our read pointer
     int needle = readIdx;
     //for each object in our queue ..
-    for(int i = 0; i < occupied; i++)
+    for (int i = 0; i < occupied; i++)
     {
       //if both are null, return true
-      if(obj == null && buffer[needle] == null)
+      if (obj == null && buffer[needle] == null)
       {
         return true;
       }
       //if both aren't null and they are equal, return true
-      else if(obj != null && buffer[needle] != null && obj.equals(buffer[needle]))
+      else if (obj != null && buffer[needle] != null && obj.equals(buffer[needle]))
       {
         return true;
       }
@@ -300,6 +312,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
    * iterator - returns an iterator that allows you to view all
    * elements in this queue
    * This iterator does NOT allow for remove()
+   *
    * @return an instance of ring iterator
    */
 
@@ -311,9 +324,11 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
   /**
    * This class implements an iterator for RingBuffer
    * It does not support remove and requires a handle for the creating RingBuffer
+   *
    * @author obabarinsa
    */
-  private class RingIterator implements Iterator<E> {
+  private class RingIterator implements Iterator<E>
+  {
 
     //the count of how many elements we've used of those available
     private int usedElems;
@@ -326,6 +341,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
     /**
      * A constructor for our RingBuffer instance
+     *
      * @param buffer the constructing ring buffer from which we'll get values
      */
     RingIterator(RingBuffer<E> buffer)
@@ -342,6 +358,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
     /**
      * remove - not supported and will just throw an exception
+     *
      * @throws UnsupportedOperationException will ALWAYS throw this exception
      */
     public void remove()
@@ -352,6 +369,7 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
     /**
      * hasNext - returns whether our not there are still unvisited
      * elements in this queue
+     *
      * @return do we have more of the queue to explore?
      */
     public boolean hasNext()
@@ -361,12 +379,13 @@ public class RingBuffer<E> extends AbstractCollection<E> implements Queue<E>
 
     /**
      * next - attempts to return the next available item in the queue
+     *
      * @throws NoSuchElementException thrown if we have exhausted the queue
      */
     public E next()
     {
       //if we've used up the queue, throw an exception
-      if(usedElems >= ringBuffer.occupied)
+      if (usedElems >= ringBuffer.occupied)
       {
         throw new NoSuchElementException();
       }

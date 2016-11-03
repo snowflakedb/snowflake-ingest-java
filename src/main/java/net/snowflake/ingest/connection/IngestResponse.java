@@ -5,6 +5,7 @@ import java.util.UUID;
 /**
  * IngestResponse - an object which contains a successful
  * response from the service for the insert request
+ *
  * @author obabarinsa
  */
 public class IngestResponse
@@ -12,6 +13,7 @@ public class IngestResponse
   /**
    * Response - this represents the different responses
    * that the service can return to us
+   *
    * @author obabarinsa
    */
   public static enum Response
@@ -31,6 +33,7 @@ public class IngestResponse
 
   /**
    * getRequestUUID - the requestId as a UUID
+   *
    * @return UUID version of the requestId
    */
   public UUID getRequestUUID()

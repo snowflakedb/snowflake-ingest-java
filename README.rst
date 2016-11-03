@@ -2,7 +2,7 @@ Snowflake Ingest Service Java SDK
 *********************************
 
 .. image:: http://img.shields.io/:license-Apache%202-brightgreen.svg
-    :target: http://www.apache.org/licenses/LICENSE-2.0.txt
+:target: http://www.apache.org/licenses/LICENSE-2.0.txt
 
 The Snowflake Ingest Service SDK allows users to ingest files
 into their Snowflake data warehouse in a programmatic fashion via key-pair
@@ -12,7 +12,7 @@ Prerequisites
 =============
 
 Java 8+
-------
+-------
 
 The Snowflake Ingest Service SDK can only be used with Java 8 or higher. Backwards
 compatibility with Java 7 and prior is not planned at this time.

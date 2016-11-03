@@ -23,8 +23,9 @@ import java.util.stream.Collectors;
 /**
  * This class provides a basic, low-level abstraction over
  * the Snowflake Ingest Service REST api
- *
+ * <p>
  * Usage of this class delegates all exception and state handling to the developer
+ *
  * @author obabarinsa
  */
 public class SimpleIngestManager
@@ -33,10 +34,12 @@ public class SimpleIngestManager
   /**
    * This Builder allows someone to configure a SimpleIngestManager
    * prior to instantiating the manager
+   *
    * @author obabarinsa
    */
 
-  public static class Builder {
+  public static class Builder
+  {
 
     //the account name we want to use
     private String account;
@@ -56,6 +59,7 @@ public class SimpleIngestManager
     /**
      * getAccount - returns the name of the account this builder will inject into the
      * IngestManager
+     *
      * @return account name
      */
     public String getAccount()
@@ -65,6 +69,7 @@ public class SimpleIngestManager
 
     /**
      * setAccount - set the account for the ingest manager and return this builder
+     *
      * @param account the account which will be loading into this table
      * @return this builder object
      */
@@ -76,6 +81,7 @@ public class SimpleIngestManager
 
     /**
      * getUser - get the user who will be loading using the ingest service
+     *
      * @return the user name
      */
     public String getUser()
@@ -85,6 +91,7 @@ public class SimpleIngestManager
 
     /**
      * setUser - sets the user who will be loading with the ingest manager
+     *
      * @param user the user who will be loading
      * @return the current builder with the user set
      */
@@ -97,6 +104,7 @@ public class SimpleIngestManager
 
     /**
      * getTable - get the target table for the ingest manager this builder will create
+     *
      * @return the target table for this ingest manager
      */
     public String getTable()
@@ -107,6 +115,7 @@ public class SimpleIngestManager
 
     /**
      * setTable - sets the table into which the SimpleIngestManager will be loading
+     *
      * @param table the target table for the ingest manager
      * @return the current builder with the target table set
      */
@@ -119,6 +128,7 @@ public class SimpleIngestManager
 
     /**
      * getStage - the fully qualified stage name in which files are stored
+     *
      * @return the stage name
      */
     public String getStage()
@@ -129,6 +139,7 @@ public class SimpleIngestManager
 
     /**
      * setStage - sets the fully qualified stage name where our data lives
+     *
      * @param stage the stage where our data lives
      * @return the current builder with the fully qualified stage name set
      */
@@ -141,6 +152,7 @@ public class SimpleIngestManager
 
     /**
      * getKeyPair - returns the key-pair we're using for authentication
+     *
      * @return the RSA 2048 key-pair we use to sign tokens
      */
     public KeyPair getKeypair()
@@ -151,6 +163,7 @@ public class SimpleIngestManager
 
     /**
      * setKeypair - sets the RSA 2048 bit keypair we'll be using for token signing
+     *
      * @param keypair the keypair we'll be using for auth
      * @return the current builder with the key set
      */
@@ -170,9 +183,6 @@ public class SimpleIngestManager
     }
 
   }
-
-
-
 
 
   //logger object for this class
@@ -202,6 +212,7 @@ public class SimpleIngestManager
   /**
    * init - Does the basic work of constructing a SimpleIngestManager that
    * is common across all constructors
+   *
    * @param account The account into which we're loading
    * @param user the user performing this load
    * @param table the fully qualified name of the table
@@ -209,7 +220,7 @@ public class SimpleIngestManager
    * @param keyPair the KeyPair we'll use to sign JWT tokens
    */
   private void init(String account, String user, String table,
-                             String stage, KeyPair keyPair)
+                    String stage, KeyPair keyPair)
   {
     //set up our reference variables
     this.account = account;
@@ -255,6 +266,7 @@ public class SimpleIngestManager
    * In addition, this also takes takes the target table and source stage
    * Finally, it also requires a valid KeyPair object registered with
    * Snowflake DB
+   *
    * @param account the account into which we're loading
    * @param user the user performing this load
    * @param table the fully qualified name of the table
@@ -264,9 +276,9 @@ public class SimpleIngestManager
    * @param hostName the hostname
    * @param port the port number
    */
-   SimpleIngestManager(String account, String user, String table,
-                             String stage, KeyPair keyPair, String schemeName,
-                             String hostName, int port)
+  SimpleIngestManager(String account, String user, String table,
+                      String stage, KeyPair keyPair, String schemeName,
+                      String hostName, int port)
   {
     LOGGER.info("Entering SimpleIngestManger Constructor");
 
@@ -283,6 +295,7 @@ public class SimpleIngestManager
   /**
    * getAccount - Gives back the name of the account
    * that this IngestManager is targeting
+   *
    * @return the name of the account
    */
   public String getAccount()
@@ -294,6 +307,7 @@ public class SimpleIngestManager
   /**
    * getUser - gives back the user on behalf of
    * which this ingest manager is loading
+   *
    * @return the user name
    */
   public String getUser()
@@ -303,6 +317,7 @@ public class SimpleIngestManager
 
   /**
    * getTable - gives back the table into which we are loading
+   *
    * @return the table name
    */
   public String getTable()
@@ -313,6 +328,7 @@ public class SimpleIngestManager
   /**
    * getStage - gives back the name of the stage into
    * which we are loading
+   *
    * @return the stage name
    */
   public String getStage()
@@ -324,13 +340,14 @@ public class SimpleIngestManager
   /**
    * wrapFilepaths - convenience method to take a list of filenames and
    * produce a list of FileWrappers with unset size
+   *
    * @param filenames the filenames you want to wrap up
    * @return a corresponding list of StagedFileWrapper objects
    */
   public static List<StagedFileWrapper> wrapFilepaths(List<String> filenames)
   {
     //if we get a null, throw
-    if(filenames == null)
+    if (filenames == null)
     {
       throw new IllegalArgumentException();
     }
@@ -342,17 +359,16 @@ public class SimpleIngestManager
 
   /**
    * ingestFile - ingest a single file
+   *
    * @param file - a wrapper around a filename and size
-   * @param requestId - a requestId that we'll use to label
-   * - if null, we generate one for the user
+   * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @return an insert response from the server
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws URISyntaxException - if the provided account name
-   * was illegal and caused a URI construction failure
+   * @throws BackOffException   - if we have a 503 response
+   * @throws IOException        - if we have some other network failure
+   * @throws URISyntaxException - if the provided account name was illegal and caused a URI construction failure
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId)
-  throws URISyntaxException, IOException
+      throws URISyntaxException, IOException
   {
     return ingestFiles(Collections.singletonList(file), requestId);
   }
@@ -360,28 +376,27 @@ public class SimpleIngestManager
   /**
    * ingestFiles - synchronously sends a request to the ingest
    * service to enqueue these files
+   *
    * @param files - list of wrappers around filenames and sizes
-   * @param requestId - a requestId that we'll use to label
-   * - if null, we generate one for the user
+   * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @return an insert response from the server
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws URISyntaxException - if the provided account name
-   * was illegal and caused a URI construction failure
+   * @throws BackOffException   - if we have a 503 response
+   * @throws IOException        - if we have some other network failure
+   * @throws URISyntaxException - if the provided account name was illegal and caused a URI construction failure
    */
 
   public IngestResponse ingestFiles(List<StagedFileWrapper> files, UUID requestId)
-  throws URISyntaxException, IOException
+      throws URISyntaxException, IOException
   {
 
     //the request id we want to send with this payload
-    UUID request =  requestId == null? UUID.randomUUID() : requestId;
+    UUID request = requestId == null ? UUID.randomUUID() : requestId;
 
     //We're about to send this request number
     LOGGER.info("Sending Request UUID - ", request.toString());
 
     //send the request and get a response....
-    HttpResponse response =  httpClient.execute(
+    HttpResponse response = httpClient.execute(
         builder.generateInsertRequest(request,
             table, stage, files));
 
@@ -392,25 +407,25 @@ public class SimpleIngestManager
 
   /**
    * getHistory - pings the service to see the current ingest history for this table
+   *
    * @param requestId a UUID we use to label the request, if null, one is generated for the user
    * @return a response showing the available ingest history from the service
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws URISyntaxException - if the provided account name
-   * was illegal and caused a URI construction failure
+   * @throws BackOffException   - if we have a 503 response
+   * @throws IOException        - if we have some other network failure
+   * @throws URISyntaxException - if the provided account name was illegal and caused a URI construction failure
    */
   public HistoryResponse getHistory(UUID requestId)
-  throws URISyntaxException, IOException
+      throws URISyntaxException, IOException
   {
     //if we have no requestId generate one
-    if(requestId == null)
+    if (requestId == null)
     {
       requestId = UUID.randomUUID();
     }
 
     //send the request and get a response...
     HttpResponse response = httpClient.execute(
-      builder.generateHistoryRequest(requestId, table)
+        builder.generateHistoryRequest(requestId, table)
     );
 
 

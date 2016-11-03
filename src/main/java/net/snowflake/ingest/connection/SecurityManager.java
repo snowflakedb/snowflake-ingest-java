@@ -12,16 +12,16 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
 /**
- * @author obabarinsa
- * This class manages creating and automatically renewing the JWT token
+ * @author obabarinsa This class manages creating and automatically renewing the JWT token
  * @since 1.8
  */
 final class SecurityManager
 {
 
   //the logger for SecurityManager
-  private static final Logger LOGGER =  LoggerFactory.getLogger(SecurityManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SecurityManager.class);
 
   //the token lifetime is 59 minutes
   private static final float LIFETIME = 59;
@@ -50,6 +50,7 @@ final class SecurityManager
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair
    * with a specified time to renew the token
+   *
    * @param accountname - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param keyPair - the public/private key pair we're using to connect
@@ -59,7 +60,7 @@ final class SecurityManager
   SecurityManager(String accountname, String username, KeyPair keyPair, int timeTillRenewal, TimeUnit unit)
   {
     //if any of our arguments are null, throw an exception
-    if(accountname == null || username == null || keyPair == null)
+    if (accountname == null || username == null || keyPair == null)
     {
       throw new IllegalArgumentException();
     }
@@ -87,13 +88,14 @@ final class SecurityManager
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair
    * with the default time to renew (54 minutes)
+   *
    * @param accountname - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param keyPair - the public/private key pair we're using to connect
    */
   SecurityManager(String accountname, String username, KeyPair keyPair)
   {
-    this(accountname,username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES);
+    this(accountname, username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES);
   }
 
   /**
@@ -133,8 +135,7 @@ final class SecurityManager
     try
     {
       newToken = websig.getCompactSerialization();
-    }
-    catch(Exception e)
+    } catch (Exception e)
     {
       regenFailed.set(true);
       LOGGER.error("Failed to regenerate token! Exception is as follows : {}", e.getMessage());
@@ -149,13 +150,14 @@ final class SecurityManager
 
   /**
    * getToken - returns we've most recently generated
+   *
    * @return the string version of a valid JWT token
    * @throws SecurityException if we failed to regenerate a token since the last call
    */
   String getToken()
   {
     //if we failed to regenerate the token at some point, throw
-    if(regenFailed.get())
+    if (regenFailed.get())
     {
       LOGGER.error("getToken request failed due to token regeneration failure");
       throw new SecurityException();
