@@ -276,7 +276,7 @@ public class SimpleIngestManager
    * @param hostName the hostname
    * @param port the port number
    */
-  SimpleIngestManager(String account, String user, String table,
+  public SimpleIngestManager(String account, String user, String table,
                       String stage, KeyPair keyPair, String schemeName,
                       String hostName, int port)
   {
