@@ -93,6 +93,8 @@ public class TestSimpleIngestLocal
   //the name of our target table
   private static final String TABLE = "ingest_table";
 
+  //the name of our pipe
+  private static final String PIPE = "ingest_pipe";
 
   //the fully qualified table name
   private final String FQ_TABLE =
@@ -101,6 +103,10 @@ public class TestSimpleIngestLocal
   //the fully qualified stage name
   private final String FQ_STAGE =
       DATABASE + "." + SCHEMA + "." + quote(STAGE);
+
+  //the fully qualified pipe name
+  private final String FQ_PIPE =
+      DATABASE + "." + SCHEMA + "." + quote(PIPE);
 
   //the actual ingest manager
   private final SimpleIngestManager manager;
@@ -124,7 +130,7 @@ public class TestSimpleIngestLocal
     keypair = generateKeyPair();
     //make an ingest manager
     manager = new SimpleIngestManager(ACCOUNT, USER,
-        FQ_TABLE, FQ_STAGE, keypair, SCHEME, HOST, PORT);
+        FQ_PIPE, keypair, SCHEME, HOST, PORT);
   }
 
   /**
@@ -285,6 +291,10 @@ public class TestSimpleIngestLocal
         " (c1 string)");
 
     doQuery("grant insert on table " + quote(TABLE) + " to accountadmin");
+
+    doQuery("create or replace pipe " + quote(PIPE) +
+        " as copy into " + quote(TABLE) + " from @" + quote(STAGE) +
+        " file_format=(type='csv')");
 
     String pk = getPublicKeyString();
 

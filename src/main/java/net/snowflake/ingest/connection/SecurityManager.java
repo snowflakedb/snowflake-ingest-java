@@ -14,7 +14,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * @author obabarinsa This class manages creating and automatically renewing the JWT token
+ * This class manages creating and automatically renewing the JWT token
+ * @author obabarinsa
  * @since 1.8
  */
 final class SecurityManager

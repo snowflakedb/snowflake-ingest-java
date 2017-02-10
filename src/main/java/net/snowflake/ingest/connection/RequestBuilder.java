@@ -53,16 +53,13 @@ public final class RequestBuilder
   private final String host;
 
   //the endpoint format string for inserting files
-  private static final String INGEST_ENDPOINT_FORMAT = "/v1/data/tables/%s/insertFiles";
+  private static final String INGEST_ENDPOINT_FORMAT = "/v1/data/pipes/%s/insertFiles";
 
   //the endpoint for history queries
-  private static final String HISTORY_ENDPOINT_FORMAT = "/v1/data/tables/%s/insertReport";
+  private static final String HISTORY_ENDPOINT_FORMAT = "/v1/data/pipes/%s/insertReport";
 
   //the request id parameter name
   private static final String REQUEST_ID = "requestId";
-
-  //the name parameter name
-  private static final String STAGE_PARAMETER = "stage";
 
   //the string name for the HTTP auth bearer
   private static final String BEARER_PARAMETER = "Bearer ";
@@ -172,18 +169,17 @@ public final class RequestBuilder
   }
 
   /**
-   * makeInsertURI - Given a request UUID, and a fully qualified table name
+   * makeInsertURI - Given a request UUID, and a fully qualified pipe name
    * make a URI for the Ingest Service inserting
    *
    * @param requestId the UUID we'll use as the label
-   * @param table the table name
-   * @param stage the stage name
+   * @param pipe the pipe name
    * @return URI for the insert request
    */
-  private URI makeInsertURI(UUID requestId, String table, String stage) throws URISyntaxException
+  private URI makeInsertURI(UUID requestId, String pipe) throws URISyntaxException
   {
-    //if the table name is null, we have to abort
-    if (table == null)
+    //if the pipe name is null, we have to abort
+    if (pipe == null)
     {
       LOGGER.error("Table argument is null");
       throw new IllegalArgumentException();
@@ -192,11 +188,8 @@ public final class RequestBuilder
     //get the base endpoint uri
     URIBuilder builder = makeBaseURI(requestId);
 
-    //set the stage parameter
-    builder.setParameter(STAGE_PARAMETER, stage);
-
     //add the path for the URI
-    builder.setPath(String.format(INGEST_ENDPOINT_FORMAT, table));
+    builder.setPath(String.format(INGEST_ENDPOINT_FORMAT, pipe));
 
     //build the final URI
     return builder.build();
@@ -204,17 +197,17 @@ public final class RequestBuilder
 
 
   /**
-   * makeHistoryURI - Given a request UUID, and a fully qualified table name
+   * makeHistoryURI - Given a request UUID, and a fully qualified pipe name
    * make a URI for the history reporting
    *
    * @param requestId the label for this request
-   * @param table the table name
+   * @param pipe the pipe name
    * @return URI for the insert request
    */
-  private URI makeHistoryURI(UUID requestId, String table) throws URISyntaxException
+  private URI makeHistoryURI(UUID requestId, String pipe) throws URISyntaxException
   {
     //if the table name is null, we have to abort
-    if (table == null)
+    if (pipe == null)
     {
       throw new IllegalArgumentException();
     }
@@ -223,7 +216,7 @@ public final class RequestBuilder
     URIBuilder builder = makeBaseURI(requestId);
 
     //set the path for the URI
-    builder.setPath(String.format(HISTORY_ENDPOINT_FORMAT, table));
+    builder.setPath(String.format(HISTORY_ENDPOINT_FORMAT, pipe));
 
     LOGGER.info("Final History URIBuilder - {}", builder.toString());
     //build the final URI
@@ -278,17 +271,16 @@ public final class RequestBuilder
    * insert endpoint
    *
    * @param requestId a UUID we will use to label this request
-   * @param table a fully qualified table name
-   * @param stage a fully qualified stage name
+   * @param pipe a fully qualified pipe name
    * @param files a list of files
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
-  public HttpPost generateInsertRequest(UUID requestId, String table, String stage, List<StagedFileWrapper> files)
+  public HttpPost generateInsertRequest(UUID requestId, String pipe, List<StagedFileWrapper> files)
       throws URISyntaxException
   {
     //make the insert URI
-    URI insertURI = makeInsertURI(requestId, table, stage);
+    URI insertURI = makeInsertURI(requestId, pipe);
     LOGGER.info("Created Insert Request : {} ", insertURI);
 
     //Make the post request
@@ -305,18 +297,18 @@ public final class RequestBuilder
   }
 
   /**
-   * generateHistoryRequest - given a requestId and a table, make a history request
+   * generateHistoryRequest - given a requestId and a pipe, make a history request
    *
    * @param requestId a UUID we will use to label this request
-   * @param table a fully qualified table name
+   * @param pipe a fully qualified pipe name
    * @return a get request with all the data we need
    * @throws URISyntaxException - If the URI components provided are improper
    */
-  public HttpGet generateHistoryRequest(UUID requestId, String table)
+  public HttpGet generateHistoryRequest(UUID requestId, String pipe)
       throws URISyntaxException
   {
     //make the history URI
-    URI historyURI = makeHistoryURI(requestId, table);
+    URI historyURI = makeHistoryURI(requestId, pipe);
 
     //make the get request
     HttpGet get = new HttpGet(historyURI);

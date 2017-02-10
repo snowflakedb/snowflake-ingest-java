@@ -47,11 +47,8 @@ public class SimpleIngestManager
     //the user who will be loading data
     private String user;
 
-    //the fully qualified table name
-    private String table;
-
-    //the fully qualified stage name
-    private String stage;
+    //the fully qualified pipe name
+    private String pipe;
 
     //the key pair we want to use to authenticate
     private KeyPair keypair;
@@ -103,49 +100,25 @@ public class SimpleIngestManager
 
 
     /**
-     * getTable - get the target table for the ingest manager this builder will create
+     * getPipe - get the pipe for the ingest manager this builder will create
      *
-     * @return the target table for this ingest manager
+     * @return the target pipe for this ingest manager
      */
-    public String getTable()
+    public String getPipe()
     {
-      return table;
+      return pipe;
     }
 
 
     /**
-     * setTable - sets the table into which the SimpleIngestManager will be loading
+     * setTable - sets the pipe which the SimpleIngestManager will be using
      *
-     * @param table the target table for the ingest manager
-     * @return the current builder with the target table set
+     * @param pipe the target pipe for the ingest manager
+     * @return the current builder with the target pipe
      */
-    public Builder setTable(String table)
+    public Builder setPipe(String pipe)
     {
-      this.table = table;
-      return this;
-    }
-
-
-    /**
-     * getStage - the fully qualified stage name in which files are stored
-     *
-     * @return the stage name
-     */
-    public String getStage()
-    {
-      return stage;
-    }
-
-
-    /**
-     * setStage - sets the fully qualified stage name where our data lives
-     *
-     * @param stage the stage where our data lives
-     * @return the current builder with the fully qualified stage name set
-     */
-    public Builder setStage(String stage)
-    {
-      this.stage = stage;
+      this.pipe = pipe;
       return this;
     }
 
@@ -179,7 +152,7 @@ public class SimpleIngestManager
      */
     public SimpleIngestManager build()
     {
-      return new SimpleIngestManager(account, user, table, stage, keypair);
+      return new SimpleIngestManager(account, user, pipe, keypair);
     }
 
   }
@@ -196,11 +169,8 @@ public class SimpleIngestManager
   //the username of the user
   private String user;
 
-  //the fully qualfied name of the table
-  private String table;
-
-  //the fully qualified name of the stage
-  private String stage;
+  //the fully qualified name of the pipe
+  private String pipe;
 
   //the keypair we're using for authentication
   private KeyPair keyPair;
@@ -215,18 +185,16 @@ public class SimpleIngestManager
    *
    * @param account The account into which we're loading
    * @param user the user performing this load
-   * @param table the fully qualified name of the table
-   * @param stage the fully qualfied name of the stage
+   * @param pipe the fully qualified name of pipe
    * @param keyPair the KeyPair we'll use to sign JWT tokens
    */
-  private void init(String account, String user, String table,
-                    String stage, KeyPair keyPair)
+  private void init(String account, String user, String pipe,
+                    KeyPair keyPair)
   {
     //set up our reference variables
     this.account = account;
     this.user = user;
-    this.table = table;
-    this.stage = stage;
+    this.pipe = pipe;
     this.keyPair = keyPair;
 
     //make our client for sending requests
@@ -242,17 +210,16 @@ public class SimpleIngestManager
    *
    * @param account The account into which we're loading
    * @param user the user performing this load
-   * @param table the fully qualified name of the table
-   * @param stage the fully qualified name of the stage
+   * @param pipe the fully qualified name of the pipe
    * @param keyPair the KeyPair we'll use to sign JWT tokens
    */
-  public SimpleIngestManager(String account, String user, String table,
-                             String stage, KeyPair keyPair)
+  public SimpleIngestManager(String account, String user, String pipe,
+                             KeyPair keyPair)
   {
     LOGGER.info("Entering SimpleIngestManger Constructor");
 
     //call our initializer method
-    init(account, user, table, stage, keyPair);
+    init(account, user, pipe, keyPair);
 
     //create the request builder
     this.builder = new RequestBuilder(account, user, keyPair);
@@ -269,21 +236,20 @@ public class SimpleIngestManager
    *
    * @param account the account into which we're loading
    * @param user the user performing this load
-   * @param table the fully qualified name of the table
-   * @param stage the fully qualfied name of the stage
+   * @param pipe the fully qualified name of the pipe
    * @param keyPair the KeyPair we'll use to sign JWT tokens
    * @param schemeName http or https
    * @param hostName the hostname
    * @param port the port number
    */
-  public SimpleIngestManager(String account, String user, String table,
-                      String stage, KeyPair keyPair, String schemeName,
+  public SimpleIngestManager(String account, String user, String pipe,
+                      KeyPair keyPair, String schemeName,
                       String hostName, int port)
   {
     LOGGER.info("Entering SimpleIngestManger Constructor");
 
     //call our initializer method
-    init(account, user, table, stage, keyPair);
+    init(account, user, pipe, keyPair);
 
     //make the request builder we'll use to build messages to the service
     builder = new RequestBuilder(account, user, keyPair, schemeName, hostName, port);
@@ -316,24 +282,13 @@ public class SimpleIngestManager
   }
 
   /**
-   * getTable - gives back the table into which we are loading
+   * getPipe - gives back the pipe which we are using
    *
-   * @return the table name
+   * @return the pipe name
    */
-  public String getTable()
+  public String getPipe()
   {
-    return table;
-  }
-
-  /**
-   * getStage - gives back the name of the stage into
-   * which we are loading
-   *
-   * @return the stage name
-   */
-  public String getStage()
-  {
-    return stage;
+    return pipe;
   }
 
 
@@ -398,7 +353,7 @@ public class SimpleIngestManager
     //send the request and get a response....
     HttpResponse response = httpClient.execute(
         builder.generateInsertRequest(request,
-            table, stage, files));
+             pipe, files));
 
     LOGGER.info("Attempting to unmarshall insert response - {}", response);
     return ServiceResponseHandler.unmarshallIngestResponse(response);
@@ -425,7 +380,7 @@ public class SimpleIngestManager
 
     //send the request and get a response...
     HttpResponse response = httpClient.execute(
-        builder.generateHistoryRequest(requestId, table)
+        builder.generateHistoryRequest(requestId, pipe)
     );
 
 
