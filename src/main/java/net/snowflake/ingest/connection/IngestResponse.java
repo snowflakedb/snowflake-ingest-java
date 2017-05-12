@@ -19,10 +19,6 @@ public class IngestResponse
   public static enum Response
   {
     SUCCESS, //the files have been succesfully registered to load
-    ALREADY_SENT, //we've already sent all of these files
-    TABLE_NOT_FOUND, //there is no table into which to load
-    STAGE_NOT_FOUND, //there is no stage from which to load
-    INTERNAL_ERROR //the service is borked!
   }
 
   //the response we got back from the service
@@ -39,6 +35,11 @@ public class IngestResponse
   public UUID getRequestUUID()
   {
     return UUID.fromString(requestId);
+  }
+  @Override
+  public String toString()
+  {
+    return String.valueOf(responseCode) + " " + requestId;
   }
 
   //the response code we got back from the service
