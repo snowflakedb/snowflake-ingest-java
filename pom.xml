@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.4-SNAPSHOT</version>
 
 
     <!-- Set our Language Level to Java 8 -->
@@ -40,7 +40,6 @@
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc</artifactId>
             <version>3.0.0</version>
-            <scope>test</scope>
         </dependency>
 
 
@@ -96,7 +95,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.21</version>
-            <scope>test</scope>
         </dependency>
 
 
@@ -109,4 +107,5 @@
         </dependency>
 
     </dependencies>
+
 </project>
