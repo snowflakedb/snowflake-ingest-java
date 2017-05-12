@@ -22,7 +22,7 @@ public final class ServiceResponseHandler
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
 
   //the object mapper we use for deserialization
-  protected static ObjectMapper mapper = new ObjectMapper();
+  static ObjectMapper mapper = new ObjectMapper();
 
 
   //If there are additional properties in the JSON, do NOT fail
@@ -57,7 +57,7 @@ public final class ServiceResponseHandler
    * @throws BackOffException if we have a 503 response
    */
   public static IngestResponse unmarshallIngestResponse(HttpResponse response)
-      throws IOException
+      throws IOException, IngestResponseException
   {
     //we can't unmarshall a null response
     if (response == null)
@@ -77,7 +77,7 @@ public final class ServiceResponseHandler
       LOGGER.warn("Exceptional Status Code found in unmarshallInsert Response  - {}",
           statusLine.getStatusCode());
 
-      handleExceptionalStatus(statusLine);
+      handleExceptionalStatus(statusLine, response);
       return null;
     }
 
@@ -100,7 +100,7 @@ public final class ServiceResponseHandler
    * @throws BackOffException - if have a 503 issue
    */
   public static HistoryResponse unmarshallHistoryResponse(HttpResponse response)
-      throws IOException
+      throws IOException, IngestResponseException
   {
     //we can't unmarshall a null response
     if (response == null)
@@ -119,7 +119,7 @@ public final class ServiceResponseHandler
           line.getStatusCode());
 
       //handle the exceptional status code
-      handleExceptionalStatus(line);
+      handleExceptionalStatus(line, response);
       return null;
     }
 
@@ -132,6 +132,39 @@ public final class ServiceResponseHandler
 
   }
 
+  public static HistoryRangeResponse unmarshallHistoryRangeResponse(
+          HttpResponse response)
+          throws IOException, IngestResponseException
+  {
+
+    //we can't unmarshall a null response
+    if (response == null)
+    {
+      LOGGER.warn("Null response passed to unmarshallHistoryRangeResponse");
+      throw new IllegalArgumentException();
+    }
+
+    //Grab the status line
+    StatusLine line = response.getStatusLine();
+    if (!isStatusOK(line))
+    {
+      //A network issue occurred!
+      LOGGER.warn("Exceptional Status Code found in " +
+                          "unmarshallHistoryRangeResponse - {}",
+                  line.getStatusCode());
+
+      //handle the exceptional status code
+      handleExceptionalStatus(line, response);
+      return null;
+    }
+
+    //grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    //read out our blob into a pojo
+    return mapper.readValue(blob, HistoryRangeResponse.class);
+  }
+
 
   /**
    * handleExceptionStatusCode - throws the correct error for a status
@@ -140,7 +173,9 @@ public final class ServiceResponseHandler
    * @throws BackOffException -- if we have a 503 exception
    * @throws IOException      - if we don't know what it is
    */
-  private static void handleExceptionalStatus(StatusLine statusLine) throws IOException
+  private static void handleExceptionalStatus(StatusLine statusLine,
+                                              HttpResponse response)
+                      throws IOException, IngestResponseException
   {
     //if we have a 503 exception throw a backoff
     switch (statusLine.getStatusCode())
@@ -152,9 +187,12 @@ public final class ServiceResponseHandler
 
         //We don't know how to respond now...
       default:
-        LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
-        throw new IOException();
-
+        LOGGER.error("Status code {} found in response from service",
+                     statusLine.getStatusCode());
+        String blob = EntityUtils.toString(response.getEntity());
+        throw new IngestResponseException(statusLine.getStatusCode(),
+                                          IngestResponseException
+                                          .IngestExceptionBody.parseBody(blob));
     }
 
   }

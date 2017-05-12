@@ -22,7 +22,8 @@ final class SecurityManager
 {
 
   //the logger for SecurityManager
-  private static final Logger LOGGER = LoggerFactory.getLogger(SecurityManager.class);
+  private static final Logger LOGGER =
+                    LoggerFactory.getLogger(SecurityManager.class);
 
   //the token lifetime is 59 minutes
   private static final float LIFETIME = 59;
@@ -46,7 +47,8 @@ final class SecurityManager
   private AtomicBoolean regenFailed;
 
   //the thread we use for renewing all tokens
-  private static final ScheduledExecutorService keyRenewer = Executors.newScheduledThreadPool(1);
+  private static final ScheduledExecutorService keyRenewer =
+                                  Executors.newScheduledThreadPool(1);
 
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair
@@ -58,7 +60,8 @@ final class SecurityManager
    * @param timeTillRenewal - the time measure until we renew the token
    * @param unit the unit by which timeTillRenewal is measured
    */
-  SecurityManager(String accountname, String username, KeyPair keyPair, int timeTillRenewal, TimeUnit unit)
+  SecurityManager(String accountname, String username, KeyPair keyPair,
+                  int timeTillRenewal, TimeUnit unit)
   {
     //if any of our arguments are null, throw an exception
     if (accountname == null || username == null || keyPair == null)
@@ -100,7 +103,8 @@ final class SecurityManager
   }
 
   /**
-   * regenerateToken - Regenerates our Token given our current user, account and keypair
+   * regenerateToken - Regenerates our Token given our current user,
+   *                    account and keypair
    */
   private void regenerateToken()
   {
@@ -139,7 +143,8 @@ final class SecurityManager
     } catch (Exception e)
     {
       regenFailed.set(true);
-      LOGGER.error("Failed to regenerate token! Exception is as follows : {}", e.getMessage());
+      LOGGER.error("Failed to regenerate token! Exception is as follows : {}",
+                   e.getMessage());
       throw new SecurityException();
     }
 

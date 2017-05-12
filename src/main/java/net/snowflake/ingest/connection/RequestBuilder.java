@@ -29,7 +29,8 @@ public final class RequestBuilder
 {
 
   //a logger for all of our needs in this class
-  private static final Logger LOGGER = LoggerFactory.getLogger(RequestBuilder.class.getName());
+  private static final Logger LOGGER =
+          LoggerFactory.getLogger(RequestBuilder.class.getName());
 
   //the security manager who will handle token generation
   private SecurityManager securityManager;
@@ -53,10 +54,29 @@ public final class RequestBuilder
   private final String host;
 
   //the endpoint format string for inserting files
-  private static final String INGEST_ENDPOINT_FORMAT = "/v1/data/pipes/%s/insertFiles";
+  private static final String INGEST_ENDPOINT_FORMAT =
+                            "/v1/data/pipes/%s/insertFiles";
 
   //the endpoint for history queries
-  private static final String HISTORY_ENDPOINT_FORMAT = "/v1/data/pipes/%s/insertReport";
+  private static final String HISTORY_ENDPOINT_FORMAT =
+                            "/v1/data/pipes/%s/insertReport";
+
+  // the endpoint for history time range queries
+  private static final String HISTORY_RANGE_ENDPOINT_FORMAT =
+                            "/v1/data/pipes/%s/loadHistoryScan";
+
+  //optional number of max seconds of items to fetch(eg. in the last hour)
+  private static final String RECENT_HISTORY_IN_SECONDS =
+                                                            "recentSeconds";
+
+  //optional. if not null, tells us where to start the next request
+  private static final String HISTORY_BEGIN_MARK = "beginMark";
+
+  // Start time for the history range
+  private static final String HISTORY_RANGE_START_INCLUSIVE = "startTimeInclusive";
+
+  // End time for the history range; is optional
+  private static final String HISTORY_RANGE_END_EXCLUSIVE = "endTimeExclusive";
 
   //the request id parameter name
   private static final String REQUEST_ID = "requestId";
@@ -72,7 +92,7 @@ public final class RequestBuilder
    *
    * @author obabarinsa
    */
-  static class IngestRequest
+  private static class IngestRequest
   {
     //the list of files we're loading
     public List<StagedFileWrapper> files;
@@ -160,10 +180,7 @@ public final class RequestBuilder
     builder.setPort(port);
 
     //set the request id
-    builder.addParameter(REQUEST_ID, requestId.toString());
-
-    //Log the base url
-    LOGGER.info("Base URL as generated so far : {}", builder.toString());
+    builder.setParameter(REQUEST_ID, requestId.toString());
 
     return builder;
   }
@@ -176,7 +193,8 @@ public final class RequestBuilder
    * @param pipe the pipe name
    * @return URI for the insert request
    */
-  private URI makeInsertURI(UUID requestId, String pipe) throws URISyntaxException
+  private URI makeInsertURI(UUID requestId, String pipe)
+          throws URISyntaxException
   {
     //if the pipe name is null, we have to abort
     if (pipe == null)
@@ -202,9 +220,15 @@ public final class RequestBuilder
    *
    * @param requestId the label for this request
    * @param pipe the pipe name
+   * @param recentSeconds history only for items in the recentSeconds window
+   * @param beginMark mark from which history should be fetched
    * @return URI for the insert request
    */
-  private URI makeHistoryURI(UUID requestId, String pipe) throws URISyntaxException
+  private URI makeHistoryURI(UUID requestId,
+                             String pipe,
+                             Integer recentSeconds,
+                             String beginMark)
+                throws URISyntaxException
   {
     //if the table name is null, we have to abort
     if (pipe == null)
@@ -218,11 +242,69 @@ public final class RequestBuilder
     //set the path for the URI
     builder.setPath(String.format(HISTORY_ENDPOINT_FORMAT, pipe));
 
+    if (recentSeconds != null)
+    {
+      builder.setParameter(RECENT_HISTORY_IN_SECONDS,
+                           String.valueOf(recentSeconds));
+    }
+
+    if (beginMark != null)
+    {
+      builder.setParameter(HISTORY_BEGIN_MARK, beginMark);
+    }
+
     LOGGER.info("Final History URIBuilder - {}", builder.toString());
     //build the final URI
     return builder.build();
   }
 
+  /**
+   * makeHistoryURI - Given a request UUID, and a fully qualified pipe name
+   * make a URI for the history reporting
+   *
+   * @param requestId the label for this request
+   * @param pipe the pipe name
+   * @param startTime Start time inclusive of scan range, in ISO-8601 format.
+   *                  Missing millisecond part in string will lead to a zero
+   *                  milliseconds. This is a required query parameter, and a
+   *                  400 will be returned if this query parameter is missing
+   * @param endTime End time exclusive of scan range. If this query parameter
+   *             is missing or user provided value is later than current millis,
+   *             then current millis is used.
+   * @return URI for the insert request
+   */
+  private URI makeHistoryRangeURI(UUID requestId,
+                             String pipe,
+                             String startTime,
+                             String endTime)
+          throws URISyntaxException
+  {
+    //if the table name is null, we have to abort
+    if (pipe == null)
+    {
+      throw new IllegalArgumentException();
+    }
+
+    //get the base endpoint UIR
+    URIBuilder builder = makeBaseURI(requestId);
+
+    //set the path for the URI
+    builder.setPath(String.format(HISTORY_RANGE_ENDPOINT_FORMAT, pipe));
+
+    if (startTime != null)
+    {
+      builder.setParameter(HISTORY_RANGE_START_INCLUSIVE, startTime);
+    }
+
+    if (endTime != null)
+    {
+      builder.setParameter(HISTORY_RANGE_END_EXCLUSIVE, endTime);
+    }
+
+    LOGGER.info("Final History URIBuilder - {}", builder.toString());
+    //build the final URI
+    return builder.build();
+  }
   /**
    * generateFilesJSON - Given a list of files, make some json to represent it
    *
@@ -267,8 +349,8 @@ public final class RequestBuilder
   }
 
   /**
-   * generateInsertRequest - given a table, stage and list of files, make a request for the
-   * insert endpoint
+   * generateInsertRequest - given a table, stage and list of files,
+   * make a request for the insert endpoint
    *
    * @param requestId a UUID we will use to label this request
    * @param pipe a fully qualified pipe name
@@ -276,7 +358,8 @@ public final class RequestBuilder
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
-  public HttpPost generateInsertRequest(UUID requestId, String pipe, List<StagedFileWrapper> files)
+  public HttpPost generateInsertRequest(UUID requestId, String pipe,
+                                        List<StagedFileWrapper> files)
       throws URISyntaxException
   {
     //make the insert URI
@@ -290,7 +373,8 @@ public final class RequestBuilder
     addToken(post, securityManager.getToken());
 
     //the entity for the containing the json
-    final StringEntity entity = new StringEntity(generateFilesJSON(files), ContentType.APPLICATION_JSON);
+    final StringEntity entity = new StringEntity(generateFilesJSON(files),
+                                                 ContentType.APPLICATION_JSON);
     post.setEntity(entity);
 
     return post;
@@ -301,19 +385,58 @@ public final class RequestBuilder
    *
    * @param requestId a UUID we will use to label this request
    * @param pipe a fully qualified pipe name
+   * @param recentSeconds history only for items in the recentSeconds window
+   * @param beginMark mark from which history should be fetched
    * @return a get request with all the data we need
    * @throws URISyntaxException - If the URI components provided are improper
    */
-  public HttpGet generateHistoryRequest(UUID requestId, String pipe)
+  public HttpGet generateHistoryRequest(UUID requestId,
+                                        String pipe,
+                                        Integer recentSeconds,
+                                        String beginMark)
       throws URISyntaxException
   {
     //make the history URI
-    URI historyURI = makeHistoryURI(requestId, pipe);
+    URI historyURI = makeHistoryURI(requestId, pipe, recentSeconds, beginMark);
 
     //make the get request
     HttpGet get = new HttpGet(historyURI);
 
     //add the auth token
+    addToken(get, securityManager.getToken());
+
+    return get;
+  }
+
+  /**
+  * generateHistoryRangeRequest -
+   * given a requestId and a pipe, get history for all ingests between
+   *  time ranges start-end
+  *
+  * @param requestId the label for this request
+  * @param pipe the pipe name
+  * @param startTime Start time inclusive of scan range, in ISO-8601 format.
+  *                  Missing millisecond part in string will lead to a zero
+  *                  milliseconds. This is a required query parameter, and a
+  *                  400 will be returned if this query parameter is missing
+  * @param endTime End time exclusive of scan range. If this query parameter
+  *             is missing or user provided value is later than current millis,
+  *                           then current millis is used.
+  * @return URI for the insert request
+  */
+  public HttpGet generateHistoryRangeRequest(UUID requestId,
+                                             String pipe,
+                                             String startTime,
+                                             String endTime)
+      throws URISyntaxException
+  {
+    URI historyRangeURI = makeHistoryRangeURI(requestId,
+                                              pipe,
+                                              startTime,
+                                              endTime);
+
+    HttpGet get = new HttpGet(historyRangeURI);
+
     addToken(get, securityManager.getToken());
 
     return get;
