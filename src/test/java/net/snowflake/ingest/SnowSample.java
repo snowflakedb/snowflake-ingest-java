@@ -11,9 +11,9 @@ import net.snowflake.ingest.SnowConfig;
  * <b>Prerequisites:</b>
  * You must have a valid set of Snowflake credentials
  * <p>
- * Fill in your Snowflake access credentials in the provided credentials file
+ * Fill in your Snowflake access config in the provided config file
  * template, and be sure to move the file to the default location
- * (~/.snow/credentials) where the sample code will load the credentials from.
+ * (~/.snow/config) where the sample code will load the config from.
  * <p>
  */
 public class SnowSample
@@ -22,11 +22,6 @@ public class SnowSample
   public static void main(String[] args) throws IOException
   {
     System.out.println("Starting snowflake ingest client");
-    /*
-         * The ProfileCredentialsProvider will return your [default]
-         * credential profile by reading from the credentials file located at
-         * (~/.aws/credentials).
-         */
     SnowConfig config = null;
     try
     {
