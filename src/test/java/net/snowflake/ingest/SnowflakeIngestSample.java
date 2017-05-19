@@ -223,7 +223,7 @@ public class SnowflakeIngestSample
       public HistoryResponse call()
               throws Exception
       {
-        HistoryResponse filesHistory = new HistoryResponse();
+        HistoryResponse filesHistory = null;
         while (true)
         {
           HistoryResponse response = sleepAndFetchHistory(client);
@@ -238,6 +238,11 @@ public class SnowflakeIngestSample
               if (entry.path != null && entry.complete &&
                       filesWatchList.contains(filename))
               {
+                if (filesHistory == null)
+                {
+                  filesHistory = new HistoryResponse();
+                  filesHistory.pipe = response.pipe;
+                }
                 filesHistory.files.add(entry);
                 filesWatchList.remove(filename);
                 //we can return true!

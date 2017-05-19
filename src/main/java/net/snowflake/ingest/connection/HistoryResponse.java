@@ -13,9 +13,6 @@ import java.util.List;
  */
 public class HistoryResponse
 {
-  //the name of the table we're for which we're responding
-  public String table;
-
   //the statistics reported back by the service
   public HistoryStats statistics;
 
@@ -50,7 +47,6 @@ public class HistoryResponse
     public String toString()
     {
       String result = "\nHistory Result:\n";
-      result += "Table: " + table + "\n";
       result += "Pipe: " + pipe + "\n";
       String sep = "";
       for (HistoryResponse.FileEntry file: files)
