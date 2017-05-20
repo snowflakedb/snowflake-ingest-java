@@ -2,6 +2,7 @@ package net.snowflake.ingest;
 
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;
+import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.BackOffException;
@@ -17,6 +18,7 @@ import java.net.URISyntaxException;
 import java.security.KeyPair;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -159,7 +161,8 @@ public class SimpleIngestManager
 
 
   //logger object for this class
-  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleIngestManager.class);
+  private static final Logger LOGGER =
+          LoggerFactory.getLogger(SimpleIngestManager.class);
   //HTTP Client that we use for sending requests to the service
   private HttpClient httpClient;
 
@@ -216,15 +219,11 @@ public class SimpleIngestManager
   public SimpleIngestManager(String account, String user, String pipe,
                              KeyPair keyPair)
   {
-    LOGGER.info("Entering SimpleIngestManger Constructor");
-
     //call our initializer method
     init(account, user, pipe, keyPair);
 
     //create the request builder
     this.builder = new RequestBuilder(account, user, keyPair);
-
-    LOGGER.info("Exiting SimpleIngestManger Constructor");
   }
 
 
@@ -246,15 +245,12 @@ public class SimpleIngestManager
                       KeyPair keyPair, String schemeName,
                       String hostName, int port)
   {
-    LOGGER.info("Entering SimpleIngestManger Constructor");
-
     //call our initializer method
     init(account, user, pipe, keyPair);
 
     //make the request builder we'll use to build messages to the service
-    builder = new RequestBuilder(account, user, keyPair, schemeName, hostName, port);
-
-    LOGGER.info("Exiting SimpleIngestManager Constructor");
+    builder = new RequestBuilder(account, user, keyPair,
+                                 schemeName, hostName, port);
   }
 
 
@@ -299,7 +295,7 @@ public class SimpleIngestManager
    * @param filenames the filenames you want to wrap up
    * @return a corresponding list of StagedFileWrapper objects
    */
-  public static List<StagedFileWrapper> wrapFilepaths(List<String> filenames)
+  public static List<StagedFileWrapper> wrapFilepaths(Set<String> filenames)
   {
     //if we get a null, throw
     if (filenames == null)
@@ -308,7 +304,8 @@ public class SimpleIngestManager
     }
 
     return filenames.parallelStream()
-        .map(fname -> new StagedFileWrapper(fname, null)).collect(Collectors.toList());
+        .map(fname -> new StagedFileWrapper(fname, null)).
+                            collect(Collectors.toList());
 
   }
 
@@ -316,11 +313,13 @@ public class SimpleIngestManager
    * ingestFile - ingest a single file
    *
    * @param file - a wrapper around a filename and size
-   * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
+   * @param requestId - a requestId that we'll use to label - if null,
+   *                    we generate one for the user
    * @return an insert response from the server
    * @throws BackOffException   - if we have a 503 response
    * @throws IOException        - if we have some other network failure
-   * @throws URISyntaxException - if the provided account name was illegal and caused a URI construction failure
+   * @throws URISyntaxException - if the provided account name was illegal and
+   *                            caused a URI construction failure
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId)
       throws URISyntaxException, IOException
@@ -333,15 +332,20 @@ public class SimpleIngestManager
    * service to enqueue these files
    *
    * @param files - list of wrappers around filenames and sizes
-   * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
+   * @param requestId - a requestId that we'll use to label - if null,
+   *                  we generate one for the user
    * @return an insert response from the server
    * @throws BackOffException   - if we have a 503 response
    * @throws IOException        - if we have some other network failure
-   * @throws URISyntaxException - if the provided account name was illegal and caused a URI construction failure
+   * @throws IngestResponseException - if snowflake encountered
+   *                                    error during ingest
+   * @throws URISyntaxException - if the provided account name was illegal and
+   *                            caused a URI construction failure
    */
 
-  public IngestResponse ingestFiles(List<StagedFileWrapper> files, UUID requestId)
-      throws URISyntaxException, IOException
+  public IngestResponse ingestFiles(List<StagedFileWrapper> files,
+                                    UUID requestId)
+      throws URISyntaxException, IOException, IngestResponseException
   {
 
     //the request id we want to send with this payload
@@ -367,10 +371,11 @@ public class SimpleIngestManager
    * @return a response showing the available ingest history from the service
    * @throws BackOffException   - if we have a 503 response
    * @throws IOException        - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
    * @throws URISyntaxException - if the provided account name was illegal and caused a URI construction failure
    */
   public HistoryResponse getHistory(UUID requestId)
-      throws URISyntaxException, IOException
+      throws URISyntaxException, IOException, IngestResponseException
   {
     //if we have no requestId generate one
     if (requestId == null)

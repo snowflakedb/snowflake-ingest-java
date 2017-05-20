@@ -57,7 +57,7 @@ public final class ServiceResponseHandler
    * @throws BackOffException if we have a 503 response
    */
   public static IngestResponse unmarshallIngestResponse(HttpResponse response)
-      throws IOException
+      throws IOException, IngestResponseException
   {
     //we can't unmarshall a null response
     if (response == null)
@@ -77,7 +77,7 @@ public final class ServiceResponseHandler
       LOGGER.warn("Exceptional Status Code found in unmarshallInsert Response  - {}",
           statusLine.getStatusCode());
 
-      handleExceptionalStatus(statusLine);
+      handleExceptionalStatus(statusLine, response);
       return null;
     }
 
@@ -100,7 +100,7 @@ public final class ServiceResponseHandler
    * @throws BackOffException - if have a 503 issue
    */
   public static HistoryResponse unmarshallHistoryResponse(HttpResponse response)
-      throws IOException
+      throws IOException, IngestResponseException
   {
     //we can't unmarshall a null response
     if (response == null)
@@ -119,7 +119,7 @@ public final class ServiceResponseHandler
           line.getStatusCode());
 
       //handle the exceptional status code
-      handleExceptionalStatus(line);
+      handleExceptionalStatus(line, response);
       return null;
     }
 
@@ -140,7 +140,9 @@ public final class ServiceResponseHandler
    * @throws BackOffException -- if we have a 503 exception
    * @throws IOException      - if we don't know what it is
    */
-  private static void handleExceptionalStatus(StatusLine statusLine) throws IOException
+  private static void handleExceptionalStatus(StatusLine statusLine,
+                                              HttpResponse response)
+                      throws IOException, IngestResponseException
   {
     //if we have a 503 exception throw a backoff
     switch (statusLine.getStatusCode())
@@ -152,8 +154,11 @@ public final class ServiceResponseHandler
 
         //We don't know how to respond now...
       default:
-        LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
-        throw new IOException();
+        LOGGER.error("Status code {} found in response from service",
+                     statusLine.getStatusCode());
+        throw new IngestResponseException(statusLine.getStatusCode(),
+                                          EntityUtils.toString(
+                                                  response.getEntity()));
 
     }
 
