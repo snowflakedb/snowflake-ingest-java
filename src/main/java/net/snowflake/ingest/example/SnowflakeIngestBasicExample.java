@@ -37,7 +37,7 @@ public class SnowflakeIngestBasicExample
   private static String user = "snowman";
   private static String host = "localhost";
   private static String scheme = "http";
-  private static String password = "test";
+  private static String password = "****";
   private static int port = 8080;
 
   // Details for the pipe which we are going to use
