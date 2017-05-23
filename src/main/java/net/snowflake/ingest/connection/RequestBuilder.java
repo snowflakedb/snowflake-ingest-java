@@ -29,7 +29,8 @@ public final class RequestBuilder
 {
 
   //a logger for all of our needs in this class
-  private static final Logger LOGGER = LoggerFactory.getLogger(RequestBuilder.class.getName());
+  private static final Logger LOGGER =
+          LoggerFactory.getLogger(RequestBuilder.class.getName());
 
   //the security manager who will handle token generation
   private SecurityManager securityManager;
@@ -53,10 +54,12 @@ public final class RequestBuilder
   private final String host;
 
   //the endpoint format string for inserting files
-  private static final String INGEST_ENDPOINT_FORMAT = "/v1/data/pipes/%s/insertFiles";
+  private static final String INGEST_ENDPOINT_FORMAT =
+                            "/v1/data/pipes/%s/insertFiles";
 
   //the endpoint for history queries
-  private static final String HISTORY_ENDPOINT_FORMAT = "/v1/data/pipes/%s/insertReport";
+  private static final String HISTORY_ENDPOINT_FORMAT =
+                            "/v1/data/pipes/%s/insertReport";
 
   //the request id parameter name
   private static final String REQUEST_ID = "requestId";
@@ -162,9 +165,6 @@ public final class RequestBuilder
     //set the request id
     builder.addParameter(REQUEST_ID, requestId.toString());
 
-    //Log the base url
-    LOGGER.info("Base URL as generated so far : {}", builder.toString());
-
     return builder;
   }
 
@@ -176,7 +176,8 @@ public final class RequestBuilder
    * @param pipe the pipe name
    * @return URI for the insert request
    */
-  private URI makeInsertURI(UUID requestId, String pipe) throws URISyntaxException
+  private URI makeInsertURI(UUID requestId, String pipe)
+          throws URISyntaxException
   {
     //if the pipe name is null, we have to abort
     if (pipe == null)
@@ -204,7 +205,8 @@ public final class RequestBuilder
    * @param pipe the pipe name
    * @return URI for the insert request
    */
-  private URI makeHistoryURI(UUID requestId, String pipe) throws URISyntaxException
+  private URI makeHistoryURI(UUID requestId, String pipe)
+                throws URISyntaxException
   {
     //if the table name is null, we have to abort
     if (pipe == null)
@@ -267,8 +269,8 @@ public final class RequestBuilder
   }
 
   /**
-   * generateInsertRequest - given a table, stage and list of files, make a request for the
-   * insert endpoint
+   * generateInsertRequest - given a table, stage and list of files,
+   * make a request for the insert endpoint
    *
    * @param requestId a UUID we will use to label this request
    * @param pipe a fully qualified pipe name
@@ -276,7 +278,8 @@ public final class RequestBuilder
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
-  public HttpPost generateInsertRequest(UUID requestId, String pipe, List<StagedFileWrapper> files)
+  public HttpPost generateInsertRequest(UUID requestId, String pipe,
+                                        List<StagedFileWrapper> files)
       throws URISyntaxException
   {
     //make the insert URI
@@ -290,7 +293,8 @@ public final class RequestBuilder
     addToken(post, securityManager.getToken());
 
     //the entity for the containing the json
-    final StringEntity entity = new StringEntity(generateFilesJSON(files), ContentType.APPLICATION_JSON);
+    final StringEntity entity = new StringEntity(generateFilesJSON(files),
+                                                 ContentType.APPLICATION_JSON);
     post.setEntity(entity);
 
     return post;

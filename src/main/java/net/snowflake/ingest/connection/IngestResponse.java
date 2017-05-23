@@ -10,24 +10,6 @@ import java.util.UUID;
  */
 public class IngestResponse
 {
-  /**
-   * Response - this represents the different responses
-   * that the service can return to us
-   *
-   * @author obabarinsa
-   */
-  public static enum Response
-  {
-    SUCCESS, //the files have been succesfully registered to load
-    ALREADY_SENT, //we've already sent all of these files
-    TABLE_NOT_FOUND, //there is no table into which to load
-    STAGE_NOT_FOUND, //there is no stage from which to load
-    INTERNAL_ERROR //the service is borked!
-  }
-
-  //the response we got back from the service
-  //NOTE: This is NOT the HTTP response code
-
   //the requestId given to us by the user
   public String requestId;
 
@@ -40,7 +22,9 @@ public class IngestResponse
   {
     return UUID.fromString(requestId);
   }
-
-  //the response code we got back from the service
-  public Response responseCode;
+  @Override
+  public String toString()
+  {
+    return requestId;
+  }
 }

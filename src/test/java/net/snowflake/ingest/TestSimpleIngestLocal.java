@@ -343,9 +343,6 @@ public class TestSimpleIngestLocal
     //get an insert response after we submit
     IngestResponse insertResponse = manager.ingestFile(myFile, null);
 
-    //assert that we successfully enqueued
-    assertTrue(insertResponse.responseCode == IngestResponse.Response.SUCCESS);
-
     //create a new thread
     ExecutorService service = Executors.newSingleThreadExecutor();
 
