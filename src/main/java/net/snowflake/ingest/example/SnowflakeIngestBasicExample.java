@@ -237,8 +237,7 @@ public class SnowflakeIngestBasicExample
     }
     catch(IngestResponseException e)
     {
-      System.out.println("Service exception: "+ e.errorCode + " "
-                                 + e.errorCodeStr);
+      System.out.println("Service exception: "+ e.toString());
     }
     catch(Exception e)
     {

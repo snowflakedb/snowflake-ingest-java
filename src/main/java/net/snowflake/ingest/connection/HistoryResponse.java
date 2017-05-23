@@ -95,7 +95,7 @@ public class HistoryResponse
     public String systemError;
 
     public String stageLocation;
-    public String status;
+    public IngestStatus status;
 
     /**
      * getLastInsertTime - converts the ISO formatted lastInsertTime string

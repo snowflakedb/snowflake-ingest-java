@@ -322,7 +322,7 @@ public class SimpleIngestManager
    *                            caused a URI construction failure
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId)
-      throws URISyntaxException, IOException
+      throws URISyntaxException, IOException, Exception
   {
     return ingestFiles(Collections.singletonList(file), requestId);
   }

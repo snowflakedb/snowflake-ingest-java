@@ -156,10 +156,10 @@ public final class ServiceResponseHandler
       default:
         LOGGER.error("Status code {} found in response from service",
                      statusLine.getStatusCode());
+        String blob = EntityUtils.toString(response.getEntity());
         throw new IngestResponseException(statusLine.getStatusCode(),
-                                          EntityUtils.toString(
-                                                  response.getEntity()));
-
+                                          IngestResponseException
+                                          .IngestExceptionBody.parseBody(blob));
     }
 
   }
