@@ -2,7 +2,7 @@ Snowflake Ingest Service Java SDK
 *********************************
 
 .. image:: http://img.shields.io/:license-Apache%202-brightgreen.svg
-:target: http://www.apache.org/licenses/LICENSE-2.0.txt
+    :target: http://www.apache.org/licenses/LICENSE-2.0.txt
 
 The Snowflake Ingest Service SDK allows users to ingest files
 into their Snowflake data warehouse in a programmatic fashion via key-pair
