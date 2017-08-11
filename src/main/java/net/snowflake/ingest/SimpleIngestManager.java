@@ -5,10 +5,10 @@ import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.BackOffException;
+import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -198,7 +198,7 @@ public class SimpleIngestManager
     this.keyPair = keyPair;
 
     //make our client for sending requests
-    httpClient = HttpClients.createDefault();
+    httpClient = HttpUtil.getHttpClient();
     //make the request builder we'll use to build messages to the service
   }
 
@@ -387,6 +387,5 @@ public class SimpleIngestManager
     LOGGER.info("Attempting to unmarshall history response - {}", response);
     return ServiceResponseHandler.unmarshallHistoryResponse(response);
   }
-
 
 }
