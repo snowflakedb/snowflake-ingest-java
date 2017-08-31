@@ -13,18 +13,12 @@ import java.util.List;
  */
 public class HistoryResponse
 {
-  //the statistics reported back by the service
-  public HistoryStats statistics;
+  private HistoryStats statistics;
+  private Boolean completeResult;
+  private String pipe;
+  private String nextBeginMark;
 
-  //is this a complete response for the request made?
-  public Boolean completeResult;
-
-  //fully qualified pipe name
-  public String pipe;
-
-  public String nextBeginMark;
-
-  //the list of file status objects
+  /**the list of file status objects*/
   public List<FileEntry> files;
 
   public HistoryResponse()
@@ -39,7 +33,7 @@ public class HistoryResponse
    */
   static class HistoryStats
   {
-    //how many files are currently processing?
+    /**how many files are currently processing*/
     public Long activeFiles;
   }
 
@@ -67,52 +61,22 @@ public class HistoryResponse
    */
   public static class FileEntry
   {
-    //the path in the stage to the file
-    public String path;
-
-    //the size of the file as measured by the service
-    public Long fileSize;
-
-    //the time at which this file was enqueued by the service  ISO 8601 UTC
-    public String timeReceived;
-
-    //the most recent time at which data was inserted. ISO 8601 UTC
-    public String lastInsertTime;
-
-    //how many rows have we inserted so far
-    public Long rowsInserted;
-
-    //have we completed loading this file
-    public Boolean complete;
-
-    public long rowsParsed; //so far
-    public Long errorsSeen;
-    public Long errorLimit;
-    public String firstError;
-    public Long firstErrorLineNum;
-    public Long firstErrorCharacterPos;
-    public String firstErrorColumnName;
-    public String systemError;
-
-    public String stageLocation;
-    public IngestStatus status;
-
-    /**
-     * getLastInsertTime - converts the ISO formatted lastInsertTime string
-     * into a LocalDate
-     *
-     * @return a LocalDate object representation of our current time
-     */
-    public LocalDate getLastInsertTime()
-    {
-      return LocalDate.parse(lastInsertTime, DateTimeFormatter.ISO_DATE_TIME);
-    }
-
-    //returns the time received as a date time
-    public LocalDate getTimeReceived()
-    {
-      return LocalDate.parse(timeReceived, DateTimeFormatter.ISO_DATE_TIME);
-    }
+    private String path;
+    private Long fileSize;
+    private String timeReceived;
+    private String lastInsertTime;
+    private Long rowsInserted;
+    private Boolean complete;
+    private long rowsParsed;
+    private Long errorsSeen;
+    private Long errorLimit;
+    private String firstError;
+    private Long firstErrorLineNum;
+    private Long firstErrorCharacterPos;
+    private String firstErrorColumnName;
+    private String systemError;
+    private String stageLocation;
+    private IngestStatus status;
 
     @Override
     public String toString()
@@ -139,8 +103,283 @@ public class HistoryResponse
               .append("Complete: ").append(complete).append("\n");
       return result.toString();
     }
+
+    /** The file path relative to the stage location. */
+    public String getPath()
+    {
+      return path;
+    }
+
+    /** The file path relative to the stage location. */
+    public void setPath(String path)
+    {
+      this.path = path;
+    }
+
+    /**The size of the file as measured by the service */
+    public Long getFileSize()
+    {
+      return fileSize;
+    }
+
+    /**The size of the file as measured by the service */
+    public void setFileSize(Long fileSize)
+    {
+      this.fileSize = fileSize;
+    }
+
+    /**The time at which this file was enqueued by the service  ISO 8601 UTC */
+    public LocalDate getTimeReceived()
+    {
+      return LocalDate.parse(timeReceived, DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    /**The time at which this file was enqueued by the service  ISO 8601 UTC */
+    public void setTimeReceived(String timeReceived)
+    {
+      this.timeReceived = timeReceived;
+    }
+
+    /**
+     * getLastInsertTime - converts the ISO formatted lastInsertTime string
+     * into a LocalDate
+     *
+     * @return a LocalDate object representation of our current time
+     */
+    public LocalDate getLastInsertTime()
+    {
+      return LocalDate.parse(lastInsertTime, DateTimeFormatter.ISO_DATE_TIME);
+    }
+
+    /**Time data from this file was last inserted into the table. ISO 8601 UTC */
+    public void setLastInsertTime(String lastInsertTime)
+    {
+      this.lastInsertTime = lastInsertTime;
+    }
+
+    /**Number of rows inserted into the target table from the file. */
+    public Long getRowsInserted()
+    {
+      return rowsInserted;
+    }
+
+    /**Number of rows inserted into the target table from the file. */
+    public void setRowsInserted(Long rowsInserted)
+    {
+      this.rowsInserted = rowsInserted;
+    }
+
+    /**Indicates whether the was file completely processed successfully. */
+    public Boolean isComplete()
+    {
+      return complete;
+    }
+
+    /**Indicates whether the was file completely processed successfully. */
+    public void setComplete(Boolean complete)
+    {
+      this.complete = complete;
+    }
+
+    /** Number of rows parsed from the file. Rows with errors may be skipped. */
+    public long getRowsParsed()
+    {
+      return rowsParsed;
+    }
+
+    /** Number of rows parsed from the file. Rows with errors may be skipped. */
+    public void setRowsParsed(long rowsParsed)
+    {
+      this.rowsParsed = rowsParsed;
+    }
+
+    /**Number of errors seen in the file*/
+    public Long getErrorsSeen()
+    {
+      return errorsSeen;
+    }
+
+    /**Number of errors seen in the file*/
+    public void setErrorsSeen(Long errorsSeen)
+    {
+      this.errorsSeen = errorsSeen;
+    }
+
+    /** Number of errors allowed in the file before it is considered failed
+     *(based on ON_ERROR copy option).*/
+    public Long getErrorLimit()
+    {
+      return errorLimit;
+    }
+
+    /** Number of errors allowed in the file before it is considered failed
+     *(based on ON_ERROR copy option).*/
+    public void setErrorLimit(Long errorLimit)
+    {
+      this.errorLimit = errorLimit;
+    }
+
+    /** Error message for the first error encountered in this file.*/
+    public String getFirstError()
+    {
+      return firstError;
+    }
+
+    /** Error message for the first error encountered in this file.*/
+    public void setFirstError(String firstError)
+    {
+      this.firstError = firstError;
+    }
+
+    /** Line number of the first error. */
+    public Long getFirstErrorLineNum()
+    {
+      return firstErrorLineNum;
+    }
+
+    /** Line number of the first error. */
+    public void setFirstErrorLineNum(Long firstErrorLineNum)
+    {
+      this.firstErrorLineNum = firstErrorLineNum;
+    }
+
+    /** Character position of the first error. */
+    public Long getFirstErrorCharacterPos()
+    {
+      return firstErrorCharacterPos;
+    }
+
+    /** Character position of the first error. */
+    public void setFirstErrorCharacterPos(Long firstErrorCharacterPos)
+    {
+      this.firstErrorCharacterPos = firstErrorCharacterPos;
+    }
+
+    /** Column name where the first error occurred. */
+    public String getFirstErrorColumnName()
+    {
+      return firstErrorColumnName;
+    }
+
+    /** Column name where the first error occurred. */
+    public void setFirstErrorColumnName(String firstErrorColumnName)
+    {
+      this.firstErrorColumnName = firstErrorColumnName;
+    }
+
+    /** General error describing why the file was not processed. */
+    public String getSystemError()
+    {
+      return systemError;
+    }
+
+    /** General error describing why the file was not processed. */
+    public void setSystemError(String systemError)
+    {
+      this.systemError = systemError;
+    }
+
+    /**
+     * Either the stage ID (internal stage) or the S3 bucket
+     * (external stage) defined in the pipe.
+     */
+    public String getStageLocation()
+    {
+      return stageLocation;
+    }
+
+    /**
+     * Either the stage ID (internal stage) or the S3 bucket
+     * (external stage) defined in the pipe.
+     */
+    public void setStageLocation(String stageLocation)
+    {
+      this.stageLocation = stageLocation;
+    }
+
+    /**
+     * Load status for the file:
+     *   LOAD_IN_PROGRESS: Part of the file has been loaded into the table,
+     *                     but the load process has not completed yet.
+     *   LOADED: The entire file has been loaded into the table.
+     *   LOAD_FAILED: The file load failed.
+     *   PARTIALLY_LOADED: Some rows from this file were loaded successfully,
+     *                     but others were not loaded due to errors.
+     *                     Processing of this file is completed.
+     */
+    public IngestStatus getStatus()
+    {
+      return status;
+    }
+
+    /**
+     * Load status for the file:
+     *   LOAD_IN_PROGRESS: Part of the file has been loaded into the table,
+     *                     but the load process has not completed yet.
+     *   LOADED: The entire file has been loaded into the table.
+     *   LOAD_FAILED: The file load failed.
+     *   PARTIALLY_LOADED: Some rows from this file were loaded successfully,
+     *                     but others were not loaded due to errors.
+     *                     Processing of this file is completed.
+     */
+    public void setStatus(IngestStatus status)
+    {
+      this.status = status;
+    }
+
   }
 
+  /**the statistics reported back by the service*/
+  public HistoryStats getStatistics()
+  {
+    return statistics;
+  }
+
+  /**the statistics reported back by the service*/
+  public void setStatistics(HistoryStats statistics)
+  {
+    this.statistics = statistics;
+  }
+
+  /**False if an event was missed between the supplied beginMark and the
+   * first event in this report history. Otherwise, true.*/
+  public Boolean isCompleteResult()
+  {
+    return completeResult;
+  }
+
+  /**False if an event was missed between the supplied beginMark and the
+   * first event in this report history. Otherwise, true.*/
+  public void setCompleteResult(Boolean completeResult)
+  {
+    this.completeResult = completeResult;
+  }
+
+  /**fully qualified pipe name*/
+  public String getPipe()
+  {
+    return pipe;
+  }
+
+  /**fully qualified pipe name*/
+  public void setPipe(String pipe)
+  {
+    this.pipe = pipe;
+  }
+
+  /**beginMark to use on the next request to avoid seeing duplicate records.
+   * (Note that this value is a hint. Duplicates can still occasionally occur.)*/
+  public String getNextBeginMark()
+  {
+    return nextBeginMark;
+  }
+
+  /**beginMark to use on the next request to avoid seeing duplicate records.
+   * (Note that this value is a hint. Duplicates can still occasionally occur.)*/
+  public void setNextBeginMark(String nextBeginMark)
+  {
+    this.nextBeginMark = nextBeginMark;
+  }
 }
 
 
