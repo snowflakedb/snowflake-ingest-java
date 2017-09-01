@@ -359,7 +359,8 @@ public class TestSimpleIngestLocal
               for (HistoryResponse.FileEntry entry : response.files)
               {
                 //if we have a complete file that we've loaded with the same name..
-                if (entry.path != null && entry.complete && entry.path.contains(BASE_FILENAME))
+                if (entry.getPath() != null && entry.isComplete()
+                        && entry.getPath().contains(BASE_FILENAME))
                 {
                   //we can return true!
                   return;

@@ -264,19 +264,19 @@ public final class RequestBuilder
    *
    * @param requestId the label for this request
    * @param pipe the pipe name
-   * @param startTime Start time inclusive of scan range, in ISO-8601 format.
+   * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format.
    *                  Missing millisecond part in string will lead to a zero
    *                  milliseconds. This is a required query parameter, and a
    *                  400 will be returned if this query parameter is missing
-   * @param endTime End time exclusive of scan range. If this query parameter
+   * @param endTimeExclusive End time exclusive of scan range. If this query parameter
    *             is missing or user provided value is later than current millis,
    *             then current millis is used.
    * @return URI for the insert request
    */
   private URI makeHistoryRangeURI(UUID requestId,
                              String pipe,
-                             String startTime,
-                             String endTime)
+                             String startTimeInclusive,
+                             String endTimeExclusive)
           throws URISyntaxException
   {
     //if the table name is null, we have to abort
@@ -291,14 +291,14 @@ public final class RequestBuilder
     //set the path for the URI
     builder.setPath(String.format(HISTORY_RANGE_ENDPOINT_FORMAT, pipe));
 
-    if (startTime != null)
+    if (startTimeInclusive != null)
     {
-      builder.setParameter(HISTORY_RANGE_START_INCLUSIVE, startTime);
+      builder.setParameter(HISTORY_RANGE_START_INCLUSIVE, startTimeInclusive);
     }
 
-    if (endTime != null)
+    if (endTimeExclusive != null)
     {
-      builder.setParameter(HISTORY_RANGE_END_EXCLUSIVE, endTime);
+      builder.setParameter(HISTORY_RANGE_END_EXCLUSIVE, endTimeExclusive);
     }
 
     LOGGER.info("Final History URIBuilder - {}", builder.toString());
@@ -413,27 +413,27 @@ public final class RequestBuilder
    * given a requestId and a pipe, get history for all ingests between
    *  time ranges start-end
   *
-  * @param requestId the label for this request
-  * @param pipe the pipe name
-  * @param startTime Start time inclusive of scan range, in ISO-8601 format.
+  * @param requestId a UUID we will use to label this request
+  * @param pipe a fully qualified pipe name
+  * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format.
   *                  Missing millisecond part in string will lead to a zero
   *                  milliseconds. This is a required query parameter, and a
   *                  400 will be returned if this query parameter is missing
-  * @param endTime End time exclusive of scan range. If this query parameter
+  * @param endTimeExclusive End time exclusive of scan range. If this query parameter
   *             is missing or user provided value is later than current millis,
   *                           then current millis is used.
   * @return URI for the insert request
   */
   public HttpGet generateHistoryRangeRequest(UUID requestId,
                                              String pipe,
-                                             String startTime,
-                                             String endTime)
+                                             String startTimeInclusive,
+                                             String endTimeExclusive)
       throws URISyntaxException
   {
     URI historyRangeURI = makeHistoryRangeURI(requestId,
                                               pipe,
-                                              startTime,
-                                              endTime);
+                                              startTimeInclusive,
+                                              endTimeExclusive);
 
     HttpGet get = new HttpGet(historyRangeURI);
 

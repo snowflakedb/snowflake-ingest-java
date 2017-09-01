@@ -30,11 +30,11 @@ public class SnowflakeIngestBasicExample
 {
   // Details required to connect to Snowflake over jdbc and establish
   // pre-requesites
-  private static String account = "testaccount";
+  private static String account = "s3testaccount";
   private static String user = "snowman";
-  private static String host = "snowflakecomputing.com";
-  private static String scheme = "https";
-  private static String password = "*****";
+  private static String host = "s3testaccount.snowflakecomputing.com";
+  private static String scheme = "http";
+  private static String password = "****";
   private static int port = 8080;
 
   // Details for the pipe which we are going to use
@@ -65,7 +65,8 @@ public class SnowflakeIngestBasicExample
   /**
    * Creates the stages and files we'll use for this test
    */
-  private static void setup() throws Exception
+  private static void setup(Set<String> files, String filesLocation)
+          throws Exception
   {
     //use the right database
     IngestExampleHelper.doQuery(conn, "use database " + database);
@@ -74,14 +75,13 @@ public class SnowflakeIngestBasicExample
     IngestExampleHelper.doQuery(conn, "use schema " + schema);
 
     //create the target stage
-    IngestExampleHelper.doQuery(conn, "create or replace stage " + stage
-                           + " url='file:///tmp/data/'");
+    IngestExampleHelper.doQuery(conn, "create or replace stage " + stage +
+                                      " FILE_FORMAT=(type='csv' COMPRESSION=NONE)");
 
     //create the target
     IngestExampleHelper.doQuery(conn, "create or replace table "
                         + table
                         + " (row_id int, row_str string, num int, src string)");
-
     // Create the pipe for subsequently ingesting files to.
     IngestExampleHelper.doQuery(conn, "create or replace pipe "
                            + pipe + " as copy into " + table
@@ -96,6 +96,10 @@ public class SnowflakeIngestBasicExample
     //set the public key
     IngestExampleHelper.doQuery(conn, "alter user " + user +
             " set RSA_PUBLIC_KEY='" + pk + "'");
+    files.forEach(file->
+                  { IngestExampleHelper.doQuery(conn, "PUT " + filesLocation
+                                                + file + " @" + stage +
+                                              " AUTO_COMPRESS=FALSE");});
 
     IngestExampleHelper.doQuery(conn, "use role sysadmin");
   }
@@ -157,9 +161,9 @@ public class SnowflakeIngestBasicExample
         {
           Thread.sleep(500);
           HistoryResponse response = manager.getHistory(null, null, beginMark);
-          if (response.nextBeginMark != null)
+          if (response.getNextBeginMark() != null)
           {
-            beginMark = response.nextBeginMark;
+            beginMark = response.getNextBeginMark();
           }
           if (response != null && response.files != null)
           {
@@ -167,14 +171,14 @@ public class SnowflakeIngestBasicExample
             {
               //if we have a complete file that we've
               // loaded with the same name..
-              String filename = entry.path;
-              if (entry.path != null && entry.complete &&
+              String filename = entry.getPath();
+              if (entry.getPath() != null && entry.isComplete() &&
                       filesWatchList.contains(filename))
               {
                 if (filesHistory == null)
                 {
                   filesHistory = new HistoryResponse();
-                  filesHistory.pipe = response.pipe;
+                  filesHistory.setPipe(response.getPipe());
                 }
                 filesHistory.files.add(entry);
                 filesWatchList.remove(filename);
@@ -199,19 +203,20 @@ public class SnowflakeIngestBasicExample
 
   public static void main(String[] args) throws IOException
   {
-
+    final String filesDirectory = "/tmp/data/";
+    final String filesLocationUrl = "file:///tmp/data/";
     // The first few steps simulate example files that we will write to the
     // ingest service.
     //base file name we want to load
     final String fileWithWrongCSVFormat = "letters.csv";
-    IngestExampleHelper.makeLocalDirectory("/tmp/data");
-    IngestExampleHelper.makeSampleFile("/tmp/data", fileWithWrongCSVFormat);
+    IngestExampleHelper.makeLocalDirectory(filesDirectory);
+    IngestExampleHelper.makeSampleFile(filesDirectory, fileWithWrongCSVFormat);
     Set<String> files = new TreeSet<>();
-    files.add(IngestExampleHelper.createTempCsv("/tmp/data", "sample", 10).
+    files.add(IngestExampleHelper.createTempCsv(filesDirectory, "sample", 10).
                     getFileName().toString());
-    files.add(IngestExampleHelper.createTempCsv("/tmp/data", "sample", 15).
+    files.add(IngestExampleHelper.createTempCsv(filesDirectory, "sample", 15).
                     getFileName().toString());
-    files.add(IngestExampleHelper.createTempCsv("/tmp/data", "sample", 20).
+    files.add(IngestExampleHelper.createTempCsv(filesDirectory, "sample", 20).
                     getFileName().toString());
     System.out.println("Starting snowflake ingest client");
     System.out.println("Connecting to " + scheme + "://" +
@@ -230,13 +235,13 @@ public class SnowflakeIngestBasicExample
       manager = new SimpleIngestManager(account, user,
                                         fqPipe, keypair, scheme,
                                         host, port);
-      setup();
+      files.add(fileWithWrongCSVFormat);
+      setup(files, filesLocationUrl);
       IngestResponse response = insertFiles(files);
       System.out.println("Received ingest response: " + response.toString());
       response = insertFile(fileWithWrongCSVFormat);
       System.out.println("Received ingest response: " + response.toString());
       // This will show up as a file that was not loaded in history
-      files.add(fileWithWrongCSVFormat);
       HistoryResponse history = waitForFilesHistory(files);
       System.out.println("Received history response: " + history.toString());
       String endTime = Instant

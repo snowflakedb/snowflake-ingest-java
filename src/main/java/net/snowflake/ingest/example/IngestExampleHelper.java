@@ -1,6 +1,8 @@
 package net.snowflake.ingest.example;
 
 import org.apache.commons.codec.binary.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -32,6 +34,9 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class IngestExampleHelper
 {
+  //a logger for all of our needs in this class
+  private static final Logger LOGGER =
+          LoggerFactory.getLogger(IngestExampleHelper.class.getName());
     /**
    * Create directories if they don't exist under directoryPath.
    * @param directoryPath
@@ -137,6 +142,7 @@ public class IngestExampleHelper
    */
   public static void doQuery(Connection conn, String query)
   {
+    LOGGER.info("doQuery {}", query);
     try (Statement statement = conn.createStatement())
     {
       statement.executeQuery(query);
