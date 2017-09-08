@@ -1,6 +1,11 @@
+/*
+ * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.ingest.SimpleIngestManager;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpGet;
@@ -12,10 +17,18 @@ import org.apache.http.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 
 /**
@@ -86,6 +99,56 @@ public final class RequestBuilder
 
   //and object mapper for all marshalling and unmarshalling
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  // Don't change!
+  private static final String CLIENT_NAME = "SnowpipeJavaSDK";
+
+  // {client-name}/{version}/{java-version}/{platform}
+  private static final String USER_AGENT = "%s/%s/%s/%s";
+  private static final String DEFAULT_VERSION = "0.1.0";
+  private static final String RESOURCES_FILE = "project.properties";
+  private static final Properties properties;
+
+  static
+  {
+    Properties fallback = new Properties();
+    fallback.put("version", DEFAULT_VERSION);
+    properties = new Properties(fallback);
+
+    try
+    {
+      URL res = SimpleIngestManager.class.getClassLoader().
+                                          getResource(RESOURCES_FILE);
+      if (res == null)
+      {
+        throw new UncheckedIOException(new FileNotFoundException(RESOURCES_FILE));
+
+      }
+
+      URI uri;
+      try
+      {
+        uri = res.toURI();
+      }
+      catch (URISyntaxException ex)
+      {
+        throw new IllegalArgumentException(ex);
+      }
+
+      try (InputStream is = Files.newInputStream(Paths.get(uri)))
+      {
+        properties.load(is);
+      }
+      catch (IOException ex)
+      {
+        throw new UncheckedIOException("Failed to load resource", ex);
+      }
+    }
+    catch(Exception e)
+    {
+      LOGGER.warn("Could not read version info: " + e.toString());
+    }
+  }
 
   /**
    * A simple POJO for generating our POST body to the insert endpoint
@@ -338,6 +401,25 @@ public final class RequestBuilder
   }
 
   /**
+   * addUserAgent - adds the user agent header to a request
+   *
+   * @param request the URI request
+   */
+  private static void addUserAgent(HttpUriRequest request)
+  {
+    final String clientVersion = properties.getProperty("version");
+    final String javaVersion = System.getProperty("java.version");
+    final String platform = System.getProperty("os.name");
+    request.setHeader(HttpHeaders.USER_AGENT,
+                      String.format(USER_AGENT,
+                                    CLIENT_NAME,
+                                    clientVersion,
+                                    javaVersion,
+                                    platform));
+
+  }
+
+  /**
    * addToken - adds a the JWT token to a request
    *
    * @param request the URI request
@@ -346,6 +428,14 @@ public final class RequestBuilder
   private static void addToken(HttpUriRequest request, String token)
   {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
+  }
+
+  private static void addHeaders(HttpUriRequest request,
+                                 String token)
+  {
+    addUserAgent(request);
+    //add the auth token
+    addToken(request, token);
   }
 
   /**
@@ -369,8 +459,7 @@ public final class RequestBuilder
     //Make the post request
     HttpPost post = new HttpPost(insertURI);
 
-    //add the auth token
-    addToken(post, securityManager.getToken());
+    addHeaders(post, securityManager.getToken());
 
     //the entity for the containing the json
     final StringEntity entity = new StringEntity(generateFilesJSON(files),
@@ -402,8 +491,7 @@ public final class RequestBuilder
     //make the get request
     HttpGet get = new HttpGet(historyURI);
 
-    //add the auth token
-    addToken(get, securityManager.getToken());
+    addHeaders(get, securityManager.getToken());
 
     return get;
   }
@@ -437,7 +525,7 @@ public final class RequestBuilder
 
     HttpGet get = new HttpGet(historyRangeURI);
 
-    addToken(get, securityManager.getToken());
+    addHeaders(get, securityManager.getToken());
 
     return get;
   }
