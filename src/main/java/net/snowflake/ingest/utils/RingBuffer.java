@@ -1,5 +1,8 @@
-package net.snowflake.ingest.utils;
+/*
+ * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ */
 
+package net.snowflake.ingest.utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
