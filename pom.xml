@@ -40,7 +40,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>net.snowflake.ingest.stress.ScenarioManager</mainClass>
+                            <mainClass>net.snowflake.ingest.SimpleIngestManager</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

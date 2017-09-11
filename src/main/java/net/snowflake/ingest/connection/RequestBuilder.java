@@ -103,17 +103,16 @@ public final class RequestBuilder
   // Don't change!
   private static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  // {client-name}/{version}/{java-version}/{platform}
-  private static final String USER_AGENT = "%s/%s/%s/%s";
   private static final String DEFAULT_VERSION = "0.1.0";
   private static final String RESOURCES_FILE = "project.properties";
-  private static final Properties properties;
+  private static final Properties PROPERTIES = loadProperties();
 
-  static
+  private static final String USER_AGENT = getUserAgent();
+
+  private static Properties loadProperties()
   {
-    Properties fallback = new Properties();
-    fallback.put("version", DEFAULT_VERSION);
-    properties = new Properties(fallback);
+    Properties properties = new Properties();
+    properties.put("version", DEFAULT_VERSION);
 
     try
     {
@@ -122,7 +121,6 @@ public final class RequestBuilder
       if (res == null)
       {
         throw new UncheckedIOException(new FileNotFoundException(RESOURCES_FILE));
-
       }
 
       URI uri;
@@ -148,8 +146,26 @@ public final class RequestBuilder
     {
       LOGGER.warn("Could not read version info: " + e.toString());
     }
+
+    return properties;
   }
 
+  private static String getUserAgent()
+  {
+    final String clientVersion = PROPERTIES.getProperty("version");
+    final String javaVersion = System.getProperty("java.version");
+    final String platform = System.getProperty("os.name") +
+                            System.getProperty("os.version") +
+                            System.getProperty("os.arch");
+
+    // {client-name}/{version}/{java-version}/{platform}
+    final String userAgentFormat = "%s/%s/%s/%s";
+    return String.format(userAgentFormat,
+                                    CLIENT_NAME,
+                                    clientVersion,
+                                    javaVersion,
+                                    platform);
+  }
   /**
    * A simple POJO for generating our POST body to the insert endpoint
    *
@@ -407,16 +423,7 @@ public final class RequestBuilder
    */
   private static void addUserAgent(HttpUriRequest request)
   {
-    final String clientVersion = properties.getProperty("version");
-    final String javaVersion = System.getProperty("java.version");
-    final String platform = System.getProperty("os.name");
-    request.setHeader(HttpHeaders.USER_AGENT,
-                      String.format(USER_AGENT,
-                                    CLIENT_NAME,
-                                    clientVersion,
-                                    javaVersion,
-                                    platform));
-
+    request.setHeader(HttpHeaders.USER_AGENT, USER_AGENT);
   }
 
   /**
