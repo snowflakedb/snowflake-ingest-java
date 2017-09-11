@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -19,7 +23,8 @@ import java.io.IOException;
 public final class ServiceResponseHandler
 {
   //Create a logger for this class
-  private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
+  private static final Logger LOGGER =
+          LoggerFactory.getLogger(ServiceResponseHandler.class);
 
   //the object mapper we use for deserialization
   static ObjectMapper mapper = new ObjectMapper();
