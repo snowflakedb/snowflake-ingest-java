@@ -29,6 +29,7 @@ fi
 
 # copy the settings.xml template and inject credential information 
 OSSRH_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_ossrh_deploy.xml"
+MVN_REPOSITORY_ID=ossrh
 
 cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
 <?xml version="1.0" encoding="UTF-8"?>
@@ -37,7 +38,7 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
   <servers>
     <server>
-      <id>ossrh</id>
+      <id>$MVN_REPOSITORY_ID</id>
       <username>$SONATYPE_USER</username>
       <password>$SONATYPE_PWD</password>
     </server>
