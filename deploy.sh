@@ -51,3 +51,5 @@ MVN_OPTIONS+=(
 )
 
 mvn deploy ${MVN_OPTIONS[@]} ${MVN_GPG_OPTIONS[@]}
+
+rm $OSSRH_DEPLOY_SETTINGS_XML
