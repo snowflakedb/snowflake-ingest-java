@@ -17,7 +17,7 @@ else
   MVN_GPG_OPTIONS+=("-Dgpg.passphrase=$GPG_KEY_PASSPHRASE")
 fi
 
-if [ -z "$GPG_PRIVATE_KEY"]
+if [ -z "$GPG_PRIVATE_KEY"]; then
   echo "[ERROR] GPG private key file is not specified!"
   exit 1
 fi
