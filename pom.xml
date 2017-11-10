@@ -128,6 +128,7 @@
                             <groupId>${project.groupId}</groupId>
                             <artifactId>${project.artifactId}</artifactId>
                             <version>${project.version}</version>
+                            <pomFile>pom.xml</pomFile>
                         </configuration>
                     </execution>
                 </executions>
