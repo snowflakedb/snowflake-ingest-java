@@ -36,10 +36,11 @@ public class SnowflakeIngestBasicExample
   // pre-requesites
   private static String account = "s3testaccount";
   private static String user = "snowman";
-  private static String host = "s3testaccount.snowflakecomputing.com";
+  private static String fakeuser = "snowman";
+  private static String host = "s3testaccount.reg.local";
   private static String scheme = "http";
-  private static String password = "****";
-  private static int port = 8080;
+  private static String password = "test";
+  private static int port = 8082;
 
   // Details for the pipe which we are going to use
   //the name of our target DB
@@ -236,7 +237,7 @@ public class SnowflakeIngestBasicExample
       conn = IngestExampleHelper.getConnection(user, password,
                                                account, host, port);
       keypair =IngestExampleHelper.generateKeyPair();
-      manager = new SimpleIngestManager(account, user,
+      manager = new SimpleIngestManager(account, fakeuser,
                                         fqPipe, keypair, scheme,
                                         host, port);
       files.add(fileWithWrongCSVFormat);
