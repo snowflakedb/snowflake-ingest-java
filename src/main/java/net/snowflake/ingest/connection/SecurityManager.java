@@ -10,7 +10,14 @@ import org.jose4j.jwt.JwtClaims;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -40,6 +47,9 @@ final class SecurityManager
 
   //the name of the account on behalf of which we're connecting
   private String account;
+
+  // Fingerprint of public key sent from client in jwt payload
+  private String publicKeyFingerPrint;
 
   //the name of the user who will be loading the files
   private String user;
@@ -110,14 +120,26 @@ final class SecurityManager
    * regenerateToken - Regenerates our Token given our current user,
    *                    account and keypair
    */
-  private void regenerateToken()
+  public void regenerateToken()
   {
     //create our JWT claim object
     JwtClaims claims = new JwtClaims();
 
     //set the issuer to the fully qualified username
-    claims.setIssuer(account + "." + user);
-    LOGGER.info("Creating Token with Issuer {}", account + "." + user);
+    String publicKeyFPInJwt = null;
+    try
+    {
+      publicKeyFPInJwt = getPublicKeyFp(savePublicKey(keyPair.getPublic()));
+      publicKeyFingerPrint = publicKeyFPInJwt;
+    }
+    catch(Exception e)
+    {
+      LOGGER.info("Failed to Generate public key fingerprint");
+    }
+
+    //set the subject to the fully qualified username
+    claims.setSubject(account + "." + user);
+    LOGGER.info("Creating Token with subject {}", account + "." + user);
 
     //the lifetime of the token is 59
     claims.setExpirationTimeMinutesInTheFuture(LIFETIME);
@@ -176,4 +198,82 @@ final class SecurityManager
     return token.get();
   }
 
+  /**
+   * Hashes input bytes using SHA-256.
+   *
+   * @param input  input bytes
+   * @param offset offset into the output buffer to begin storing the digest
+   * @param len    number of bytes within buf allotted for the digest
+   * @return SHA-256 hash
+   */
+  public static byte[] sha256Hash(byte[] input, int offset, int len)
+  {
+    try
+    {
+      MessageDigest md = MessageDigest.getInstance("SHA-256");
+      md.update(input, offset, len);
+      return md.digest();
+    }
+    catch (NoSuchAlgorithmException e)
+    {
+      throw new RuntimeException(e);
+    }
+  }
+  /**
+   * Hashes input bytes using SHA-256.
+   *
+   * @param input input bytes
+   * @return SHA-256 hash
+   */
+  public static byte[] sha256Hash(byte[] input)
+  {
+    return sha256Hash(input, 0, input.length);
+  }
+
+  /**
+   * Hashes input bytes using SHA-256 and converts hash into a string using
+   * Base64 encoding.
+   *
+   * @param input input bytes
+   * @return Base64-encoded SHA-256 hash
+   */
+  public static String sha256HashBase64(byte[] input)
+  {
+    return new String(org.apache.commons.codec.binary.Base64.encodeBase64(sha256Hash(input)));
+  }
+  /**
+   * Given a publickey
+   *
+   * @return the fingerprint of public key
+   */
+  private String getPublicKeyFp(String publicKey)
+  {
+    byte[] rawBytes = org.apache.commons.codec.binary.Base64.decodeBase64(publicKey);
+    return String.format("SHA256:%s", sha256HashBase64(rawBytes));
+  }
+
+
+  /**
+   * Converts PublicKey object to encodedBase64String using RSA scheme.
+   *
+   * @param publicKey
+   * @return
+   * @throws NoSuchAlgorithmException
+   * @throws InvalidKeySpecException
+   */
+  public static String savePublicKey(PublicKey publicKey)
+      throws NoSuchAlgorithmException, InvalidKeySpecException
+  {
+    KeyFactory fact = KeyFactory.getInstance("RSA");
+    X509EncodedKeySpec spec = fact.getKeySpec(publicKey,
+        X509EncodedKeySpec.class);
+    byte[] publicKeyEncode = Base64.getEncoder().encode(spec.getEncoded());
+
+    return new String(publicKeyEncode);
+  }
+
+  public String getPublicKeyFingerPrint()
+  {
+    return publicKeyFingerPrint;
+  }
 }
