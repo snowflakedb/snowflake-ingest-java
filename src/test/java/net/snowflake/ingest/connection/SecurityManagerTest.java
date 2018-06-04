@@ -2,12 +2,8 @@ package net.snowflake.ingest.connection;
 
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.security.KeyFactory;
 import java.security.KeyPair;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -16,18 +12,18 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
+import static org.junit.Assert.assertTrue;
 
 public class SecurityManagerTest
 {
-  public String expectedPublicKeyFp = "SHA256:yVUGJrOo4BN1Cza+m2zNzvQbk/4rICTydzSNvuiyy9Q=";
+  private String expectedPublicKeyFp =
+      "SHA256:yVUGJrOo4BN1Cza+m2zNzvQbk/4rICTydzSNvuiyy9Q=";
 
-  //the logger for SecurityManager
-  private static final Logger LOGGER =
-                      LoggerFactory.getLogger(SecurityManager.class);
   /**
    * BASE64 ENCODED PUBLIC KEY
    */
-  private String storedPublicKey = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtRPru42llC40VdmWnc8r\n" +
+  private String storedPublicKey =
+      "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtRPru42llC40VdmWnc8r\n" +
       "7TI/AFemZw4Lh1HRnPIFRxwhOE/yxHHxFGuPLUouyHWM9rVT9N9eo6PTOB8TCnGw\n" +
       "fwTW2jloSbjtycDdM3+UrBUpX7x/Ufhcwoeu0O3NR5pAhGJRVKCvSpmrD3k2l2vZ\n" +
       "sRL0230IPGxeDB8m2Wia8QCKKou7AkSsmQ3/9kcKowLGf2axPHty2QSXx4NKvwe0\n" +
@@ -38,7 +34,8 @@ public class SecurityManagerTest
   /**
    * BASE64 ENCODED PRIVATE KEY
    */
-  private String storedPrivateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC1E+u7jaWULjRV\n" +
+  private String storedPrivateKey =
+      "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQC1E+u7jaWULjRV\n" +
       "2ZadzyvtMj8AV6ZnDguHUdGc8gVHHCE4T/LEcfEUa48tSi7IdYz2tVP0316jo9M4\n" +
       "HxMKcbB/BNbaOWhJuO3JwN0zf5SsFSlfvH9R+FzCh67Q7c1HmkCEYlFUoK9KmasP\n" +
       "eTaXa9mxEvTbfQg8bF4MHybZaJrxAIoqi7sCRKyZDf/2RwqjAsZ/ZrE8e3LZBJfH\n" +
@@ -75,21 +72,12 @@ public class SecurityManagerTest
 
     KeyPair keypair = new KeyPair(pubKey, priKey);
 
-    String accountName = "";
-    String userName = "";
-    SecurityManager securityManager = new SecurityManager(accountName, userName, keypair);
-    securityManager.regenerateToken();
+    String accountName = "accountName";
+    String userName = "userName";
+    SecurityManager securityManager =
+        new SecurityManager(accountName, userName, keypair);
     String publicKeyFp = securityManager.getPublicKeyFingerPrint();
-    boolean valid = publicKeyFp.equals(expectedPublicKeyFp);
-    if(valid)
-    {
-      LOGGER.info("The publicKeyFp is valid.");
-    }
-    if(!valid)
-    {
-      LOGGER.info("The publicKeyFp should be {}", expectedPublicKeyFp);
-      LOGGER.info("The generated publickeyFp is {}", securityManager.getPublicKeyFingerPrint());
-    }
+    assertTrue(publicKeyFp.equals(expectedPublicKeyFp));
   }
 
   /**
@@ -117,7 +105,7 @@ public class SecurityManagerTest
    * @throws NoSuchAlgorithmException
    * @throws InvalidKeySpecException
    */
-  public PrivateKey loadPrivateKey(String base64PrivateKey)
+  private PrivateKey loadPrivateKey(String base64PrivateKey)
     throws NoSuchAlgorithmException, InvalidKeySpecException
   {
     byte[] clear = Base64.getMimeDecoder().decode(base64PrivateKey);
@@ -127,4 +115,5 @@ public class SecurityManagerTest
     Arrays.fill(clear, (byte) 0);
     return privateKey;
   }
+
 }
