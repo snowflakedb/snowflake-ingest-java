@@ -62,6 +62,46 @@ public class SecurityManagerTest
       "25UsnB7XefRE0tDe6yLWKbONT33+WGZjCBCXpQ90Avvi9npFetwG9Q8GSP7VdbTc\n" +
       "tLwfZra8DDXs5Dz9Gion+A==\n";
 
+  private String expectedPublicKeyFp2 =
+      "SHA256:MDcEdlQsgzIs7UBLHV6CB9GJLqqW/AqGsMcAPrWVxuA=";
+
+  private String storedPublicKey2 =
+      "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwwtuB1ZFqe9jF8TjvwoH\n" +
+      "oGO2KRxSu8GRDuI93/g1dJKve/SsmNB+SPQ402tEmnejg6QMlyFOvh+bbEqYooXN\n" +
+      "6lCaFSk7DAx7aNqr1yU/Jpwzbal0H74PhOAw4u1iyBCf08r8aQHLYkOUF2DcggUI\n" +
+      "WCKrBnpEC6vK8aZRWGwpgXB46CkousWXrmKBqbEBJusj2/Fgrk2CZ/OGY/vlzh6A\n" +
+      "7TpucviZUF3bsmsEs//63XpTSQsL785uixJbnQye8HDN4iyjvK09dHruIfSVPZ2N\n" +
+      "7xPdw7Nvyf+gRBmu2HWCPFpOc7a0XPNarlQPXPLbGz47dIZNEW+8p2jdw1D2PZ3h\n" +
+      "vwIDAQAB\n";
+
+  private String storedPrivateKey2 =
+      "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDDC24HVkWp72MX\n" +
+      "xOO/CgegY7YpHFK7wZEO4j3f+DV0kq979KyY0H5I9DjTa0Sad6ODpAyXIU6+H5ts\n" +
+      "Spiihc3qUJoVKTsMDHto2qvXJT8mnDNtqXQfvg+E4DDi7WLIEJ/TyvxpActiQ5QX\n" +
+      "YNyCBQhYIqsGekQLq8rxplFYbCmBcHjoKSi6xZeuYoGpsQEm6yPb8WCuTYJn84Zj\n" +
+      "++XOHoDtOm5y+JlQXduyawSz//rdelNJCwvvzm6LEludDJ7wcM3iLKO8rT10eu4h\n" +
+      "9JU9nY3vE93Ds2/J/6BEGa7YdYI8Wk5ztrRc81quVA9c8tsbPjt0hk0Rb7ynaN3D\n" +
+      "UPY9neG/AgMBAAECggEBAL9JLGXBtJzPDC45iOrJWWVxpSt4faNqWWtxcyF++l4T\n" +
+      "pks5UTSl9dRywHCImUWs5A6tCzQFFIbd1L5GAqAR/js5RYRPZXuRmk7hdvqPqvmg\n" +
+      "48c/E4Y2Dl5QyWElU2XG+Bjs0NPjUKZUhJ7Q/jH94YsepQC7VJTlrSmF5e2EVsh7\n" +
+      "3wwAd+fRNSvWmMoVsjw1gX8Cen8rCEZZyPSwaK1pYBQga0abEZ6BdQQ0O3yTZQga\n" +
+      "Q3z+vC+hm3cqpAmhWupYxqdA/EBNz/v0GVe8BGbEYAnm/4LPpQilt1Z1ngNqdUoT\n" +
+      "zF4PXnYQ/fFOR90nbjWoJLJYCDd+QW4XXwxwOIs/BsECgYEA+USiF2F+lG7y6dhk\n" +
+      "fLAi8UROAjYv+/wWSBnOV0JCD0A6Ik5bOXvXs72/NCHdBGq93mbYhzo7ar9Fm0QE\n" +
+      "mtwfnfhVNRk+SSq/+hzCOmZrdZpu2nMzBDJtR2TartOwfijE/NNZGA1V7QOmR02u\n" +
+      "WINyaqvDNNPVIt+D6qreXcZDslECgYEAyE/pWfLjJfWBXtOruXxBcJKq5Arx0YSv\n" +
+      "i7VaiOg9zBtLg4imKvRJqjs6Y7rGap3qA+HguEl4TQHvhIfhlAxWJ2XVB0ijTAiF\n" +
+      "aMTmBmxCJq0V9raScJPbSHAN54T2f0x+yh5/q7IFFKF2Hn3qrmarSAw02G+KTH6M\n" +
+      "lFFqJ+Dcvw8CgYEA7aMX4LBqq3nGjVdmHVUSSu7ya7tbLaDbYStxAtFBBycVBQWs\n" +
+      "hHXjYxD/SuUJvx9AGdn0jZ7fbFojMu26ciRu4/wOx4tkTP67fOeT53ci9UAgdJQk\n" +
+      "y9iDQ/ALZ2abOPsHKX0X0A1OoKG9EPcmwm22U6midSeKZy+tpLf3PHE6srECgYAa\n" +
+      "yj0+T3K7t+r2gL69zvV9ldAPMbuHtwQ3XijemJjzPE9MJzF6GzPi9Yronak9xyLu\n" +
+      "I/6HByR0wCaFhhrQTxoSqNbl43wbhiQ5j+PnxgDO5WVDmsVZEx1HwdzKMwk4m0V1\n" +
+      "yMBweR2e1b1TdKm3a3nK5/8FV12av24TxBO7g6JiVwKBgDnaedWvgJt+tJrkFn9h\n" +
+      "ZE2VVGC4FjFDpCMxIebvBz5Kbs+lknpdcda8+DMwXFDf8OR3lt/3KzJqleUhrTTz\n" +
+      "AQz56Xdi9VEnVs3rsgvX9VnaWcRpa4GT5EIj+I2M9t+D8XCfMMs1S56Pnn5oGkqv\n" +
+      "FBzmMRnskqK6d75B8EG5BGi0\n";
+
   @Test
   public void validatePublicKeyFp()
       throws NoSuchAlgorithmException, InvalidKeySpecException
@@ -78,6 +118,16 @@ public class SecurityManagerTest
         new SecurityManager(accountName, userName, keypair);
     String publicKeyFp = securityManager.getPublicKeyFingerPrint();
     assertTrue(publicKeyFp.equals(expectedPublicKeyFp));
+
+    PublicKey pubKey2 = loadPublicKey(storedPublicKey2);
+    PrivateKey priKey2 = loadPrivateKey(storedPrivateKey2);
+
+    KeyPair keypair2 = new KeyPair(pubKey2, priKey2);
+
+    SecurityManager securityManager2 =
+        new SecurityManager(accountName, userName, keypair2);
+    String publicKeyFp2 = securityManager2.getPublicKeyFingerPrint();
+    assertTrue(publicKeyFp2.equals(expectedPublicKeyFp2));
   }
 
   /**

@@ -4,7 +4,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
-public class Sha256Hash
+public class Cryptor
 {
   /**
    * Hashes input bytes using SHA-256.
@@ -14,7 +14,7 @@ public class Sha256Hash
    * @param len    number of bytes within buf allotted for the digest
    * @return SHA-256 hash
    */
-  private byte[] sha256Hash(byte[] input, int offset, int len)
+  public static byte[] sha256Hash(byte[] input, int offset, int len)
   {
     try
     {
@@ -34,7 +34,7 @@ public class Sha256Hash
    * @param input input bytes
    * @return SHA-256 hash
    */
-  private byte[] sha256Hash(byte[] input)
+  public static byte[] sha256Hash(byte[] input)
   {
     return sha256Hash(input, 0, input.length);
   }
@@ -46,7 +46,7 @@ public class Sha256Hash
    * @param input input bytes
    * @return Base64-encoded SHA-256 hash
    */
-  public String sha256HashBase64(byte[] input)
+  public static String sha256HashBase64(byte[] input)
   {
     return Base64.getEncoder().encodeToString(sha256Hash(input));
   }

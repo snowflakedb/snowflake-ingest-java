@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
-import net.snowflake.ingest.utils.Sha256Hash;
+import net.snowflake.ingest.utils.Cryptor;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
@@ -200,8 +200,7 @@ final class SecurityManager
     byte[] publicKeyRawBytes = keyPair.getPublic().getEncoded();
 
     // take sha256 on raw bytes and do base64 encode
-    Sha256Hash sha256Hash = new Sha256Hash();
-    publicKeyFingerPrint = String.format("SHA256:%s", sha256Hash.sha256HashBase64(publicKeyRawBytes));
+    publicKeyFingerPrint = String.format("SHA256:%s", Cryptor.sha256HashBase64(publicKeyRawBytes));
     return publicKeyFingerPrint;
   }
 
