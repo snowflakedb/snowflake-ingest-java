@@ -37,7 +37,7 @@ public class SnowflakeIngestBasicExample
   private static String account = "s3testaccount";
   private static String user = "snowman";
   private static String host = "s3testaccount.snowflakecomputing.com";
-  private static String scheme = "http";
+  private static String scheme = "https";
   private static String password = "****";
   private static int port = 8080;
 

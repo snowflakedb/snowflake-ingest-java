@@ -40,7 +40,6 @@ import java.util.UUID;
  */
 public final class RequestBuilder
 {
-
   //a logger for all of our needs in this class
   private static final Logger LOGGER =
           LoggerFactory.getLogger(RequestBuilder.class.getName());
