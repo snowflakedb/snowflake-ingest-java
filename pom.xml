@@ -49,7 +49,7 @@
             </resource>
         </resources>
         <plugins>
-            <!-- Relocate all dependencies to internal -->
+            <!-- Relocate all dependencies to internal to solve dependency conflict problem -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
