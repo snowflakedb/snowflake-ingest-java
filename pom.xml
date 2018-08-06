@@ -38,7 +38,7 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <shadeBase>net.snowflake.client.jdbc.internal</shadeBase>
+        <shadeBase>net.snowflake.ingest.internal</shadeBase>
     </properties>
 
     <build>
@@ -49,6 +49,7 @@
             </resource>
         </resources>
         <plugins>
+            <!-- Relocate all dependencies to internal -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
