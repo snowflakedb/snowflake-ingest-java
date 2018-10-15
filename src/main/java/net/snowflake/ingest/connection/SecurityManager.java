@@ -5,6 +5,7 @@
 package net.snowflake.ingest.connection;
 
 import net.snowflake.ingest.utils.Cryptor;
+import net.snowflake.ingest.utils.ThreadFactoryUtil;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
@@ -14,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.security.KeyPair;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,7 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 final class SecurityManager
 {
-
   //the logger for SecurityManager
   private static final Logger LOGGER =
                     LoggerFactory.getLogger(SecurityManager.class);
@@ -54,9 +55,13 @@ final class SecurityManager
   //Did we fail to regenerate our token at some point?
   private AtomicBoolean regenFailed;
 
+  // Thread factory for daemon threads so that application can shutdown
+  final ThreadFactory tf =
+      ThreadFactoryUtil.poolThreadFactory(getClass().getSimpleName(), true);
+
   //the thread we use for renewing all tokens
-  private static final ScheduledExecutorService keyRenewer =
-      Executors.newScheduledThreadPool(1);
+  private final ScheduledExecutorService keyRenewer =
+                                  Executors.newScheduledThreadPool(1, tf);
 
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair
@@ -154,7 +159,8 @@ final class SecurityManager
     try
     {
       newToken = websig.getCompactSerialization();
-    } catch (Exception e)
+    }
+    catch (Exception e)
     {
       regenFailed.set(true);
       LOGGER.error("Failed to regenerate token! Exception is as follows : {}",

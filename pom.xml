@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>0.9.0</version>
+    <version>0.9.1</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
@@ -38,6 +38,7 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <shadeBase>net.snowflake.ingest.internal</shadeBase>
     </properties>
 
     <build>
@@ -48,6 +49,67 @@
             </resource>
         </resources>
         <plugins>
+            <!-- Relocate all dependencies to internal to solve dependency conflict problem -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.1.1</version>
+                <configuration>
+                    <relocations>
+                        <relocation>
+                            <pattern>org.bitbucket</pattern>
+                            <shadedPattern>${shadeBase}.bitbucket</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>com.fasterxml</pattern>
+                            <shadedPattern>${shadeBase}.fasterxml</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.apache</pattern>
+                            <shadedPattern>${shadeBase}.apache</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.slf4j</pattern>
+                            <shadedPattern>${shadeBase}.slf4j</shadedPattern>
+                        </relocation>
+                    </relocations>
+                    <filters>
+                        <filter>
+                            <artifact>*:*</artifact>
+                            <excludes>
+                                <exclude>META-INF/LICENSE*</exclude>
+                                <exclude>META-INF/NOTICE*</exclude>
+                                <exclude>META-INF/DEPENDENCIES</exclude>
+                                <exclude>META-INF/maven/**</exclude>
+                                <exclude>META-INF/services/com.fasterxml.*</exclude>
+                                <exclude>META-INF/*.xml</exclude>
+                                <exclude>META-INF/*.SF</exclude>
+                                <exclude>META-INF/*.DSA</exclude>
+                                <exclude>META-INF/*.RSA</exclude>
+                            </excludes>
+                        </filter>
+                        <filter>
+                            <artifact>commons-logging:commons-logging</artifact>
+                            <excludes>
+                                <exclude>org/apache/commons/logging/impl/AvalonLogger.class</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                        </transformer>
+                    </transformers>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -155,7 +217,8 @@
         <dependency>
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc</artifactId>
-            <version>3.0.0</version>
+            <version>3.6.6</version>
+            <scope>test</scope>
         </dependency>
 
 
