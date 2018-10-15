@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
+import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ThreadFactoryUtil;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
@@ -41,6 +42,9 @@ final class SecurityManager
 
   //the name of the account on behalf of which we're connecting
   private String account;
+
+  // Fingerprint of public key sent from client in jwt payload
+  private String publicKeyFingerPrint;
 
   //the name of the user who will be loading the files
   private String user;
@@ -120,9 +124,15 @@ final class SecurityManager
     //create our JWT claim object
     JwtClaims claims = new JwtClaims();
 
-    //set the issuer to the fully qualified username
-    claims.setIssuer(account + "." + user);
-    LOGGER.info("Creating Token with Issuer {}", account + "." + user);
+    //set the subject to the fully qualified username
+    claims.setSubject(account + "." + user);
+    LOGGER.info("Creating Token with subject {}.{}", account, user);
+
+    //set the issuer
+    String publicKeyFPInJwt = calculatePublicKeyFp(keyPair);
+    claims.setIssuer(account + "." + user + '.' + publicKeyFPInJwt);
+    LOGGER.info("Creating Token with issuer {}.{}.{}"
+        , account, user, publicKeyFPInJwt);
 
     //the lifetime of the token is 59
     claims.setExpirationTimeMinutesInTheFuture(LIFETIME);
@@ -163,12 +173,12 @@ final class SecurityManager
     token.set(newToken);
   }
 
-
   /**
    * getToken - returns we've most recently generated
    *
    * @return the string version of a valid JWT token
-   * @throws SecurityException if we failed to regenerate a token since the last call
+   * @throws SecurityException if we failed to regenerate a token
+   * since the last call
    */
   String getToken()
   {
@@ -180,6 +190,32 @@ final class SecurityManager
     }
 
     return token.get();
+  }
+
+  /**
+   * Given a keypair
+   *
+   * @return the fingerprint of public key
+   *
+   * The idea is to hash public key's raw bytes using SHA-256 and
+   * converts hash into a string using Base64 encoding.
+   */
+  private String calculatePublicKeyFp(KeyPair keyPair)
+  {
+    // get the raw bytes of public key
+    byte[] publicKeyRawBytes = keyPair.getPublic().getEncoded();
+
+    // take sha256 on raw bytes and do base64 encode
+    publicKeyFingerPrint = String.format("SHA256:%s", Cryptor.sha256HashBase64(publicKeyRawBytes));
+    return publicKeyFingerPrint;
+  }
+
+  /**
+   * Only called by SecurityManagerTest
+   */
+  String getPublicKeyFingerPrint()
+  {
+    return publicKeyFingerPrint;
   }
 
 }
