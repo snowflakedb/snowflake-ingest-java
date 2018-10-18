@@ -27,7 +27,6 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Collections;
 import java.util.List;
@@ -244,7 +243,7 @@ public class SimpleIngestManager
   /**
    * Constructs a SimpleIngestManager for a given user in a specific account
    * In addition, this also takes takes the target table and source stage
-   * Finally, it also requires a valid private key string registered with
+   * Finally, it also requires a valid private key registered with
    * Snowflake DB
    *
    * @param account    The account into which we're loading
@@ -257,7 +256,7 @@ public class SimpleIngestManager
    *                                  invalid
    */
   public SimpleIngestManager(String account, String user, String pipe,
-                             String privateKey)
+                             PrivateKey privateKey)
       throws InvalidKeySpecException, NoSuchAlgorithmException
   {
     KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
@@ -300,7 +299,7 @@ public class SimpleIngestManager
   /**
    * Constructs a SimpleIngestManager for a given user in a specific account
    * In addition, this also takes takes the target table and source stage
-   * Finally, it also requires a valid private key string registered with
+   * Finally, it also requires a valid private key registered with
    * Snowflake DB
    *
    * @param account    the account into which we're loading
@@ -315,7 +314,7 @@ public class SimpleIngestManager
    * @throws InvalidKeySpecException  if private key or public key is invalid
    */
   public SimpleIngestManager(String account, String user, String pipe,
-                             String privateKey, String schemeName,
+                             PrivateKey privateKey, String schemeName,
                              String hostName, int port)
       throws NoSuchAlgorithmException, InvalidKeySpecException
   {
@@ -330,31 +329,27 @@ public class SimpleIngestManager
   }
 
   /**
-   * generate key pair object from private key String
+   * generate key pair object from private key
    *
-   * @param privateKey private key string
+   * @param privateKey private key
    * @return a key pair object
    * @throws NoSuchAlgorithmException if can't create key factory by using
    *                                  RSA algorithm
    * @throws InvalidKeySpecException  if private key or public key is invalid
    */
-  private KeyPair createKeyPairFromPrivateKey(String privateKey) throws
+  private KeyPair createKeyPairFromPrivateKey(PrivateKey privateKey) throws
       NoSuchAlgorithmException, InvalidKeySpecException
   {
-    //create private key from string
-    byte[] keyBytes = privateKey.getBytes();
-    PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(keyBytes);
     KeyFactory kf = KeyFactory.getInstance("RSA");
-    PrivateKey privateK = kf.generatePrivate(privateKeySpec);
 
     //generate public key from private key
-    RSAPrivateCrtKey privk = (RSAPrivateCrtKey) privateK;
+    RSAPrivateCrtKey privk = (RSAPrivateCrtKey) privateKey;
     RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(privk.getModulus(),
         privk.getPublicExponent());
     PublicKey publicK = kf.generatePublic(publicKeySpec);
 
     //create key pairs
-    return new KeyPair(publicK, privateK);
+    return new KeyPair(publicK, privateKey);
   }
 
 
