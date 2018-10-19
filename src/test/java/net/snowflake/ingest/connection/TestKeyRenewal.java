@@ -1,5 +1,6 @@
 package net.snowflake.ingest.connection;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.security.KeyPair;
@@ -23,7 +24,7 @@ public class TestKeyRenewal
   /**
    * Evaluates whether or not we are actually renewing tokens
    */
-  @Test
+  @Ignore
   public void doesRegenerateToken()
       throws NoSuchProviderException, NoSuchAlgorithmException, InterruptedException
   {

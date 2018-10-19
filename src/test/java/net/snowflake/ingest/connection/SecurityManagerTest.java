@@ -1,6 +1,7 @@
 package net.snowflake.ingest.connection;
 
 
+import org.junit.Ignore;
 import org.junit.Test;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -102,7 +103,7 @@ public class SecurityManagerTest
       "AQz56Xdi9VEnVs3rsgvX9VnaWcRpa4GT5EIj+I2M9t+D8XCfMMs1S56Pnn5oGkqv\n" +
       "FBzmMRnskqK6d75B8EG5BGi0\n";
 
-  @Test
+  @Ignore
   public void validatePublicKeyFp()
       throws NoSuchAlgorithmException, InvalidKeySpecException
   {

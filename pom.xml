@@ -221,6 +221,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-ext-jdk15on -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-ext-jdk15on</artifactId>
+            <version>1.60</version>
+            <scope>test</scope>
+        </dependency>
+
 
         <!-- Jose4J provides token authentication for GS -->
         <dependency>

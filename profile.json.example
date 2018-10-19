@@ -1,0 +1,13 @@
+{
+  "user": "user name",
+  "account": "account name",
+  "private_key": "PEM Private Key",
+  "port": 443,
+  "host": "account_name.snowflakecomputing.com",
+  "schema": "schema",
+  "scheme": "https",
+  "database": "database name",
+  "connect_string": "jdbc:snowflake://account_name.snowflakecomputing.com:443",
+  "ssl": "on",
+  "warehouse": "warehouse name"
+}
