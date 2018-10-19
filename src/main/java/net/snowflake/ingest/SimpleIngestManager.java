@@ -340,6 +340,9 @@ public class SimpleIngestManager
   private KeyPair createKeyPairFromPrivateKey(PrivateKey privateKey) throws
       NoSuchAlgorithmException, InvalidKeySpecException
   {
+    if(!(privateKey instanceof RSAPrivateCrtKey))
+      throw new IllegalArgumentException("Input private key is not a RSA private key");
+
     KeyFactory kf = KeyFactory.getInstance("RSA");
 
     //generate public key from private key

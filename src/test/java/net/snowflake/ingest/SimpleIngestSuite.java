@@ -7,7 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.After;
 
-import java.sql.Connection;
+import java.net.URL;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -21,11 +21,9 @@ import static org.junit.Assert.assertTrue;
  */
 public class SimpleIngestSuite
 {
-  private Connection conn = null;
-  private SimpleIngestManager manager = null;
-
-  private final String TEST_FILE_PATH = "file://test_files/test1.csv";
   private final String TEST_FILE_NAME = "test1.csv";
+
+  private String testFilePath = null;
 
   private String tableName = "";
   private String pipeName = "";
@@ -37,6 +35,14 @@ public class SimpleIngestSuite
   @Before
   public void beforeAll() throws Exception
   {
+
+    //get test file path
+
+    URL resource = SimpleIngestSuite.class.getResource(TEST_FILE_NAME);
+    testFilePath = resource.getFile();
+
+
+    //create stage, pipe, and table
     Random rand = new Random();
 
     Long num = Math.abs(rand.nextLong());
@@ -69,7 +75,6 @@ public class SimpleIngestSuite
   @After
   public void afterAll()
   {
-    //System.out.println(111);
     TestUtils.executeQuery(
         "drop pipe if exists " + pipeName
     );
@@ -84,14 +89,15 @@ public class SimpleIngestSuite
   }
 
   /**
-   * ingest test
+   * ingest test example
+   * ingest a simple file and check load history.
    */
   @Test
-  public void test1() throws Exception
+  public void testSimpleIngest() throws Exception
   {
     //put
     TestUtils.executeQuery(
-        "put " + TEST_FILE_PATH + " @" + stageName
+        "put file://" + testFilePath + " @" + stageName
     );
 
     //keeps track of whether we've loaded the file
@@ -153,7 +159,7 @@ public class SimpleIngestSuite
     //try to wait until the future is done
     try
     {
-      //wait up to 1 minutes to load
+      //wait up to 2 minutes to load
       result.get(2, TimeUnit.MINUTES);
       loaded = true;
     } finally
