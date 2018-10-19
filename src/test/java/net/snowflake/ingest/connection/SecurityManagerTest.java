@@ -1,6 +1,7 @@
 package net.snowflake.ingest.connection;
 
 
+import org.junit.Ignore;
 import org.junit.Test;
 import java.security.KeyFactory;
 import java.security.KeyPair;

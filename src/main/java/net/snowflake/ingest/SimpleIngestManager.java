@@ -20,7 +20,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -217,10 +224,11 @@ public class SimpleIngestManager
    * Snowflake DB
    *
    * @param account The account into which we're loading
-   * @param user the user performing this load
-   * @param pipe the fully qualified name of the pipe
+   * @param user    the user performing this load
+   * @param pipe    the fully qualified name of the pipe
    * @param keyPair the KeyPair we'll use to sign JWT tokens
    */
+  @Deprecated
   public SimpleIngestManager(String account, String user, String pipe,
                              KeyPair keyPair)
   {
@@ -235,27 +243,116 @@ public class SimpleIngestManager
   /**
    * Constructs a SimpleIngestManager for a given user in a specific account
    * In addition, this also takes takes the target table and source stage
+   * Finally, it also requires a valid private key registered with
+   * Snowflake DB
+   *
+   * @param account    The account into which we're loading
+   * @param user       the user performing this load
+   * @param pipe       the fully qualified name of the pipe
+   * @param privateKey the private key we'll use to sign JWT tokens
+   * @throws NoSuchAlgorithmException if can't create
+   *                                  key factory by using RSA algorithm
+   * @throws InvalidKeySpecException  if private key or public key is
+   *                                  invalid
+   */
+  public SimpleIngestManager(String account, String user, String pipe,
+                             PrivateKey privateKey)
+      throws InvalidKeySpecException, NoSuchAlgorithmException
+  {
+    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
+
+    //call our initializer method
+    init(account, user, pipe, keyPair);
+
+    //create the request builder
+    this.builder = new RequestBuilder(account, user, keyPair);
+  }
+
+
+  /**
+   * Constructs a SimpleIngestManager for a given user in a specific account
+   * In addition, this also takes takes the target table and source stage
    * Finally, it also requires a valid KeyPair object registered with
    * Snowflake DB
    *
-   * @param account the account into which we're loading
-   * @param user the user performing this load
-   * @param pipe the fully qualified name of the pipe
-   * @param keyPair the KeyPair we'll use to sign JWT tokens
+   * @param account    the account into which we're loading
+   * @param user       the user performing this load
+   * @param pipe       the fully qualified name of the pipe
+   * @param keyPair    the KeyPair we'll use to sign JWT tokens
    * @param schemeName http or https
-   * @param hostName the hostname
-   * @param port the port number
+   * @param hostName   the hostname
+   * @param port       the port number
    */
+  @Deprecated
   public SimpleIngestManager(String account, String user, String pipe,
-                      KeyPair keyPair, String schemeName,
-                      String hostName, int port)
+                             KeyPair keyPair, String schemeName,
+                             String hostName, int port)
   {
     //call our initializer method
     init(account, user, pipe, keyPair);
 
     //make the request builder we'll use to build messages to the service
     builder = new RequestBuilder(account, user, keyPair,
-                                 schemeName, hostName, port);
+        schemeName, hostName, port);
+  }
+
+  /**
+   * Constructs a SimpleIngestManager for a given user in a specific account
+   * In addition, this also takes takes the target table and source stage
+   * Finally, it also requires a valid private key registered with
+   * Snowflake DB
+   *
+   * @param account    the account into which we're loading
+   * @param user       the user performing this load
+   * @param pipe       the fully qualified name of the pipe
+   * @param privateKey the private key we'll use to sign JWT tokens
+   * @param schemeName http or https
+   * @param hostName   the hostname
+   * @param port       the port number
+   * @throws NoSuchAlgorithmException if can't create key factory by using
+   *                                  RSA algorithm
+   * @throws InvalidKeySpecException  if private key or public key is invalid
+   */
+  public SimpleIngestManager(String account, String user, String pipe,
+                             PrivateKey privateKey, String schemeName,
+                             String hostName, int port)
+      throws NoSuchAlgorithmException, InvalidKeySpecException
+  {
+    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
+    //call our initializer method
+    init(account, user, pipe, keyPair);
+
+    //make the request builder we'll use to build messages to the service
+    builder = new RequestBuilder(account, user, keyPair,
+        schemeName, hostName, port);
+
+  }
+
+  /**
+   * generate key pair object from private key
+   *
+   * @param privateKey private key
+   * @return a key pair object
+   * @throws NoSuchAlgorithmException if can't create key factory by using
+   *                                  RSA algorithm
+   * @throws InvalidKeySpecException  if private key or public key is invalid
+   */
+  private KeyPair createKeyPairFromPrivateKey(PrivateKey privateKey) throws
+      NoSuchAlgorithmException, InvalidKeySpecException
+  {
+    if(!(privateKey instanceof RSAPrivateCrtKey))
+      throw new IllegalArgumentException("Input private key is not a RSA private key");
+
+    KeyFactory kf = KeyFactory.getInstance("RSA");
+
+    //generate public key from private key
+    RSAPrivateCrtKey privk = (RSAPrivateCrtKey) privateKey;
+    RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(privk.getModulus(),
+        privk.getPublicExponent());
+    PublicKey publicK = kf.generatePublic(publicKeySpec);
+
+    //create key pairs
+    return new KeyPair(publicK, privateKey);
   }
 
 
