@@ -386,6 +386,27 @@
                                     <outputDirectory>target/jacoco-ut</outputDirectory>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>pre-integration-test</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>prepare-agent</goal>
+                                </goals>
+                                <configuration>
+                                    <destFile>target/jacoco-it.exec</destFile>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>post-integration-test</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>report</goal>
+                                </goals>
+                                <configuration>
+                                    <dataFile>target/jacoco-it.exec</dataFile>
+                                    <outputDirectory>target/jacoco-it</outputDirectory>
+                                </configuration>
+                            </execution>
                         </executions>
                         <configuration>
                             <skip>${jacoco.skip.instrument}</skip>
