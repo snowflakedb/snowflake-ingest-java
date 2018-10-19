@@ -3,6 +3,12 @@ Snowflake Ingest Service Java SDK
 
 .. image:: http://img.shields.io/:license-Apache%202-brightgreen.svg
     :target: http://www.apache.org/licenses/LICENSE-2.0.txt
+.. image:: https://travis-ci.org/snowflakedb/snowflake-ingest-java.svg?branch=master
+    :target: https://travis-ci.org/snowflakedb/snowflake-ingest-java
+.. image:: https://codecov.io/gh/snowflakedb/snowflake-ingest-java/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/snowflakedb/snowflake-ingest-java
+.. image:: https://maven-badges.herokuapp.com/maven-central/net.snowflake/snowflake-ingest-sdk/badge.svg?style=plastic   
+    :target: http://repo2.maven.org/maven2/net/snowflake/snowflake-ingest-sdk/
 
 The Snowflake Ingest Service SDK allows users to ingest files
 into their Snowflake data warehouse in a programmatic fashion via key-pair
