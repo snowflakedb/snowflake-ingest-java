@@ -19,7 +19,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Example ingest sdk integration test
  */
-public class SimpleIngestSuite
+public class SimpleIngestIT
 {
   private final String TEST_FILE_NAME = "test1.csv";
 
@@ -38,7 +38,7 @@ public class SimpleIngestSuite
 
     //get test file path
 
-    URL resource = SimpleIngestSuite.class.getResource(TEST_FILE_NAME);
+    URL resource = SimpleIngestIT.class.getResource(TEST_FILE_NAME);
     testFilePath = resource.getFile();
 
 

@@ -24,7 +24,7 @@ public class TestKeyRenewal
   /**
    * Evaluates whether or not we are actually renewing tokens
    */
-  @Ignore
+  @Test
   public void doesRegenerateToken()
       throws NoSuchProviderException, NoSuchAlgorithmException, InterruptedException
   {
