@@ -54,8 +54,10 @@ MVN_OPTIONS+=(
 echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
-mvn deploy ${MVN_OPTIONS[@]} ${MVN_GPG_OPTIONS[@]} \
-    -DpomFile=generated_public_pom.xml 
+mvn ${MVN_OPTIONS[@]} \
+    deploy \
+    -DpomFile=generated_public_pom.xml \
+    ${MVN_GPG_OPTIONS[@]} \
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
