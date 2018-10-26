@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>0.9.3</version>
+    <version>0.9.4</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
@@ -109,31 +109,6 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.6</version>
-                <executions>
-                    <execution>
-                        <phase>deploy</phase>
-                        <id>sign-package-and-deploy</id>
-                        <goals>
-                            <goal>sign-and-deploy-file</goal>
-                        </goals>
-                        <configuration>
-                            <file>target/${project.artifactId}-${project.version}.jar</file>
-                            <repositoryId>ossrh</repositoryId>
-                            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-                            <javadoc>target/${project.artifactId}-${project.version}-javadoc.jar</javadoc>
-                            <sources>target/${project.artifactId}-${project.version}-sources.jar</sources>
-                            <groupId>${project.groupId}</groupId>
-                            <artifactId>${project.artifactId}</artifactId>
-                            <version>${project.version}</version>
-                            <pomFile>pom.xml</pomFile>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -335,6 +310,41 @@
                                 <goals>
                                     <goal>shade</goal>
                                 </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>ossrh-deploy</id>
+            <activation>
+                <property>
+                    <name>ossrh-deploy</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <phase>deploy</phase>
+                                <goals>
+                                    <goal>sign-and-deploy-file</goal>
+                                </goals>
+                                <configuration>
+                                    <file>target/${project.artifactId}-${project.version}.jar</file>
+                                    <repositoryId>${env.MVN_REPOSITORY_ID}</repositoryId>
+                                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven</url>
+                                    <pomFile>generated_public_pom.xml</pomFile>
+                                    <javadoc>target/${project.artifactId}-${project.version}-javadoc.jar</javadoc>
+                                    <sources>target/${project.artifactId}-${project.version}-sources.jar</sources>
+                                    <keyname>${env.GPG_KEY_ID}</keyname>
+                                    <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
