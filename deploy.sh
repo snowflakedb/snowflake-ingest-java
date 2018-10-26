@@ -17,7 +17,7 @@ else
   MVN_GPG_OPTIONS+=("-Dgpg.passphrase=$GPG_KEY_PASSPHRASE")
 fi
 
-if [ -z "$GPG_PRIVATE_KEY"]; then
+if [ -z "$GPG_PRIVATE_KEY" ]; then
   echo "[ERROR] GPG private key file is not specified!"
   exit 1
 fi
@@ -49,16 +49,13 @@ SETTINGS.XML
 MVN_OPTIONS+=(
   "--settings" "$OSSRH_DEPLOY_SETTINGS_XML"
   "--batch-mode"
-  "-X"
 )
 
 echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
-mvn ${MVN_OPTIONS[@]} \
-    gpg:sign-and-deploy-file \
-    -DpomFile=generated_public_pom.xml \
-    ${MVN_GPG_OPTIONS[@]} \
+mvn deploy ${MVN_OPTIONS[@]} ${MVN_GPG_OPTIONS[@]} \
+    -DpomFile=generated_public_pom.xml
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
