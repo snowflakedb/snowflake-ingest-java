@@ -5,16 +5,11 @@ THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ -z "$GPG_KEY_ID" ]; then
   echo "[ERROR] Key Id not specified!"
   exit 1
-else
-# name can include spaces
-  MVN_GPG_OPTIONS+=("\"-Dgpg.keyname=$GPG_KEY_ID\"")
 fi
 
 if [ -z "$GPG_KEY_PASSPHRASE" ]; then
   echo "[ERROR] GPG passphrase is not specified for $GPG_KEY_ID!"
   exit 1
-else
-  MVN_GPG_OPTIONS+=("-Dgpg.passphrase=$GPG_KEY_PASSPHRASE")
 fi
 
 if [ -z "$GPG_PRIVATE_KEY" ]; then
@@ -54,8 +49,8 @@ MVN_OPTIONS+=(
 echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
-mvn deploy ${MVN_OPTIONS[@]} ${MVN_GPG_OPTIONS[@]} \
-    -DpomFile=generated_public_pom.xml
+
+mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
