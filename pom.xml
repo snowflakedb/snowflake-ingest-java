@@ -337,8 +337,8 @@
                                 </goals>
                                 <configuration>
                                     <file>target/${project.artifactId}-${project.version}.jar</file>
-                                    <repositoryId>${env.MVN_REPOSITORY_ID}</repositoryId>
-                                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven</url>
+                                    <repositoryId>ossrh</repositoryId>
+                                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
                                     <pomFile>generated_public_pom.xml</pomFile>
                                     <javadoc>target/${project.artifactId}-${project.version}-javadoc.jar</javadoc>
                                     <sources>target/${project.artifactId}-${project.version}-sources.jar</sources>
