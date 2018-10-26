@@ -5,9 +5,6 @@ THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ -z "$GPG_KEY_ID" ]; then
   echo "[ERROR] Key Id not specified!"
   exit 1
-else
-# name can include spaces
-  MVN_GPG_OPTIONS+=("\"-Dgpg.keyname=$GPG_KEY_ID\"")
 fi
 
 if [ -z "$GPG_KEY_PASSPHRASE" ]; then
@@ -43,6 +40,16 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
       <password>$SONATYPE_PWD</password>
     </server>
   </servers>
+  <profiles>
+    <profile>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <gpg.keyname>$GPG_KEY_ID</gpg.keyname>
+      </properties>
+    </profile>
+  <profiles>
 </settings>
 SETTINGS.XML
 
