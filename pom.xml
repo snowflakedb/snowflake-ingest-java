@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>0.9.4</version>
+    <version>0.9.5</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
@@ -45,6 +45,7 @@
     </properties>
 
     <build>
+        <finalName>${project.artifactId}</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -109,6 +110,22 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>check-shaded-content</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${basedir}/scripts/check_content.sh</executable>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -262,6 +279,10 @@
                                 <relocation>
                                     <pattern>org.bitbucket</pattern>
                                     <shadedPattern>${shadeBase}.bitbucket</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.jose4j</pattern>
+                                    <shadedPattern>${shadeBase}.jose4j</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.fasterxml</pattern>
