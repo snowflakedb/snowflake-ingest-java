@@ -357,12 +357,12 @@
                                     <goal>sign-and-deploy-file</goal>
                                 </goals>
                                 <configuration>
-                                    <file>target/${project.artifactId}-${project.version}.jar</file>
+                                    <file>target/${project.artifactId}.jar</file>
                                     <repositoryId>ossrh</repositoryId>
                                     <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
                                     <pomFile>generated_public_pom.xml</pomFile>
-                                    <javadoc>target/${project.artifactId}-${project.version}-javadoc.jar</javadoc>
-                                    <sources>target/${project.artifactId}-${project.version}-sources.jar</sources>
+                                    <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
+                                    <sources>target/${project.artifactId}-sources.jar</sources>
                                     <keyname>${env.GPG_KEY_ID}</keyname>
                                     <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
                                 </configuration>
