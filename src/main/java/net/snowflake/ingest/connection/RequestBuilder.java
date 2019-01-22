@@ -222,7 +222,8 @@ public final class RequestBuilder
     //save our host, scheme and port info
     port = portNum;
     scheme = schemeName;
-    host = hostName;
+//    host = hostName;
+    host = accountName + "." + hostName;
 
     LOGGER.info("Creating a RequestBuilder with arguments : " +
             "Account : {}, User : {}, Scheme : {}, Host : {}, Port : {}", account,
