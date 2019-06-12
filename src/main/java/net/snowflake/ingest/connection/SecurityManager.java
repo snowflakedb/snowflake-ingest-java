@@ -4,15 +4,20 @@
 
 package net.snowflake.ingest.connection;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ThreadFactoryUtil;
-import org.jose4j.jws.AlgorithmIdentifiers;
-import org.jose4j.jws.JsonWebSignature;
-import org.jose4j.jwt.JwtClaims;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.KeyPair;
+import java.util.Date;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -121,46 +126,43 @@ final class SecurityManager
    */
   private void regenerateToken()
   {
-    //create our JWT claim object
-    JwtClaims claims = new JwtClaims();
+    //create our JWT claim builder object
+    JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder();
 
     //set the subject to the fully qualified username
-    claims.setSubject(account + "." + user);
-    LOGGER.info("Creating Token with subject {}.{}", account, user);
+    String subject = String.format("%s.%s", account, user);
+    LOGGER.info("Creating Token with subject {}", subject);
 
     //set the issuer
     String publicKeyFPInJwt = calculatePublicKeyFp(keyPair);
-    claims.setIssuer(account + "." + user + '.' + publicKeyFPInJwt);
-    LOGGER.info("Creating Token with issuer {}.{}.{}"
-        , account, user, publicKeyFPInJwt);
+    String issuer = String.format("%s.%s.%s", account, user, publicKeyFPInJwt);
+    LOGGER.info("Creating Token with issuer {}", issuer);
 
-    //the lifetime of the token is 59
-    claims.setExpirationTimeMinutesInTheFuture(LIFETIME);
+    // iat set to now
+    Date iat = new Date(System.currentTimeMillis());
 
-    //the token was issued as of this moment in time
-    claims.setIssuedAtToNow();
+    // expiration in 59 minutes
+    Date exp = new Date(iat.getTime() + 59 * 60 * 1000);
 
-    //now we need to create the JWS that will contain these claims
-    JsonWebSignature websig = new JsonWebSignature();
+    // build claim set
+    JWTClaimsSet claimsSet = builder.issuer(issuer)
+        .subject(subject)
+        .issueTime(iat)
+        .expirationTime(exp)
+        .build();
 
-    //set the payload of the web signature to a json version of our claims
-    websig.setPayload(claims.toJson());
-    LOGGER.info("Claims JSON is {}", claims.toJson());
+    SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256),
+                                        claimsSet);
 
-    //sign the signature with our private key
-    websig.setKey(keyPair.getPrivate());
+    JWSSigner signer = new RSASSASigner(this.keyPair.getPrivate());
 
-    //sign using RSA-SHA256
-    websig.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
-
-    //the new token we want to use
     String newToken;
-    //Extract our serialization
     try
     {
-      newToken = websig.getCompactSerialization();
+      signedJWT.sign(signer);
+      newToken = signedJWT.serialize();
     }
-    catch (Exception e)
+    catch (JOSEException e)
     {
       regenFailed.set(true);
       LOGGER.error("Failed to regenerate token! Exception is as follows : {}",
