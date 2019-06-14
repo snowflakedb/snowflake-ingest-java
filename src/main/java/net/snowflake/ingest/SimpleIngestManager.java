@@ -223,7 +223,13 @@ public class SimpleIngestManager
    * Finally, it also requires a valid KeyPair object registered with
    * Snowflake DB
    *
+   * This method is deprecated, please use the constructor that only requires
+   * PrivateKey instead of KeyPair.
+   *
    * @param account The account into which we're loading
+   *                Note: account should not include region or cloud provider
+   *                info. e.g. if host is testaccount.us-east-1.azure
+   *                .snowflakecomputing.com, account should be testaccount
    * @param user    the user performing this load
    * @param pipe    the fully qualified name of the pipe
    * @param keyPair the KeyPair we'll use to sign JWT tokens
@@ -246,7 +252,16 @@ public class SimpleIngestManager
    * Finally, it also requires a valid private key registered with
    * Snowflake DB
    *
+   * Note: this method only takes in account parameter and derive the hostname,
+   * i.e. testaccount.snowfakecomputing.com. If your deployment is not aws
+   * us-west, please use the constructor that accept hostname as argument
+   *
    * @param account    The account into which we're loading
+   *                   Note: account should not include region or cloud provider
+   *                   info. e.g. if host is testaccount.us-east-1.azure
+   *                   .snowflakecomputing.com, account should be testaccount.
+   *                   If this is the case, you should use the constructor that
+   *                   accepts hostname as argument
    * @param user       the user performing this load
    * @param pipe       the fully qualified name of the pipe
    * @param privateKey the private key we'll use to sign JWT tokens
@@ -275,7 +290,15 @@ public class SimpleIngestManager
    * Finally, it also requires a valid KeyPair object registered with
    * Snowflake DB
    *
+   * This method is deprecated, please use the constructor that only requires
+   * PrivateKey instead of KeyPair.
+   *
    * @param account    the account into which we're loading
+   *                   Note: account should not include region or cloud provider
+   *                   info. e.g. if host is testaccount.us-east-1.azure
+   *                   .snowflakecomputing.com account should be testaccount
+   *                   If this is the case, you should use the constructor that
+   *                   accepts hostname as argument
    * @param user       the user performing this load
    * @param pipe       the fully qualified name of the pipe
    * @param keyPair    the KeyPair we'll use to sign JWT tokens
@@ -303,11 +326,15 @@ public class SimpleIngestManager
    * Snowflake DB
    *
    * @param account    the account into which we're loading
+   *                   Note: account should not include region or cloud provider
+   *                   info. e.g. if host is testaccount.us-east-1.azure
+   *                   .snowflakecomputing.com, account should be testaccount
    * @param user       the user performing this load
    * @param pipe       the fully qualified name of the pipe
    * @param privateKey the private key we'll use to sign JWT tokens
    * @param schemeName http or https
-   * @param hostName   the hostname
+   * @param hostName   the hostname i.e. testaccount.us-east-1.azure
+   *                   .snowflakecomputing.com
    * @param port       the port number
    * @throws NoSuchAlgorithmException if can't create key factory by using
    *                                  RSA algorithm

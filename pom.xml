@@ -194,26 +194,26 @@
         </dependency>
 
 
-        <!-- Jose4J provides token authentication for GS -->
+        <!-- jwt token for key pair authentication with GS -->
         <dependency>
-            <groupId>org.bitbucket.b_c</groupId>
-            <artifactId>jose4j</artifactId>
-            <version>0.5.2</version>
-        </dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>7.1</version>
+         </dependency>
 
 
         <!-- Jackson for marshalling and unmarshalling JSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.9.6</version>
+            <version>2.9.9</version>
         </dependency>
 
         <!-- Jackson Databind api -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.9.6</version>
+            <version>2.9.9</version>
         </dependency>
 
 
@@ -277,12 +277,22 @@
                         <configuration>
                             <relocations>
                                 <relocation>
-                                    <pattern>org.bitbucket</pattern>
-                                    <shadedPattern>${shadeBase}.bitbucket</shadedPattern>
+                                    <pattern>com.nimbusds</pattern>
+                                    <shadedPattern>
+                                        ${shadeBase}.com.nimbusds
+                                    </shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>org.jose4j</pattern>
-                                    <shadedPattern>${shadeBase}.jose4j</shadedPattern>
+                                    <pattern>net.jcip</pattern>
+                                    <shadedPattern>${shadeBase}.net.jcip</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>net.minidev</pattern>
+                                    <shadedPattern>${shadeBase}.net.minidev</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.objectweb</pattern>
+                                    <shadedPattern>${shadeBase}.org.objectweb</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.fasterxml</pattern>
