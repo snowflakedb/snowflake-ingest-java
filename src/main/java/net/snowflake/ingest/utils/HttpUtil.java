@@ -4,11 +4,14 @@
 
 package net.snowflake.ingest.utils;
 
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContexts;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;
@@ -23,6 +26,13 @@ import org.slf4j.LoggerFactory;
  */
 public class HttpUtil
 {
+
+  private static String USE_PROXY = "http.useProxy";
+  private static String PROXY_HOST = "http.proxyHost";
+  private static String PROXY_PORT = "http.proxyPort";
+  private static String PROXY_SCHEME = "http";
+
+
   static private HttpClient httpClient;
 
   static public HttpClient getHttpClient()
@@ -38,6 +48,7 @@ public class HttpUtil
       LoggerFactory.getLogger(HttpUtil.class);
   private static void initHttpClient()
   {
+
     Security.setProperty("ocsp.enable", "true");
 
     SSLContext sslContext = SSLContexts.createDefault();
@@ -55,7 +66,8 @@ public class HttpUtil
      * The max retry time is 3.
      * The interval time is backoff.
      */
-    httpClient = HttpClients.custom()
+
+    HttpClientBuilder clientBuilder = HttpClients.custom()
         .setSSLSocketFactory(f)
         .setServiceUnavailableRetryStrategy(new ServiceUnavailableRetryStrategy()
         {
@@ -64,14 +76,14 @@ public class HttpUtil
           int REQUEST_TIMEOUT = 408;
           @Override
           public boolean retryRequest(
-              final HttpResponse response, final int executionCount,
-              final HttpContext context)
+            final HttpResponse response, final int executionCount,
+            final HttpContext context)
           {
             this.executionCount = executionCount;
             int statusCode = response.getStatusLine().getStatusCode();
 
             boolean needNextRetry = (statusCode == REQUEST_TIMEOUT || statusCode >= 500 )
-                && executionCount < MAX_RETRIES + 1;
+              && executionCount < MAX_RETRIES + 1;
             if(executionCount == MAX_RETRIES + 1)
             {
               LOGGER.info("Reach the max retry time.");
@@ -95,8 +107,32 @@ public class HttpUtil
             return interval;
           }
 
-        })
-        .build();
+        });
+
+    //proxy settings
+    if("true".equalsIgnoreCase(System.getProperty(USE_PROXY)))
+    {
+      if(System.getProperty(PROXY_PORT) == null)
+      {
+        throw new IllegalArgumentException(
+          "proxy port number is not provided, please assign proxy port to http.proxyPort option"
+        );
+      }
+      if(System.getProperty(PROXY_HOST) == null)
+      {
+        throw new IllegalArgumentException(
+          "proxy host IP is not provided, please assign proxy host IP to http.proxyHost option"
+        );
+      }
+      String proxyHost = System.getProperty(PROXY_HOST);
+      int proxyPort = Integer.parseInt(System.getProperty(PROXY_PORT));
+      HttpHost proxy =  new HttpHost(proxyHost, proxyPort, PROXY_SCHEME);
+      DefaultProxyRoutePlanner routePlanner = new DefaultProxyRoutePlanner(proxy);
+      clientBuilder = clientBuilder.setRoutePlanner(routePlanner);
+    }
+
+    httpClient = clientBuilder.build();
+
   }
 
 }
