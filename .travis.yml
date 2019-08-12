@@ -3,7 +3,9 @@ language: java
 matrix:
   include:
     - jdk: oraclejdk8
- 
+
+dist: trusty
+
 env:
   - JACOCO_COVERAGE=true
 
