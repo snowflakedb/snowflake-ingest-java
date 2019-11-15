@@ -74,4 +74,10 @@ If you would just like to build the jar in the source directory, you can run
 
 However, for general usage, pulling a pre-built jar from maven is recommended.
 
+Testing (SimpleIngestIT Test)
+=====================================
 
+- Modify ``TestUtils.java`` file and replace *PROFILE_PATH* with ``profile.json.example`` for testing.
+    - ``profile.json`` is used because an encrypted file will be decrypted for Travis-CI testing. Check ``.travis.yml``
+- Use an unencrypted version(Only for testing) of private key while generating keys(private and public pair) using OpenSSL.
+    - Here is the link for documentation `Key Pair Generator <https://docs.snowflake.net/manuals/user-guide/python-connector-example.html#using-key-pair-authentication>`_

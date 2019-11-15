@@ -20,7 +20,7 @@ import org.apache.commons.codec.binary.Base64;
 
 public class TestUtils
 {
-  //profile path
+  // profile path, follow readme for the format
   private final static String PROFILE_PATH = "profile.json";
 
   private final static ObjectMapper mapper = new ObjectMapper();
