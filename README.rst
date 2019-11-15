@@ -74,4 +74,8 @@ If you would just like to build the jar in the source directory, you can run
 
 However, for general usage, pulling a pre-built jar from maven is recommended.
 
+Testing (SimpleIngestIT Test)
+=====================================
 
+- Modify ``TestUtils.java`` file and replace *PROFILE_PATH* with ``profile.json.example`` for testing.
+- Use an unencrypted version(Only for testing) of private key while generating keys(private and public pair) using OpenSSL.

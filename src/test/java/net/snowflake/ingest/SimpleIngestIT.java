@@ -14,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -52,7 +53,6 @@ public class SimpleIngestIT
     pipeName = "ingest_sdk_test_pipe_" + num;
 
     stageName = "ingest_sdk_test_stage_" + num;
-
 
     TestUtils.executeQuery(
         "create or replace table " + tableName + " (str string, num int)"
@@ -111,6 +111,8 @@ public class SimpleIngestIT
 
     //get an insert response after we submit
     IngestResponse insertResponse = manager.ingestFile(myFile, null);
+
+    assertEquals("SUCCESS", insertResponse.getResponseCode());
 
     //create a new thread
     ExecutorService service = Executors.newSingleThreadExecutor();

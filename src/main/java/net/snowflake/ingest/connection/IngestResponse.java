@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.UUID;
 
 /**
@@ -12,10 +13,23 @@ import java.util.UUID;
  *
  * @author obabarinsa
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class IngestResponse
 {
   //the requestId given to us by the user
-  String requestId;
+  private String requestId;
+
+  // response from the API
+  private String responseCode;
+
+  @Override
+  public String toString()
+  {
+    return "IngestResponse{" +
+        "requestId='" + requestId + '\'' +
+        ", responseCode='" + responseCode + '\'' +
+        '}';
+  }
 
   /**
    * getRequestUUID - the requestId as a UUID
@@ -26,9 +40,14 @@ public class IngestResponse
   {
     return UUID.fromString(requestId);
   }
-  @Override
-  public String toString()
+
+  public String getRequestId()
   {
     return requestId;
+  }
+
+  public String getResponseCode()
+  {
+    return responseCode;
   }
 }

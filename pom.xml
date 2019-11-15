@@ -97,6 +97,10 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
+                        <configuration>
+                            <additionalparam>-Xdoclint:none</additionalparam>
+                            <source>8</source>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -246,6 +250,15 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.21</version>
+        </dependency>
+
+        <!-- java.lang.NoClassDefFoundError: javax/xml/bind/JAXBException -->
+        <!-- https://stackoverflow.com/questions/43574426/how-to-resolve-java
+        -lang-noclassdeffounderror-javax-xml-bind-jaxbexception-in-j/48404582-->
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>2.3.1</version>
         </dependency>
 
 

@@ -131,7 +131,6 @@ public final class ServiceResponseHandler
     //grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
 
-
     //read out our blob into a pojo
     return mapper.readValue(blob, HistoryResponse.class);
 
