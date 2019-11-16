@@ -189,6 +189,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-fips -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-fips</artifactId>
+            <version>1.0.3</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-ext-jdk15on -->
         <dependency>
             <groupId>org.bouncycastle</groupId>
