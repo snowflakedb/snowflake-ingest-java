@@ -21,6 +21,8 @@ import java.security.NoSuchProviderException;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.sql.Connection;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
@@ -78,6 +80,18 @@ public class FipsCompliantIngestIT
 
   // Set of files to ingest
   private static Set<String> files = new TreeSet<>();
+
+  // Constants for timeouts and thread sleep time for getHistory API
+  private static final int SLEEP_TIME_BETWEEN_HISTORY_APIS_MILLS = 500;
+  private static final int TIMEOUT_FOR_GET_HISTORY_API_MINUTES = 2;
+
+  // Rows to insert in each file
+  private static final List<Integer> ROW_SIZE_IN_CSV_FILES =
+      Arrays.asList(10, 15, 20);
+  private static final int SUM_ROWS_CSV_FILES = ROW_SIZE_IN_CSV_FILES
+      .stream()
+      .mapToInt(Integer::intValue)
+      .sum();
 
   /**
    * Creates the stages and files we'll use for this test
@@ -179,7 +193,7 @@ public class FipsCompliantIngestIT
         HistoryResponse filesHistory = null;
         while (true)
         {
-          Thread.sleep(500);
+          Thread.sleep(SLEEP_TIME_BETWEEN_HISTORY_APIS_MILLS);
           HistoryResponse response = manager.getHistory(null, null, beginMark);
           if (response.getNextBeginMark() != null)
           {
@@ -217,7 +231,8 @@ public class FipsCompliantIngestIT
     //fork off waiting for a load to the service
     Future<HistoryResponse> result = service.submit(historyCaller);
 
-    HistoryResponse response = result.get(2, TimeUnit.MINUTES);
+    HistoryResponse response = result.get(TIMEOUT_FOR_GET_HISTORY_API_MINUTES,
+                                          TimeUnit.MINUTES);
     return response;
   }
 
@@ -234,12 +249,12 @@ public class FipsCompliantIngestIT
     final String fileWithWrongCSVFormat = "letters.csv";
     IngestExampleHelper.makeLocalDirectory(filesDirectory);
     IngestExampleHelper.makeSampleFile(filesDirectory, fileWithWrongCSVFormat);
-    files.add(IngestExampleHelper.createTempCsv(filesDirectory, "sample", 10).
-        getFileName().toString());
-    files.add(IngestExampleHelper.createTempCsv(filesDirectory, "sample", 15).
-        getFileName().toString());
-    files.add(IngestExampleHelper.createTempCsv(filesDirectory, "sample", 20).
-        getFileName().toString());
+    for (Integer rowCount : ROW_SIZE_IN_CSV_FILES)
+    {
+      files.add(IngestExampleHelper.createTempCsv(filesDirectory,
+                                                  "sample",
+                                                  rowCount).getFileName().toString());
+    }
     files.add(fileWithWrongCSVFormat);
     conn = IngestExampleHelper.getConnection(USER, PASSWORD,
                                              ACCOUNT, HOST, PORT);
@@ -308,7 +323,7 @@ public class FipsCompliantIngestIT
           .collect(Collectors.toSet());
 
       // Sum of all rows = 45
-      Assert.assertEquals(45, actualSumOfRowsInserted);
+      Assert.assertEquals(SUM_ROWS_CSV_FILES, actualSumOfRowsInserted);
 
       // One of the files was failed to load, letters.csv
       Assert.assertTrue(loadedStatus.contains("LOAD_FAILED"));
