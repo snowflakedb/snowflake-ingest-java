@@ -75,6 +75,7 @@ public class SimpleIngestIT
   @After
   public void afterAll()
   {
+    System.out.println("Inside afterAll of SimpleIngestIT test");
     TestUtils.executeQuery(
         "drop pipe if exists " + pipeName
     );
