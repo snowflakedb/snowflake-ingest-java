@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -133,9 +133,9 @@ public class HistoryResponse
     }
 
     /**The time at which this file was enqueued by the service  ISO 8601 UTC */
-    public LocalDate getTimeReceived()
+    public LocalDateTime getTimeReceived()
     {
-      return LocalDate.parse(timeReceived, DateTimeFormatter.ISO_DATE_TIME);
+      return LocalDateTime.parse(timeReceived, DateTimeFormatter.ISO_DATE_TIME);
     }
 
     /**The time at which this file was enqueued by the service  ISO 8601 UTC */
@@ -146,13 +146,13 @@ public class HistoryResponse
 
     /**
      * getLastInsertTime - converts the ISO formatted lastInsertTime string
-     * into a LocalDate
+     * into a LocalDateTime
      *
-     * @return a LocalDate object representation of our current time
+     * @return a LocalDateTime object representation of our current time
      */
-    public LocalDate getLastInsertTime()
+    public LocalDateTime getLastInsertTime()
     {
-      return LocalDate.parse(lastInsertTime, DateTimeFormatter.ISO_DATE_TIME);
+      return LocalDateTime.parse(lastInsertTime, DateTimeFormatter.ISO_DATE_TIME);
     }
 
     /**Time data from this file was last inserted into the table. ISO 8601 UTC */
