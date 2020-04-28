@@ -23,6 +23,7 @@ public class IngestResponseException extends java.lang.Exception
 
   IngestResponseException(int errorCode, IngestExceptionBody body)
   {
+    super("HTTP Status: " + errorCode + " ErrorBody: " + body.toString());
     this.errorCode = errorCode;
     this.errorBody = body;
   }
