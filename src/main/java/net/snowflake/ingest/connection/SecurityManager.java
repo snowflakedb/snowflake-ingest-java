@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author obabarinsa
  * @since 1.8
  */
-final class SecurityManager
+final class SecurityManager implements AutoCloseable
 {
   //the logger for SecurityManager
   private static final Logger LOGGER =
@@ -220,4 +220,12 @@ final class SecurityManager
     return publicKeyFingerPrint;
   }
 
+  /**
+   * Currently, it only shuts down the instance of ExecutorService.
+   */
+  @Override
+  public void close()
+  {
+    keyRenewer.shutdown();
+  }
 }
