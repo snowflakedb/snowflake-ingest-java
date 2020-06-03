@@ -535,4 +535,16 @@ public final class RequestBuilder
 
     return get;
   }
+
+  /**
+   * Closes the resources being used by RequestBuilder object.
+   * {@link SecurityManager} is one such resource which uses a threadpool
+   * which needs to be shutdown once SimpleIngestManager is done interacting
+   * with Snowpipe Service (Rest APIs)
+   * @throws Exception
+   */
+  public void closeResources()
+  {
+    securityManager.close();
+  }
 }

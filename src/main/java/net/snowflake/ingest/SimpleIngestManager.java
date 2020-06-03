@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
  *
  * @author obabarinsa
  */
-public class SimpleIngestManager
+public class SimpleIngestManager implements AutoCloseable
 {
 
   /**
@@ -591,4 +591,15 @@ public class SimpleIngestManager
     return ServiceResponseHandler.unmarshallHistoryRangeResponse(response);
   }
 
+  /**
+   * Closes the resources associated with this object. Resources cannot be
+   * reopened, initialize new instance of this class
+   * {@link SimpleIngestManager} to reopen and start ingesting/monitoring new
+   * data.
+   */
+  @Override
+  public void close()
+  {
+    builder.closeResources();
+  }
 }
