@@ -2,19 +2,16 @@ sudo: false
 language: java
 matrix:
   include:
-    - jdk: oraclejdk8
-
+  - jdk: oraclejdk8
 dist: trusty
-
 env:
+  global:
+  - secure: EhKfyEovzcV3wKeIfqwYof3D8ubEPqGlIH9ccZpsTDf6tPFWTG0WxgPH6oJ3lN27CcdnE/xGwjP5ndHHke+XXH3UpSGg9/J2eVluFS954OSSsndwlHCu7rIx1aR4NGvVe/JjfM/I3qF5TgHLf7Tqm3JJOQG564edC1OzheF+7ZkmJB73iPf0g6cRnj1+x8jDYuxSiOkIpdLOOxmEJABufwVXuywIg9ZZz6ZOnQuNcAPNgEwqyuidmEorWWFDGek3bYY4y1/wwBO4Q1CRJS9MGAd8joV5hoTDOkauzrDlfG3a2vznrLuaL3RsWGVhY3RMr2jbda/+BILwxbxbljKRN1XD6pcIBGqqA0SlmKIKDplG/Rt1VyIRp4A2jAG9eY2nbhjs1zgRHGMD6zjEWxL5XiM0hMf2pOyRtEqF3wSOdHZkgMtwxuu3wYEZAF5s5KasWFCsFE0HMJIxEfP7KS4TnfjzTn4h4ettFEigDaXgwy1Rkhpf/2mQz5zKs23+yTpyHozPCJWbwKNjDEc14Xa6H7Q/IkChSMCC1MT+cysEdMxDPCBVDgxkdCTccgApZFXxJqglt6ifRL34rGlbvp9UpImOJ3N+YWO88oJYz8IdzUyQODo7YYo2MfjrPrxwLdlsIwTkMi+M4+SzIvVhPwDKgjAvq1VAw0cfRW/k/7EwkmM=
   - JACOCO_COVERAGE=true
-
 script:
-  - "./scripts/run_travis.sh"
-
+- "./scripts/run_travis.sh"
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
-
+- bash <(curl -s https://codecov.io/bash)
 before_install:
 - openssl aes-256-cbc -K $encrypted_0a71570cbb11_key -iv $encrypted_0a71570cbb11_iv
   -in profile.json.enc -out profile.json -d
