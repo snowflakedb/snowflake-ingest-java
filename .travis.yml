@@ -7,8 +7,9 @@ matrix:
 dist: trusty
 
 env:
+  global:
   - JACOCO_COVERAGE=true
-
+  - secure: kcseeEJKQG4n364qxhWzuvAVw+HML86Px7F39MHBTcneSXDg8k6Bs6cqAZPIIMeUDB6CS5xUF/dyKEslAwAplpu94t08J71y3kJu9caq1rd5tTeXFK2+YWYJFwsKHJNQXiSGlQsMSQFFyfjVJqqWCUDOU0m4S0GKhL7aAQZq+648yfO0s3RKZUYTmRlQMKzkpEX7EBLqzZ5tN/7Q3Fp+js1Z6kVljPws5fbzsAY7hW6tUqolgLwPZjfgP0VBE6SLQytGypNNd64H7gI6CK4HX9cRukH4HZh62d948u1xk6GVWcotekyPiWFRegBtZITH6iHlJr5107/kKzof+Me9rvCi0jSpUTz/2iNca9+J/qlAlob2wcHgM7AojVC+CttyVuqhwK81SXQC/FSqYYQ9otaB1yLbIG+Ojovvn9XU0yGW2HE9hCNO2+6bLfMq23K6FxbBHV0TsXZ6roO7zVBX2WZe5rIxSviouE07Bx34RkIV/49p4ijbw5bt54tGHprDtqu9ppw/OSjJEjtCBXVjNoJHHgzkmqkqMjdp2sJcN24HaT98EjnFawuIn8K3nUilIcwEmnWlyqrC6wjwhIcCiWCnuGzUYi99OpgQRAyyQWIn3eZCngUrIpzhYA+Qgj1E1ZidpQQZGmjVvM/i5j9QKXUMTgzZw84Lrd/k95WDyMQ=
 script:
   - "./scripts/run_travis.sh"
 

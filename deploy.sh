@@ -85,3 +85,6 @@ mvn ${MVN_OPTIONS[@]} \
     -DstagingDescription="Automated Release"
 
 rm $OSSRH_DEPLOY_SETTINGS_XML
+
+#white source
+scripts/run_whitesource.sh
