@@ -22,10 +22,17 @@ PRODUCT_NAME="snowflake-ingest-java"
 # PROJECT_NAME is your project's name or repo name if your project spans multiple repositories
 PROJECT_NAME="snowflake-ingest-java"
 
+<<<<<<< HEAD
 #if [[ -z "${JOB_BASE_NAME}" ]]; then
 #   echo "[ERROR] No JOB_BASE_NAME is set. Run this on Jenkins"
 #   exit 0
 #fi
+=======
+if [[ -z "${JOB_BASE_NAME}" ]]; then
+   echo "[ERROR] No JOB_BASE_NAME is set. Run this on Jenkins"
+   exit 0
+fi
+>>>>>>> [SNOW-169001] White source integration
 
 # Download the latest whitesource unified agent to do the scanning if there is no existing one
 curl -LO https://github.com/whitesource/unified-agent-distribution/releases/latest/download/wss-unified-agent.jar
@@ -41,7 +48,11 @@ fi
 # SCAN_CONFIG="${SCAN_DIRECTORIES}/wss-generated-file.config"
 
 # SCAN_CONFIG is the path to your whitesource configuration file
+<<<<<<< HEAD
 SCAN_CONFIG="scripts/wss-java-maven-agent.config"
+=======
+SCAN_CONFIG="wss-java-maven-agent.config"
+>>>>>>> [SNOW-169001] White source integration
 
 if [ "$GIT_BRANCH" != "$PROD_BRANCH" ]; then
     java -jar wss-unified-agent.jar -apiKey ${WHITESOURCE_API_KEY} \
