@@ -7,15 +7,19 @@ echo "PWD:"${PWD}
 SCAN_DIRECTORIES=${PWD}
 echo "SCAN_DIRECTORIES:"$SCAN_DIRECTORIES
 
-
-if [[ "$PWD" == *travis* ]]; then
+# check if it is a travis run
+if [[ -n "$TRAVIS" ]]; then
    export PROJECT_VERSION=${TRAVIS_COMMIT}
    # if it is not a Pull request, replace PROJECT_NAME with branch Name
-   if [[ -z "${TRAVIS_PULL_REQUEST}" ]]; then
-       echo "TRAVIS_PULL_REQUEST is empty, using branch name"
-       export PROJECT_NAME=${TRAVIS_BRANCH}
+   if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
+       echo "[INFO] Pull Request"
+       export PROJECT_NAME=PR-$TRAVIS_PULL_REQUEST
+   elif [[ "$TRAVIS_BRANCH" == "$PROD_BRANCH" ]]; then
+       echo "[INFO] Production branch"
+       export PROJECT_NAME=$PROD_BRANCH
    else
-       export PROJECT_NAME=${TRAVIS_PULL_REQUEST}
+       echo "[INFO] Non Production branch. Skipping wss..."
+       export PROJECT_NAME=
    fi
 else
    export PROJECT_VERSION=${GIT_COMMIT}
@@ -59,7 +63,7 @@ echo "SCAN_CONFIG:"$SCAN_CONFIG
 echo "[INFO] Running wss.sh for ${PRODUCT_NAME}-${PROJECT_NAME} under ${SCAN_DIRECTORIES}"
 
 if [ "$GIT_BRANCH" != "$PROD_BRANCH" ]; then
-    echo "First Branch"
+    echo "PR"
     java -jar wss-unified-agent.jar -apiKey ${WHITESOURCE_API_KEY} \
         -c ${SCAN_CONFIG} \
         -project ${PROJECT_NAME} \
@@ -73,7 +77,7 @@ if [ "$GIT_BRANCH" != "$PROD_BRANCH" ]; then
         # exit 1
     fi 
 else
-    echo "SECOND BRANCH"
+    echo "PRODUCTION"
     java -jar wss-unified-agent.jar -apiKey ${WHITESOURCE_API_KEY} \
         -c ${SCAN_CONFIG} \
         -project ${PROJECT_NAME} \
