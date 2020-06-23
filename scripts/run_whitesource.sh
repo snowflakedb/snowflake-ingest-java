@@ -7,6 +7,9 @@ echo "PWD:"${PWD}
 SCAN_DIRECTORIES=${PWD}
 echo "SCAN_DIRECTORIES:"$SCAN_DIRECTORIES
 
+# If your PROD_BRANCH is not master, you can define it here based on the need
+PROD_BRANCH="master"
+
 # check if it is a travis run
 if [[ -n "$TRAVIS" ]]; then
    export PROJECT_VERSION=${TRAVIS_COMMIT}
@@ -31,9 +34,6 @@ echo "GIT_COMMIT:"$GIT_COMMIT
 echo "TRAVIS_COMMIT:"$TRAVIS_COMMIT
 
 [[ -z "$WHITESOURCE_API_KEY" ]] && echo "[WARNING] No WHITESOURCE_API_KEY is set. No WhiteSource scan will occurr." && exit 0
-
-# If your PROD_BRANCH is not master, you can define it here based on the need
-PROD_BRANCH="master"
 
 # Please refer to product naming convension on whitesource integration guide
 PRODUCT_NAME="snowflake-ingest-java"
