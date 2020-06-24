@@ -62,7 +62,7 @@ echo "SCAN_CONFIG:"$SCAN_CONFIG
 
 echo "[INFO] Running wss.sh for ${PRODUCT_NAME}-${PROJECT_NAME} under ${SCAN_DIRECTORIES}"
 
-if [ "$GIT_BRANCH" != "$PROD_BRANCH" ]; then
+if [ "$PROJECT_NAME" != "$PROD_BRANCH" ]; then
     echo "PR"
     java -jar wss-unified-agent.jar -apiKey ${WHITESOURCE_API_KEY} \
         -c ${SCAN_CONFIG} \
