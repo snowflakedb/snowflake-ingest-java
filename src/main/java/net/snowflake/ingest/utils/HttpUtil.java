@@ -5,8 +5,12 @@
 package net.snowflake.ingest.utils;
 
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
+import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.HttpRequestRetryHandler;
+import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -31,6 +35,7 @@ public class HttpUtil
   private static String PROXY_HOST = "http.proxyHost";
   private static String PROXY_PORT = "http.proxyPort";
   private static String PROXY_SCHEME = "http";
+  private static int MAX_RETRIES = 3;
 
 
   static private HttpClient httpClient;
@@ -69,45 +74,8 @@ public class HttpUtil
 
     HttpClientBuilder clientBuilder = HttpClients.custom()
         .setSSLSocketFactory(f)
-        .setServiceUnavailableRetryStrategy(new ServiceUnavailableRetryStrategy()
-        {
-          private int executionCount = 0;
-          int MAX_RETRIES = 3;
-          int REQUEST_TIMEOUT = 408;
-          @Override
-          public boolean retryRequest(
-            final HttpResponse response, final int executionCount,
-            final HttpContext context)
-          {
-            this.executionCount = executionCount;
-            int statusCode = response.getStatusLine().getStatusCode();
-
-            boolean needNextRetry = (statusCode == REQUEST_TIMEOUT || statusCode >= 500 )
-              && executionCount < MAX_RETRIES + 1;
-            if(executionCount == MAX_RETRIES + 1)
-            {
-              LOGGER.info("Reach the max retry time.");
-            }
-
-            if(needNextRetry && executionCount < MAX_RETRIES + 1)
-            {
-              long interval = (1 << executionCount)  * 1000;
-              LOGGER.info("Sleep time in millisecond: {}", interval);
-            }
-
-            return needNextRetry;
-          }
-
-          @Override
-          // The waiting time is backoff, and is
-          // the exponential of the executionCount.
-          public long getRetryInterval()
-          {
-            long interval = (1 << executionCount)  * 1000;    // milliseconds
-            return interval;
-          }
-
-        });
+        .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
+        .setRetryHandler(getHttpRequestRetryHandler());
 
     //proxy settings
     if("true".equalsIgnoreCase(System.getProperty(USE_PROXY)))
@@ -135,4 +103,77 @@ public class HttpUtil
 
   }
 
+  private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy()
+  {
+    return new ServiceUnavailableRetryStrategy() {
+      private int executionCount = 0;
+      int REQUEST_TIMEOUT = 408;
+
+      @Override
+      public boolean retryRequest(
+              final HttpResponse response, final int executionCount,
+              final HttpContext context)
+      {
+        this.executionCount = executionCount;
+        int statusCode = response.getStatusLine().getStatusCode();
+        LOGGER.info("In retryRequest for service unavailability with statusCode:{} and uri:{}",
+                    statusCode, getRequestUriFromContext(context));
+        boolean needNextRetry = (statusCode == REQUEST_TIMEOUT || statusCode >= 500)
+                && executionCount < MAX_RETRIES + 1;
+        if (executionCount == MAX_RETRIES + 1)
+        {
+          LOGGER.info("Reach the max retry time.");
+        }
+        if (needNextRetry && executionCount < MAX_RETRIES + 1)
+        {
+          long interval = (1 << executionCount) * 1000;
+          LOGGER.info("Sleep time in millisecond: {}", interval);
+        }
+        return needNextRetry;
+      }
+
+      @Override
+      // The waiting time is backoff, and is
+      // the exponential of the executionCount.
+      public long getRetryInterval()
+      {
+        long interval = (1 << executionCount) * 1000;    // milliseconds
+        return interval;
+      }
+    };
+  }
+
+  /**
+   * Retry handler logic. Retry if No response from Service exception. (NoHttpResponseException)
+   * @return retryHandler to add to http client.
+   */
+  private static HttpRequestRetryHandler getHttpRequestRetryHandler()
+  {
+    return (exception, executionCount, httpContext) -> {
+      final String requestURI = getRequestUriFromContext(httpContext);
+      if (executionCount > MAX_RETRIES)
+      {
+        LOGGER.info("Max retry exceeded for requestURI:{}", requestURI);
+        return false;
+      }
+      if (exception instanceof NoHttpResponseException)
+      {
+        LOGGER.info(
+                "Retrying request which caused No HttpResponse Exception with "
+                        + "URI:{}, retryCount:{} and maxRetryCount:{}",
+                requestURI,
+                executionCount,
+                MAX_RETRIES);
+        return true;
+      }
+      LOGGER.info("No retry for URI:{} with exception", requestURI, exception);
+      return false;
+    };
+  }
+
+  private static String getRequestUriFromContext(final HttpContext httpContext) {
+    HttpClientContext clientContext = HttpClientContext.adapt(httpContext);
+    HttpRequest httpRequest = clientContext.getRequest();
+    return httpRequest.getRequestLine().getUri();
+  }
 }
