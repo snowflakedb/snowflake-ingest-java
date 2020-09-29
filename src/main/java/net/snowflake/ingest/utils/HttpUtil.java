@@ -118,16 +118,17 @@ public class HttpUtil
         int statusCode = response.getStatusLine().getStatusCode();
         LOGGER.info("In retryRequest for service unavailability with statusCode:{} and uri:{}",
                     statusCode, getRequestUriFromContext(context));
-        boolean needNextRetry = (statusCode == REQUEST_TIMEOUT || statusCode >= 500)
-                && executionCount < MAX_RETRIES + 1;
         if (executionCount == MAX_RETRIES + 1)
         {
-          LOGGER.info("Reach the max retry time.");
+          LOGGER.info("Reached the max retry time, not retrying anymore");
+          return false;
         }
-        if (needNextRetry && executionCount < MAX_RETRIES + 1)
+        boolean needNextRetry = (statusCode == REQUEST_TIMEOUT || statusCode >= 500)
+                && executionCount < MAX_RETRIES + 1;
+        if (needNextRetry)
         {
           long interval = (1 << executionCount) * 1000;
-          LOGGER.info("Sleep time in millisecond: {}", interval);
+          LOGGER.info("Sleep time in millisecond: {}, retryCount: {}", interval, executionCount);
         }
         return needNextRetry;
       }
