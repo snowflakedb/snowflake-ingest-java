@@ -481,7 +481,7 @@ public class SimpleIngestManager implements AutoCloseable
     UUID request = requestId == null ? UUID.randomUUID() : requestId;
 
     //We're about to send this request number
-    LOGGER.info("Sending Request UUID - ", request.toString());
+    LOGGER.info("Sending Request UUID - {}", request.toString());
 
     //send the request and get a response....
     HttpResponse response = httpClient.execute(
