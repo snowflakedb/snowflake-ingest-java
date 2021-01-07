@@ -127,9 +127,6 @@ public class SimpleIngestIT
         "put file://" + testFilePath + " @" + stageName
     );
 
-    //keeps track of whether we've loaded the file
-    boolean loaded = false;
-
     //create ingest manager
     SimpleIngestManager manager = TestUtils.getManager(pipeName);
 
@@ -141,62 +138,8 @@ public class SimpleIngestIT
 
     assertEquals("SUCCESS", insertResponse.getResponseCode());
 
-    //create a new thread
-    ExecutorService service = Executors.newSingleThreadExecutor();
-
-    //fork off waiting for a load to the service
-    Future<?> result = service.submit(() ->
-        {
-
-          String beginMark = null;
-
-          while (true)
-          {
-
-            try
-            {
-              Thread.sleep(5000);
-              HistoryResponse response = manager.getHistory(null, null,
-                  beginMark);
-
-              if (response != null && response.getNextBeginMark() != null)
-              {
-                beginMark = response.getNextBeginMark();
-              }
-              if (response != null && response.files != null)
-              {
-                for (HistoryResponse.FileEntry entry : response.files)
-                {
-                  //if we have a complete file that we've
-                  // loaded with the same name..
-                  String filename = entry.getPath();
-                  if (entry.getPath() != null && entry.isComplete() &&
-                      filename.equals(TEST_FILE_NAME))
-                  {
-                    return;
-                  }
-                }
-              }
-            } catch (Exception e)
-            {
-              e.printStackTrace();
-            }
-          }
-        }
-    );
-
-    //try to wait until the future is done
-    try
-    {
-      //wait up to 2 minutes to load
-      result.get(2, TimeUnit.MINUTES);
-      loaded = true;
-    } finally
-    {
-      assertTrue(loaded);
-
-
-    }
+    // Get history and ensure that the expected file has been ingested
+    getHistoryAndAssertLoad(manager, TEST_FILE_NAME);
   }
 
   /**
@@ -215,9 +158,6 @@ public class SimpleIngestIT
             "put file://" + testFilePath_2 + " @" + stageWithPatternName
     );
 
-    //keeps track of whether we've loaded the file
-    boolean loaded = false;
-
     //create ingest manager
     SimpleIngestManager manager = TestUtils.getManager(pipeWithPatternName);
     Set<String> files = new HashSet<>();
@@ -231,6 +171,14 @@ public class SimpleIngestIT
     assertEquals(1, insertResponse.getUnmatchedPatternFiles().size());
     assertEquals(TEST_FILE_NAME, insertResponse.getUnmatchedPatternFiles().stream().findFirst().get());
 
+    // Get history and ensure that the expected file has been ingested
+    getHistoryAndAssertLoad(manager, TEST_FILE_NAME_2);
+  }
+
+  private void getHistoryAndAssertLoad(SimpleIngestManager manager, String test_file_name_2) throws InterruptedException, java.util.concurrent.ExecutionException, java.util.concurrent.TimeoutException {
+    //keeps track of whether we've loaded the file
+    boolean loaded = false;
+
     //create a new thread
     ExecutorService service = Executors.newSingleThreadExecutor();
 
@@ -240,35 +188,28 @@ public class SimpleIngestIT
 
               String beginMark = null;
 
-              while (true)
-              {
+              while (true) {
 
-                try
-                {
+                try {
                   Thread.sleep(5000);
                   HistoryResponse response = manager.getHistory(null, null,
                           beginMark);
 
-                  if (response != null && response.getNextBeginMark() != null)
-                  {
+                  if (response != null && response.getNextBeginMark() != null) {
                     beginMark = response.getNextBeginMark();
                   }
-                  if (response != null && response.files != null)
-                  {
-                    for (HistoryResponse.FileEntry entry : response.files)
-                    {
+                  if (response != null && response.files != null) {
+                    for (HistoryResponse.FileEntry entry : response.files) {
                       //if we have a complete file that we've
                       // loaded with the same name..
                       String filename = entry.getPath();
                       if (entry.getPath() != null && entry.isComplete() &&
-                              filename.equals(TEST_FILE_NAME_2))
-                      {
+                              filename.equals(test_file_name_2)) {
                         return;
                       }
                     }
                   }
-                } catch (Exception e)
-                {
+                } catch (Exception e) {
                   e.printStackTrace();
                 }
               }
@@ -276,16 +217,12 @@ public class SimpleIngestIT
     );
 
     //try to wait until the future is done
-    try
-    {
+    try {
       //wait up to 2 minutes to load
       result.get(2, TimeUnit.MINUTES);
       loaded = true;
-    } finally
-    {
+    } finally {
       assertTrue(loaded);
-
-
     }
   }
 
