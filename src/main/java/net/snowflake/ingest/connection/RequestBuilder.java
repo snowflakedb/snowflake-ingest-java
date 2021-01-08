@@ -93,6 +93,9 @@ public final class RequestBuilder
   //the request id parameter name
   private static final String REQUEST_ID = "requestId";
 
+  //the show skipped files parameter name
+  private static final String SHOW_SKIPPED_FILES = "showSkippedFiles";
+
   //the string name for the HTTP auth bearer
   private static final String BEARER_PARAMETER = "Bearer ";
 
@@ -269,9 +272,10 @@ public final class RequestBuilder
    *
    * @param requestId the UUID we'll use as the label
    * @param pipe the pipe name
+   * @param showSkippedFiles a boolean which returns skipped files when set to true
    * @return URI for the insert request
    */
-  private URI makeInsertURI(UUID requestId, String pipe)
+  private URI makeInsertURI(UUID requestId, String pipe, boolean showSkippedFiles)
           throws URISyntaxException
   {
     //if the pipe name is null, we have to abort
@@ -283,6 +287,9 @@ public final class RequestBuilder
 
     //get the base endpoint uri
     URIBuilder builder = makeBaseURI(requestId);
+
+    // set the query parameter to showSkippedFiles
+    builder.setParameter(SHOW_SKIPPED_FILES, String.valueOf(showSkippedFiles));
 
     //add the path for the URI
     builder.setPath(String.format(INGEST_ENDPOINT_FORMAT, pipe));
@@ -451,15 +458,16 @@ public final class RequestBuilder
    * @param requestId a UUID we will use to label this request
    * @param pipe a fully qualified pipe name
    * @param files a list of files
+   * @param showSkippedFiles a boolean which returns skipped files when set to true
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
   public HttpPost generateInsertRequest(UUID requestId, String pipe,
-                                        List<StagedFileWrapper> files)
+                                        List<StagedFileWrapper> files, boolean showSkippedFiles)
       throws URISyntaxException
   {
     //make the insert URI
-    URI insertURI = makeInsertURI(requestId, pipe);
+    URI insertURI = makeInsertURI(requestId, pipe, showSkippedFiles);
     LOGGER.info("Created Insert Request : {} ", insertURI);
 
     //Make the post request

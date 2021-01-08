@@ -140,6 +140,12 @@ public class SimpleIngestIT
 
     // Get history and ensure that the expected file has been ingested
     getHistoryAndAssertLoad(manager, TEST_FILE_NAME);
+
+    IngestResponse insertResponseSkippedFiles = manager.ingestFile(myFile, null, true);
+
+    assertEquals("SUCCESS", insertResponseSkippedFiles.getResponseCode());
+    assertEquals(1, insertResponseSkippedFiles.getSkippedFiles().size());
+    assertEquals(TEST_FILE_NAME, insertResponseSkippedFiles.getSkippedFiles().stream().findFirst().get());
   }
 
   /**
@@ -173,6 +179,14 @@ public class SimpleIngestIT
 
     // Get history and ensure that the expected file has been ingested
     getHistoryAndAssertLoad(manager, TEST_FILE_NAME_2);
+
+    IngestResponse insertResponseSkippedFiles = manager.ingestFiles(SimpleIngestManager.wrapFilepaths(files), null, true);
+
+    assertEquals("SUCCESS", insertResponseSkippedFiles.getResponseCode());
+    assertEquals(1, insertResponseSkippedFiles.getSkippedFiles().size());
+    assertEquals(TEST_FILE_NAME_2, insertResponseSkippedFiles.getSkippedFiles().stream().findFirst().get());
+    assertEquals(1, insertResponseSkippedFiles.getUnmatchedPatternFiles().size());
+    assertEquals(TEST_FILE_NAME, insertResponseSkippedFiles.getUnmatchedPatternFiles().stream().findFirst().get());
   }
 
   private void getHistoryAndAssertLoad(SimpleIngestManager manager, String test_file_name_2) throws InterruptedException, java.util.concurrent.ExecutionException, java.util.concurrent.TimeoutException {
