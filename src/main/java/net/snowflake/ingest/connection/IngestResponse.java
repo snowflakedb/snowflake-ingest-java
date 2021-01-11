@@ -5,6 +5,8 @@
 package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -22,12 +24,20 @@ public class IngestResponse
   // response from the API
   private String responseCode;
 
+  //the files that were skipped
+  private List<String> skippedFiles;
+
+  //the files that did not match the pipe's pattern
+  private List<String> unmatchedPatternFiles;
+
   @Override
   public String toString()
   {
     return "IngestResponse{" +
         "requestId='" + requestId + '\'' +
         ", responseCode='" + responseCode + '\'' +
+        ", skippedFiles='" + skippedFiles + '\'' +
+        ", unmatchedPatternFiles='" + unmatchedPatternFiles + '\'' +
         '}';
   }
 
@@ -44,6 +54,16 @@ public class IngestResponse
   public String getRequestId()
   {
     return requestId;
+  }
+
+  public List<String> getSkippedFiles()
+  {
+    return skippedFiles;
+  }
+
+  public List<String> getUnmatchedPatternFiles()
+  {
+    return unmatchedPatternFiles;
   }
 
   public String getResponseCode()

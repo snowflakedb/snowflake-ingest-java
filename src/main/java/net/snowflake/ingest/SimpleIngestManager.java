@@ -457,6 +457,28 @@ public class SimpleIngestManager implements AutoCloseable
   }
 
   /**
+   * ingestFile - ingest a single file
+   *
+   * @param file - a wrapper around a filename and size
+   * @param requestId - a requestId that we'll use to label - if null,
+   *                    we generate one for the user
+   * @param showSkippedFiles - a flag which returns the files that were skipped
+   *                        when set to true.
+   * @return an insert response from the server
+   * @throws BackOffException   - if we have a 503 response
+   * @throws IOException        - if we have some other network failure
+   * @throws URISyntaxException - if the provided account name was illegal and
+   *                            caused a URI construction failure
+   */
+  public IngestResponse ingestFile(StagedFileWrapper file,
+                                   UUID requestId,
+                                   boolean showSkippedFiles)
+          throws URISyntaxException, IOException, Exception
+  {
+    return ingestFiles(Collections.singletonList(file), requestId, showSkippedFiles);
+  }
+
+  /**
    * ingestFiles - synchronously sends a request to the ingest
    * service to enqueue these files
    *
@@ -474,6 +496,32 @@ public class SimpleIngestManager implements AutoCloseable
 
   public IngestResponse ingestFiles(List<StagedFileWrapper> files,
                                     UUID requestId)
+          throws URISyntaxException, IOException, IngestResponseException
+  {
+    return ingestFiles(files, requestId, false);
+  }
+
+  /**
+   * ingestFiles - synchronously sends a request to the ingest
+   * service to enqueue these files
+   *
+   * @param files - list of wrappers around filenames and sizes
+   * @param requestId - a requestId that we'll use to label - if null,
+   *                  we generate one for the user
+   * @param showSkippedFiles - a flag which returns the files that were skipped
+   *                        when set to true.
+   * @return an insert response from the server
+   * @throws BackOffException   - if we have a 503 response
+   * @throws IOException        - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered
+   *                                    error during ingest
+   * @throws URISyntaxException - if the provided account name was illegal and
+   *                            caused a URI construction failure
+   */
+
+  public IngestResponse ingestFiles(List<StagedFileWrapper> files,
+                                    UUID requestId,
+                                    boolean showSkippedFiles)
       throws URISyntaxException, IOException, IngestResponseException
   {
 
@@ -486,7 +534,7 @@ public class SimpleIngestManager implements AutoCloseable
     //send the request and get a response....
     HttpResponse response = httpClient.execute(
         builder.generateInsertRequest(request,
-             pipe, files));
+             pipe, files, showSkippedFiles));
 
     LOGGER.info("Attempting to unmarshall insert response - {}", response);
     return ServiceResponseHandler.unmarshallIngestResponse(response);
