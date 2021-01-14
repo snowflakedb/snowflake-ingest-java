@@ -4,15 +4,21 @@
 
 package net.snowflake.ingest.utils;
 
+import com.google.common.base.Strings;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.Credentials;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
@@ -34,6 +40,10 @@ public class HttpUtil
   private static String USE_PROXY = "http.useProxy";
   private static String PROXY_HOST = "http.proxyHost";
   private static String PROXY_PORT = "http.proxyPort";
+
+  private static final String HTTP_PROXY_USER = "http.proxyUser";
+  private static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
+
   private static String PROXY_SCHEME = "http";
   private static int MAX_RETRIES = 3;
 
@@ -97,6 +107,18 @@ public class HttpUtil
       HttpHost proxy =  new HttpHost(proxyHost, proxyPort, PROXY_SCHEME);
       DefaultProxyRoutePlanner routePlanner = new DefaultProxyRoutePlanner(proxy);
       clientBuilder = clientBuilder.setRoutePlanner(routePlanner);
+
+      // Check if proxy username and password are set
+      final String proxyUser = System.getProperty(HTTP_PROXY_USER);
+      final String proxyPassword = System.getProperty(HTTP_PROXY_PASSWORD);
+      if (!Strings.isNullOrEmpty(proxyUser) && !Strings.isNullOrEmpty(proxyPassword))
+      {
+        Credentials credentials = new UsernamePasswordCredentials(proxyUser, proxyPassword);
+        AuthScope authScope = new AuthScope(proxyHost, proxyPort);
+        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(authScope, credentials);
+        clientBuilder = clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+      }
     }
 
     httpClient = clientBuilder.build();
