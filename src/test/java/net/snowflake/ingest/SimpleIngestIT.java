@@ -232,8 +232,8 @@ public class SimpleIngestIT
 
     //try to wait until the future is done
     try {
-      //wait up to 2 minutes to load
-      result.get(2, TimeUnit.MINUTES);
+      //wait up to 3 minutes to load
+      result.get(3, TimeUnit.MINUTES);
       loaded = true;
     } finally {
       assertTrue(loaded);
