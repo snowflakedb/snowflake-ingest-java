@@ -41,7 +41,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <shadeBase>net.snowflake.ingest.internal</shadeBase>
         <jacoco.skip.instrument>true</jacoco.skip.instrument>
-        <jacoco.version>0.8.1</jacoco.version>
+        <jacoco.version>0.8.5</jacoco.version>
     </properties>
 
     <build>
@@ -412,10 +412,10 @@
             </build>
         </profile>
         <profile>
-            <id>travisIT</id>
+            <id>ghActionsIT</id>
             <activation>
                 <property>
-                    <name>travisIT</name>
+                    <name>ghActionsIT</name>
                 </property>
             </activation>
             <build>
@@ -428,14 +428,9 @@
                                 <goals>
                                     <goal>integration-test</goal>
                                 </goals>
-                                <configuration>
-                                    <argLine>
-                                        @{argLine} -Djava.util.logging.config.file=travis_it_logging.properties
-                                    </argLine>
-                                </configuration>
                             </execution>
                             <execution>
-                                <id>verify_travis_it</id>
+                                <id>verify_github_actions_it</id>
                                 <phase>verify</phase>
                                 <goals>
                                     <goal>verify</goal>

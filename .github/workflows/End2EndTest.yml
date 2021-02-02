@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
-      - name: "Install Java 8"
+      - name: Install Java ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
@@ -30,5 +30,6 @@ jobs:
         env:
           JACOCO_COVERAGE: true
           WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
+        continue-on-error: false
         run: |
           ./scripts/run_gh_actions.sh
