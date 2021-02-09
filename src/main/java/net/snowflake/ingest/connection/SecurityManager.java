@@ -86,7 +86,7 @@ final class SecurityManager implements AutoCloseable
     {
       throw new IllegalArgumentException();
     }
-    account = accountname.toUpperCase();
+    account = parseAccount(accountname);
     user = username.toUpperCase();
 
     //create our automatic reference to a string (our token)
@@ -118,6 +118,33 @@ final class SecurityManager implements AutoCloseable
   SecurityManager(String accountname, String username, KeyPair keyPair)
   {
     this(accountname, username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES);
+  }
+
+  /**
+   * Trims an account name if it contains a <b>"."</b>
+   *
+   * <p>Snowflake's python connector trims an accountname if it contains a "." </p>
+   *
+   * @param accountName given accountName in SimpleIngestManager's constructor
+   * @return initial part of account name if originally it contained a ".", otherwise return the same accountName.
+   * @see <a href="https://github.com/snowflakedb/snowflake-connector-python/blob/master/src/snowflake/connector/util_text.py#L227">Python Connector</a>
+   */
+  private String parseAccount(final String accountName)
+  {
+    String parseAccount = null;
+    if (accountName.contains("."))
+    {
+      final String[] accountParts = accountName.split("[.]");
+      if (accountParts.length > 1)
+      {
+        parseAccount = accountParts[0];
+      }
+    }
+    else
+    {
+      parseAccount = accountName;
+    }
+    return parseAccount.toUpperCase();
   }
 
   /**
@@ -192,6 +219,12 @@ final class SecurityManager implements AutoCloseable
     }
 
     return token.get();
+  }
+
+  /* Only used in testing at the moment */
+  String getAccount()
+  {
+    return this.account;
   }
 
   /**

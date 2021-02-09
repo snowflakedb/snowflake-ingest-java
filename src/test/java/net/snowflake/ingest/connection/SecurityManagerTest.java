@@ -1,6 +1,7 @@
 package net.snowflake.ingest.connection;
 
 
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import java.security.KeyFactory;
@@ -129,6 +130,37 @@ public class SecurityManagerTest
         new SecurityManager(accountName, userName, keypair2);
     String publicKeyFp2 = securityManager2.getPublicKeyFingerPrint();
     assertTrue(publicKeyFp2.equals(expectedPublicKeyFp2));
+  }
+
+  @Test
+  public void testParseAccount() throws NoSuchAlgorithmException, InvalidKeySpecException
+  {
+    PublicKey pubKey = loadPublicKey(storedPublicKey);
+    PrivateKey priKey = loadPrivateKey(storedPrivateKey);
+
+    KeyPair keypair = new KeyPair(pubKey, priKey);
+
+    String accountName = "accountName";
+    String userName = "userName";
+    SecurityManager securityManager =
+            new SecurityManager(accountName, userName, keypair);
+    Assert.assertEquals(accountName.toUpperCase(), securityManager.getAccount());
+  }
+
+  @Test
+  public void testParseAccount_dotInAccountName() throws NoSuchAlgorithmException, InvalidKeySpecException
+  {
+    PublicKey pubKey = loadPublicKey(storedPublicKey);
+    PrivateKey priKey = loadPrivateKey(storedPrivateKey);
+
+    KeyPair keypair = new KeyPair(pubKey, priKey);
+
+    String accountName = "accountName.extra";
+    String userName = "userName";
+    String trimmedAccountName = "accountName";
+    SecurityManager securityManager =
+            new SecurityManager(accountName, userName, keypair);
+    Assert.assertEquals(trimmedAccountName.toUpperCase(), securityManager.getAccount());
   }
 
   /**
