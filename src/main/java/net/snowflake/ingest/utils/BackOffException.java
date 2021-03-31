@@ -9,25 +9,20 @@ package net.snowflake.ingest.utils;
  *
  * @author obabarinsa
  */
-public class BackOffException extends RuntimeException
-{
-  public BackOffException()
-  {
+public class BackOffException extends RuntimeException {
+  public BackOffException() {
     super();
   }
 
-  public BackOffException(String message)
-  {
+  public BackOffException(String message) {
     super(message);
   }
 
-  public BackOffException(String message, Throwable cause)
-  {
+  public BackOffException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public BackOffException(Throwable cause)
-  {
+  public BackOffException(Throwable cause) {
     super(cause);
   }
 }

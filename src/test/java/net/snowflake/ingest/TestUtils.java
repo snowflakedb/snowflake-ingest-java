@@ -1,9 +1,5 @@
 package net.snowflake.ingest;
 
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node
-    .ObjectNode;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -15,15 +11,15 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Properties;
-
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.codec.binary.Base64;
 
-public class TestUtils
-{
+public class TestUtils {
   // profile path, follow readme for the format
-  private final static String PROFILE_PATH = "profile.json";
+  private static final String PROFILE_PATH = "profile.json";
 
-  private final static ObjectMapper mapper = new ObjectMapper();
+  private static final ObjectMapper mapper = new ObjectMapper();
 
   private static ObjectNode profile = null;
 
@@ -51,17 +47,13 @@ public class TestUtils
 
   private static Connection conn = null;
 
-
   /**
    * load all login info from profile
+   *
    * @throws IOException if can't read profile
    */
-  private static void init() throws Exception
-  {
-    profile =
-        (ObjectNode) mapper.readTree(
-            new String(Files.readAllBytes(Paths.get(PROFILE_PATH)))
-        );
+  private static void init() throws Exception {
+    profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH))));
 
     user = profile.get("user").asText();
     account = profile.get("account").asText();
@@ -76,9 +68,7 @@ public class TestUtils
 
     String privateKeyPem = profile.get("private_key").asText();
 
-    java.security.Security.addProvider(
-        new org.bouncycastle.jce.provider.BouncyCastleProvider()
-    );
+    java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
     byte[] encoded = Base64.decodeBase64(privateKeyPem);
     KeyFactory kf = KeyFactory.getInstance("RSA");
@@ -87,21 +77,20 @@ public class TestUtils
     privateKey = kf.generatePrivate(keySpec);
   }
 
-
   /**
    * Create snowflake jdbc connection
+   *
    * @return jdbc connection
    * @throws Exception
    */
-  public static Connection getConnection() throws Exception
-  {
-    if(conn != null) return conn;
+  public static Connection getConnection() throws Exception {
+    if (conn != null) return conn;
 
-    if(profile == null) init();
-    //check first to see if we have the Snowflake JDBC
+    if (profile == null) init();
+    // check first to see if we have the Snowflake JDBC
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
 
-    //build our properties
+    // build our properties
     Properties props = new Properties();
     props.put("user", user);
     props.put("account", account);
@@ -114,38 +103,36 @@ public class TestUtils
 
     conn = DriverManager.getConnection(connectString, props);
 
-    //fire off the connection
+    // fire off the connection
     return conn;
   }
 
   /**
    * execute sql query
+   *
    * @param query sql query string
    * @return result set
    */
-  public static ResultSet executeQuery(String query)
-  {
-    try (Statement statement = getConnection().createStatement())
-    {
+  public static ResultSet executeQuery(String query) {
+    try (Statement statement = getConnection().createStatement()) {
       return statement.executeQuery(query);
     }
-    //if ANY exceptions occur, an illegal state has been reached
-    catch (Exception e)
-    {
+    // if ANY exceptions occur, an illegal state has been reached
+    catch (Exception e) {
       throw new IllegalStateException(e);
     }
   }
 
-
   /**
    * create ingest manager
+   *
    * @param pipe pipe name
    * @return ingest manager object
    * @throws Exception
    */
-  public static SimpleIngestManager getManager(String pipe) throws Exception
-  {
-    if(profile == null) init();
-    return new SimpleIngestManager(account, user, database+"."+ schema + "." + pipe, privateKey, scheme, host, port);
+  public static SimpleIngestManager getManager(String pipe) throws Exception {
+    if (profile == null) init();
+    return new SimpleIngestManager(
+        account, user, database + "." + schema + "." + pipe, privateKey, scheme, host, port);
   }
 }
