@@ -4,13 +4,6 @@
 
 package net.snowflake.ingest.example;
 
-import net.snowflake.ingest.SimpleIngestManager;
-import net.snowflake.ingest.connection.HistoryRangeResponse;
-import net.snowflake.ingest.connection.HistoryResponse;
-import net.snowflake.ingest.connection.IngestResponse;
-import net.snowflake.ingest.connection.IngestResponseException;
-import net.snowflake.ingest.utils.StagedFileWrapper;
-
 import java.io.IOException;
 import java.security.KeyPair;
 import java.sql.Connection;
@@ -22,6 +15,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import net.snowflake.ingest.SimpleIngestManager;
+import net.snowflake.ingest.connection.HistoryRangeResponse;
+import net.snowflake.ingest.connection.HistoryResponse;
+import net.snowflake.ingest.connection.IngestResponse;
+import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.utils.StagedFileWrapper;
 
 /**
  * This sample demonstrates how to make basic requests to the Snowflake Ingest service for Java.
