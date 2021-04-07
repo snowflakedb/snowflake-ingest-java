@@ -8,21 +8,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * RemoteFileWrapper for a file path in the target stage as well as an
- * optional size
+ * RemoteFileWrapper for a file path in the target stage as well as an optional size
  *
  * @author obabarinsa
  */
-public class StagedFileWrapper
-{
-
-  //a logger for this class
+public class StagedFileWrapper {
+  // a logger for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(StagedFileWrapper.class);
 
-  //the name of this file in the stage
+  // the name of this file in the stage
   private String path;
 
-  //the size of this file
+  // the size of this file
   private Long size;
 
   /**
@@ -31,23 +28,20 @@ public class StagedFileWrapper
    * @param filepath the filepath for this file
    * @param filesize the size of this file
    */
-  public StagedFileWrapper(String filepath, Long filesize)
-  {
-    //the filepath shouldn't be null
-    if (filepath == null)
-    {
+  public StagedFileWrapper(String filepath, Long filesize) {
+    // the filepath shouldn't be null
+    if (filepath == null) {
       LOGGER.error("Null filepath provided");
       throw new IllegalArgumentException();
     }
 
-    //if we have a negative file size, throw
-    if (filesize != null && filesize.longValue() < 0)
-    {
+    // if we have a negative file size, throw
+    if (filesize != null && filesize.longValue() < 0) {
       LOGGER.error("Negative file size provided");
       throw new IllegalArgumentException();
     }
 
-    //set our variables
+    // set our variables
     path = filepath;
     size = filesize;
   }
@@ -57,8 +51,7 @@ public class StagedFileWrapper
    *
    * @param filepath the filepath for this file
    */
-  public StagedFileWrapper(String filepath)
-  {
+  public StagedFileWrapper(String filepath) {
     this(filepath, null);
   }
 
@@ -67,8 +60,7 @@ public class StagedFileWrapper
    *
    * @return the file path
    */
-  public String getPath()
-  {
+  public String getPath() {
     return path;
   }
 
@@ -77,8 +69,7 @@ public class StagedFileWrapper
    *
    * @return the file size
    */
-  public Long getSize()
-  {
+  public Long getSize() {
     return size;
   }
 }

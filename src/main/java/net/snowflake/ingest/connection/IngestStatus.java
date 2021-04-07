@@ -5,13 +5,12 @@
 package net.snowflake.ingest.connection;
 
 /**
- * Status of ingest of a particular file returned by Snowflake in the
- * FileEntry history response per file
+ * Status of ingest of a particular file returned by Snowflake in the FileEntry history response per
+ * file
  *
- * Created by vganesh on 5/22/17.
+ * <p>Created by vganesh on 5/22/17.
  */
-public enum IngestStatus
-{
+public enum IngestStatus {
   /** When ingest is still in progress */
   LOAD_IN_PROGRESS(1, "Load in progress"),
   /** Success case when the ingest has completed and the file was loaded */
@@ -24,20 +23,15 @@ public enum IngestStatus
   /**
    * Constructor, set id and description
    *
-   * @param statusId
-   *    Snowflake ID for the corresponding status
-   * @param statusDesc
-   *   description associated to that status
+   * @param statusId Snowflake ID for the corresponding status
+   * @param statusDesc description associated to that status
    */
-  IngestStatus(int statusId, String statusDesc)
-  {
+  IngestStatus(int statusId, String statusDesc) {
     this.statusId = statusId;
     this.statusDesc = statusDesc;
   }
 
-  IngestStatus(String statusDesc)
-          throws Exception
-  {
+  IngestStatus(String statusDesc) throws Exception {
     IngestStatus tmp = IngestStatus.lookupByName(statusDesc);
     this.statusId = tmp.statusId;
     this.statusDesc = tmp.statusDesc;
@@ -45,53 +39,43 @@ public enum IngestStatus
 
   /**
    * id of the IngestStatus object
+   *
    * @return IngestStatus id
    */
-  public int getId()
-  {
-    return(this.statusId);
+  public int getId() {
+    return (this.statusId);
   }
 
   /**
    * description associated to that file Status
+   *
    * @return IngestStatus description
    */
-  public String getStatusDesc()
-  {
-    return(this.statusDesc);
+  public String getStatusDesc() {
+    return (this.statusDesc);
   }
 
   /**
    * Search file Status given its id
-   * @param statusId
-   *   id of the file Status
-   * @return
-   *   IngestStatus which has this id or null if that
-   *   IngestStatus does not exists
+   *
+   * @param statusId id of the file Status
+   * @return IngestStatus which has this id or null if that IngestStatus does not exists
    */
-  static public IngestStatus findByStatusId(
-          int statusId)
-  {
-    for (IngestStatus status : IngestStatus.values())
-    {
-      if (status.statusId == statusId)
-        return(status);
+  public static IngestStatus findByStatusId(int statusId) {
+    for (IngestStatus status : IngestStatus.values()) {
+      if (status.statusId == statusId) return (status);
     }
-    return(null);
+    return (null);
   }
 
   /**
    * Given an enum name, find associated IngestStatus
-   * @param name
-   *   Status name
-   * @return
-   *   associated IngestStatus type
+   *
+   * @param name Status name
+   * @return associated IngestStatus type
    */
-  static public IngestStatus lookupByName(String name)
-            throws Exception
-  {
-    if (name == null)
-    {
+  public static IngestStatus lookupByName(String name) throws Exception {
+    if (name == null) {
       return null;
     }
 
@@ -109,10 +93,8 @@ public enum IngestStatus
    *
    * @param id Status id
    */
-  static boolean isSuccess(int id)
-  {
-    return id == IngestStatus.LOADED.getId() ||
-            id == IngestStatus.PARTIALLY_LOADED.getId();
+  static boolean isSuccess(int id) {
+    return id == IngestStatus.LOADED.getId() || id == IngestStatus.PARTIALLY_LOADED.getId();
   }
 
   /**
@@ -120,9 +102,7 @@ public enum IngestStatus
    *
    * @param status IngestStatus
    */
-  static boolean isSuccess(IngestStatus status)
-  {
+  static boolean isSuccess(IngestStatus status) {
     return isSuccess(status.getId());
   }
-
 }

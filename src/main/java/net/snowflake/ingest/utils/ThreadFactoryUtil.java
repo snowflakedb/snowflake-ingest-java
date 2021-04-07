@@ -4,34 +4,25 @@
 
 package net.snowflake.ingest.utils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-/**
- * This class provides support functions for writing a thread factory wrapper
- */
-public class ThreadFactoryUtil
-{
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ThreadFactoryUtil.class);
+/** This class provides support functions for writing a thread factory wrapper */
+public class ThreadFactoryUtil {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ThreadFactoryUtil.class);
 
-  public static ThreadFactory poolThreadFactory(final String threadBaseName,
-                                                final boolean isDaemon)
-  {
-    return new ThreadFactory()
-    {
+  public static ThreadFactory poolThreadFactory(
+      final String threadBaseName, final boolean isDaemon) {
+    return new ThreadFactory() {
       final AtomicLong count = new AtomicLong(0);
 
       @Override
-      public Thread newThread(Runnable r)
-      {
+      public Thread newThread(Runnable r) {
         final Thread thread = Executors.defaultThreadFactory().newThread(r);
-        thread.setName(threadBaseName + "-" + count.incrementAndGet()
-                           + "(" + thread.getId() + ")");
+        thread.setName(threadBaseName + "-" + count.incrementAndGet() + "(" + thread.getId() + ")");
         thread.setDaemon(isDaemon);
 
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler =
@@ -43,4 +34,3 @@ public class ThreadFactoryUtil
     };
   }
 }
-
