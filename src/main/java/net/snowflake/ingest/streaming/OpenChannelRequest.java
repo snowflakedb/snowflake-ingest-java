@@ -4,5 +4,5 @@
 
 package net.snowflake.ingest.streaming;
 
-/** The request that sends to Snowflake to open/create a Streaming Ingest channel */
+/** The request that gets sent to Snowflake to open/create a Streaming Ingest channel */
 public class OpenChannelRequest {}

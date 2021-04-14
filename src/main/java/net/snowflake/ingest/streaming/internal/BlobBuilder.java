@@ -9,7 +9,7 @@ package net.snowflake.ingest.streaming.internal;
  * variable-length data structure consisting of:
  *
  * <ul>
- *   <li>4 bytes magic word, we choose to use ‘BDEC’, which means streaming ingest blob in French
+ *   <li>4 bytes magic word
  *   <li>1 byte file version
  *   <li>8 bytes total blob size in bytes
  *   <li>8 bytes CRC-32C checksum for the data portion

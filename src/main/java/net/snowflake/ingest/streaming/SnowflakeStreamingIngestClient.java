@@ -5,7 +5,7 @@
 package net.snowflake.ingest.streaming;
 
 /**
- * Starting point for using Streaming Ingest client APIs, need one client per account and contain
+ * Starting point for using Streaming Ingest client APIs, need one client per account and contains
  * account level information for authentication and connection to Snowflake.
  */
 public interface SnowflakeStreamingIngestClient {}
