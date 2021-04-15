@@ -192,8 +192,7 @@
         <dependency>
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc</artifactId>
-            <version>3.6.6</version>
-            <scope>test</scope>
+            <version>3.13.2</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-ext-jdk15on -->
