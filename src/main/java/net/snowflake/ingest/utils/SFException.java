@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Snowflake exception in the Ingest SDK */
-public class SFException extends Throwable {
+public class SFException extends RuntimeException {
   static final Logger logger = LoggerFactory.getLogger(SFException.class);
 
   static final ResourceBundleManager errorResourceBundleManager =

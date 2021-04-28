@@ -5,4 +5,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 /** Contains all the constants needed for Streaming Ingest */
-public class Constants {}
+public class Constants {
+
+  // Client level constants
+  public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 10L;
+}

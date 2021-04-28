@@ -6,7 +6,11 @@ package net.snowflake.ingest.utils;
 
 /** Ingest SDK internal error codes */
 public enum ErrorCode {
-  INTERNAL_ERROR("0001");
+  INTERNAL_ERROR("0001"),
+  NULL_VALUE("0002"),
+  NULL_OR_EMPTY_STRING("0003"),
+  INVALID_ROW("0004"),
+  UNKNOWN_DATA_TYPE("0005");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 
