@@ -24,9 +24,9 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
-        TestUtils.class,
-        HttpUtil.class,
-        SnowflakeFileTransferAgent.class,
+  TestUtils.class,
+  HttpUtil.class,
+  SnowflakeFileTransferAgent.class,
 })
 public class SnowflakeInternalStageTest {
   private ObjectMapper mapper = new ObjectMapper();
@@ -36,15 +36,18 @@ public class SnowflakeInternalStageTest {
     PowerMockito.mockStatic(TestUtils.class);
     SnowflakeConnectionV1 connection = Mockito.mock(SnowflakeConnectionV1.class);
     String exampleMeta =
-            "{\"data\": {\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stageInfo\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}}";
+        "{\"data\": {\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stageInfo\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}}";
     JsonNode exampleJson = mapper.readTree(exampleMeta);
-    SnowflakeFileTransferMetadataV1 originalMetadata = (SnowflakeFileTransferMetadataV1) SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);
+    SnowflakeFileTransferMetadataV1 originalMetadata =
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
     SnowflakeInternalStage stage = new SnowflakeInternalStage(connection, originalMetadata);
-    final ArgumentCaptor<SnowflakeFileTransferConfig> captor = ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
+    final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
+        ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
     stage.putRemote("test/path", dataBytes);
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class);
@@ -67,11 +70,13 @@ public class SnowflakeInternalStageTest {
 
     ArrayList<SnowflakeFileTransferMetadata> mockList = new ArrayList<>();
     mockList.add(Mockito.mock(SnowflakeFileTransferMetadata.class));
-    PowerMockito.when(SnowflakeFileTransferAgent.getFileTransferMetadatas(Mockito.any())).thenReturn(mockList);
+    PowerMockito.when(SnowflakeFileTransferAgent.getFileTransferMetadatas(Mockito.any()))
+        .thenReturn(mockList);
 
     SnowflakeConnectionV1 connection = Mockito.mock(SnowflakeConnectionV1.class);
     SFSession sfSession = Mockito.mock(SFSession.class);
-    SnowflakeFileTransferMetadataV1 originalMetadata = Mockito.mock(SnowflakeFileTransferMetadataV1.class);
+    SnowflakeFileTransferMetadataV1 originalMetadata =
+        Mockito.mock(SnowflakeFileTransferMetadataV1.class);
 
     SnowflakeConnectString connectString = Mockito.mock(SnowflakeConnectString.class);
     Mockito.when(connectString.getScheme()).thenReturn("http");
@@ -84,16 +89,17 @@ public class SnowflakeInternalStageTest {
     Mockito.when(connection.getSfSession()).thenReturn(sfSession);
 
     String exampleMeta =
-            "{\"data\": {\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stageInfo\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}}";
-
+        "{\"data\": {\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stageInfo\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}}";
 
     String exampleMetaResponse =
-            "{\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}";
+        "{\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}";
 
     JsonNode exampleJson = mapper.readTree(exampleMeta);
 
     SnowflakeInternalStage stage = new SnowflakeInternalStage(connection, originalMetadata);
-    PowerMockito.when(HttpUtil.executeGeneralRequest(Mockito.any(), Mockito.anyInt(), Mockito.any())).thenReturn(exampleMetaResponse);
+    PowerMockito.when(
+            HttpUtil.executeGeneralRequest(Mockito.any(), Mockito.anyInt(), Mockito.any()))
+        .thenReturn(exampleMetaResponse);
 
     stage.refreshSnowflakeMetadata();
 
@@ -102,14 +108,22 @@ public class SnowflakeInternalStageTest {
     final ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
     final ArgumentCaptor<OCSPMode> ocspCaptor = ArgumentCaptor.forClass(OCSPMode.class);
 
-    HttpUtil.executeGeneralRequest(postCaptor.capture(), retryCaptor.capture(), ocspCaptor.capture());
-    Assert.assertEquals(new URI("http://EXAMPLE_HOST:123/v1/streaming/client/configure"), postCaptor.getValue().getURI());
-    Assert.assertEquals("application/json", postCaptor.getValue().getHeaders("accept")[0].getValue());
-    Assert.assertEquals("Snowflake token=\"EXAMPLE_SESSION_TOKEN\"", postCaptor.getValue().getHeaders("Authorization")[0].getValue());
+    HttpUtil.executeGeneralRequest(
+        postCaptor.capture(), retryCaptor.capture(), ocspCaptor.capture());
+    Assert.assertEquals(
+        new URI("http://EXAMPLE_HOST:123/v1/streaming/client/configure"),
+        postCaptor.getValue().getURI());
+    Assert.assertEquals(
+        "application/json", postCaptor.getValue().getHeaders("accept")[0].getValue());
+    Assert.assertEquals(
+        "Snowflake token=\"EXAMPLE_SESSION_TOKEN\"",
+        postCaptor.getValue().getHeaders("Authorization")[0].getValue());
 
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class);
     final ArgumentCaptor<JsonNode> jsonCaptor = ArgumentCaptor.forClass(JsonNode.class);
     SnowflakeFileTransferAgent.getFileTransferMetadatas(jsonCaptor.capture());
-    Assert.assertEquals(exampleJson.get("data").get("stageInfo"), jsonCaptor.getValue().get("data").get("stageInfo"));
+    Assert.assertEquals(
+        exampleJson.get("data").get("stageInfo"),
+        jsonCaptor.getValue().get("data").get("stageInfo"));
   }
 }
