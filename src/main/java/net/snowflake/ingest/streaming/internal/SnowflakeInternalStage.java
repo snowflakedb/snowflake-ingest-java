@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -33,8 +33,8 @@ public class SnowflakeInternalStage {
     }
 
     /**
-     * Upload file to internal stage with previously cached credentials. Refresh credential every 30
-     * minutes
+     * Upload file to internal stage with previously cached credentials.
+     * Will refetch and cache credentials if they've expired.
      *
      * @param fullFilePath Full file name to be uploaded
      * @param data Data string to be uploaded
