@@ -20,14 +20,14 @@ import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 public class SnowflakeInternalStage {
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private SnowflakeFileTransferMetadataV1 fileTransferMetadata;
-    private SnowflakeConnectionV1 connection;
-    public SnowflakeInternalStage(SnowflakeConnectionV1 connection, SnowflakeFileTransferMetadataV1 fileTransferMetadata) {
+    private SnowflakeFileTransferMetadata fileTransferMetadata;
+    private SnowflakeConnection connection;
+    public SnowflakeInternalStage(SnowflakeConnection connection, SnowflakeFileTransferMetadataV1 fileTransferMetadata) {
         this.connection = connection;
         this.fileTransferMetadata = fileTransferMetadata;
     }
 
-    public SnowflakeInternalStage(SnowflakeConnectionV1 connection) throws SnowflakeSQLException, IOException {
+    public SnowflakeInternalStage(SnowflakeConnection connection) throws SnowflakeSQLException, IOException {
         this.connection = connection;
         this.fileTransferMetadata = this.refreshSnowflakeMetadata();
     }
@@ -41,7 +41,7 @@ public class SnowflakeInternalStage {
      */
     public void putRemote(String fullFilePath, byte[] data) throws SnowflakeSQLException, IOException {
         // Set filename to be uploaded
-        fileTransferMetadata.setPresignedUrlFileName(fullFilePath);
+        ((SnowflakeFileTransferMetadataV1) fileTransferMetadata).setPresignedUrlFileName(fullFilePath);
 
         InputStream inStream = new ByteArrayInputStream(data);
 
@@ -68,9 +68,9 @@ public class SnowflakeInternalStage {
         }
     }
 
-    SnowflakeFileTransferMetadataV1 refreshSnowflakeMetadata() throws SnowflakeSQLException, IOException {
-        String sessionToken =  connection.getSfSession().getSessionToken();
-        SnowflakeConnectString connectString = connection.getSfSession().getSnowflakeConnectionString();
+    SnowflakeFileTransferMetadata refreshSnowflakeMetadata() throws SnowflakeSQLException, IOException {
+        String sessionToken =  ((SnowflakeConnectionV1) connection).getSfSession().getSessionToken();
+        SnowflakeConnectString connectString = ((SnowflakeConnectionV1) connection).getSfSession().getSnowflakeConnectionString();
         String configureUrl = String.format("%s://%s:%s/v1/streaming/client/configure",
                 connectString.getScheme(),
                 connectString.getHost(),
@@ -104,6 +104,6 @@ public class SnowflakeInternalStage {
         dataNode.set("stageInfo", responseNode.get("stage_location"));
         dataNode.putArray("src_locations").add("foo/");
 
-        return (SnowflakeFileTransferMetadataV1) SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
+        return SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
     }
 }
