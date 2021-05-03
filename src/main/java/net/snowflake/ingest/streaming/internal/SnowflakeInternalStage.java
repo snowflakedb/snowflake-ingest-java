@@ -10,6 +10,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
@@ -20,20 +22,37 @@ import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 
 public class SnowflakeInternalStage {
   private static final ObjectMapper mapper = new ObjectMapper();
+  private static final long REFRESH_THRESHOLD = 1000 * 60; // Do not attempt to refresh credentials if the current ones are younger than this.
 
-  private SnowflakeFileTransferMetadata fileTransferMetadata;
+  private static class SnowflakeFileTransferMetadataWithAge {
+    SnowflakeFileTransferMetadataV1 fileTransferMetadata;
+
+    /* Do do not always know the age of the metadata, so we use the empty
+    state to record unknown age.
+     */
+
+    Optional<Long> timestamp;
+
+    SnowflakeFileTransferMetadataWithAge(
+            SnowflakeFileTransferMetadataV1 fileTransferMetadata, Optional<Long> timestamp) {
+      this.fileTransferMetadata = fileTransferMetadata;
+      this.timestamp = timestamp;
+    }
+  }
+
+  private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
   private SnowflakeConnection connection;
 
   public SnowflakeInternalStage(
       SnowflakeConnection connection, SnowflakeFileTransferMetadataV1 fileTransferMetadata) {
     this.connection = connection;
-    this.fileTransferMetadata = fileTransferMetadata;
+    this.fileTransferMetadataWithAge = new SnowflakeFileTransferMetadataWithAge(fileTransferMetadata, Optional.empty());
   }
 
   public SnowflakeInternalStage(SnowflakeConnection connection)
       throws SnowflakeSQLException, IOException {
     this.connection = connection;
-    this.fileTransferMetadata = this.refreshSnowflakeMetadata();
+    this.fileTransferMetadataWithAge = this.refreshSnowflakeMetadata();
   }
 
   /**
@@ -46,7 +65,18 @@ public class SnowflakeInternalStage {
   public void putRemote(String fullFilePath, byte[] data)
       throws SnowflakeSQLException, IOException {
     // Set filename to be uploaded
-    ((SnowflakeFileTransferMetadataV1) fileTransferMetadata).setPresignedUrlFileName(fullFilePath);
+    SnowflakeFileTransferMetadataV1 fileTransferMetadata = fileTransferMetadataWithAge.fileTransferMetadata;
+    SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy = new SnowflakeFileTransferMetadataV1(
+            fileTransferMetadata.getPresignedUrl(),
+            fileTransferMetadata.getPresignedUrlFileName(),
+            fileTransferMetadata.getEncryptionMaterial().getQueryStageMasterKey(),
+            fileTransferMetadata.getEncryptionMaterial().getQueryId(),
+            fileTransferMetadata.getEncryptionMaterial().getSmkId(),
+            fileTransferMetadata.getCommandType(),
+            fileTransferMetadata.getStageInfo()
+    );
+
+    fileTransferMetadataCopy.setPresignedUrlFileName(fullFilePath);
 
     InputStream inStream = new ByteArrayInputStream(data);
 
@@ -62,7 +92,7 @@ public class SnowflakeInternalStage {
       // TODO Update JDBC driver to throw a reliable token expired error
       if (npe.getStackTrace()[0].getClassName() == "net.snowflake.client.core.SFStatement"
           && npe.getStackTrace()[0].getLineNumber() == 332) {
-        this.fileTransferMetadata = this.refreshSnowflakeMetadata();
+        this.fileTransferMetadataWithAge = this.refreshSnowflakeMetadata();
         this.putRemote(fullFilePath, data);
         return;
       }
@@ -72,11 +102,22 @@ public class SnowflakeInternalStage {
     }
   }
 
-  SnowflakeFileTransferMetadata refreshSnowflakeMetadata()
+  SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata() throws SnowflakeSQLException, IOException {
+    return refreshSnowflakeMetadata(false);
+  }
+
+  synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force /* true will ignore REFRESH_THRESHOLD */)
       throws SnowflakeSQLException, IOException {
+    if (!force
+            && fileTransferMetadataWithAge.timestamp.isPresent()
+            && fileTransferMetadataWithAge.timestamp.get() > System.currentTimeMillis() - REFRESH_THRESHOLD
+    ) {
+      return fileTransferMetadataWithAge;
+    }
     String sessionToken = ((SnowflakeConnectionV1) connection).getSfSession().getSessionToken();
     SnowflakeConnectString connectString =
         ((SnowflakeConnectionV1) connection).getSfSession().getSnowflakeConnectionString();
+    // TODO update configure url when we have new endpoint
     String configureUrl =
         String.format(
             "%s://%s:%s/v1/streaming/client/configure",
@@ -105,6 +146,8 @@ public class SnowflakeInternalStage {
     dataNode.set("stageInfo", responseNode.get("stage_location"));
     dataNode.putArray("src_locations").add("foo/");
 
-    return SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
+    return new SnowflakeFileTransferMetadataWithAge(SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+            Optional.of(System.currentTimeMillis())
+    );
   }
 }
