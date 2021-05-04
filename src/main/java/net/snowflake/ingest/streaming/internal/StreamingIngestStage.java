@@ -7,12 +7,15 @@ package net.snowflake.ingest.streaming.internal;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.*;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
@@ -145,21 +148,27 @@ public class StreamingIngestStage {
     }
 
     // TODO Move to JWT/Oauth
-    String sessionToken = ((SnowflakeConnectionV1) connection).getSfSession().getSessionToken();
     SnowflakeConnectString connectString =
         ((SnowflakeConnectionV1) connection).getSfSession().getSnowflakeConnectionString();
     // TODO update configure url when we have new endpoint
-    String configureUrl =
-        String.format(
-            "%s://%s:%s/v1/streaming/client/configure",
-            connectString.getScheme(), connectString.getHost(), connectString.getPort());
 
-    HttpPost postRequest = new HttpPost(configureUrl);
+    URI uri;
+    try {
+      uri =
+          new URIBuilder()
+              .setScheme(connectString.getScheme())
+              .setHost(connectString.getHost())
+              .setPort(connectString.getPort())
+              .setPath("client/configure")
+              .build();
+    } catch (URISyntaxException e) {
+      // TODO throw proper exception
+      //      throw SnowflakeErrors.ERROR_6007.getException(e);
+      throw new RuntimeException(e);
+    }
+
+    HttpPost postRequest = new HttpPost(uri);
     postRequest.addHeader("Accept", "application/json");
-    postRequest.setHeader(HttpHeaders.AUTHORIZATION, "Basic");
-
-    postRequest.setHeader(
-        "Authorization", "Snowflake" + " " + "token" + "=\"" + sessionToken + "\"");
 
     StringEntity input = new StringEntity("{}", StandardCharsets.UTF_8);
     input.setContentType("application/json");
