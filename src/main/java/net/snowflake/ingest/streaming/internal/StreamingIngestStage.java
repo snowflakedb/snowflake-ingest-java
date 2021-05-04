@@ -4,32 +4,30 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.client.jdbc.*;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
+import net.snowflake.client.jdbc.*;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.http.HttpHeaders;
-import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 
-/**
- * Handles uploading files to Snowflake cloud storage.
- */
+/** Handles uploading files to Snowflake cloud storage. */
 public class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
-  private static final long REFRESH_THRESHOLD_IN_MS = 1000 * 60; // Do not attempt to refresh credentials if the current ones are younger than this.
+  private static final long REFRESH_THRESHOLD_IN_MS =
+      1000 * 60; // Do not attempt to refresh credentials if the current ones are younger than this.
 
   /**
-   Wrapper class containing SnowflakeFileTransferMetadata and the timestamp
-   at which the metadata was refreshed
+   * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
+   * was refreshed
    */
   private static class SnowflakeFileTransferMetadataWithAge {
     SnowflakeFileTransferMetadataV1 fileTransferMetadata;
@@ -41,7 +39,7 @@ public class StreamingIngestStage {
     Optional<Long> timestamp;
 
     SnowflakeFileTransferMetadataWithAge(
-            SnowflakeFileTransferMetadataV1 fileTransferMetadata, Optional<Long> timestamp) {
+        SnowflakeFileTransferMetadataV1 fileTransferMetadata, Optional<Long> timestamp) {
       this.fileTransferMetadata = fileTransferMetadata;
       this.timestamp = timestamp;
     }
@@ -53,7 +51,8 @@ public class StreamingIngestStage {
   public StreamingIngestStage(
       SnowflakeConnection connection, SnowflakeFileTransferMetadataV1 fileTransferMetadata) {
     this.connection = connection;
-    this.fileTransferMetadataWithAge = new SnowflakeFileTransferMetadataWithAge(fileTransferMetadata, Optional.empty());
+    this.fileTransferMetadataWithAge =
+        new SnowflakeFileTransferMetadataWithAge(fileTransferMetadata, Optional.empty());
   }
 
   public StreamingIngestStage(SnowflakeConnection connection)
@@ -72,21 +71,28 @@ public class StreamingIngestStage {
   public void putRemote(String fullFilePath, byte[] data)
       throws SnowflakeSQLException, IOException {
     // Set filename to be uploaded
-    SnowflakeFileTransferMetadataV1 fileTransferMetadata = fileTransferMetadataWithAge.fileTransferMetadata;
+    SnowflakeFileTransferMetadataV1 fileTransferMetadata =
+        fileTransferMetadataWithAge.fileTransferMetadata;
 
     /*
     Since we can have multiple calls to putRemote in parallel and because the metadata includes the file path
     we use a copy for the upload to prevent us from using the wrong file path.
      */
-    SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy = new SnowflakeFileTransferMetadataV1(
+    SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy =
+        new SnowflakeFileTransferMetadataV1(
             fileTransferMetadata.getPresignedUrl(),
             fullFilePath,
-            fileTransferMetadata.getEncryptionMaterial() != null ? fileTransferMetadata.getEncryptionMaterial().getQueryStageMasterKey() : null,
-            fileTransferMetadata.getEncryptionMaterial() != null ? fileTransferMetadata.getEncryptionMaterial().getQueryId() : null,
-            fileTransferMetadata.getEncryptionMaterial() != null ? fileTransferMetadata.getEncryptionMaterial().getSmkId() : null,
+            fileTransferMetadata.getEncryptionMaterial() != null
+                ? fileTransferMetadata.getEncryptionMaterial().getQueryStageMasterKey()
+                : null,
+            fileTransferMetadata.getEncryptionMaterial() != null
+                ? fileTransferMetadata.getEncryptionMaterial().getQueryId()
+                : null,
+            fileTransferMetadata.getEncryptionMaterial() != null
+                ? fileTransferMetadata.getEncryptionMaterial().getSmkId()
+                : null,
             fileTransferMetadata.getCommandType(),
-            fileTransferMetadata.getStageInfo()
-    );
+            fileTransferMetadata.getStageInfo());
 
     InputStream inStream = new ByteArrayInputStream(data);
 
@@ -104,7 +110,8 @@ public class StreamingIngestStage {
           && npe.getStackTrace()[0].getLineNumber() == 332) {
         this.fileTransferMetadataWithAge = this.refreshSnowflakeMetadata();
 
-        // TODO revisit possible infinite recursion here if the metadata expiration happens too quickly
+        // TODO revisit possible infinite recursion here if the metadata expiration happens too
+        // quickly
         this.putRemote(fullFilePath, data);
         return;
       }
@@ -114,13 +121,14 @@ public class StreamingIngestStage {
     }
   }
 
-  SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata() throws SnowflakeSQLException, IOException {
+  SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata()
+      throws SnowflakeSQLException, IOException {
     return refreshSnowflakeMetadata(false);
   }
 
   /**
-   * Gets new stage credentials and other metadata from Snowflake.  Synchronized to prevent
-   * multiple calls to putRemote from trying to refresh at the same time
+   * Gets new stage credentials and other metadata from Snowflake. Synchronized to prevent multiple
+   * calls to putRemote from trying to refresh at the same time
    *
    * @param force if true will ignore REFRESH_THRESHOLD and force metadata refresh
    * @return refreshed metadata
@@ -130,9 +138,9 @@ public class StreamingIngestStage {
   synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force)
       throws SnowflakeSQLException, IOException {
     if (!force
-            && fileTransferMetadataWithAge.timestamp.isPresent()
-            && fileTransferMetadataWithAge.timestamp.get() > System.currentTimeMillis() - REFRESH_THRESHOLD_IN_MS
-    ) {
+        && fileTransferMetadataWithAge.timestamp.isPresent()
+        && fileTransferMetadataWithAge.timestamp.get()
+            > System.currentTimeMillis() - REFRESH_THRESHOLD_IN_MS) {
       return fileTransferMetadataWithAge;
     }
 
@@ -167,11 +175,12 @@ public class StreamingIngestStage {
     ObjectNode dataNode = (ObjectNode) mutable.get("data");
     dataNode.set("stageInfo", responseNode.get("stage_location"));
 
-    // JDBC expects this field which maps to presignedFileUrlName.  We override presignedFileUrlName on each upload.
+    // JDBC expects this field which maps to presignedFileUrlName.  We override presignedFileUrlName
+    // on each upload.
     dataNode.putArray("src_locations").add("placeholder/");
 
-    return new SnowflakeFileTransferMetadataWithAge(SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
-            Optional.of(System.currentTimeMillis())
-    );
+    return new SnowflakeFileTransferMetadataWithAge(
+        SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+        Optional.of(System.currentTimeMillis()));
   }
 }
