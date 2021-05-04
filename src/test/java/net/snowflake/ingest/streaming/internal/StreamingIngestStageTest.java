@@ -28,7 +28,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
   HttpUtil.class,
   SnowflakeFileTransferAgent.class,
 })
-public class SnowflakeInternalStageTest {
+public class StreamingIngestStageTest {
   private ObjectMapper mapper = new ObjectMapper();
 
   @Test
@@ -45,7 +45,7 @@ public class SnowflakeInternalStageTest {
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
-    SnowflakeInternalStage stage = new SnowflakeInternalStage(connection, originalMetadata);
+    StreamingIngestStage stage = new StreamingIngestStage(connection, originalMetadata);
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
@@ -96,7 +96,7 @@ public class SnowflakeInternalStageTest {
 
     JsonNode exampleJson = mapper.readTree(exampleMeta);
 
-    SnowflakeInternalStage stage = new SnowflakeInternalStage(connection, originalMetadata);
+    StreamingIngestStage stage = new StreamingIngestStage(connection, originalMetadata);
     PowerMockito.when(
             HttpUtil.executeGeneralRequest(Mockito.any(), Mockito.anyInt(), Mockito.any()))
         .thenReturn(exampleMetaResponse);
