@@ -10,7 +10,9 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
-import net.snowflake.client.jdbc.*;
+import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
+import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
+import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.amazonaws.util.IOUtils;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
@@ -44,14 +46,28 @@ public class StreamingIngestStageTest {
           .build();
 
   final String exampleMeta =
-      "{\"data\": {\"src_locations\": [\"placeholder/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stageInfo\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}}";
+      "{\"data\": {\"src_locations\": [\"placeholder/\"],\"status_code\": 0, \"message\":"
+          + " \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stageInfo\": {\"locationType\":"
+          + " \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\","
+          + " \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\":"
+          + " true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
+          + " \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\":"
+          + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
+          + " \"endPoint\": null}}}";
 
   private void setupMocksForRefresh(long httpDelay) throws Exception {
     PowerMockito.mockStatic(HttpUtil.class);
     PowerMockito.mockStatic(TestUtils.class);
 
     String exampleMetaResponse =
-        "{\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\": \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\": \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null, \"endPoint\": null}}";
+        "{\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\":"
+            + " \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
+            + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
+            + " \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true,"
+            + " \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
+            + " \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\":"
+            + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
+            + " \"endPoint\": null}}";
 
     PowerMockito.when(
             HttpUtil.executeGeneralRequest(Mockito.any(), Mockito.anyInt(), Mockito.any()))
