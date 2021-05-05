@@ -11,6 +11,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.*;
@@ -21,23 +22,22 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 
-/** Handles uploading files to Snowflake cloud storage. */
+/** Handles uploading files to the Snowflake Streaming Ingest Stage */
 public class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final long REFRESH_THRESHOLD_IN_MS =
-      1000 * 60; // Do not attempt to refresh credentials if the current ones are younger than this.
+      TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
 
   /**
    * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
    * was refreshed
    */
-  private static class SnowflakeFileTransferMetadataWithAge {
+  static class SnowflakeFileTransferMetadataWithAge {
     SnowflakeFileTransferMetadataV1 fileTransferMetadata;
 
     /* Do do not always know the age of the metadata, so we use the empty
     state to record unknown age.
      */
-
     Optional<Long> timestamp;
 
     SnowflakeFileTransferMetadataWithAge(
@@ -48,18 +48,10 @@ public class StreamingIngestStage {
   }
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final SnowflakeConnection connection;
+  private final SnowflakeURL snowflakeURL;
 
-  public StreamingIngestStage(
-      SnowflakeConnection connection, SnowflakeFileTransferMetadataV1 fileTransferMetadata) {
-    this.connection = connection;
-    this.fileTransferMetadataWithAge =
-        new SnowflakeFileTransferMetadataWithAge(fileTransferMetadata, Optional.empty());
-  }
-
-  public StreamingIngestStage(SnowflakeConnection connection)
-      throws SnowflakeSQLException, IOException {
-    this.connection = connection;
+  public StreamingIngestStage(SnowflakeURL snowflakeURL) throws SnowflakeSQLException, IOException {
+    this.snowflakeURL = snowflakeURL;
     this.fileTransferMetadataWithAge = this.refreshSnowflakeMetadata();
   }
 
@@ -107,7 +99,7 @@ public class StreamingIngestStage {
               .setOcspMode(OCSPMode.FAIL_OPEN)
               .build());
     } catch (NullPointerException npe) {
-      // TODO Update JDBC driver to throw a reliable token expired error
+      // TODO SNOW-350701 Update JDBC driver to throw a reliable token expired error
       if (npe.getStackTrace()[0].getClassName() == "net.snowflake.client.core.SFStatement"
           && npe.getStackTrace()[0].getLineNumber() == 332) {
         this.fileTransferMetadataWithAge = this.refreshSnowflakeMetadata();
@@ -140,6 +132,7 @@ public class StreamingIngestStage {
   synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force)
       throws SnowflakeSQLException, IOException {
     if (!force
+        && fileTransferMetadataWithAge != null
         && fileTransferMetadataWithAge.timestamp.isPresent()
         && fileTransferMetadataWithAge.timestamp.get()
             > System.currentTimeMillis() - REFRESH_THRESHOLD_IN_MS) {
@@ -147,18 +140,15 @@ public class StreamingIngestStage {
     }
 
     // TODO Move to JWT/Oauth
-    SnowflakeConnectString connectString =
-        ((SnowflakeConnectionV1) connection).getSfSession().getSnowflakeConnectionString();
     // TODO update configure url when we have new endpoint
-
     URI uri;
     try {
       uri =
           new URIBuilder()
-              .setScheme(connectString.getScheme())
-              .setHost(connectString.getHost())
-              .setPort(connectString.getPort())
-              .setPath("client/configure")
+              .setScheme(snowflakeURL.getScheme())
+              .setHost(snowflakeURL.getUrlWithoutPort())
+              .setPort(snowflakeURL.getPort())
+              .setPath("v1/streaming/client/configure")
               .build();
     } catch (URISyntaxException e) {
       // TODO throw proper exception
@@ -185,10 +175,11 @@ public class StreamingIngestStage {
 
     // JDBC expects this field which maps to presignedFileUrlName.  We override presignedFileUrlName
     // on each upload.
-    dataNode.putArray("src_locations").add("placeholder/");
+    dataNode.putArray("src_locations").add("placeholder");
 
     return new SnowflakeFileTransferMetadataWithAge(
-        SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
         Optional.of(System.currentTimeMillis()));
   }
 }
