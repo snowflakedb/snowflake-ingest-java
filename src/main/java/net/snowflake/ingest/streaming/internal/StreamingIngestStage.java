@@ -27,6 +27,7 @@ public class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
+  static final int MAX_RETRY_COUNT = 1;
 
   /**
    * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
@@ -52,7 +53,7 @@ public class StreamingIngestStage {
 
   public StreamingIngestStage(SnowflakeURL snowflakeURL) throws SnowflakeSQLException, IOException {
     this.snowflakeURL = snowflakeURL;
-    this.fileTransferMetadataWithAge = this.refreshSnowflakeMetadata();
+    this.refreshSnowflakeMetadata();
   }
 
   /**
@@ -63,6 +64,11 @@ public class StreamingIngestStage {
    * @param data Data string to be uploaded
    */
   public void putRemote(String fullFilePath, byte[] data)
+      throws SnowflakeSQLException, IOException {
+    this.putRemote(fullFilePath, data, 0);
+  }
+
+  private void putRemote(String fullFilePath, byte[] data, int retryCount)
       throws SnowflakeSQLException, IOException {
     // Set filename to be uploaded
     SnowflakeFileTransferMetadataV1 fileTransferMetadata =
@@ -100,16 +106,11 @@ public class StreamingIngestStage {
               .build());
     } catch (NullPointerException npe) {
       // TODO SNOW-350701 Update JDBC driver to throw a reliable token expired error
-      if (npe.getStackTrace()[0].getClassName() == "net.snowflake.client.core.SFStatement"
-          && npe.getStackTrace()[0].getLineNumber() == 332) {
-        this.fileTransferMetadataWithAge = this.refreshSnowflakeMetadata();
-
-        // TODO revisit possible infinite recursion here if the metadata expiration happens too
-        // quickly
-        this.putRemote(fullFilePath, data);
-        return;
+      if (retryCount >= MAX_RETRY_COUNT) {
+        throw npe;
       }
-      throw npe;
+      this.refreshSnowflakeMetadata();
+      this.putRemote(fullFilePath, data, ++retryCount);
     } catch (Exception e) {
       throw new SnowflakeSQLException(e, ErrorCode.IO_ERROR);
     }
@@ -163,7 +164,7 @@ public class StreamingIngestStage {
     input.setContentType("application/json");
     postRequest.setEntity(input);
 
-    String response = HttpUtil.executeGeneralRequest(postRequest, 100, null);
+    String response = HttpUtil.executeGeneralRequest(postRequest, 60, null);
     JsonNode responseNode = mapper.readTree(response);
 
     // Currently have a few mismatches between the client/configure response and what
@@ -177,9 +178,20 @@ public class StreamingIngestStage {
     // on each upload.
     dataNode.putArray("src_locations").add("placeholder");
 
-    return new SnowflakeFileTransferMetadataWithAge(
-        (SnowflakeFileTransferMetadataV1)
-            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
-        Optional.of(System.currentTimeMillis()));
+    this.fileTransferMetadataWithAge =
+        new SnowflakeFileTransferMetadataWithAge(
+            (SnowflakeFileTransferMetadataV1)
+                SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+            Optional.of(System.currentTimeMillis()));
+    return this.fileTransferMetadataWithAge;
+  }
+
+  /**
+   * ONLY FOR TESTING. Sets the age of the file transfer metadata
+   *
+   * @param timestamp new age in milliseconds
+   */
+  void setFileTransferMetadataAge(long timestamp) {
+    this.fileTransferMetadataWithAge.timestamp = Optional.of(timestamp);
   }
 }
