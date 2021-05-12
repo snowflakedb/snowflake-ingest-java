@@ -30,6 +30,8 @@ import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -414,7 +416,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId, boolean showSkippedFiles)
       throws URISyntaxException, IOException, Exception {
-    return ingestFiles(Collections.singletonList(file), requestId, showSkippedFiles);
+    return ingestFiles(Collections.singletonList(file), requestId, showSkippedFiles, null);
   }
 
   /**
@@ -431,7 +433,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public IngestResponse ingestFiles(List<StagedFileWrapper> files, UUID requestId)
       throws URISyntaxException, IOException, IngestResponseException {
-    return ingestFiles(files, requestId, false);
+    return ingestFiles(files, requestId, false, null);
   }
 
   /**
@@ -440,6 +442,9 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param files - list of wrappers around filenames and sizes
    * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @param showSkippedFiles - a flag which returns the files that were skipped when set to true.
+   * @param additionalUserAgentInfo - Pass a string which is appended to the default user agent. Can
+   *     be null or empty. For default user agent @see
+   *     net.snowflake.ingest.connection.RequestBuilder#getDefaultUserAgent()
    * @return an insert response from the server
    * @throws BackOffException - if we have a 503 response
    * @throws IOException - if we have some other network failure
@@ -448,18 +453,24 @@ public class SimpleIngestManager implements AutoCloseable {
    *     construction failure
    */
   public IngestResponse ingestFiles(
-      List<StagedFileWrapper> files, UUID requestId, boolean showSkippedFiles)
+      List<StagedFileWrapper> files,
+      UUID requestId,
+      boolean showSkippedFiles,
+      String additionalUserAgentInfo)
       throws URISyntaxException, IOException, IngestResponseException {
 
     // the request id we want to send with this payload
     UUID request = requestId == null ? UUID.randomUUID() : requestId;
 
     // We're about to send this request number
-    LOGGER.info("Sending Request UUID - {}", request.toString());
+    LOGGER.info("Sending Request UUID - {}", request);
+
+    HttpPost httpPostForIngestFile =
+        builder.generateInsertRequest(
+            request, pipe, files, showSkippedFiles, additionalUserAgentInfo);
 
     // send the request and get a response....
-    HttpResponse response =
-        httpClient.execute(builder.generateInsertRequest(request, pipe, files, showSkippedFiles));
+    HttpResponse response = httpClient.execute(httpPostForIngestFile);
 
     LOGGER.info("Attempting to unmarshall insert response - {}", response);
     return ServiceResponseHandler.unmarshallIngestResponse(response);
@@ -480,18 +491,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public HistoryResponse getHistory(UUID requestId, Integer recentSeconds, String beginMark)
       throws URISyntaxException, IOException, IngestResponseException {
-    // if we have no requestId generate one
-    if (requestId == null) {
-      requestId = UUID.randomUUID();
-    }
-
-    // send the request and get a response...
-    HttpResponse response =
-        httpClient.execute(
-            builder.generateHistoryRequest(requestId, pipe, recentSeconds, beginMark));
-
-    LOGGER.info("Attempting to unmarshall history response - {}", response);
-    return ServiceResponseHandler.unmarshallHistoryResponse(response);
+    return getHistory(requestId, recentSeconds, beginMark, null);
   }
 
   /**
@@ -507,7 +507,42 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public HistoryResponse getHistory(UUID requestId)
       throws URISyntaxException, IOException, IngestResponseException {
-    return getHistory(requestId, null, null);
+    return getHistory(requestId, null, null, null);
+  }
+
+  /**
+   * Pings the service to see the current ingest history for this table
+   *
+   * @param requestId a UUID we use to label the request, if null, one is generated for the user
+   * @param recentSeconds history only for items in the recentSeconds window
+   * @param beginMark mark from which history should be fetched
+   * @param additionalUserAgentInfo - Pass a string which is appended to the default user agent. Can
+   *     be null or empty. For default user agent @see
+   *     net.snowflake.ingest.connection.RequestBuilder#getDefaultUserAgent()
+   * @return a response showing the available ingest history from the service
+   * @throws BackOffException - if we have a 503 response
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered a service error
+   * @throws URISyntaxException - if the provided account name was illegal and caused a URI
+   *     construction failure
+   */
+  public HistoryResponse getHistory(
+      UUID requestId, Integer recentSeconds, String beginMark, String additionalUserAgentInfo)
+      throws URISyntaxException, IOException, IngestResponseException {
+    // if we have no requestId generate one
+    if (requestId == null) {
+      requestId = UUID.randomUUID();
+    }
+
+    HttpGet httpGetHistory =
+        builder.generateHistoryRequest(
+            requestId, pipe, recentSeconds, beginMark, additionalUserAgentInfo);
+
+    // send the request and get a response...
+    HttpResponse response = httpClient.execute(httpGetHistory);
+
+    LOGGER.info("Attempting to unmarshall history response - {}", response);
+    return ServiceResponseHandler.unmarshallHistoryResponse(response);
   }
 
   /**
@@ -550,5 +585,10 @@ public class SimpleIngestManager implements AutoCloseable {
   @Override
   public void close() {
     builder.closeResources();
+  }
+
+  /* Used for testing */
+  public RequestBuilder getRequestBuilder() {
+    return this.builder;
   }
 }

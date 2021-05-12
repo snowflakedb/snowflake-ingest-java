@@ -5,6 +5,7 @@
 package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -94,14 +95,19 @@ public final class RequestBuilder {
   // and object mapper for all marshalling and unmarshalling
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  // Don't change!
-  private static final String CLIENT_NAME = "SnowpipeJavaSDK";
-
-  private static final String DEFAULT_VERSION = "0.1.0";
   private static final String RESOURCES_FILE = "project.properties";
   private static final Properties PROPERTIES = loadProperties();
 
-  private static final String USER_AGENT = getUserAgent();
+  private static final String USER_AGENT = getDefaultUserAgent();
+
+  // Don't change!
+  public static final String CLIENT_NAME = "SnowpipeJavaSDK";
+
+  public static final String DEFAULT_VERSION = "0.10.2";
+
+  public static final String JAVA_USER_AGENT = "JAVA";
+
+  public static final String OS_INFO_USER_AGENT_FORMAT = "(%s %s %s)";
 
   private static Properties loadProperties() {
     Properties properties = new Properties();
@@ -132,17 +138,38 @@ public final class RequestBuilder {
     return properties;
   }
 
-  private static String getUserAgent() {
+  /**
+   * Creates a string for user agent which should always be present in all requests to Snowflake
+   * (Snowpipe APIs) Here is the format we will use SnowpipeJavaSDK/version (platform details)
+   * JAVA/<java-version>
+   *
+   * @return the default agent string
+   */
+  private static String getDefaultUserAgent() {
     final String clientVersion = PROPERTIES.getProperty("version");
-    final String javaVersion = System.getProperty("java.version");
-    final String platform =
-        System.getProperty("os.name")
-            + System.getProperty("os.version")
-            + System.getProperty("os.arch");
+    StringBuilder defaultUserAgent = new StringBuilder(CLIENT_NAME + "/" + clientVersion);
 
-    // {client-name}/{version}/{java-version}/{platform}
-    final String userAgentFormat = "%s/%s/%s/%s";
-    return String.format(userAgentFormat, CLIENT_NAME, clientVersion, javaVersion, platform);
+    final String osInformation =
+        String.format(
+            OS_INFO_USER_AGENT_FORMAT,
+            System.getProperty("os.name"),
+            System.getProperty("os.version"),
+            System.getProperty("os.arch"));
+
+    // append osInformation string to user agent
+    defaultUserAgent.append(" ");
+    defaultUserAgent.append(osInformation);
+    defaultUserAgent.append(" ");
+
+    // Add Java Version
+    final String javaVersion = System.getProperty("java.version");
+    defaultUserAgent.append(JAVA_USER_AGENT + "/" + javaVersion);
+
+    return defaultUserAgent.toString();
+  }
+
+  private static String buildCustomUserAgent(String additionalUserAgentInfo) {
+    return getDefaultUserAgent().trim() + " " + additionalUserAgentInfo;
   }
   /**
    * A simple POJO for generating our POST body to the insert endpoint
@@ -374,11 +401,18 @@ public final class RequestBuilder {
   }
 
   /**
-   * addUserAgent - adds the user agent header to a request
+   * Add user agent to the request Header for passed Http request
    *
    * @param request the URI request
+   * @param customUserAgent adds the user agent header to a request along with the default one. If
+   *     it is null or empty, only default one is used.
    */
-  private static void addUserAgent(HttpUriRequest request) {
+  private static void addUserAgent(HttpUriRequest request, String customUserAgent) {
+    if (!Strings.isNullOrEmpty(customUserAgent)) {
+      final String userAgent = buildCustomUserAgent(customUserAgent);
+      request.setHeader(HttpHeaders.USER_AGENT, userAgent);
+      return;
+    }
     request.setHeader(HttpHeaders.USER_AGENT, USER_AGENT);
   }
 
@@ -392,8 +426,9 @@ public final class RequestBuilder {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
   }
 
-  private static void addHeaders(HttpUriRequest request, String token) {
-    addUserAgent(request);
+  private static void addHeaders(
+      HttpUriRequest request, String token, String additionalUserAgentInfo) {
+    addUserAgent(request, additionalUserAgentInfo);
     // add the auth token
     addToken(request, token);
   }
@@ -406,11 +441,17 @@ public final class RequestBuilder {
    * @param pipe a fully qualified pipe name
    * @param files a list of files
    * @param showSkippedFiles a boolean which returns skipped files when set to true
+   * @param additionalUserAgentInfo additional User agent information required in the request. It
+   *     adds this passed string to the already existing user agent See {#defaultUserAgent}
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
   public HttpPost generateInsertRequest(
-      UUID requestId, String pipe, List<StagedFileWrapper> files, boolean showSkippedFiles)
+      UUID requestId,
+      String pipe,
+      List<StagedFileWrapper> files,
+      boolean showSkippedFiles,
+      String additionalUserAgentInfo)
       throws URISyntaxException {
     // make the insert URI
     URI insertURI = makeInsertURI(requestId, pipe, showSkippedFiles);
@@ -419,7 +460,7 @@ public final class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(insertURI);
 
-    addHeaders(post, securityManager.getToken());
+    addHeaders(post, securityManager.getToken(), additionalUserAgentInfo);
 
     // the entity for the containing the json
     final StringEntity entity =
@@ -436,11 +477,17 @@ public final class RequestBuilder {
    * @param pipe a fully qualified pipe name
    * @param recentSeconds history only for items in the recentSeconds window
    * @param beginMark mark from which history should be fetched
+   * @param additionalUserAgentInfo additional User agent information required in the request. It
+   *     adds this passed string to the already existing user agent See {#defaultUserAgent}
    * @return a get request with all the data we need
    * @throws URISyntaxException - If the URI components provided are improper
    */
   public HttpGet generateHistoryRequest(
-      UUID requestId, String pipe, Integer recentSeconds, String beginMark)
+      UUID requestId,
+      String pipe,
+      Integer recentSeconds,
+      String beginMark,
+      String additionalUserAgentInfo)
       throws URISyntaxException {
     // make the history URI
     URI historyURI = makeHistoryURI(requestId, pipe, recentSeconds, beginMark);
@@ -448,7 +495,39 @@ public final class RequestBuilder {
     // make the get request
     HttpGet get = new HttpGet(historyURI);
 
-    addHeaders(get, securityManager.getToken());
+    addHeaders(get, securityManager.getToken(), additionalUserAgentInfo);
+
+    return get;
+  }
+
+  /**
+   * generateHistoryRangeRequest - given a requestId and a pipe, get history for all ingests between
+   * time ranges start-end
+   *
+   * @param requestId a UUID we will use to label this request
+   * @param pipe a fully qualified pipe name
+   * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format. Missing
+   *     millisecond part in string will lead to a zero milliseconds. This is a required query
+   *     parameter, and a 400 will be returned if this query parameter is missing
+   * @param endTimeExclusive End time exclusive of scan range. If this query parameter is missing or
+   *     user provided value is later than current millis, then current millis is used.
+   * @param additionalUserAgentInfo additional User agent information required in the request. It
+   *     adds this passed string to the already existing user agent See {#defaultUserAgent}
+   * @return URI for the insert request
+   */
+  public HttpGet generateHistoryRangeRequest(
+      UUID requestId,
+      String pipe,
+      String startTimeInclusive,
+      String endTimeExclusive,
+      String additionalUserAgentInfo)
+      throws URISyntaxException {
+    URI historyRangeURI =
+        makeHistoryRangeURI(requestId, pipe, startTimeInclusive, endTimeExclusive);
+
+    HttpGet get = new HttpGet(historyRangeURI);
+
+    addHeaders(get, securityManager.getToken(), additionalUserAgentInfo /*User agent information*/);
 
     return get;
   }
@@ -469,14 +548,7 @@ public final class RequestBuilder {
   public HttpGet generateHistoryRangeRequest(
       UUID requestId, String pipe, String startTimeInclusive, String endTimeExclusive)
       throws URISyntaxException {
-    URI historyRangeURI =
-        makeHistoryRangeURI(requestId, pipe, startTimeInclusive, endTimeExclusive);
-
-    HttpGet get = new HttpGet(historyRangeURI);
-
-    addHeaders(get, securityManager.getToken());
-
-    return get;
+    return generateHistoryRangeRequest(requestId, pipe, startTimeInclusive, endTimeExclusive, null);
   }
 
   /**
