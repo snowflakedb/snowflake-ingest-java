@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.util.List;
 import net.snowflake.client.jdbc.internal.apache.arrow.vector.FieldVector;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 
 /**
@@ -19,6 +20,7 @@ public class ChannelData {
   private long rowCount;
   private float bufferSize;
   private SnowflakeStreamingIngestChannel channel;
+  private EpInfo epInfo;
 
   public Long getRowSequencer() {
     return this.rowSequencer;
@@ -71,5 +73,15 @@ public class ChannelData {
   @Override
   public String toString() {
     return this.channel.toString();
+  }
+
+  @JsonProperty("eps")
+  public EpInfo getEpInfo() {
+    return epInfo;
+  }
+
+  @JsonProperty("eps")
+  public void setEpInfo(EpInfo epInfo) {
+    this.epInfo = epInfo;
   }
 }

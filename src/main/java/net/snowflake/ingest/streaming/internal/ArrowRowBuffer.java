@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -109,6 +110,27 @@ public class ArrowRowBuffer extends Logging {
   private final SnowflakeStreamingIngestChannel owningChannel;
 
   /**
+   * Given a set of col names to stats, build the right ep info
+   *
+   * @param rowCount: count of rows in the given arrow buffer
+   * @param colStats: map of column name to RowBufferStats
+   * @return
+   */
+  static EpInfo buildEpInfoFromStats(long rowCount, Map<String, RowBufferStats> colStats) {
+    EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
+    for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
+      RowBufferStats stat = colStat.getValue();
+      FileColumnProperties dto = new FileColumnProperties(stat);
+
+      String colName = colStat.getKey();
+      epInfo.getColumnEps().put(colName, dto);
+    }
+    return epInfo;
+  }
+
+  Map<String, RowBufferStats> statsMap;
+
+  /**
    * Construct a ArrowRowBuffer object
    *
    * @param channel
@@ -122,6 +144,9 @@ public class ArrowRowBuffer extends Logging {
     this.rowCount = 0L;
     this.bufferSize = 0F;
     this.curRowIndex = 0;
+
+    // Initialize empty stats
+    statsMap = new HashMap<>();
   }
 
   /**
@@ -135,6 +160,7 @@ public class ArrowRowBuffer extends Logging {
       FieldVector vector = field.createVector(this.allocator);
       this.fields.put(column.getName(), field);
       this.vectors.put(column.getName(), vector);
+      statsMap.put(column.getName(), new RowBufferStats());
     }
   }
 
@@ -150,11 +176,12 @@ public class ArrowRowBuffer extends Logging {
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */
-  private void reset() {
+  void reset() {
     this.vectors.values().forEach(vector -> vector.clear());
     this.rowCount = 0L;
     this.bufferSize = 0F;
     this.curRowIndex = 0;
+    this.statsMap.replaceAll((key, value) -> new RowBufferStats());
   }
 
   /**
@@ -213,10 +240,12 @@ public class ArrowRowBuffer extends Logging {
       int curRowIndex = 0;
       long rowSequencer = 0;
       String offsetToken = null;
+      EpInfo epInfo = null;
 
       logDebug(
           "Arrow buffer flush about to take lock on channel: {}",
           this.owningChannel.getFullyQualifiedName());
+
       this.flushLock.lock();
       try {
         if (this.rowCount > 0) {
@@ -231,6 +260,8 @@ public class ArrowRowBuffer extends Logging {
           rowCount = this.rowCount;
           bufferSize = this.bufferSize;
           curRowIndex = this.curRowIndex;
+          epInfo = buildEpInfoFromStats(rowCount, statsMap);
+
           rowSequencer = this.owningChannel.getAndIncrementRowSequencer();
           offsetToken = this.owningChannel.getOffsetToken();
           // Reset everything in the buffer once we save all the info
@@ -248,11 +279,13 @@ public class ArrowRowBuffer extends Logging {
       if (!oldVectors.isEmpty()) {
         ChannelData data = new ChannelData();
         data.setVectors(oldVectors);
-        data.setRowCount(rowCount);
+        data.setRowCount(rowCount); // TODO Remove row count from ChannelData
         data.setBufferSize(bufferSize);
         data.setChannel(this.owningChannel);
         data.setRowSequencer(rowSequencer);
         data.setOffsetToken(offsetToken);
+        data.setEpInfo(epInfo);
+
         return data;
       }
     }
@@ -365,38 +398,49 @@ public class ArrowRowBuffer extends Logging {
           ColumnLogicalType.valueOf(field.getMetadata().get(COLUMN_LOGICAL_TYPE));
       ColumnPhysicalType physicalType =
           ColumnPhysicalType.valueOf(field.getMetadata().get(COLUMN_PHYSICAL_TYPE));
+
+      RowBufferStats stats = statsMap.computeIfAbsent(columnName, c -> new RowBufferStats());
+
       switch (logicalType) {
         case FIXED:
           switch (physicalType) {
             case SB1:
               if (value == null) {
                 ((TinyIntVector) vector).setNull(this.curRowIndex);
+                stats.incCurrentNullCount();
               } else {
                 ((TinyIntVector) vector).setSafe(this.curRowIndex, (byte) value);
+                stats.addIntValue(BigInteger.valueOf((byte) value));
                 this.bufferSize += 1;
               }
               break;
             case SB2:
               if (value == null) {
                 ((SmallIntVector) vector).setNull(this.curRowIndex);
+                stats.incCurrentNullCount();
               } else {
                 ((SmallIntVector) vector).setSafe(this.curRowIndex, (short) value);
+                stats.addIntValue(BigInteger.valueOf((short) value));
                 this.bufferSize += 2;
               }
               break;
             case SB4:
               if (value == null) {
                 ((IntVector) vector).setNull(this.curRowIndex);
+                stats.incCurrentNullCount();
               } else {
                 ((IntVector) vector).setSafe(this.curRowIndex, (int) value);
+                stats.addIntValue(BigInteger.valueOf((int) value));
                 this.bufferSize += 4;
               }
               break;
             case SB8:
               if (value == null) {
                 ((BigIntVector) vector).setNull(this.curRowIndex);
+                stats.incCurrentNullCount();
               } else {
                 ((BigIntVector) vector).setSafe(this.curRowIndex, (long) value);
+                stats.addIntValue(BigInteger.valueOf((long) value));
                 this.bufferSize += 8;
               }
               break;
@@ -406,6 +450,8 @@ public class ArrowRowBuffer extends Logging {
               } else {
                 ((DecimalVector) vector)
                     .setSafe(this.curRowIndex, new BigDecimal(value.toString()));
+                BigDecimal decimalVal = new BigDecimal(value.toString());
+                stats.addIntValue(decimalVal.toBigInteger());
                 this.bufferSize += 16;
               }
               break;
@@ -421,9 +467,14 @@ public class ArrowRowBuffer extends Logging {
         case VARIANT:
           if (value == null) {
             ((VarCharVector) vector).setNull(this.curRowIndex);
+            stats.incCurrentNullCount();
           } else {
-            Text text = new Text(value.toString());
+            String str = value.toString();
+            Text text = new Text(str);
             ((VarCharVector) vector).setSafe(this.curRowIndex, text);
+            int len = text.getBytes().length;
+            stats.setCurrentMaxLength(len); // TODO confirm max length for strings
+            stats.addStrValue(str);
             this.bufferSize += text.getBytes().length;
           }
           break;

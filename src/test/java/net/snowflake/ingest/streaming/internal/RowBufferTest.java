@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,6 +18,13 @@ public class RowBufferTest {
   public void setupRowBuffer() {
     // Create row buffer
     this.rowBuffer = new ArrowRowBuffer(null);
+
+    ColumnMetadata colTinyIntCase = new ColumnMetadata();
+    colTinyIntCase.setName("colTinyInt");
+    colTinyIntCase.setPhysicalType("SB1");
+    colTinyIntCase.setNullable(false);
+    colTinyIntCase.setLogicalType("FIXED");
+    colTinyIntCase.setScale(0);
 
     ColumnMetadata colTinyInt = new ColumnMetadata();
     colTinyInt.setName("COLTINYINT");
@@ -65,7 +73,19 @@ public class RowBufferTest {
 
     // Setup column fields and vectors
     this.rowBuffer.setupSchema(
-        Arrays.asList(colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar));
+        Arrays.asList(
+            colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar));
+  }
+
+  @Test
+  public void testReset() throws Exception {
+    RowBufferStats stats = this.rowBuffer.statsMap.get("COLCHAR");
+    stats.addIntValue(BigInteger.valueOf(1));
+    Assert.assertEquals(BigInteger.valueOf(1), stats.getCurrentMaxIntValue());
+    this.rowBuffer.reset();
+    RowBufferStats resetStats = this.rowBuffer.statsMap.get("COLCHAR");
+    Assert.assertNotNull(resetStats);
+    Assert.assertNull(resetStats.getCurrentMaxIntValue());
   }
 
   @Test
@@ -264,5 +284,107 @@ public class RowBufferTest {
     } catch (Exception e) {
       Assert.fail("Row buffer insert row failed");
     }
+  }
+
+  @Test
+  public void testBuildEpInfoFromStats() throws Exception {
+    Map<String, RowBufferStats> colStats = new HashMap<>();
+
+    RowBufferStats stats1 = new RowBufferStats();
+    stats1.addIntValue(BigInteger.valueOf(2));
+    stats1.addIntValue(BigInteger.valueOf(10));
+    stats1.addIntValue(BigInteger.valueOf(1));
+
+    RowBufferStats stats2 = new RowBufferStats();
+    stats2.addStrValue("alice");
+    stats2.addStrValue("bob");
+    stats2.incCurrentNullCount();
+
+    colStats.put("intColumn", stats1);
+    colStats.put("strColumn", stats2);
+
+    EpInfo result = ArrowRowBuffer.buildEpInfoFromStats(2, colStats);
+    Map<String, FileColumnProperties> columnResults = result.getColumnEps();
+    Assert.assertEquals(2, columnResults.keySet().size());
+
+    FileColumnProperties strColumnResult = columnResults.get("strColumn");
+    Assert.assertEquals(2, strColumnResult.getDistinctValues());
+    Assert.assertEquals("alice", strColumnResult.getMinStrValue());
+    Assert.assertEquals("bob", strColumnResult.getMaxStrValue());
+    Assert.assertEquals(1, strColumnResult.getNullCount());
+
+    FileColumnProperties intColumnResult = columnResults.get("intColumn");
+    Assert.assertEquals(3, intColumnResult.getDistinctValues());
+    Assert.assertEquals(BigInteger.valueOf(1), intColumnResult.getMinIntValue());
+    Assert.assertEquals(BigInteger.valueOf(10), intColumnResult.getMaxIntValue());
+    Assert.assertEquals(0, intColumnResult.getNullCount());
+  }
+
+  @Test
+  public void testStatsE2E() throws Exception {
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("\"colTinyInt\"", (byte) 10);
+    row1.put("colTinyInt", (byte) 1);
+    row1.put("colSmallInt", (short) 2);
+    row1.put("colInt", 3);
+    row1.put("colBigInt", 4L);
+    row1.put("colChar", "2");
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("\"colTinyInt\"", (byte) 11);
+    row2.put("colTinyInt", (byte) 1);
+    row2.put("colSmallInt", (short) 3);
+    row2.put("colInt", null);
+    row2.put("colBigInt", 40L);
+    row2.put("colChar", "alice");
+
+    this.rowBuffer.insertRows(Arrays.asList(row1, row2), null);
+    ChannelData result = this.rowBuffer.flush();
+    EpInfo resultInfo = result.getEpInfo();
+    Assert.assertEquals(2, resultInfo.getRowCount());
+
+    Assert.assertEquals(
+        BigInteger.valueOf(11), resultInfo.getColumnEps().get("colTinyInt").getMaxIntValue());
+    Assert.assertEquals(
+        BigInteger.valueOf(10), resultInfo.getColumnEps().get("colTinyInt").getMinIntValue());
+    Assert.assertEquals(0, resultInfo.getColumnEps().get("colTinyInt").getNullCount());
+    Assert.assertEquals(2L, resultInfo.getColumnEps().get("colTinyInt").getDistinctValues());
+
+    Assert.assertEquals(
+        BigInteger.valueOf(1), resultInfo.getColumnEps().get("COLTINYINT").getMaxIntValue());
+    Assert.assertEquals(
+        BigInteger.valueOf(1), resultInfo.getColumnEps().get("COLTINYINT").getMinIntValue());
+    Assert.assertEquals(0, resultInfo.getColumnEps().get("COLTINYINT").getNullCount());
+    Assert.assertEquals(2L, resultInfo.getColumnEps().get("COLTINYINT").getDistinctValues());
+
+    Assert.assertEquals(
+        BigInteger.valueOf(3), resultInfo.getColumnEps().get("COLSMALLINT").getMaxIntValue());
+    Assert.assertEquals(
+        BigInteger.valueOf(2), resultInfo.getColumnEps().get("COLSMALLINT").getMinIntValue());
+    Assert.assertEquals(0, resultInfo.getColumnEps().get("COLSMALLINT").getNullCount());
+    Assert.assertEquals(2L, resultInfo.getColumnEps().get("COLSMALLINT").getDistinctValues());
+
+    Assert.assertEquals(
+        BigInteger.valueOf(3), resultInfo.getColumnEps().get("COLINT").getMaxIntValue());
+    Assert.assertEquals(
+        BigInteger.valueOf(3), resultInfo.getColumnEps().get("COLINT").getMinIntValue());
+    Assert.assertEquals(1L, resultInfo.getColumnEps().get("COLINT").getNullCount());
+    Assert.assertEquals(1L, resultInfo.getColumnEps().get("COLINT").getDistinctValues());
+
+    Assert.assertEquals(
+        BigInteger.valueOf(40), resultInfo.getColumnEps().get("COLBIGINT").getMaxIntValue());
+    Assert.assertEquals(
+        BigInteger.valueOf(4), resultInfo.getColumnEps().get("COLBIGINT").getMinIntValue());
+    Assert.assertEquals(0, resultInfo.getColumnEps().get("COLBIGINT").getNullCount());
+    Assert.assertEquals(2L, resultInfo.getColumnEps().get("COLBIGINT").getDistinctValues());
+
+    Assert.assertEquals("alice", resultInfo.getColumnEps().get("COLCHAR").getMaxStrValue());
+    Assert.assertEquals("2", resultInfo.getColumnEps().get("COLCHAR").getMinStrValue());
+    Assert.assertEquals(0, resultInfo.getColumnEps().get("COLCHAR").getNullCount());
+    Assert.assertEquals(2L, resultInfo.getColumnEps().get("COLCHAR").getDistinctValues());
+
+    // Confirm we reset
+    ChannelData resetResults = this.rowBuffer.flush();
+    Assert.assertNull(resetResults);
   }
 }
