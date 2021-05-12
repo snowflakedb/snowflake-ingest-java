@@ -140,8 +140,11 @@ public final class RequestBuilder {
 
   /**
    * Creates a string for user agent which should always be present in all requests to Snowflake
-   * (Snowpipe APIs) Here is the format we will use SnowpipeJavaSDK/version (platform details)
-   * JAVA/<java-version>
+   * (Snowpipe APIs)
+   *
+   * <p>Here is the format we will use:
+   *
+   * <p>SnowpipeJavaSDK/version (platform details) JAVA/<java-version>
    *
    * @return the default agent string
    */
@@ -169,7 +172,7 @@ public final class RequestBuilder {
   }
 
   private static String buildCustomUserAgent(String additionalUserAgentInfo) {
-    return getDefaultUserAgent().trim() + " " + additionalUserAgentInfo;
+    return USER_AGENT.trim() + " " + additionalUserAgentInfo;
   }
   /**
    * A simple POJO for generating our POST body to the insert endpoint
