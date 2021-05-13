@@ -4,6 +4,9 @@
 
 package net.snowflake.ingest;
 
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST;
+
+import com.google.common.base.Strings;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.security.KeyFactory;
@@ -62,6 +65,12 @@ public class SimpleIngestManager implements AutoCloseable {
 
     // the key pair we want to use to authenticate
     private KeyPair keypair;
+
+    // Used to add additional information to User-Agent(Http Header)
+    private String userAgentSuffix;
+
+    // Hostname to connect to, default will be RequestBuilder#DEFAULT_HOST
+    private String hostName;
 
     /**
      * getAccount - returns the name of the account this builder will inject into the IngestManager
@@ -144,11 +153,40 @@ public class SimpleIngestManager implements AutoCloseable {
     }
 
     /**
+     * Get the set user agent suffix. (This is in additional to the default one.)
+     *
+     * <p>It can be null or empty.
+     */
+    public String getUserAgentSuffix() {
+      return userAgentSuffix;
+    }
+
+    /* Sets the user agent suffix as part of this SimpleIngestManager Instance */
+    public Builder setUserAgentSuffix(String userAgentSuffix) {
+      this.userAgentSuffix = userAgentSuffix;
+      return this;
+    }
+
+    /* Gets the host name */
+    public String getHostName() {
+      return hostName;
+    }
+
+    /* Sets host name, if not explicitly used, a default will be used. */
+    public Builder setHostName(String hostName) {
+      this.hostName = hostName;
+      return this;
+    }
+
+    /**
      * build - returns a new instance of SimpleIngestManager using the information set in this
      * builder object
      */
     public SimpleIngestManager build() {
-      return new SimpleIngestManager(account, user, pipe, keypair);
+      if (Strings.isNullOrEmpty(hostName)) {
+        return new SimpleIngestManager(account, user, pipe, DEFAULT_HOST, keypair, userAgentSuffix);
+      }
+      return new SimpleIngestManager(account, user, pipe, hostName, keypair, userAgentSuffix);
     }
   }
 
@@ -172,26 +210,7 @@ public class SimpleIngestManager implements AutoCloseable {
   // the request builder who handles building the HttpRequests we send
   private final RequestBuilder builder;
 
-  /**
-   * init - Does the basic work of constructing a SimpleIngestManager that is common across all
-   * constructors
-   *
-   * @param account The account into which we're loading
-   * @param user the user performing this load
-   * @param pipe the fully qualified name of pipe
-   * @param keyPair the KeyPair we'll use to sign JWT tokens
-   */
-  private void init(String account, String user, String pipe, KeyPair keyPair) {
-    // set up our reference variables
-    this.account = account;
-    this.user = user;
-    this.pipe = pipe;
-    this.keyPair = keyPair;
-
-    // make our client for sending requests
-    httpClient = HttpUtil.getHttpClient();
-    // make the request builder we'll use to build messages to the service
-  }
+  // ========= Constructors Begin =========
 
   /**
    * Constructs a SimpleIngestManager for a given user in a specific account In addition, this also
@@ -210,36 +229,6 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   @Deprecated
   public SimpleIngestManager(String account, String user, String pipe, KeyPair keyPair) {
-    // call our initializer method
-    init(account, user, pipe, keyPair);
-
-    // create the request builder
-    this.builder = new RequestBuilder(account, user, keyPair);
-  }
-
-  /**
-   * Constructs a SimpleIngestManager for a given user in a specific account In addition, this also
-   * takes takes the target table and source stage Finally, it also requires a valid private key
-   * registered with Snowflake DB
-   *
-   * <p>Note: this method only takes in account parameter and derive the hostname, i.e.
-   * testaccount.snowfakecomputing.com. If your deployment is not aws us-west, please use the
-   * constructor that accept hostname as argument
-   *
-   * @param account The account into which we're loading Note: account should not include region or
-   *     cloud provider info. e.g. if host is testaccount.us-east-1.azure .snowflakecomputing.com,
-   *     account should be testaccount. If this is the case, you should use the constructor that
-   *     accepts hostname as argument
-   * @param user the user performing this load
-   * @param pipe the fully qualified name of the pipe
-   * @param privateKey the private key we'll use to sign JWT tokens
-   * @throws NoSuchAlgorithmException if can't create key factory by using RSA algorithm
-   * @throws InvalidKeySpecException if private key or public key is invalid
-   */
-  public SimpleIngestManager(String account, String user, String pipe, PrivateKey privateKey)
-      throws InvalidKeySpecException, NoSuchAlgorithmException {
-    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
-
     // call our initializer method
     init(account, user, pipe, keyPair);
 
@@ -287,6 +276,61 @@ public class SimpleIngestManager implements AutoCloseable {
    * takes takes the target table and source stage Finally, it also requires a valid private key
    * registered with Snowflake DB
    *
+   * <p>Note: this method only takes in account parameter and derive the hostname, i.e.
+   * testaccount.snowfakecomputing.com. If your deployment is not aws us-west, please use the
+   * constructor that accept hostname as argument
+   *
+   * @param account The account into which we're loading Note: account should not include region or
+   *     cloud provider info. e.g. if host is testaccount.us-east-1.azure .snowflakecomputing.com,
+   *     account should be testaccount. If this is the case, you should use the constructor that
+   *     accepts hostname as argument
+   * @param user the user performing this load
+   * @param pipe the fully qualified name of the pipe
+   * @param privateKey the private key we'll use to sign JWT tokens
+   * @throws NoSuchAlgorithmException if can't create key factory by using RSA algorithm
+   * @throws InvalidKeySpecException if private key or public key is invalid
+   */
+  public SimpleIngestManager(String account, String user, String pipe, PrivateKey privateKey)
+      throws InvalidKeySpecException, NoSuchAlgorithmException {
+    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
+
+    // call our initializer method
+    init(account, user, pipe, keyPair);
+
+    // create the request builder
+    this.builder = new RequestBuilder(account, user, keyPair);
+  }
+
+  /**
+   * Using this constructor for Builder pattern. KeyPair can be passed in now since we have
+   * made @see {@link SimpleIngestManager#createKeyPairFromPrivateKey(PrivateKey)} public
+   *
+   * @param account
+   * @param user
+   * @param pipe
+   * @param hostName
+   * @param keyPair
+   * @param userAgentSuffix
+   */
+  public SimpleIngestManager(
+      String account,
+      String user,
+      String pipe,
+      String hostName,
+      KeyPair keyPair,
+      String userAgentSuffix) {
+    // call our initializer method
+    init(account, user, pipe, keyPair);
+
+    // create the request builder
+    this.builder = new RequestBuilder(account, user, hostName, keyPair, userAgentSuffix);
+  }
+
+  /**
+   * Constructs a SimpleIngestManager for a given user in a specific account In addition, this also
+   * takes takes the target table and source stage Finally, it also requires a valid private key
+   * registered with Snowflake DB
+   *
    * @param account the account into which we're loading Note: account should not include region or
    *     cloud provider info. e.g. if host is testaccount.us-east-1.azure .snowflakecomputing.com,
    *     account should be testaccount
@@ -316,6 +360,49 @@ public class SimpleIngestManager implements AutoCloseable {
     builder = new RequestBuilder(account, user, keyPair, schemeName, hostName, port);
   }
 
+  /* Another flavor of constructor which supports userAgentSuffix */
+  public SimpleIngestManager(
+      String account,
+      String user,
+      String pipe,
+      PrivateKey privateKey,
+      String schemeName,
+      String hostName,
+      int port,
+      String userAgentSuffix)
+      throws NoSuchAlgorithmException, InvalidKeySpecException {
+    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
+    // call our initializer method
+    init(account, user, pipe, keyPair);
+
+    // make the request builder we'll use to build messages to the service
+    builder =
+        new RequestBuilder(account, user, keyPair, schemeName, hostName, port, userAgentSuffix);
+  }
+
+  // ========= Constructors End =========
+
+  /**
+   * init - Does the basic work of constructing a SimpleIngestManager that is common across all
+   * constructors
+   *
+   * @param account The account into which we're loading
+   * @param user the user performing this load
+   * @param pipe the fully qualified name of pipe
+   * @param keyPair the KeyPair we'll use to sign JWT tokens
+   */
+  private void init(String account, String user, String pipe, KeyPair keyPair) {
+    // set up our reference variables
+    this.account = account;
+    this.user = user;
+    this.pipe = pipe;
+    this.keyPair = keyPair;
+
+    // make our client for sending requests
+    httpClient = HttpUtil.getHttpClient();
+    // make the request builder we'll use to build messages to the service
+  }
+
   /**
    * generate key pair object from private key
    *
@@ -324,7 +411,7 @@ public class SimpleIngestManager implements AutoCloseable {
    * @throws NoSuchAlgorithmException if can't create key factory by using RSA algorithm
    * @throws InvalidKeySpecException if private key or public key is invalid
    */
-  private KeyPair createKeyPairFromPrivateKey(PrivateKey privateKey)
+  public static KeyPair createKeyPairFromPrivateKey(PrivateKey privateKey)
       throws NoSuchAlgorithmException, InvalidKeySpecException {
     if (!(privateKey instanceof RSAPrivateCrtKey))
       throw new IllegalArgumentException("Input private key is not a RSA private key");
@@ -416,7 +503,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId, boolean showSkippedFiles)
       throws URISyntaxException, IOException, Exception {
-    return ingestFiles(Collections.singletonList(file), requestId, showSkippedFiles, null);
+    return ingestFiles(Collections.singletonList(file), requestId, showSkippedFiles);
   }
 
   /**
@@ -433,7 +520,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public IngestResponse ingestFiles(List<StagedFileWrapper> files, UUID requestId)
       throws URISyntaxException, IOException, IngestResponseException {
-    return ingestFiles(files, requestId, false, null);
+    return ingestFiles(files, requestId, false);
   }
 
   /**
@@ -442,9 +529,6 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param files - list of wrappers around filenames and sizes
    * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @param showSkippedFiles - a flag which returns the files that were skipped when set to true.
-   * @param additionalUserAgentInfo - Pass a string which is appended to the default user agent. Can
-   *     be null or empty. For default user agent @see
-   *     net.snowflake.ingest.connection.RequestBuilder#getDefaultUserAgent()
    * @return an insert response from the server
    * @throws BackOffException - if we have a 503 response
    * @throws IOException - if we have some other network failure
@@ -453,10 +537,7 @@ public class SimpleIngestManager implements AutoCloseable {
    *     construction failure
    */
   public IngestResponse ingestFiles(
-      List<StagedFileWrapper> files,
-      UUID requestId,
-      boolean showSkippedFiles,
-      String additionalUserAgentInfo)
+      List<StagedFileWrapper> files, UUID requestId, boolean showSkippedFiles)
       throws URISyntaxException, IOException, IngestResponseException {
 
     // the request id we want to send with this payload
@@ -466,8 +547,7 @@ public class SimpleIngestManager implements AutoCloseable {
     LOGGER.info("Sending Request UUID - {}", request);
 
     HttpPost httpPostForIngestFile =
-        builder.generateInsertRequest(
-            request, pipe, files, showSkippedFiles, additionalUserAgentInfo);
+        builder.generateInsertRequest(request, pipe, files, showSkippedFiles);
 
     // send the request and get a response....
     HttpResponse response = httpClient.execute(httpPostForIngestFile);
@@ -491,52 +571,13 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public HistoryResponse getHistory(UUID requestId, Integer recentSeconds, String beginMark)
       throws URISyntaxException, IOException, IngestResponseException {
-    return getHistory(requestId, recentSeconds, beginMark, null);
-  }
-
-  /**
-   * Pings the service to see the current ingest history for this table
-   *
-   * @param requestId a UUID we use to label the request, if null, one is generated for the user
-   * @return a response showing the available ingest history from the service
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws IngestResponseException -if snowflake encountered a service error
-   * @throws URISyntaxException - if the provided account name was illegal and caused a URI
-   *     construction failure
-   */
-  public HistoryResponse getHistory(UUID requestId)
-      throws URISyntaxException, IOException, IngestResponseException {
-    return getHistory(requestId, null, null, null);
-  }
-
-  /**
-   * Pings the service to see the current ingest history for this table
-   *
-   * @param requestId a UUID we use to label the request, if null, one is generated for the user
-   * @param recentSeconds history only for items in the recentSeconds window
-   * @param beginMark mark from which history should be fetched
-   * @param additionalUserAgentInfo - Pass a string which is appended to the default user agent. Can
-   *     be null or empty. For default user agent @see
-   *     net.snowflake.ingest.connection.RequestBuilder#getDefaultUserAgent()
-   * @return a response showing the available ingest history from the service
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws IngestResponseException - if snowflake encountered a service error
-   * @throws URISyntaxException - if the provided account name was illegal and caused a URI
-   *     construction failure
-   */
-  public HistoryResponse getHistory(
-      UUID requestId, Integer recentSeconds, String beginMark, String additionalUserAgentInfo)
-      throws URISyntaxException, IOException, IngestResponseException {
     // if we have no requestId generate one
     if (requestId == null) {
       requestId = UUID.randomUUID();
     }
 
     HttpGet httpGetHistory =
-        builder.generateHistoryRequest(
-            requestId, pipe, recentSeconds, beginMark, additionalUserAgentInfo);
+        builder.generateHistoryRequest(requestId, pipe, recentSeconds, beginMark);
 
     // send the request and get a response...
     HttpResponse response = httpClient.execute(httpGetHistory);

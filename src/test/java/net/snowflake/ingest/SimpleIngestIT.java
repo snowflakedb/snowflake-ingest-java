@@ -15,7 +15,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;
-import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
@@ -165,8 +164,7 @@ public class SimpleIngestIT {
         manager.ingestFiles(
             SimpleIngestManager.wrapFilepaths(files),
             null /*Request Id*/,
-            true /*Show Skipped Files*/,
-            null /*Additional Http User Agent info*/);
+            true /*Show Skipped Files*/);
 
     assertEquals("SUCCESS", insertResponseSkippedFiles.getResponseCode());
     assertEquals(1, insertResponseSkippedFiles.getSkippedFiles().size());
@@ -230,36 +228,65 @@ public class SimpleIngestIT {
     }
   }
 
+  /* This should be same for all three APIs since only SimpleIngestManager constructor has changed */
   @Test
-  public void testHeadersForIngestFileRequest() throws Exception {
+  public void testUserAgentSuffixForInsertFileAPI() throws Exception {
     TestUtils.executeQuery("put file://" + testFilePath + " @" + stageName);
 
+    final String userAgentSuffix = "kafka-provider/NONE";
+
     // create ingest manager
-    SimpleIngestManager manager = TestUtils.getManager(pipeName);
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
 
     // create a file wrapper
     StagedFileWrapper myFile = new StagedFileWrapper(TEST_FILE_NAME, null);
-    RequestBuilder requestBuilder = manager.getRequestBuilder();
-    final String additionUserAgentInfo = "kafka-source/NONE";
+
     HttpPost postWithAdditionUserAgentInfo =
-        requestBuilder.generateInsertRequest(
-            UUID.randomUUID(),
-            pipeName,
-            Collections.singletonList(myFile),
-            false,
-            additionUserAgentInfo);
-    verifyDefaultUserAgent(
-        postWithAdditionUserAgentInfo.getAllHeaders(), true, additionUserAgentInfo);
+        manager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+
+    verifyDefaultUserAgent(postWithAdditionUserAgentInfo.getAllHeaders(), true, userAgentSuffix);
+
+    SimpleIngestManager testBuilderIngestManager =
+        TestUtils.getManagerUsingBuilderPattern(pipeName, userAgentSuffix);
+    HttpPost postWithAdditionUserAgentInfo2 =
+        testBuilderIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+
+    verifyDefaultUserAgent(postWithAdditionUserAgentInfo2.getAllHeaders(), true, userAgentSuffix);
 
     // Passing null and empty string would also work
+    // create ingest manager
+    SimpleIngestManager nullUserAgentSuffixIngestManager = TestUtils.getManager(pipeName, null);
+
     HttpPost nullAdditionalUserAgent =
-        requestBuilder.generateInsertRequest(
-            UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false, null);
+        nullUserAgentSuffixIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
     verifyDefaultUserAgent(nullAdditionalUserAgent.getAllHeaders(), false, null);
+
+    SimpleIngestManager emptyUserAgentSuffixIngestManager = TestUtils.getManager(pipeName, null);
     HttpPost emptyAdditionalUserAgent =
-        requestBuilder.generateInsertRequest(
-            UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false, null);
+        emptyUserAgentSuffixIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
     verifyDefaultUserAgent(emptyAdditionalUserAgent.getAllHeaders(), false, null);
+
+    // Should return a default one. i.e if nothing is passed, it should be same as either null or
+    // empty. But this check is for verifying backward compatibility
+    SimpleIngestManager noUserAgentUsedIngestManager = TestUtils.getManager(pipeName);
+    HttpPost noUserAgentUsed =
+        noUserAgentUsedIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+    verifyDefaultUserAgent(noUserAgentUsed.getAllHeaders(), false, null);
   }
 
   private void verifyDefaultUserAgent(
@@ -268,8 +295,10 @@ public class SimpleIngestIT {
       final String httpUserAgentInformation) {
     for (Header h : headers) {
       if (h.getName().equalsIgnoreCase(HttpHeaders.USER_AGENT)) {
+        System.out.println(h);
         if (verifyAdditionalUserAgentInfo) {
           assertTrue(h.getValue().contains(httpUserAgentInformation));
+          assertTrue(h.getValue().endsWith(httpUserAgentInformation));
         }
 
         // This should always be present

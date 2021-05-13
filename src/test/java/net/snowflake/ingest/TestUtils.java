@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.sql.Connection;
@@ -26,6 +27,8 @@ public class TestUtils {
   private static String user = "";
 
   private static PrivateKey privateKey = null;
+
+  private static KeyPair keyPair = null;
 
   private static String account = "";
 
@@ -75,6 +78,7 @@ public class TestUtils {
 
     PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
     privateKey = kf.generatePrivate(keySpec);
+    keyPair = SimpleIngestManager.createKeyPairFromPrivateKey(privateKey);
   }
 
   /**
@@ -134,5 +138,44 @@ public class TestUtils {
     if (profile == null) init();
     return new SimpleIngestManager(
         account, user, database + "." + schema + "." + pipe, privateKey, scheme, host, port);
+  }
+
+  /**
+   * Use this constructor to test the new userAgentSuffix code path
+   *
+   * @param pipe pipe name
+   * @param userAgentSuffix suffix we want to add in all request header of user-agent to the
+   *     snowpipe API.
+   * @return ingest manager object
+   * @throws Exception
+   */
+  public static SimpleIngestManager getManager(String pipe, final String userAgentSuffix)
+      throws Exception {
+    if (profile == null) init();
+    return new SimpleIngestManager(
+        account,
+        user,
+        database + "." + schema + "." + pipe,
+        privateKey,
+        scheme,
+        host,
+        port,
+        userAgentSuffix);
+  }
+
+  /**
+   * Test for using builder pattern of SimpleIngestManager. In most of the cases we will not require
+   * to pass in scheme and port since they are supposed to be kept https and 443 respectively
+   */
+  public static SimpleIngestManager getManagerUsingBuilderPattern(
+      String pipe, final String userAgentSuffix) throws Exception {
+    if (profile == null) init();
+    return new SimpleIngestManager.Builder()
+        .setAccount(account)
+        .setUser(user)
+        .setPipe(database + "." + schema + "." + pipe)
+        .setKeypair(keyPair)
+        .setUserAgentSuffix(userAgentSuffix)
+        .build();
   }
 }

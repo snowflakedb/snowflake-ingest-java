@@ -41,26 +41,34 @@ public final class RequestBuilder {
   // a logger for all of our needs in this class
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestBuilder.class.getName());
 
-  // the security manager who will handle token generation
-  private SecurityManager securityManager;
+  /* Member variables Begin */
 
-  // the default connection scheme is HTTPS
-  private static final String DEFAULT_SCHEME = "https";
+  // the security manager which will handle token generation
+  private SecurityManager securityManager;
 
   // whatever the actual scheme is
   private String scheme;
 
-  // the default port is 443
-  private static final int DEFAULT_PORT = 443;
-
   // the actual port number
   private final int port;
 
-  // the default host is snowflakecomputing.com
-  private static final String DEFAULT_HOST = "snowflakecomputing.com";
-
   // whatever the actual host is
   private final String host;
+
+  private final String userAgentSuffix;
+
+  /* Member variables End */
+
+  /* Static constants Begin */
+
+  // the default host is snowflakecomputing.com
+  public static final String DEFAULT_HOST = "snowflakecomputing.com";
+
+  // the default connection scheme is HTTPS
+  private static final String DEFAULT_SCHEME = "https";
+
+  // the default port is 443
+  private static final int DEFAULT_PORT = 443;
 
   // the endpoint format string for inserting files
   private static final String INGEST_ENDPOINT_FORMAT = "/v1/data/pipes/%s/insertFiles";
@@ -96,6 +104,7 @@ public final class RequestBuilder {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final String RESOURCES_FILE = "project.properties";
+
   private static final Properties PROPERTIES = loadProperties();
 
   private static final String USER_AGENT = getDefaultUserAgent();
@@ -108,6 +117,102 @@ public final class RequestBuilder {
   public static final String JAVA_USER_AGENT = "JAVA";
 
   public static final String OS_INFO_USER_AGENT_FORMAT = "(%s %s %s)";
+
+  /**
+   * RequestBuilder - general usage constructor
+   *
+   * @param accountName - the name of the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   */
+  public RequestBuilder(String accountName, String userName, KeyPair keyPair) {
+    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST, DEFAULT_PORT, null);
+  }
+
+  /**
+   * RequestBuilder constructor which uses default schemes, host and port.
+   *
+   * @param accountName - the name of the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      String hostName,
+      KeyPair keyPair,
+      String userAgentSuffix) {
+    this(accountName, userName, keyPair, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
+  }
+
+  /**
+   * Constructor to use if not intended to use userAgentSuffix. i.e. User-Agent HTTP header suffix
+   * part is null, (The default one is still valid, check out #defaultUserAgent)
+   *
+   * @param accountName - the account name to which we're connecting
+   * @param userName - for whom are we connecting?
+   * @param keyPair - our auth credentials
+   * @param schemeName - are we HTTP or HTTPS?
+   * @param hostName - the host for this snowflake instance
+   * @param portNum - the port number
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      KeyPair keyPair,
+      String schemeName,
+      String hostName,
+      int portNum) {
+    this(accountName, userName, keyPair, schemeName, hostName, portNum, null);
+  }
+
+  /**
+   * RequestBuilder - this constructor is for testing purposes only
+   *
+   * @param accountName - the account name to which we're connecting
+   * @param userName - for whom are we connecting?
+   * @param keyPair - our auth credentials
+   * @param schemeName - are we HTTP or HTTPS?
+   * @param hostName - the host for this snowflake instance
+   * @param portNum - the port number
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      KeyPair keyPair,
+      String schemeName,
+      String hostName,
+      int portNum,
+      String userAgentSuffix) {
+    // none of these arguments should be null
+    if (accountName == null || userName == null || keyPair == null) {
+      throw new IllegalArgumentException();
+    }
+
+    // create our security/token manager
+    securityManager = new SecurityManager(accountName, userName, keyPair);
+
+    // stash references to the account and user name as well
+    String account = accountName.toUpperCase();
+    String user = userName.toUpperCase();
+
+    // save our host, scheme and port info
+    this.port = portNum;
+    this.scheme = schemeName;
+    this.host = hostName;
+    this.userAgentSuffix = userAgentSuffix;
+
+    LOGGER.info(
+        "Creating a RequestBuilder with arguments : "
+            + "Account : {}, User : {}, Scheme : {}, Host : {}, Port : {}, userAgentSuffix: {}",
+        account,
+        user,
+        this.scheme,
+        this.host,
+        this.port,
+        this.userAgentSuffix);
+  }
 
   private static Properties loadProperties() {
     Properties properties = new Properties();
@@ -182,61 +287,6 @@ public final class RequestBuilder {
   private static class IngestRequest {
     // the list of files we're loading
     public List<StagedFileWrapper> files;
-  }
-
-  /**
-   * RequestBuilder - general usage constructor
-   *
-   * @param accountName - the name of the Snowflake account to which we're connecting
-   * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
-   */
-  public RequestBuilder(String accountName, String userName, KeyPair keyPair) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST, DEFAULT_PORT);
-  }
-
-  /**
-   * RequestBuilder - this constructor is for testing purposes only
-   *
-   * @param accountName - the account name to which we're connecting
-   * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
-   * @param schemeName - are we HTTP or HTTPS?
-   * @param hostName - the host for this snowflake instance
-   * @param portNum - the port number
-   */
-  public RequestBuilder(
-      String accountName,
-      String userName,
-      KeyPair keyPair,
-      String schemeName,
-      String hostName,
-      int portNum) {
-    // none of these arguments should be null
-    if (accountName == null || userName == null || keyPair == null) {
-      throw new IllegalArgumentException();
-    }
-
-    // create our security/token manager
-    securityManager = new SecurityManager(accountName, userName, keyPair);
-
-    // stash references to the account and user name as well
-    String account = accountName.toUpperCase();
-    String user = userName.toUpperCase();
-
-    // save our host, scheme and port info
-    port = portNum;
-    scheme = schemeName;
-    host = hostName;
-
-    LOGGER.info(
-        "Creating a RequestBuilder with arguments : "
-            + "Account : {}, User : {}, Scheme : {}, Host : {}, Port : {}",
-        account,
-        user,
-        scheme,
-        host,
-        port);
   }
 
   /**
@@ -407,12 +457,12 @@ public final class RequestBuilder {
    * Add user agent to the request Header for passed Http request
    *
    * @param request the URI request
-   * @param customUserAgent adds the user agent header to a request along with the default one. If
-   *     it is null or empty, only default one is used.
+   * @param userAgentSuffix adds the user agent header to a request(As a suffix) along with the
+   *     default one. If it is null or empty, only default one is used.
    */
-  private static void addUserAgent(HttpUriRequest request, String customUserAgent) {
-    if (!Strings.isNullOrEmpty(customUserAgent)) {
-      final String userAgent = buildCustomUserAgent(customUserAgent);
+  private static void addUserAgent(HttpUriRequest request, String userAgentSuffix) {
+    if (!Strings.isNullOrEmpty(userAgentSuffix)) {
+      final String userAgent = buildCustomUserAgent(userAgentSuffix);
       request.setHeader(HttpHeaders.USER_AGENT, userAgent);
       return;
     }
@@ -429,9 +479,8 @@ public final class RequestBuilder {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
   }
 
-  private static void addHeaders(
-      HttpUriRequest request, String token, String additionalUserAgentInfo) {
-    addUserAgent(request, additionalUserAgentInfo);
+  private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
+    addUserAgent(request, userAgentSuffix);
     // add the auth token
     addToken(request, token);
   }
@@ -444,17 +493,11 @@ public final class RequestBuilder {
    * @param pipe a fully qualified pipe name
    * @param files a list of files
    * @param showSkippedFiles a boolean which returns skipped files when set to true
-   * @param additionalUserAgentInfo additional User agent information required in the request. It
-   *     adds this passed string to the already existing user agent See {#defaultUserAgent}
    * @return a post request with all the data we need
    * @throws URISyntaxException if the URI components provided are improper
    */
   public HttpPost generateInsertRequest(
-      UUID requestId,
-      String pipe,
-      List<StagedFileWrapper> files,
-      boolean showSkippedFiles,
-      String additionalUserAgentInfo)
+      UUID requestId, String pipe, List<StagedFileWrapper> files, boolean showSkippedFiles)
       throws URISyntaxException {
     // make the insert URI
     URI insertURI = makeInsertURI(requestId, pipe, showSkippedFiles);
@@ -463,7 +506,7 @@ public final class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(insertURI);
 
-    addHeaders(post, securityManager.getToken(), additionalUserAgentInfo);
+    addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
 
     // the entity for the containing the json
     final StringEntity entity =
@@ -480,17 +523,10 @@ public final class RequestBuilder {
    * @param pipe a fully qualified pipe name
    * @param recentSeconds history only for items in the recentSeconds window
    * @param beginMark mark from which history should be fetched
-   * @param additionalUserAgentInfo additional User agent information required in the request. It
-   *     adds this passed string to the already existing user agent See {#defaultUserAgent}
-   * @return a get request with all the data we need
    * @throws URISyntaxException - If the URI components provided are improper
    */
   public HttpGet generateHistoryRequest(
-      UUID requestId,
-      String pipe,
-      Integer recentSeconds,
-      String beginMark,
-      String additionalUserAgentInfo)
+      UUID requestId, String pipe, Integer recentSeconds, String beginMark)
       throws URISyntaxException {
     // make the history URI
     URI historyURI = makeHistoryURI(requestId, pipe, recentSeconds, beginMark);
@@ -498,39 +534,7 @@ public final class RequestBuilder {
     // make the get request
     HttpGet get = new HttpGet(historyURI);
 
-    addHeaders(get, securityManager.getToken(), additionalUserAgentInfo);
-
-    return get;
-  }
-
-  /**
-   * generateHistoryRangeRequest - given a requestId and a pipe, get history for all ingests between
-   * time ranges start-end
-   *
-   * @param requestId a UUID we will use to label this request
-   * @param pipe a fully qualified pipe name
-   * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format. Missing
-   *     millisecond part in string will lead to a zero milliseconds. This is a required query
-   *     parameter, and a 400 will be returned if this query parameter is missing
-   * @param endTimeExclusive End time exclusive of scan range. If this query parameter is missing or
-   *     user provided value is later than current millis, then current millis is used.
-   * @param additionalUserAgentInfo additional User agent information required in the request. It
-   *     adds this passed string to the already existing user agent See {#defaultUserAgent}
-   * @return URI for the insert request
-   */
-  public HttpGet generateHistoryRangeRequest(
-      UUID requestId,
-      String pipe,
-      String startTimeInclusive,
-      String endTimeExclusive,
-      String additionalUserAgentInfo)
-      throws URISyntaxException {
-    URI historyRangeURI =
-        makeHistoryRangeURI(requestId, pipe, startTimeInclusive, endTimeExclusive);
-
-    HttpGet get = new HttpGet(historyRangeURI);
-
-    addHeaders(get, securityManager.getToken(), additionalUserAgentInfo /*User agent information*/);
+    addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
 
     return get;
   }
@@ -551,7 +555,14 @@ public final class RequestBuilder {
   public HttpGet generateHistoryRangeRequest(
       UUID requestId, String pipe, String startTimeInclusive, String endTimeExclusive)
       throws URISyntaxException {
-    return generateHistoryRangeRequest(requestId, pipe, startTimeInclusive, endTimeExclusive, null);
+    URI historyRangeURI =
+        makeHistoryRangeURI(requestId, pipe, startTimeInclusive, endTimeExclusive);
+
+    HttpGet get = new HttpGet(historyRangeURI);
+
+    addHeaders(get, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+
+    return get;
   }
 
   /**
