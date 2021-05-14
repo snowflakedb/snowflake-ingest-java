@@ -25,6 +25,8 @@ public class TestUtils {
 
   private static String user = "";
 
+  private static String privateKeyPem = "";
+
   private static PrivateKey privateKey = null;
 
   private static String account = "";
@@ -66,7 +68,7 @@ public class TestUtils {
     host = profile.get("host").asText();
     scheme = profile.get("scheme").asText();
 
-    String privateKeyPem = profile.get("private_key").asText();
+    privateKeyPem = profile.get("private_key").asText();
 
     java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
 
@@ -75,6 +77,27 @@ public class TestUtils {
 
     PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
     privateKey = kf.generatePrivate(keySpec);
+  }
+
+  public static String getUser() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return user;
+  }
+
+  public static String getHost() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return host;
+  }
+
+  public static String getPrivateKey() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return privateKeyPem;
   }
 
   /**

@@ -21,7 +21,7 @@ public class SnowflakeStreamingIngestChannelFactory {
     private String offsetToken;
     private Long channelSequencer;
     private Long rowSequencer;
-    private SnowflakeStreamingIngestClientV1 owningClient;
+    private SnowflakeStreamingIngestClientInternal owningClient;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;
@@ -58,7 +58,7 @@ public class SnowflakeStreamingIngestChannelFactory {
     }
 
     public SnowflakeStreamingIngestChannelBuilder setOwningClient(
-        SnowflakeStreamingIngestClientV1 client) {
+        SnowflakeStreamingIngestClientInternal client) {
       this.owningClient = client;
       return this;
     }

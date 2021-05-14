@@ -4,20 +4,23 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.streaming.internal.Constants.MAX_CHUNK_SIZE_IN_BYTES;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import net.snowflake.client.jdbc.internal.apache.arrow.memory.RootAllocator;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
 
 /** The first version of implementation for SnowflakeStreamingIngestChannel */
-public class SnowflakeStreamingIngestChannelInternal extends Logging
-    implements SnowflakeStreamingIngestChannel {
+public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingIngestChannel {
+
+  private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelInternal.class);
 
   private final String channelName;
   private final String dbName;
@@ -40,7 +43,7 @@ public class SnowflakeStreamingIngestChannelInternal extends Logging
   private volatile boolean isClosed;
 
   // Reference to the client that owns this channel
-  private final SnowflakeStreamingIngestClientV1 owningClient;
+  private final SnowflakeStreamingIngestClientInternal owningClient;
 
   // Memory allocator
   private final BufferAllocator allocator;
@@ -69,7 +72,7 @@ public class SnowflakeStreamingIngestChannelInternal extends Logging
       String offsetToken,
       Long channelSequencer,
       Long rowSequencer,
-      SnowflakeStreamingIngestClientV1 client,
+      SnowflakeStreamingIngestClientInternal client,
       boolean isTestMode) {
     this.channelName = name;
     this.dbName = dbName;
@@ -89,7 +92,7 @@ public class SnowflakeStreamingIngestChannelInternal extends Logging
                 .getAllocator()
                 .newChildAllocator(name, 0, this.owningClient.getAllocator().getLimit());
     this.arrowBuffer = new ArrowRowBuffer(this);
-    logDebug("Channel {} created for table: {}", this.channelName, this.tableName);
+    logger.logDebug("Channel {} created for table: {}", this.channelName, this.tableName);
   }
 
   /**
@@ -112,7 +115,7 @@ public class SnowflakeStreamingIngestChannelInternal extends Logging
       String offsetToken,
       Long channelSequencer,
       Long rowSequencer,
-      SnowflakeStreamingIngestClientV1 client) {
+      SnowflakeStreamingIngestClientInternal client) {
     this(
         name,
         dbName,
@@ -207,7 +210,7 @@ public class SnowflakeStreamingIngestChannelInternal extends Logging
   public void invalidate() {
     this.isValid = false;
     this.arrowBuffer.close();
-    this.owningClient.removeChannel(this);
+    this.owningClient.removeChannelIfSequencersMatch(this);
   }
 
   /** @return a boolean to indicate whether the channel is closed or not */
@@ -237,7 +240,7 @@ public class SnowflakeStreamingIngestChannelInternal extends Logging
    */
   // TODO: need to verify with the table schema when supporting sub-columns
   public void setupSchema(List<ColumnMetadata> columns) {
-    logDebug("Setup schema for channel: {}, schema: {}", getFullyQualifiedName(), columns);
+    logger.logDebug("Setup schema for channel: {}, schema: {}", getFullyQualifiedName(), columns);
     this.arrowBuffer.setupSchema(columns);
   }
 

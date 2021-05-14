@@ -6,11 +6,14 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.SFException;
 
 /** Snowflake URL Object https://account.region.snowflakecomputing.com:443 */
-
-// TODO Extend logging
 public class SnowflakeURL {
+
+  private static final Logging logger = new Logging(SnowflakeURL.class);
 
   public static class SnowflakeURLBuilder {
     private String url;
@@ -57,6 +60,11 @@ public class SnowflakeURL {
     this.jdbcUrl = "jdbc:snowflake://" + builder.url + ":" + builder.port;
   }
 
+  /**
+   * Construct a SnowflakeURL object from a String
+   *
+   * @param urlStr
+   */
   public SnowflakeURL(String urlStr) {
     Pattern pattern =
         Pattern.compile("^(https?://)?((([\\w\\d]+)(\\" + ".[\\w\\d-]+){2,})(:(\\d+))?)/?$");
@@ -64,8 +72,7 @@ public class SnowflakeURL {
     Matcher matcher = pattern.matcher(urlStr.trim().toLowerCase());
 
     if (!matcher.find()) {
-      // TODO throw SnowflakeErrors.ERROR_0007.getException();
-      //            throw SnowflakeErrors.ERROR_0007.getException();
+      throw new SFException(ErrorCode.INVALID_URL);
     }
 
     ssl = !"http://".equals(matcher.group(1));
@@ -79,7 +86,7 @@ public class SnowflakeURL {
     }
 
     jdbcUrl = "jdbc:snowflake://" + url + ":" + port;
-    //       TODO  logDebug("parsed Snowflake URL: {}", urlStr);
+    logger.logDebug("parsed Snowflake URL={}", urlStr);
   }
 
   public String getJdbcUrl() {

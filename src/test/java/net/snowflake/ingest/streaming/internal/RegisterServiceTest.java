@@ -13,7 +13,7 @@ public class RegisterServiceTest {
 
   @Test
   public void testRegisterService() throws Exception {
-    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientV1();
+    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientInternal("client");
     RegisterService rs = new RegisterService(client);
 
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture =
@@ -27,7 +27,7 @@ public class RegisterServiceTest {
 
   @Test
   public void testRegisterServiceTimeoutException() throws Exception {
-    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientV1();
+    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientInternal("client");
     RegisterService rs = new RegisterService(client);
 
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture1 =

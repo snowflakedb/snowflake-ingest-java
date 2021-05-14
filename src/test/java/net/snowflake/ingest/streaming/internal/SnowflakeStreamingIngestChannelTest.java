@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.streaming.internal.Constants.OPEN_CHANNEL_ENDPOINT;
+
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -26,7 +28,8 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     String tableName = "TABLE";
     Long channelSequencer = 0L;
     Long rowSequencer = 0L;
-    SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
 
     Object[] fields =
         new Object[] {name, dbName, schemaName, tableName, channelSequencer, rowSequencer, client};
@@ -42,7 +45,7 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
                 .setTableName((String) fields[3])
                 .setRowSequencer((Long) fields[4])
                 .setChannelSequencer((Long) fields[5])
-                .setOwningClient((SnowflakeStreamingIngestClientV1) fields[6])
+                .setOwningClient((SnowflakeStreamingIngestClientInternal) fields[6])
                 .build();
         Assert.fail("Channel factory should fail with null fields");
       } catch (SFException e) {
@@ -62,7 +65,8 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     Long channelSequencer = 0L;
     Long rowSequencer = 0L;
 
-    SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
 
     SnowflakeStreamingIngestChannelInternal channel =
         SnowflakeStreamingIngestChannelFactory.builder(name)
@@ -92,8 +96,8 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
 
   @Test
   public void testChannelValid() {
-    SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
-    SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
@@ -115,7 +119,8 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
 
   @Test
   public void testChannelClose() {
-    SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
@@ -179,8 +184,8 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     Mockito.when(httpResponse.statusCode()).thenReturn(500);
     Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
 
-    SnowflakeStreamingIngestClientV1 client =
-        new SnowflakeStreamingIngestClientV1(
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
 
     OpenChannelRequest request =
@@ -236,8 +241,8 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     Mockito.when(httpResponse.body()).thenReturn(response);
     Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
 
-    SnowflakeStreamingIngestClientV1 client =
-        new SnowflakeStreamingIngestClientV1(
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
 
     OpenChannelRequest request =
@@ -298,8 +303,8 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     Mockito.when(httpResponse.body()).thenReturn(response);
     Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
 
-    SnowflakeStreamingIngestClientV1 client =
-        new SnowflakeStreamingIngestClientV1(
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
 
     OpenChannelRequest request =

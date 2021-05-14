@@ -6,7 +6,10 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -27,7 +30,9 @@ import org.apache.arrow.vector.util.TransferPair;
  * The buffer in the Streaming Ingest channel that holds the un-flushed rows, these rows will be
  * converted to Arrow format for faster processing
  */
-public class ArrowRowBuffer extends Logging {
+public class ArrowRowBuffer {
+
+  private static final Logging logger = new Logging(ArrowRowBuffer.class);
 
   // Constants for column fields
   private static final String FIELD_EPOCH_IN_SECONDS = "epoch"; // seconds since epoch
@@ -222,7 +227,7 @@ public class ArrowRowBuffer extends Logging {
    * @return A ChannelData object that contains the info needed by the flush service to build a blob
    */
   public ChannelData flush() {
-    logDebug("Start get data for channel: {}", this.owningChannel.getFullyQualifiedName());
+    logger.logDebug("Start get data for channel: {}", this.owningChannel.getFullyQualifiedName());
     if (this.rowCount > 0) {
       List<FieldVector> oldVectors = new ArrayList<>();
       long rowCount = 0L;
@@ -231,7 +236,7 @@ public class ArrowRowBuffer extends Logging {
       String offsetToken = null;
       EpInfo epInfo = null;
 
-      logDebug(
+      logger.logDebug(
           "Arrow buffer flush about to take lock on channel: {}",
           this.owningChannel.getFullyQualifiedName());
 
@@ -257,7 +262,8 @@ public class ArrowRowBuffer extends Logging {
       } finally {
         this.flushLock.unlock();
       }
-      logDebug(
+
+      logger.logDebug(
           "Arrow buffer flush released lock on channel: {}, rowCount: {}, bufferSize: {}",
           this.owningChannel.getFullyQualifiedName(),
           rowCount,

@@ -23,7 +23,9 @@ import net.snowflake.ingest.utils.StreamingUtils;
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
  * thread in order to maintain ordering per channel
  */
-public class RegisterService extends Logging {
+public class RegisterService {
+
+  private static final Logging logger = new Logging(RegisterService.class);
 
   // Reference to the client that owns this register service
   private SnowflakeStreamingIngestClient owningClient;
@@ -68,10 +70,10 @@ public class RegisterService extends Logging {
    * the ordering is maintained across independent blobs in the same channel.
    */
   public List<String> registerBlobs() {
-    logDebug("Start registering blob task");
+    logger.logDebug("Start registering blob task");
     List<String> errorBlobs = new ArrayList<>();
     if (this.blobsList.isEmpty()) {
-      logDebug("No blob to register");
+      logger.logDebug("No blob to register");
     } else {
       // Will skip and try again later if someone else is holding the lock
       if (this.blobsListLock.tryLock()) {
@@ -90,11 +92,11 @@ public class RegisterService extends Logging {
           oldList.forEach(
               futureBlob -> {
                 try {
-                  logDebug("Start waiting on uploading blob: {}", futureBlob.getKey());
+                  logger.logDebug("Start waiting on uploading blob: {}", futureBlob.getKey());
                   // Wait for uploading to finish, add a timeout in case something bad happens
                   BlobMetadata blob =
                       futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
-                  logDebug("Finish waiting on uploading blob: {}", futureBlob.getKey());
+                  logger.logDebug("Finish waiting on uploading blob: {}", futureBlob.getKey());
                   StreamingUtils.assertNotNull("uploaded blob", blob);
                   blobs.add(blob);
                 } catch (InterruptedException | ExecutionException | TimeoutException e) {
@@ -104,7 +106,8 @@ public class RegisterService extends Logging {
                   // exceptions
                   // TODO SNOW-348859: ideally we want to invalidate all channels in the blob if
                   // register failed
-                  logError("Uploading blob failed: {}, exception: {}", futureBlob.getKey(), e);
+                  logger.logError(
+                      "Uploading blob failed: {}, exception: {}", futureBlob.getKey(), e);
                   errorBlobs.add(futureBlob.getKey());
                 }
               });
@@ -114,7 +117,7 @@ public class RegisterService extends Logging {
         }
       }
     }
-    logDebug("Finish registering blob task");
+    logger.logDebug("Finish registering blob task");
     return errorBlobs;
   }
 

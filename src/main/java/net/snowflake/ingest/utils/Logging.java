@@ -10,65 +10,69 @@ import org.slf4j.LoggerFactory;
 
 /** Base Logging Utility */
 public class Logging {
-  private final Logger log = LoggerFactory.getLogger(getClass().getName());
+  private final Logger log;
+
+  public Logging(Class name) {
+    log = LoggerFactory.getLogger(name);
+  }
 
   // only message
-  protected void logInfo(String msg) {
+  public void logInfo(String msg) {
     if (log.isInfoEnabled()) {
       log.info(logMessage(msg));
     }
   }
 
-  protected void logTrace(String msg) {
+  public void logTrace(String msg) {
     if (log.isTraceEnabled()) {
       log.trace(logMessage(msg));
     }
   }
 
-  protected void logDebug(String msg) {
+  public void logDebug(String msg) {
     if (log.isDebugEnabled()) {
       log.debug(logMessage(msg));
     }
   }
 
-  protected void logWarn(String msg) {
+  public void logWarn(String msg) {
     if (log.isWarnEnabled()) {
       log.warn(logMessage(msg));
     }
   }
 
-  protected void logError(String msg) {
+  public void logError(String msg) {
     if (log.isErrorEnabled()) {
       log.error(logMessage(msg));
     }
   }
 
   // format and variables
-  protected void logInfo(String format, Object... vars) {
+  public void logInfo(String format, Object... vars) {
     if (log.isInfoEnabled()) {
       log.info(logMessage(format, vars));
     }
   }
 
-  protected void logTrace(String format, Object... vars) {
+  public void logTrace(String format, Object... vars) {
     if (log.isTraceEnabled()) {
       log.trace(logMessage(format, vars));
     }
   }
 
-  protected void logDebug(String format, Object... vars) {
+  public void logDebug(String format, Object... vars) {
     if (log.isDebugEnabled()) {
       log.debug(logMessage(format, vars));
     }
   }
 
-  protected void logWarn(String format, Object... vars) {
+  public void logWarn(String format, Object... vars) {
     if (log.isWarnEnabled()) {
       log.warn(format, vars);
     }
   }
 
-  protected void logError(String format, Object... vars) {
+  public void logError(String format, Object... vars) {
     if (log.isErrorEnabled()) {
       log.error(logMessage(format, vars));
     }
