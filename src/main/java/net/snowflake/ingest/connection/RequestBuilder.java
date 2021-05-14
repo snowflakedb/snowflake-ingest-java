@@ -62,7 +62,7 @@ public final class RequestBuilder {
   /* Static constants Begin */
 
   // the default host is snowflakecomputing.com
-  public static final String DEFAULT_HOST = "snowflakecomputing.com";
+  public static final String DEFAULT_HOST_SUFFIX = "snowflakecomputing.com";
 
   // the default connection scheme is HTTPS
   private static final String DEFAULT_SCHEME = "https";
@@ -126,7 +126,7 @@ public final class RequestBuilder {
    * @param keyPair - the Public/Private key pair we'll use to authenticate
    */
   public RequestBuilder(String accountName, String userName, KeyPair keyPair) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST, DEFAULT_PORT, null);
+    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
   }
 
   /**

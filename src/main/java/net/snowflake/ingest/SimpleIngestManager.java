@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest;
 
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST;
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
 
 import com.google.common.base.Strings;
 import java.io.IOException;
@@ -71,6 +71,8 @@ public class SimpleIngestManager implements AutoCloseable {
 
     // Hostname to connect to, default will be RequestBuilder#DEFAULT_HOST
     private String hostName;
+
+    private PrivateKey privateKey;
 
     /**
      * getAccount - returns the name of the account this builder will inject into the IngestManager
@@ -184,7 +186,8 @@ public class SimpleIngestManager implements AutoCloseable {
      */
     public SimpleIngestManager build() {
       if (Strings.isNullOrEmpty(hostName)) {
-        return new SimpleIngestManager(account, user, pipe, DEFAULT_HOST, keypair, userAgentSuffix);
+        return new SimpleIngestManager(
+            account, user, pipe, DEFAULT_HOST_SUFFIX, keypair, userAgentSuffix);
       }
       return new SimpleIngestManager(account, user, pipe, hostName, keypair, userAgentSuffix);
     }
@@ -305,12 +308,16 @@ public class SimpleIngestManager implements AutoCloseable {
    * Using this constructor for Builder pattern. KeyPair can be passed in now since we have
    * made @see {@link SimpleIngestManager#createKeyPairFromPrivateKey(PrivateKey)} public
    *
-   * @param account
-   * @param user
-   * @param pipe
-   * @param hostName
-   * @param keyPair
-   * @param userAgentSuffix
+   * @param account The account into which we're loading Note: account should not include region or
+   *     cloud provider info. e.g. if host is testaccount.us-east-1.azure .snowflakecomputing.com,
+   *     account should be testaccount. If this is the case, you should use the constructor that
+   *     accepts hostname as argument
+   * @param user the user performing this load
+   * @param pipe the fully qualified name of the pipe
+   * @param hostName the hostname
+   * @param keyPair keyPair associated with the private key used for authentication. See @see {@link
+   *     SimpleIngestManager#createKeyPairFromPrivateKey} to generate KP from p8Key
+   * @param userAgentSuffix user agent suffix we want to add.
    */
   public SimpleIngestManager(
       String account,
