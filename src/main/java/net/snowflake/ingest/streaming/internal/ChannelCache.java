@@ -17,7 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ChannelCache {
   // Cache to hold all the valid channels, the key for the outer map is FullyQualifiedTableName and
   // the key for the inner map is ChannelName
-  private ConcurrentHashMap<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelV1>>
+  private ConcurrentHashMap<
+          String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>
       cache = new ConcurrentHashMap<>();
 
   /**
@@ -25,12 +26,12 @@ public class ChannelCache {
    *
    * @param channel
    */
-  public void addChannel(SnowflakeStreamingIngestChannelV1 channel) {
-    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelV1> channels =
+  public void addChannel(SnowflakeStreamingIngestChannelInternal channel) {
+    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> channels =
         this.cache.computeIfAbsent(
             channel.getFullyQualifiedTableName(), v -> new ConcurrentHashMap<>());
 
-    SnowflakeStreamingIngestChannelV1 oldChannel = channels.put(channel.getName(), channel);
+    SnowflakeStreamingIngestChannelInternal oldChannel = channels.put(channel.getName(), channel);
     // Invalidate old channel if it exits to block new inserts and return error to users earlier
     if (oldChannel != null) {
       oldChannel.invalidate();
@@ -42,7 +43,8 @@ public class ChannelCache {
    *
    * @return
    */
-  public Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelV1>>>
+  public Iterator<
+          Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
       iterator() {
     return this.cache.entrySet().iterator();
   }
@@ -60,11 +62,11 @@ public class ChannelCache {
    * @param channel
    */
   // TODO: what about old stale channels that are not closed? May need a background cleaner
-  public void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelV1 channel) {
+  public void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
     cache.computeIfPresent(
         channel.getFullyQualifiedTableName(),
         (k, v) -> {
-          SnowflakeStreamingIngestChannelV1 channelInCache = v.get(channel.getName());
+          SnowflakeStreamingIngestChannelInternal channelInCache = v.get(channel.getName());
           // We need to compare the channel sequencer in case the old channel was already been
           // removed
           return channelInCache != null

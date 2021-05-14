@@ -63,7 +63,7 @@ public class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelV1 build() {
+    public SnowflakeStreamingIngestChannelInternal build() {
       StreamingUtils.assertStringNotNullOrEmpty("channel name", this.name);
       StreamingUtils.assertStringNotNullOrEmpty("table name", this.tableName);
       StreamingUtils.assertStringNotNullOrEmpty("schema name", this.schemaName);
@@ -71,7 +71,7 @@ public class SnowflakeStreamingIngestChannelFactory {
       StreamingUtils.assertNotNull("channel sequencer", this.channelSequencer);
       StreamingUtils.assertNotNull("row sequencer", this.rowSequencer);
       StreamingUtils.assertNotNull("channel owning client", this.owningClient);
-      return new SnowflakeStreamingIngestChannelV1(
+      return new SnowflakeStreamingIngestChannelInternal(
           this.name,
           this.dbName,
           this.schemaName,

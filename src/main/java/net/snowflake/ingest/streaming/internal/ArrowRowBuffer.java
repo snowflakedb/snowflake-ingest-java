@@ -9,20 +9,19 @@ import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import net.snowflake.client.jdbc.internal.apache.arrow.memory.BufferAllocator;
-import net.snowflake.client.jdbc.internal.apache.arrow.memory.RootAllocator;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.*;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.types.Types;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.types.pojo.ArrowType;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.types.pojo.Field;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.types.pojo.FieldType;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.util.Text;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.util.TransferPair;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.StreamingUtils;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.*;
+import org.apache.arrow.vector.types.Types;
+import org.apache.arrow.vector.types.pojo.ArrowType;
+import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.FieldType;
+import org.apache.arrow.vector.util.Text;
+import org.apache.arrow.vector.util.TransferPair;
 
 /**
  * The buffer in the Streaming Ingest channel that holds the un-flushed rows, these rows will be
@@ -107,7 +106,7 @@ public class ArrowRowBuffer extends Logging {
   private volatile int curRowIndex;
 
   // Reference to the Streaming Ingest channel that owns this buffer
-  private final SnowflakeStreamingIngestChannel owningChannel;
+  private final SnowflakeStreamingIngestChannelInternal owningChannel;
 
   /**
    * Given a set of col names to stats, build the right ep info
@@ -135,7 +134,7 @@ public class ArrowRowBuffer extends Logging {
    *
    * @param channel
    */
-  public ArrowRowBuffer(SnowflakeStreamingIngestChannel channel) {
+  public ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal channel) {
     this.owningChannel = channel;
     this.allocator = channel == null ? new RootAllocator() : channel.getAllocator();
     this.vectors = new HashMap<>();
@@ -194,22 +193,12 @@ public class ArrowRowBuffer extends Logging {
   }
 
   /**
-   * Insert a row into the row buffer
-   *
-   * @param row
-   * @param offsetToken
-   */
-  public void insertRow(Map<String, Object> row, String offsetToken) {
-    insertRows(Collections.singletonList(row), offsetToken);
-  }
-
-  /**
    * Insert a batch of rows into the row buffer
    *
    * @param rows
    * @param offsetToken offset token of the latest row in the batch
    */
-  public void insertRows(Collection<Map<String, Object>> rows, String offsetToken) {
+  public void insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
     this.flushLock.lock();
     try {
       for (Map<String, Object> row : rows) {
@@ -233,11 +222,11 @@ public class ArrowRowBuffer extends Logging {
    * @return A ChannelData object that contains the info needed by the flush service to build a blob
    */
   public ChannelData flush() {
+    logDebug("Start get data for channel: {}", this.owningChannel.getFullyQualifiedName());
     if (this.rowCount > 0) {
       List<FieldVector> oldVectors = new ArrayList<>();
       long rowCount = 0L;
       float bufferSize = 0F;
-      int curRowIndex = 0;
       long rowSequencer = 0;
       String offsetToken = null;
       EpInfo epInfo = null;
@@ -259,11 +248,9 @@ public class ArrowRowBuffer extends Logging {
 
           rowCount = this.rowCount;
           bufferSize = this.bufferSize;
-          curRowIndex = this.curRowIndex;
-          epInfo = buildEpInfoFromStats(rowCount, statsMap);
-
-          rowSequencer = this.owningChannel.getAndIncrementRowSequencer();
+          rowSequencer = this.owningChannel.incrementAndGetRowSequencer();
           offsetToken = this.owningChannel.getOffsetToken();
+          epInfo = buildEpInfoFromStats(rowCount, statsMap);
           // Reset everything in the buffer once we save all the info
           reset();
         }

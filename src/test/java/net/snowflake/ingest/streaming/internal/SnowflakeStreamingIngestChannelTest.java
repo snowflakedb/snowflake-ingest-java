@@ -3,6 +3,10 @@ package net.snowflake.ingest.streaming.internal;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import junit.framework.TestCase;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -31,7 +35,7 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
       Object tmp = fields[i];
       fields[i] = null;
       try {
-        SnowflakeStreamingIngestChannelV1 channel =
+        SnowflakeStreamingIngestChannelInternal channel =
             SnowflakeStreamingIngestChannelFactory.builder((String) fields[0])
                 .setDBName((String) fields[1])
                 .setSchemaName((String) fields[2])
@@ -60,7 +64,7 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
 
     SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
 
-    SnowflakeStreamingIngestChannelV1 channel =
+    SnowflakeStreamingIngestChannelInternal channel =
         SnowflakeStreamingIngestChannelFactory.builder(name)
             .setDBName(dbName)
             .setSchemaName(schemaName)
@@ -90,25 +94,45 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
   public void testChannelValid() {
     SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
     SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
-    SnowflakeStreamingIngestChannelV1 channel =
-        new SnowflakeStreamingIngestChannelV1(
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
 
     Assert.assertTrue(channel.isValid());
-    channel.markInvalid();
+    channel.invalidate();
     Assert.assertTrue(!channel.isValid());
+
+    // Can't insert rows to invalid channel
+    try {
+      Map<String, Object> row = new HashMap<>();
+      row.put("col", 1);
+      channel.insertRows(Collections.singletonList(row), "1");
+      Assert.fail("Channel insert row should fail");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
+    }
   }
 
   @Test
   public void testChannelClose() {
     SnowflakeStreamingIngestClientV1 client = new SnowflakeStreamingIngestClientV1("client");
-    SnowflakeStreamingIngestChannelV1 channel =
-        new SnowflakeStreamingIngestChannelV1(
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
 
     Assert.assertTrue(channel.isClosed());
     channel.markClosed();
     Assert.assertTrue(!channel.isClosed());
+
+    // Can't insert rows to closed channel
+    try {
+      Map<String, Object> row = new HashMap<>();
+      row.put("col", 1);
+      channel.insertRows(Collections.singletonList(row), "1");
+      Assert.fail("Channel insert row should fail");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CHANNEL.getMessageCode(), e.getVendorCode());
+    }
   }
 
   @Test
@@ -290,5 +314,45 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     Assert.assertEquals(dbName, channel.getDBName());
     Assert.assertEquals(schemaName, channel.getSchemaName());
     Assert.assertEquals(tableName, channel.getTableName());
+  }
+
+  @Test
+  public void testInsertRow() {
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schema", "table", "0", 0L, 0L, null, true);
+
+    ColumnMetadata col = new ColumnMetadata();
+    col.setName("COL");
+    col.setPhysicalType("SB16");
+    col.setNullable(false);
+    col.setLogicalType("FIXED");
+    col.setPrecision(38);
+    col.setScale(0);
+
+    // Setup column fields and vectors
+    channel.setupSchema(Arrays.asList(col));
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("col", 1);
+
+    // Get data before insert to verify that there is no row (data should be null)
+    ChannelData data = channel.getData();
+    Assert.assertEquals(null, data);
+
+    try {
+      channel.insertRow(row, "1");
+      channel.insertRows(Collections.singletonList(row), "2");
+    } catch (Exception e) {
+      Assert.fail("Row buffer insert row failed");
+    }
+
+    // Get data again to verify the row is inserted
+    data = channel.getData();
+    Assert.assertEquals(2, data.getRowCount());
+    Assert.assertEquals((Long) 1L, data.getRowSequencer());
+    Assert.assertEquals(1, data.getVectors().size());
+    Assert.assertEquals("2", data.getOffsetToken());
+    Assert.assertTrue(data.getBufferSize() > 0);
   }
 }

@@ -4,13 +4,19 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import net.snowflake.client.jdbc.internal.apache.arrow.memory.RootAllocator;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.SFException;
+import org.apache.arrow.memory.BufferAllocator;
 
 /** The first version of implementation for SnowflakeStreamingIngestChannel */
-public class SnowflakeStreamingIngestChannelV1 extends Logging
+public class SnowflakeStreamingIngestChannelInternal extends Logging
     implements SnowflakeStreamingIngestChannel {
 
   private final String channelName;
@@ -55,7 +61,7 @@ public class SnowflakeStreamingIngestChannelV1 extends Logging
    * @param client
    * @param isTestMode
    */
-  SnowflakeStreamingIngestChannelV1(
+  SnowflakeStreamingIngestChannelInternal(
       String name,
       String dbName,
       String schemaName,
@@ -98,7 +104,7 @@ public class SnowflakeStreamingIngestChannelV1 extends Logging
    * @param rowSequencer
    * @param client
    */
-  public SnowflakeStreamingIngestChannelV1(
+  public SnowflakeStreamingIngestChannelInternal(
       String name,
       String dbName,
       String schemaName,
@@ -233,5 +239,56 @@ public class SnowflakeStreamingIngestChannelV1 extends Logging
   public void setupSchema(List<ColumnMetadata> columns) {
     logDebug("Setup schema for channel: {}, schema: {}", getFullyQualifiedName(), columns);
     this.arrowBuffer.setupSchema(columns);
+  }
+
+  /**
+   * --------------------------------------------------------------------------------------------
+   * Insert one row into the channel
+   * --------------------------------------------------------------------------------------------
+   */
+
+  /**
+   * The row is represented using Map where the key is column name and the value is data row
+   *
+   * @param row object data to write
+   * @param offsetToken offset of given row, used for replay in case of failures
+   * @throws SFException when the channel is invalid or closed
+   */
+  @Override
+  public void insertRow(Map<String, Object> row, String offsetToken) {
+    insertRows(Collections.singletonList(row), offsetToken);
+  }
+
+  /**
+   * --------------------------------------------------------------------------------------------
+   * Insert a batch of rows into the channel
+   * --------------------------------------------------------------------------------------------
+   */
+
+  /**
+   * Each row is represented using Map where the key is column name and the value is data row
+   *
+   * @param rows object data to write
+   * @param offsetToken offset of last row in the row-set, used for replay in case of failures
+   * @throws SFException when the channel is invalid or closed
+   */
+  @Override
+  public void insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
+    if (!isValid()) {
+      throw new SFException(ErrorCode.INVALID_CHANNEL);
+    }
+
+    if (isClosed()) {
+      throw new SFException(ErrorCode.CLOSED_CHANNEL);
+    }
+
+    this.arrowBuffer.insertRows(rows, offsetToken);
+
+    // Start flush task if the chunk size reaches a certain size
+    // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
+    // if a large number of rows are inserted
+    if (this.arrowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
+      this.owningClient.setNeedFlush();
+    }
   }
 }

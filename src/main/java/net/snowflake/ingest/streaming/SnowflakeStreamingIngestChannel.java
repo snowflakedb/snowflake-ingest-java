@@ -4,6 +4,9 @@
 
 package net.snowflake.ingest.streaming;
 
+import java.util.Map;
+import javax.annotation.Nullable;
+
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
  * ingested into the channel, and then flush to Snowflake table periodically in the background. Note
@@ -61,4 +64,34 @@ public interface SnowflakeStreamingIngestChannel {
 
   /** @return a boolean to indicate whether the channel is closed or not */
   boolean isClosed();
+
+  /**
+   * --------------------------------------------------------------------------------------------
+   * Insert one row into the channel
+   * --------------------------------------------------------------------------------------------
+   */
+
+  /**
+   * The row is represented using Map where the key is column name and the value is data row
+   *
+   * @param row object data to write
+   * @param offsetToken offset of given row, used for replay in case of failures. It could be null
+   *     if you don't plan on replaying or can't replay
+   */
+  void insertRow(Map<String, Object> row, @Nullable String offsetToken);
+
+  /**
+   * --------------------------------------------------------------------------------------------
+   * Insert a batch of rows into the channel
+   * --------------------------------------------------------------------------------------------
+   */
+
+  /**
+   * Each row is represented using Map where the key is column name and the value is data row
+   *
+   * @param rows object data to write
+   * @param offsetToken offset of last row in the row-set, used for replay in case of failures, It
+   *     could be null * if you don't plan on replaying or can't replay
+   */
+  void insertRows(Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
 }

@@ -5,9 +5,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.List;
-import net.snowflake.client.jdbc.internal.apache.arrow.vector.FieldVector;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import org.apache.arrow.vector.FieldVector;
 
 /**
  * Contains the data and metadata returned for each channel flush, which will be used to build the
@@ -70,18 +69,16 @@ public class ChannelData {
     this.channel = channel;
   }
 
-  @Override
-  public String toString() {
-    return this.channel.toString();
-  }
-
-  @JsonProperty("eps")
   public EpInfo getEpInfo() {
     return epInfo;
   }
 
-  @JsonProperty("eps")
   public void setEpInfo(EpInfo epInfo) {
     this.epInfo = epInfo;
+  }
+
+  @Override
+  public String toString() {
+    return this.channel.toString();
   }
 }
