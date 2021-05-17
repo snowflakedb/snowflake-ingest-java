@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.SnowflakeDriver;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
@@ -208,7 +209,40 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    *
    * @param blobs list of uploaded blobs
    */
-  public void registerBlobs(List<BlobMetadata> blobs) {}
+  public void registerBlobs(List<BlobMetadata> blobs) {
+    logger.logDebug(
+        "Register blob request start for blob={}, client={}",
+        blobs.stream().map(p -> p.path).collect(Collectors.toList()),
+        this.name);
+
+    try {
+      RegisterBlobRequest request = RegisterBlobRequest.builder().setBlobList(blobs).build();
+      // TODO SNOW-268842: add retry logic
+      HttpResponse<String> response =
+          this.httpClient.send(
+              request.getHttpRequest(this.accountURL), HttpResponse.BodyHandlers.ofString());
+
+      // TODO: to fail fast, the channels could to be invalidated if register blob show failures
+      // Check for HTTP response code
+      if (response.statusCode() >= HttpStatus.SC_MULTIPLE_CHOICES) {
+        throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.body());
+      }
+
+      // Check for Snowflake specific response code
+      RegisterBlobResponse result =
+          new ObjectMapper().readValue(response.body(), RegisterBlobResponse.class);
+      if (result.getStatusCode() != RESPONSE_SUCCESS) {
+        throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, result.getMessage());
+      }
+    } catch (InterruptedException | IOException e) {
+      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE);
+    }
+
+    logger.logDebug(
+        "Register blob request succeeded for blob={}, client={}",
+        blobs.stream().map(p -> p.path).collect(Collectors.toList()),
+        this.name);
+  }
 
   /**
    * Close the client, which will flush first and then release all the resources

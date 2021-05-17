@@ -15,6 +15,7 @@ public class Constants {
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final long RESPONSE_SUCCESS = 0L;
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 10L;
+  public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
   // Channel level constants
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
