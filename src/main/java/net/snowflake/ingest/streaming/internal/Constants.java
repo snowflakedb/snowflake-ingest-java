@@ -15,6 +15,11 @@ public class Constants {
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final long RESPONSE_SUCCESS = 0L;
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 10L;
+  public static final String STAGE_LOCATION = "file:///tmp/streaming_ingest_tmp/";
+  public static final String STAGE_NAME = "STREAMING_INGEST_STAGE";
+  public static final String INTERNAL_STAGE_DB_NAME = "DB_STREAMINGINGEST";
+  public static final String INTERNAL_STAGE_SCHEMA_NAME = "PUBLIC";
+  public static final long CREDENTIAL_EXPIRE_IN_SEC = 30 * 60 * 1000L;
   public static final long BUFFER_FLUSH_INTERVAL_IN_MS = 500;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MS = 100;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 256000000L;
@@ -31,6 +36,11 @@ public class Constants {
 
   // Channel level constants
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
+
+  public static enum WriteMode {
+    CLOUD_STORAGE,
+    REST_API,
+  }
 
   // Parameters
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;

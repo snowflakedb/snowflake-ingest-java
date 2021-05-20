@@ -4,23 +4,31 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
+import net.snowflake.client.core.SFStatement;
 import net.snowflake.client.jdbc.*;
+import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 public class StreamingIngestStage {
@@ -50,10 +58,22 @@ public class StreamingIngestStage {
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
   private final SnowflakeURL snowflakeURL;
+  private final SnowflakeConnectionV1 conn;
+  private final boolean isTestMode;
+  private static final String putTemplate = "PUT " + Constants.STAGE_LOCATION + " @";
+  private final long expirationTime = Constants.CREDENTIAL_EXPIRE_IN_SEC;
 
-  public StreamingIngestStage(SnowflakeURL snowflakeURL) throws SnowflakeSQLException, IOException {
+  public StreamingIngestStage(Connection conn, SnowflakeURL snowflakeURL, boolean isTestMode)
+      throws SnowflakeSQLException, IOException {
+    this.conn = (SnowflakeConnectionV1) conn;
     this.snowflakeURL = snowflakeURL;
+    this.isTestMode = isTestMode;
     this.refreshSnowflakeMetadata();
+
+    if (!isTestMode) {
+      checkConnection();
+      createInternalStage();
+    }
   }
 
   /**
@@ -112,7 +132,7 @@ public class StreamingIngestStage {
       this.refreshSnowflakeMetadata();
       this.putRemote(fullFilePath, data, ++retryCount);
     } catch (Exception e) {
-      throw new SnowflakeSQLException(e, ErrorCode.IO_ERROR);
+      throw new SFException(e, ErrorCode.IO_ERROR);
     }
   }
 
@@ -178,11 +198,12 @@ public class StreamingIngestStage {
     // on each upload.
     dataNode.putArray("src_locations").add("placeholder");
 
-    this.fileTransferMetadataWithAge =
-        new SnowflakeFileTransferMetadataWithAge(
-            (SnowflakeFileTransferMetadataV1)
-                SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
-            Optional.of(System.currentTimeMillis()));
+    // Temporarily disabled until the new JDBC release is available
+    /*    this.fileTransferMetadataWithAge =
+    new SnowflakeFileTransferMetadataWithAge(
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+        Optional.of(System.currentTimeMillis()));*/
     return this.fileTransferMetadataWithAge;
   }
 
@@ -193,5 +214,183 @@ public class StreamingIngestStage {
    */
   void setFileTransferMetadataAge(long timestamp) {
     this.fileTransferMetadataWithAge.timestamp = Optional.of(timestamp);
+  }
+
+  /**
+   * Upload file to internal stage
+   *
+   * @param fileName
+   * @param blob
+   */
+  public void put(String fileName, byte[] blob) {
+    if (getStageType() == StageInfo.StageType.LOCAL_FS) {
+      putLocal(fileName, blob);
+    } else {
+      putRemoteWithCache(fileName, blob);
+    }
+  }
+
+  /**
+   * Get the backend stage type, S3, Azure or GCS. Involves one GS call.
+   *
+   * @return stage type
+   */
+  @VisibleForTesting
+  StageInfo.StageType getStageType() {
+    checkConnection();
+    try {
+      String command = putTemplate + Constants.STAGE_NAME;
+      SnowflakeFileTransferAgent agent =
+          new SnowflakeFileTransferAgent(
+              command, this.conn.getSfSession(), new SFStatement(this.conn.getSfSession()));
+      return agent.getStageInfo().getStageType();
+    } catch (SnowflakeSQLException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+  }
+
+  /**
+   * Upload file to remote internal stage with previously cached credentials. Refresh credential
+   * every 30 minutes
+   *
+   * @param fullFilePath Full file name to be uploaded
+   * @param data Data string to be uploaded
+   */
+  @VisibleForTesting
+  void putRemoteWithCache(String fullFilePath, byte[] data) {
+    String command = putTemplate + Constants.STAGE_NAME;
+    try {
+      if (!isCredentialValid()) {
+        SnowflakeFileTransferAgent agent =
+            new SnowflakeFileTransferAgent(
+                command, this.conn.getSfSession(), new SFStatement(this.conn.getSfSession()));
+        // If the backend is not GCP, we cache the credential. Otherwise throw error.
+        // transfer metadata list must only have one element
+        SnowflakeFileTransferMetadataV1 fileTransferMetadata =
+            (SnowflakeFileTransferMetadataV1) agent.getFileTransferMetadatas().get(0);
+        if (fileTransferMetadata.getStageInfo().getStageType() != StageInfo.StageType.GCS) {
+          // Overwrite the credential to be used
+          fileTransferMetadataWithAge =
+              new SnowflakeFileTransferMetadataWithAge(
+                  fileTransferMetadata, Optional.of(System.currentTimeMillis()));
+        } else {
+          throw new SFException(ErrorCode.INTERNAL_ERROR);
+        }
+      }
+
+      SnowflakeFileTransferMetadataV1 fileTransferMetadata =
+          fileTransferMetadataWithAge.fileTransferMetadata;
+      // Set filename to be uploaded
+      fileTransferMetadata.setPresignedUrlFileName(fullFilePath);
+
+      InputStream inStream = new ByteArrayInputStream(data);
+
+      SnowflakeFileTransferAgent.uploadWithoutConnection(
+          SnowflakeFileTransferConfig.Builder.newInstance()
+              .setSnowflakeFileTransferMetadata(fileTransferMetadata)
+              .setUploadStream(inStream)
+              .setRequireCompress(false)
+              .setOcspMode(OCSPMode.FAIL_OPEN)
+              .build());
+    } catch (Exception e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+  }
+
+  /**
+   * Upload file to local internal stage with previously cached credentials.
+   *
+   * @param fullFilePath
+   * @param data
+   */
+  @VisibleForTesting
+  void putLocal(String fullFilePath, byte[] data) {
+    if (fullFilePath == null || fullFilePath.isEmpty() || fullFilePath.endsWith("/")) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR);
+    }
+
+    InputStream input = new ByteArrayInputStream(data);
+    try {
+      this.conn.uploadStream(Constants.STAGE_NAME, "", input, fullFilePath, false);
+    } catch (Exception e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+  }
+
+  /** Make sure connection is not closed */
+  private void checkConnection() {
+    try {
+      if (this.conn == null || this.conn.isClosed()) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR);
+      }
+    } catch (SQLException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+  }
+
+  /**
+   * Check whether the credential has expired or not
+   *
+   * @return a boolean indicates whether the credential is valid or not
+   */
+  @VisibleForTesting
+  boolean isCredentialValid() {
+    // Key is cached and not expired
+    return fileTransferMetadataWithAge != null
+        && fileTransferMetadataWithAge.timestamp.isPresent()
+        && System.currentTimeMillis() - fileTransferMetadataWithAge.timestamp.get()
+            < this.expirationTime;
+  }
+
+  private void createInternalStage() {
+    String query = "create database if not exists identifier(?);";
+    try {
+      PreparedStatement stmt = this.conn.prepareStatement(query);
+      stmt.setString(1, Constants.INTERNAL_STAGE_DB_NAME);
+      stmt.execute();
+      stmt.close();
+    } catch (SQLException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+
+    query = "use database identifier(?);";
+    try {
+      PreparedStatement stmt = this.conn.prepareStatement(query);
+      stmt.setString(1, Constants.INTERNAL_STAGE_DB_NAME);
+      stmt.execute();
+      stmt.close();
+    } catch (SQLException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+
+    query = "create schema if not exists identifier(?);";
+    try {
+      PreparedStatement stmt = this.conn.prepareStatement(query);
+      stmt.setString(1, Constants.INTERNAL_STAGE_SCHEMA_NAME);
+      stmt.execute();
+      stmt.close();
+    } catch (SQLException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+
+    query = "use schema identifier(?);";
+    try {
+      PreparedStatement stmt = this.conn.prepareStatement(query);
+      stmt.setString(1, Constants.INTERNAL_STAGE_SCHEMA_NAME);
+      stmt.execute();
+      stmt.close();
+    } catch (SQLException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
+
+    query = "create stage if not exists identifier(?);";
+    try {
+      PreparedStatement stmt = this.conn.prepareStatement(query);
+      stmt.setString(1, Constants.STAGE_NAME);
+      stmt.execute();
+      stmt.close();
+    } catch (SQLException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR);
+    }
   }
 }
