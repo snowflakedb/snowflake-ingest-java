@@ -94,7 +94,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         throw new SFException(e, ErrorCode.SF_CONNECTION_FAILURE);
       }
     }
-    this.flushService = new FlushService(this, this.channelCache, this.connection, isTestMode);
+    this.flushService =
+        new FlushService(
+            this, this.channelCache, this.connection, this.accountURL, this.isTestMode);
 
     // TODO: need to reach to server to get client/account level information
     logger.logDebug(
@@ -212,7 +214,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   public void registerBlobs(List<BlobMetadata> blobs) {
     logger.logDebug(
         "Register blob request start for blob={}, client={}",
-        blobs.stream().map(p -> p.path).collect(Collectors.toList()),
+        blobs.stream().map(p -> p.getPath()).collect(Collectors.toList()),
         this.name);
 
     try {
@@ -240,7 +242,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     logger.logDebug(
         "Register blob request succeeded for blob={}, client={}",
-        blobs.stream().map(p -> p.path).collect(Collectors.toList()),
+        blobs.stream().map(p -> p.getPath()).collect(Collectors.toList()),
         this.name);
   }
 
@@ -251,8 +253,26 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   @Override
   public CompletableFuture<Void> close() {
-    // function stub, implementation will come later
-    return CompletableFuture.completedFuture(null);
+    if (isClosed()) {
+      return CompletableFuture.completedFuture(null);
+    }
+
+    isClosed = true;
+    // First mark all the channels as closed, then flush any leftover rows in the buffer
+    this.channelCache.closeAllChannels();
+    return flush(true)
+        .thenRun(
+            () -> {
+              try {
+                if (!isTestMode) {
+                  this.connection.close();
+                }
+                this.flushService.shutdown();
+                this.allocator.close();
+              } catch (SQLException | InterruptedException e) {
+                throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
+              }
+            });
   }
 
   /**
@@ -262,8 +282,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   @Override
   public CompletableFuture<Void> flush() {
-    // function stub, implementation will come later
-    return CompletableFuture.completedFuture(null);
+    return flush(false);
+  }
+
+  private CompletableFuture<Void> flush(boolean closing) {
+    if (isClosed() && !closing) {
+      throw new SFException(ErrorCode.CLOSED_CLIENT);
+    }
+    return this.flushService.flush(closing);
   }
 
   /** Set the flag to indicate that a flush is needed */

@@ -115,6 +115,22 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
     }
+
+    // Can't flush on invalid channel
+    try {
+      channel.flush();
+      Assert.fail("Channel flush should failed");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
+    }
+
+    // Can't close on invalid channel
+    try {
+      channel.close();
+      Assert.fail("Channel close should failed");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
+    }
   }
 
   @Test
@@ -359,5 +375,40 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
     Assert.assertEquals(1, data.getVectors().size());
     Assert.assertEquals("2", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
+  }
+
+  @Test
+  public void testFlush() throws Exception {
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
+    SnowflakeStreamingIngestChannel channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+
+    channel.flush().get();
+
+    // Calling flush on closed client should fail
+    channel.close().get();
+    try {
+      channel.flush().get();
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CHANNEL.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
+  public void testClose() throws Exception {
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
+    SnowflakeStreamingIngestChannel channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+
+    Assert.assertFalse(channel.isClosed());
+    channel.close().get();
+    Assert.assertTrue(channel.isClosed());
+
+    // Calling close again on closed channel shouldn't fail
+    channel.close().get();
   }
 }

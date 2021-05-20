@@ -82,9 +82,10 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>2.5.1</version>
                 <inherited>true</inherited>
+                <!-- TODO SNOW-356508: see if it could stay at Java 8 -->
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>11</source>
+                    <target>11</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -306,6 +307,19 @@
             <artifactId>powermock-core</artifactId>
             <version>2.0.2</version>
             <scope>test</scope>
+        </dependency>
+
+        <!-- Apache Arrow -->
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-vector</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-netty</artifactId>
+            <version>4.0.0</version>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 

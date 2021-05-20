@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 
 /**
@@ -64,6 +65,20 @@ public interface SnowflakeStreamingIngestChannel {
 
   /** @return a boolean to indicate whether the channel is closed or not */
   boolean isClosed();
+
+  /**
+   * Flush all data in memory to persistent storage and register with a Snowflake table
+   *
+   * @return future which will be complete when the flush the data is registered
+   */
+  CompletableFuture<Void> flush();
+
+  /**
+   * Close the channel (this will flush in-flight buffered data)
+   *
+   * @return future which will be complete when the channel is closed
+   */
+  CompletableFuture<Void> close();
 
   /**
    * --------------------------------------------------------------------------------------------

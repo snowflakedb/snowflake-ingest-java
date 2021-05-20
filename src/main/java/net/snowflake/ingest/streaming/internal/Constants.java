@@ -15,8 +15,24 @@ public class Constants {
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final long RESPONSE_SUCCESS = 0L;
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 10L;
+  public static final long BUFFER_FLUSH_INTERVAL_IN_MS = 500;
+  public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MS = 100;
+  public static final long MAX_BLOB_SIZE_IN_BYTES = 256000000L;
+  public static final byte BLOB_FORMAT_VERSION = 0;
+  public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
+  public static final int BLOB_VERSION_SIZE_IN_BYTES = 1;
+  public static final int BLOB_FILE_SIZE_SIZE_IN_BYTES = 8;
+  public static final int BLOB_CHECKSUM_SIZE_IN_BYTES = 8;
+  public static final int BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES = 4;
+  public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 5L;
+  public static final String BLOB_EXTENSION_TYPE = "bdec";
+  public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
   // Channel level constants
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
+
+  // Parameters
+  public static final boolean DISABLE_BACKGROUND_FLUSH = false;
+  public static final boolean COMPRESS_BLOB_TWICE = false;
 }

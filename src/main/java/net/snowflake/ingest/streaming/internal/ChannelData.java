@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.List;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import org.apache.arrow.vector.FieldVector;
 
 /**
@@ -18,7 +17,7 @@ public class ChannelData {
   private List<FieldVector> vectors;
   private long rowCount;
   private float bufferSize;
-  private SnowflakeStreamingIngestChannel channel;
+  private SnowflakeStreamingIngestChannelInternal channel;
   private EpInfo epInfo;
 
   public Long getRowSequencer() {
@@ -61,11 +60,11 @@ public class ChannelData {
     this.bufferSize = bufferSize;
   }
 
-  public SnowflakeStreamingIngestChannel getChannel() {
+  public SnowflakeStreamingIngestChannelInternal getChannel() {
     return this.channel;
   }
 
-  public void setChannel(SnowflakeStreamingIngestChannel channel) {
+  public void setChannel(SnowflakeStreamingIngestChannelInternal channel) {
     this.channel = channel;
   }
 

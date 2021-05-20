@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.StreamingUtils;
@@ -28,7 +27,7 @@ public class RegisterService {
   private static final Logging logger = new Logging(RegisterService.class);
 
   // Reference to the client that owns this register service
-  private SnowflakeStreamingIngestClient owningClient;
+  private SnowflakeStreamingIngestClientInternal owningClient;
 
   // Contains one or more blob metadata that will be registered to Snowflake
   // The key is the blob name, and the value is the BlobMetadata future that will complete when the
@@ -38,12 +37,15 @@ public class RegisterService {
   // Lock to protect the read/write access of m_blobsList
   private Lock blobsListLock;
 
+  // Indicate whether we're under test mode
+  private boolean isTestMode;
+
   /**
    * Construct a RegisterService object
    *
    * @param client
    */
-  public RegisterService(SnowflakeStreamingIngestClient client) {
+  public RegisterService(SnowflakeStreamingIngestClientInternal client, boolean isTestMode) {
     this.owningClient = client;
     this.blobsList = new ArrayList<>();
     this.blobsListLock = new ReentrantLock();
@@ -111,7 +113,7 @@ public class RegisterService {
                   errorBlobs.add(futureBlob.getKey());
                 }
               });
-          if (blobs.size() > 0) {
+          if (blobs.size() > 0 && !isTestMode) {
             this.owningClient.registerBlobs(blobs);
           }
         }
@@ -122,7 +124,7 @@ public class RegisterService {
   }
 
   /**
-   * Get the blobsList, this is for test only, no lock protection
+   * Get the blobsList, this is for TEST ONLY, no lock protection
    *
    * @return the blobsList
    */

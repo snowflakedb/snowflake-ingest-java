@@ -20,6 +20,7 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPr
 import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.jcajce.JcaPKCS8EncryptedPrivateKeyInfoBuilder;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.jcajce.JcePKCSPBEOutputEncryptorBuilder;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -272,5 +273,47 @@ public class SnowflakeStreamingIngestClientTest {
     List<BlobMetadata> blobs =
         Arrays.asList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
     client.registerBlobs(blobs);
+  }
+
+  @Test
+  public void testFlush() throws Exception {
+    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientInternal("client");
+
+    client.flush().get();
+
+    // Calling flush on closed client should fail
+    client.close().get();
+    try {
+      client.flush().get();
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CLIENT.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
+  public void testClose() throws Exception {
+    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientInternal("client");
+
+    Assert.assertFalse(client.isClosed());
+    client.close().get();
+    Assert.assertTrue(client.isClosed());
+
+    // Calling close again on closed client shouldn't fail
+    client.close().get();
+
+    // Calling open channel on closed client should fail
+    try {
+      OpenChannelRequest request =
+          OpenChannelRequest.builder("CHANNEL")
+              .setDBName("STREAMINGINGEST_TEST")
+              .setSchemaName("PUBLIC")
+              .setTableName("T_STREAMINGINGEST")
+              .build();
+
+      client.openChannel(request);
+      Assert.fail("request should fail on closed client.");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CLIENT.getMessageCode(), e.getVendorCode());
+    }
   }
 }

@@ -10,7 +10,8 @@ public enum ErrorCode {
   NULL_VALUE("0002"),
   NULL_OR_EMPTY_STRING("0003"),
   INVALID_ROW("0004"),
-  UNKNOWN_DATA_TYPE("0005");
+  UNKNOWN_DATA_TYPE("0005"),
+  INVALID_DATA_IN_CHUNK("0006");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

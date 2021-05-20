@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
@@ -13,11 +12,10 @@ public class RegisterServiceTest {
 
   @Test
   public void testRegisterService() throws Exception {
-    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientInternal("client");
-    RegisterService rs = new RegisterService(client);
+    RegisterService rs = new RegisterService(null, true);
 
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture =
-        new Pair<>("test", CompletableFuture.completedFuture(new BlobMetadata()));
+        new Pair<>("test", CompletableFuture.completedFuture(new BlobMetadata("path", null)));
     rs.addBlobs(Arrays.asList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
     List<String> errorBlobs = rs.registerBlobs();
@@ -27,11 +25,10 @@ public class RegisterServiceTest {
 
   @Test
   public void testRegisterServiceTimeoutException() throws Exception {
-    SnowflakeStreamingIngestClient client = new SnowflakeStreamingIngestClientInternal("client");
-    RegisterService rs = new RegisterService(client);
+    RegisterService rs = new RegisterService(null, true);
 
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture1 =
-        new Pair<>("success", CompletableFuture.completedFuture(new BlobMetadata()));
+        new Pair<>("success", CompletableFuture.completedFuture(new BlobMetadata("path", null)));
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture2 =
         new Pair<>("fail", CompletableFuture.failedFuture(new TimeoutException()));
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));

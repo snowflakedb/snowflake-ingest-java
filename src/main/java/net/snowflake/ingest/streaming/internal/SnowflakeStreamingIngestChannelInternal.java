@@ -9,6 +9,7 @@ import static net.snowflake.ingest.streaming.internal.Constants.MAX_CHUNK_SIZE_I
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -222,6 +223,50 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
   /** Mark the channel as closed */
   public void markClosed() {
     this.isClosed = true;
+  }
+
+  /**
+   * Flush all data in memory to persistent storage and register with a Snowflake table
+   *
+   * @return future which will be complete when the flush the data is registered
+   */
+  @Override
+  public CompletableFuture<Void> flush() {
+    return flush(false);
+  }
+
+  private CompletableFuture<Void> flush(boolean closing) {
+    if (!isValid()) {
+      throw new SFException(ErrorCode.INVALID_CHANNEL);
+    }
+
+    // Skip this check for closing because we need to set the channel to closed first and then flush
+    // in case there is any leftover rows
+    if (isClosed() && !closing) {
+      throw new SFException(ErrorCode.CLOSED_CHANNEL);
+    }
+
+    return this.owningClient.flush();
+  }
+
+  /**
+   * Close the channel (this will flush in-flight buffered data)
+   *
+   * @return future which will be complete when the channel is closed
+   */
+  @Override
+  public CompletableFuture<Void> close() {
+    if (isClosed()) {
+      return CompletableFuture.completedFuture(null);
+    }
+
+    markClosed();
+    return flush(true)
+        .thenRun(
+            () -> {
+              this.arrowBuffer.close();
+              this.owningClient.removeChannelIfSequencersMatch(this);
+            });
   }
 
   /**
