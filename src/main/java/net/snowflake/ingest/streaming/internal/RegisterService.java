@@ -16,7 +16,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.StreamingUtils;
 
 /**
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
@@ -49,6 +48,7 @@ public class RegisterService {
     this.owningClient = client;
     this.blobsList = new ArrayList<>();
     this.blobsListLock = new ReentrantLock();
+    this.isTestMode = isTestMode;
   }
 
   /**
@@ -94,13 +94,14 @@ public class RegisterService {
           oldList.forEach(
               futureBlob -> {
                 try {
-                  logger.logDebug("Start waiting on uploading blob: {}", futureBlob.getKey());
+                  logger.logDebug("Start waiting on uploading blob={}", futureBlob.getKey());
                   // Wait for uploading to finish, add a timeout in case something bad happens
                   BlobMetadata blob =
                       futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
-                  logger.logDebug("Finish waiting on uploading blob: {}", futureBlob.getKey());
-                  StreamingUtils.assertNotNull("uploaded blob", blob);
-                  blobs.add(blob);
+                  logger.logDebug("Finish waiting on uploading blob={}", futureBlob.getKey());
+                  if (blob != null) {
+                    blobs.add(blob);
+                  }
                 } catch (InterruptedException | ExecutionException | TimeoutException e) {
                   // Don't throw here if the blob upload times out or encounters other exceptions,
                   // since we still want to continue register the good blobs in the list
@@ -108,8 +109,7 @@ public class RegisterService {
                   // exceptions
                   // TODO SNOW-348859: ideally we want to invalidate all channels in the blob if
                   // register failed
-                  logger.logError(
-                      "Uploading blob failed: {}, exception: {}", futureBlob.getKey(), e);
+                  logger.logError("Uploading blob failed={}, exception={}", futureBlob.getKey(), e);
                   errorBlobs.add(futureBlob.getKey());
                 }
               });

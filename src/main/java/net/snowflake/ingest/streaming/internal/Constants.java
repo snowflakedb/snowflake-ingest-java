@@ -32,10 +32,11 @@ public class Constants {
   public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 5L;
   public static final String BLOB_EXTENSION_TYPE = "bdec";
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
-  public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
+  public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
 
   // Channel level constants
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
+  public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
   public static enum WriteMode {
     CLOUD_STORAGE,

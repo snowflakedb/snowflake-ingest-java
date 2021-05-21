@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import junit.framework.TestCase;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -18,7 +17,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-public class SnowflakeStreamingIngestChannelTest extends TestCase {
+public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testChannelFactoryNullFields() throws Exception {
@@ -49,7 +48,9 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
                 .build();
         Assert.fail("Channel factory should fail with null fields");
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.NULL_OR_EMPTY_STRING.getMessageCode(), e.getVendorCode());
+        Assert.assertTrue(
+            ErrorCode.NULL_OR_EMPTY_STRING.getMessageCode().equals(e.getVendorCode())
+                || ErrorCode.NULL_VALUE.getMessageCode().equals(e.getVendorCode()));
       }
       fields[i] = tmp;
     }
@@ -141,9 +142,9 @@ public class SnowflakeStreamingIngestChannelTest extends TestCase {
         new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
 
-    Assert.assertTrue(channel.isClosed());
-    channel.markClosed();
     Assert.assertTrue(!channel.isClosed());
+    channel.markClosed();
+    Assert.assertTrue(channel.isClosed());
 
     // Can't insert rows to closed channel
     try {

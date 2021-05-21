@@ -94,19 +94,20 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         throw new SFException(e, ErrorCode.SF_CONNECTION_FAILURE);
       }
     }
+
     this.flushService =
         new FlushService(
             this, this.channelCache, this.connection, this.accountURL, this.isTestMode);
 
-    // TODO: need to reach to server to get client/account level information
     logger.logDebug(
-        "Client created, name={} account={}",
+        "Client created, name={}, account={}. isTestMode={}",
         name,
-        accountURL == null ? "" : accountURL.getAccount());
+        accountURL == null ? "" : accountURL.getAccount(),
+        isTestMode);
   }
 
   /**
-   * Constructor
+   * Default Constructor
    *
    * @param name the name of the client
    * @param accountURL Snowflake account url

@@ -9,6 +9,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class RowBufferTest {
@@ -17,7 +18,10 @@ public class RowBufferTest {
   @Before
   public void setupRowBuffer() {
     // Create row buffer
-    this.rowBuffer = new ArrowRowBuffer(null);
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schema", "table", "0", 0L, 0L, null, true);
+    this.rowBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTinyIntCase = new ColumnMetadata();
     colTinyIntCase.setName("colTinyInt");
@@ -127,6 +131,7 @@ public class RowBufferTest {
   }
 
   @Test
+  @Ignore // TODO SNOW-348857: verify that null can't be inserted into non-nullable column
   public void testInsertNullToNotNullColumn() throws Exception {
     ColumnMetadata colNotNull = new ColumnMetadata();
     colNotNull.setName("COLNOTNULL");
@@ -231,6 +236,7 @@ public class RowBufferTest {
 
   @Test
   public void testFlush() throws Exception {
+    String offsetToken = "1";
     Map<String, Object> row1 = new HashMap<>();
     row1.put("colTinyInt", (byte) 1);
     row1.put("colSmallInt", (short) 2);
@@ -247,14 +253,14 @@ public class RowBufferTest {
     row2.put("colDecimal", 2.34);
     row2.put("colChar", "3");
 
-    this.rowBuffer.insertRows(Arrays.asList(row1, row2), "1");
+    this.rowBuffer.insertRows(Arrays.asList(row1, row2), offsetToken);
     float bufferSize = this.rowBuffer.getSize();
 
     ChannelData data = this.rowBuffer.flush();
     Assert.assertEquals(2, data.getRowCount());
-    Assert.assertEquals((Long) 0L, data.getRowSequencer());
-    Assert.assertEquals(6, data.getVectors().size());
-    Assert.assertEquals("1", data.getOffsetToken());
+    Assert.assertEquals((Long) 1L, data.getRowSequencer());
+    Assert.assertEquals(7, data.getVectors().size());
+    Assert.assertEquals(offsetToken, data.getOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
   }
 

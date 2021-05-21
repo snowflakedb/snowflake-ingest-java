@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.streaming.internal.Constants.CLIENT_CONFIGURE_ENDPOINT;
+
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -68,9 +70,9 @@ public class StreamingIngestStage {
     this.conn = (SnowflakeConnectionV1) conn;
     this.snowflakeURL = snowflakeURL;
     this.isTestMode = isTestMode;
-    this.refreshSnowflakeMetadata();
 
     if (!isTestMode) {
+      refreshSnowflakeMetadata();
       checkConnection();
       createInternalStage();
     }
@@ -169,7 +171,7 @@ public class StreamingIngestStage {
               .setScheme(snowflakeURL.getScheme())
               .setHost(snowflakeURL.getUrlWithoutPort())
               .setPort(snowflakeURL.getPort())
-              .setPath("v1/streaming/client/configure")
+              .setPath(CLIENT_CONFIGURE_ENDPOINT)
               .build();
     } catch (URISyntaxException e) {
       // TODO throw proper exception

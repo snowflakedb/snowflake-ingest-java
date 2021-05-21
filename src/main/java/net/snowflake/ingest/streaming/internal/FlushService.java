@@ -245,7 +245,7 @@ public class FlushService {
                         return buildAndUpload(fileName, blobData);
                       } catch (Exception e) {
                         // TODO SNOW-354569: we should fail fast during a failure
-                        logger.logError("Building blob failed: {}, exception: {}", fileName, e);
+                        logger.logError("Building blob failed={}, exception={}", fileName, e);
                         return null;
                       }
                     },

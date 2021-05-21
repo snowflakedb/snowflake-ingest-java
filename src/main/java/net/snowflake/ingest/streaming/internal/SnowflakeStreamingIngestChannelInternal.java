@@ -93,7 +93,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
                 .getAllocator()
                 .newChildAllocator(name, 0, this.owningClient.getAllocator().getLimit());
     this.arrowBuffer = new ArrowRowBuffer(this);
-    logger.logDebug("Channel {} created for table: {}", this.channelName, this.tableName);
+    logger.logDebug("Channel={} created for table={}", this.channelName, this.tableName);
   }
 
   /**
@@ -285,7 +285,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
    */
   // TODO: need to verify with the table schema when supporting sub-columns
   public void setupSchema(List<ColumnMetadata> columns) {
-    logger.logDebug("Setup schema for channel: {}, schema: {}", getFullyQualifiedName(), columns);
+    logger.logDebug("Setup schema for channel={}, schema={}", getFullyQualifiedName(), columns);
     this.arrowBuffer.setupSchema(columns);
   }
 

@@ -17,7 +17,6 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.StreamingUtils;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.*;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
@@ -141,7 +140,7 @@ public class ArrowRowBuffer {
    */
   public ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal channel) {
     this.owningChannel = channel;
-    this.allocator = channel == null ? new RootAllocator() : channel.getAllocator();
+    this.allocator = channel.getAllocator();
     this.vectors = new HashMap<>();
     this.fields = new HashMap<>();
     this.flushLock = new ReentrantLock();
@@ -164,7 +163,7 @@ public class ArrowRowBuffer {
       FieldVector vector = field.createVector(this.allocator);
       this.fields.put(column.getName(), field);
       this.vectors.put(column.getName(), vector);
-      statsMap.put(column.getName(), new RowBufferStats());
+      this.statsMap.put(column.getName(), new RowBufferStats());
     }
   }
 
@@ -227,7 +226,7 @@ public class ArrowRowBuffer {
    * @return A ChannelData object that contains the info needed by the flush service to build a blob
    */
   public ChannelData flush() {
-    logger.logDebug("Start get data for channel: {}", this.owningChannel.getFullyQualifiedName());
+    logger.logDebug("Start get data for channel={}", this.owningChannel.getFullyQualifiedName());
     if (this.rowCount > 0) {
       List<FieldVector> oldVectors = new ArrayList<>();
       long rowCount = 0L;
@@ -237,7 +236,7 @@ public class ArrowRowBuffer {
       EpInfo epInfo = null;
 
       logger.logDebug(
-          "Arrow buffer flush about to take lock on channel: {}",
+          "Arrow buffer flush about to take lock on channel={}",
           this.owningChannel.getFullyQualifiedName());
 
       this.flushLock.lock();
@@ -264,7 +263,7 @@ public class ArrowRowBuffer {
       }
 
       logger.logDebug(
-          "Arrow buffer flush released lock on channel: {}, rowCount: {}, bufferSize: {}",
+          "Arrow buffer flush released lock on channel={}, rowCount={}, bufferSize={}",
           this.owningChannel.getFullyQualifiedName(),
           rowCount,
           bufferSize);
@@ -387,12 +386,12 @@ public class ArrowRowBuffer {
       StreamingUtils.assertNotNull("Arrow column field", field);
       FieldVector vector = this.vectors.get(columnName);
       StreamingUtils.assertNotNull("Arrow column vector", vector);
+      RowBufferStats stats = statsMap.get(columnName);
+      StreamingUtils.assertNotNull("Arrow column stats", stats);
       ColumnLogicalType logicalType =
           ColumnLogicalType.valueOf(field.getMetadata().get(COLUMN_LOGICAL_TYPE));
       ColumnPhysicalType physicalType =
           ColumnPhysicalType.valueOf(field.getMetadata().get(COLUMN_PHYSICAL_TYPE));
-
-      RowBufferStats stats = statsMap.computeIfAbsent(columnName, c -> new RowBufferStats());
 
       switch (logicalType) {
         case FIXED:
