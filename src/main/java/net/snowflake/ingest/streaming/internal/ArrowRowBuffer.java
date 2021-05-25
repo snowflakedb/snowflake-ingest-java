@@ -29,7 +29,7 @@ import org.apache.arrow.vector.util.TransferPair;
  * The buffer in the Streaming Ingest channel that holds the un-flushed rows, these rows will be
  * converted to Arrow format for faster processing
  */
-public class ArrowRowBuffer {
+class ArrowRowBuffer {
 
   private static final Logging logger = new Logging(ArrowRowBuffer.class);
 
@@ -46,6 +46,7 @@ public class ArrowRowBuffer {
   private static final String COLUMN_PRECISION = "precision";
   private static final String COLUMN_CHAR_LENGTH = "charLength";
   private static final String COLUMN_BYTE_LENGTH = "byteLength";
+  private static final int DECIMAL_BIT_WIDTH = 128;
 
   // Snowflake table column logical type
   private static enum ColumnLogicalType {
@@ -138,7 +139,7 @@ public class ArrowRowBuffer {
    *
    * @param channel
    */
-  public ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal channel) {
+  ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal channel) {
     this.owningChannel = channel;
     this.allocator = channel.getAllocator();
     this.vectors = new HashMap<>();
@@ -157,7 +158,7 @@ public class ArrowRowBuffer {
    *
    * @param columns list of column metadata
    */
-  public void setupSchema(List<ColumnMetadata> columns) {
+  void setupSchema(List<ColumnMetadata> columns) {
     for (ColumnMetadata column : columns) {
       Field field = buildField(column);
       FieldVector vector = field.createVector(this.allocator);
@@ -171,7 +172,7 @@ public class ArrowRowBuffer {
    * Close the row buffer and release resources. Note that the caller needs to handle
    * synchronization
    */
-  public void close() {
+  void close() {
     this.vectors.values().forEach(vector -> vector.close());
     this.vectors.clear();
     this.fields.clear();
@@ -192,7 +193,7 @@ public class ArrowRowBuffer {
    *
    * @return the current buffer size
    */
-  public float getSize() {
+  float getSize() {
     return this.bufferSize;
   }
 
@@ -202,7 +203,7 @@ public class ArrowRowBuffer {
    * @param rows
    * @param offsetToken offset token of the latest row in the batch
    */
-  public void insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
+  void insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
     this.flushLock.lock();
     try {
       for (Map<String, Object> row : rows) {
@@ -225,7 +226,7 @@ public class ArrowRowBuffer {
    *
    * @return A ChannelData object that contains the info needed by the flush service to build a blob
    */
-  public ChannelData flush() {
+  ChannelData flush() {
     logger.logDebug("Start get data for channel={}", this.owningChannel.getFullyQualifiedName());
     if (this.rowCount > 0) {
       List<FieldVector> oldVectors = new ArrayList<>();
@@ -320,28 +321,33 @@ public class ArrowRowBuffer {
             arrowType =
                 column.getScale() == 0
                     ? Types.MinorType.TINYINT.getType()
-                    : new ArrowType.Decimal(column.getPrecision(), column.getScale());
+                    : new ArrowType.Decimal(
+                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
             break;
           case SB2:
             arrowType =
                 column.getScale() == 0
                     ? Types.MinorType.SMALLINT.getType()
-                    : new ArrowType.Decimal(column.getPrecision(), column.getScale());
+                    : new ArrowType.Decimal(
+                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
             break;
           case SB4:
             arrowType =
                 column.getScale() == 0
                     ? Types.MinorType.INT.getType()
-                    : new ArrowType.Decimal(column.getPrecision(), column.getScale());
+                    : new ArrowType.Decimal(
+                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
             break;
           case SB8:
             arrowType =
                 column.getScale() == 0
                     ? Types.MinorType.BIGINT.getType()
-                    : new ArrowType.Decimal(column.getPrecision(), column.getScale());
+                    : new ArrowType.Decimal(
+                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
             break;
           case SB16:
-            arrowType = new ArrowType.Decimal(column.getPrecision(), column.getScale());
+            arrowType =
+                new ArrowType.Decimal(column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
             break;
           default:
             throw new SFException(

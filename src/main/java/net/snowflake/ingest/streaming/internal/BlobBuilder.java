@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.*;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,7 +31,7 @@ import java.util.zip.GZIPOutputStream;
  * <p>After the metadata, it will be one or more chunks of variable size Arrow data, and each chunk
  * will be encrypted and compressed separately.
  */
-public class BlobBuilder {
+class BlobBuilder {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -42,7 +42,7 @@ public class BlobBuilder {
    * @return
    * @throws IOException
    */
-  public static byte[] compress(ByteArrayOutputStream outputStream) throws IOException {
+  static byte[] compress(ByteArrayOutputStream outputStream) throws IOException {
     // Based on current experiment, compressing twice will give us the best compression
     // ratio and compression time combination
     int uncompressedSize = outputStream.size();
@@ -76,7 +76,7 @@ public class BlobBuilder {
    * @return The blob file as a byte array
    * @throws JsonProcessingException
    */
-  public static byte[] build(
+  static byte[] build(
       List<ChunkMetadata> chunksMetadataList,
       List<byte[]> chunksDataList,
       long chunksChecksum,

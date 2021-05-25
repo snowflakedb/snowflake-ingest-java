@@ -2,13 +2,10 @@
  * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
  */
 
-package net.snowflake.ingest.streaming.internal;
+package net.snowflake.ingest.utils;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.SFException;
 
 /** Snowflake URL Object https://account.region.snowflakecomputing.com:443 */
 public class SnowflakeURL {

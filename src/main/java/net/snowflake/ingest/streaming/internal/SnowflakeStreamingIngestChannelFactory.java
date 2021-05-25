@@ -7,13 +7,13 @@ package net.snowflake.ingest.streaming.internal;
 import net.snowflake.ingest.utils.StreamingUtils;
 
 /** Builds a Streaming Ingest channel for a specific Streaming Ingest client */
-public class SnowflakeStreamingIngestChannelFactory {
-  public static SnowflakeStreamingIngestChannelBuilder builder(String name) {
+class SnowflakeStreamingIngestChannelFactory {
+  static SnowflakeStreamingIngestChannelBuilder builder(String name) {
     return new SnowflakeStreamingIngestChannelBuilder(name);
   }
 
   // Builder class to build a SnowflakeStreamingIngestChannel
-  public static class SnowflakeStreamingIngestChannelBuilder {
+  static class SnowflakeStreamingIngestChannelBuilder {
     private String name;
     private String dbName;
     private String schemaName;
@@ -27,43 +27,43 @@ public class SnowflakeStreamingIngestChannelFactory {
       this.name = name;
     }
 
-    public SnowflakeStreamingIngestChannelBuilder setDBName(String dbName) {
+    SnowflakeStreamingIngestChannelBuilder setDBName(String dbName) {
       this.dbName = dbName;
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelBuilder setSchemaName(String schemaName) {
+    SnowflakeStreamingIngestChannelBuilder setSchemaName(String schemaName) {
       this.schemaName = schemaName;
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelBuilder setTableName(String tableName) {
+    SnowflakeStreamingIngestChannelBuilder setTableName(String tableName) {
       this.tableName = tableName;
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelBuilder setOffsetToken(String offsetToken) {
+    SnowflakeStreamingIngestChannelBuilder setOffsetToken(String offsetToken) {
       this.offsetToken = offsetToken;
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelBuilder setChannelSequencer(Long sequencer) {
+    SnowflakeStreamingIngestChannelBuilder setChannelSequencer(Long sequencer) {
       this.channelSequencer = sequencer;
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelBuilder setRowSequencer(Long sequencer) {
+    SnowflakeStreamingIngestChannelBuilder setRowSequencer(Long sequencer) {
       this.rowSequencer = sequencer;
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelBuilder setOwningClient(
+    SnowflakeStreamingIngestChannelBuilder setOwningClient(
         SnowflakeStreamingIngestClientInternal client) {
       this.owningClient = client;
       return this;
     }
 
-    public SnowflakeStreamingIngestChannelInternal build() {
+    SnowflakeStreamingIngestChannelInternal build() {
       StreamingUtils.assertStringNotNullOrEmpty("channel name", this.name);
       StreamingUtils.assertStringNotNullOrEmpty("table name", this.tableName);
       StreamingUtils.assertStringNotNullOrEmpty("schema name", this.schemaName);

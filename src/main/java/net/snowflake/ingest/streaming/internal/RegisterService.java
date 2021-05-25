@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ import net.snowflake.ingest.utils.Pair;
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
  * thread in order to maintain ordering per channel
  */
-public class RegisterService {
+class RegisterService {
 
   private static final Logging logger = new Logging(RegisterService.class);
 
@@ -44,7 +44,7 @@ public class RegisterService {
    *
    * @param client
    */
-  public RegisterService(SnowflakeStreamingIngestClientInternal client, boolean isTestMode) {
+  RegisterService(SnowflakeStreamingIngestClientInternal client, boolean isTestMode) {
     this.owningClient = client;
     this.blobsList = new ArrayList<>();
     this.blobsListLock = new ReentrantLock();
@@ -56,7 +56,7 @@ public class RegisterService {
    *
    * @param blobs
    */
-  public void addBlobs(List<Pair<String, CompletableFuture<BlobMetadata>>> blobs) {
+  void addBlobs(List<Pair<String, CompletableFuture<BlobMetadata>>> blobs) {
     if (!blobs.isEmpty()) {
       this.blobsListLock.lock();
       try {
@@ -71,7 +71,7 @@ public class RegisterService {
    * Register the blobs to Snowflake. This method is called serially from a single thread to ensure
    * the ordering is maintained across independent blobs in the same channel.
    */
-  public List<String> registerBlobs() {
+  List<String> registerBlobs() {
     logger.logDebug("Start registering blob task");
     List<String> errorBlobs = new ArrayList<>();
     if (this.blobsList.isEmpty()) {
@@ -128,7 +128,7 @@ public class RegisterService {
    *
    * @return the blobsList
    */
-  public List<Pair<String, CompletableFuture<BlobMetadata>>> getBlobsList() {
+  List<Pair<String, CompletableFuture<BlobMetadata>>> getBlobsList() {
     return this.blobsList;
   }
 }

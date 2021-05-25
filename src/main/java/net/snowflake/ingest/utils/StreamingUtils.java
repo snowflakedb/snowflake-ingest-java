@@ -19,7 +19,6 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEM
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
-import net.snowflake.ingest.streaming.internal.Constants;
 import org.apache.commons.codec.binary.Base64;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 

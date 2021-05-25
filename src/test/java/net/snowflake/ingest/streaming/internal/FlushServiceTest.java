@@ -1,6 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.*;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;

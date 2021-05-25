@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Column metadata for each column in a Snowflake table */
-public class ColumnMetadata {
+class ColumnMetadata {
   private String name;
   private String type;
   private String logicalType;
@@ -21,83 +21,83 @@ public class ColumnMetadata {
   private boolean nullable;
 
   @JsonProperty("name")
-  public void setName(String name) {
+  void setName(String name) {
     this.name = name;
   }
 
-  public String getName() {
+  String getName() {
     return this.name;
   }
 
   @JsonProperty("type")
-  public void setType(String type) {
+  void setType(String type) {
     this.type = type;
   }
 
-  public String getType() {
+  String getType() {
     return this.type;
   }
 
   @JsonProperty("logical_type")
-  public void setLogicalType(String logicalType) {
+  void setLogicalType(String logicalType) {
     this.logicalType = logicalType.toUpperCase();
   }
 
-  public String getLogicalType() {
+  String getLogicalType() {
     return this.logicalType;
   }
 
   @JsonProperty("physical_type")
-  public void setPhysicalType(String physicalType) {
+  void setPhysicalType(String physicalType) {
     this.physicalType = physicalType;
   }
 
-  public String getPhysicalType() {
+  String getPhysicalType() {
     return this.physicalType;
   }
 
   @JsonProperty("precision")
-  public void setPrecision(Integer precision) {
+  void setPrecision(Integer precision) {
     this.precision = precision;
   }
 
-  public Integer getPrecision() {
+  Integer getPrecision() {
     return this.precision;
   }
 
   @JsonProperty("scale")
-  public void setScale(Integer scale) {
+  void setScale(Integer scale) {
     this.scale = scale;
   }
 
-  public Integer getScale() {
+  Integer getScale() {
     return this.scale;
   }
 
   @JsonProperty("byte_length")
-  public void setByteLength(Integer byteLength) {
+  void setByteLength(Integer byteLength) {
     this.byteLength = byteLength;
   }
 
-  public Integer getByteLength() {
+  Integer getByteLength() {
     return this.byteLength;
   }
 
   @JsonProperty("length")
-  public void setLength(Integer length) {
+  void setLength(Integer length) {
     this.length = length;
   }
 
-  public Integer getLength() {
+  Integer getLength() {
     return this.length;
   }
 
   @JsonProperty("nullable")
-  public void setNullable(boolean nullable) {
+  void setNullable(boolean nullable) {
     this.nullable = nullable;
   }
 
-  public boolean getNullable() {
+  boolean getNullable() {
     return this.nullable;
   }
 

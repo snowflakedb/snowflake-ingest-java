@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * during flush. The key is a fully qualified table name and the value is a set of channels that
  * belongs to this table
  */
-public class ChannelCache {
+class ChannelCache {
   // Cache to hold all the valid channels, the key for the outer map is FullyQualifiedTableName and
   // the key for the inner map is ChannelName
   private ConcurrentHashMap<
@@ -26,7 +26,7 @@ public class ChannelCache {
    *
    * @param channel
    */
-  public void addChannel(SnowflakeStreamingIngestChannelInternal channel) {
+  void addChannel(SnowflakeStreamingIngestChannelInternal channel) {
     ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> channels =
         this.cache.computeIfAbsent(
             channel.getFullyQualifiedTableName(), v -> new ConcurrentHashMap<>());
@@ -43,14 +43,13 @@ public class ChannelCache {
    *
    * @return
    */
-  public Iterator<
-          Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
+  Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
       iterator() {
     return this.cache.entrySet().iterator();
   }
 
   /** Close all channels in the channel cache */
-  public void closeAllChannels() {
+  void closeAllChannels() {
     this.cache
         .values()
         .forEach(channels -> channels.values().forEach(channel -> channel.markClosed()));
@@ -62,7 +61,7 @@ public class ChannelCache {
    * @param channel
    */
   // TODO: what about old stale channels that are not closed? May need a background cleaner
-  public void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
+  void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
     cache.computeIfPresent(
         channel.getFullyQualifiedTableName(),
         (k, v) -> {
@@ -83,7 +82,7 @@ public class ChannelCache {
    *
    * @return
    */
-  public int getSize() {
+  int getSize() {
     return cache.size();
   }
 }

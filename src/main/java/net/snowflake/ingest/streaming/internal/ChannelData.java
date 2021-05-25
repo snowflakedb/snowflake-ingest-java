@@ -11,7 +11,7 @@ import org.apache.arrow.vector.FieldVector;
  * Contains the data and metadata returned for each channel flush, which will be used to build the
  * blob and register blob request
  */
-public class ChannelData {
+class ChannelData {
   private Long rowSequencer;
   private String offsetToken;
   private List<FieldVector> vectors;
@@ -20,59 +20,59 @@ public class ChannelData {
   private SnowflakeStreamingIngestChannelInternal channel;
   private EpInfo epInfo;
 
-  public Long getRowSequencer() {
+  Long getRowSequencer() {
     return this.rowSequencer;
   }
 
-  public void setRowSequencer(Long rowSequencer) {
+  void setRowSequencer(Long rowSequencer) {
     this.rowSequencer = rowSequencer;
   }
 
-  public String getOffsetToken() {
+  String getOffsetToken() {
     return this.offsetToken;
   }
 
-  public void setOffsetToken(String offsetToken) {
+  void setOffsetToken(String offsetToken) {
     this.offsetToken = offsetToken;
   }
 
-  public List<FieldVector> getVectors() {
+  List<FieldVector> getVectors() {
     return this.vectors;
   }
 
-  public void setVectors(List<FieldVector> vectors) {
+  void setVectors(List<FieldVector> vectors) {
     this.vectors = vectors;
   }
 
-  public long getRowCount() {
+  long getRowCount() {
     return this.rowCount;
   }
 
-  public void setRowCount(long rowCount) {
+  void setRowCount(long rowCount) {
     this.rowCount = rowCount;
   }
 
-  public float getBufferSize() {
+  float getBufferSize() {
     return this.bufferSize;
   }
 
-  public void setBufferSize(float bufferSize) {
+  void setBufferSize(float bufferSize) {
     this.bufferSize = bufferSize;
   }
 
-  public SnowflakeStreamingIngestChannelInternal getChannel() {
+  SnowflakeStreamingIngestChannelInternal getChannel() {
     return this.channel;
   }
 
-  public void setChannel(SnowflakeStreamingIngestChannelInternal channel) {
+  void setChannel(SnowflakeStreamingIngestChannelInternal channel) {
     this.channel = channel;
   }
 
-  public EpInfo getEpInfo() {
+  EpInfo getEpInfo() {
     return epInfo;
   }
 
-  public void setEpInfo(EpInfo epInfo) {
+  void setEpInfo(EpInfo epInfo) {
     this.epInfo = epInfo;
   }
 

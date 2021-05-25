@@ -4,7 +4,7 @@ import java.math.BigInteger;
 
 // TODO https://snowflakecomputing.atlassian.net/browse/SNOW-354886.
 //  Audit register endpoint/FileColumnPorpertyDTO property list.
-public class FileColumnProperties {
+class FileColumnProperties {
   private String minStrValue;
 
   private String maxStrValue;
@@ -28,9 +28,9 @@ public class FileColumnProperties {
   // for binary or string columns
   private long maxLength;
 
-  public FileColumnProperties() {}
+  FileColumnProperties() {}
 
-  public FileColumnProperties(RowBufferStats stats) {
+  FileColumnProperties(RowBufferStats stats) {
     this.setMaxIntValue(stats.getCurrentMaxIntValue());
     this.setMinIntValue(stats.getCurrentMinIntValue());
     this.setMinRealValue(stats.getCurrentMinRealValue());
@@ -42,75 +42,75 @@ public class FileColumnProperties {
     this.setDistinctValues(stats.getDistinctValues());
   }
 
-  public String getMinStrValue() {
+  String getMinStrValue() {
     return minStrValue;
   }
 
-  public void setMinStrValue(String minStrValue) {
+  void setMinStrValue(String minStrValue) {
     this.minStrValue = minStrValue;
   }
 
-  public String getMaxStrValue() {
+  String getMaxStrValue() {
     return maxStrValue;
   }
 
-  public void setMaxStrValue(String maxStrValue) {
+  void setMaxStrValue(String maxStrValue) {
     this.maxStrValue = maxStrValue;
   }
 
-  public BigInteger getMinIntValue() {
+  BigInteger getMinIntValue() {
     return minIntValue;
   }
 
-  public void setMinIntValue(BigInteger minIntValue) {
+  void setMinIntValue(BigInteger minIntValue) {
     this.minIntValue = minIntValue;
   }
 
-  public BigInteger getMaxIntValue() {
+  BigInteger getMaxIntValue() {
     return maxIntValue;
   }
 
-  public void setMaxIntValue(BigInteger maxIntValue) {
+  void setMaxIntValue(BigInteger maxIntValue) {
     this.maxIntValue = maxIntValue;
   }
 
-  public long getNullCount() {
+  long getNullCount() {
     return nullCount;
   }
 
-  public void setNullCount(long nullCount) {
+  void setNullCount(long nullCount) {
     this.nullCount = nullCount;
   }
 
-  public Double getMinRealValue() {
+  Double getMinRealValue() {
     return minRealValue;
   }
 
-  public void setMinRealValue(Double minRealValue) {
+  void setMinRealValue(Double minRealValue) {
     this.minRealValue = minRealValue;
   }
 
-  public Double getMaxRealValue() {
+  Double getMaxRealValue() {
     return maxRealValue;
   }
 
-  public void setMaxRealValue(Double maxRealValue) {
+  void setMaxRealValue(Double maxRealValue) {
     this.maxRealValue = maxRealValue;
   }
 
-  public long getDistinctValues() {
+  long getDistinctValues() {
     return distinctValues;
   }
 
-  public void setDistinctValues(long distinctValues) {
+  void setDistinctValues(long distinctValues) {
     this.distinctValues = distinctValues;
   }
 
-  public long getMaxLength() {
+  long getMaxLength() {
     return maxLength;
   }
 
-  public void setMaxLength(long maxLength) {
+  void setMaxLength(long maxLength) {
     this.maxLength = maxLength;
   }
 

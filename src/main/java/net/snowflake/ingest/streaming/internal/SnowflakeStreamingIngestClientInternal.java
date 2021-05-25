@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -22,6 +22,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.http.HttpStatus;
@@ -123,7 +124,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    *
    * @param name the name of the client
    */
-  public SnowflakeStreamingIngestClientInternal(String name) {
+  SnowflakeStreamingIngestClientInternal(String name) {
     this(name, null, null, null, true);
   }
 
@@ -212,7 +213,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    *
    * @param blobs list of uploaded blobs
    */
-  public void registerBlobs(List<BlobMetadata> blobs) {
+  void registerBlobs(List<BlobMetadata> blobs) {
     logger.logDebug(
         "Register blob request start for blob={}, client={}",
         blobs.stream().map(p -> p.getPath()).collect(Collectors.toList()),
@@ -294,7 +295,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /** Set the flag to indicate that a flush is needed */
-  public void setNeedFlush() {
+  void setNeedFlush() {
     this.flushService.setNeedFlush();
   }
 
@@ -303,12 +304,12 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    *
    * @return the buffer allocator
    */
-  public BufferAllocator getAllocator() {
+  BufferAllocator getAllocator() {
     return this.allocator;
   }
 
   /** Remove the channel in the channel cache if the channel sequencer matches */
-  public void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
+  void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
     this.channelCache.removeChannelIfSequencersMatch(channel);
   }
 
@@ -317,7 +318,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    *
    * @return
    */
-  public boolean isTestMode() {
+  boolean isTestMode() {
     return this.isTestMode;
   }
 }

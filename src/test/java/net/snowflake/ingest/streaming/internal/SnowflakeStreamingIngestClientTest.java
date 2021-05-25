@@ -1,6 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.*;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -25,6 +25,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StreamingUtils;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import org.junit.Assert;

@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.Assert;
 import org.junit.Test;
 

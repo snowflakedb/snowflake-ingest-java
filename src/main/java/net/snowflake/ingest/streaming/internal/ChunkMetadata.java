@@ -9,7 +9,7 @@ import java.util.List;
 import net.snowflake.ingest.utils.StreamingUtils;
 
 /** Metadata for a chunk that sends to Snowflake as part of the register blob request */
-public class ChunkMetadata {
+class ChunkMetadata {
   private final String dbName;
   private final String schemaName;
   private final String tableName;
@@ -17,12 +17,12 @@ public class ChunkMetadata {
   private final Integer chunkLength;
   private final List<ChannelMetadata> channels;
 
-  public static Builder builder() {
+  static Builder builder() {
     return new Builder();
   }
 
   /** Builder class to build a ChunkMetadata */
-  public static class Builder {
+  static class Builder {
     private String dbName;
     private String schemaName;
     private String tableName;
@@ -30,44 +30,44 @@ public class ChunkMetadata {
     private Integer chunkLength;
     private List<ChannelMetadata> channels;
 
-    public Builder setOwningTable(SnowflakeStreamingIngestChannelInternal channel) {
+    Builder setOwningTable(SnowflakeStreamingIngestChannelInternal channel) {
       this.dbName = channel.getDBName();
       this.schemaName = channel.getSchemaName();
       this.tableName = channel.getTableName();
       return this;
     }
 
-    public Builder setDBName(String dbName) {
+    Builder setDBName(String dbName) {
       this.dbName = dbName;
       return this;
     }
 
-    public Builder setSchemaName(String schemaName) {
+    Builder setSchemaName(String schemaName) {
       this.schemaName = schemaName;
       return this;
     }
 
-    public Builder setTableName(String tableName) {
+    Builder setTableName(String tableName) {
       this.tableName = tableName;
       return this;
     }
 
-    public Builder setChunkStartOffset(Long startOffset) {
+    Builder setChunkStartOffset(Long startOffset) {
       this.chunkStartOffset = startOffset;
       return this;
     }
 
-    public Builder setChunkLength(Integer chunkLength) {
+    Builder setChunkLength(Integer chunkLength) {
       this.chunkLength = chunkLength;
       return this;
     }
 
-    public Builder setChannelList(List<ChannelMetadata> channels) {
+    Builder setChannelList(List<ChannelMetadata> channels) {
       this.channels = channels;
       return this;
     }
 
-    public ChunkMetadata build() {
+    ChunkMetadata build() {
       return new ChunkMetadata(this);
     }
   }
@@ -93,37 +93,37 @@ public class ChunkMetadata {
    *
    * @param offset
    */
-  public void advanceStartOffset(int offset) {
+  void advanceStartOffset(int offset) {
     this.chunkStartOffset += offset;
   }
 
   @JsonProperty("database")
-  public String getDBName() {
+  String getDBName() {
     return this.dbName;
   }
 
   @JsonProperty("schema")
-  public String getSchemaName() {
+  String getSchemaName() {
     return this.schemaName;
   }
 
   @JsonProperty("table")
-  public String getTableName() {
+  String getTableName() {
     return this.tableName;
   }
 
   @JsonProperty("chunk_start_offset")
-  public Long getChunkStartOffset() {
+  Long getChunkStartOffset() {
     return this.chunkStartOffset;
   }
 
   @JsonProperty("chunk_length")
-  public Integer getChunkLength() {
+  Integer getChunkLength() {
     return chunkLength;
   }
 
   @JsonProperty("channels")
-  public List<ChannelMetadata> getChannels() {
+  List<ChannelMetadata> getChannels() {
     return this.channels;
   }
 }

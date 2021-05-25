@@ -5,11 +5,11 @@
 package net.snowflake.ingest.streaming;
 
 import java.util.Properties;
-import net.snowflake.ingest.streaming.internal.Constants;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
-import net.snowflake.ingest.streaming.internal.SnowflakeURL;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StreamingUtils;
 
 /** Builds a Streaming Ingest client for a specific account */

@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.MAX_CHUNK_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 
 import java.util.Collections;
 import java.util.List;
@@ -19,7 +19,7 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 
 /** The first version of implementation for SnowflakeStreamingIngestChannel */
-public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingIngestChannel {
+class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingIngestChannel {
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelInternal.class);
 
@@ -108,7 +108,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
    * @param rowSequencer
    * @param client
    */
-  public SnowflakeStreamingIngestChannelInternal(
+  SnowflakeStreamingIngestChannelInternal(
       String name,
       String dbName,
       String schemaName,
@@ -166,19 +166,19 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
     return this.tableName;
   }
 
-  public String getOffsetToken() {
+  String getOffsetToken() {
     return this.offsetToken;
   }
 
-  public void setOffsetToken(String offsetToken) {
+  void setOffsetToken(String offsetToken) {
     this.offsetToken = offsetToken;
   }
 
-  public Long getChannelSequencer() {
+  Long getChannelSequencer() {
     return this.channelSequencer;
   }
 
-  public long incrementAndGetRowSequencer() {
+  long incrementAndGetRowSequencer() {
     return this.rowSequencer.incrementAndGet();
   }
 
@@ -197,7 +197,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
    *
    * @return a ChannelData object
    */
-  public ChannelData getData() {
+  ChannelData getData() {
     return this.arrowBuffer.flush();
   }
 
@@ -208,7 +208,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
   }
 
   /** Mark the channel as invalid, and release resources */
-  public void invalidate() {
+  void invalidate() {
     this.isValid = false;
     this.arrowBuffer.close();
     this.owningClient.removeChannelIfSequencersMatch(this);
@@ -221,7 +221,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
   }
 
   /** Mark the channel as closed */
-  public void markClosed() {
+  void markClosed() {
     this.isClosed = true;
   }
 
@@ -274,7 +274,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
    *
    * @return the buffer allocator
    */
-  public BufferAllocator getAllocator() {
+  BufferAllocator getAllocator() {
     return this.allocator;
   }
 
@@ -284,7 +284,7 @@ public class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreami
    * @param columns
    */
   // TODO: need to verify with the table schema when supporting sub-columns
-  public void setupSchema(List<ColumnMetadata> columns) {
+  void setupSchema(List<ColumnMetadata> columns) {
     logger.logDebug("Setup schema for channel={}, schema={}", getFullyQualifiedName(), columns);
     this.arrowBuffer.setupSchema(columns);
   }

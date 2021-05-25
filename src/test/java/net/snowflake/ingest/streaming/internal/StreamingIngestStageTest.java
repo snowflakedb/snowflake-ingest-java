@@ -21,6 +21,8 @@ import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;

@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming;
 
-import static net.snowflake.ingest.streaming.internal.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,10 +13,10 @@ import java.net.URISyntaxException;
 import java.net.http.HttpRequest;
 import java.util.HashMap;
 import java.util.Map;
-import net.snowflake.ingest.streaming.internal.Constants;
-import net.snowflake.ingest.streaming.internal.SnowflakeURL;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StreamingUtils;
 import org.apache.http.client.utils.URIBuilder;
 

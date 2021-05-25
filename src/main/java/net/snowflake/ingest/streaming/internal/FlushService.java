@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.*;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -33,7 +33,7 @@ import org.apache.arrow.vector.ipc.message.ArrowFieldNode;
  * <li>upload the blob to stage
  * <li>register the blob to the targeted Snowflake table
  */
-public class FlushService {
+class FlushService {
 
   private static final Logging logger = new Logging(FlushService.class);
 
@@ -103,7 +103,7 @@ public class FlushService {
    * @param conn
    * @param isTestMode
    */
-  public FlushService(
+  FlushService(
       SnowflakeStreamingIngestClientInternal client,
       ChannelCache cache,
       Connection conn,
@@ -135,7 +135,7 @@ public class FlushService {
    * @return Completable future that will return when the blobs are registered successfully, or null
    *     if none of the conditions is met above
    */
-  public CompletableFuture<Void> flush(boolean isForce) {
+  CompletableFuture<Void> flush(boolean isForce) {
     long timeDiff = System.currentTimeMillis() - this.lastFlushTime;
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
@@ -380,7 +380,7 @@ public class FlushService {
    * @return a boolean indicates whether the shutdown is successful or not
    * @throws InterruptedException
    */
-  public boolean shutdown() throws InterruptedException {
+  boolean shutdown() throws InterruptedException {
     this.flushWorker.shutdown();
     this.registerWorker.shutdown();
     this.buildUploadWorkers.shutdown();
@@ -392,7 +392,7 @@ public class FlushService {
   }
 
   /** Set the flag to indicate that a flush is needed */
-  public void setNeedFlush() {
+  void setNeedFlush() {
     this.isNeedFlush = true;
   }
 

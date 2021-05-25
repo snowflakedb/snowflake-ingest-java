@@ -8,22 +8,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
-public class BlobMetadata {
+class BlobMetadata {
   private final String path;
   private final List<ChunkMetadata> chunks;
 
-  public BlobMetadata(String path, List<ChunkMetadata> chunks) {
+  BlobMetadata(String path, List<ChunkMetadata> chunks) {
     this.path = path;
     this.chunks = chunks;
   }
 
   @JsonProperty("path")
-  public String getPath() {
+  String getPath() {
     return this.path;
   }
 
   @JsonProperty("chunks")
-  public List<ChunkMetadata> getChunks() {
+  List<ChunkMetadata> getChunks() {
     return this.chunks;
   }
 }

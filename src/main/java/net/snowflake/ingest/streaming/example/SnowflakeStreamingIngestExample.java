@@ -4,8 +4,8 @@
 
 package net.snowflake.ingest.streaming.example;
 
-import static net.snowflake.ingest.streaming.internal.Constants.INTERNAL_STAGE_DB_NAME;
-import static net.snowflake.ingest.streaming.internal.Constants.INTERNAL_STAGE_SCHEMA_NAME;
+import static net.snowflake.ingest.utils.Constants.INTERNAL_STAGE_DB_NAME;
+import static net.snowflake.ingest.utils.Constants.INTERNAL_STAGE_SCHEMA_NAME;
 
 import java.io.FileInputStream;
 import java.io.IOException;

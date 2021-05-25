@@ -10,15 +10,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * Indicates the status of a channel registration, return from server as part of the register blob
  * REST_API
  */
-public class ChannelRegisterStatus {
+class ChannelRegisterStatus {
   private Long statusCode;
 
   @JsonProperty("status_code")
-  public void setStatusCode(Long statusCode) {
+  void setStatusCode(Long statusCode) {
     this.statusCode = statusCode;
   }
 
-  public Long getStatusCode() {
+  Long getStatusCode() {
     return this.statusCode;
   }
 }

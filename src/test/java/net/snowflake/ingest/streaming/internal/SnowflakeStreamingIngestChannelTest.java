@@ -1,6 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,6 +13,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;

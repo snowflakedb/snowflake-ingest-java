@@ -8,35 +8,35 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Response to the RegisterBlobRequest */
-public class RegisterBlobResponse {
+class RegisterBlobResponse {
   private Long statusCode;
   private String message;
   private List<BlobRegisterStatus> blobsStatus;
 
   @JsonProperty("status_code")
-  public void setStatusCode(Long statusCode) {
+  void setStatusCode(Long statusCode) {
     this.statusCode = statusCode;
   }
 
-  public Long getStatusCode() {
+  Long getStatusCode() {
     return this.statusCode;
   }
 
   @JsonProperty("message")
-  public void setMessage(String message) {
+  void setMessage(String message) {
     this.message = message;
   }
 
-  public String getMessage() {
+  String getMessage() {
     return this.message;
   }
 
   @JsonProperty("blobs")
-  public void setBlobsStatus(List<BlobRegisterStatus> blobsStatus) {
+  void setBlobsStatus(List<BlobRegisterStatus> blobsStatus) {
     this.blobsStatus = blobsStatus;
   }
 
-  public List<BlobRegisterStatus> getBlobsStatus() {
+  List<BlobRegisterStatus> getBlobsStatus() {
     return this.blobsStatus;
   }
 }

@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /** Keeps track of the active EP stats, used to generate a file EP info */
-public class RowBufferStats {
+class RowBufferStats {
   private String currentMinStrValue;
   private String currentMaxStrValue;
   private BigInteger currentMinIntValue;
@@ -23,7 +23,7 @@ public class RowBufferStats {
   private long numRows; // TODO Remove when ndv calculation updated
 
   /** Creates empty stats */
-  public RowBufferStats() {
+  RowBufferStats() {
     this.currentMaxStrValue = null;
     this.currentMinStrValue = null;
     this.currentMaxIntValue = null;
@@ -34,7 +34,7 @@ public class RowBufferStats {
     this.currentMaxLength = 0;
   }
 
-  public void addStrValue(String value) {
+  void addStrValue(String value) {
     numRows += 1;
 
     // Snowflake compares strings in UTF-8 encoding, not Java's default UTF-16
@@ -59,15 +59,15 @@ public class RowBufferStats {
     }
   }
 
-  public String getCurrentMinStrValue() {
+  String getCurrentMinStrValue() {
     return currentMinStrValue;
   }
 
-  public String getCurrentMaxStrValue() {
+  String getCurrentMaxStrValue() {
     return currentMaxStrValue;
   }
 
-  public void addIntValue(BigInteger value) {
+  void addIntValue(BigInteger value) {
     numRows += 1;
 
     // Set new min value
@@ -85,15 +85,15 @@ public class RowBufferStats {
     }
   }
 
-  public BigInteger getCurrentMinIntValue() {
+  BigInteger getCurrentMinIntValue() {
     return currentMinIntValue;
   }
 
-  public BigInteger getCurrentMaxIntValue() {
+  BigInteger getCurrentMaxIntValue() {
     return currentMaxIntValue;
   }
 
-  public void addRealValue(Double value) {
+  void addRealValue(Double value) {
     numRows += 1;
 
     // Set new min value
@@ -111,33 +111,33 @@ public class RowBufferStats {
     }
   }
 
-  public Double getCurrentMinRealValue() {
+  Double getCurrentMinRealValue() {
     return currentMinRealValue;
   }
 
-  public Double getCurrentMaxRealValue() {
+  Double getCurrentMaxRealValue() {
     return currentMaxRealValue;
   }
 
-  public void incCurrentNullCount() {
+  void incCurrentNullCount() {
     this.currentNullCount += 1;
   }
 
-  public long getCurrentNullCount() {
+  long getCurrentNullCount() {
     return currentNullCount;
   }
 
-  public void setCurrentMaxLength(long currentMaxLength) {
+  void setCurrentMaxLength(long currentMaxLength) {
     if (currentMaxLength > this.currentMaxLength) {
       this.currentMaxLength = currentMaxLength;
     }
   }
 
-  public long getCurrentMaxLength() {
+  long getCurrentMaxLength() {
     return currentMaxLength;
   }
 
-  public long getDistinctValues() {
+  long getDistinctValues() {
     return numRows;
   }
 }

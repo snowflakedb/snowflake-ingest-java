@@ -11,15 +11,15 @@ import java.util.List;
  * Indicates the status of a chunk registration, return from server as part of the register blob
  * REST_API
  */
-public class ChunkRegisterStatus {
+class ChunkRegisterStatus {
   private List<ChannelRegisterStatus> channelsStatus;
 
   @JsonProperty("channels")
-  public void setChannelsStatus(List<ChannelRegisterStatus> channelsStatus) {
+  void setChannelsStatus(List<ChannelRegisterStatus> channelsStatus) {
     this.channelsStatus = channelsStatus;
   }
 
-  public List<ChannelRegisterStatus> getChannelsStatus() {
+  List<ChannelRegisterStatus> getChannelsStatus() {
     return this.channelsStatus;
   }
 }

@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.Constants.CLIENT_CONFIGURE_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
@@ -29,11 +29,13 @@ import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
-public class StreamingIngestStage {
+class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
@@ -65,7 +67,7 @@ public class StreamingIngestStage {
   private static final String putTemplate = "PUT " + Constants.STAGE_LOCATION + " @";
   private final long expirationTime = Constants.CREDENTIAL_EXPIRE_IN_SEC;
 
-  public StreamingIngestStage(Connection conn, SnowflakeURL snowflakeURL, boolean isTestMode)
+  StreamingIngestStage(Connection conn, SnowflakeURL snowflakeURL, boolean isTestMode)
       throws SnowflakeSQLException, IOException {
     this.conn = (SnowflakeConnectionV1) conn;
     this.snowflakeURL = snowflakeURL;
@@ -85,8 +87,7 @@ public class StreamingIngestStage {
    * @param fullFilePath Full file name to be uploaded
    * @param data Data string to be uploaded
    */
-  public void putRemote(String fullFilePath, byte[] data)
-      throws SnowflakeSQLException, IOException {
+  void putRemote(String fullFilePath, byte[] data) throws SnowflakeSQLException, IOException {
     this.putRemote(fullFilePath, data, 0);
   }
 
@@ -224,7 +225,7 @@ public class StreamingIngestStage {
    * @param fileName
    * @param blob
    */
-  public void put(String fileName, byte[] blob) {
+  void put(String fileName, byte[] blob) {
     if (getStageType() == StageInfo.StageType.LOCAL_FS) {
       putLocal(fileName, blob);
     } else {

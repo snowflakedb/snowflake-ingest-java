@@ -11,15 +11,15 @@ import java.util.List;
  * Indicates the status of a blob registration, return from server as part of the register blob
  * REST_API
  */
-public class BlobRegisterStatus {
+class BlobRegisterStatus {
   private List<ChunkRegisterStatus> chunksStatus;
 
   @JsonProperty("chunks")
-  public void setChunksStatus(List<ChunkRegisterStatus> chunksStatus) {
+  void setChunksStatus(List<ChunkRegisterStatus> chunksStatus) {
     this.chunksStatus = chunksStatus;
   }
 
-  public List<ChunkRegisterStatus> getChunksStatus() {
+  List<ChunkRegisterStatus> getChunksStatus() {
     return this.chunksStatus;
   }
 }
