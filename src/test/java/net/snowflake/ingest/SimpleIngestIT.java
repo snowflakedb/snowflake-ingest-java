@@ -1,5 +1,9 @@
 package net.snowflake.ingest;
 
+import static net.snowflake.ingest.connection.RequestBuilder.CLIENT_NAME;
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
+import static net.snowflake.ingest.connection.RequestBuilder.JAVA_USER_AGENT;
+import static net.snowflake.ingest.connection.RequestBuilder.OS_INFO_USER_AGENT_FORMAT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -12,6 +16,9 @@ import java.util.concurrent.TimeUnit;
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.utils.StagedFileWrapper;
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
+import org.apache.http.client.methods.HttpPost;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,6 +36,8 @@ public class SimpleIngestIT {
   private String pipeWithPatternName = "";
   private String stageName = "";
   private String stageWithPatternName = "";
+
+  private final String PRODUCT_AND_PRODUCT_VERSION = CLIENT_NAME + "/" + DEFAULT_VERSION;
 
   /** Create test table and pipe */
   @Before
@@ -55,6 +64,9 @@ public class SimpleIngestIT {
     stageName = "ingest_sdk_test_stage_" + num;
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + num;
+
+    TestUtils.executeQuery("use database SNOWPIPE_SDK_DB");
+    TestUtils.executeQuery("use schema public");
 
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
@@ -149,7 +161,10 @@ public class SimpleIngestIT {
     getHistoryAndAssertLoad(manager, TEST_FILE_NAME_2);
 
     IngestResponse insertResponseSkippedFiles =
-        manager.ingestFiles(SimpleIngestManager.wrapFilepaths(files), null, true);
+        manager.ingestFiles(
+            SimpleIngestManager.wrapFilepaths(files),
+            null /*Request Id*/,
+            true /*Show Skipped Files*/);
 
     assertEquals("SUCCESS", insertResponseSkippedFiles.getResponseCode());
     assertEquals(1, insertResponseSkippedFiles.getSkippedFiles().size());
@@ -210,6 +225,94 @@ public class SimpleIngestIT {
       loaded = true;
     } finally {
       assertTrue(loaded);
+    }
+  }
+
+  /* This should be same for all three APIs since only SimpleIngestManager constructor has changed */
+  @Test
+  public void testUserAgentSuffixForInsertFileAPI() throws Exception {
+    TestUtils.executeQuery("put file://" + testFilePath + " @" + stageName);
+
+    final String userAgentSuffix = "kafka-provider/NONE";
+
+    // create ingest manager
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+
+    // create a file wrapper
+    StagedFileWrapper myFile = new StagedFileWrapper(TEST_FILE_NAME, null);
+
+    HttpPost postWithAdditionUserAgentInfo =
+        manager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+
+    verifyDefaultUserAgent(postWithAdditionUserAgentInfo.getAllHeaders(), true, userAgentSuffix);
+
+    SimpleIngestManager testBuilderIngestManager =
+        TestUtils.getManagerUsingBuilderPattern(pipeName, userAgentSuffix);
+    HttpPost postWithAdditionUserAgentInfo2 =
+        testBuilderIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+
+    verifyDefaultUserAgent(postWithAdditionUserAgentInfo2.getAllHeaders(), true, userAgentSuffix);
+
+    // Passing null and empty string would also work
+    // create ingest manager
+    SimpleIngestManager nullUserAgentSuffixIngestManager = TestUtils.getManager(pipeName, null);
+
+    HttpPost nullAdditionalUserAgent =
+        nullUserAgentSuffixIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+    verifyDefaultUserAgent(nullAdditionalUserAgent.getAllHeaders(), false, null);
+
+    SimpleIngestManager emptyUserAgentSuffixIngestManager = TestUtils.getManager(pipeName, null);
+    HttpPost emptyAdditionalUserAgent =
+        emptyUserAgentSuffixIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+    verifyDefaultUserAgent(emptyAdditionalUserAgent.getAllHeaders(), false, null);
+
+    // Should return a default one. i.e if nothing is passed, it should be same as either null or
+    // empty. But this check is for verifying backward compatibility
+    SimpleIngestManager noUserAgentUsedIngestManager = TestUtils.getManager(pipeName);
+    HttpPost noUserAgentUsed =
+        noUserAgentUsedIngestManager
+            .getRequestBuilder()
+            .generateInsertRequest(
+                UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
+    verifyDefaultUserAgent(noUserAgentUsed.getAllHeaders(), false, null);
+  }
+
+  private void verifyDefaultUserAgent(
+      final Header[] headers,
+      final boolean verifyAdditionalUserAgentInfo,
+      final String httpUserAgentInformation) {
+    for (Header h : headers) {
+      if (h.getName().equalsIgnoreCase(HttpHeaders.USER_AGENT)) {
+        System.out.println(h);
+        if (verifyAdditionalUserAgentInfo) {
+          assertTrue(h.getValue().contains(httpUserAgentInformation));
+          assertTrue(h.getValue().endsWith(httpUserAgentInformation));
+        }
+
+        // This should always be present
+        assertTrue(h.getValue().contains(PRODUCT_AND_PRODUCT_VERSION));
+        String javaAndVersion = JAVA_USER_AGENT + "/" + System.getProperty("java.version");
+        assertTrue(h.getValue().contains(javaAndVersion));
+        final String osInformation =
+            String.format(
+                OS_INFO_USER_AGENT_FORMAT,
+                System.getProperty("os.name"),
+                System.getProperty("os.version"),
+                System.getProperty("os.arch"));
+        assertTrue(h.getValue().contains(osInformation));
+      }
     }
   }
 }
