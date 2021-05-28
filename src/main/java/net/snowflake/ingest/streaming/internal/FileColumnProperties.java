@@ -34,7 +34,7 @@ class FileColumnProperties {
     this.setMaxIntValue(stats.getCurrentMaxIntValue());
     this.setMinIntValue(stats.getCurrentMinIntValue());
     this.setMinRealValue(stats.getCurrentMinRealValue());
-    this.setMaxRealValue(stats.getCurrentMinRealValue());
+    this.setMaxRealValue(stats.getCurrentMaxRealValue());
     this.setMaxLength(stats.getCurrentMaxLength());
     this.setMaxStrValue(stats.getCurrentMaxStrValue());
     this.setMinStrValue(stats.getCurrentMinStrValue());

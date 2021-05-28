@@ -4,20 +4,37 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import javax.xml.bind.DatatypeConverter;
+import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.StreamingUtils;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.vector.*;
+import org.apache.arrow.vector.BaseFixedWidthVector;
+import org.apache.arrow.vector.BaseVariableWidthVector;
+import org.apache.arrow.vector.BigIntVector;
+import org.apache.arrow.vector.BitVector;
+import org.apache.arrow.vector.DateDayVector;
+import org.apache.arrow.vector.DecimalVector;
+import org.apache.arrow.vector.FieldVector;
+import org.apache.arrow.vector.Float8Vector;
+import org.apache.arrow.vector.IntVector;
+import org.apache.arrow.vector.SmallIntVector;
+import org.apache.arrow.vector.TinyIntVector;
+import org.apache.arrow.vector.VarBinaryVector;
+import org.apache.arrow.vector.VarCharVector;
+import org.apache.arrow.vector.complex.StructVector;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -46,7 +63,7 @@ class ArrowRowBuffer {
   private static final String COLUMN_PRECISION = "precision";
   private static final String COLUMN_CHAR_LENGTH = "charLength";
   private static final String COLUMN_BYTE_LENGTH = "byteLength";
-  private static final int DECIMAL_BIT_WIDTH = 128;
+  @VisibleForTesting static final int DECIMAL_BIT_WIDTH = 128;
 
   // Snowflake table column logical type
   private static enum ColumnLogicalType {
@@ -90,7 +107,7 @@ class ArrowRowBuffer {
   }
 
   // Map the column name to the Arrow vector (buffer)
-  private final Map<String, FieldVector> vectors;
+  @VisibleForTesting final Map<String, FieldVector> vectors;
 
   // Map the column name to Arrow column field
   private final Map<String, Field> fields;
@@ -214,7 +231,7 @@ class ArrowRowBuffer {
     } catch (Exception e) {
       // TODO SNOW-348857: Return a response instead in case customer wants to skip error rows
       // TODO SNOW-348857: What offset token to return if the latest row failed?
-      throw new SFException(e, ErrorCode.INVALID_ROW);
+      throw new SFException(e, ErrorCode.INVALID_ROW, e.toString());
     } finally {
       this.flushLock.unlock();
     }
@@ -291,7 +308,7 @@ class ArrowRowBuffer {
    * @param column column metadata
    * @return Column field object
    */
-  private Field buildField(ColumnMetadata column) {
+  Field buildField(ColumnMetadata column) {
     ArrowType arrowType;
     FieldType fieldType;
     List<Field> children = null;
@@ -300,6 +317,17 @@ class ArrowRowBuffer {
     Map<String, String> metadata = new HashMap<>();
     metadata.put(COLUMN_LOGICAL_TYPE, column.getLogicalType());
     metadata.put(COLUMN_PHYSICAL_TYPE, column.getPhysicalType());
+
+    ColumnPhysicalType physicalType;
+    ColumnLogicalType logicalType;
+    try {
+      physicalType = ColumnPhysicalType.valueOf(column.getPhysicalType());
+      logicalType = ColumnLogicalType.valueOf(column.getLogicalType());
+    } catch (IllegalArgumentException e) {
+      throw new SFException(
+          ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+    }
+
     if (column.getPrecision() != null) {
       metadata.put(COLUMN_PRECISION, column.getPrecision().toString());
     }
@@ -314,9 +342,9 @@ class ArrowRowBuffer {
     }
 
     // Handle differently depends on the column logical and physical types
-    switch (ColumnLogicalType.valueOf(column.getLogicalType())) {
+    switch (logicalType) {
       case FIXED:
-        switch (ColumnPhysicalType.valueOf(column.getPhysicalType())) {
+        switch (physicalType) {
           case SB1:
             arrowType =
                 column.getScale() == 0
@@ -362,6 +390,97 @@ class ArrowRowBuffer {
       case VARIANT:
         arrowType = Types.MinorType.VARCHAR.getType();
         break;
+      case TIMESTAMP_LTZ:
+      case TIMESTAMP_NTZ:
+        switch (physicalType) {
+          case SB8:
+            arrowType = Types.MinorType.BIGINT.getType();
+            break;
+          case SB16:
+            arrowType = Types.MinorType.STRUCT.getType();
+            FieldType fieldTypeEpoch =
+                new FieldType(true, Types.MinorType.BIGINT.getType(), null, metadata);
+            FieldType fieldTypeFraction =
+                new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
+            Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
+            Field fieldFraction = new Field(FIELD_FRACTION_IN_NANOSECONDS, fieldTypeFraction, null);
+            children = new LinkedList<>();
+            children.add(fieldEpoch);
+            children.add(fieldFraction);
+            break;
+          default:
+            throw new SFException(
+                ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+        }
+        break;
+
+        // TODO: not currently supported in convertRowToArrow
+        //      case TIMESTAMP_TZ:
+        //        switch (physicalType) {
+        //          case SB8:
+        //            arrowType = Types.MinorType.STRUCT.getType();
+        //            FieldType fieldTypeEpoch =
+        //                new FieldType(true, Types.MinorType.BIGINT.getType(), null, metadata);
+        //            FieldType fieldTypeTimezone =
+        //                new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
+        //            Field fieldEpoch = new Field(Constants.FIELD_NAME_EPOCH, fieldTypeEpoch,
+        // null);
+        //            Field fieldTimezone = new Field(Constants.FIELD_NAME_FRACTION,
+        // fieldTypeTimezone, null);
+        //            children = new LinkedList<>();
+        //            children.add(fieldEpoch);
+        //            children.add(fieldTimezone);
+        //            break;
+        //          case SB16:
+        //            arrowType = Types.MinorType.STRUCT.getType();
+        //            fieldTypeEpoch = new FieldType(true, Types.MinorType.BIGINT.getType(), null,
+        // metadata);
+        //            FieldType fieldTypeFraction =
+        //                new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
+        //            fieldTypeTimezone = new FieldType(true, Types.MinorType.INT.getType(), null,
+        // metadata);
+        //            fieldEpoch = new Field(Constants.FIELD_NAME_EPOCH, fieldTypeEpoch, null);
+        //            Field fieldFraction = new Field(Constants.FIELD_NAME_FRACTION,
+        // fieldTypeFraction, null);
+        //            fieldTimezone =
+        //                new Field(Constants.FIELD_NAME_TIME_ZONE_INDEX, fieldTypeTimezone, null);
+        //
+        //            children = new LinkedList<>();
+        //            children.add(fieldEpoch);
+        //            children.add(fieldFraction);
+        //            children.add(fieldTimezone);
+        //            break;
+        //          default:
+        //            throw new SFException(
+        //                ErrorCode.UNKNOWN_DATA_TYPE,
+        //                "Unknown physical type for TIMESTAMP_TZ: " + physicalType);
+        //        }
+        //        break;
+      case DATE:
+        arrowType = Types.MinorType.DATEDAY.getType();
+        break;
+      case TIME:
+        switch (physicalType) {
+          case SB4:
+            arrowType = Types.MinorType.INT.getType();
+            break;
+          case SB8:
+            arrowType = Types.MinorType.BIGINT.getType();
+            break;
+          default:
+            throw new SFException(
+                ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+        }
+        break;
+      case BOOLEAN:
+        arrowType = Types.MinorType.BIT.getType();
+        break;
+      case BINARY:
+        arrowType = Types.MinorType.VARBINARY.getType();
+        break;
+      case REAL:
+        arrowType = Types.MinorType.FLOAT8.getType();
+        break;
       default:
         throw new SFException(
             ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
@@ -399,74 +518,64 @@ class ArrowRowBuffer {
       ColumnPhysicalType physicalType =
           ColumnPhysicalType.valueOf(field.getMetadata().get(COLUMN_PHYSICAL_TYPE));
 
-      switch (logicalType) {
-        case FIXED:
-          switch (physicalType) {
-            case SB1:
-              if (value == null) {
-                ((TinyIntVector) vector).setNull(this.curRowIndex);
-                stats.incCurrentNullCount();
-              } else {
+      if (value == null) {
+        if (BaseFixedWidthVector.class.isAssignableFrom(vector.getClass())) {
+          ((BaseFixedWidthVector) vector).setNull(this.curRowIndex);
+        } else if (BaseVariableWidthVector.class.isAssignableFrom(vector.getClass())) {
+          ((BaseVariableWidthVector) vector).setNull(this.curRowIndex);
+        } else if (vector instanceof StructVector) {
+          ((StructVector) vector).setNull(this.curRowIndex);
+          ((StructVector) vector)
+              .getChildrenFromFields()
+              .forEach(
+                  child -> {
+                    ((BaseFixedWidthVector) child).setNull(this.curRowIndex);
+                  });
+        } else {
+          throw new SFException(ErrorCode.INTERNAL_ERROR, "Unexpected FieldType");
+        }
+        stats.incCurrentNullCount();
+      } else {
+        switch (logicalType) {
+          case FIXED:
+            switch (physicalType) {
+              case SB1:
                 ((TinyIntVector) vector).setSafe(this.curRowIndex, (byte) value);
                 stats.addIntValue(BigInteger.valueOf((byte) value));
                 this.bufferSize += 1;
-              }
-              break;
-            case SB2:
-              if (value == null) {
-                ((SmallIntVector) vector).setNull(this.curRowIndex);
-                stats.incCurrentNullCount();
-              } else {
+                break;
+              case SB2:
                 ((SmallIntVector) vector).setSafe(this.curRowIndex, (short) value);
                 stats.addIntValue(BigInteger.valueOf((short) value));
                 this.bufferSize += 2;
-              }
-              break;
-            case SB4:
-              if (value == null) {
-                ((IntVector) vector).setNull(this.curRowIndex);
-                stats.incCurrentNullCount();
-              } else {
+                break;
+              case SB4:
                 ((IntVector) vector).setSafe(this.curRowIndex, (int) value);
                 stats.addIntValue(BigInteger.valueOf((int) value));
                 this.bufferSize += 4;
-              }
-              break;
-            case SB8:
-              if (value == null) {
-                ((BigIntVector) vector).setNull(this.curRowIndex);
-                stats.incCurrentNullCount();
-              } else {
+                break;
+              case SB8:
                 ((BigIntVector) vector).setSafe(this.curRowIndex, (long) value);
                 stats.addIntValue(BigInteger.valueOf((long) value));
                 this.bufferSize += 8;
-              }
-              break;
-            case SB16:
-              if (value == null) {
-                ((DecimalVector) vector).setNull(this.curRowIndex);
-              } else {
+                break;
+              case SB16:
                 ((DecimalVector) vector)
                     .setSafe(this.curRowIndex, new BigDecimal(value.toString()));
                 BigDecimal decimalVal = new BigDecimal(value.toString());
                 stats.addIntValue(decimalVal.toBigInteger());
                 this.bufferSize += 16;
-              }
-              break;
-            default:
-              throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
-          }
-          break;
-        case ANY:
-        case ARRAY:
-        case CHAR:
-        case TEXT:
-        case OBJECT:
-        case VARIANT:
-          if (value == null) {
-            ((VarCharVector) vector).setNull(this.curRowIndex);
-            stats.incCurrentNullCount();
-          } else {
+                break;
+              default:
+                throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+            }
+            break;
+          case ANY:
+          case ARRAY:
+          case CHAR:
+          case TEXT:
+          case OBJECT:
+          case VARIANT:
             String str = value.toString();
             Text text = new Text(str);
             ((VarCharVector) vector).setSafe(this.curRowIndex, text);
@@ -474,12 +583,159 @@ class ArrowRowBuffer {
             stats.setCurrentMaxLength(len); // TODO confirm max length for strings
             stats.addStrValue(str);
             this.bufferSize += text.getBytes().length;
-          }
-          break;
-        default:
-          throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+            break;
+          case TIMESTAMP_LTZ:
+          case TIMESTAMP_NTZ:
+            switch (physicalType) {
+              case SB8:
+                {
+                  BigIntVector bigIntVector = (BigIntVector) vector;
+                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
+                  String valueString = getStringValue(value);
+                  BigInteger timeInScale = getTimeInScale(valueString, scale);
+                  bigIntVector.setSafe(curRowIndex, timeInScale.longValue());
+                  stats.addIntValue(timeInScale);
+                  this.bufferSize += 8;
+                  break;
+                }
+              case SB16:
+                {
+                  StructVector structVector = (StructVector) vector;
+                  BigIntVector epochVector =
+                      (BigIntVector) structVector.getChild(FIELD_EPOCH_IN_SECONDS);
+                  IntVector fractionVector =
+                      (IntVector) structVector.getChild(FIELD_FRACTION_IN_NANOSECONDS);
+                  this.bufferSize += 0.25; // for children vector's null value
+                  structVector.setIndexDefined(curRowIndex);
+                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
+                  String valueString = getStringValue(value);
+
+                  String[] items = valueString.split("\\.");
+                  long epoch = Long.parseLong(items[0]);
+                  int l = items.length > 1 ? items[1].length() : 0;
+                  // Fraction is in nanoseconds, but Snowflake will error if the fraction gives
+                  // accuracy greater than the scale
+                  int fraction =
+                      l == 0
+                          ? 0
+                          : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
+                  if (fraction % Power10.intTable[9 - scale] != 0) {
+                    throw new SFException(
+                        ErrorCode.INVALID_ROW, "Row specifies accuracy greater than column scale");
+                  }
+                  epochVector.setSafe(curRowIndex, epoch);
+                  fractionVector.setSafe(curRowIndex, fraction);
+                  this.bufferSize += 12;
+                  stats.addIntValue(getTimeInScale(valueString, scale));
+                  break;
+                }
+              default:
+                throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+            }
+            break;
+          case DATE:
+            DateDayVector dateDayVector = (DateDayVector) vector;
+            // Expect days past the epoch
+            dateDayVector.setSafe(curRowIndex, Integer.parseInt((String) value));
+            stats.addIntValue(new BigInteger((String) value));
+            this.bufferSize += 4;
+            break;
+          case TIME:
+            switch (physicalType) {
+              case SB4:
+                {
+                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
+                  BigInteger timeInScale = getTimeInScale(getStringValue(value), scale);
+                  stats.addIntValue(timeInScale);
+                  ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
+                  stats.addIntValue(timeInScale);
+                  this.bufferSize += 4;
+                  break;
+                }
+              case SB8:
+                {
+                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
+                  BigInteger timeInScale = getTimeInScale(getStringValue(value), scale);
+                  ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
+                  stats.addIntValue(timeInScale);
+                  this.bufferSize += 8;
+                  break;
+                }
+              default:
+                throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+            }
+            break;
+          case BOOLEAN:
+            int intValue;
+            if (value instanceof Boolean) {
+              intValue = (boolean) value ? 1 : 0;
+            } else if (value instanceof Number) {
+              intValue = ((Number) value).doubleValue() > 0 ? 1 : 0;
+            } else {
+              intValue = this.convertStringToBoolean((String) value) ? 1 : 0;
+            }
+            ((BitVector) vector).setSafe(curRowIndex, intValue);
+            this.bufferSize += 0.125;
+            stats.addIntValue(BigInteger.valueOf(intValue));
+            break;
+          case BINARY:
+            byte[] bytes;
+            if (value instanceof byte[]) {
+              bytes = (byte[]) value;
+            } else {
+              bytes = DatatypeConverter.parseHexBinary((String) value);
+            }
+            ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
+            stats.setCurrentMaxLength(bytes.length);
+            this.bufferSize += bytes.length;
+            break;
+          case REAL:
+            double doubleValue;
+            if (value instanceof Float || value instanceof Double) {
+              doubleValue = (double) value;
+            } else if (value instanceof BigDecimal) {
+              doubleValue = ((BigDecimal) value).doubleValue();
+            } else {
+              doubleValue = Double.parseDouble((String) value);
+            }
+            ((Float8Vector) vector).setSafe(curRowIndex, doubleValue);
+            stats.addRealValue(doubleValue);
+            this.bufferSize += 8;
+            break;
+          default:
+            throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+        }
       }
     }
     this.curRowIndex++;
+  }
+
+  boolean convertStringToBoolean(String value) {
+    return "1".equalsIgnoreCase(value)
+        || "yes".equalsIgnoreCase(value)
+        || "y".equalsIgnoreCase(value)
+        || "t".equalsIgnoreCase(value)
+        || "true".equalsIgnoreCase(value)
+        || "on".equalsIgnoreCase(value);
+  }
+
+  BigInteger getTimeInScale(String value, int scale) {
+    BigDecimal decVal = new BigDecimal(value);
+    BigDecimal epochScale = decVal.multiply(BigDecimal.valueOf(Power10.intTable[scale]));
+    return epochScale.toBigInteger();
+  }
+
+  String getStringValue(Object value) {
+    String stringValue;
+
+    if (value instanceof String) {
+      stringValue = (String) value;
+    } else if (value instanceof BigDecimal) {
+      stringValue = ((BigDecimal) value).toPlainString();
+    } else {
+      stringValue = value.toString();
+    }
+
+    return stringValue;
   }
 }
