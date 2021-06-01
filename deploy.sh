@@ -87,5 +87,5 @@ mvn ${MVN_OPTIONS[@]} \
 rm $OSSRH_DEPLOY_SETTINGS_XML
 
 #white source
-chmod 755 ./scripts/run_whitesource.sh
-scripts/run_whitesource.sh
+chmod 755 ./scripts/run_whitesource_gh.sh
+scripts/run_whitesource_gh.sh
