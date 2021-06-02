@@ -251,7 +251,7 @@ class ArrowRowBuffer {
       float bufferSize = 0F;
       long rowSequencer = 0;
       String offsetToken = null;
-      EpInfo epInfo = null;
+      Map<String, RowBufferStats> columnEps = null;
 
       logger.logDebug(
           "Arrow buffer flush about to take lock on channel={}",
@@ -272,7 +272,7 @@ class ArrowRowBuffer {
           bufferSize = this.bufferSize;
           rowSequencer = this.owningChannel.incrementAndGetRowSequencer();
           offsetToken = this.owningChannel.getOffsetToken();
-          epInfo = buildEpInfoFromStats(rowCount, statsMap);
+          columnEps = new HashMap(this.statsMap);
           // Reset everything in the buffer once we save all the info
           reset();
         }
@@ -289,12 +289,12 @@ class ArrowRowBuffer {
       if (!oldVectors.isEmpty()) {
         ChannelData data = new ChannelData();
         data.setVectors(oldVectors);
-        data.setRowCount(rowCount); // TODO Remove row count from ChannelData
+        data.setRowCount(rowCount);
         data.setBufferSize(bufferSize);
         data.setChannel(this.owningChannel);
         data.setRowSequencer(rowSequencer);
         data.setOffsetToken(offsetToken);
-        data.setEpInfo(epInfo);
+        data.setColumnEps(columnEps);
 
         return data;
       }

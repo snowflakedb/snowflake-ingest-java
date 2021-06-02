@@ -15,11 +15,22 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.CRC32C;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.ingest.utils.*;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
+import net.snowflake.ingest.utils.StreamingUtils;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowStreamWriter;
@@ -281,6 +292,7 @@ class FlushService {
       ArrowStreamWriter streamWriter = null;
       SnowflakeStreamingIngestChannelInternal firstChannel = null;
       ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
+      Map<String, RowBufferStats> columnEpStatsMapCombined = null;
 
       for (ChannelData data : channelsDataPerTable) {
         // Create channel metadata
@@ -294,6 +306,7 @@ class FlushService {
         channelsMetadataList.add(channelMetadata);
 
         if (root == null) {
+          columnEpStatsMapCombined = data.getColumnEps();
           root = new VectorSchemaRoot(data.getVectors());
           streamWriter = new ArrowStreamWriter(root, null, chunkData);
           firstChannel = data.getChannel();
@@ -306,6 +319,9 @@ class FlushService {
               .equals(firstChannel.getFullyQualifiedTableName())) {
             throw new SFException(ErrorCode.INVALID_DATA_IN_CHUNK);
           }
+
+          columnEpStatsMapCombined =
+              ChannelData.getCombinedColumnStatsMap(columnEpStatsMapCombined, data.getColumnEps());
 
           for (int vectorIdx = 0; vectorIdx < data.getVectors().size(); vectorIdx++) {
             FieldVector sourceVector = data.getVectors().get(vectorIdx);
@@ -339,6 +355,7 @@ class FlushService {
                 .setChunkStartOffset(curDataSize)
                 .setChunkLength(compressedChunkDataSize)
                 .setChannelList(channelsMetadataList)
+                .setEpInfo(ArrowRowBuffer.buildEpInfoFromStats(rowCount, columnEpStatsMapCombined))
                 .build();
 
         // Add chunk metadata and data to the list

@@ -6,12 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import net.snowflake.client.jdbc.SnowflakeConnectionV1;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -118,6 +116,24 @@ public class FlushServiceTest {
     channel1Data.setVectors(vectorList1);
     channel2Data.setVectors(vectorList2);
 
+    Map<String, RowBufferStats> eps1 = new HashMap<>();
+    Map<String, RowBufferStats> eps2 = new HashMap<>();
+
+    RowBufferStats stats1 = new RowBufferStats();
+    RowBufferStats stats2 = new RowBufferStats();
+
+    eps1.put("one", stats1);
+    eps2.put("one", stats2);
+
+    stats1.addIntValue(new BigInteger("10"));
+    stats1.addIntValue(new BigInteger("15"));
+    stats2.addIntValue(new BigInteger("11"));
+    stats2.addIntValue(new BigInteger("13"));
+    stats2.addIntValue(new BigInteger("17"));
+
+    channel1Data.setColumnEps(eps1);
+    channel2Data.setColumnEps(eps2);
+
     chunkData.add(channel1Data);
     chunkData.add(channel2Data);
     blobData.add(chunkData);
@@ -150,6 +166,9 @@ public class FlushServiceTest {
 
     flushService.buildAndUpload("file_name", blobData);
 
+    EpInfo expectedChunkEpInfo =
+        ArrowRowBuffer.buildEpInfoFromStats(3, ChannelData.getCombinedColumnStatsMap(eps1, eps2));
+
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
             .setOwningChannel(channel1)
@@ -168,6 +187,7 @@ public class FlushServiceTest {
             .setChunkStartOffset(0L)
             .setChunkLength(248)
             .setChannelList(Lists.newArrayList(expectedChannel1Metadata, expectedChannel2Metadata))
+            .setEpInfo(expectedChunkEpInfo)
             .build();
 
     // Check FlushService.upload called with correct arguments
@@ -181,6 +201,15 @@ public class FlushServiceTest {
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
+
+    Assert.assertEquals(
+        expectedChunkEpInfo.getRowCount(), metadataResult.getEpInfo().getRowCount());
+    Assert.assertEquals(
+        expectedChunkEpInfo.getColumnEps().keySet().size(),
+        metadataResult.getEpInfo().getColumnEps().keySet().size());
+    Assert.assertEquals(
+        expectedChunkEpInfo.getColumnEps().get("one"),
+        metadataResult.getEpInfo().getColumnEps().get("one"));
 
     Assert.assertEquals(expectedChunkMetadata.getDBName(), metadataResult.getDBName());
     Assert.assertEquals(expectedChunkMetadata.getSchemaName(), metadataResult.getSchemaName());
@@ -265,6 +294,16 @@ public class FlushServiceTest {
 
     chunksDataList.add(data);
 
+    Map<String, RowBufferStats> eps1 = new HashMap<>();
+
+    RowBufferStats stats1 = new RowBufferStats();
+
+    eps1.put("one", stats1);
+
+    stats1.addIntValue(new BigInteger("10"));
+    stats1.addIntValue(new BigInteger("15"));
+    EpInfo epInfo = ArrowRowBuffer.buildEpInfoFromStats(2, eps1);
+
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
             .setOwningChannel(channel1)
@@ -277,6 +316,7 @@ public class FlushServiceTest {
             .setChunkStartOffset(0L)
             .setChunkLength(dataSize)
             .setChannelList(Lists.newArrayList(channelMetadata))
+            .setEpInfo(epInfo)
             .build();
 
     chunksMetadataList.add(chunkMetadata);
@@ -315,6 +355,8 @@ public class FlushServiceTest {
         map.get("chunk_start_offset").toString());
     byte[] actualData = input.readNBytes((int) (totalSize - offset));
     Assert.assertTrue(Arrays.equals(data, actualData));
+    Assert.assertEquals(2, ((LinkedHashMap) map.get("eps")).get("rows"));
+    Assert.assertNotNull(((LinkedHashMap) map.get("eps")).get("columns"));
   }
 
   @Test

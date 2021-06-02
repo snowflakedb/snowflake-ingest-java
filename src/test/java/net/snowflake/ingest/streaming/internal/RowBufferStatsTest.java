@@ -120,4 +120,151 @@ public class RowBufferStatsTest {
     stats.setCurrentMaxLength(50L);
     Assert.assertEquals(100L, stats.getCurrentMaxLength());
   }
+
+  @Test
+  public void testGetCombinedStats() throws Exception {
+    // Test for Integers
+    RowBufferStats one = new RowBufferStats();
+    RowBufferStats two = new RowBufferStats();
+
+    one.addIntValue(BigInteger.valueOf(2));
+    one.addIntValue(BigInteger.valueOf(4));
+    one.addIntValue(BigInteger.valueOf(6));
+    one.addIntValue(BigInteger.valueOf(8));
+    one.incCurrentNullCount();
+    one.incCurrentNullCount();
+
+    two.addIntValue(BigInteger.valueOf(1));
+    two.addIntValue(BigInteger.valueOf(3));
+    two.addIntValue(BigInteger.valueOf(4));
+    two.addIntValue(BigInteger.valueOf(5));
+
+    RowBufferStats result = RowBufferStats.getCombinedStats(one, two);
+    Assert.assertEquals(BigInteger.valueOf(1), result.getCurrentMinIntValue());
+    Assert.assertEquals(BigInteger.valueOf(8), result.getCurrentMaxIntValue());
+    Assert.assertEquals(8, result.getDistinctValues());
+    Assert.assertEquals(2, result.getCurrentNullCount());
+
+    Assert.assertNull(result.getCurrentMinStrValue());
+    Assert.assertNull(result.getCurrentMaxStrValue());
+    Assert.assertNull(result.getCurrentMinRealValue());
+    Assert.assertNull(result.getCurrentMaxRealValue());
+
+    // Test for Reals
+    one = new RowBufferStats();
+    two = new RowBufferStats();
+
+    one.addRealValue(2d);
+    one.addRealValue(4d);
+    one.addRealValue(6d);
+    one.addRealValue(8d);
+
+    two.addRealValue(1d);
+    two.addRealValue(3d);
+    two.addRealValue(4d);
+    two.addRealValue(5d);
+
+    result = RowBufferStats.getCombinedStats(one, two);
+    Assert.assertEquals(Double.valueOf(1), result.getCurrentMinRealValue());
+    Assert.assertEquals(Double.valueOf(8), result.getCurrentMaxRealValue());
+    Assert.assertEquals(8, result.getDistinctValues());
+    Assert.assertEquals(0, result.getCurrentNullCount());
+
+    Assert.assertNull(result.getCurrentMinStrValue());
+    Assert.assertNull(result.getCurrentMaxStrValue());
+    Assert.assertNull(result.getCurrentMinIntValue());
+    Assert.assertNull(result.getCurrentMaxIntValue());
+
+    // Test for Strings
+    one = new RowBufferStats();
+    two = new RowBufferStats();
+
+    one.addStrValue("alpha");
+    one.addStrValue("d");
+    one.addStrValue("f");
+    one.addStrValue("g");
+    one.incCurrentNullCount();
+
+    two.addStrValue("a");
+    two.addStrValue("b");
+    two.addStrValue("c");
+    two.addStrValue("d");
+    two.incCurrentNullCount();
+
+    result = RowBufferStats.getCombinedStats(one, two);
+    Assert.assertEquals("a", result.getCurrentMinStrValue());
+    Assert.assertEquals("g", result.getCurrentMaxStrValue());
+    Assert.assertEquals(8, result.getDistinctValues());
+    Assert.assertEquals(2, result.getCurrentNullCount());
+
+    Assert.assertNull(result.getCurrentMinRealValue());
+    Assert.assertNull(result.getCurrentMaxRealValue());
+    Assert.assertNull(result.getCurrentMinIntValue());
+    Assert.assertNull(result.getCurrentMaxIntValue());
+  }
+
+  @Test
+  public void testGetCombinedStatsNull() throws Exception {
+    // Test for Integers
+    RowBufferStats one = new RowBufferStats();
+    RowBufferStats two = new RowBufferStats();
+
+    one.addIntValue(BigInteger.valueOf(2));
+    one.addIntValue(BigInteger.valueOf(4));
+    one.addIntValue(BigInteger.valueOf(6));
+    one.addIntValue(BigInteger.valueOf(8));
+    one.incCurrentNullCount();
+    one.incCurrentNullCount();
+
+    RowBufferStats result = RowBufferStats.getCombinedStats(one, two);
+    Assert.assertEquals(BigInteger.valueOf(2), result.getCurrentMinIntValue());
+    Assert.assertEquals(BigInteger.valueOf(8), result.getCurrentMaxIntValue());
+    Assert.assertEquals(4, result.getDistinctValues());
+    Assert.assertEquals(2, result.getCurrentNullCount());
+
+    Assert.assertNull(result.getCurrentMinStrValue());
+    Assert.assertNull(result.getCurrentMaxStrValue());
+    Assert.assertNull(result.getCurrentMinRealValue());
+    Assert.assertNull(result.getCurrentMaxRealValue());
+
+    // Test for Reals
+    one = new RowBufferStats();
+
+    one.addRealValue(2d);
+    one.addRealValue(4d);
+    one.addRealValue(6d);
+    one.addRealValue(8d);
+
+    result = RowBufferStats.getCombinedStats(one, two);
+    Assert.assertEquals(Double.valueOf(2), result.getCurrentMinRealValue());
+    Assert.assertEquals(Double.valueOf(8), result.getCurrentMaxRealValue());
+    Assert.assertEquals(4, result.getDistinctValues());
+    Assert.assertEquals(0, result.getCurrentNullCount());
+
+    Assert.assertNull(result.getCurrentMinStrValue());
+    Assert.assertNull(result.getCurrentMaxStrValue());
+    Assert.assertNull(result.getCurrentMinIntValue());
+    Assert.assertNull(result.getCurrentMaxIntValue());
+
+    // Test for Strings
+    one = new RowBufferStats();
+    two = new RowBufferStats();
+
+    one.addStrValue("alpha");
+    one.addStrValue("d");
+    one.addStrValue("f");
+    one.addStrValue("g");
+    one.incCurrentNullCount();
+
+    result = RowBufferStats.getCombinedStats(one, two);
+    Assert.assertEquals("alpha", result.getCurrentMinStrValue());
+    Assert.assertEquals("g", result.getCurrentMaxStrValue());
+    Assert.assertEquals(4, result.getDistinctValues());
+    Assert.assertEquals(1, result.getCurrentNullCount());
+
+    Assert.assertNull(result.getCurrentMinRealValue());
+    Assert.assertNull(result.getCurrentMaxRealValue());
+    Assert.assertNull(result.getCurrentMinIntValue());
+    Assert.assertNull(result.getCurrentMaxIntValue());
+  }
 }

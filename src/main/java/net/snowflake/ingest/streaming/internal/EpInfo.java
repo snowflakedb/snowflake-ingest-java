@@ -1,11 +1,10 @@
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to serialize/deserialize EP information */
 class EpInfo {
-
   private long rowCount;
 
   private Map<String, FileColumnProperties> columnEps;

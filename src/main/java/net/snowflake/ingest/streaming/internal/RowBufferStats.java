@@ -34,8 +34,53 @@ class RowBufferStats {
     this.currentMaxLength = 0;
   }
 
+  public static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
+    RowBufferStats combined = new RowBufferStats();
+
+    if (left.currentMinIntValue != null) {
+      combined.addIntValue(left.currentMinIntValue, false);
+      combined.addIntValue(left.currentMaxIntValue, false);
+    }
+
+    if (right.currentMinIntValue != null) {
+      combined.addIntValue(right.currentMinIntValue, false);
+      combined.addIntValue(right.currentMaxIntValue, false);
+    }
+
+    if (left.currentMinStrValue != null) {
+      combined.addStrValue(left.currentMinStrValue, false);
+      combined.addStrValue(left.currentMaxStrValue, false);
+    }
+
+    if (right.currentMinStrValue != null) {
+      combined.addStrValue(right.currentMinStrValue, false);
+      combined.addStrValue(right.currentMaxStrValue, false);
+    }
+
+    if (left.currentMinRealValue != null) {
+      combined.addRealValue(left.currentMinRealValue, false);
+      combined.addRealValue(left.currentMaxRealValue, false);
+    }
+
+    if (right.currentMinRealValue != null) {
+      combined.addRealValue(right.currentMinRealValue, false);
+      combined.addRealValue(right.currentMaxRealValue, false);
+    }
+
+    combined.currentNullCount = left.currentNullCount + right.currentNullCount;
+
+    combined.numRows = left.numRows + right.numRows;
+    return combined;
+  }
+
   void addStrValue(String value) {
-    numRows += 1;
+    addStrValue(value, true);
+  }
+
+  void addStrValue(String value, boolean countDistinct) {
+    if (countDistinct) {
+      numRows += 1;
+    }
 
     // Snowflake compares strings in UTF-8 encoding, not Java's default UTF-16
     byte[] currentMinStringBytes =
@@ -68,7 +113,13 @@ class RowBufferStats {
   }
 
   void addIntValue(BigInteger value) {
-    numRows += 1;
+    addIntValue(value, true);
+  }
+
+  void addIntValue(BigInteger value, boolean countDistinct) {
+    if (countDistinct) {
+      numRows += 1;
+    }
 
     // Set new min value
     if (this.currentMinIntValue == null) {
@@ -94,7 +145,13 @@ class RowBufferStats {
   }
 
   void addRealValue(Double value) {
-    numRows += 1;
+    addRealValue(value, true);
+  }
+
+  void addRealValue(Double value, boolean countDistinct) {
+    if (countDistinct) {
+      numRows += 1;
+    }
 
     // Set new min value
     if (this.currentMinRealValue == null) {

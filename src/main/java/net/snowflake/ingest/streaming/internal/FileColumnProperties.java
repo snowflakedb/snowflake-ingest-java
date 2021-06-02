@@ -1,6 +1,8 @@
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigInteger;
+import java.util.Objects;
 
 // TODO https://snowflakecomputing.atlassian.net/browse/SNOW-354886.
 //  Audit register endpoint/FileColumnPorpertyDTO property list.
@@ -42,6 +44,8 @@ class FileColumnProperties {
     this.setDistinctValues(stats.getDistinctValues());
   }
 
+  // Annotation required in order to have package private fields serialized
+  @JsonProperty("minStrValue")
   String getMinStrValue() {
     return minStrValue;
   }
@@ -132,5 +136,35 @@ class FileColumnProperties {
     sb.append(", \"distinctValues\": ").append(distinctValues);
     sb.append(", \"nullCount\": ").append(nullCount);
     return sb.append('}').toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    FileColumnProperties that = (FileColumnProperties) o;
+    return distinctValues == that.distinctValues
+        && nullCount == that.nullCount
+        && maxLength == that.maxLength
+        && Objects.equals(minStrValue, that.minStrValue)
+        && Objects.equals(maxStrValue, that.maxStrValue)
+        && Objects.equals(minIntValue, that.minIntValue)
+        && Objects.equals(maxIntValue, that.maxIntValue)
+        && Objects.equals(minRealValue, that.minRealValue)
+        && Objects.equals(maxRealValue, that.maxRealValue);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        minStrValue,
+        maxStrValue,
+        minIntValue,
+        maxIntValue,
+        minRealValue,
+        maxRealValue,
+        distinctValues,
+        nullCount,
+        maxLength);
   }
 }

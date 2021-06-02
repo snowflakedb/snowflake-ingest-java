@@ -4,7 +4,11 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.vector.FieldVector;
 
 /**
@@ -18,7 +22,46 @@ class ChannelData {
   private long rowCount;
   private float bufferSize;
   private SnowflakeStreamingIngestChannelInternal channel;
-  private EpInfo epInfo;
+  private Map<String, RowBufferStats> columnEps;
+
+  /**
+   * Combines two maps of column name to RowBufferStats. Matches left and right inputs on the column
+   * name map key and then combines RowBufferStats using RowBufferStats.getCombinedStats. Left and
+   * right are interchangeable.
+   *
+   * @param left Map of column name to RowBufferStats
+   * @param right Map of column name to RowBufferStats
+   * @return Map of column name to the combined RowBufferStats of left and right for the column
+   */
+  public static Map<String, RowBufferStats> getCombinedColumnStatsMap(
+      Map<String, RowBufferStats> left, Map<String, RowBufferStats> right) {
+    if (left == null || right == null) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "null column stats");
+    }
+    if (left.size() != right.size()) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "Column stats map key mismatch");
+    }
+    Map<String, RowBufferStats> result = new HashMap<>();
+
+    try {
+      for (String key : left.keySet()) {
+        RowBufferStats leftStats = left.get(key);
+        RowBufferStats rightStats = right.get(key);
+        result.put(key, RowBufferStats.getCombinedStats(leftStats, rightStats));
+      }
+    } catch (NullPointerException npe) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "Column stats map key mismatch");
+    }
+    return result;
+  }
+
+  public Map<String, RowBufferStats> getColumnEps() {
+    return columnEps;
+  }
+
+  public void setColumnEps(Map<String, RowBufferStats> columnEps) {
+    this.columnEps = columnEps;
+  }
 
   Long getRowSequencer() {
     return this.rowSequencer;
@@ -66,14 +109,6 @@ class ChannelData {
 
   void setChannel(SnowflakeStreamingIngestChannelInternal channel) {
     this.channel = channel;
-  }
-
-  EpInfo getEpInfo() {
-    return epInfo;
-  }
-
-  void setEpInfo(EpInfo epInfo) {
-    this.epInfo = epInfo;
   }
 
   @Override
