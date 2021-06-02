@@ -24,6 +24,7 @@ class ChannelData {
   private SnowflakeStreamingIngestChannelInternal channel;
   private Map<String, RowBufferStats> columnEps;
 
+  // TODO performance test this vs in place update
   /**
    * Combines two maps of column name to RowBufferStats. Matches left and right inputs on the column
    * name map key and then combines RowBufferStats using RowBufferStats.getCombinedStats. Left and

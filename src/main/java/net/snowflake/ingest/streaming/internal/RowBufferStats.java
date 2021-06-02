@@ -20,8 +20,6 @@ class RowBufferStats {
   // for binary or string columns
   private long currentMaxLength;
 
-  private long numRows; // TODO Remove when ndv calculation updated
-
   /** Creates empty stats */
   RowBufferStats() {
     this.currentMaxStrValue = null;
@@ -34,53 +32,46 @@ class RowBufferStats {
     this.currentMaxLength = 0;
   }
 
+  // TODO performance test this vs in place update
   public static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
     RowBufferStats combined = new RowBufferStats();
 
     if (left.currentMinIntValue != null) {
-      combined.addIntValue(left.currentMinIntValue, false);
-      combined.addIntValue(left.currentMaxIntValue, false);
+      combined.addIntValue(left.currentMinIntValue);
+      combined.addIntValue(left.currentMaxIntValue);
     }
 
     if (right.currentMinIntValue != null) {
-      combined.addIntValue(right.currentMinIntValue, false);
-      combined.addIntValue(right.currentMaxIntValue, false);
+      combined.addIntValue(right.currentMinIntValue);
+      combined.addIntValue(right.currentMaxIntValue);
     }
 
     if (left.currentMinStrValue != null) {
-      combined.addStrValue(left.currentMinStrValue, false);
-      combined.addStrValue(left.currentMaxStrValue, false);
+      combined.addStrValue(left.currentMinStrValue);
+      combined.addStrValue(left.currentMaxStrValue);
     }
 
     if (right.currentMinStrValue != null) {
-      combined.addStrValue(right.currentMinStrValue, false);
-      combined.addStrValue(right.currentMaxStrValue, false);
+      combined.addStrValue(right.currentMinStrValue);
+      combined.addStrValue(right.currentMaxStrValue);
     }
 
     if (left.currentMinRealValue != null) {
-      combined.addRealValue(left.currentMinRealValue, false);
-      combined.addRealValue(left.currentMaxRealValue, false);
+      combined.addRealValue(left.currentMinRealValue);
+      combined.addRealValue(left.currentMaxRealValue);
     }
 
     if (right.currentMinRealValue != null) {
-      combined.addRealValue(right.currentMinRealValue, false);
-      combined.addRealValue(right.currentMaxRealValue, false);
+      combined.addRealValue(right.currentMinRealValue);
+      combined.addRealValue(right.currentMaxRealValue);
     }
 
     combined.currentNullCount = left.currentNullCount + right.currentNullCount;
 
-    combined.numRows = left.numRows + right.numRows;
     return combined;
   }
 
   void addStrValue(String value) {
-    addStrValue(value, true);
-  }
-
-  void addStrValue(String value, boolean countDistinct) {
-    if (countDistinct) {
-      numRows += 1;
-    }
 
     // Snowflake compares strings in UTF-8 encoding, not Java's default UTF-16
     byte[] currentMinStringBytes =
@@ -113,13 +104,6 @@ class RowBufferStats {
   }
 
   void addIntValue(BigInteger value) {
-    addIntValue(value, true);
-  }
-
-  void addIntValue(BigInteger value, boolean countDistinct) {
-    if (countDistinct) {
-      numRows += 1;
-    }
 
     // Set new min value
     if (this.currentMinIntValue == null) {
@@ -145,13 +129,6 @@ class RowBufferStats {
   }
 
   void addRealValue(Double value) {
-    addRealValue(value, true);
-  }
-
-  void addRealValue(Double value, boolean countDistinct) {
-    if (countDistinct) {
-      numRows += 1;
-    }
 
     // Set new min value
     if (this.currentMinRealValue == null) {
@@ -194,7 +171,12 @@ class RowBufferStats {
     return currentMaxLength;
   }
 
+  /**
+   * Returns the number of distinct values (NDV). A value of -1 means the number is unknown
+   *
+   * @return -1 indicating the NDV is unknown
+   */
   long getDistinctValues() {
-    return numRows;
+    return -1;
   }
 }
