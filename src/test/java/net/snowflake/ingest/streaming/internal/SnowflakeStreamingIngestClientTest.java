@@ -177,6 +177,7 @@ public class SnowflakeStreamingIngestClientTest {
             .setChunkStartOffset(0L)
             .setChunkLength(100)
             .setChannelList(Arrays.asList(channelMetadata))
+            .setChunkMD5("md5")
             .build();
 
     List<BlobMetadata> blobs =

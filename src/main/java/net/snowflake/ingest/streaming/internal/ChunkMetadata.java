@@ -16,6 +16,7 @@ class ChunkMetadata {
   private Long chunkStartOffset;
   private final Integer chunkLength;
   private final List<ChannelMetadata> channels;
+  private final String chunkMD5;
   private final EpInfo epInfo;
 
   static Builder builder() {
@@ -30,6 +31,7 @@ class ChunkMetadata {
     private Long chunkStartOffset;
     private Integer chunkLength;
     private List<ChannelMetadata> channels;
+    private String chunkMD5;
     private EpInfo epInfo;
 
     Builder setOwningTable(SnowflakeStreamingIngestChannelInternal channel) {
@@ -74,6 +76,11 @@ class ChunkMetadata {
       return this;
     }
 
+    Builder setChunkMD5(String chunkMD5) {
+      this.chunkMD5 = chunkMD5;
+      return this;
+    }
+
     ChunkMetadata build() {
       return new ChunkMetadata(this);
     }
@@ -86,6 +93,7 @@ class ChunkMetadata {
     StreamingUtils.assertNotNull("chunk start offset", builder.chunkStartOffset);
     StreamingUtils.assertNotNull("chunk length", builder.chunkLength);
     StreamingUtils.assertNotNull("chunk channels", builder.channels);
+    StreamingUtils.assertNotNull("chunk MD5", builder.chunkMD5);
     StreamingUtils.assertNotNull("chunk ep info", builder.epInfo);
 
     this.dbName = builder.dbName;
@@ -94,6 +102,7 @@ class ChunkMetadata {
     this.chunkStartOffset = builder.chunkStartOffset;
     this.chunkLength = builder.chunkLength;
     this.channels = builder.channels;
+    this.chunkMD5 = builder.chunkMD5;
     this.epInfo = builder.epInfo;
   }
 
@@ -134,6 +143,11 @@ class ChunkMetadata {
   @JsonProperty("channels")
   List<ChannelMetadata> getChannels() {
     return this.channels;
+  }
+
+  @JsonProperty("chunk_md5")
+  public String getChunkMD5() {
+    return this.chunkMD5;
   }
 
   @JsonProperty("eps")

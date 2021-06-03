@@ -10,6 +10,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -254,10 +255,12 @@ class FlushService {
                     () -> {
                       try {
                         return buildAndUpload(fileName, blobData);
-                      } catch (Exception e) {
+                      } catch (IOException e) {
                         // TODO SNOW-354569: we should fail fast during a failure
                         logger.logError("Building blob failed={}, exception={}", fileName, e);
                         return null;
+                      } catch (NoSuchAlgorithmException e) {
+                        throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
                       }
                     },
                     this.buildUploadWorkers)));
@@ -278,7 +281,7 @@ class FlushService {
    * @throws IOException
    */
   BlobMetadata buildAndUpload(String fileName, List<List<ChannelData>> blobData)
-      throws IOException {
+      throws IOException, NoSuchAlgorithmException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
     long curDataSize = 0L;
@@ -304,6 +307,13 @@ class FlushService {
                 .build();
         // Add channel metadata to the metadata list
         channelsMetadataList.add(channelMetadata);
+
+        logger.logDebug(
+            "Start building channel={}, rowCount={}, bufferSize={} in blob={}",
+            data.getChannel().getFullyQualifiedName(),
+            data.getRowCount(),
+            data.getBufferSize(),
+            fileName);
 
         if (root == null) {
           columnEpStatsMapCombined = data.getColumnEps();
@@ -334,6 +344,13 @@ class FlushService {
         // Write channel data using the stream writer
         streamWriter.writeBatch();
         rowCount += data.getRowCount();
+
+        logger.logDebug(
+            "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
+            data.getChannel().getFullyQualifiedName(),
+            data.getRowCount(),
+            data.getBufferSize(),
+            fileName);
       }
 
       if (!channelsMetadataList.isEmpty()) {
@@ -343,7 +360,8 @@ class FlushService {
         root.close();
 
         // Compress the chunk data
-        byte[] compressedChunkData = BlobBuilder.compress(chunkData);
+        byte[] compressedChunkData = BlobBuilder.compress(fileName, chunkData);
+        String md5 = BlobBuilder.computeMD5(compressedChunkData);
         int compressedChunkDataSize = compressedChunkData.length;
 
         // Create chunk metadata
@@ -355,6 +373,7 @@ class FlushService {
                 .setChunkStartOffset(curDataSize)
                 .setChunkLength(compressedChunkDataSize)
                 .setChannelList(channelsMetadataList)
+                .setChunkMD5(md5)
                 .setEpInfo(ArrowRowBuffer.buildEpInfoFromStats(rowCount, columnEpStatsMapCombined))
                 .build();
 
@@ -363,6 +382,15 @@ class FlushService {
         chunksDataList.add(compressedChunkData);
         curDataSize += compressedChunkDataSize;
         crc32c.update(compressedChunkData);
+
+        logger.logDebug(
+            "Finish building chunk in blob:{}, table:{}, rowCount:{}, uncompressedSize:{},"
+                + " compressedSize:{}",
+            fileName,
+            firstChannel.getFullyQualifiedTableName(),
+            rowCount,
+            chunkData.size(),
+            compressedChunkDataSize);
       }
     }
 

@@ -30,8 +30,6 @@ class FileColumnProperties {
   // for binary or string columns
   private long maxLength;
 
-  FileColumnProperties() {}
-
   FileColumnProperties(RowBufferStats stats) {
     this.setMaxIntValue(stats.getCurrentMaxIntValue());
     this.setMinIntValue(stats.getCurrentMinIntValue());

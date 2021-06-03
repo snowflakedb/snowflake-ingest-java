@@ -1,6 +1,12 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
@@ -26,9 +32,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+@PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
   StreamingUtils.class,
@@ -187,6 +195,7 @@ public class FlushServiceTest {
             .setChunkStartOffset(0L)
             .setChunkLength(248)
             .setChannelList(Lists.newArrayList(expectedChannel1Metadata, expectedChannel2Metadata))
+            .setChunkMD5("md5")
             .setEpInfo(expectedChunkEpInfo)
             .build();
 
@@ -225,6 +234,14 @@ public class FlushServiceTest {
     Assert.assertEquals("offset2", channelMetadataResult.get(1).getOffsetToken());
     Assert.assertEquals(10L, (long) channelMetadataResult.get(1).getRowSequencer());
     Assert.assertEquals(10L, (long) channelMetadataResult.get(1).getClientSequencer());
+
+    String md5 =
+        BlobBuilder.computeMD5(
+            Arrays.copyOfRange(
+                blobCaptor.getValue(),
+                (int) metadataResult.getChunkStartOffset().longValue(),
+                (int) (metadataResult.getChunkStartOffset() + metadataResult.getChunkLength())));
+    Assert.assertEquals(md5, metadataResult.getChunkMD5());
   }
 
   @Test
@@ -316,6 +333,7 @@ public class FlushServiceTest {
             .setChunkStartOffset(0L)
             .setChunkLength(dataSize)
             .setChannelList(Lists.newArrayList(channelMetadata))
+            .setChunkMD5("md5")
             .setEpInfo(epInfo)
             .build();
 
@@ -353,6 +371,7 @@ public class FlushServiceTest {
     Assert.assertEquals(
         Long.toString(chunkMetadata.getChunkStartOffset() - offset),
         map.get("chunk_start_offset").toString());
+    Assert.assertEquals(chunkMetadata.getChunkMD5(), map.get("chunk_md5"));
     byte[] actualData = input.readNBytes((int) (totalSize - offset));
     Assert.assertTrue(Arrays.equals(data, actualData));
     Assert.assertEquals(2, ((LinkedHashMap) map.get("eps")).get("rows"));
@@ -361,6 +380,21 @@ public class FlushServiceTest {
 
   @Test
   public void testShutDown() throws Exception {
+    FlushService flushService = new FlushService(client, channelCache, conn, stage, false);
+
+    Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());
+    Assert.assertFalse(flushService.registerWorker.isShutdown());
+    Assert.assertFalse(flushService.flushWorker.isShutdown());
+
+    flushService.shutdown();
+
+    Assert.assertTrue(flushService.buildUploadWorkers.isShutdown());
+    Assert.assertTrue(flushService.registerWorker.isShutdown());
+    Assert.assertTrue(flushService.flushWorker.isShutdown());
+  }
+
+  @Test
+  public void testComputeMD5() throws Exception {
     FlushService flushService = new FlushService(client, channelCache, conn, stage, false);
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());

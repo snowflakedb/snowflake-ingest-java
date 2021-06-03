@@ -4,7 +4,14 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,8 +19,12 @@ import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
+import javax.xml.bind.DatatypeConverter;
+import net.snowflake.ingest.utils.Logging;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -34,36 +45,47 @@ import java.util.zip.GZIPOutputStream;
 class BlobBuilder {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final Logging logger = new Logging(BlobBuilder.class);
 
   /**
    * Gzip compress the given chunk data
    *
-   * @param outputStream
-   * @return
+   * @param fileName blob file name
+   * @param chunkData uncompressed chunk data
+   * @return compressed chunk data
    * @throws IOException
    */
-  static byte[] compress(ByteArrayOutputStream outputStream) throws IOException {
-    // Based on current experiment, compressing twice will give us the best compression
-    // ratio and compression time combination
-    int uncompressedSize = outputStream.size();
+  static byte[] compress(String fileName, ByteArrayOutputStream chunkData) throws IOException {
+    int uncompressedSize = chunkData.size();
     ByteArrayOutputStream compressedOutputStream = new ByteArrayOutputStream(uncompressedSize);
     try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(compressedOutputStream, true)) {
-      gzipOutputStream.write(outputStream.toByteArray());
+      gzipOutputStream.write(chunkData.toByteArray());
     }
-
-    if (!COMPRESS_BLOB_TWICE) {
-      return compressedOutputStream.toByteArray();
-    }
-
     int firstCompressedSize = compressedOutputStream.size();
-    ByteArrayOutputStream doubleCompressedOutputStream =
-        new ByteArrayOutputStream(firstCompressedSize);
-    try (GZIPOutputStream doubleGzipOutputStream =
-        new GZIPOutputStream(doubleCompressedOutputStream, true)) {
-      doubleGzipOutputStream.write(compressedOutputStream.toByteArray());
+
+    // Based on current experiment, compressing twice will give us the best compression
+    // ratio and compression time combination
+    int doubleCompressedSize = 0;
+    if (COMPRESS_BLOB_TWICE) {
+      ByteArrayOutputStream doubleCompressedOutputStream =
+          new ByteArrayOutputStream(firstCompressedSize);
+      try (GZIPOutputStream doubleGzipOutputStream =
+          new GZIPOutputStream(doubleCompressedOutputStream, true)) {
+        doubleGzipOutputStream.write(compressedOutputStream.toByteArray());
+      }
+      doubleCompressedSize = doubleCompressedOutputStream.size();
+      compressedOutputStream = doubleCompressedOutputStream;
     }
 
-    return doubleCompressedOutputStream.toByteArray();
+    logger.logDebug(
+        "Finish compressing chunk in blob={}, uncompressedSize={}, firstCompressedSize={},"
+            + " doubleCompressedSize={}",
+        fileName,
+        uncompressedSize,
+        firstCompressedSize,
+        doubleCompressedSize);
+
+    return compressedOutputStream.toByteArray();
   }
 
   /**
@@ -111,5 +133,22 @@ class BlobBuilder {
     }
 
     return blob.toByteArray();
+  }
+
+  /**
+   * Compute the MD5 for the compressed chunk data
+   *
+   * @param chunkData
+   * @return lower case MD5 for the compressed chunk data
+   * @throws NoSuchAlgorithmException
+   */
+  static String computeMD5(byte[] chunkData) throws NoSuchAlgorithmException {
+    // CASEC-2936
+    // https://github.com/snowflakedb/snowflake-ingest-java-private/pull/22
+    MessageDigest md = // nosem: java.lang.security.audit.crypto.weak-hash.use-of-md5
+        MessageDigest.getInstance("MD5");
+    md.update(chunkData);
+    byte[] digest = md.digest();
+    return DatatypeConverter.printHexBinary(digest).toLowerCase();
   }
 }
