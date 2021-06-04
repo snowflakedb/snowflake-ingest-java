@@ -4,21 +4,7 @@
 
 package net.snowflake.ingest.streaming;
 
-import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpRequest;
-import java.util.HashMap;
-import java.util.Map;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.StreamingUtils;
-import org.apache.http.client.utils.URIBuilder;
+import net.snowflake.ingest.utils.Utils;
 
 /** The request that gets sent to Snowflake to open/create a Streaming Ingest channel */
 public class OpenChannelRequest {
@@ -63,10 +49,10 @@ public class OpenChannelRequest {
   }
 
   private OpenChannelRequest(OpenChannelRequestBuilder builder) {
-    StreamingUtils.assertStringNotNullOrEmpty("channel name", builder.channelName);
-    StreamingUtils.assertStringNotNullOrEmpty("database name", builder.dbName);
-    StreamingUtils.assertStringNotNullOrEmpty("schema name", builder.schemaName);
-    StreamingUtils.assertStringNotNullOrEmpty("table name", builder.tableName);
+    Utils.assertStringNotNullOrEmpty("channel name", builder.channelName);
+    Utils.assertStringNotNullOrEmpty("database name", builder.dbName);
+    Utils.assertStringNotNullOrEmpty("schema name", builder.schemaName);
+    Utils.assertStringNotNullOrEmpty("table name", builder.tableName);
 
     this.channelName = builder.channelName;
     this.dbName = builder.dbName;
@@ -92,45 +78,5 @@ public class OpenChannelRequest {
 
   public String getFullyQualifiedTableName() {
     return String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
-  }
-
-  /**
-   * Construct the open channel POST request
-   *
-   * @param accountURL
-   * @return the http POST request
-   */
-  public HttpRequest getHttpRequest(SnowflakeURL accountURL) {
-    Map<Object, Object> payload = new HashMap<>();
-    payload.put("channel", this.channelName);
-    payload.put("table", this.tableName);
-    payload.put("database", this.dbName);
-    payload.put("schema", this.schemaName);
-    payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
-
-    HttpRequest request = null;
-    try {
-      URI uri =
-          new URIBuilder()
-              .setScheme(accountURL.getScheme())
-              .setHost(accountURL.getFullUrl())
-              .setPath(OPEN_CHANNEL_ENDPOINT)
-              .build();
-
-      // TODO SNOW-349081: add user agent and JWT token to header
-      request =
-          HttpRequest.newBuilder()
-              .uri(uri)
-              .setHeader("content-type", "application/json")
-              .setHeader("accept", "application/json")
-              .POST(
-                  HttpRequest.BodyPublishers.ofString(
-                      new ObjectMapper().writeValueAsString(payload)))
-              .build();
-    } catch (JsonProcessingException | URISyntaxException e) {
-      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, "open channel");
-    }
-
-    return request;
   }
 }

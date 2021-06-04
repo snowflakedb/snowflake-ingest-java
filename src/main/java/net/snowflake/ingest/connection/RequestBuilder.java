@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import java.io.FileNotFoundException;
@@ -17,9 +18,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import net.snowflake.ingest.SimpleIngestManager;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpGet;
@@ -212,6 +217,23 @@ public final class RequestBuilder {
         this.host,
         this.port,
         this.userAgentSuffix);
+  }
+
+  /**
+   * RequestBuilder - constructor used by streaming ingest
+   *
+   * @param url - the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   */
+  public RequestBuilder(SnowflakeURL url, String userName, KeyPair keyPair) {
+    this(
+        url.getAccount(),
+        userName,
+        keyPair,
+        url.getScheme(),
+        url.getUrlWithoutPort(),
+        url.getPort());
   }
 
   private static Properties loadProperties() {
@@ -563,6 +585,45 @@ public final class RequestBuilder {
     addHeaders(get, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
 
     return get;
+  }
+
+  /**
+   * Generate post request for streaming ingest related APIs
+   *
+   * @param payload POST request payload
+   * @param endPoint REST API endpoint
+   * @param message error message if there are failures during HTTP building
+   * @return URI for the POST request
+   */
+  public HttpPost generateStreamingIngestPostRequest(
+      Map<Object, Object> payload, String endPoint, String message) {
+    // Make the corresponding URI
+    URI uri = null;
+    try {
+      uri =
+          new URIBuilder().setScheme(scheme).setHost(host).setPort(port).setPath(endPoint).build();
+    } catch (URISyntaxException e) {
+      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
+    }
+
+    // Convert the payload to string
+    String payloadInString = null;
+    try {
+      payloadInString = objectMapper.writeValueAsString(payload);
+    } catch (JsonProcessingException e) {
+      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
+    }
+
+    // Make the post request
+    HttpPost post = new HttpPost(uri);
+
+    addHeaders(post, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+
+    // The entity for the containing the json
+    final StringEntity entity = new StringEntity(payloadInString, ContentType.APPLICATION_JSON);
+    post.setEntity(entity);
+
+    return post;
   }
 
   /**

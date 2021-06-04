@@ -36,8 +36,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowStreamWriter;
@@ -125,12 +124,12 @@ class FlushService {
       SnowflakeStreamingIngestClientInternal client,
       ChannelCache cache,
       Connection conn,
-      SnowflakeURL snowflakeURL,
       boolean isTestMode) {
     this.owningClientName = client.getName();
     this.channelCache = cache;
     try {
-      this.targetStage = new StreamingIngestStage(conn, snowflakeURL, isTestMode);
+      this.targetStage =
+          new StreamingIngestStage(conn, isTestMode, client.httpClient, client.requestBuilder);
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }
@@ -360,8 +359,8 @@ class FlushService {
       }
 
       if (!channelsMetadataList.isEmpty()) {
-        StreamingUtils.assertNotNull("arrow data writer", streamWriter);
-        StreamingUtils.assertNotNull("arrow schema root", root);
+        Utils.assertNotNull("arrow data writer", streamWriter);
+        Utils.assertNotNull("arrow schema root", root);
         streamWriter.close();
         root.close();
 

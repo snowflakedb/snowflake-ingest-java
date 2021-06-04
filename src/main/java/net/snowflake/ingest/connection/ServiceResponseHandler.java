@@ -149,6 +149,44 @@ public final class ServiceResponseHandler {
   }
 
   /**
+   * unmarshallStreamingIngestResponse Given an HttpResponse object - attempts to deserialize it
+   * into a Object based on input type
+   *
+   * @param response http response from server
+   * @param valueType the class type
+   * @return the corresponding response object based on input class type
+   * @throws IOException if a low-level I/O problem
+   * @throws IngestResponseException if received an exceptional status code
+   */
+  public static <T> T unmarshallStreamingIngestResponse(HttpResponse response, Class<T> valueType)
+      throws IOException, IngestResponseException {
+    // We can't unmarshall a null response
+    if (response == null) {
+      LOGGER.warn("Null response passed to {}", valueType.getName());
+      throw new IllegalArgumentException();
+    }
+
+    // Grab the status line
+    StatusLine line = response.getStatusLine();
+    if (!isStatusOK(line)) {
+      // A network issue occurred!
+      LOGGER.warn(
+          "Exceptional Status Code found name={}, statusCode={}",
+          valueType.getName(),
+          line.getStatusCode());
+
+      // Handle the exceptional status code
+      handleExceptionalStatus(line, response);
+    }
+
+    // Grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    // Read out our blob into a pojo
+    return mapper.readValue(blob, valueType);
+  }
+
+  /**
    * handleExceptionStatusCode - throws the correct error for a status
    *
    * @param statusLine the status line we want to check

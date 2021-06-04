@@ -4,28 +4,42 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.JDBC_USER;
+import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.SnowflakeDriver;
+import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
-import org.apache.http.HttpStatus;
+import org.apache.http.client.HttpClient;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -40,14 +54,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Name of the client
   private final String name;
 
-  // Snowflake account URL
-  private final SnowflakeURL accountURL;
-
   // Connection to the Snowflake account
   private Connection connection;
 
   // Http client to send HTTP request to Snowflake
-  private final HttpClient httpClient;
+  @VisibleForTesting final HttpClient httpClient;
 
   // Reference to the channel cache
   private final ChannelCache channelCache;
@@ -63,6 +74,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
+
+  // The request builder who handles building the HttpRequests we send
+  @VisibleForTesting RequestBuilder requestBuilder;
 
   /**
    * Constructor
@@ -80,9 +94,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       HttpClient httpClient,
       boolean isTestMode) {
     this.name = name;
-    this.accountURL = accountURL;
     this.isTestMode = isTestMode;
-    this.httpClient = httpClient == null ? HttpClient.newHttpClient() : httpClient;
+    this.httpClient = httpClient == null ? HttpUtil.getHttpClient() : httpClient;
     this.channelCache = new ChannelCache();
     this.allocator = new RootAllocator();
     this.isClosed = false;
@@ -94,11 +107,19 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       } catch (SQLException e) {
         throw new SFException(e, ErrorCode.SF_CONNECTION_FAILURE);
       }
+
+      // Setup request builder for communication with the server side
+      try {
+        KeyPair keyPair =
+            Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
+        this.requestBuilder =
+            new RequestBuilder(accountURL, prop.get(JDBC_USER).toString(), keyPair);
+      } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+        throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
+      }
     }
 
-    this.flushService =
-        new FlushService(
-            this, this.channelCache, this.connection, this.accountURL, this.isTestMode);
+    this.flushService = new FlushService(this, this.channelCache, this.connection, this.isTestMode);
 
     logger.logDebug(
         "Client created, name={}, account={}. isTestMode={}",
@@ -162,21 +183,23 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         request.getFullyQualifiedTableName());
 
     try {
-      // TODO SNOW-268842: add retry logic
-      HttpResponse<String> response =
-          this.httpClient.send(
-              request.getHttpRequest(this.accountURL), HttpResponse.BodyHandlers.ofString());
+      Map<Object, Object> payload = new HashMap<>();
+      payload.put("channel", request.getChannelName());
+      payload.put("table", request.getTableName());
+      payload.put("database", request.getDBName());
+      payload.put("schema", request.getSchemaName());
+      payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
 
-      // Check for HTTP response code
-      if (response.statusCode() >= HttpStatus.SC_MULTIPLE_CHOICES) {
-        throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.body());
-      }
+      OpenChannelResponse response =
+          ServiceResponseHandler.unmarshallStreamingIngestResponse(
+              httpClient.execute(
+                  requestBuilder.generateStreamingIngestPostRequest(
+                      payload, OPEN_CHANNEL_ENDPOINT, "open channel")),
+              OpenChannelResponse.class);
 
       // Check for Snowflake specific response code
-      OpenChannelResponse result =
-          new ObjectMapper().readValue(response.body(), OpenChannelResponse.class);
-      if (result.getStatusCode() != RESPONSE_SUCCESS) {
-        throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, result.getMessage());
+      if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
       }
 
       logger.logDebug(
@@ -190,20 +213,20 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               .setDBName(request.getDBName())
               .setSchemaName(request.getSchemaName())
               .setTableName(request.getTableName())
-              .setOffsetToken(result.getOffsetToken())
-              .setRowSequencer(result.getRowSequencer())
-              .setChannelSequencer(result.getClientSequencer())
+              .setOffsetToken(response.getOffsetToken())
+              .setRowSequencer(response.getRowSequencer())
+              .setChannelSequencer(response.getClientSequencer())
               .setOwningClient(this)
               .build();
 
       // Setup the row buffer schema
-      channel.setupSchema(result.getTableColumns());
+      channel.setupSchema(response.getTableColumns());
 
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);
 
       return channel;
-    } catch (InterruptedException | IOException e) {
+    } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE);
     }
   }
@@ -216,35 +239,33 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   void registerBlobs(List<BlobMetadata> blobs) {
     logger.logDebug(
         "Register blob request start for blob={}, client={}",
-        blobs.stream().map(p -> p.getPath()).collect(Collectors.toList()),
+        blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name);
 
     try {
-      RegisterBlobRequest request = RegisterBlobRequest.builder().setBlobList(blobs).build();
-      // TODO SNOW-268842: add retry logic
-      HttpResponse<String> response =
-          this.httpClient.send(
-              request.getHttpRequest(this.accountURL), HttpResponse.BodyHandlers.ofString());
+      Map<Object, Object> payload = new HashMap<>();
+      payload.put("request_id", null);
+      payload.put("blobs", blobs);
+
+      RegisterBlobResponse response =
+          ServiceResponseHandler.unmarshallStreamingIngestResponse(
+              httpClient.execute(
+                  requestBuilder.generateStreamingIngestPostRequest(
+                      payload, REGISTER_BLOB_ENDPOINT, "register blob")),
+              RegisterBlobResponse.class);
 
       // TODO: to fail fast, the channels could to be invalidated if register blob show failures
-      // Check for HTTP response code
-      if (response.statusCode() >= HttpStatus.SC_MULTIPLE_CHOICES) {
-        throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.body());
-      }
-
       // Check for Snowflake specific response code
-      RegisterBlobResponse result =
-          new ObjectMapper().readValue(response.body(), RegisterBlobResponse.class);
-      if (result.getStatusCode() != RESPONSE_SUCCESS) {
-        throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, result.getMessage());
+      if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.getMessage());
       }
-    } catch (InterruptedException | IOException e) {
+    } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE);
     }
 
     logger.logDebug(
         "Register blob request succeeded for blob={}, client={}",
-        blobs.stream().map(p -> p.getPath()).collect(Collectors.toList()),
+        blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name);
   }
 

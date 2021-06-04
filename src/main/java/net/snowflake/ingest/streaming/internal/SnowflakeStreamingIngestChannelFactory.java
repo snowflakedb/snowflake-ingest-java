@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
 
 /** Builds a Streaming Ingest channel for a specific Streaming Ingest client */
 class SnowflakeStreamingIngestChannelFactory {
@@ -64,13 +64,13 @@ class SnowflakeStreamingIngestChannelFactory {
     }
 
     SnowflakeStreamingIngestChannelInternal build() {
-      StreamingUtils.assertStringNotNullOrEmpty("channel name", this.name);
-      StreamingUtils.assertStringNotNullOrEmpty("table name", this.tableName);
-      StreamingUtils.assertStringNotNullOrEmpty("schema name", this.schemaName);
-      StreamingUtils.assertStringNotNullOrEmpty("database name", this.dbName);
-      StreamingUtils.assertNotNull("channel sequencer", this.channelSequencer);
-      StreamingUtils.assertNotNull("row sequencer", this.rowSequencer);
-      StreamingUtils.assertNotNull("channel owning client", this.owningClient);
+      Utils.assertStringNotNullOrEmpty("channel name", this.name);
+      Utils.assertStringNotNullOrEmpty("table name", this.tableName);
+      Utils.assertStringNotNullOrEmpty("schema name", this.schemaName);
+      Utils.assertStringNotNullOrEmpty("database name", this.dbName);
+      Utils.assertNotNull("channel sequencer", this.channelSequencer);
+      Utils.assertNotNull("row sequencer", this.rowSequencer);
+      Utils.assertNotNull("channel owning client", this.owningClient);
       return new SnowflakeStreamingIngestChannelInternal(
           this.name,
           this.dbName,

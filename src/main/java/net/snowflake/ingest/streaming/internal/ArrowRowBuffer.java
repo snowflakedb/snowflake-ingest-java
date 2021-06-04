@@ -19,7 +19,7 @@ import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.BaseFixedWidthVector;
 import org.apache.arrow.vector.BaseVariableWidthVector;
@@ -501,18 +501,18 @@ class ArrowRowBuffer {
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       this.bufferSize += 0.125; // 1/8 for null value bitmap
       String columnName = entry.getKey();
-      StreamingUtils.assertStringNotNullOrEmpty("invalid column name", columnName);
+      Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
       columnName =
           (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
               ? columnName.substring(1, columnName.length() - 1)
               : columnName.toUpperCase();
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
-      StreamingUtils.assertNotNull("Arrow column field", field);
+      Utils.assertNotNull("Arrow column field", field);
       FieldVector vector = this.vectors.get(columnName);
-      StreamingUtils.assertNotNull("Arrow column vector", vector);
+      Utils.assertNotNull("Arrow column vector", vector);
       RowBufferStats stats = statsMap.get(columnName);
-      StreamingUtils.assertNotNull("Arrow column stats", stats);
+      Utils.assertNotNull("Arrow column stats", stats);
       ColumnLogicalType logicalType =
           ColumnLogicalType.valueOf(field.getMetadata().get(COLUMN_LOGICAL_TYPE));
       ColumnPhysicalType physicalType =

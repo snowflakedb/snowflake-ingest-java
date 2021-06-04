@@ -1,19 +1,33 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.USER_NAME;
 
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.Arrays;
+import java.security.KeyPair;
+import java.security.PrivateKey;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
+import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
+import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -21,7 +35,7 @@ import org.mockito.Mockito;
 public class SnowflakeStreamingIngestChannelTest {
 
   @Test
-  public void testChannelFactoryNullFields() throws Exception {
+  public void testChannelFactoryNullFields() {
     String name = "CHANNEL";
     String dbName = "DATABASE";
     String schemaName = "SCHEMA";
@@ -58,7 +72,7 @@ public class SnowflakeStreamingIngestChannelTest {
   }
 
   @Test
-  public void testChannelFactorySuccess() throws Exception {
+  public void testChannelFactorySuccess() {
     String name = "CHANNEL";
     String dbName = "DATABASE";
     String schemaName = "SCHEMA";
@@ -159,7 +173,7 @@ public class SnowflakeStreamingIngestChannelTest {
   }
 
   @Test
-  public void testOpenChannelRequestCreationMissingField() throws Exception {
+  public void testOpenChannelRequestCreationMissingField() {
     try {
       OpenChannelRequest request =
           OpenChannelRequest.builder("CHANNEL")
@@ -173,7 +187,7 @@ public class SnowflakeStreamingIngestChannelTest {
   }
 
   @Test
-  public void testOpenChannelRequestCreationSuccess() throws Exception {
+  public void testOpenChannelRequestCreationSuccess() {
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName("STREAMINGINGEST_TEST")
@@ -183,28 +197,59 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Assert.assertEquals(
         "STREAMINGINGEST_TEST.PUBLIC.T_STREAMINGINGEST", request.getFullyQualifiedTableName());
+  }
+
+  @Test
+  public void testOpenChannelPostRequest() throws Exception {
+    Properties prop = new Properties();
+    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop = Utils.createProperties(prop, false);
 
     String urlStr = "https://sfctest0.snowflakecomputing.com:80";
     SnowflakeURL url = new SnowflakeURL(urlStr);
 
-    HttpRequest httpRequest = request.getHttpRequest(url);
+    KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
+    RequestBuilder requestBuilder =
+        new RequestBuilder(url, prop.get(JDBC_USER).toString(), keyPair);
+
+    Map<Object, Object> payload = new HashMap<>();
+    payload.put("channel", "CHANNEL");
+    payload.put("table", "T_STREAMINGINGEST");
+    payload.put("database", "STREAMINGINGEST_TEST");
+    payload.put("schema", "PUBLIC");
+    payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
+
+    HttpPost request =
+        requestBuilder.generateStreamingIngestPostRequest(
+            payload, OPEN_CHANNEL_ENDPOINT, "open channel");
+
     Assert.assertEquals(
-        String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT), httpRequest.uri().toString());
-    Assert.assertEquals("application/json", httpRequest.headers().firstValue("content-type").get());
-    Assert.assertEquals("application/json", httpRequest.headers().firstValue("accept").get());
-    Assert.assertEquals("POST", httpRequest.method());
+        String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT),
+        request.getRequestLine().getUri().toString());
+    Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
+    Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
+    Assert.assertEquals("POST", request.getMethod());
   }
 
   @Test
   public void testOpenChannelErrorResponse() throws Exception {
     HttpClient httpClient = Mockito.mock(HttpClient.class);
     HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
-    Mockito.when(httpResponse.statusCode()).thenReturn(500);
-    Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(500);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    String responseString = "testOpenChannelErrorResponse";
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
+    client.requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -255,13 +300,19 @@ public class SnowflakeStreamingIngestChannelTest {
 
     HttpClient httpClient = Mockito.mock(HttpClient.class);
     HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
-    Mockito.when(httpResponse.statusCode()).thenReturn(200);
-    Mockito.when(httpResponse.body()).thenReturn(response);
-    Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
+    client.requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -284,7 +335,6 @@ public class SnowflakeStreamingIngestChannelTest {
     String dbName = "STREAMINGINGEST_TEST";
     String schemaName = "PUBLIC";
     String tableName = "T_STREAMINGINGEST";
-    String accountURL = "snowflake.dev.local:8082";
     String response =
         "{\n"
             + "  \"status_code\" : 0,\n"
@@ -317,13 +367,19 @@ public class SnowflakeStreamingIngestChannelTest {
 
     HttpClient httpClient = Mockito.mock(HttpClient.class);
     HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
-    Mockito.when(httpResponse.statusCode()).thenReturn(200);
-    Mockito.when(httpResponse.body()).thenReturn(response);
-    Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
+    client.requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
 
     OpenChannelRequest request =
         OpenChannelRequest.builder(name)
@@ -354,14 +410,14 @@ public class SnowflakeStreamingIngestChannelTest {
     col.setScale(0);
 
     // Setup column fields and vectors
-    channel.setupSchema(Arrays.asList(col));
+    channel.setupSchema(Collections.singletonList(col));
 
     Map<String, Object> row = new HashMap<>();
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
     ChannelData data = channel.getData();
-    Assert.assertEquals(null, data);
+    Assert.assertNull(data);
 
     try {
       channel.insertRow(row, "1");

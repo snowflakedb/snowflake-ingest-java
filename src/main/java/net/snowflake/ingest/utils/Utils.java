@@ -4,33 +4,38 @@
 
 package net.snowflake.ingest.utils;
 
+import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.JDBC_SSL;
+import static net.snowflake.ingest.utils.Constants.JDBC_USER;
+
 import com.google.common.base.Strings;
 import java.io.StringReader;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Security;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.util.Map;
 import java.util.Properties;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 import org.apache.commons.codec.binary.Base64;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import org.bouncycastle.operator.InputDecryptorProvider;
+import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 
 /** Contains Streaming Ingest related utility functions */
-public class StreamingUtils {
+public class Utils {
 
-  private static final Logging logger = new Logging(StreamingUtils.class);
-
-  // JDBC parameter list
-  private static final String JDBC_USER = "user";
-  private static final String JDBC_PRIVATE_KEY = "privateKey";
-  private static final String JDBC_SSL = "ssl";
+  private static final Logging logger = new Logging(Utils.class);
 
   /**
    * Assert when the String is null or Empty
@@ -179,5 +184,31 @@ public class StreamingUtils {
     } catch (Exception e) {
       throw new SFException(e, ErrorCode.INVALID_ENCRYPTED_KEY);
     }
+  }
+
+  /**
+   * Generate key pair object from private key
+   *
+   * @param privateKey private key
+   * @return a key pair object
+   * @throws NoSuchAlgorithmException if can't create key factory by using RSA algorithm
+   * @throws InvalidKeySpecException if private key or public key is invalid
+   */
+  public static KeyPair createKeyPairFromPrivateKey(PrivateKey privateKey)
+      throws NoSuchAlgorithmException, InvalidKeySpecException {
+    if (!(privateKey instanceof RSAPrivateCrtKey)) {
+      throw new IllegalArgumentException("Input private key is not a RSA private key");
+    }
+
+    KeyFactory kf = KeyFactory.getInstance("RSA");
+
+    // generate public key from private key
+    RSAPrivateCrtKey privk = (RSAPrivateCrtKey) privateKey;
+    RSAPublicKeySpec publicKeySpec =
+        new RSAPublicKeySpec(privk.getModulus(), privk.getPublicExponent());
+    PublicKey publicK = kf.generatePublic(publicKeySpec);
+
+    // create key pairs
+    return new KeyPair(publicK, privateKey);
   }
 }

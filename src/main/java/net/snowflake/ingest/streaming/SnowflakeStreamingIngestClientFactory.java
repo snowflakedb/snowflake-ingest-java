@@ -10,7 +10,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
 
 /** Builds a Streaming Ingest client for a specific account */
 public class SnowflakeStreamingIngestClientFactory {
@@ -33,15 +33,15 @@ public class SnowflakeStreamingIngestClientFactory {
     }
 
     public SnowflakeStreamingIngestClient build() {
-      StreamingUtils.assertStringNotNullOrEmpty("client name", this.name);
-      StreamingUtils.assertNotNull("connection properties", this.prop);
+      Utils.assertStringNotNullOrEmpty("client name", this.name);
+      Utils.assertNotNull("connection properties", this.prop);
 
       if (!this.prop.containsKey(Constants.ACCOUNT_URL)) {
         throw new SFException(ErrorCode.MISSING_CONFIG, "Account URL");
       }
 
       SnowflakeURL accountURL = new SnowflakeURL(this.prop.getProperty(Constants.ACCOUNT_URL));
-      Properties prop = StreamingUtils.createProperties(this.prop, accountURL.sslEnabled());
+      Properties prop = Utils.createProperties(this.prop, accountURL.sslEnabled());
       return new SnowflakeStreamingIngestClientInternal(this.name, accountURL, prop);
     }
   }

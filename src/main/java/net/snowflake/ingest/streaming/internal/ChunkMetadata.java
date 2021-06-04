@@ -6,7 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
 
 /** Metadata for a chunk that sends to Snowflake as part of the register blob request */
 class ChunkMetadata {
@@ -87,14 +87,14 @@ class ChunkMetadata {
   }
 
   private ChunkMetadata(Builder builder) {
-    StreamingUtils.assertStringNotNullOrEmpty("chunk database name", builder.dbName);
-    StreamingUtils.assertStringNotNullOrEmpty("chunk schema name", builder.schemaName);
-    StreamingUtils.assertStringNotNullOrEmpty("chunk table name", builder.tableName);
-    StreamingUtils.assertNotNull("chunk start offset", builder.chunkStartOffset);
-    StreamingUtils.assertNotNull("chunk length", builder.chunkLength);
-    StreamingUtils.assertNotNull("chunk channels", builder.channels);
-    StreamingUtils.assertNotNull("chunk MD5", builder.chunkMD5);
-    StreamingUtils.assertNotNull("chunk ep info", builder.epInfo);
+    Utils.assertStringNotNullOrEmpty("chunk database name", builder.dbName);
+    Utils.assertStringNotNullOrEmpty("chunk schema name", builder.schemaName);
+    Utils.assertStringNotNullOrEmpty("chunk table name", builder.tableName);
+    Utils.assertNotNull("chunk start offset", builder.chunkStartOffset);
+    Utils.assertNotNull("chunk length", builder.chunkLength);
+    Utils.assertNotNull("chunk channels", builder.channels);
+    Utils.assertNotNull("chunk MD5", builder.chunkMD5);
+    Utils.assertNotNull("chunk ep info", builder.epInfo);
 
     this.dbName = builder.dbName;
     this.schemaName = builder.schemaName;

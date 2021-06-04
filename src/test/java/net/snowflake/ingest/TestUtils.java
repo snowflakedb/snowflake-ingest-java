@@ -14,6 +14,8 @@ import java.sql.Statement;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
 
 public class TestUtils {
@@ -73,14 +75,14 @@ public class TestUtils {
 
     privateKeyPem = profile.get("private_key").asText();
 
-    java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    java.security.Security.addProvider(new BouncyCastleProvider());
 
     byte[] encoded = Base64.decodeBase64(privateKeyPem);
     KeyFactory kf = KeyFactory.getInstance("RSA");
 
     PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
     privateKey = kf.generatePrivate(keySpec);
-    keyPair = SimpleIngestManager.createKeyPairFromPrivateKey(privateKey);
+    keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
   }
 
   public static String getUser() throws Exception {
@@ -102,6 +104,13 @@ public class TestUtils {
       init();
     }
     return privateKeyPem;
+  }
+
+  public static KeyPair getKeyPair() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return keyPair;
   }
 
   /**

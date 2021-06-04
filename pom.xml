@@ -196,15 +196,6 @@
             <version>3.13.2</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-ext-jdk15on -->
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-ext-jdk15on</artifactId>
-            <version>1.60</version>
-            <scope>test</scope>
-        </dependency>
-
-
         <!-- jwt token for key pair authentication with GS -->
         <dependency>
             <groupId>com.nimbusds</groupId>
@@ -340,12 +331,6 @@
             <artifactId>bcpkix-fips</artifactId>
             <version>1.0.3</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-ext-jdk15on</artifactId>
-            <version>1.59</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 

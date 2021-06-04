@@ -5,34 +5,37 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.core.SFStatement;
-import net.snowflake.client.jdbc.*;
+import net.snowflake.client.jdbc.SnowflakeConnectionV1;
+import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
+import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
+import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
-import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
-import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
+import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
+import org.apache.http.client.HttpClient;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
@@ -61,17 +64,19 @@ class StreamingIngestStage {
   }
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final SnowflakeURL snowflakeURL;
   private final SnowflakeConnectionV1 conn;
   private final boolean isTestMode;
   private static final String putTemplate = "PUT " + Constants.STAGE_LOCATION + " @";
-  private final long expirationTime = Constants.CREDENTIAL_EXPIRE_IN_SEC;
+  private final HttpClient httpClient;
+  private final RequestBuilder requestBuilder;
 
-  StreamingIngestStage(Connection conn, SnowflakeURL snowflakeURL, boolean isTestMode)
+  StreamingIngestStage(
+      Connection conn, boolean isTestMode, HttpClient httpClient, RequestBuilder requestBuilder)
       throws SnowflakeSQLException, IOException {
     this.conn = (SnowflakeConnectionV1) conn;
-    this.snowflakeURL = snowflakeURL;
     this.isTestMode = isTestMode;
+    this.httpClient = httpClient;
+    this.requestBuilder = requestBuilder;
 
     if (!isTestMode) {
       refreshSnowflakeMetadata();
@@ -163,51 +168,44 @@ class StreamingIngestStage {
       return fileTransferMetadataWithAge;
     }
 
-    // TODO Move to JWT/Oauth
-    // TODO update configure url when we have new endpoint
-    URI uri;
     try {
-      uri =
-          new URIBuilder()
-              .setScheme(snowflakeURL.getScheme())
-              .setHost(snowflakeURL.getUrlWithoutPort())
-              .setPort(snowflakeURL.getPort())
-              .setPath(CLIENT_CONFIGURE_ENDPOINT)
-              .build();
-    } catch (URISyntaxException e) {
-      // TODO throw proper exception
-      //      throw SnowflakeErrors.ERROR_6007.getException(e);
-      throw new RuntimeException(e);
+      Map<String, Object> response =
+          ServiceResponseHandler.unmarshallStreamingIngestResponse(
+              httpClient.execute(
+                  requestBuilder.generateStreamingIngestPostRequest(
+                      new HashMap<>(), CLIENT_CONFIGURE_ENDPOINT, "client configure")),
+              Map.class);
+
+      // Check for Snowflake specific response code
+      if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {
+        throw new SFException(
+            ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
+      }
+
+      JsonNode responseNode = mapper.valueToTree(response);
+
+      // Currently have a few mismatches between the client/configure response and what
+      // SnowflakeFileTransferAgent expects
+      ObjectNode mutable = (ObjectNode) responseNode;
+      mutable.putObject("data");
+      ObjectNode dataNode = (ObjectNode) mutable.get("data");
+      dataNode.set("stageInfo", responseNode.get("stage_location"));
+
+      // JDBC expects this field which maps to presignedFileUrlName.  We override
+      // presignedFileUrlName
+      // on each upload.
+      dataNode.putArray("src_locations").add("placeholder");
+
+      // Temporarily disabled until the new JDBC release is available
+      /*    this.fileTransferMetadataWithAge =
+      new SnowflakeFileTransferMetadataWithAge(
+          (SnowflakeFileTransferMetadataV1)
+              SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+          Optional.of(System.currentTimeMillis()));*/
+      return this.fileTransferMetadataWithAge;
+    } catch (IngestResponseException e) {
+      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE);
     }
-
-    HttpPost postRequest = new HttpPost(uri);
-    postRequest.addHeader("Accept", "application/json");
-
-    StringEntity input = new StringEntity("{}", StandardCharsets.UTF_8);
-    input.setContentType("application/json");
-    postRequest.setEntity(input);
-
-    String response = HttpUtil.executeGeneralRequest(postRequest, 60, null);
-    JsonNode responseNode = mapper.readTree(response);
-
-    // Currently have a few mismatches between the client/configure response and what
-    // SnowflakeFileTransferAgent expects
-    ObjectNode mutable = (ObjectNode) responseNode;
-    mutable.putObject("data");
-    ObjectNode dataNode = (ObjectNode) mutable.get("data");
-    dataNode.set("stageInfo", responseNode.get("stage_location"));
-
-    // JDBC expects this field which maps to presignedFileUrlName.  We override presignedFileUrlName
-    // on each upload.
-    dataNode.putArray("src_locations").add("placeholder");
-
-    // Temporarily disabled until the new JDBC release is available
-    /*    this.fileTransferMetadataWithAge =
-    new SnowflakeFileTransferMetadataWithAge(
-        (SnowflakeFileTransferMetadataV1)
-            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
-        Optional.of(System.currentTimeMillis()));*/
-    return this.fileTransferMetadataWithAge;
   }
 
   /**
@@ -342,7 +340,7 @@ class StreamingIngestStage {
     return fileTransferMetadataWithAge != null
         && fileTransferMetadataWithAge.timestamp.isPresent()
         && System.currentTimeMillis() - fileTransferMetadataWithAge.timestamp.get()
-            < this.expirationTime;
+            < Constants.CREDENTIAL_EXPIRE_IN_SEC;
   }
 
   private void createInternalStage() {

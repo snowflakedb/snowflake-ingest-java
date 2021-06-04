@@ -6,7 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.Nullable;
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
 
 /**
  * Metadata for a Streaming Ingest channel that sends to Snowflake as part of the register blob
@@ -51,9 +51,9 @@ class ChannelMetadata {
   }
 
   private ChannelMetadata(Builder builder) {
-    StreamingUtils.assertStringNotNullOrEmpty("channel name", builder.channelName);
-    StreamingUtils.assertNotNull("channel client sequencer", builder.clientSequencer);
-    StreamingUtils.assertNotNull("channel row sequencer", builder.rowSequencer);
+    Utils.assertStringNotNullOrEmpty("channel name", builder.channelName);
+    Utils.assertNotNull("channel client sequencer", builder.clientSequencer);
+    Utils.assertNotNull("channel row sequencer", builder.rowSequencer);
 
     this.channelName = builder.channelName;
     this.clientSequencer = builder.clientSequencer;

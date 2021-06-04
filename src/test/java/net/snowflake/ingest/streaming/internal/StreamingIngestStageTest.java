@@ -97,7 +97,7 @@ public class StreamingIngestStageTest {
     setupMocksForRefresh(0);
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage = new StreamingIngestStage(null, snowflakeURL, true);
+    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
 
     //    PowerMockito.doThrow(new NullPointerException()).when(SnowflakeFileTransferAgent.class);
@@ -132,7 +132,7 @@ public class StreamingIngestStageTest {
     String fullFilePath = "test/path";
 
     SnowflakeConnectionV1 conn = Mockito.mock(SnowflakeConnectionV1.class);
-    StreamingIngestStage stage = Mockito.spy(new StreamingIngestStage(conn, snowflakeURL, true));
+    StreamingIngestStage stage = Mockito.spy(new StreamingIngestStage(conn, true, null, null));
     Mockito.doReturn(StageInfo.StageType.LOCAL_FS).when(stage).getStageType();
 
     stage.put(fullFilePath, dataBytes);
@@ -160,7 +160,7 @@ public class StreamingIngestStageTest {
     String fullFilePath = "test/path";
 
     SnowflakeConnectionV1 conn = Mockito.mock(SnowflakeConnectionV1.class);
-    StreamingIngestStage stage = Mockito.spy(new StreamingIngestStage(conn, snowflakeURL, true));
+    StreamingIngestStage stage = Mockito.spy(new StreamingIngestStage(conn, true, null, null));
     StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
         stage.refreshSnowflakeMetadata(true);
     Mockito.doReturn(StageInfo.StageType.S3).when(stage).getStageType();
@@ -197,7 +197,7 @@ public class StreamingIngestStageTest {
     setupMocksForRefresh(0);
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage = new StreamingIngestStage(null, snowflakeURL, true);
+    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
 
     PowerMockito.doThrow(new NullPointerException()).when(SnowflakeFileTransferAgent.class);
@@ -236,7 +236,7 @@ public class StreamingIngestStageTest {
   @Ignore // Temporarily disabled until the new JDBC release is available
   public void testRefreshSnowflakeMetadata() throws Exception {
     setupMocksForRefresh(0);
-    StreamingIngestStage stage = new StreamingIngestStage(null, snowflakeURL, true);
+    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
 
     StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
         stage.refreshSnowflakeMetadata(true);
@@ -267,7 +267,7 @@ public class StreamingIngestStageTest {
   @Ignore // Temporarily disabled until the new JDBC release is available
   public void testRefreshSnowflakeMetadataSynchronized() throws Exception {
     setupMocksForRefresh(100);
-    StreamingIngestStage stage = new StreamingIngestStage(null, snowflakeURL, true);
+    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
     // Set the age of the metadata so it will be refreshed
     stage.setFileTransferMetadataAge(0L);
 

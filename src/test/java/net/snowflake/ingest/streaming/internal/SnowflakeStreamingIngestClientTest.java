@@ -1,38 +1,46 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
+import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.USER_NAME;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.Security;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMWriter;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.OperatorCreationException;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfoBuilder;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.jcajce.JcaPKCS8EncryptedPrivateKeyInfoBuilder;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.jcajce.JcePKCSPBEOutputEncryptorBuilder;
+import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
+import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfoBuilder;
+import org.bouncycastle.pkcs.jcajce.JcaPKCS8EncryptedPrivateKeyInfoBuilder;
+import org.bouncycastle.pkcs.jcajce.JcePKCSPBEOutputEncryptorBuilder;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -124,17 +132,16 @@ public class SnowflakeStreamingIngestClientTest {
     String testPassphrase = "TestPassword1234!";
     String testKey =
         generateAESKey(
-            StreamingUtils.parsePrivateKey(TestUtils.getPrivateKey()),
-            testPassphrase.toCharArray());
+            Utils.parsePrivateKey(TestUtils.getPrivateKey()), testPassphrase.toCharArray());
 
     try {
-      StreamingUtils.parseEncryptedPrivateKey(testKey, testPassphrase.substring(1));
+      Utils.parseEncryptedPrivateKey(testKey, testPassphrase.substring(1));
       Assert.fail("Decryption should fail.");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INVALID_ENCRYPTED_KEY.getMessageCode(), e.getVendorCode());
     }
 
-    StreamingUtils.parseEncryptedPrivateKey(testKey, testPassphrase);
+    Utils.parseEncryptedPrivateKey(testKey, testPassphrase);
   }
 
   private String generateAESKey(PrivateKey key, char[] passwd)
@@ -154,17 +161,19 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
-  public void testRegisterBlobRequestCreationMissingField() throws Exception {
-    try {
-      RegisterBlobRequest request = RegisterBlobRequest.builder().build();
-      Assert.fail("Request should fail with missing table name");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.NULL_VALUE.getMessageCode(), e.getVendorCode());
-    }
-  }
-
-  @Test
   public void testRegisterBlobRequestCreationSuccess() throws Exception {
+    Properties prop = new Properties();
+    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop = Utils.createProperties(prop, false);
+
+    String urlStr = "https://sfctest0.snowflakecomputing.com:80";
+    SnowflakeURL url = new SnowflakeURL(urlStr);
+
+    KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
+    RequestBuilder requestBuilder =
+        new RequestBuilder(url, prop.get(JDBC_USER).toString(), keyPair);
+
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schemaName", "tableName", "0", 0L, 0L, null, true);
@@ -185,41 +194,53 @@ public class SnowflakeStreamingIngestClientTest {
             .setOwningTable(channel)
             .setChunkStartOffset(0L)
             .setChunkLength(100)
-            .setChannelList(Arrays.asList(channelMetadata))
+            .setChannelList(Collections.singletonList(channelMetadata))
             .setChunkMD5("md5")
             .setEpInfo(epInfo)
             .build();
 
     List<BlobMetadata> blobs =
-        Arrays.asList(new BlobMetadata("path", Arrays.asList(chunkMetadata)));
+        Collections.singletonList(
+            new BlobMetadata("path", Collections.singletonList(chunkMetadata)));
 
-    RegisterBlobRequest request = RegisterBlobRequest.builder().setBlobList(blobs).build();
+    Map<Object, Object> payload = new HashMap<>();
+    payload.put("request_id", null);
+    payload.put("blobs", blobs);
 
-    String urlStr = "https://sfctest0.snowflakecomputing.com:80";
-    SnowflakeURL url = new SnowflakeURL(urlStr);
+    HttpPost request =
+        requestBuilder.generateStreamingIngestPostRequest(
+            payload, REGISTER_BLOB_ENDPOINT, "register blob");
 
-    HttpRequest httpRequest = request.getHttpRequest(url);
     Assert.assertEquals(
-        String.format("%s%s", urlStr, REGISTER_BLOB_ENDPOINT), httpRequest.uri().toString());
-    Assert.assertEquals("application/json", httpRequest.headers().firstValue("content-type").get());
-    Assert.assertEquals("application/json", httpRequest.headers().firstValue("accept").get());
-    Assert.assertEquals("POST", httpRequest.method());
+        String.format("%s%s", urlStr, REGISTER_BLOB_ENDPOINT),
+        request.getRequestLine().getUri().toString());
+    Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
+    Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
+    Assert.assertEquals("POST", request.getMethod());
   }
 
   @Test
   public void testRegisterBlobErrorResponse() throws Exception {
     HttpClient httpClient = Mockito.mock(HttpClient.class);
     HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
-    Mockito.when(httpResponse.statusCode()).thenReturn(404);
-    Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(500);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    String response = "testRegisterBlobErrorResponse";
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
+    client.requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
 
     try {
       List<BlobMetadata> blobs =
-          Arrays.asList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
+          Collections.singletonList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on 404 error");
     } catch (SFException e) {
@@ -244,17 +265,23 @@ public class SnowflakeStreamingIngestClientTest {
 
     HttpClient httpClient = Mockito.mock(HttpClient.class);
     HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
-    Mockito.when(httpResponse.statusCode()).thenReturn(200);
-    Mockito.when(httpResponse.body()).thenReturn(response);
-    Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
+    client.requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
 
     try {
       List<BlobMetadata> blobs =
-          Arrays.asList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
+          Collections.singletonList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on SF internal error");
     } catch (SFException e) {
@@ -279,16 +306,22 @@ public class SnowflakeStreamingIngestClientTest {
 
     HttpClient httpClient = Mockito.mock(HttpClient.class);
     HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
-    Mockito.when(httpResponse.statusCode()).thenReturn(200);
-    Mockito.when(httpResponse.body()).thenReturn(response);
-    Mockito.when(httpClient.send(Mockito.any(), Mockito.any())).thenReturn(httpResponse);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
             "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
+    client.requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
 
     List<BlobMetadata> blobs =
-        Arrays.asList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
+        Collections.singletonList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
     client.registerBlobs(blobs);
   }
 

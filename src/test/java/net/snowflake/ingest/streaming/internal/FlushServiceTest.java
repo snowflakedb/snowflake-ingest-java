@@ -5,6 +5,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SI
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
 
@@ -15,11 +16,16 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import net.snowflake.client.jdbc.SnowflakeConnectionV1;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.StreamingUtils;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.FieldVector;
@@ -39,7 +45,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
-  StreamingUtils.class,
+  Utils.class,
 })
 public class FlushServiceTest {
   private SnowflakeStreamingIngestClientInternal client;
@@ -344,38 +350,44 @@ public class FlushServiceTest {
     // Read the blob byte array back to valid the behavior
     InputStream input = new ByteArrayInputStream(blob);
     int offset = 0;
-    Assert.assertEquals(
-        BLOB_EXTENSION_TYPE,
-        new String(input.readNBytes(BLOB_TAG_SIZE_IN_BYTES), StandardCharsets.UTF_8));
-    offset += BLOB_TAG_SIZE_IN_BYTES;
-    Assert.assertEquals(BLOB_FORMAT_VERSION, input.readNBytes(BLOB_VERSION_SIZE_IN_BYTES)[0]);
-    offset += BLOB_VERSION_SIZE_IN_BYTES;
-    long totalSize = ByteBuffer.wrap(input.readNBytes(BLOB_FILE_SIZE_SIZE_IN_BYTES)).getLong();
-    offset += BLOB_FILE_SIZE_SIZE_IN_BYTES;
-    Assert.assertEquals(
-        checksum, ByteBuffer.wrap(input.readNBytes(BLOB_CHECKSUM_SIZE_IN_BYTES)).getLong());
-    offset += BLOB_CHECKSUM_SIZE_IN_BYTES;
-    int chunkMetadataSize =
-        ByteBuffer.wrap(input.readNBytes(BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES)).getInt();
-    Assert.assertTrue(chunkMetadataSize < totalSize);
-    offset += BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
-    offset += chunkMetadataSize;
-    String parsedChunkMetadataList =
-        new String(input.readNBytes(chunkMetadataSize), StandardCharsets.UTF_8);
-    Map<String, Object> map =
-        mapper.readValue(
-            parsedChunkMetadataList.substring(1, parsedChunkMetadataList.length() - 1), Map.class);
-    Assert.assertEquals(chunkMetadata.getTableName(), map.get("table"));
-    Assert.assertEquals(chunkMetadata.getSchemaName(), map.get("schema"));
-    Assert.assertEquals(chunkMetadata.getDBName(), map.get("database"));
-    Assert.assertEquals(
-        Long.toString(chunkMetadata.getChunkStartOffset() - offset),
-        map.get("chunk_start_offset").toString());
-    Assert.assertEquals(chunkMetadata.getChunkMD5(), map.get("chunk_md5"));
-    byte[] actualData = input.readNBytes((int) (totalSize - offset));
-    Assert.assertTrue(Arrays.equals(data, actualData));
-    Assert.assertEquals(2, ((LinkedHashMap) map.get("eps")).get("rows"));
-    Assert.assertNotNull(((LinkedHashMap) map.get("eps")).get("columns"));
+    if (!BLOB_NO_HEADER) {
+      Assert.assertEquals(
+          BLOB_EXTENSION_TYPE,
+          new String(input.readNBytes(BLOB_TAG_SIZE_IN_BYTES), StandardCharsets.UTF_8));
+      offset += BLOB_TAG_SIZE_IN_BYTES;
+      Assert.assertEquals(BLOB_FORMAT_VERSION, input.readNBytes(BLOB_VERSION_SIZE_IN_BYTES)[0]);
+      offset += BLOB_VERSION_SIZE_IN_BYTES;
+      long totalSize = ByteBuffer.wrap(input.readNBytes(BLOB_FILE_SIZE_SIZE_IN_BYTES)).getLong();
+      offset += BLOB_FILE_SIZE_SIZE_IN_BYTES;
+      Assert.assertEquals(
+          checksum, ByteBuffer.wrap(input.readNBytes(BLOB_CHECKSUM_SIZE_IN_BYTES)).getLong());
+      offset += BLOB_CHECKSUM_SIZE_IN_BYTES;
+      int chunkMetadataSize =
+          ByteBuffer.wrap(input.readNBytes(BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES)).getInt();
+      Assert.assertTrue(chunkMetadataSize < totalSize);
+      offset += BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
+      offset += chunkMetadataSize;
+      String parsedChunkMetadataList =
+          new String(input.readNBytes(chunkMetadataSize), StandardCharsets.UTF_8);
+      Map<String, Object> map =
+          mapper.readValue(
+              parsedChunkMetadataList.substring(1, parsedChunkMetadataList.length() - 1),
+              Map.class);
+      Assert.assertEquals(chunkMetadata.getTableName(), map.get("table"));
+      Assert.assertEquals(chunkMetadata.getSchemaName(), map.get("schema"));
+      Assert.assertEquals(chunkMetadata.getDBName(), map.get("database"));
+      Assert.assertEquals(
+          Long.toString(chunkMetadata.getChunkStartOffset() - offset),
+          map.get("chunk_start_offset").toString());
+      Assert.assertEquals(chunkMetadata.getChunkMD5(), map.get("chunk_md5"));
+      Assert.assertEquals(2, ((LinkedHashMap) map.get("eps")).get("rows"));
+      Assert.assertNotNull(((LinkedHashMap) map.get("eps")).get("columns"));
+      byte[] actualData = input.readNBytes((int) (totalSize - offset));
+      Assert.assertArrayEquals(data, actualData);
+    } else {
+      byte[] actualData = input.readAllBytes();
+      Assert.assertArrayEquals(data, actualData);
+    }
   }
 
   @Test
