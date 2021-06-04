@@ -52,6 +52,7 @@ class FileColumnProperties {
     this.minStrValue = minStrValue;
   }
 
+  @JsonProperty("maxStrValue")
   String getMaxStrValue() {
     return maxStrValue;
   }
@@ -60,6 +61,7 @@ class FileColumnProperties {
     this.maxStrValue = maxStrValue;
   }
 
+  @JsonProperty("minIntValue")
   BigInteger getMinIntValue() {
     return minIntValue;
   }
@@ -68,6 +70,7 @@ class FileColumnProperties {
     this.minIntValue = minIntValue;
   }
 
+  @JsonProperty("maxIntValue")
   BigInteger getMaxIntValue() {
     return maxIntValue;
   }
@@ -76,6 +79,7 @@ class FileColumnProperties {
     this.maxIntValue = maxIntValue;
   }
 
+  @JsonProperty("nullCount")
   long getNullCount() {
     return nullCount;
   }
@@ -84,6 +88,7 @@ class FileColumnProperties {
     this.nullCount = nullCount;
   }
 
+  @JsonProperty("minRealValue")
   Double getMinRealValue() {
     return minRealValue;
   }
@@ -92,6 +97,7 @@ class FileColumnProperties {
     this.minRealValue = minRealValue;
   }
 
+  @JsonProperty("maxRealValue")
   Double getMaxRealValue() {
     return maxRealValue;
   }
@@ -100,6 +106,7 @@ class FileColumnProperties {
     this.maxRealValue = maxRealValue;
   }
 
+  @JsonProperty("distinctValues")
   long getDistinctValues() {
     return distinctValues;
   }
@@ -108,6 +115,7 @@ class FileColumnProperties {
     this.distinctValues = distinctValues;
   }
 
+  @JsonProperty("maxLength")
   long getMaxLength() {
     return maxLength;
   }

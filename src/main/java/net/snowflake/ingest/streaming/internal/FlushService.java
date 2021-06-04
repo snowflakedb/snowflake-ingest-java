@@ -4,7 +4,13 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_CHECK_INTERVAL_IN_MS;
+import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_INTERVAL_IN_MS;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -416,7 +422,7 @@ class FlushService {
 
     logger.logDebug("Finish uploading file={}", fileName);
 
-    return new BlobMetadata("/" + fileName, metadata);
+    return new BlobMetadata(fileName, metadata);
   }
 
   /**

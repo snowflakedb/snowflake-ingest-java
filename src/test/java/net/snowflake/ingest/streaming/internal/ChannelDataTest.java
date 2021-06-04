@@ -106,7 +106,7 @@ public class ChannelDataTest {
 
     Assert.assertEquals(new BigInteger("10"), oneCombined.getCurrentMinIntValue());
     Assert.assertEquals(new BigInteger("17"), oneCombined.getCurrentMaxIntValue());
-    Assert.assertEquals(5, oneCombined.getDistinctValues());
+    Assert.assertEquals(-1, oneCombined.getDistinctValues());
     Assert.assertNull(oneCombined.getCurrentMinStrValue());
     Assert.assertNull(oneCombined.getCurrentMaxStrValue());
     Assert.assertNull(oneCombined.getCurrentMinRealValue());
@@ -114,7 +114,7 @@ public class ChannelDataTest {
 
     Assert.assertEquals("10", twoCombined.getCurrentMinStrValue());
     Assert.assertEquals("17", twoCombined.getCurrentMaxStrValue());
-    Assert.assertEquals(5, twoCombined.getDistinctValues());
+    Assert.assertEquals(-1, twoCombined.getDistinctValues());
     Assert.assertNull(twoCombined.getCurrentMinIntValue());
     Assert.assertNull(twoCombined.getCurrentMaxIntValue());
     Assert.assertNull(twoCombined.getCurrentMinRealValue());

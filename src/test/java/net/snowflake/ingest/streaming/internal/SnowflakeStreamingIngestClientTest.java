@@ -1,6 +1,9 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
+import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.USER_NAME;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -11,7 +14,9 @@ import java.security.PrivateKey;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMWriter;
@@ -171,6 +176,10 @@ public class SnowflakeStreamingIngestClientTest {
             .setOffsetToken(channel.getOffsetToken())
             .build();
 
+    Map<String, RowBufferStats> columnEps = new HashMap<>();
+    columnEps.put("column", new RowBufferStats());
+    EpInfo epInfo = ArrowRowBuffer.buildEpInfoFromStats(1, columnEps);
+
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
             .setOwningTable(channel)
@@ -178,6 +187,7 @@ public class SnowflakeStreamingIngestClientTest {
             .setChunkLength(100)
             .setChannelList(Arrays.asList(channelMetadata))
             .setChunkMD5("md5")
+            .setEpInfo(epInfo)
             .build();
 
     List<BlobMetadata> blobs =

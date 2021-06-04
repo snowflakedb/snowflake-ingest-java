@@ -9,6 +9,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SI
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
@@ -107,21 +108,25 @@ class BlobBuilder {
     byte[] chunkMetadataListInBytes = MAPPER.writeValueAsBytes(chunksMetadataList);
 
     int metadataSize =
-        BLOB_TAG_SIZE_IN_BYTES
-            + BLOB_VERSION_SIZE_IN_BYTES
-            + BLOB_FILE_SIZE_SIZE_IN_BYTES
-            + BLOB_CHECKSUM_SIZE_IN_BYTES
-            + BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES
-            + chunkMetadataListInBytes.length;
+        BLOB_NO_HEADER
+            ? 0
+            : BLOB_TAG_SIZE_IN_BYTES
+                + BLOB_VERSION_SIZE_IN_BYTES
+                + BLOB_FILE_SIZE_SIZE_IN_BYTES
+                + BLOB_CHECKSUM_SIZE_IN_BYTES
+                + BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES
+                + chunkMetadataListInBytes.length;
 
     // Create the blob file and add the metadata
     ByteArrayOutputStream blob = new ByteArrayOutputStream();
-    blob.writeBytes(BLOB_EXTENSION_TYPE.getBytes());
-    blob.write(BLOB_FORMAT_VERSION);
-    blob.writeBytes(Longs.toByteArray(metadataSize + chunksDataSize));
-    blob.writeBytes(Longs.toByteArray(chunksChecksum));
-    blob.writeBytes(Ints.toByteArray(chunkMetadataListInBytes.length));
-    blob.writeBytes(chunkMetadataListInBytes);
+    if (!BLOB_NO_HEADER) {
+      blob.writeBytes(BLOB_EXTENSION_TYPE.getBytes());
+      blob.write(BLOB_FORMAT_VERSION);
+      blob.writeBytes(Longs.toByteArray(metadataSize + chunksDataSize));
+      blob.writeBytes(Longs.toByteArray(chunksChecksum));
+      blob.writeBytes(Ints.toByteArray(chunkMetadataListInBytes.length));
+      blob.writeBytes(chunkMetadataListInBytes);
+    }
     for (byte[] arrowData : chunksDataList) {
       blob.writeBytes(arrowData);
     }

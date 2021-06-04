@@ -34,7 +34,7 @@ public class SnowflakeStreamingIngestExample {
     try {
       // Create a open channel request on table T_STREAMINGINGEST
       OpenChannelRequest request1 =
-          OpenChannelRequest.builder("CHANNEL1")
+          OpenChannelRequest.builder("CHANNEL")
               .setDBName(INTERNAL_STAGE_DB_NAME)
               .setSchemaName(INTERNAL_STAGE_SCHEMA_NAME)
               .setTableName("T_STREAMINGINGEST")
@@ -46,7 +46,6 @@ public class SnowflakeStreamingIngestExample {
       for (int val = 0; val < 1000; val++) {
         Map<String, Object> row = new HashMap<>();
         row.put("c1", Integer.toString(val));
-        row.put("c2", val + 1);
         channel1.insertRow(row, null);
       }
     } finally {
