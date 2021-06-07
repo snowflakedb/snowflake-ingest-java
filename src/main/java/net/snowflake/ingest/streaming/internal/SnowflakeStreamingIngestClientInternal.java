@@ -10,7 +10,6 @@ import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -58,7 +57,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   private Connection connection;
 
   // Http client to send HTTP request to Snowflake
-  @VisibleForTesting final HttpClient httpClient;
+  private final HttpClient httpClient;
 
   // Reference to the channel cache
   private final ChannelCache channelCache;
@@ -76,7 +75,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   private final boolean isTestMode;
 
   // The request builder who handles building the HttpRequests we send
-  @VisibleForTesting RequestBuilder requestBuilder;
+  private RequestBuilder requestBuilder;
 
   /**
    * Constructor
@@ -92,13 +91,15 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       SnowflakeURL accountURL,
       Properties prop,
       HttpClient httpClient,
-      boolean isTestMode) {
+      boolean isTestMode,
+      RequestBuilder requestBuilder) {
     this.name = name;
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient() : httpClient;
     this.channelCache = new ChannelCache();
     this.allocator = new RootAllocator();
     this.isClosed = false;
+    this.requestBuilder = requestBuilder;
 
     if (!isTestMode) {
       try {
@@ -137,7 +138,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   public SnowflakeStreamingIngestClientInternal(
       String name, SnowflakeURL accountURL, Properties prop) {
-    this(name, accountURL, prop, null, false);
+    this(name, accountURL, prop, null, false, null);
   }
 
   /**
@@ -146,7 +147,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param name the name of the client
    */
   SnowflakeStreamingIngestClientInternal(String name) {
-    this(name, null, null, null, true);
+    this(name, null, null, null, true, null);
   }
 
   /**
@@ -334,12 +335,18 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     this.channelCache.removeChannelIfSequencersMatch(channel);
   }
 
-  /**
-   * Get whether we're running under test mode
-   *
-   * @return
-   */
+  /** Get whether we're running under test mode */
   boolean isTestMode() {
     return this.isTestMode;
+  }
+
+  /** Get the http client */
+  HttpClient getHttpClient() {
+    return this.httpClient;
+  }
+
+  /** Get the request builder */
+  RequestBuilder getRequestBuilder() {
+    return this.requestBuilder;
   }
 }

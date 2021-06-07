@@ -447,6 +447,7 @@ public final class RequestBuilder {
     // build the final URI
     return builder.build();
   }
+
   /**
    * generateFilesJSON - Given a list of files, make some json to represent it
    *

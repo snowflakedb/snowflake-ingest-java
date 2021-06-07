@@ -30,7 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.zip.CRC32C;
+import java.util.zip.CRC32;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -129,7 +129,8 @@ class FlushService {
     this.channelCache = cache;
     try {
       this.targetStage =
-          new StreamingIngestStage(conn, isTestMode, client.httpClient, client.requestBuilder);
+          new StreamingIngestStage(
+              conn, isTestMode, client.getHttpClient(), client.getRequestBuilder());
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }
@@ -290,7 +291,7 @@ class FlushService {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
     long curDataSize = 0L;
-    CRC32C crc32c = new CRC32C();
+    CRC32 crc = new CRC32();
 
     // TODO: channels with different schema can't be combined even if they belongs to same table
     for (List<ChannelData> channelsDataPerTable : blobData) {
@@ -386,7 +387,7 @@ class FlushService {
         chunksMetadataList.add(chunkMetadata);
         chunksDataList.add(compressedChunkData);
         curDataSize += compressedChunkDataSize;
-        crc32c.update(compressedChunkData);
+        crc.update(compressedChunkData, 0, compressedChunkData.length);
 
         logger.logDebug(
             "Finish building chunk in blob:{}, table:{}, rowCount:{}, uncompressedSize:{},"
@@ -401,7 +402,7 @@ class FlushService {
 
     // Build blob file, and then upload to streaming ingest dedicated stage
     byte[] blob =
-        BlobBuilder.build(chunksMetadataList, chunksDataList, crc32c.getValue(), curDataSize);
+        BlobBuilder.build(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize);
 
     return upload(fileName, blob, chunksMetadataList);
   }

@@ -148,7 +148,7 @@ public class StreamingIngestStageTest {
             Mockito.eq(false));
     Assert.assertEquals(
         new String(dataBytes, StandardCharsets.UTF_8),
-        new String(captor.getValue().readAllBytes(), StandardCharsets.UTF_8));
+        new String(IOUtils.toByteArray(captor.getValue()), StandardCharsets.UTF_8));
   }
 
   @Test

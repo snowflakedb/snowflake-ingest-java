@@ -6,12 +6,13 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 /** Keeps track of the active EP stats, used to generate a file EP info */
 class RowBufferStats {
   private String currentMinStrValue;
   private String currentMaxStrValue;
+  private byte[] currentMinStrValueInBytes;
+  private byte[] currentMaxStrValueInBytes;
   private BigInteger currentMinIntValue;
   private BigInteger currentMaxIntValue;
   private Double currentMinRealValue;
@@ -24,6 +25,8 @@ class RowBufferStats {
   RowBufferStats() {
     this.currentMaxStrValue = null;
     this.currentMinStrValue = null;
+    this.currentMinStrValueInBytes = null;
+    this.currentMaxStrValueInBytes = null;
     this.currentMaxIntValue = null;
     this.currentMinIntValue = null;
     this.currentMaxRealValue = null;
@@ -73,25 +76,20 @@ class RowBufferStats {
 
   void addStrValue(String value) {
 
-    // Snowflake compares strings in UTF-8 encoding, not Java's default UTF-16
-    byte[] currentMinStringBytes =
-        currentMinStrValue != null ? currentMinStrValue.getBytes(StandardCharsets.UTF_8) : null;
-    byte[] currentMaxStringBytes =
-        currentMaxStrValue != null ? currentMaxStrValue.getBytes(StandardCharsets.UTF_8) : null;
     byte[] valueBytes = value != null ? value.getBytes(StandardCharsets.UTF_8) : null;
 
-    // Check if new min string
-    if (currentMinStrValue == null) {
-      currentMinStrValue = value;
-    } else if (Arrays.compare(currentMinStringBytes, valueBytes) > 0) {
-      currentMinStrValue = value;
-    }
-
-    // Check if new max string
-    if (this.currentMaxStrValue == null) {
+    // Check if new min/max string
+    if (this.currentMinStrValue == null) {
+      this.currentMinStrValue = value;
       this.currentMaxStrValue = value;
-    } else if (Arrays.compare(currentMaxStringBytes, valueBytes) < 0) {
+      this.currentMinStrValueInBytes = valueBytes;
+      this.currentMaxStrValueInBytes = valueBytes;
+    } else if (compare(currentMinStrValueInBytes, valueBytes) > 0) {
+      this.currentMinStrValue = value;
+      this.currentMinStrValueInBytes = valueBytes;
+    } else if (compare(currentMaxStrValueInBytes, valueBytes) < 0) {
       this.currentMaxStrValue = value;
+      this.currentMaxStrValueInBytes = valueBytes;
     }
   }
 
@@ -105,16 +103,12 @@ class RowBufferStats {
 
   void addIntValue(BigInteger value) {
 
-    // Set new min value
+    // Set new min/max value
     if (this.currentMinIntValue == null) {
       this.currentMinIntValue = value;
+      this.currentMaxIntValue = value;
     } else if (this.currentMinIntValue.compareTo(value) > 0) {
       this.currentMinIntValue = value;
-    }
-
-    // Set new max value
-    if (this.currentMaxIntValue == null) {
-      this.currentMaxIntValue = value;
     } else if (this.currentMaxIntValue.compareTo(value) < 0) {
       this.currentMaxIntValue = value;
     }
@@ -130,16 +124,12 @@ class RowBufferStats {
 
   void addRealValue(Double value) {
 
-    // Set new min value
+    // Set new min/max value
     if (this.currentMinRealValue == null) {
       this.currentMinRealValue = value;
+      this.currentMaxRealValue = value;
     } else if (this.currentMinRealValue.compareTo(value) > 0) {
       this.currentMinRealValue = value;
-    }
-
-    // Set new max value
-    if (this.currentMaxRealValue == null) {
-      this.currentMaxRealValue = value;
     } else if (this.currentMaxRealValue.compareTo(value) < 0) {
       this.currentMaxRealValue = value;
     }
@@ -178,5 +168,31 @@ class RowBufferStats {
    */
   long getDistinctValues() {
     return -1;
+  }
+
+  /**
+   * Compares two byte arrays lexicographically. If the two arrays share a common prefix then the
+   * lexicographic comparison is the result of comparing two elements, as if by Byte.compare(byte,
+   * byte), at an index within the respective arrays that is the prefix length. Otherwise, one array
+   * is a proper prefix of the other and, lexicographic comparison is the result of comparing the
+   * two array lengths.
+   *
+   * @param a the first array to compare
+   * @param b the second array to compare
+   * @return the value 0 if the first and second array are equal and contain the same elements in
+   *     the same order; a value less than 0 if the first array is lexicographically less than the
+   *     second array; and a value greater than 0 if the first array is lexicographically greater
+   *     than the second array
+   */
+  static int compare(byte[] a, byte[] b) {
+    if (a == b) return 0;
+
+    for (int mismatchIdx = 0; mismatchIdx < Math.min(a.length, b.length); mismatchIdx++) {
+      if (a[mismatchIdx] != b[mismatchIdx]) {
+        return Byte.compare(a[mismatchIdx], b[mismatchIdx]);
+      }
+    }
+
+    return a.length - b.length;
   }
 }

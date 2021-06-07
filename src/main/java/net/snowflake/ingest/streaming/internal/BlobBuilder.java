@@ -104,7 +104,7 @@ class BlobBuilder {
       List<byte[]> chunksDataList,
       long chunksChecksum,
       long chunksDataSize)
-      throws JsonProcessingException {
+      throws IOException {
     byte[] chunkMetadataListInBytes = MAPPER.writeValueAsBytes(chunksMetadataList);
 
     int metadataSize =
@@ -120,15 +120,15 @@ class BlobBuilder {
     // Create the blob file and add the metadata
     ByteArrayOutputStream blob = new ByteArrayOutputStream();
     if (!BLOB_NO_HEADER) {
-      blob.writeBytes(BLOB_EXTENSION_TYPE.getBytes());
+      blob.write(BLOB_EXTENSION_TYPE.getBytes());
       blob.write(BLOB_FORMAT_VERSION);
-      blob.writeBytes(Longs.toByteArray(metadataSize + chunksDataSize));
-      blob.writeBytes(Longs.toByteArray(chunksChecksum));
-      blob.writeBytes(Ints.toByteArray(chunkMetadataListInBytes.length));
-      blob.writeBytes(chunkMetadataListInBytes);
+      blob.write(Longs.toByteArray(metadataSize + chunksDataSize));
+      blob.write(Longs.toByteArray(chunksChecksum));
+      blob.write(Ints.toByteArray(chunkMetadataListInBytes.length));
+      blob.write(chunkMetadataListInBytes);
     }
     for (byte[] arrowData : chunksDataList) {
-      blob.writeBytes(arrowData);
+      blob.write(arrowData);
     }
 
     // We need to update the start offset for the EP and Arrow data in the request since

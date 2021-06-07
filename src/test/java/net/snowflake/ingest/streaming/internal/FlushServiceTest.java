@@ -353,22 +353,29 @@ public class FlushServiceTest {
     if (!BLOB_NO_HEADER) {
       Assert.assertEquals(
           BLOB_EXTENSION_TYPE,
-          new String(input.readNBytes(BLOB_TAG_SIZE_IN_BYTES), StandardCharsets.UTF_8));
-      offset += BLOB_TAG_SIZE_IN_BYTES;
-      Assert.assertEquals(BLOB_FORMAT_VERSION, input.readNBytes(BLOB_VERSION_SIZE_IN_BYTES)[0]);
-      offset += BLOB_VERSION_SIZE_IN_BYTES;
-      long totalSize = ByteBuffer.wrap(input.readNBytes(BLOB_FILE_SIZE_SIZE_IN_BYTES)).getLong();
-      offset += BLOB_FILE_SIZE_SIZE_IN_BYTES;
+          new String(
+              Arrays.copyOfRange(blob, offset, offset += BLOB_TAG_SIZE_IN_BYTES),
+              StandardCharsets.UTF_8));
       Assert.assertEquals(
-          checksum, ByteBuffer.wrap(input.readNBytes(BLOB_CHECKSUM_SIZE_IN_BYTES)).getLong());
-      offset += BLOB_CHECKSUM_SIZE_IN_BYTES;
+          BLOB_FORMAT_VERSION,
+          Arrays.copyOfRange(blob, offset, offset += BLOB_VERSION_SIZE_IN_BYTES)[0]);
+      long totalSize =
+          ByteBuffer.wrap(Arrays.copyOfRange(blob, offset, offset += BLOB_FILE_SIZE_SIZE_IN_BYTES))
+              .getLong();
+      Assert.assertEquals(
+          checksum,
+          ByteBuffer.wrap(Arrays.copyOfRange(blob, offset, offset += BLOB_CHECKSUM_SIZE_IN_BYTES))
+              .getLong());
       int chunkMetadataSize =
-          ByteBuffer.wrap(input.readNBytes(BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES)).getInt();
+          ByteBuffer.wrap(
+                  Arrays.copyOfRange(
+                      blob, offset, offset += BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES))
+              .getInt();
       Assert.assertTrue(chunkMetadataSize < totalSize);
-      offset += BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
-      offset += chunkMetadataSize;
       String parsedChunkMetadataList =
-          new String(input.readNBytes(chunkMetadataSize), StandardCharsets.UTF_8);
+          new String(
+              Arrays.copyOfRange(blob, offset, offset += chunkMetadataSize),
+              StandardCharsets.UTF_8);
       Map<String, Object> map =
           mapper.readValue(
               parsedChunkMetadataList.substring(1, parsedChunkMetadataList.length() - 1),
@@ -382,11 +389,10 @@ public class FlushServiceTest {
       Assert.assertEquals(chunkMetadata.getChunkMD5(), map.get("chunk_md5"));
       Assert.assertEquals(2, ((LinkedHashMap) map.get("eps")).get("rows"));
       Assert.assertNotNull(((LinkedHashMap) map.get("eps")).get("columns"));
-      byte[] actualData = input.readNBytes((int) (totalSize - offset));
+      byte[] actualData = Arrays.copyOfRange(blob, offset, (int) totalSize);
       Assert.assertArrayEquals(data, actualData);
     } else {
-      byte[] actualData = input.readAllBytes();
-      Assert.assertArrayEquals(data, actualData);
+      Assert.assertArrayEquals(data, blob);
     }
   }
 

@@ -232,11 +232,16 @@ public class SnowflakeStreamingIngestClientTest {
     Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
     Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
-            "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
-    client.requestBuilder =
-        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
 
     try {
       List<BlobMetadata> blobs =
@@ -273,11 +278,16 @@ public class SnowflakeStreamingIngestClientTest {
     Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
     Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
-            "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
-    client.requestBuilder =
-        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
 
     try {
       List<BlobMetadata> blobs =
@@ -314,11 +324,16 @@ public class SnowflakeStreamingIngestClientTest {
     Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
     Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
-            "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
-    client.requestBuilder =
-        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
 
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));

@@ -245,11 +245,16 @@ public class SnowflakeStreamingIngestChannelTest {
     Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
     Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
-            "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
-    client.requestBuilder =
-        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -308,11 +313,16 @@ public class SnowflakeStreamingIngestChannelTest {
     Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
     Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
-            "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
-    client.requestBuilder =
-        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -375,11 +385,16 @@ public class SnowflakeStreamingIngestChannelTest {
     Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
     Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal(
-            "client", new SnowflakeURL("snowflake.dev.local:8082"), null, httpClient, true);
-    client.requestBuilder =
-        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder(name)

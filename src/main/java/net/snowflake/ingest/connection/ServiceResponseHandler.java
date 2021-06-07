@@ -71,7 +71,7 @@ public final class ServiceResponseHandler {
           "Exceptional Status Code found in unmarshallInsert Response  - {}",
           statusLine.getStatusCode());
 
-      handleExceptionalStatus(statusLine, response);
+      handleException(statusLine, response);
       return null;
     }
 
@@ -107,8 +107,8 @@ public final class ServiceResponseHandler {
       LOGGER.warn(
           "Exceptional Status Code found in unmarshallHistoryResponse - {}", line.getStatusCode());
 
-      // handle the exceptional status code
-      handleExceptionalStatus(line, response);
+      // handle the exception
+      handleException(line, response);
       return null;
     }
 
@@ -136,8 +136,8 @@ public final class ServiceResponseHandler {
           "Exceptional Status Code found in " + "unmarshallHistoryRangeResponse - {}",
           line.getStatusCode());
 
-      // handle the exceptional status code
-      handleExceptionalStatus(line, response);
+      // handle the exception
+      handleException(line, response);
       return null;
     }
 
@@ -175,8 +175,8 @@ public final class ServiceResponseHandler {
           valueType.getName(),
           line.getStatusCode());
 
-      // Handle the exceptional status code
-      handleExceptionalStatus(line, response);
+      // Handle the exception
+      handleException(line, response);
     }
 
     // Grab the string version of the response entity
@@ -193,7 +193,7 @@ public final class ServiceResponseHandler {
    * @throws BackOffException -- if we have a 503 exception
    * @throws IOException - if we don't know what it is
    */
-  private static void handleExceptionalStatus(StatusLine statusLine, HttpResponse response)
+  private static void handleException(StatusLine statusLine, HttpResponse response)
       throws IOException, IngestResponseException {
     // if we have a 503 exception throw a backoff
     switch (statusLine.getStatusCode()) {

@@ -29,8 +29,9 @@ public class RegisterServiceTest {
 
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>("success", CompletableFuture.completedFuture(new BlobMetadata("path", null)));
-    Pair<String, CompletableFuture<BlobMetadata>> blobFuture2 =
-        new Pair<>("fail", CompletableFuture.failedFuture(new TimeoutException()));
+    CompletableFuture future = new CompletableFuture();
+    future.completeExceptionally(new TimeoutException());
+    Pair<String, CompletableFuture<BlobMetadata>> blobFuture2 = new Pair<>("fail", future);
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));
     Assert.assertEquals(2, rs.getBlobsList().size());
     try {

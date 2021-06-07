@@ -32,7 +32,7 @@ import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
 import org.bouncycastle.operator.InputDecryptorProvider;
 import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 
-/** Contains Streaming Ingest related utility functions */
+/** Contains Ingest related utility functions */
 public class Utils {
 
   private static final Logging logger = new Logging(Utils.class);
