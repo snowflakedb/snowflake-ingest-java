@@ -217,6 +217,12 @@ public class SnowflakeStreamingIngestClientTest {
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
     Assert.assertEquals("POST", request.getMethod());
+    Assert.assertEquals(
+        RequestBuilder.HTTP_HEADER_CONTENT_TYPE_JSON,
+        request.getFirstHeader(HttpHeaders.ACCEPT).getValue());
+    Assert.assertEquals(
+        RequestBuilder.JWT_TOKEN_TYPE,
+        request.getFirstHeader(RequestBuilder.SF_HEADER_AUTHORIZATION_TOKEN_TYPE).getValue());
   }
 
   @Test

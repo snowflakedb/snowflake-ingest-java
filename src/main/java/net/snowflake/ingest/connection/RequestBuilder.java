@@ -123,6 +123,13 @@ public final class RequestBuilder {
 
   public static final String OS_INFO_USER_AGENT_FORMAT = "(%s %s %s)";
 
+  public static final String SF_HEADER_AUTHORIZATION_TOKEN_TYPE =
+      "X-Snowflake-Authorization-Token-Type";
+
+  public static final String JWT_TOKEN_TYPE = "KEYPAIR_JWT";
+
+  public static final String HTTP_HEADER_CONTENT_TYPE_JSON = "application/json";
+
   /**
    * RequestBuilder - general usage constructor
    *
@@ -500,12 +507,17 @@ public final class RequestBuilder {
    */
   private static void addToken(HttpUriRequest request, String token) {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
+    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, JWT_TOKEN_TYPE);
   }
 
   private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
     addUserAgent(request, userAgentSuffix);
-    // add the auth token
+
+    // Add the auth token
     addToken(request, token);
+
+    // Add Accept header
+    request.setHeader(HttpHeaders.ACCEPT, HTTP_HEADER_CONTENT_TYPE_JSON);
   }
 
   /**
