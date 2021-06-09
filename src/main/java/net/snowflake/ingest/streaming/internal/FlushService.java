@@ -344,6 +344,7 @@ class FlushService {
             ArrowFieldNode node =
                 new ArrowFieldNode(sourceVector.getValueCount(), sourceVector.getNullCount());
             root.getVector(vectorIdx).loadFieldBuffers(node, sourceVector.getFieldBuffers());
+            sourceVector.close();
           }
         }
 

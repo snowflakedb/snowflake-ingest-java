@@ -248,6 +248,13 @@ public class FlushServiceTest {
                 (int) metadataResult.getChunkStartOffset().longValue(),
                 (int) (metadataResult.getChunkStartOffset() + metadataResult.getChunkLength())));
     Assert.assertEquals(md5, metadataResult.getChunkMD5());
+
+    try {
+      // Close allocator to make sure no memory leak
+      allocator.close();
+    } catch (Exception e) {
+      Assert.fail(String.format("Allocator close failure. Caused by %s", e.getMessage()));
+    }
   }
 
   @Test
