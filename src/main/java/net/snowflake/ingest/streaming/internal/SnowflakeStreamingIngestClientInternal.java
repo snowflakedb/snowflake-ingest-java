@@ -288,11 +288,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         .thenRun(
             () -> {
               try {
+                this.flushService.shutdown();
+                this.allocator.close();
                 if (!isTestMode) {
                   this.connection.close();
                 }
-                this.flushService.shutdown();
-                this.allocator.close();
               } catch (SQLException | InterruptedException e) {
                 throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
               }
