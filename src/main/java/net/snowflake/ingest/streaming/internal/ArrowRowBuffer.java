@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import javax.xml.bind.DatatypeConverter;
-import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -47,23 +45,6 @@ import org.apache.arrow.vector.util.TransferPair;
  * converted to Arrow format for faster processing
  */
 class ArrowRowBuffer {
-
-  private static final Logging logger = new Logging(ArrowRowBuffer.class);
-
-  // Constants for column fields
-  private static final String FIELD_EPOCH_IN_SECONDS = "epoch"; // seconds since epoch
-  private static final String FIELD_TIME_ZONE = "timezone"; // time zone index
-  private static final String FIELD_FRACTION_IN_NANOSECONDS = "fraction"; // fraction in nanoseconds
-
-  // Column metadata that will send back to server as part of the blob, and will be used by the
-  // Arrow reader
-  private static final String COLUMN_PHYSICAL_TYPE = "physicalType";
-  private static final String COLUMN_LOGICAL_TYPE = "logicalType";
-  private static final String COLUMN_SCALE = "scale";
-  private static final String COLUMN_PRECISION = "precision";
-  private static final String COLUMN_CHAR_LENGTH = "charLength";
-  private static final String COLUMN_BYTE_LENGTH = "byteLength";
-  @VisibleForTesting static final int DECIMAL_BIT_WIDTH = 128;
 
   // Snowflake table column logical type
   private static enum ColumnLogicalType {
@@ -105,6 +86,23 @@ class ArrowRowBuffer {
     BINARY,
     ROW,
   }
+
+  private static final Logging logger = new Logging(ArrowRowBuffer.class);
+
+  // Constants for column fields
+  private static final String FIELD_EPOCH_IN_SECONDS = "epoch"; // seconds since epoch
+  private static final String FIELD_TIME_ZONE = "timezone"; // time zone index
+  private static final String FIELD_FRACTION_IN_NANOSECONDS = "fraction"; // fraction in nanoseconds
+
+  // Column metadata that will send back to server as part of the blob, and will be used by the
+  // Arrow reader
+  private static final String COLUMN_PHYSICAL_TYPE = "physicalType";
+  private static final String COLUMN_LOGICAL_TYPE = "logicalType";
+  static final String COLUMN_SCALE = "scale";
+  private static final String COLUMN_PRECISION = "precision";
+  private static final String COLUMN_CHAR_LENGTH = "charLength";
+  private static final String COLUMN_BYTE_LENGTH = "byteLength";
+  @VisibleForTesting static final int DECIMAL_BIT_WIDTH = 128;
 
   // Map the column name to the Arrow vector (buffer)
   @VisibleForTesting final Map<String, FieldVector> vectors;
@@ -231,7 +229,7 @@ class ArrowRowBuffer {
     } catch (Exception e) {
       // TODO SNOW-348857: Return a response instead in case customer wants to skip error rows
       // TODO SNOW-348857: What offset token to return if the latest row failed?
-      throw new SFException(e, ErrorCode.INVALID_ROW, e.toString());
+      throw new SFException(e, ErrorCode.INVALID_ROW, e.getMessage());
     } finally {
       this.flushLock.unlock();
     }
@@ -540,30 +538,35 @@ class ArrowRowBuffer {
           case FIXED:
             switch (physicalType) {
               case SB1:
-                ((TinyIntVector) vector).setSafe(this.curRowIndex, (byte) value);
-                stats.addIntValue(BigInteger.valueOf((byte) value));
+                byte byteValue = DataValidationUtil.validateAndParseByte(value);
+                ((TinyIntVector) vector).setSafe(this.curRowIndex, byteValue);
+                stats.addIntValue(BigInteger.valueOf(byteValue));
                 this.bufferSize += 1;
                 break;
               case SB2:
-                ((SmallIntVector) vector).setSafe(this.curRowIndex, (short) value);
-                stats.addIntValue(BigInteger.valueOf((short) value));
+                short shortValue = DataValidationUtil.validateAndParseShort(value);
+                ((SmallIntVector) vector).setSafe(this.curRowIndex, shortValue);
+                stats.addIntValue(BigInteger.valueOf(shortValue));
                 this.bufferSize += 2;
                 break;
               case SB4:
-                ((IntVector) vector).setSafe(this.curRowIndex, (int) value);
-                stats.addIntValue(BigInteger.valueOf((int) value));
+                int intVal = DataValidationUtil.validateAndParseInteger(value);
+                ((IntVector) vector).setSafe(this.curRowIndex, intVal);
+                stats.addIntValue(BigInteger.valueOf(intVal));
                 this.bufferSize += 4;
                 break;
               case SB8:
-                ((BigIntVector) vector).setSafe(this.curRowIndex, (long) value);
+                long longValue = DataValidationUtil.validateAndParseLong(value);
+                ((BigIntVector) vector).setSafe(this.curRowIndex, longValue);
                 stats.addIntValue(BigInteger.valueOf((long) value));
                 this.bufferSize += 8;
                 break;
               case SB16:
-                ((DecimalVector) vector)
-                    .setSafe(this.curRowIndex, new BigDecimal(value.toString()));
-                BigDecimal decimalVal = new BigDecimal(value.toString());
-                stats.addIntValue(decimalVal.toBigInteger());
+                BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
+                ((DecimalVector) vector).setSafe(this.curRowIndex, bigDecimalValue);
+                // TODO should this be real?
+                // https://snowflakecomputing.atlassian.net/browse/SNOW-367798
+                stats.addIntValue(bigDecimalValue.toBigInteger());
                 this.bufferSize += 16;
                 break;
               default:
@@ -576,7 +579,7 @@ class ArrowRowBuffer {
           case TEXT:
           case OBJECT:
           case VARIANT:
-            String str = value.toString();
+            String str = DataValidationUtil.validateAndParseVariant(value);
             Text text = new Text(str);
             ((VarCharVector) vector).setSafe(this.curRowIndex, text);
             int len = text.getBytes().length;
@@ -590,9 +593,8 @@ class ArrowRowBuffer {
               case SB8:
                 {
                   BigIntVector bigIntVector = (BigIntVector) vector;
-                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
-                  String valueString = getStringValue(value);
-                  BigInteger timeInScale = getTimeInScale(valueString, scale);
+                  BigInteger timeInScale =
+                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
                   bigIntVector.setSafe(curRowIndex, timeInScale.longValue());
                   stats.addIntValue(timeInScale);
                   this.bufferSize += 8;
@@ -607,26 +609,14 @@ class ArrowRowBuffer {
                       (IntVector) structVector.getChild(FIELD_FRACTION_IN_NANOSECONDS);
                   this.bufferSize += 0.25; // for children vector's null value
                   structVector.setIndexDefined(curRowIndex);
-                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
-                  String valueString = getStringValue(value);
 
-                  String[] items = valueString.split("\\.");
-                  long epoch = Long.parseLong(items[0]);
-                  int l = items.length > 1 ? items[1].length() : 0;
-                  // Fraction is in nanoseconds, but Snowflake will error if the fraction gives
-                  // accuracy greater than the scale
-                  int fraction =
-                      l == 0
-                          ? 0
-                          : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
-                  if (fraction % Power10.intTable[9 - scale] != 0) {
-                    throw new SFException(
-                        ErrorCode.INVALID_ROW, "Row specifies accuracy greater than column scale");
-                  }
-                  epochVector.setSafe(curRowIndex, epoch);
-                  fractionVector.setSafe(curRowIndex, fraction);
+                  TimestampWrapper timestampWrapper =
+                      DataValidationUtil.validateAndParseTimestampNtzSb16(
+                          value, field.getMetadata());
+                  epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
+                  fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   this.bufferSize += 12;
-                  stats.addIntValue(getTimeInScale(valueString, scale));
+                  stats.addIntValue(timestampWrapper.getTimeInScale());
                   break;
                 }
               default:
@@ -634,18 +624,21 @@ class ArrowRowBuffer {
             }
             break;
           case DATE:
-            DateDayVector dateDayVector = (DateDayVector) vector;
-            // Expect days past the epoch
-            dateDayVector.setSafe(curRowIndex, Integer.parseInt((String) value));
-            stats.addIntValue(new BigInteger((String) value));
-            this.bufferSize += 4;
-            break;
+            {
+              DateDayVector dateDayVector = (DateDayVector) vector;
+              // Expect days past the epoch
+              int intValue = DataValidationUtil.validateAndParseDate(value);
+              dateDayVector.setSafe(curRowIndex, intValue);
+              stats.addIntValue(BigInteger.valueOf(intValue));
+              this.bufferSize += 4;
+              break;
+            }
           case TIME:
             switch (physicalType) {
               case SB4:
                 {
-                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
-                  BigInteger timeInScale = getTimeInScale(getStringValue(value), scale);
+                  BigInteger timeInScale =
+                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
                   stats.addIntValue(timeInScale);
                   ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
                   stats.addIntValue(timeInScale);
@@ -654,8 +647,8 @@ class ArrowRowBuffer {
                 }
               case SB8:
                 {
-                  int scale = Integer.parseInt(field.getMetadata().get(COLUMN_SCALE));
-                  BigInteger timeInScale = getTimeInScale(getStringValue(value), scale);
+                  BigInteger timeInScale =
+                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
                   ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
                   stats.addIntValue(timeInScale);
                   this.bufferSize += 8;
@@ -666,38 +659,21 @@ class ArrowRowBuffer {
             }
             break;
           case BOOLEAN:
-            int intValue;
-            if (value instanceof Boolean) {
-              intValue = (boolean) value ? 1 : 0;
-            } else if (value instanceof Number) {
-              intValue = ((Number) value).doubleValue() > 0 ? 1 : 0;
-            } else {
-              intValue = this.convertStringToBoolean((String) value) ? 1 : 0;
+            {
+              int intValue = DataValidationUtil.validateAndParseBoolean(value);
+              ((BitVector) vector).setSafe(curRowIndex, intValue);
+              this.bufferSize += 0.125;
+              stats.addIntValue(BigInteger.valueOf(intValue));
+              break;
             }
-            ((BitVector) vector).setSafe(curRowIndex, intValue);
-            this.bufferSize += 0.125;
-            stats.addIntValue(BigInteger.valueOf(intValue));
-            break;
           case BINARY:
-            byte[] bytes;
-            if (value instanceof byte[]) {
-              bytes = (byte[]) value;
-            } else {
-              bytes = DatatypeConverter.parseHexBinary((String) value);
-            }
+            byte[] bytes = DataValidationUtil.validateAndParseBinary(value);
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             stats.setCurrentMaxLength(bytes.length);
             this.bufferSize += bytes.length;
             break;
           case REAL:
-            double doubleValue;
-            if (value instanceof Float || value instanceof Double) {
-              doubleValue = (double) value;
-            } else if (value instanceof BigDecimal) {
-              doubleValue = ((BigDecimal) value).doubleValue();
-            } else {
-              doubleValue = Double.parseDouble((String) value);
-            }
+            double doubleValue = DataValidationUtil.validateAndParseReal(value);
             ((Float8Vector) vector).setSafe(curRowIndex, doubleValue);
             stats.addRealValue(doubleValue);
             this.bufferSize += 8;
@@ -708,34 +684,5 @@ class ArrowRowBuffer {
       }
     }
     this.curRowIndex++;
-  }
-
-  boolean convertStringToBoolean(String value) {
-    return "1".equalsIgnoreCase(value)
-        || "yes".equalsIgnoreCase(value)
-        || "y".equalsIgnoreCase(value)
-        || "t".equalsIgnoreCase(value)
-        || "true".equalsIgnoreCase(value)
-        || "on".equalsIgnoreCase(value);
-  }
-
-  BigInteger getTimeInScale(String value, int scale) {
-    BigDecimal decVal = new BigDecimal(value);
-    BigDecimal epochScale = decVal.multiply(BigDecimal.valueOf(Power10.intTable[scale]));
-    return epochScale.toBigInteger();
-  }
-
-  String getStringValue(Object value) {
-    String stringValue;
-
-    if (value instanceof String) {
-      stringValue = (String) value;
-    } else if (value instanceof BigDecimal) {
-      stringValue = ((BigDecimal) value).toPlainString();
-    } else {
-      stringValue = value.toString();
-    }
-
-    return stringValue;
   }
 }

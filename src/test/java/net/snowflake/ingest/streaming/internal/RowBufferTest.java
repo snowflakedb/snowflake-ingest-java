@@ -1209,35 +1209,4 @@ public class RowBufferTest {
         Double.valueOf(123.4567), result.getColumnEps().get("COLREAL").getCurrentMaxRealValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLREAL").getCurrentNullCount());
   }
-
-  @Test
-  public void testGetStringValue() throws Exception {
-    Assert.assertEquals("123", rowBuffer.getStringValue("123"));
-    Assert.assertEquals("123", rowBuffer.getStringValue(123));
-    Assert.assertEquals("123", rowBuffer.getStringValue(new BigDecimal("123")));
-    Assert.assertEquals("123", rowBuffer.getStringValue(new BigInteger("123")));
-    Assert.assertEquals("123.0", rowBuffer.getStringValue(123f));
-    Assert.assertEquals("123.0", rowBuffer.getStringValue(123d));
-    Assert.assertEquals("123", rowBuffer.getStringValue(123l));
-  }
-
-  @Test
-  public void testGetTimestampInScale() throws Exception {
-    Assert.assertEquals(new BigInteger("123"), rowBuffer.getTimeInScale("123.000000000", 0));
-    Assert.assertEquals(new BigInteger("12301"), rowBuffer.getTimeInScale("123.01", 2));
-  }
-
-  @Test
-  public void testConvertStringToBoolean() throws Exception {
-    Assert.assertEquals(true, rowBuffer.convertStringToBoolean("true"));
-    Assert.assertEquals(true, rowBuffer.convertStringToBoolean("TRue"));
-    Assert.assertEquals(true, rowBuffer.convertStringToBoolean("t"));
-    Assert.assertEquals(true, rowBuffer.convertStringToBoolean("y"));
-    Assert.assertEquals(true, rowBuffer.convertStringToBoolean("yes"));
-    Assert.assertEquals(true, rowBuffer.convertStringToBoolean("1"));
-    Assert.assertEquals(true, rowBuffer.convertStringToBoolean("on"));
-    Assert.assertEquals(false, rowBuffer.convertStringToBoolean("off"));
-    Assert.assertEquals(false, rowBuffer.convertStringToBoolean("honk"));
-    Assert.assertEquals(false, rowBuffer.convertStringToBoolean("false"));
-  }
 }
