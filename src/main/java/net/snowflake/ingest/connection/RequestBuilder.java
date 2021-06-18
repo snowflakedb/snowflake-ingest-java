@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author obabarinsa
  */
-public final class RequestBuilder {
+public class RequestBuilder {
   // a logger for all of our needs in this class
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestBuilder.class.getName());
 
@@ -603,13 +603,13 @@ public final class RequestBuilder {
   /**
    * Generate post request for streaming ingest related APIs
    *
-   * @param payload POST request payload
+   * @param payload POST request payload as string
    * @param endPoint REST API endpoint
    * @param message error message if there are failures during HTTP building
    * @return URI for the POST request
    */
   public HttpPost generateStreamingIngestPostRequest(
-      Map<Object, Object> payload, String endPoint, String message) {
+      String payload, String endPoint, String message) {
     // Make the corresponding URI
     URI uri = null;
     try {
@@ -619,6 +619,28 @@ public final class RequestBuilder {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }
 
+    // Make the post request
+    HttpPost post = new HttpPost(uri);
+
+    addHeaders(post, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+
+    // The entity for the containing the json
+    final StringEntity entity = new StringEntity(payload, ContentType.APPLICATION_JSON);
+    post.setEntity(entity);
+
+    return post;
+  }
+
+  /**
+   * Generate post request for streaming ingest related APIs
+   *
+   * @param payload POST request payload
+   * @param endPoint REST API endpoint
+   * @param message error message if there are failures during HTTP building
+   * @return URI for the POST request
+   */
+  public HttpPost generateStreamingIngestPostRequest(
+      Map<Object, Object> payload, String endPoint, String message) {
     // Convert the payload to string
     String payloadInString = null;
     try {
@@ -627,16 +649,7 @@ public final class RequestBuilder {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }
 
-    // Make the post request
-    HttpPost post = new HttpPost(uri);
-
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
-
-    // The entity for the containing the json
-    final StringEntity entity = new StringEntity(payloadInString, ContentType.APPLICATION_JSON);
-    post.setEntity(entity);
-
-    return post;
+    return this.generateStreamingIngestPostRequest(payloadInString, endPoint, message);
   }
 
   /**

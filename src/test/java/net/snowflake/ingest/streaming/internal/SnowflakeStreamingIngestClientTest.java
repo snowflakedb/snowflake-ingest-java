@@ -1,12 +1,17 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
+import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.USER_NAME;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.security.KeyPair;
@@ -44,9 +49,11 @@ import org.bouncycastle.pkcs.jcajce.JcePKCSPBEOutputEncryptorBuilder;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 public class SnowflakeStreamingIngestClientTest {
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
   public void testClientFactoryMissingName() throws Exception {
@@ -158,6 +165,181 @@ public class SnowflakeStreamingIngestClientTest {
                 .build(passwd)));
     pemWriter.close();
     return writer.toString();
+  }
+
+  @Test
+  public void testGetChannelsStatusWithRequest() throws Exception {
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("honk");
+    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[0]);
+    String responseString = objectMapper.writeValueAsString(response);
+
+    HttpClient httpClient = Mockito.mock(HttpClient.class);
+    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
+
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schemaName", "tableName", "0", 0L, 0L, null, true);
+
+    ChannelsStatusRequest.ChannelRequestDTO dto =
+        new ChannelsStatusRequest.ChannelRequestDTO(channel);
+    ChannelsStatusRequest request = new ChannelsStatusRequest();
+    request.setChannels(new ChannelsStatusRequest.ChannelRequestDTO[] {dto});
+    ChannelsStatusResponse result = client.getChannelsStatus(request);
+    Assert.assertEquals(response.getMessage(), result.getMessage());
+    Mockito.verify(requestBuilder)
+        .generateStreamingIngestPostRequest(
+            objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
+  }
+
+  @Test
+  public void testGetChannelsStatusWithRequestError() throws Exception {
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("honk");
+    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[0]);
+    String responseString = objectMapper.writeValueAsString(response);
+
+    HttpClient httpClient = Mockito.mock(HttpClient.class);
+    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(500);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
+
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schemaName", "tableName", "0", 0L, 0L, null, true);
+
+    ChannelsStatusRequest.ChannelRequestDTO dto =
+        new ChannelsStatusRequest.ChannelRequestDTO(channel);
+    ChannelsStatusRequest request = new ChannelsStatusRequest();
+    request.setChannels(new ChannelsStatusRequest.ChannelRequestDTO[] {dto});
+    try {
+      client.getChannelsStatus(request);
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CHANNEL_STATUS_FAILURE.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
+  public void testGetChannelsStatusWithOutRequest() throws Exception {
+    OpenChannelResponse response = new OpenChannelResponse();
+    response.setStatusCode(0L);
+    response.setMessage("honk");
+    response.setClientSequencer(0L);
+    response.setOffsetToken("0");
+    response.setRowSequencer(0L);
+    response.setTableColumns(Lists.newArrayList());
+
+    // ObjectMapper needs visibility changed to deserialize package private fields in this test
+    ObjectMapper anyVisibilityObjectMapper = new ObjectMapper();
+    anyVisibilityObjectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+    String responseString = anyVisibilityObjectMapper.writeValueAsString(response);
+
+    HttpClient httpClient = Mockito.mock(HttpClient.class);
+    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+    SnowflakeStreamingIngestClientInternal client =
+        Mockito.spy(
+            new SnowflakeStreamingIngestClientInternal(
+                "client",
+                new SnowflakeURL("snowflake.dev.local:8082"),
+                null,
+                httpClient,
+                true,
+                requestBuilder));
+
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schema", "table", "0", 0L, 0L, null, true);
+
+    Mockito.doReturn(null).when(client).getChannelsStatus(Mockito.any());
+
+    OpenChannelRequest openChannelRequest =
+        OpenChannelRequest.builder("channel")
+            .setDBName("db")
+            .setSchemaName("schema")
+            .setTableName("table")
+            .build();
+    client.openChannel(openChannelRequest);
+
+    ChannelsStatusRequest.ChannelRequestDTO dto =
+        new ChannelsStatusRequest.ChannelRequestDTO(channel);
+    ChannelsStatusRequest expectedRequest = new ChannelsStatusRequest();
+    expectedRequest.setChannels(new ChannelsStatusRequest.ChannelRequestDTO[] {dto});
+
+    client.getChannelsStatus();
+    ArgumentCaptor<ChannelsStatusRequest> captor =
+        ArgumentCaptor.forClass(ChannelsStatusRequest.class);
+    Mockito.verify(client).getChannelsStatus(captor.capture());
+    ChannelsStatusRequest actualRequest = captor.getValue();
+
+    Assert.assertEquals(expectedRequest.getRequestId(), actualRequest.getRequestId());
+    Assert.assertEquals(expectedRequest.getChannels().length, actualRequest.getChannels().length);
+    Assert.assertEquals(
+        expectedRequest.getChannels()[0].getChannelName(),
+        actualRequest.getChannels()[0].getChannelName());
+    Assert.assertEquals(
+        expectedRequest.getChannels()[0].getDatabaseName(),
+        actualRequest.getChannels()[0].getDatabaseName());
+    Assert.assertEquals(
+        expectedRequest.getChannels()[0].getSchemaName(),
+        actualRequest.getChannels()[0].getSchemaName());
+    Assert.assertEquals(
+        expectedRequest.getChannels()[0].getTableName(),
+        actualRequest.getChannels()[0].getTableName());
+    Assert.assertEquals(
+        expectedRequest.getChannels()[0].getRowSequencer(),
+        actualRequest.getChannels()[0].getRowSequencer());
+    Assert.assertEquals(
+        expectedRequest.getChannels()[0].getClientSequencer(),
+        actualRequest.getChannels()[0].getClientSequencer());
   }
 
   @Test

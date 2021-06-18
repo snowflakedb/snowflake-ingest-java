@@ -38,6 +38,7 @@ public class Constants {
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
 
   // Channel level constants
+  public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 

@@ -4,12 +4,14 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -17,11 +19,14 @@ import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.SnowflakeDriver;
 import net.snowflake.ingest.connection.IngestResponseException;
@@ -49,6 +54,9 @@ import org.apache.http.client.HttpClient;
 public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamingIngestClient {
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestClientInternal.class);
+
+  // object mapper for all marshalling and unmarshalling
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   // Name of the client
   private final String name;
@@ -233,6 +241,68 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /**
+   * Fetch channels status from Snowflake for all of client's open channels
+   *
+   * @return a ChannelsStatusResponse object
+   */
+  public ChannelsStatusResponse getChannelsStatus() {
+    if (isClosed()) {
+      throw new SFException(ErrorCode.CLOSED_CLIENT);
+    }
+
+    ChannelsStatusRequest request = new ChannelsStatusRequest();
+    ArrayList<ChannelsStatusRequest.ChannelRequestDTO> requestDTOs = new ArrayList<>();
+
+    Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
+        itr = this.channelCache.iterator();
+    while (itr.hasNext()) {
+      ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> byTable =
+          itr.next().getValue();
+      for (SnowflakeStreamingIngestChannelInternal channel : byTable.values()) {
+        ChannelsStatusRequest.ChannelRequestDTO dto =
+            new ChannelsStatusRequest.ChannelRequestDTO(channel);
+        requestDTOs.add(dto);
+      }
+    }
+    ChannelsStatusRequest.ChannelRequestDTO[] dtoArray =
+        new ChannelsStatusRequest.ChannelRequestDTO[requestDTOs.size()];
+    request.setChannels(requestDTOs.toArray(dtoArray));
+
+    return getChannelsStatus(request);
+  }
+
+  /**
+   * Fetch channels status from Snowflake
+   *
+   * @param request the channels status request
+   * @return a ChannelsStatusResponse object
+   */
+  ChannelsStatusResponse getChannelsStatus(ChannelsStatusRequest request) {
+    if (isClosed()) {
+      throw new SFException(ErrorCode.CLOSED_CLIENT);
+    }
+
+    try {
+      String payload = objectMapper.writeValueAsString(request);
+      ChannelsStatusResponse response =
+          ServiceResponseHandler.unmarshallStreamingIngestResponse(
+              httpClient.execute(
+                  requestBuilder.generateStreamingIngestPostRequest(
+                      payload, CHANNEL_STATUS_ENDPOINT, "channel status")),
+              ChannelsStatusResponse.class);
+
+      // Check for Snowflake specific response code
+      if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        throw new SFException(ErrorCode.CHANNEL_STATUS_FAILURE, response.getMessage());
+      }
+
+      return response;
+    } catch (IOException | IngestResponseException e) {
+      throw new SFException(e, ErrorCode.CHANNEL_STATUS_FAILURE);
+    }
+  }
+
+  /**
    * Register the uploaded blobs to a Snowflake table
    *
    * @param blobs list of uploaded blobs
@@ -289,6 +359,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
             () -> {
               try {
                 this.flushService.shutdown();
+                this.allocator.getChildAllocators().forEach(BufferAllocator::close);
                 this.allocator.close();
                 if (!isTestMode) {
                   this.connection.close();

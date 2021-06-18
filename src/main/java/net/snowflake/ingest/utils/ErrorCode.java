@@ -28,7 +28,8 @@ public enum ErrorCode {
   IO_ERROR("0020"),
   UNABLE_TO_CONNECT_TO_STAGE("0021"),
   KEYPAIR_CREATION_FAILURE("0022"),
-  MD5_HASHING_NOT_AVAILABLE("0023");
+  MD5_HASHING_NOT_AVAILABLE("0023"),
+  CHANNEL_STATUS_FAILURE("0024");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

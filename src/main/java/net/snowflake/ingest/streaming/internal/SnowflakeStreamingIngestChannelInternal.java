@@ -182,6 +182,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     return this.rowSequencer.incrementAndGet();
   }
 
+  long getRowSequencer() {
+    return this.rowSequencer.get();
+  }
+
   /**
    * Get the fully qualified table name that the channel belongs to
    *
