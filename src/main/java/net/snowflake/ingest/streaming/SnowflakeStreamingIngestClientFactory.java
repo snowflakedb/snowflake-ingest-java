@@ -40,6 +40,10 @@ public class SnowflakeStreamingIngestClientFactory {
         throw new SFException(ErrorCode.MISSING_CONFIG, "Account URL");
       }
 
+      if (!this.prop.containsKey(Constants.ROLE_NAME)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, "Role Name");
+      }
+
       SnowflakeURL accountURL = new SnowflakeURL(this.prop.getProperty(Constants.ACCOUNT_URL));
       Properties prop = Utils.createProperties(this.prop, accountURL.sslEnabled());
       return new SnowflakeStreamingIngestClientInternal(this.name, accountURL, prop);

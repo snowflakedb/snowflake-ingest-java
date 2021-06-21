@@ -7,6 +7,7 @@ package net.snowflake.ingest.utils;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_SSL;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
+import static net.snowflake.ingest.utils.Constants.ROLE_NAME;
 
 import com.codahale.metrics.Timer;
 import com.google.common.base.Strings;
@@ -88,6 +89,9 @@ public class Utils {
           break;
         case Constants.USER_NAME:
           properties.put(JDBC_USER, val);
+          break;
+        case Constants.ROLE_NAME:
+          properties.put(ROLE_NAME, val);
           break;
         case Constants.PRIVATE_KEY_PASSPHRASE:
           privateKeyPassphrase = val;

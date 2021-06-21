@@ -6,6 +6,7 @@ import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.ROLE_NAME;
 import static net.snowflake.ingest.utils.Constants.USER_NAME;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -60,6 +61,7 @@ public class SnowflakeStreamingIngestClientTest {
     Properties prop = new Properties();
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE_NAME, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -75,6 +77,7 @@ public class SnowflakeStreamingIngestClientTest {
     Properties prop = new Properties();
     prop.put(USER_NAME, TestUtils.getUser());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE_NAME, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -91,6 +94,7 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(USER_NAME, TestUtils.getUser());
     prop.put(ACCOUNT_URL, "invalid");
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE_NAME, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -107,6 +111,7 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(USER_NAME, TestUtils.getUser());
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, "invalid");
+    prop.put(ROLE_NAME, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -126,6 +131,7 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(USER_NAME, TestUtils.getUser());
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE_NAME, "role");
 
     SnowflakeStreamingIngestClient client =
         SnowflakeStreamingIngestClientFactory.builder("client").setProperties(prop).build();
@@ -347,6 +353,7 @@ public class SnowflakeStreamingIngestClientTest {
     Properties prop = new Properties();
     prop.put(USER_NAME, TestUtils.getUser());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE_NAME, "role");
     prop = Utils.createProperties(prop, false);
 
     String urlStr = "https://sfctest0.snowflakecomputing.com:80";

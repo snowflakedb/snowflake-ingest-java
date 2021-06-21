@@ -70,6 +70,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Name of the client
   private final String name;
 
+  // Snowflake role for the client to use
+  private String role;
+
   // Connection to the Snowflake account
   private Connection connection;
 
@@ -132,6 +135,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     if (!isTestMode) {
       try {
         logger.logDebug("Trying to connect to Snowflake account={}", accountURL.getFullUrl());
+        this.role = prop.getProperty(Constants.ROLE_NAME);
         this.connection = new SnowflakeDriver().connect(accountURL.getJdbcUrl(), prop);
       } catch (SQLException e) {
         throw new SFException(e, ErrorCode.SF_CONNECTION_FAILURE);
@@ -203,6 +207,16 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return this.name;
   }
 
+  /**
+   * Get the role used by the client
+   *
+   * @return the client's role
+   */
+  @Override
+  public String getRole() {
+    return this.role;
+  }
+
   /** @return a boolean to indicate whether the client is closed or not */
   @Override
   public boolean isClosed() {
@@ -233,6 +247,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       payload.put("database", request.getDBName());
       payload.put("schema", request.getSchemaName());
       payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
+      payload.put("role", this.role);
 
       OpenChannelResponse response =
           ServiceResponseHandler.unmarshallStreamingIngestResponse(
@@ -286,6 +301,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     ChannelsStatusRequest request = new ChannelsStatusRequest();
+    request.setRole(this.role);
     ArrayList<ChannelsStatusRequest.ChannelRequestDTO> requestDTOs = new ArrayList<>();
 
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
@@ -352,6 +368,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       Map<Object, Object> payload = new HashMap<>();
       payload.put("request_id", null);
       payload.put("blobs", blobs);
+      payload.put("role", this.role);
 
       RegisterBlobResponse response =
           ServiceResponseHandler.unmarshallStreamingIngestResponse(
