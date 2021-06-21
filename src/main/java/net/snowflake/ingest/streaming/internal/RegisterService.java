@@ -6,8 +6,10 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
+import com.codahale.metrics.Timer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -16,6 +18,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.Utils;
 
 /**
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
@@ -70,13 +73,13 @@ class RegisterService {
   /**
    * Register the blobs to Snowflake. This method is called serially from a single thread to ensure
    * the ordering is maintained across independent blobs in the same channel.
+   *
+   * @param latencyTimerContextMap the map that stores the latency timer for each blob
+   * @return a list of blob names that has errors during registration
    */
-  List<String> registerBlobs() {
-    logger.logDebug("Start registering blob task");
+  List<String> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap) {
     List<String> errorBlobs = new ArrayList<>();
-    if (this.blobsList.isEmpty()) {
-      logger.logDebug("No blob to register");
-    } else {
+    if (!this.blobsList.isEmpty()) {
       // Will skip and try again later if someone else is holding the lock
       if (this.blobsListLock.tryLock()) {
         List<Pair<String, CompletableFuture<BlobMetadata>>> oldList = null;
@@ -114,12 +117,26 @@ class RegisterService {
                 }
               });
           if (blobs.size() > 0 && !isTestMode) {
+            Timer.Context registerContext =
+                Utils.createTimerContext(this.owningClient.registerLatency);
+
             this.owningClient.registerBlobs(blobs);
+
+            if (registerContext != null) {
+              registerContext.stop();
+              blobs.forEach(
+                  blob ->
+                      latencyTimerContextMap.computeIfPresent(
+                          blob.getName(),
+                          (k, v) -> {
+                            v.stop();
+                            return null;
+                          }));
+            }
           }
         }
       }
     }
-    logger.logDebug("Finish registering blob task");
     return errorBlobs;
   }
 

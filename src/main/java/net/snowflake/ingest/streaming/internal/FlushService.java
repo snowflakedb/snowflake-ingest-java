@@ -12,13 +12,16 @@ import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
 import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
 
+import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +60,8 @@ class FlushService {
   // Increasing counter to generate a unique blob name per client
   private final AtomicLong counter;
 
-  // The client name that owns this flush service
-  private final String owningClientName;
+  // The client that owns this flush service
+  private final SnowflakeStreamingIngestClientInternal owningClient;
 
   // Thread to schedule the flush job
   @VisibleForTesting ScheduledExecutorService flushWorker;
@@ -87,6 +90,9 @@ class FlushService {
   // Indicates whether it's running as part of the test
   private final boolean isTestMode;
 
+  // A map which stores the timer for each blob in order to capture the flush latency
+  private final Map<String, Timer.Context> latencyTimerContextMap;
+
   /**
    * Constructor for TESTING that takes (usually mocked) StreamingIngestStage
    *
@@ -101,7 +107,7 @@ class FlushService {
       Connection conn,
       StreamingIngestStage targetStage, // For testing
       boolean isTestMode) {
-    this.owningClientName = client.getName();
+    this.owningClient = client;
     this.channelCache = cache;
     this.targetStage = targetStage;
     this.counter = new AtomicLong(0);
@@ -109,6 +115,7 @@ class FlushService {
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
+    this.latencyTimerContextMap = new HashMap<>();
     createWorkers();
   }
 
@@ -125,7 +132,7 @@ class FlushService {
       ChannelCache cache,
       Connection conn,
       boolean isTestMode) {
-    this.owningClientName = client.getName();
+    this.owningClient = client;
     this.channelCache = cache;
     try {
       this.targetStage =
@@ -140,6 +147,7 @@ class FlushService {
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
+    this.latencyTimerContextMap = new HashMap<>();
     createWorkers();
   }
 
@@ -154,6 +162,12 @@ class FlushService {
    *     if none of the conditions is met above
    */
   CompletableFuture<Void> flush(boolean isForce) {
+    if (this.owningClient.cpuHistogram != null) {
+      double cpuLoad =
+          ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class)
+              .getProcessCpuLoad();
+      this.owningClient.cpuHistogram.update((long) (cpuLoad * 100));
+    }
     long timeDiff = System.currentTimeMillis() - this.lastFlushTime;
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
@@ -161,7 +175,7 @@ class FlushService {
             && (this.isNeedFlush || timeDiff >= BUFFER_FLUSH_INTERVAL_IN_MS))) {
       logger.logDebug(
           "Submit flush task on client={}, isForce={}, isNeedFlush={}, time diff in ms={}",
-          this.owningClientName,
+          this.owningClient.getName(),
           isForce,
           this.isNeedFlush,
           timeDiff);
@@ -169,7 +183,11 @@ class FlushService {
       distributeFlushTasks();
       this.isNeedFlush = false;
       this.lastFlushTime = System.currentTimeMillis();
-      return CompletableFuture.runAsync(this.registerService::registerBlobs, this.registerWorker);
+      return CompletableFuture.runAsync(
+          () -> {
+            this.registerService.registerBlobs(latencyTimerContextMap);
+          },
+          this.registerWorker);
     }
 
     return CompletableFuture.completedFuture(null);
@@ -213,7 +231,7 @@ class FlushService {
     logger.logDebug(
         "Create {} threads for build/upload blobs for client={}",
         buildUploadThreadCount,
-        this.owningClientName);
+        this.owningClient.getName());
   }
 
   /**
@@ -224,10 +242,15 @@ class FlushService {
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
         itr = this.channelCache.iterator();
     List<Pair<String, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
+    String fileName = null;
 
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
+      fileName = fileName == null ? getFileName() : fileName;
+      if (this.owningClient.flushLatency != null) {
+        latencyTimerContextMap.putIfAbsent(fileName, this.owningClient.flushLatency.time());
+      }
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
       while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
@@ -241,8 +264,6 @@ class FlushService {
             if (data != null) {
               channelsDataPerTable.add(data);
               totalBufferSize += data.getBufferSize();
-            } else {
-              logger.logDebug("Nothing to flush for channel={}", channel);
             }
           }
         }
@@ -253,17 +274,18 @@ class FlushService {
 
       // Kick off a build job
       if (!blobData.isEmpty()) {
-        String fileName = getFileName();
+        String finalFileName = fileName;
+        fileName = null;
         blobs.add(
             new Pair<>(
-                fileName,
+                finalFileName,
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        return buildAndUpload(fileName, blobData);
+                        return buildAndUpload(finalFileName, blobData);
                       } catch (IOException e) {
                         // TODO SNOW-354569: we should fail fast during a failure
-                        logger.logError("Building blob failed={}, exception={}", fileName, e);
+                        logger.logError("Building blob failed={}, exception={}", finalFileName, e);
                         return null;
                       } catch (NoSuchAlgorithmException e) {
                         throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
@@ -292,6 +314,7 @@ class FlushService {
     List<byte[]> chunksDataList = new ArrayList<>();
     long curDataSize = 0L;
     CRC32 crc = new CRC32();
+    Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // TODO: channels with different schema can't be combined even if they belongs to same table
     for (List<ChannelData> channelsDataPerTable : blobData) {
@@ -404,6 +427,9 @@ class FlushService {
     // Build blob file, and then upload to streaming ingest dedicated stage
     byte[] blob =
         BlobBuilder.build(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize);
+    if (buildContext != null) {
+      buildContext.stop();
+    }
 
     return upload(fileName, blob, chunksMetadataList);
   }
@@ -411,19 +437,27 @@ class FlushService {
   /**
    * Upload a blob to Streaming Ingest dedicated stage
    *
-   * @param fileName
-   * @param blob
-   * @param metadata
+   * @param fileName name of the blob file
+   * @param blob blob data
+   * @param metadata a list of chunk metadata
    * @return BlobMetadata object used to create the register blob request
    */
   BlobMetadata upload(String fileName, byte[] blob, List<ChunkMetadata> metadata) {
     logger.logDebug("Start uploading file={}, size={}", fileName, blob.length);
 
+    Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
+
     this.targetStage.put(fileName, blob);
+
+    if (uploadContext != null) {
+      uploadContext.stop();
+      this.owningClient.uploadThroughput.mark(blob.length);
+      this.owningClient.blobSizeHistogram.update(blob.length);
+    }
 
     logger.logDebug("Finish uploading file={}", fileName);
 
-    return new BlobMetadata(fileName, metadata);
+    return new BlobMetadata(fileName, fileName /* TODO SNOW-331093 */, metadata);
   }
 
   /**

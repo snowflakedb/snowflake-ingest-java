@@ -15,10 +15,11 @@ public class RegisterServiceTest {
     RegisterService rs = new RegisterService(null, true);
 
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture =
-        new Pair<>("test", CompletableFuture.completedFuture(new BlobMetadata("path", null)));
+        new Pair<>(
+            "test", CompletableFuture.completedFuture(new BlobMetadata("name", "path", null)));
     rs.addBlobs(Arrays.asList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
-    List<String> errorBlobs = rs.registerBlobs();
+    List<String> errorBlobs = rs.registerBlobs(null);
     Assert.assertEquals(0, rs.getBlobsList().size());
     Assert.assertEquals(0, errorBlobs.size());
   }
@@ -28,14 +29,15 @@ public class RegisterServiceTest {
     RegisterService rs = new RegisterService(null, true);
 
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture1 =
-        new Pair<>("success", CompletableFuture.completedFuture(new BlobMetadata("path", null)));
+        new Pair<>(
+            "success", CompletableFuture.completedFuture(new BlobMetadata("name", "path", null)));
     CompletableFuture future = new CompletableFuture();
     future.completeExceptionally(new TimeoutException());
     Pair<String, CompletableFuture<BlobMetadata>> blobFuture2 = new Pair<>("fail", future);
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));
     Assert.assertEquals(2, rs.getBlobsList().size());
     try {
-      List<String> errorBlobs = rs.registerBlobs();
+      List<String> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0));

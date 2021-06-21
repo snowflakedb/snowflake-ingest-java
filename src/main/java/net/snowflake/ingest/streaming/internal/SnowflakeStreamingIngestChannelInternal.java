@@ -334,7 +334,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       throw new SFException(ErrorCode.CLOSED_CHANNEL);
     }
 
-    this.arrowBuffer.insertRows(rows, offsetToken);
+    float rowSize = this.arrowBuffer.insertRows(rows, offsetToken);
+    if (this.owningClient.inputThroughput != null) {
+      this.owningClient.inputThroughput.mark((long) rowSize);
+    }
 
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only

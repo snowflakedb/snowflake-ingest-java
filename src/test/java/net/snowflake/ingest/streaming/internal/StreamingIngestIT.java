@@ -1,5 +1,8 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
+import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
+import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 import static net.snowflake.ingest.utils.Constants.STAGE_NAME;
 
 import java.io.FileInputStream;
@@ -94,6 +97,19 @@ public class StreamingIngestIT {
                         "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
         result.next();
         Assert.assertEquals(1000, result.getLong(1));
+        // Verify perf metrics
+        if (ENABLE_PERF_MEASUREMENT) {
+          Assert.assertEquals(1, client.blobSizeHistogram.getCount());
+          if (BLOB_NO_HEADER && COMPRESS_BLOB_TWICE) {
+            Assert.assertEquals(3445, client.blobSizeHistogram.getSnapshot().getMax());
+          } else if (BLOB_NO_HEADER) {
+            Assert.assertEquals(3579, client.blobSizeHistogram.getSnapshot().getMax());
+          } else if (COMPRESS_BLOB_TWICE) {
+            Assert.assertEquals(3981, client.blobSizeHistogram.getSnapshot().getMax());
+          } else {
+            Assert.assertEquals(4115, client.blobSizeHistogram.getSnapshot().getMax());
+          }
+        }
         return;
       } else {
         Thread.sleep(500);

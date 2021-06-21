@@ -215,14 +215,16 @@ class ArrowRowBuffer {
   /**
    * Insert a batch of rows into the row buffer
    *
-   * @param rows
+   * @param rows input row
    * @param offsetToken offset token of the latest row in the batch
+   * @return the inserted row size in bytes
    */
-  void insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
+  float insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
+    float rowSize = 0F;
     this.flushLock.lock();
     try {
       for (Map<String, Object> row : rows) {
-        convertRowToArrow(row);
+        rowSize = convertRowToArrow(row);
         this.rowCount++;
       }
       this.owningChannel.setOffsetToken(offsetToken);
@@ -233,6 +235,7 @@ class ArrowRowBuffer {
     } finally {
       this.flushLock.unlock();
     }
+    return rowSize;
   }
 
   /**
@@ -495,9 +498,10 @@ class ArrowRowBuffer {
    * @param row input row
    */
   // TODO: need to verify each row with the table schema
-  private void convertRowToArrow(Map<String, Object> row) {
+  private float convertRowToArrow(Map<String, Object> row) {
+    float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
-      this.bufferSize += 0.125; // 1/8 for null value bitmap
+      rowBufferSize += 0.125; // 1/8 for null value bitmap
       String columnName = entry.getKey();
       Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
       columnName =
@@ -541,25 +545,25 @@ class ArrowRowBuffer {
                 byte byteValue = DataValidationUtil.validateAndParseByte(value);
                 ((TinyIntVector) vector).setSafe(this.curRowIndex, byteValue);
                 stats.addIntValue(BigInteger.valueOf(byteValue));
-                this.bufferSize += 1;
+                rowBufferSize += 1;
                 break;
               case SB2:
                 short shortValue = DataValidationUtil.validateAndParseShort(value);
                 ((SmallIntVector) vector).setSafe(this.curRowIndex, shortValue);
                 stats.addIntValue(BigInteger.valueOf(shortValue));
-                this.bufferSize += 2;
+                rowBufferSize += 2;
                 break;
               case SB4:
                 int intVal = DataValidationUtil.validateAndParseInteger(value);
                 ((IntVector) vector).setSafe(this.curRowIndex, intVal);
                 stats.addIntValue(BigInteger.valueOf(intVal));
-                this.bufferSize += 4;
+                rowBufferSize += 4;
                 break;
               case SB8:
                 long longValue = DataValidationUtil.validateAndParseLong(value);
                 ((BigIntVector) vector).setSafe(this.curRowIndex, longValue);
                 stats.addIntValue(BigInteger.valueOf((long) value));
-                this.bufferSize += 8;
+                rowBufferSize += 8;
                 break;
               case SB16:
                 BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
@@ -567,7 +571,7 @@ class ArrowRowBuffer {
                 // TODO should this be real?
                 // https://snowflakecomputing.atlassian.net/browse/SNOW-367798
                 stats.addIntValue(bigDecimalValue.toBigInteger());
-                this.bufferSize += 16;
+                rowBufferSize += 16;
                 break;
               default:
                 throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
@@ -585,7 +589,7 @@ class ArrowRowBuffer {
             int len = text.getBytes().length;
             stats.setCurrentMaxLength(len); // TODO confirm max length for strings
             stats.addStrValue(str);
-            this.bufferSize += text.getBytes().length;
+            rowBufferSize += text.getBytes().length;
             break;
           case TIMESTAMP_LTZ:
           case TIMESTAMP_NTZ:
@@ -597,7 +601,7 @@ class ArrowRowBuffer {
                       DataValidationUtil.validateAndParseTime(value, field.getMetadata());
                   bigIntVector.setSafe(curRowIndex, timeInScale.longValue());
                   stats.addIntValue(timeInScale);
-                  this.bufferSize += 8;
+                  rowBufferSize += 8;
                   break;
                 }
               case SB16:
@@ -607,7 +611,7 @@ class ArrowRowBuffer {
                       (BigIntVector) structVector.getChild(FIELD_EPOCH_IN_SECONDS);
                   IntVector fractionVector =
                       (IntVector) structVector.getChild(FIELD_FRACTION_IN_NANOSECONDS);
-                  this.bufferSize += 0.25; // for children vector's null value
+                  rowBufferSize += 0.25; // for children vector's null value
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
@@ -615,7 +619,7 @@ class ArrowRowBuffer {
                           value, field.getMetadata());
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
-                  this.bufferSize += 12;
+                  rowBufferSize += 12;
                   stats.addIntValue(timestampWrapper.getTimeInScale());
                   break;
                 }
@@ -630,7 +634,7 @@ class ArrowRowBuffer {
               int intValue = DataValidationUtil.validateAndParseDate(value);
               dateDayVector.setSafe(curRowIndex, intValue);
               stats.addIntValue(BigInteger.valueOf(intValue));
-              this.bufferSize += 4;
+              rowBufferSize += 4;
               break;
             }
           case TIME:
@@ -642,7 +646,7 @@ class ArrowRowBuffer {
                   stats.addIntValue(timeInScale);
                   ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
                   stats.addIntValue(timeInScale);
-                  this.bufferSize += 4;
+                  rowBufferSize += 4;
                   break;
                 }
               case SB8:
@@ -651,7 +655,7 @@ class ArrowRowBuffer {
                       DataValidationUtil.validateAndParseTime(value, field.getMetadata());
                   ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
                   stats.addIntValue(timeInScale);
-                  this.bufferSize += 8;
+                  rowBufferSize += 8;
                   break;
                 }
               default:
@@ -662,7 +666,7 @@ class ArrowRowBuffer {
             {
               int intValue = DataValidationUtil.validateAndParseBoolean(value);
               ((BitVector) vector).setSafe(curRowIndex, intValue);
-              this.bufferSize += 0.125;
+              rowBufferSize += 0.125;
               stats.addIntValue(BigInteger.valueOf(intValue));
               break;
             }
@@ -670,13 +674,13 @@ class ArrowRowBuffer {
             byte[] bytes = DataValidationUtil.validateAndParseBinary(value);
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             stats.setCurrentMaxLength(bytes.length);
-            this.bufferSize += bytes.length;
+            rowBufferSize += bytes.length;
             break;
           case REAL:
             double doubleValue = DataValidationUtil.validateAndParseReal(value);
             ((Float8Vector) vector).setSafe(curRowIndex, doubleValue);
             stats.addRealValue(doubleValue);
-            this.bufferSize += 8;
+            rowBufferSize += 8;
             break;
           default:
             throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
@@ -684,5 +688,7 @@ class ArrowRowBuffer {
       }
     }
     this.curRowIndex++;
+    this.bufferSize += rowBufferSize;
+    return rowBufferSize;
   }
 }

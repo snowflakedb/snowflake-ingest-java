@@ -5,12 +5,21 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
+import com.codahale.metrics.ConsoleReporter;
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.security.KeyPair;
@@ -82,6 +91,17 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
+  // Performance testing related metrics
+  MetricRegistry metrics;
+  Histogram blobSizeHistogram; // Histogram for blob size after compression
+  Histogram cpuHistogram; // Histogram for jvm process cpu usage
+  Timer flushLatency; // Latency for end to end flushing
+  Timer buildLatency; // Latency for building a blob
+  Timer uploadLatency; // Latency for uploading a blob
+  Timer registerLatency; // Latency for registering a blob
+  Meter uploadThroughput; // Throughput for uploading blobs
+  Meter inputThroughput; // Throughput for inserting into the Arrow buffer
+
   // The request builder who handles building the HttpRequests we send
   private RequestBuilder requestBuilder;
 
@@ -129,6 +149,21 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     this.flushService = new FlushService(this, this.channelCache, this.connection, this.isTestMode);
+
+    if (ENABLE_PERF_MEASUREMENT) {
+      metrics = new MetricRegistry();
+      blobSizeHistogram = metrics.histogram(MetricRegistry.name(name, "blob", "size", "histogram"));
+      cpuHistogram = metrics.histogram(MetricRegistry.name(name, "cpu", "usage", "histogram"));
+      flushLatency = metrics.timer(MetricRegistry.name(name, "flush", "latency"));
+      buildLatency = metrics.timer(MetricRegistry.name(name, "build", "latency"));
+      uploadLatency = metrics.timer(MetricRegistry.name(name, "upload", "latency"));
+      registerLatency = metrics.timer(MetricRegistry.name(name, "register", "latency"));
+      uploadThroughput = metrics.meter(MetricRegistry.name(name, "upload", "throughput"));
+      inputThroughput = metrics.meter(MetricRegistry.name(name, "input", "throughput"));
+      metrics.register(MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
+      metrics.register(MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
+      SharedMetricRegistries.add("Metrics", metrics);
+    }
 
     logger.logDebug(
         "Client created, name={}, account={}. isTestMode={}",
@@ -357,6 +392,12 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return flush(true)
         .thenRun(
             () -> {
+              // Collect the perf metrics before closing if needed
+              if (metrics != null) {
+                ConsoleReporter reporter = ConsoleReporter.forRegistry(metrics).build();
+                reporter.report();
+              }
+
               try {
                 this.flushService.shutdown();
                 this.allocator.getChildAllocators().forEach(BufferAllocator::close);

@@ -383,7 +383,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobMetadata> blobs =
         Collections.singletonList(
-            new BlobMetadata("path", Collections.singletonList(chunkMetadata)));
+            new BlobMetadata("name", "path", Collections.singletonList(chunkMetadata)));
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("request_id", null);
@@ -433,7 +433,8 @@ public class SnowflakeStreamingIngestClientTest {
 
     try {
       List<BlobMetadata> blobs =
-          Collections.singletonList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
+          Collections.singletonList(
+              new BlobMetadata("name", "path", new ArrayList<ChunkMetadata>()));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on 404 error");
     } catch (SFException e) {
@@ -479,7 +480,8 @@ public class SnowflakeStreamingIngestClientTest {
 
     try {
       List<BlobMetadata> blobs =
-          Collections.singletonList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
+          Collections.singletonList(
+              new BlobMetadata("name", "path", new ArrayList<ChunkMetadata>()));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on SF internal error");
     } catch (SFException e) {
@@ -524,7 +526,7 @@ public class SnowflakeStreamingIngestClientTest {
             requestBuilder);
 
     List<BlobMetadata> blobs =
-        Collections.singletonList(new BlobMetadata("path", new ArrayList<ChunkMetadata>()));
+        Collections.singletonList(new BlobMetadata("name", "path", new ArrayList<ChunkMetadata>()));
     client.registerBlobs(blobs);
   }
 

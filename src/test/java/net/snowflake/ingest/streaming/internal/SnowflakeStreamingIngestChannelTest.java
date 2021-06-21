@@ -418,9 +418,11 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testInsertRow() {
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, null, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
 
     ColumnMetadata col = new ColumnMetadata();
     col.setName("COL");

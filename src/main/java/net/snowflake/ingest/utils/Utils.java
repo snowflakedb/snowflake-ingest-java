@@ -8,6 +8,7 @@ import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_SSL;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 
+import com.codahale.metrics.Timer;
 import com.google.common.base.Strings;
 import java.io.StringReader;
 import java.security.KeyFactory;
@@ -210,5 +211,10 @@ public class Utils {
 
     // create key pairs
     return new KeyPair(publicK, privateKey);
+  }
+
+  /** Create a new timer context if input is not null */
+  public static Timer.Context createTimerContext(Timer timer) {
+    return timer == null ? null : timer.time();
   }
 }
