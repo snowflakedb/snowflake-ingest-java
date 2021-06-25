@@ -11,7 +11,7 @@ public class Constants {
   public static final String USER_NAME = "snowflake.user.name";
   public static final String ACCOUNT_URL = "snowflake.url.name";
   public static final String PRIVATE_KEY = "snowflake.private.key";
-  public static final String ROLE_NAME = "role";
+  public static final String ROLE_NAME = "snowflake.role.name";
   public static final String PRIVATE_KEY_PASSPHRASE = "snowflake.private.key.passphrase";
   public static final String JDBC_USER = "user";
   public static final String JDBC_PRIVATE_KEY = "privateKey";
