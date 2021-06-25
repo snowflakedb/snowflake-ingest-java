@@ -217,25 +217,32 @@ class ArrowRowBuffer {
    *
    * @param rows input row
    * @param offsetToken offset token of the latest row in the batch
-   * @return the inserted row size in bytes
+   * @return insert response that possibly contains errors because of insertion failures
    */
-  float insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
+  InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
     float rowSize = 0F;
+    if (this.fields.isEmpty()) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
+    }
+
+    InsertValidationResponse response = new InsertValidationResponse();
     this.flushLock.lock();
     try {
       for (Map<String, Object> row : rows) {
-        rowSize = convertRowToArrow(row);
-        this.rowCount++;
+        try {
+          rowSize += convertRowToArrow(row);
+          this.rowCount++;
+        } catch (SFException e) {
+          response.addError(new InsertValidationResponse.InsertError(row, e));
+        }
       }
       this.owningChannel.setOffsetToken(offsetToken);
-    } catch (Exception e) {
-      // TODO SNOW-348857: Return a response instead in case customer wants to skip error rows
-      // TODO SNOW-348857: What offset token to return if the latest row failed?
-      throw new SFException(e, ErrorCode.INVALID_ROW, e.getMessage());
     } finally {
       this.flushLock.unlock();
     }
-    return rowSize;
+
+    this.owningChannel.collectRowSize(rowSize);
+    return response;
   }
 
   /**

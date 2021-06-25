@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
+import net.snowflake.ingest.streaming.internal.InsertValidationResponse;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
@@ -92,8 +93,9 @@ public interface SnowflakeStreamingIngestChannel {
    * @param row object data to write
    * @param offsetToken offset of given row, used for replay in case of failures. It could be null
    *     if you don't plan on replaying or can't replay
+   * @return insert response that possibly contains errors because of insertion failures
    */
-  void insertRow(Map<String, Object> row, @Nullable String offsetToken);
+  InsertValidationResponse insertRow(Map<String, Object> row, @Nullable String offsetToken);
 
   /**
    * --------------------------------------------------------------------------------------------
@@ -107,6 +109,8 @@ public interface SnowflakeStreamingIngestChannel {
    * @param rows object data to write
    * @param offsetToken offset of last row in the row-set, used for replay in case of failures, It
    *     could be null * if you don't plan on replaying or can't replay
+   * @return insert response that possibly contains errors because of insertion failures
    */
-  void insertRows(Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
+  InsertValidationResponse insertRows(
+      Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
 }

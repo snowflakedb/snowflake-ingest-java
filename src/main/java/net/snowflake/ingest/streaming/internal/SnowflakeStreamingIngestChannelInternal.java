@@ -304,11 +304,12 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    *
    * @param row object data to write
    * @param offsetToken offset of given row, used for replay in case of failures
+   * @return insert response that possibly contains errors because of insertion failures
    * @throws SFException when the channel is invalid or closed
    */
   @Override
-  public void insertRow(Map<String, Object> row, String offsetToken) {
-    insertRows(Collections.singletonList(row), offsetToken);
+  public InsertValidationResponse insertRow(Map<String, Object> row, String offsetToken) {
+    return insertRows(Collections.singletonList(row), offsetToken);
   }
 
   /**
@@ -322,10 +323,12 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    *
    * @param rows object data to write
    * @param offsetToken offset of last row in the row-set, used for replay in case of failures
+   * @return insert response that possibly contains errors because of insertion failures
    * @throws SFException when the channel is invalid or closed
    */
   @Override
-  public void insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
+  public InsertValidationResponse insertRows(
+      Iterable<Map<String, Object>> rows, String offsetToken) {
     if (!isValid()) {
       throw new SFException(ErrorCode.INVALID_CHANNEL);
     }
@@ -334,16 +337,22 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       throw new SFException(ErrorCode.CLOSED_CHANNEL);
     }
 
-    float rowSize = this.arrowBuffer.insertRows(rows, offsetToken);
-    if (this.owningClient.inputThroughput != null) {
-      this.owningClient.inputThroughput.mark((long) rowSize);
-    }
+    InsertValidationResponse response = this.arrowBuffer.insertRows(rows, offsetToken);
 
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
     if (this.arrowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
       this.owningClient.setNeedFlush();
+    }
+
+    return response;
+  }
+
+  /** Collect the row size from row buffer if required */
+  void collectRowSize(float rowSize) {
+    if (this.owningClient.inputThroughput != null) {
+      this.owningClient.inputThroughput.mark((long) rowSize);
     }
   }
 }

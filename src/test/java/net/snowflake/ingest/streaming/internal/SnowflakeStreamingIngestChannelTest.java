@@ -442,12 +442,10 @@ public class SnowflakeStreamingIngestChannelTest {
     ChannelData data = channel.getData();
     Assert.assertNull(data);
 
-    try {
-      channel.insertRow(row, "1");
-      channel.insertRows(Collections.singletonList(row), "2");
-    } catch (Exception e) {
-      Assert.fail("Row buffer insert row failed");
-    }
+    InsertValidationResponse response = channel.insertRow(row, "1");
+    Assert.assertFalse(response.hasErrors());
+    response = channel.insertRows(Collections.singletonList(row), "2");
+    Assert.assertFalse(response.hasErrors());
 
     // Get data again to verify the row is inserted
     data = channel.getData();
