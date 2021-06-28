@@ -3,54 +3,48 @@ package net.snowflake.ingest.streaming.internal;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
-import net.snowflake.client.jdbc.SnowflakeConnectionV1;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.amazonaws.util.IOUtils;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.SnowflakeURL;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.entity.BasicHttpEntity;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.mockito.stubbing.Answer;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({
-  TestUtils.class,
-  HttpUtil.class,
-  SnowflakeFileTransferAgent.class,
-})
+@PrepareForTest({TestUtils.class, HttpUtil.class, SnowflakeFileTransferAgent.class})
 public class StreamingIngestStageTest {
   private ObjectMapper mapper = new ObjectMapper();
-  final SnowflakeURL snowflakeURL =
-      new SnowflakeURL.SnowflakeURLBuilder()
-          .setUrl("EXAMPLE_HOST")
-          .setSsl(false)
-          .setPort(123)
-          .setAccount("EXAMPLE_ACCOUNT")
-          .build();
 
-  final String exampleMeta =
+  final String exampleRemoteMeta =
       "{\"data\": {\"src_locations\": [\"placeholder/\"],\"status_code\": 0, \"message\":"
           + " \"Success\", \"prefix\": \"EXAMPLE_PREFIX\", \"stageInfo\": {\"locationType\":"
           + " \"S3\", \"location\": \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\","
@@ -60,48 +54,40 @@ public class StreamingIngestStageTest {
           + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
           + " \"endPoint\": null}}}";
 
-  private void setupMocksForRefresh(long httpDelay) throws Exception {
+  String exampleRemoteMetaResponse =
+      "{\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\":"
+          + " \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
+          + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
+          + " \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true,"
+          + " \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
+          + " \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\":"
+          + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
+          + " \"endPoint\": null}}";
+
+  private void setupMocksForRefresh() throws Exception {
     PowerMockito.mockStatic(HttpUtil.class);
     PowerMockito.mockStatic(TestUtils.class);
-
-    String exampleMetaResponse =
-        "{\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\":"
-            + " \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
-            + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
-            + " \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true,"
-            + " \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
-            + " \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\":"
-            + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
-            + " \"endPoint\": null}}";
-
-    PowerMockito.when(
-            HttpUtil.executeGeneralRequest(Mockito.any(), Mockito.anyInt(), Mockito.any()))
-        .thenAnswer(
-            (Answer<String>)
-                invocationOnMock -> {
-                  Thread.sleep(httpDelay);
-                  return exampleMetaResponse;
-                });
   }
 
   @Test
-  @Ignore // Temporarily disabled until the new JDBC release is available
   public void testPutRemote() throws Exception {
-    JsonNode exampleJson = mapper.readTree(exampleMeta);
-    SnowflakeFileTransferMetadataV1 originalMetadata = null;
-    // Temporarily disabled until the new JDBC release is available
-    /*    SnowflakeFileTransferMetadataV1 originalMetadata =
-    (SnowflakeFileTransferMetadataV1)
-        SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);*/
+    JsonNode exampleJson = mapper.readTree(exampleRemoteMeta);
+    SnowflakeFileTransferMetadataV1 originalMetadata =
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);
 
-    setupMocksForRefresh(0);
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
+    StreamingIngestStage stage =
+        new StreamingIngestStage(
+            true,
+            "role",
+            null,
+            null,
+            new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+                originalMetadata, Optional.of(System.currentTimeMillis())));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
 
-    //    PowerMockito.doThrow(new NullPointerException()).when(SnowflakeFileTransferAgent.class);
-    //    SnowflakeFileTransferAgent.uploadWithoutConnection(Mockito.any());
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
@@ -129,75 +115,44 @@ public class StreamingIngestStageTest {
   @Test
   public void testPutLocal() throws Exception {
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
-    String fullFilePath = "test/path";
+    String fullFilePath = "testOutput";
+    String fileName = "putLocalOutput";
 
-    SnowflakeConnectionV1 conn = Mockito.mock(SnowflakeConnectionV1.class);
-    StreamingIngestStage stage = Mockito.spy(new StreamingIngestStage(conn, true, null, null));
-    Mockito.doReturn(StageInfo.StageType.LOCAL_FS).when(stage).getStageType();
+    StreamingIngestStage stage =
+        Mockito.spy(
+            new StreamingIngestStage(
+                true,
+                "role",
+                null,
+                null,
+                new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+                    fullFilePath, Optional.of(System.currentTimeMillis()))));
+    Mockito.doReturn(true).when(stage).isLocalFS();
 
-    stage.put(fullFilePath, dataBytes);
-
-    ArgumentCaptor<ByteArrayInputStream> captor =
-        ArgumentCaptor.forClass(ByteArrayInputStream.class);
-    Mockito.verify(conn, Mockito.times(1))
-        .uploadStream(
-            Mockito.eq(Constants.STAGE_NAME),
-            Mockito.eq(""),
-            captor.capture(),
-            Mockito.eq(fullFilePath),
-            Mockito.eq(false));
-    Assert.assertEquals(
-        new String(dataBytes, StandardCharsets.UTF_8),
-        new String(IOUtils.toByteArray(captor.getValue()), StandardCharsets.UTF_8));
+    stage.put(fileName, dataBytes);
+    Path outputPath = Paths.get(fullFilePath, fileName);
+    List<String> output = Files.readAllLines(outputPath);
+    Assert.assertEquals(1, output.size());
+    Assert.assertEquals("Hello Upload", output.get(0));
   }
 
   @Test
-  @Ignore // Temporarily disabled until the new JDBC release is available
-  public void testPutRemoteWithCache() throws Exception {
-    setupMocksForRefresh(0);
-
-    byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
-    String fullFilePath = "test/path";
-
-    SnowflakeConnectionV1 conn = Mockito.mock(SnowflakeConnectionV1.class);
-    StreamingIngestStage stage = Mockito.spy(new StreamingIngestStage(conn, true, null, null));
-    StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
-        stage.refreshSnowflakeMetadata(true);
-    Mockito.doReturn(StageInfo.StageType.S3).when(stage).getStageType();
-    Mockito.doReturn(true).when(stage).isCredentialValid();
-
-    final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
-        ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
-
-    stage.put(fullFilePath, dataBytes);
-
-    PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class);
-    SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());
-    SnowflakeFileTransferConfig capturedConfig = captor.getValue();
-
-    Assert.assertEquals(false, capturedConfig.getRequireCompress());
-    Assert.assertEquals(OCSPMode.FAIL_OPEN, capturedConfig.getOcspMode());
-
-    SnowflakeFileTransferMetadataV1 capturedMetadata =
-        (SnowflakeFileTransferMetadataV1) capturedConfig.getSnowflakeFileTransferMetadata();
-    Assert.assertEquals(fullFilePath, capturedMetadata.getPresignedUrlFileName());
-    Assert.assertEquals(StageInfo.StageType.S3, capturedMetadata.getStageInfo().getStageType());
-  }
-
-  @Test
-  @Ignore // Temporarily disabled until the new JDBC release is available
   public void testPutRemoteRefreshes() throws Exception {
-    JsonNode exampleJson = mapper.readTree(exampleMeta);
-    SnowflakeFileTransferMetadataV1 originalMetadata = null;
-    // Temporarily disabled until the new JDBC release is available
-    /*    SnowflakeFileTransferMetadataV1 originalMetadata =
-    (SnowflakeFileTransferMetadataV1)
-        SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);*/
+    JsonNode exampleJson = mapper.readTree(exampleRemoteMeta);
+    SnowflakeFileTransferMetadataV1 originalMetadata =
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);
 
-    setupMocksForRefresh(0);
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
+    StreamingIngestStage stage =
+        new StreamingIngestStage(
+            true,
+            "role",
+            null,
+            null,
+            new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+                originalMetadata, Optional.of(System.currentTimeMillis())));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
 
     PowerMockito.doThrow(new NullPointerException()).when(SnowflakeFileTransferAgent.class);
@@ -233,27 +188,32 @@ public class StreamingIngestStageTest {
   }
 
   @Test
-  @Ignore // Temporarily disabled until the new JDBC release is available
-  public void testRefreshSnowflakeMetadata() throws Exception {
-    setupMocksForRefresh(0);
-    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
+  public void testRefreshSnowflakeMetadataRemote() throws Exception {
+    RequestBuilder mockBuilder = Mockito.mock(RequestBuilder.class);
+    HttpClient mockClient = Mockito.mock(HttpClient.class);
+    HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
+    StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
+    Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
+
+    BasicHttpEntity entity = new BasicHttpEntity();
+    entity.setContent(
+        new ByteArrayInputStream(exampleRemoteMetaResponse.getBytes(StandardCharsets.UTF_8)));
+
+    Mockito.when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
+    Mockito.when(mockResponse.getEntity()).thenReturn(entity);
+    Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
+
+    StreamingIngestStage stage = new StreamingIngestStage(true, "role", mockClient, mockBuilder);
 
     StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
         stage.refreshSnowflakeMetadata(true);
 
-    PowerMockito.verifyStatic(HttpUtil.class, Mockito.times(2));
-    final ArgumentCaptor<HttpPost> postCaptor = ArgumentCaptor.forClass(HttpPost.class);
-    final ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
-    final ArgumentCaptor<OCSPMode> ocspCaptor = ArgumentCaptor.forClass(OCSPMode.class);
-
-    HttpUtil.executeGeneralRequest(
-        postCaptor.capture(), retryCaptor.capture(), ocspCaptor.capture());
-    Assert.assertEquals(
-        new URI("http://EXAMPLE_HOST:123/v1/streaming/client/configure"),
-        postCaptor.getValue().getURI());
-    Assert.assertEquals(
-        "application/json", postCaptor.getValue().getHeaders("accept")[0].getValue());
-
+    final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
+    final ArgumentCaptor<Map<Object, Object>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+    Mockito.verify(mockBuilder)
+        .generateStreamingIngestPostRequest(
+            mapCaptor.capture(), endpointCaptor.capture(), Mockito.any());
+    Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
     Assert.assertTrue(metadataWithAge.timestamp.isPresent());
     Assert.assertEquals(
         StageInfo.StageType.S3, metadataWithAge.fileTransferMetadata.getStageInfo().getStageType());
@@ -264,12 +224,35 @@ public class StreamingIngestStageTest {
   }
 
   @Test
-  @Ignore // Temporarily disabled until the new JDBC release is available
   public void testRefreshSnowflakeMetadataSynchronized() throws Exception {
-    setupMocksForRefresh(100);
-    StreamingIngestStage stage = new StreamingIngestStage(null, true, null, null);
-    // Set the age of the metadata so it will be refreshed
-    stage.setFileTransferMetadataAge(0L);
+    setupMocksForRefresh();
+    JsonNode exampleJson = mapper.readTree(exampleRemoteMeta);
+    SnowflakeFileTransferMetadataV1 originalMetadata =
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);
+
+    RequestBuilder mockBuilder = Mockito.mock(RequestBuilder.class);
+    HttpClient mockClient = Mockito.mock(HttpClient.class);
+    HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
+    StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
+    Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
+
+    BasicHttpEntity entity = new BasicHttpEntity();
+    entity.setContent(
+        new ByteArrayInputStream(exampleRemoteMetaResponse.getBytes(StandardCharsets.UTF_8)));
+
+    Mockito.when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
+    Mockito.when(mockResponse.getEntity()).thenReturn(entity);
+    Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
+
+    StreamingIngestStage stage =
+        new StreamingIngestStage(
+            true,
+            "role",
+            mockClient,
+            mockBuilder,
+            new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+                originalMetadata, Optional.of(0L)));
 
     ThreadFactory buildUploadThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
@@ -277,7 +260,6 @@ public class StreamingIngestStageTest {
     ExecutorService workers =
         Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
 
-    StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge;
     workers.submit(
         () -> {
           try {
@@ -297,17 +279,6 @@ public class StreamingIngestStageTest {
 
     workers.awaitTermination(150, TimeUnit.MILLISECONDS);
 
-    PowerMockito.verifyStatic(HttpUtil.class, Mockito.times(2));
-    final ArgumentCaptor<HttpPost> postCaptor = ArgumentCaptor.forClass(HttpPost.class);
-    final ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
-    final ArgumentCaptor<OCSPMode> ocspCaptor = ArgumentCaptor.forClass(OCSPMode.class);
-
-    HttpUtil.executeGeneralRequest(
-        postCaptor.capture(), retryCaptor.capture(), ocspCaptor.capture());
-    Assert.assertEquals(
-        new URI("http://EXAMPLE_HOST:123/v1/streaming/client/configure"),
-        postCaptor.getValue().getURI());
-    Assert.assertEquals(
-        "application/json", postCaptor.getValue().getHeaders("accept")[0].getValue());
+    Mockito.verify(mockClient).execute(Mockito.any());
   }
 }

@@ -26,8 +26,6 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -37,7 +35,6 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import net.snowflake.client.jdbc.SnowflakeDriver;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
@@ -72,9 +69,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
   // Snowflake role for the client to use
   private String role;
-
-  // Connection to the Snowflake account
-  private Connection connection;
 
   // Http client to send HTTP request to Snowflake
   private final HttpClient httpClient;
@@ -133,15 +127,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     this.requestBuilder = requestBuilder;
 
     if (!isTestMode) {
-      try {
-        logger.logDebug("Trying to connect to Snowflake account={}", accountURL.getFullUrl());
-        this.role = prop.getProperty(Constants.ROLE_NAME);
-        this.connection = new SnowflakeDriver().connect(accountURL.getJdbcUrl(), prop);
-      } catch (SQLException e) {
-        throw new SFException(e, ErrorCode.SF_CONNECTION_FAILURE);
-      }
-
       // Setup request builder for communication with the server side
+      this.role = prop.getProperty(Constants.ROLE_NAME);
       try {
         KeyPair keyPair =
             Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
@@ -152,7 +139,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       }
     }
 
-    this.flushService = new FlushService(this, this.channelCache, this.connection, this.isTestMode);
+    this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
 
     if (ENABLE_PERF_MEASUREMENT) {
       metrics = new MetricRegistry();
@@ -419,10 +406,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                 this.flushService.shutdown();
                 this.allocator.getChildAllocators().forEach(BufferAllocator::close);
                 this.allocator.close();
-                if (!isTestMode) {
-                  this.connection.close();
-                }
-              } catch (SQLException | InterruptedException e) {
+              } catch (InterruptedException e) {
                 throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
               }
             });

@@ -19,7 +19,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -98,13 +97,11 @@ class FlushService {
    *
    * @param client
    * @param cache
-   * @param conn
    * @param isTestMode
    */
   FlushService(
       SnowflakeStreamingIngestClientInternal client,
       ChannelCache cache,
-      Connection conn,
       StreamingIngestStage targetStage, // For testing
       boolean isTestMode) {
     this.owningClient = client;
@@ -124,20 +121,16 @@ class FlushService {
    *
    * @param client
    * @param cache
-   * @param conn
    * @param isTestMode
    */
   FlushService(
-      SnowflakeStreamingIngestClientInternal client,
-      ChannelCache cache,
-      Connection conn,
-      boolean isTestMode) {
+      SnowflakeStreamingIngestClientInternal client, ChannelCache cache, boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
     try {
       this.targetStage =
           new StreamingIngestStage(
-              conn, isTestMode, client.getHttpClient(), client.getRequestBuilder());
+              isTestMode, client.getRole(), client.getHttpClient(), client.getRequestBuilder());
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }

@@ -3,7 +3,6 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
-import static net.snowflake.ingest.utils.Constants.STAGE_NAME;
 
 import java.io.FileInputStream;
 import java.sql.Connection;
@@ -56,7 +55,7 @@ public class StreamingIngestIT {
         .execute("alter session set enable_streaming_ingest_reads=true;");
     jdbcConnection
         .createStatement()
-        .execute(String.format("create or replace stage %s", STAGE_NAME));
+        .execute(String.format("use warehouse %s", prop.get("warehouse")));
     client =
         (SnowflakeStreamingIngestClientInternal)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
@@ -97,6 +96,18 @@ public class StreamingIngestIT {
                         "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
         result.next();
         Assert.assertEquals(1000, result.getLong(1));
+
+        ResultSet result2 =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select * from %s.%s.%s order by c1 limit 2",
+                        TEST_DB, TEST_SCHEMA, TEST_TABLE));
+        result2.next();
+        Assert.assertEquals("0", result2.getString(1));
+        result2.next();
+        Assert.assertEquals("1", result2.getString(1));
         // Verify perf metrics
         if (ENABLE_PERF_MEASUREMENT) {
           Assert.assertEquals(1, client.blobSizeHistogram.getCount());

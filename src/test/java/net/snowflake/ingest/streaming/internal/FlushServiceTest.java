@@ -79,8 +79,7 @@ public class FlushServiceTest {
 
   @Test
   public void testFlush() throws Exception {
-    FlushService flushService =
-        Mockito.spy(new FlushService(client, channelCache, conn, stage, false));
+    FlushService flushService = Mockito.spy(new FlushService(client, channelCache, stage, false));
 
     // Nothing to flush
     flushService.flush(false);
@@ -106,8 +105,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildAndUpload() throws Exception {
-    FlushService flushService =
-        Mockito.spy(new FlushService(client, channelCache, conn, stage, true));
+    FlushService flushService = Mockito.spy(new FlushService(client, channelCache, stage, true));
 
     List<List<ChannelData>> blobData = new ArrayList<>();
     List<ChannelData> chunkData = new ArrayList<>();
@@ -260,8 +258,7 @@ public class FlushServiceTest {
   @Test
   public void testBuildErrors() throws Exception {
     // build should error if we try to group channels for different tables together
-    FlushService flushService =
-        Mockito.spy(new FlushService(client, channelCache, conn, stage, true));
+    FlushService flushService = Mockito.spy(new FlushService(client, channelCache, stage, true));
 
     List<List<ChannelData>> channelData = new ArrayList<>();
     List<ChannelData> channelData1 = new ArrayList<>();
@@ -405,7 +402,7 @@ public class FlushServiceTest {
 
   @Test
   public void testShutDown() throws Exception {
-    FlushService flushService = new FlushService(client, channelCache, conn, stage, false);
+    FlushService flushService = new FlushService(client, channelCache, stage, false);
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());
     Assert.assertFalse(flushService.registerWorker.isShutdown());
@@ -420,7 +417,7 @@ public class FlushServiceTest {
 
   @Test
   public void testComputeMD5() throws Exception {
-    FlushService flushService = new FlushService(client, channelCache, conn, stage, false);
+    FlushService flushService = new FlushService(client, channelCache, stage, false);
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());
     Assert.assertFalse(flushService.registerWorker.isShutdown());
