@@ -4,116 +4,72 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import java.util.List;
 
 /** Class to deserialize a request from a channel status request */
 class ChannelsStatusRequest {
 
   // Used to deserialize a channel request
-  static class ChannelRequestDTO {
+  static class ChannelStatusRequestDTO {
+    // Database name
+    private final String databaseName;
 
-    /** Default constructor needed for Jackson serialization / deserialization */
-    public ChannelRequestDTO() {}
+    // Schema name
+    private final String schemaName;
 
-    public ChannelRequestDTO(SnowflakeStreamingIngestChannel channel) {
+    // Table Name
+    private final String tableName;
+
+    // Channel Name
+    private final String channelName;
+
+    // Client Sequencer
+    private final Long clientSequencer;
+
+    // Optional Row Sequencer
+    private final Long rowSequencer;
+
+    ChannelStatusRequestDTO(SnowflakeStreamingIngestChannelInternal channel) {
       this.channelName = channel.getName();
       this.databaseName = channel.getDBName();
       this.schemaName = channel.getSchemaName();
       this.tableName = channel.getTableName();
-      this.rowSequencerSent = true;
-      this.clientSequencer =
-          ((SnowflakeStreamingIngestChannelInternal) channel).getChannelSequencer();
-      this.rowSequencer = ((SnowflakeStreamingIngestChannelInternal) channel).getRowSequencer();
+      this.clientSequencer = channel.getChannelSequencer();
+      this.rowSequencer = channel.getRowSequencer();
     }
 
-    // Database name
-    private String databaseName;
-
-    // Schema name
-    private String schemaName;
-
-    // Table Name
-    private String tableName;
-
-    // Channel Name
-    private String channelName;
-
-    // Client Sequencer
-    private Long clientSequencer;
-
-    // Optional Row Sequencer.
-    private Long rowSequencer;
-    private boolean rowSequencerSent;
-
     @JsonProperty("table")
-    public String getTableName() {
+    String getTableName() {
       return tableName;
     }
 
-    @JsonProperty("table")
-    public void setTableName(String table) {
-      this.tableName = table;
-    }
-
     @JsonProperty("database")
-    public void setDatabaseName(String databaseName) {
-      this.databaseName = databaseName;
-    }
-
-    @JsonProperty("database")
-    public String getDatabaseName() {
+    String getDatabaseName() {
       return databaseName;
     }
 
     @JsonProperty("schema")
-    public void setSchemaName(String schemaName) {
-      this.schemaName = schemaName;
-    }
-
-    @JsonProperty("schema")
-    public String getSchemaName() {
+    String getSchemaName() {
       return schemaName;
     }
 
     @JsonProperty("channel_name")
-    public String getChannelName() {
+    String getChannelName() {
       return channelName;
     }
 
-    @JsonProperty("channel_name")
-    public void setChannelName(String channelName) {
-      this.channelName = channelName;
-    }
-
     @JsonProperty("client_sequencer")
-    public Long getClientSequencer() {
+    Long getClientSequencer() {
       return clientSequencer;
-    }
-
-    @JsonProperty("client_sequencer")
-    public void setClientSequencer(long clientSequencer) {
-      this.clientSequencer = clientSequencer;
     }
 
     @JsonInclude(Include.NON_EMPTY)
     @JsonProperty("row_sequencer")
-    public void setRowSequencer(Long rowSequencer) {
-      this.rowSequencer = rowSequencer;
-      this.rowSequencerSent = true;
-    }
-
-    @JsonProperty("row_sequencer")
-    public Long getRowSequencer() {
+    Long getRowSequencer() {
       return rowSequencer;
-    }
-
-    @JsonIgnore
-    public boolean getRowSequencerSent() {
-      return rowSequencerSent;
     }
   }
 
@@ -121,13 +77,13 @@ class ChannelsStatusRequest {
   private String requestId;
 
   // Channels in request
-  private ChannelRequestDTO[] channels;
+  private List<ChannelStatusRequestDTO> channels;
 
   // Snowflake role used by client
   private String role;
 
   @JsonProperty("request_id")
-  public String getRequestId() {
+  String getRequestId() {
     return requestId;
   }
 
@@ -142,17 +98,17 @@ class ChannelsStatusRequest {
   }
 
   @JsonProperty("request_id")
-  public void setRequestId(String requestId) {
+  void setRequestId(String requestId) {
     this.requestId = requestId;
   }
 
   @JsonProperty("channels")
-  public void setChannels(ChannelRequestDTO[] channels) {
+  void setChannels(List<ChannelStatusRequestDTO> channels) {
     this.channels = channels;
   }
 
   @JsonProperty("channels")
-  public ChannelRequestDTO[] getChannels() {
+  List<ChannelStatusRequestDTO> getChannels() {
     return channels;
   }
 }

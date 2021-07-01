@@ -77,17 +77,15 @@ public class StreamingIngestIT {
 
     // Open a streaming ingest channel from the given client
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
-    ChannelsStatusResponse beforeStatus = client.getChannelsStatus();
     for (int val = 0; val < 1000; val++) {
       Map<String, Object> row = new HashMap<>();
       row.put("c1", Integer.toString(val));
-      channel1.insertRow(row, null);
+      channel1.insertRow(row, Integer.toString(val));
     }
     client.flush().get();
     for (int i = 1; i < 15; i++) {
-      ChannelsStatusResponse afterStatus = client.getChannelsStatus();
-      if (afterStatus.getChannels()[0].getPersistedRowSequencer()
-          > beforeStatus.getChannels()[0].getPersistedRowSequencer()) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("999")) {
         ResultSet result =
             jdbcConnection
                 .createStatement()
@@ -122,9 +120,8 @@ public class StreamingIngestIT {
           }
         }
         return;
-      } else {
-        Thread.sleep(500);
       }
+      Thread.sleep(500);
     }
     Assert.fail("Row sequencer not updated before timeout");
   }

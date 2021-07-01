@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -268,8 +269,20 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     return flush(true)
         .thenRun(
             () -> {
+              List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
+                  this.owningClient.verifyChannelsAreFullyCommitted(
+                      Collections.singletonList(this));
               this.arrowBuffer.close();
               this.owningClient.removeChannelIfSequencersMatch(this);
+
+              // Throw an exception if the channel has any uncommitted rows
+              if (!uncommittedChannels.isEmpty()) {
+                throw new SFException(
+                    ErrorCode.CHANNEL_WITH_UNCOMMITTED_ROWS,
+                    uncommittedChannels.stream()
+                        .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
+                        .collect(Collectors.toList()));
+              }
             });
   }
 
@@ -354,5 +367,14 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     if (this.owningClient.inputThroughput != null) {
       this.owningClient.inputThroughput.mark((long) rowSize);
     }
+  }
+
+  /** Get the latest committed offset token from Snowflake */
+  @Override
+  public String getLatestCommittedOffsetToken() {
+    return this.owningClient
+        .getChannelsStatus(Collections.singletonList(this))
+        .getChannels()[0]
+        .getPersistedOffsetToken();
   }
 }

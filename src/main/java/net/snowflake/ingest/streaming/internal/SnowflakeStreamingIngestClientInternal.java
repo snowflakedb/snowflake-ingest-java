@@ -5,12 +5,15 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
+import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
 
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.Histogram;
@@ -278,49 +281,21 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /**
-   * Fetch channels status from Snowflake for all of client's open channels
-   *
-   * @return a ChannelsStatusResponse object
-   */
-  public ChannelsStatusResponse getChannelsStatus() {
-    if (isClosed()) {
-      throw new SFException(ErrorCode.CLOSED_CLIENT);
-    }
-
-    ChannelsStatusRequest request = new ChannelsStatusRequest();
-    request.setRole(this.role);
-    ArrayList<ChannelsStatusRequest.ChannelRequestDTO> requestDTOs = new ArrayList<>();
-
-    Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
-        itr = this.channelCache.iterator();
-    while (itr.hasNext()) {
-      ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> byTable =
-          itr.next().getValue();
-      for (SnowflakeStreamingIngestChannelInternal channel : byTable.values()) {
-        ChannelsStatusRequest.ChannelRequestDTO dto =
-            new ChannelsStatusRequest.ChannelRequestDTO(channel);
-        requestDTOs.add(dto);
-      }
-    }
-    ChannelsStatusRequest.ChannelRequestDTO[] dtoArray =
-        new ChannelsStatusRequest.ChannelRequestDTO[requestDTOs.size()];
-    request.setChannels(requestDTOs.toArray(dtoArray));
-
-    return getChannelsStatus(request);
-  }
-
-  /**
    * Fetch channels status from Snowflake
    *
-   * @param request the channels status request
+   * @param channels a list of channels that we want to get the status on
    * @return a ChannelsStatusResponse object
    */
-  ChannelsStatusResponse getChannelsStatus(ChannelsStatusRequest request) {
-    if (isClosed()) {
-      throw new SFException(ErrorCode.CLOSED_CLIENT);
-    }
-
+  ChannelsStatusResponse getChannelsStatus(List<SnowflakeStreamingIngestChannelInternal> channels) {
     try {
+      ChannelsStatusRequest request = new ChannelsStatusRequest();
+      List<ChannelsStatusRequest.ChannelStatusRequestDTO> requestDTOs =
+          channels.stream()
+              .map(ChannelsStatusRequest.ChannelStatusRequestDTO::new)
+              .collect(Collectors.toList());
+      request.setChannels(requestDTOs);
+      request.setRole(this.role);
+
       String payload = objectMapper.writeValueAsString(request);
       ChannelsStatusResponse response =
           ServiceResponseHandler.unmarshallStreamingIngestResponse(
@@ -390,6 +365,18 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       return CompletableFuture.completedFuture(null);
     }
 
+    // Get all the valid and active channels in the channel cache
+    ArrayList<SnowflakeStreamingIngestChannelInternal> channels = new ArrayList<>();
+    Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
+        itr = this.channelCache.iterator();
+    while (itr.hasNext()) {
+      for (SnowflakeStreamingIngestChannelInternal channel : itr.next().getValue().values()) {
+        if (channel.isValid() && !channel.isClosed()) {
+          channels.add(channel);
+        }
+      }
+    }
+
     isClosed = true;
     // First mark all the channels as closed, then flush any leftover rows in the buffer
     this.channelCache.closeAllChannels();
@@ -402,12 +389,25 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                 reporter.report();
               }
 
+              // Check if any channels has uncommitted rows
+              List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
+                  verifyChannelsAreFullyCommitted(channels);
+
               try {
                 this.flushService.shutdown();
                 this.allocator.getChildAllocators().forEach(BufferAllocator::close);
                 this.allocator.close();
               } catch (InterruptedException e) {
                 throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
+              }
+
+              // Throw an exception if there is any channels with uncommitted rows
+              if (!uncommittedChannels.isEmpty()) {
+                throw new SFException(
+                    ErrorCode.CHANNEL_WITH_UNCOMMITTED_ROWS,
+                    uncommittedChannels.stream()
+                        .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
+                        .collect(Collectors.toList()));
               }
             });
   }
@@ -426,7 +426,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     if (isClosed() && !closing) {
       throw new SFException(ErrorCode.CLOSED_CLIENT);
     }
-    return this.flushService.flush(true);
+    return CompletableFuture.runAsync(
+        () -> {
+          this.flushService.flush(true);
+        },
+        this.flushService.flushWorker);
   }
 
   /** Set the flag to indicate that a flush is needed */
@@ -461,5 +465,53 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   /** Get the request builder */
   RequestBuilder getRequestBuilder() {
     return this.requestBuilder;
+  }
+
+  /** Get the channel cache */
+  ChannelCache getChannelCache() {
+    return this.channelCache;
+  }
+
+  /**
+   * Check if any channels has uncommitted rows
+   *
+   * @param channels a list of channels we want to check against
+   * @return a list of channels that has uncommitted rows
+   */
+  List<SnowflakeStreamingIngestChannelInternal> verifyChannelsAreFullyCommitted(
+      List<SnowflakeStreamingIngestChannelInternal> channels) {
+    if (channels.isEmpty()) {
+      return channels;
+    }
+
+    // Start checking the status of all the channels in the list
+    int retry = 0;
+    do {
+      ChannelsStatusResponse.ChannelStatusResponseDTO[] channelsStatus =
+          getChannelsStatus(channels).getChannels();
+      List<SnowflakeStreamingIngestChannelInternal> tempChannels = new ArrayList<>();
+
+      for (int idx = 0; idx < channelsStatus.length; idx++) {
+        if (channelsStatus[idx].getStatusCode() != ROW_SEQUENCER_IS_COMMITTED) {
+          tempChannels.add(channels.get(idx));
+        }
+      }
+
+      // Break if all the channels are fully committed, otherwise retry and check again
+      channels = tempChannels;
+      if (channels.isEmpty()) {
+        break;
+      }
+
+      retry++;
+
+      try {
+        Thread.sleep(COMMIT_RETRY_INTERVAL_IN_MS);
+      } catch (InterruptedException e) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
+      }
+    } while (retry < COMMIT_MAX_RETRY_COUNT);
+
+    return channels;
   }
 }

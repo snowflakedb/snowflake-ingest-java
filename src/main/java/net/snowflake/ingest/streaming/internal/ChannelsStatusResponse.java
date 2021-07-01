@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to serialize a response for the channels status endpoint */
@@ -14,67 +13,55 @@ class ChannelsStatusResponse {
 
     private Long statusCode;
 
-    // latest persisted offset token
+    // Latest persisted offset token
     private String persistedOffsetToken;
 
-    // latest persisted client sequencer
-    private long persistedClientSequencer;
+    // Latest persisted client sequencer
+    private Long persistedClientSequencer;
 
-    // latest persisted row sequencer
-    private long persistedRowSequencer;
-
-    //    /** Default constructor needed for Jackson */
-    public ChannelStatusResponseDTO() {}
-
-    /** Constructor when we only have a status code (failure case) */
-    @JsonIgnore
-    public ChannelStatusResponseDTO(final long statusCode) {
-      this.statusCode = statusCode;
-    }
+    // Latest persisted row sequencer
+    private Long persistedRowSequencer;
 
     @JsonProperty("status_code")
-    public Long getStatusCode() {
+    Long getStatusCode() {
       return statusCode;
     }
 
     @JsonProperty("status_code")
-    public void setStatusCode(Long statusCode) {
+    void setStatusCode(Long statusCode) {
       this.statusCode = statusCode;
     }
 
     @JsonProperty("persisted_row_sequencer")
-    public long getPersistedRowSequencer() {
+    Long getPersistedRowSequencer() {
       return persistedRowSequencer;
     }
 
     @JsonProperty("persisted_row_sequencer")
-    public void setPersistedRowSequencer(long persistedRowSequencer) {
+    void setPersistedRowSequencer(Long persistedRowSequencer) {
       this.persistedRowSequencer = persistedRowSequencer;
     }
 
     @JsonProperty("persisted_client_sequencer")
-    public long getPersistedClientSequencer() {
+    Long getPersistedClientSequencer() {
       return persistedClientSequencer;
     }
 
     @JsonProperty("persisted_client_sequencer")
-    public void setPersistedClientSequencer(long persistedClientSequencer) {
+    void setPersistedClientSequencer(Long persistedClientSequencer) {
       this.persistedClientSequencer = persistedClientSequencer;
     }
 
     @JsonProperty("persisted_offset_token")
-    public String getPersistedOffsetToken() {
+    String getPersistedOffsetToken() {
       return persistedOffsetToken;
     }
 
     @JsonProperty("persisted_offset_token")
-    public void setPersistedOffsetToken(String persistedOffsetToken) {
+    void setPersistedOffsetToken(String persistedOffsetToken) {
       this.persistedOffsetToken = persistedOffsetToken;
     }
   }
-
-  // Default constructor needed for Jackson
-  public ChannelsStatusResponse() {}
 
   // Channel array to return
   private ChannelStatusResponseDTO[] channels;
@@ -86,7 +73,8 @@ class ChannelsStatusResponse {
     this.statusCode = statusCode;
   }
 
-  public long getStatusCode() {
+  @JsonProperty("status_code")
+  Long getStatusCode() {
     return this.statusCode;
   }
 
@@ -95,17 +83,18 @@ class ChannelsStatusResponse {
     this.message = message;
   }
 
-  public String getMessage() {
+  @JsonProperty("message")
+  String getMessage() {
     return this.message;
   }
 
   @JsonProperty("channels")
-  public ChannelStatusResponseDTO[] getChannels() {
-    return channels;
+  void setChannels(ChannelStatusResponseDTO[] channels) {
+    this.channels = channels;
   }
 
   @JsonProperty("channels")
-  public void setChannels(ChannelStatusResponseDTO[] channels) {
-    this.channels = channels;
+  ChannelStatusResponseDTO[] getChannels() {
+    return channels;
   }
 }

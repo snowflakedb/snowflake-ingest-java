@@ -108,9 +108,12 @@ public interface SnowflakeStreamingIngestChannel {
    *
    * @param rows object data to write
    * @param offsetToken offset of last row in the row-set, used for replay in case of failures, It
-   *     could be null * if you don't plan on replaying or can't replay
+   *     could be null if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
    */
   InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
+
+  /** Get the latest committed offset token from Snowflake */
+  String getLatestCommittedOffsetToken();
 }

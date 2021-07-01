@@ -4,6 +4,7 @@ import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.USER_NAME;
 
 import java.security.KeyPair;
@@ -459,10 +460,16 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testFlush() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
-        new SnowflakeStreamingIngestClientInternal("client");
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannel channel =
         new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("Success");
+    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[0]);
+
+    Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
     channel.flush().get();
 
@@ -478,10 +485,16 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testClose() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
-        new SnowflakeStreamingIngestClientInternal("client");
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannel channel =
         new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("Success");
+    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[0]);
+
+    Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
     Assert.assertFalse(channel.isClosed());
     channel.close().get();
@@ -489,5 +502,28 @@ public class SnowflakeStreamingIngestChannelTest {
 
     // Calling close again on closed channel shouldn't fail
     channel.close().get();
+  }
+
+  @Test
+  public void testGetLatestCommittedOffsetToken() {
+    String offsetToken = "10";
+    SnowflakeStreamingIngestClientInternal client =
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
+    SnowflakeStreamingIngestChannel channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schema", "table", offsetToken, 0L, 0L, client, true);
+
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("Success");
+    ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
+        new ChannelsStatusResponse.ChannelStatusResponseDTO();
+    channelStatus.setStatusCode((long) ROW_SEQUENCER_IS_COMMITTED);
+    channelStatus.setPersistedOffsetToken(offsetToken);
+    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[] {channelStatus});
+
+    Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
+
+    Assert.assertEquals(offsetToken, channel.getLatestCommittedOffsetToken());
   }
 }
