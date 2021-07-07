@@ -12,6 +12,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 class ChannelRegisterStatus {
   private Long statusCode;
+  private String channelName;
+  private Long channelSequencer;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -20,5 +22,23 @@ class ChannelRegisterStatus {
 
   Long getStatusCode() {
     return this.statusCode;
+  }
+
+  @JsonProperty("channel")
+  void setChannelName(String channelName) {
+    this.channelName = channelName;
+  }
+
+  String getChannelName() {
+    return this.channelName;
+  }
+
+  @JsonProperty("client_sequencer")
+  void setChannelSequencer(Long channelSequencer) {
+    this.channelSequencer = channelSequencer;
+  }
+
+  Long getChannelSequencer() {
+    return this.channelSequencer;
   }
 }

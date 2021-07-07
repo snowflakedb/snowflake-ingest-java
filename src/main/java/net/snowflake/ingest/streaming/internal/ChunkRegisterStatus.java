@@ -13,6 +13,9 @@ import java.util.List;
  */
 class ChunkRegisterStatus {
   private List<ChannelRegisterStatus> channelsStatus;
+  private String dbName;
+  private String schemaName;
+  private String tableName;
 
   @JsonProperty("channels")
   void setChannelsStatus(List<ChannelRegisterStatus> channelsStatus) {
@@ -21,5 +24,32 @@ class ChunkRegisterStatus {
 
   List<ChannelRegisterStatus> getChannelsStatus() {
     return this.channelsStatus;
+  }
+
+  @JsonProperty("database")
+  void setDBName(String dbName) {
+    this.dbName = dbName;
+  }
+
+  String getDBName() {
+    return this.dbName;
+  }
+
+  @JsonProperty("schema")
+  void setSchemaName(String schemaName) {
+    this.schemaName = schemaName;
+  }
+
+  String getSchemaName() {
+    return this.schemaName;
+  }
+
+  @JsonProperty("table")
+  void setTableName(String tableName) {
+    this.tableName = tableName;
+  }
+
+  String getTableName() {
+    return this.tableName;
   }
 }

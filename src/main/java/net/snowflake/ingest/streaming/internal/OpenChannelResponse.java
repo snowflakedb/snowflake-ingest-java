@@ -11,6 +11,10 @@ import java.util.List;
 class OpenChannelResponse {
   private Long statusCode;
   private String message;
+  private String dbName;
+  private String schemaName;
+  private String tableName;
+  private String channelName;
   private Long clientSequencer;
   private Long rowSequencer;
   private String offsetToken;
@@ -32,6 +36,42 @@ class OpenChannelResponse {
 
   String getMessage() {
     return this.message;
+  }
+
+  @JsonProperty("database")
+  void setDBName(String dbName) {
+    this.dbName = dbName;
+  }
+
+  String getDBName() {
+    return this.dbName;
+  }
+
+  @JsonProperty("schema")
+  void setSchemaName(String schemaName) {
+    this.schemaName = schemaName;
+  }
+
+  String getSchemaName() {
+    return this.schemaName;
+  }
+
+  @JsonProperty("table")
+  void setTableName(String tableName) {
+    this.tableName = tableName;
+  }
+
+  String getTableName() {
+    return this.tableName;
+  }
+
+  @JsonProperty("channel")
+  void setChannelName(String channelName) {
+    this.channelName = channelName;
+  }
+
+  String getChannelName() {
+    return this.channelName;
   }
 
   @JsonProperty("client_sequencer")

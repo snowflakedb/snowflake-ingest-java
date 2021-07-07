@@ -258,10 +258,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       // Channel is now registered, add it to the in-memory channel pool
       SnowflakeStreamingIngestChannelInternal channel =
-          SnowflakeStreamingIngestChannelFactory.builder(request.getChannelName())
-              .setDBName(request.getDBName())
-              .setSchemaName(request.getSchemaName())
-              .setTableName(request.getTableName())
+          SnowflakeStreamingIngestChannelFactory.builder(response.getChannelName())
+              .setDBName(response.getDBName())
+              .setSchemaName(response.getSchemaName())
+              .setTableName(response.getTableName())
               .setOffsetToken(response.getOffsetToken())
               .setRowSequencer(response.getRowSequencer())
               .setChannelSequencer(response.getClientSequencer())
