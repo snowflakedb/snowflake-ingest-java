@@ -92,16 +92,27 @@ class DataValidationUtil {
    * @param input
    */
   static BigDecimal validateAndParseBigDecimal(Object input) {
+    BigDecimal output;
     try {
       if (input instanceof BigDecimal) {
-        return (BigDecimal) input;
+        output = (BigDecimal) input;
       } else if (input instanceof BigInteger) {
-        return new BigDecimal((BigInteger) input);
+        output = new BigDecimal((BigInteger) input);
       } else if (input instanceof String) {
-        return stringToBigDecimal((String) input);
+        output = stringToBigDecimal((String) input);
+      } else {
+        output = stringToBigDecimal((input.toString()));
       }
-      return stringToBigDecimal((input.toString()));
-
+      if (output.toBigInteger().compareTo(MAX_BIGINTEGER) >= 0
+          || output.toBigInteger().compareTo(MIN_BIGINTEGER) <= 0) {
+        throw new SFException(
+            ErrorCode.INVALID_ROW,
+            input.toString(),
+            String.format(
+                "Number out of representable range, Max=%s, Min=%s",
+                MIN_BIGINTEGER, MAX_BIGINTEGER));
+      }
+      return output;
     } catch (NumberFormatException e) {
       throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
     }

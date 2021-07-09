@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.MAX_BIGINTEGER;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -153,6 +155,8 @@ public class DataValidationUtilTest {
 
     // Expect errors
     expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, "honk");
+    expectError(
+        ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, MAX_BIGINTEGER);
   }
 
   @Test

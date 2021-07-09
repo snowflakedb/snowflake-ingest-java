@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -271,9 +272,31 @@ class ArrowRowBuffer {
           // Transfer the ownership of the vectors
           for (FieldVector vector : this.vectors.values()) {
             vector.setValueCount(this.curRowIndex);
-            TransferPair t = vector.getTransferPair(this.allocator);
-            t.transfer();
-            oldVectors.add((FieldVector) t.getTo());
+            if (vector instanceof DecimalVector) {
+              // DecimalVectors do not transfer FieldType metadata when using
+              // vector.getTransferPair.  We need to explicitly create the new vector to transfer to
+              // in order to keep the metadata.
+              ArrowType arrowType =
+                  new ArrowType.Decimal(
+                      ((DecimalVector) vector).getPrecision(),
+                      ((DecimalVector) vector).getScale(),
+                      DECIMAL_BIT_WIDTH);
+              FieldType fieldType =
+                  new FieldType(
+                      vector.getField().isNullable(),
+                      arrowType,
+                      null,
+                      vector.getField().getMetadata());
+              Field f = new Field(vector.getName(), fieldType, null);
+              DecimalVector newVector = new DecimalVector(f, this.allocator);
+              TransferPair t = vector.makeTransferPair(newVector);
+              t.transfer();
+              oldVectors.add((FieldVector) t.getTo());
+            } else {
+              TransferPair t = vector.getTransferPair(this.allocator);
+              t.transfer();
+              oldVectors.add((FieldVector) t.getTo());
+            }
           }
 
           rowCount = this.rowCount;
@@ -352,42 +375,28 @@ class ArrowRowBuffer {
     // Handle differently depends on the column logical and physical types
     switch (logicalType) {
       case FIXED:
-        switch (physicalType) {
-          case SB1:
-            arrowType =
-                column.getScale() == 0
-                    ? Types.MinorType.TINYINT.getType()
-                    : new ArrowType.Decimal(
-                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
-            break;
-          case SB2:
-            arrowType =
-                column.getScale() == 0
-                    ? Types.MinorType.SMALLINT.getType()
-                    : new ArrowType.Decimal(
-                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
-            break;
-          case SB4:
-            arrowType =
-                column.getScale() == 0
-                    ? Types.MinorType.INT.getType()
-                    : new ArrowType.Decimal(
-                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
-            break;
-          case SB8:
-            arrowType =
-                column.getScale() == 0
-                    ? Types.MinorType.BIGINT.getType()
-                    : new ArrowType.Decimal(
-                        column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
-            break;
-          case SB16:
-            arrowType =
-                new ArrowType.Decimal(column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
-            break;
-          default:
-            throw new SFException(
-                ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+        if ((column.getScale() != null && column.getScale() != 0)
+            || physicalType == ColumnPhysicalType.SB16) {
+          arrowType =
+              new ArrowType.Decimal(column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
+        } else {
+          switch (physicalType) {
+            case SB1:
+              arrowType = Types.MinorType.TINYINT.getType();
+              break;
+            case SB2:
+              arrowType = Types.MinorType.SMALLINT.getType();
+              break;
+            case SB4:
+              arrowType = Types.MinorType.INT.getType();
+              break;
+            case SB8:
+              arrowType = Types.MinorType.BIGINT.getType();
+              break;
+            default:
+              throw new SFException(
+                  ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+          }
         }
         break;
       case ANY:
@@ -404,6 +413,7 @@ class ArrowRowBuffer {
           case SB8:
             arrowType = Types.MinorType.BIGINT.getType();
             break;
+          case SB1: // TODO: Snowflake returns SB1 physical type for empty TIMESTAMP columns
           case SB16:
             arrowType = Types.MinorType.STRUCT.getType();
             FieldType fieldTypeEpoch =
@@ -547,55 +557,69 @@ class ArrowRowBuffer {
       } else {
         switch (logicalType) {
           case FIXED:
-            switch (physicalType) {
-              case SB1:
-                byte byteValue = DataValidationUtil.validateAndParseByte(value);
-                ((TinyIntVector) vector).setSafe(this.curRowIndex, byteValue);
-                stats.addIntValue(BigInteger.valueOf(byteValue));
-                rowBufferSize += 1;
-                break;
-              case SB2:
-                short shortValue = DataValidationUtil.validateAndParseShort(value);
-                ((SmallIntVector) vector).setSafe(this.curRowIndex, shortValue);
-                stats.addIntValue(BigInteger.valueOf(shortValue));
-                rowBufferSize += 2;
-                break;
-              case SB4:
-                int intVal = DataValidationUtil.validateAndParseInteger(value);
-                ((IntVector) vector).setSafe(this.curRowIndex, intVal);
-                stats.addIntValue(BigInteger.valueOf(intVal));
-                rowBufferSize += 4;
-                break;
-              case SB8:
-                long longValue = DataValidationUtil.validateAndParseLong(value);
-                ((BigIntVector) vector).setSafe(this.curRowIndex, longValue);
-                stats.addIntValue(BigInteger.valueOf((long) value));
-                rowBufferSize += 8;
-                break;
-              case SB16:
-                BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
-                ((DecimalVector) vector).setSafe(this.curRowIndex, bigDecimalValue);
-                // TODO should this be real?
-                // https://snowflakecomputing.atlassian.net/browse/SNOW-367798
-                stats.addIntValue(bigDecimalValue.toBigInteger());
-                rowBufferSize += 16;
-                break;
-              default:
-                throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+            if (!field.getMetadata().get(COLUMN_SCALE).equals("0")
+                || physicalType == ColumnPhysicalType.SB16) {
+              int scale =
+                  DataValidationUtil.validateAndParseInteger(field.getMetadata().get(COLUMN_SCALE));
+              BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
+
+              // vector.setSafe requires the BigDecimal input scale explicitly match its scale
+              bigDecimalValue = bigDecimalValue.setScale(scale);
+              ((DecimalVector) vector).setSafe(this.curRowIndex, bigDecimalValue);
+              BigInteger intRep =
+                  bigDecimalValue
+                      .multiply(BigDecimal.valueOf(Power10.intTable[scale]))
+                      .toBigInteger();
+              stats.addIntValue(intRep);
+              rowBufferSize += 16;
+            } else {
+              switch (physicalType) {
+                case SB1:
+                  byte byteValue = DataValidationUtil.validateAndParseByte(value);
+                  ((TinyIntVector) vector).setSafe(this.curRowIndex, byteValue);
+                  stats.addIntValue(BigInteger.valueOf(byteValue));
+                  rowBufferSize += 1;
+                  break;
+                case SB2:
+                  short shortValue = DataValidationUtil.validateAndParseShort(value);
+                  ((SmallIntVector) vector).setSafe(this.curRowIndex, shortValue);
+                  stats.addIntValue(BigInteger.valueOf(shortValue));
+                  rowBufferSize += 2;
+                  break;
+                case SB4:
+                  int intVal = DataValidationUtil.validateAndParseInteger(value);
+                  ((IntVector) vector).setSafe(this.curRowIndex, intVal);
+                  stats.addIntValue(BigInteger.valueOf(intVal));
+                  rowBufferSize += 4;
+                  break;
+                case SB8:
+                  long longValue = DataValidationUtil.validateAndParseLong(value);
+                  ((BigIntVector) vector).setSafe(this.curRowIndex, longValue);
+                  stats.addIntValue(BigInteger.valueOf(longValue));
+                  rowBufferSize += 8;
+                  break;
+                default:
+                  throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+              }
             }
             break;
           case ANY:
-          case ARRAY:
           case CHAR:
           case TEXT:
+            {
+              String str = DataValidationUtil.validateAndParseVariant(value);
+              Text text = new Text(str);
+              ((VarCharVector) vector).setSafe(this.curRowIndex, text);
+              stats.addStrValue(str);
+              rowBufferSize += text.getBytes().length;
+              break;
+            }
           case OBJECT:
+          case ARRAY:
           case VARIANT:
             String str = DataValidationUtil.validateAndParseVariant(value);
             Text text = new Text(str);
             ((VarCharVector) vector).setSafe(this.curRowIndex, text);
-            int len = text.getBytes().length;
-            stats.setCurrentMaxLength(len); // TODO confirm max length for strings
-            stats.addStrValue(str);
             rowBufferSize += text.getBytes().length;
             break;
           case TIMESTAMP_LTZ:
@@ -611,6 +635,7 @@ class ArrowRowBuffer {
                   rowBufferSize += 8;
                   break;
                 }
+              case SB1:
               case SB16:
                 {
                   StructVector structVector = (StructVector) vector;

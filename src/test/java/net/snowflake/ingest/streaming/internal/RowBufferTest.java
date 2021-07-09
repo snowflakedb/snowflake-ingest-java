@@ -122,9 +122,9 @@ public class RowBufferTest {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
 
-    // TIMESTAMP_NTZ SB1
+    // TIMESTAMP_NTZ SB2
     testCol = new ColumnMetadata();
-    testCol.setPhysicalType("SB1");
+    testCol.setPhysicalType("SB2");
     testCol.setLogicalType("TIMESTAMP_NTZ");
     try {
       Field result = this.rowBuffer.buildField(testCol);
