@@ -413,8 +413,17 @@ public class SnowflakeStreamingIngestClientTest {
             + "  \"message\" : \"Success\",\n"
             + "  \"blobs\" : [ {\n"
             + "    \"chunks\" : [ {\n"
+            + "      \"database\" : \"DB_STREAMINGINGEST\",\n"
+            + "      \"schema\" : \"PUBLIC\",\n"
+            + "      \"table\" : \"T_STREAMINGINGEST\",\n"
             + "      \"channels\" : [ {\n"
-            + "        \"status_code\" : 0\n"
+            + "        \"status_code\" : 0,\n"
+            + "        \"channel\" : \"CHANNEL\",\n"
+            + "        \"client_sequencer\" : 0\n"
+            + "      }, {\n"
+            + "        \"status_code\" : 0,\n"
+            + "        \"channel\" : \"CHANNEL1\",\n"
+            + "        \"client_sequencer\" : 0\n"
             + "      } ]\n"
             + "    } ]\n"
             + "  } ]\n"
@@ -444,6 +453,88 @@ public class SnowflakeStreamingIngestClientTest {
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("name", "path", new ArrayList<ChunkMetadata>()));
     client.registerBlobs(blobs);
+  }
+
+  @Test
+  public void testRegisterBlobResponseWithInvalidChannel() throws Exception {
+    String dbName = "DB_STREAMINGINGEST";
+    String schemaName = "PUBLIC";
+    String tableName = "T_STREAMINGINGEST";
+    String channel1Name = "CHANNEL1";
+    String channel2Name = "CHANNEL2";
+    long channel1Sequencer = 0;
+    long channel2Sequencer = 0;
+
+    String response =
+        String.format(
+            "{\n"
+                + "  \"status_code\" : 0,\n"
+                + "  \"message\" : \"Success\",\n"
+                + "  \"blobs\" : [ {\n"
+                + "    \"chunks\" : [ {\n"
+                + "      \"database\" : \"%s\",\n"
+                + "      \"schema\" : \"%s\",\n"
+                + "      \"table\" : \"%s\",\n"
+                + "      \"channels\" : [ {\n"
+                + "        \"status_code\" : 0,\n"
+                + "        \"channel\" : \"%s\",\n"
+                + "        \"client_sequencer\" : %d\n"
+                + "      }, {\n"
+                + "        \"status_code\" : 20,\n"
+                + "        \"channel\" : \"%s\",\n"
+                + "        \"client_sequencer\" : %d\n"
+                + "      } ]\n"
+                + "    } ]\n"
+                + "  } ]\n"
+                + "}",
+            dbName,
+            schemaName,
+            tableName,
+            channel1Name,
+            channel1Sequencer,
+            channel2Name,
+            channel2Sequencer);
+
+    HttpClient httpClient = Mockito.mock(HttpClient.class);
+    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder);
+
+    SnowflakeStreamingIngestChannelInternal channel1 =
+        new SnowflakeStreamingIngestChannelInternal(
+            channel1Name, dbName, schemaName, tableName, "0", channel1Sequencer, 0L, client, true);
+    SnowflakeStreamingIngestChannelInternal channel2 =
+        new SnowflakeStreamingIngestChannelInternal(
+            channel2Name, dbName, schemaName, tableName, "0", channel2Sequencer, 0L, client, true);
+    client.getChannelCache().addChannel(channel1);
+    client.getChannelCache().addChannel(channel2);
+
+    Assert.assertTrue(channel1.isValid());
+    Assert.assertTrue(channel2.isValid());
+
+    List<BlobMetadata> blobs =
+        Collections.singletonList(new BlobMetadata("name", "path", new ArrayList<ChunkMetadata>()));
+    client.registerBlobs(blobs);
+
+    // Channel2 should be invalidated now
+    Assert.assertTrue(channel1.isValid());
+    Assert.assertFalse(channel2.isValid());
   }
 
   @Test

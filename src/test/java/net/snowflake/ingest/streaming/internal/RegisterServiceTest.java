@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
@@ -14,12 +15,13 @@ public class RegisterServiceTest {
   public void testRegisterService() throws Exception {
     RegisterService rs = new RegisterService(null, true);
 
-    Pair<String, CompletableFuture<BlobMetadata>> blobFuture =
+    Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> blobFuture =
         new Pair<>(
-            "test", CompletableFuture.completedFuture(new BlobMetadata("name", "path", null)));
-    rs.addBlobs(Arrays.asList(blobFuture));
+            new FlushService.BlobData("test", null),
+            CompletableFuture.completedFuture(new BlobMetadata("name", "path", null)));
+    rs.addBlobs(Collections.singletonList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
-    List<String> errorBlobs = rs.registerBlobs(null);
+    List<FlushService.BlobData> errorBlobs = rs.registerBlobs(null);
     Assert.assertEquals(0, rs.getBlobsList().size());
     Assert.assertEquals(0, errorBlobs.size());
   }
@@ -28,19 +30,21 @@ public class RegisterServiceTest {
   public void testRegisterServiceTimeoutException() throws Exception {
     RegisterService rs = new RegisterService(null, true);
 
-    Pair<String, CompletableFuture<BlobMetadata>> blobFuture1 =
+    Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>(
-            "success", CompletableFuture.completedFuture(new BlobMetadata("name", "path", null)));
+            new FlushService.BlobData("success", null),
+            CompletableFuture.completedFuture(new BlobMetadata("name", "path", null)));
     CompletableFuture future = new CompletableFuture();
     future.completeExceptionally(new TimeoutException());
-    Pair<String, CompletableFuture<BlobMetadata>> blobFuture2 = new Pair<>("fail", future);
+    Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> blobFuture2 =
+        new Pair<>(new FlushService.BlobData("fail", null), future);
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));
     Assert.assertEquals(2, rs.getBlobsList().size());
     try {
-      List<String> errorBlobs = rs.registerBlobs(null);
+      List<FlushService.BlobData> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
-      Assert.assertEquals("fail", errorBlobs.get(0));
+      Assert.assertEquals("fail", errorBlobs.get(0).getFileName());
     } catch (Exception e) {
       Assert.fail("The timeout exception should be caught in registerBlobs");
     }

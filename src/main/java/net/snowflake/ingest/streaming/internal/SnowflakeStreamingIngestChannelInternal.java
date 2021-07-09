@@ -213,10 +213,14 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   }
 
   /** Mark the channel as invalid, and release resources */
-  void invalidate() {
+  boolean invalidate() {
     this.isValid = false;
     this.arrowBuffer.close();
-    this.owningClient.removeChannelIfSequencersMatch(this);
+    logger.logDebug(
+        "Channel has been invalidated, name={}, channel sequencer={}",
+        getFullyQualifiedName(),
+        channelSequencer);
+    return true;
   }
 
   /** @return a boolean to indicate whether the channel is closed or not */
@@ -228,6 +232,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   /** Mark the channel as closed */
   void markClosed() {
     this.isClosed = true;
+    logger.logDebug(
+        "Channel has been closed, name={}, channel sequencer={}",
+        getFullyQualifiedName(),
+        channelSequencer);
   }
 
   /**
@@ -266,6 +274,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     }
 
     markClosed();
+    this.owningClient.removeChannelIfSequencersMatch(this);
     return flush(true)
         .thenRun(
             () -> {
@@ -273,7 +282,6 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                   this.owningClient.verifyChannelsAreFullyCommitted(
                       Collections.singletonList(this));
               this.arrowBuffer.close();
-              this.owningClient.removeChannelIfSequencersMatch(this);
 
               // Throw an exception if the channel has any uncommitted rows
               if (!uncommittedChannels.isEmpty()) {

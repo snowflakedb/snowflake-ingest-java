@@ -192,6 +192,7 @@ class ArrowRowBuffer {
     this.vectors.values().forEach(vector -> vector.close());
     this.vectors.clear();
     this.fields.clear();
+    // TODO SNOW-382458: allocator close on failure cases shows leaked memory
     this.allocator.close();
   }
 

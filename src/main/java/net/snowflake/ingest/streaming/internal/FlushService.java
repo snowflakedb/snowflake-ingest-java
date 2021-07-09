@@ -54,6 +54,26 @@ import org.apache.arrow.vector.ipc.message.ArrowFieldNode;
  */
 class FlushService {
 
+  // Static class to save the list of channels that are used to build a blob, which is mainly used
+  // to invalidate all the channels when there is a failure
+  static class BlobData {
+    private final String fileName;
+    private final List<List<ChannelData>> data;
+
+    BlobData(String fileName, List<List<ChannelData>> data) {
+      this.fileName = fileName;
+      this.data = data;
+    }
+
+    String getFileName() {
+      return fileName;
+    }
+
+    List<List<ChannelData>> getData() {
+      return data;
+    }
+  }
+
   private static final Logging logger = new Logging(FlushService.class);
 
   // Increasing counter to generate a unique blob name per client
@@ -178,7 +198,12 @@ class FlushService {
       this.lastFlushTime = System.currentTimeMillis();
       return CompletableFuture.runAsync(
           () -> {
-            this.registerService.registerBlobs(latencyTimerContextMap);
+            this.registerService
+                .registerBlobs(latencyTimerContextMap)
+                .forEach(
+                    errorBlobData -> {
+                      invalidateAllChannelsInBlob(errorBlobData.getData());
+                    });
           },
           this.registerWorker);
     }
@@ -234,7 +259,7 @@ class FlushService {
   void distributeFlushTasks() {
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
         itr = this.channelCache.iterator();
-    List<Pair<String, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
+    List<Pair<BlobData, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     String fileName = null;
 
     while (itr.hasNext()) {
@@ -271,14 +296,14 @@ class FlushService {
         fileName = null;
         blobs.add(
             new Pair<>(
-                finalFileName,
+                new BlobData(finalFileName, blobData),
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
                         return buildAndUpload(finalFileName, blobData);
                       } catch (IOException e) {
-                        // TODO SNOW-354569: we should fail fast during a failure
                         logger.logError("Building blob failed={}, exception={}", finalFileName, e);
+                        invalidateAllChannelsInBlob(blobData);
                         return null;
                       } catch (NoSuchAlgorithmException e) {
                         throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
@@ -319,69 +344,72 @@ class FlushService {
       ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
       Map<String, RowBufferStats> columnEpStatsMapCombined = null;
 
-      for (ChannelData data : channelsDataPerTable) {
-        // Create channel metadata
-        ChannelMetadata channelMetadata =
-            ChannelMetadata.builder()
-                .setOwningChannel(data.getChannel())
-                .setRowSequencer(data.getRowSequencer())
-                .setOffsetToken(data.getOffsetToken())
-                .build();
-        // Add channel metadata to the metadata list
-        channelsMetadataList.add(channelMetadata);
+      try {
+        for (ChannelData data : channelsDataPerTable) {
+          // Create channel metadata
+          ChannelMetadata channelMetadata =
+              ChannelMetadata.builder()
+                  .setOwningChannel(data.getChannel())
+                  .setRowSequencer(data.getRowSequencer())
+                  .setOffsetToken(data.getOffsetToken())
+                  .build();
+          // Add channel metadata to the metadata list
+          channelsMetadataList.add(channelMetadata);
 
-        logger.logDebug(
-            "Start building channel={}, rowCount={}, bufferSize={} in blob={}",
-            data.getChannel().getFullyQualifiedName(),
-            data.getRowCount(),
-            data.getBufferSize(),
-            fileName);
+          logger.logDebug(
+              "Start building channel={}, rowCount={}, bufferSize={} in blob={}",
+              data.getChannel().getFullyQualifiedName(),
+              data.getRowCount(),
+              data.getBufferSize(),
+              fileName);
 
-        if (root == null) {
-          columnEpStatsMapCombined = data.getColumnEps();
-          root = new VectorSchemaRoot(data.getVectors());
-          streamWriter = new ArrowStreamWriter(root, null, chunkData);
-          firstChannel = data.getChannel();
-          streamWriter.start();
-        } else {
-          // This method assumes that channelsDataPerTable is grouped by table. We double check here
-          // and throw an error if the assumption is violated
-          if (!data.getChannel()
-              .getFullyQualifiedTableName()
-              .equals(firstChannel.getFullyQualifiedTableName())) {
-            throw new SFException(ErrorCode.INVALID_DATA_IN_CHUNK);
+          if (root == null) {
+            columnEpStatsMapCombined = data.getColumnEps();
+            root = new VectorSchemaRoot(data.getVectors());
+            streamWriter = new ArrowStreamWriter(root, null, chunkData);
+            firstChannel = data.getChannel();
+            streamWriter.start();
+          } else {
+            // This method assumes that channelsDataPerTable is grouped by table. We double check
+            // here and throw an error if the assumption is violated
+            if (!data.getChannel()
+                .getFullyQualifiedTableName()
+                .equals(firstChannel.getFullyQualifiedTableName())) {
+              throw new SFException(ErrorCode.INVALID_DATA_IN_CHUNK);
+            }
+
+            columnEpStatsMapCombined =
+                ChannelData.getCombinedColumnStatsMap(
+                    columnEpStatsMapCombined, data.getColumnEps());
+
+            for (int vectorIdx = 0; vectorIdx < data.getVectors().size(); vectorIdx++) {
+              FieldVector sourceVector = data.getVectors().get(vectorIdx);
+              ArrowFieldNode node =
+                  new ArrowFieldNode(sourceVector.getValueCount(), sourceVector.getNullCount());
+              root.getVector(vectorIdx).loadFieldBuffers(node, sourceVector.getFieldBuffers());
+              sourceVector.close();
+            }
           }
 
-          columnEpStatsMapCombined =
-              ChannelData.getCombinedColumnStatsMap(columnEpStatsMapCombined, data.getColumnEps());
+          // Write channel data using the stream writer
+          streamWriter.writeBatch();
+          rowCount += data.getRowCount();
 
-          for (int vectorIdx = 0; vectorIdx < data.getVectors().size(); vectorIdx++) {
-            FieldVector sourceVector = data.getVectors().get(vectorIdx);
-            ArrowFieldNode node =
-                new ArrowFieldNode(sourceVector.getValueCount(), sourceVector.getNullCount());
-            root.getVector(vectorIdx).loadFieldBuffers(node, sourceVector.getFieldBuffers());
-            sourceVector.close();
-          }
+          logger.logDebug(
+              "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
+              data.getChannel().getFullyQualifiedName(),
+              data.getRowCount(),
+              data.getBufferSize(),
+              fileName);
         }
-
-        // Write channel data using the stream writer
-        streamWriter.writeBatch();
-        rowCount += data.getRowCount();
-
-        logger.logDebug(
-            "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
-            data.getChannel().getFullyQualifiedName(),
-            data.getRowCount(),
-            data.getBufferSize(),
-            fileName);
+      } finally {
+        if (streamWriter != null) {
+          streamWriter.close();
+          root.close();
+        }
       }
 
       if (!channelsMetadataList.isEmpty()) {
-        Utils.assertNotNull("arrow data writer", streamWriter);
-        Utils.assertNotNull("arrow schema root", root);
-        streamWriter.close();
-        root.close();
-
         // Compress the chunk data
         byte[] compressedChunkData = BlobBuilder.compress(fileName, chunkData);
         String md5 = BlobBuilder.computeMD5(compressedChunkData);
@@ -490,5 +518,25 @@ class FlushService {
         + this.counter.getAndIncrement()
         + "."
         + BLOB_EXTENSION_TYPE;
+  }
+
+  /**
+   * Invalidate all the channels in the blob data
+   *
+   * @param blobData list of channels that belongs to the blob
+   */
+  private void invalidateAllChannelsInBlob(List<List<ChannelData>> blobData) {
+    blobData.forEach(
+        chunkData ->
+            chunkData.forEach(
+                channelData ->
+                    this.owningClient
+                        .getChannelCache()
+                        .invalidateAndRemoveChannelIfSequencersMatch(
+                            channelData.getChannel().getDBName(),
+                            channelData.getChannel().getSchemaName(),
+                            channelData.getChannel().getTableName(),
+                            channelData.getChannel().getName(),
+                            channelData.getChannel().getChannelSequencer())));
   }
 }

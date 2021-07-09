@@ -326,20 +326,20 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name);
 
+    RegisterBlobResponse response = null;
     try {
       Map<Object, Object> payload = new HashMap<>();
       payload.put("request_id", null);
       payload.put("blobs", blobs);
       payload.put("role", this.role);
 
-      RegisterBlobResponse response =
+      response =
           ServiceResponseHandler.unmarshallStreamingIngestResponse(
               httpClient.execute(
                   requestBuilder.generateStreamingIngestPostRequest(
                       payload, REGISTER_BLOB_ENDPOINT, "register blob")),
               RegisterBlobResponse.class);
 
-      // TODO: to fail fast, the channels could to be invalidated if register blob show failures
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
         throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.getMessage());
@@ -352,6 +352,29 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         "Register blob request succeeded for blob={}, client={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name);
+
+    // Invalidate any channels that returns a failure status code
+    response
+        .getBlobsStatus()
+        .forEach(
+            blobStatus ->
+                blobStatus
+                    .getChunksStatus()
+                    .forEach(
+                        chunkStatus ->
+                            chunkStatus
+                                .getChannelsStatus()
+                                .forEach(
+                                    channelStatus -> {
+                                      if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
+                                        channelCache.invalidateAndRemoveChannelIfSequencersMatch(
+                                            chunkStatus.getDBName(),
+                                            chunkStatus.getSchemaName(),
+                                            chunkStatus.getTableName(),
+                                            channelStatus.getChannelName(),
+                                            channelStatus.getChannelSequencer());
+                                      }
+                                    })));
   }
 
   /**

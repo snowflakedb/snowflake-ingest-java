@@ -55,12 +55,8 @@ class ChannelCache {
         .forEach(channels -> channels.values().forEach(channel -> channel.markClosed()));
   }
 
-  /**
-   * Remove a channel in the channel cache if the channel sequencer matches
-   *
-   * @param channel
-   */
-  // TODO: what about old stale channels that are not closed? May need a background cleaner
+  /** Remove a channel in the channel cache if the channel sequencer matches */
+  // TODO SNOW-330045: background cleaner to cleanup old stale channels that are not closed?
   void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
     cache.computeIfPresent(
         channel.getFullyQualifiedTableName(),
@@ -71,6 +67,30 @@ class ChannelCache {
           return channelInCache != null
                   && channelInCache.getChannelSequencer() == channel.getChannelSequencer()
                   && v.remove(channel.getName()) != null
+                  && v.isEmpty()
+              ? null
+              : v;
+        });
+  }
+
+  /** Invalidate and remove a channel in the channel cache if the channel sequencer matches */
+  void invalidateAndRemoveChannelIfSequencersMatch(
+      String dbName,
+      String schemaName,
+      String tableName,
+      String channelName,
+      Long channelSequencer) {
+    String fullyQualifiedTableName = String.format("%s.%s.%s", dbName, schemaName, tableName);
+    cache.computeIfPresent(
+        fullyQualifiedTableName,
+        (k, v) -> {
+          SnowflakeStreamingIngestChannelInternal channelInCache = v.get(channelName);
+          // We need to compare the channel sequencer in case the old channel was already been
+          // removed
+          return channelInCache != null
+                  && channelInCache.getChannelSequencer().equals(channelSequencer)
+                  && v.remove(channelName) != null
+                  && channelInCache.invalidate()
                   && v.isEmpty()
               ? null
               : v;

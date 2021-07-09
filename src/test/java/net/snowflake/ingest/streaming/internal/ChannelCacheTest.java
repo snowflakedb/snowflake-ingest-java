@@ -122,4 +122,56 @@ public class ChannelCacheTest {
     cache.removeChannelIfSequencersMatch(channel2);
     Assert.assertEquals(0, cache.getSize());
   }
+
+  @Test
+  public void testInvalidateAndRemoveChannel() {
+    cache.invalidateAndRemoveChannelIfSequencersMatch(
+        channel1.getDBName(),
+        channel1.getSchemaName(),
+        channel1.getTableName(),
+        channel1.getName(),
+        channel1.getChannelSequencer());
+    Assert.assertEquals(2, cache.getSize());
+    // Remove channel1 again should be a no op
+    cache.invalidateAndRemoveChannelIfSequencersMatch(
+        channel1.getDBName(),
+        channel1.getSchemaName(),
+        channel1.getTableName(),
+        channel1.getName(),
+        channel1.getChannelSequencer());
+    Assert.assertEquals(2, cache.getSize());
+    cache.invalidateAndRemoveChannelIfSequencersMatch(
+        channel2.getDBName(),
+        channel2.getSchemaName(),
+        channel2.getTableName(),
+        channel2.getName(),
+        channel2.getChannelSequencer());
+    Assert.assertEquals(1, cache.getSize());
+
+    // Verify that remove the same channel with a different channel sequencer is a no op
+    cache.invalidateAndRemoveChannelIfSequencersMatch(
+        channel3.getDBName(),
+        channel3.getSchemaName(),
+        channel3.getTableName(),
+        channel3.getName(),
+        channel3.getChannelSequencer() + 1);
+    Assert.assertEquals(1, cache.getSize());
+
+    cache.invalidateAndRemoveChannelIfSequencersMatch(
+        channel3.getDBName(),
+        channel3.getSchemaName(),
+        channel3.getTableName(),
+        channel3.getName(),
+        channel3.getChannelSequencer());
+    Assert.assertEquals(0, cache.getSize());
+
+    // Remove channel2 again should be a no op
+    cache.invalidateAndRemoveChannelIfSequencersMatch(
+        channel2.getDBName(),
+        channel2.getSchemaName(),
+        channel2.getTableName(),
+        channel2.getName(),
+        channel2.getChannelSequencer());
+    Assert.assertEquals(0, cache.getSize());
+  }
 }
