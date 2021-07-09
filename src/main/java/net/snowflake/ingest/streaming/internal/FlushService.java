@@ -18,8 +18,11 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -265,7 +268,7 @@ class FlushService {
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
-      fileName = fileName == null ? getFileName() : fileName;
+      fileName = fileName == null ? getFileName(this.targetStage.getClientPrefix()) : fileName;
       if (this.owningClient.flushLatency != null) {
         latencyTimerContextMap.putIfAbsent(fileName, this.owningClient.flushLatency.time());
       }
@@ -478,7 +481,7 @@ class FlushService {
 
     logger.logDebug("Finish uploading file={}", fileName);
 
-    return new BlobMetadata(fileName, fileName /* TODO SNOW-331093 */, metadata);
+    return new BlobMetadata(fileName, fileName /* TODO: SNOW-331093 */, metadata);
   }
 
   /**
@@ -504,20 +507,45 @@ class FlushService {
   }
 
   /**
-   * Generate a blob name, which is current time + thread id + increasing counter
+   * Generate a blob name, which is: "YEAR/MONTH/DAY_OF_MONTH/HOUR_OF_DAY/CLIENT_PREFIX/<current
+   * time + thread id + increasing counter>"
    *
    * @return the generated blob name
    */
-  private String getFileName() {
-    long time = System.currentTimeMillis();
+  private String getFileName(String clientPrefix) {
+    Calendar calendar = Calendar.getInstance();
+    return getFileName(calendar, clientPrefix);
+  }
+
+  /** For TESTING */
+  String getFileName(Calendar calendar, String clientPrefix) {
+    if (isTestMode && clientPrefix == null) {
+      clientPrefix = "testPrefix";
+    }
+    Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
+    int year = calendar.get(Calendar.YEAR);
+    int month = calendar.get(Calendar.MONTH);
+    int day = calendar.get(Calendar.DAY_OF_MONTH);
+    int hour = calendar.get(Calendar.HOUR_OF_DAY);
+    long time = calendar.getTimeInMillis();
     long threadId = Thread.currentThread().getId();
-    return Long.toString(time, 36)
-        + "_"
-        + threadId
-        + "_"
-        + this.counter.getAndIncrement()
-        + "."
-        + BLOB_EXTENSION_TYPE;
+    String fileName =
+        Long.toString(time, 36)
+            + "_"
+            + threadId
+            + "_"
+            + this.counter.getAndIncrement()
+            + "."
+            + BLOB_EXTENSION_TYPE;
+    Path filePath =
+        Paths.get(
+            Integer.toString(year),
+            Integer.toString(month),
+            Integer.toString(day),
+            Integer.toString(hour),
+            clientPrefix,
+            fileName);
+    return filePath.toString();
   }
 
   /**

@@ -32,15 +32,16 @@ import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.http.client.HttpClient;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
-  private static final String LOCAL_FILE_SEPARATOR = "/";
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
   static final int MAX_RETRY_COUNT = 1;
+  private String clientPrefix;
 
   /**
    * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
@@ -212,6 +213,8 @@ class StreamingIngestStage {
       }
 
       JsonNode responseNode = mapper.valueToTree(response);
+      this.clientPrefix = responseNode.get("prefix").textValue();
+      Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
 
       // Currently have a few mismatches between the client/configure response and what
       // SnowflakeFileTransferAgent expects
@@ -299,5 +302,9 @@ class StreamingIngestStage {
     } catch (Exception ex) {
       throw new SFException(ex, ErrorCode.BLOB_UPLOAD_FAILURE);
     }
+  }
+
+  String getClientPrefix() {
+    return this.clientPrefix;
   }
 }

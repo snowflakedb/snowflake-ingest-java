@@ -16,8 +16,11 @@ import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -75,6 +78,28 @@ public class FlushServiceTest {
     channel3 =
         new SnowflakeStreamingIngestChannelInternal(
             "channel3", "db2", "schema1", "table2", "offset3", 0L, 0L, client, true);
+  }
+
+  @Test
+  public void testGetFileName() {
+    FlushService flushService = new FlushService(client, channelCache, stage, false);
+    Calendar calendar = Calendar.getInstance();
+    String clientPrefix = "honk";
+    String outputString = flushService.getFileName(calendar, clientPrefix);
+    Path outputPath = Paths.get(outputString);
+    Assert.assertEquals(clientPrefix, outputPath.getParent().getFileName().toString());
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
+        outputPath.getParent().getParent().getFileName().toString());
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
+        outputPath.getParent().getParent().getParent().getFileName().toString());
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.MONTH)),
+        outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.YEAR)),
+        outputPath.getParent().getParent().getParent().getParent().getParent().toString());
   }
 
   @Test
