@@ -200,6 +200,13 @@
             <version>3.13.5</version>
         </dependency>
 
+        <!-- String collation-->
+        <dependency>
+            <groupId>com.ibm.icu</groupId>
+            <artifactId>icu4j</artifactId>
+            <version>61.1</version>
+        </dependency>
+
         <!-- jwt token for key pair authentication with GS -->
         <dependency>
             <groupId>com.nimbusds</groupId>

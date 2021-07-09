@@ -4,13 +4,304 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.ibm.icu.lang.UCharacter;
+import com.ibm.icu.text.CollationKey;
+import com.ibm.icu.text.Collator;
+import com.ibm.icu.util.ULocale;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
 
 /** Keeps track of the active EP stats, used to generate a file EP info */
 class RowBufferStats {
+  private static class CollationDefinition {
+    /** The name of this collation */
+    private String name;
+
+    /** Derived ICU collation name */
+    private String icuCollationString = null;
+
+    /** Defines if a given collation trims strings on the left side */
+    private boolean ltrim = false;
+
+    /** Defines if a given collation trims strings on the right side */
+    private boolean rtrim = false;
+
+    /** Defines if a given collation applies "lower" before comparison */
+    private boolean lower = false;
+
+    /** Defines if a given collation applies "upper" before comparison */
+    private boolean upper = false;
+
+    /** If true or null, the collation is case sensitive */
+    private Boolean caseSensitive = null;
+
+    /** If true or null, the collation is accent sensitive */
+    private Boolean accentSensitive = null;
+
+    /** If true or null, the collation is punctuation sensitive */
+    private Boolean punctuationSensitive = null;
+
+    /**
+     * Defines if a given collation is forced, i.e. goes through the full collation pipeline even if
+     * not strictly needed (i.e. UTF8)
+     */
+    private boolean forced = false;
+
+    private static String LANG_UTF8 = "utf8";
+    private static final String LANG_BIN = "bin";
+    private static final String LANG_EMPTY = "";
+
+    /** Language, e.g. "en_EN". LANG_UTF8 is the default */
+    private String language = LANG_UTF8;
+
+    private Collator collator;
+
+    /** Constructor - only called internally */
+    private CollationDefinition(String name) {
+      name = name.toLowerCase();
+      this.name = name;
+
+      // Empty collation is UTF8, treat it as such
+      if (name.isEmpty()) {
+        name = LANG_UTF8;
+      }
+
+      /** Language, e.g. "en_EN". LANG_UTF8 is the default */
+      String lang = LANG_UTF8;
+
+      // Variables used to construct the ICU string
+      boolean firstLower = false;
+      boolean firstLowerIsSet = false;
+
+      // Parse the collation as a sequence of "-" divided options
+      String[] elements = name.split("-");
+      assert (elements.length > 0); // empty string detected earlier
+
+      // Then other options
+      for (int i = 0; i < elements.length; i++) {
+        switch (elements[i]) {
+            // ICU options
+          case "ci":
+            caseSensitive = false;
+            break;
+          case "cs":
+            caseSensitive = true;
+            break;
+          case "ai":
+            accentSensitive = false;
+            break;
+          case "as":
+            accentSensitive = true;
+            break;
+          case "pi":
+            punctuationSensitive = false;
+            break;
+          case "ps":
+            punctuationSensitive = true;
+            break;
+          case "fu":
+            firstLower = false;
+            firstLowerIsSet = true;
+            break;
+          case "fl":
+            firstLower = true;
+            firstLowerIsSet = true;
+            break;
+            // Snowflake-specific options
+          case "lower":
+            lower = true;
+            break;
+          case "upper":
+            upper = true;
+            break;
+          case "rtrim":
+            rtrim = true;
+            break;
+          case "ltrim":
+            ltrim = true;
+            break;
+          case "trim":
+            ltrim = rtrim = true;
+            break;
+          case "forced":
+            forced = true;
+            break;
+          default:
+            // Unknown element can be the language identificator, if it's the first one
+            if (i == 0) {
+              language = elements[0];
+            } else {
+              throw new SFException(
+                  ErrorCode.INVALID_COLLATION_STRING, name, "Unknown option: " + elements[i]);
+            }
+        }
+      }
+
+      /* Sanity checks */
+      if (upper && lower)
+        throw new SFException(
+            ErrorCode.INVALID_COLLATION_STRING,
+            name,
+            "Options 'upper' and 'lower' are mutually exclusive");
+
+      if ((name == null
+          || name.equalsIgnoreCase(LANG_EMPTY)
+          || name.equalsIgnoreCase(LANG_UTF8)
+          || name.equalsIgnoreCase(LANG_BIN))) {
+        // Check we didn't provide any of the ICU-specific options
+        if (caseSensitive != null)
+          throw new SFException(
+              ErrorCode.INVALID_COLLATION_STRING,
+              name,
+              "Case sensitivity option not allowed for the UTF8 collation");
+        if (accentSensitive != null)
+          throw new SFException(
+              ErrorCode.INVALID_COLLATION_STRING,
+              name,
+              "Accent sensitivity option not allowed for the UTF8 collation");
+        if (firstLowerIsSet)
+          throw new SFException(
+              ErrorCode.INVALID_COLLATION_STRING,
+              name,
+              "Upper/lower preference option not allowed for the UTF8 collation");
+        if (punctuationSensitive != null)
+          throw new SFException(
+              ErrorCode.INVALID_COLLATION_STRING,
+              name,
+              "Punctuation sensitivity option not allowed for the UTF8 collation");
+      } else {
+        // Set the defaults
+        // NOTE: firstLower does not have a default value
+        if (caseSensitive == null) caseSensitive = true;
+        if (accentSensitive == null) accentSensitive = true;
+        if (punctuationSensitive == null) punctuationSensitive = true;
+
+        // Construct an ICU string, e.g. "de@colStrength=primary;colCaseFirst=lower"
+        // This string will be used by COLLATE_TO_BINARY and others.
+        // See http://userguide.icu-project.org/collation/concepts#TOC-Collator-naming-scheme
+
+        // We start with the language, and then construct a series of ";option=something".
+        // At the end, we'll switch the first ';' to '@'
+        String icu = language;
+
+        /*
+         * From https://www.unicode.org/reports/tr35/tr35-collation.html#Collation_Element :
+         * 3.4.1 Common settings combinations
+         * Some commonly used parametric collation settings are available via combinations of LDML settings attributes:
+         * - “Ignore accents”: strength=primary
+         * - “Ignore accents” but take case into account: strength=primary caseLevel=on
+         * - “Ignore case”: strength=secondary
+         */
+        if (!accentSensitive) {
+          icu += ";colStrength=primary";
+          // In ICU, "primary" implies case-insensitive.
+          // If we're case sensitive, force it with "colCaseLevel"
+          icu += ";colCaseLevel=" + (caseSensitive ? "yes" : "no");
+        } else if (!caseSensitive) {
+          icu += ";colStrength=secondary";
+        }
+        if (firstLowerIsSet) {
+          icu += ";colCaseFirst=" + (firstLower ? "lower" : "upper");
+        }
+        if (punctuationSensitive != null) {
+          icu += ";colAlternate=" + (punctuationSensitive ? "non-ignorable" : "shifted");
+        }
+
+        // Fix the first ";" to be "@"
+        this.icuCollationString = icu.replaceFirst(";", "@");
+      }
+      if (this.icuCollationString != null) {
+        ULocale locale = new ULocale(icuCollationString);
+        collator = Collator.getInstance(locale);
+      }
+    }
+
+    byte[] performConversion(String input) {
+      /*
+       * WARNING: the logic should be in sync with CollationEvaluator.cpp !!!
+       */
+      if (ltrim || rtrim) {
+        // Apply trim
+        int inputIdx = 0;
+        int inputLen = input.length();
+
+        if (ltrim) {
+          while (inputLen > 0 && input.charAt(inputIdx) == ' ') {
+            inputLen--;
+            inputIdx++;
+          }
+        }
+        if (rtrim) {
+          while (inputLen > 0 && input.charAt(inputIdx + inputLen - 1) == ' ') {
+            inputLen--;
+          }
+        }
+        input = input.substring(inputIdx, inputIdx + inputLen);
+      }
+
+      // Handle upper/lower
+      if (upper) {
+        input = UCharacter.toUpperCase(input);
+      }
+      if (lower) {
+        input = UCharacter.toLowerCase(input);
+      }
+
+      if (icuCollationString == null) {
+        // No need for ICU key generation, convert (modified) input to UTF-8 bytes
+        try {
+          return input.getBytes("UTF-8");
+        } catch (java.io.UnsupportedEncodingException e) {
+          throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed encoding string to UTF-8");
+        }
+      }
+
+      // ICU collation is needed
+      // Perform the conversion
+      CollationKey cltKey = collator.getCollationKey(input);
+      byte[] cltKeyBytes = cltKey.toByteArray();
+      int cltKeySize = cltKeyBytes.length;
+
+      if (cltKeySize > 0) {
+        // Get rid of the trailing 0
+        if (cltKeyBytes[cltKeySize - 1] != 0) {
+          throw new SFException(
+              ErrorCode.INTERNAL_ERROR, "unexpected_non_zero_end_of_collated_key");
+        }
+        cltKeySize -= 1;
+
+        // Check if the produced key is all 0x01 - this can happen when we collate to an empty
+        // string,
+        // but the ICU still produces 0x01 dividers between various parts of the collation key.
+        // It's better to just treat these as an empty string.
+        int idx;
+        for (idx = 0; idx < cltKeySize; idx++) {
+          if (cltKeyBytes[idx] != 0x01) {
+            break;
+          }
+        }
+
+        if (idx == cltKeySize) {
+          // Mark as an empty string
+          cltKeySize = 0;
+        }
+
+        cltKeyBytes = Arrays.copyOf(cltKeyBytes, cltKeySize);
+      }
+      // Create an SFBinary
+      return cltKeyBytes;
+    }
+  }
+
   private String currentMinStrValue;
   private String currentMaxStrValue;
+  private String currentMinColStrValue;
+  private String currentMaxColStrValue;
+  private byte[] currentMinColStrValueInBytes;
+  private byte[] currentMaxColStrValueInBytes;
   private byte[] currentMinStrValueInBytes;
   private byte[] currentMaxStrValueInBytes;
   private BigInteger currentMinIntValue;
@@ -20,11 +311,18 @@ class RowBufferStats {
   private long currentNullCount;
   // for binary or string columns
   private long currentMaxLength;
+  private CollationDefinition collationDefinition;
+  private String collationDefinitionString;
 
   /** Creates empty stats */
-  RowBufferStats() {
+  RowBufferStats(String collationDefinitionString) {
+    this.collationDefinitionString = collationDefinitionString;
     this.currentMaxStrValue = null;
     this.currentMinStrValue = null;
+    this.currentMaxColStrValue = null;
+    this.currentMinColStrValue = null;
+    this.currentMaxColStrValueInBytes = null;
+    this.currentMinColStrValueInBytes = null;
     this.currentMinStrValueInBytes = null;
     this.currentMaxStrValueInBytes = null;
     this.currentMaxIntValue = null;
@@ -33,11 +331,34 @@ class RowBufferStats {
     this.currentMinRealValue = null;
     this.currentNullCount = 0;
     this.currentMaxLength = 0;
+
+    if (collationDefinitionString != null) {
+      this.collationDefinition = new CollationDefinition(collationDefinitionString);
+    }
+  }
+
+  RowBufferStats() {
+    this(null);
+  }
+
+  byte[] getCollatedBytes(String value) {
+    if (collationDefinition != null) {
+      return collationDefinition.performConversion(value);
+    }
+    return value.getBytes(StandardCharsets.UTF_8);
   }
 
   // TODO performance test this vs in place update
   public static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
-    RowBufferStats combined = new RowBufferStats();
+    if (left.getCollationDefinitionString() != right.collationDefinitionString) {
+      throw new SFException(
+          ErrorCode.INVALID_COLLATION_STRING,
+          "Tried to combine stats for different collations",
+          String.format(
+              "left=%s, right=%s",
+              left.getCollationDefinitionString(), right.getCollationDefinitionString()));
+    }
+    RowBufferStats combined = new RowBufferStats(left.getCollationDefinitionString());
 
     if (left.currentMinIntValue != null) {
       combined.addIntValue(left.currentMinIntValue);
@@ -52,11 +373,15 @@ class RowBufferStats {
     if (left.currentMinStrValue != null) {
       combined.addStrValue(left.currentMinStrValue);
       combined.addStrValue(left.currentMaxStrValue);
+      combined.addStrValue(left.currentMinColStrValue);
+      combined.addStrValue(left.currentMaxColStrValue);
     }
 
     if (right.currentMinStrValue != null) {
       combined.addStrValue(right.currentMinStrValue);
       combined.addStrValue(right.currentMaxStrValue);
+      combined.addStrValue(right.currentMinColStrValue);
+      combined.addStrValue(right.currentMaxColStrValue);
     }
 
     if (left.currentMinRealValue != null) {
@@ -77,19 +402,36 @@ class RowBufferStats {
   void addStrValue(String value) {
 
     byte[] valueBytes = value != null ? value.getBytes(StandardCharsets.UTF_8) : null;
+    byte[] collatedValueBytes = value != null ? getCollatedBytes(value) : null;
 
     // Check if new min/max string
     if (this.currentMinStrValue == null) {
       this.currentMinStrValue = value;
       this.currentMaxStrValue = value;
+      this.currentMinColStrValue = value;
+      this.currentMaxColStrValue = value;
       this.currentMinStrValueInBytes = valueBytes;
       this.currentMaxStrValueInBytes = valueBytes;
-    } else if (compare(currentMinStrValueInBytes, valueBytes) > 0) {
-      this.currentMinStrValue = value;
-      this.currentMinStrValueInBytes = valueBytes;
-    } else if (compare(currentMaxStrValueInBytes, valueBytes) < 0) {
-      this.currentMaxStrValue = value;
-      this.currentMaxStrValueInBytes = valueBytes;
+      this.currentMinColStrValueInBytes = collatedValueBytes;
+      this.currentMaxColStrValueInBytes = collatedValueBytes;
+    } else {
+      // Non-collated comparison
+      if (compare(currentMinStrValueInBytes, valueBytes) > 0) {
+        this.currentMinStrValue = value;
+        this.currentMinStrValueInBytes = valueBytes;
+      } else if (compare(currentMaxStrValueInBytes, valueBytes) < 0) {
+        this.currentMaxStrValue = value;
+        this.currentMaxStrValueInBytes = valueBytes;
+      }
+
+      // Collated comparison
+      if (compare(currentMinColStrValueInBytes, collatedValueBytes) > 0) {
+        this.currentMinColStrValue = value;
+        this.currentMinColStrValueInBytes = collatedValueBytes;
+      } else if (compare(currentMaxColStrValueInBytes, collatedValueBytes) < 0) {
+        this.currentMaxColStrValue = value;
+        this.currentMaxColStrValueInBytes = collatedValueBytes;
+      }
     }
   }
 
@@ -99,6 +441,14 @@ class RowBufferStats {
 
   String getCurrentMaxStrValue() {
     return currentMaxStrValue;
+  }
+
+  String getCurrentMinColStrValue() {
+    return currentMinColStrValue;
+  }
+
+  String getCurrentMaxColStrValue() {
+    return currentMaxColStrValue;
   }
 
   void addIntValue(BigInteger value) {
@@ -168,6 +518,10 @@ class RowBufferStats {
    */
   long getDistinctValues() {
     return -1;
+  }
+
+  String getCollationDefinitionString() {
+    return collationDefinitionString;
   }
 
   /**

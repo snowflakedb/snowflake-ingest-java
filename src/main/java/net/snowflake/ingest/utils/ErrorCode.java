@@ -30,7 +30,8 @@ public enum ErrorCode {
   KEYPAIR_CREATION_FAILURE("0022"),
   MD5_HASHING_NOT_AVAILABLE("0023"),
   CHANNEL_STATUS_FAILURE("0024"),
-  CHANNEL_WITH_UNCOMMITTED_ROWS("0025");
+  CHANNEL_WITH_UNCOMMITTED_ROWS("0025"),
+  INVALID_COLLATION_STRING("0026");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

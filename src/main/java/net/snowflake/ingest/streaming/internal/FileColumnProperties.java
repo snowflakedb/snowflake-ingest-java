@@ -11,6 +11,12 @@ class FileColumnProperties {
 
   private String maxStrValue;
 
+  private String collation;
+
+  private String minStrNonCollated;
+
+  private String maxStrNonCollated;
+
   // 128-bit precision needed
   private BigInteger minIntValue;
 
@@ -31,13 +37,16 @@ class FileColumnProperties {
   private long maxLength;
 
   FileColumnProperties(RowBufferStats stats) {
+    this.setCollation(stats.getCollationDefinitionString());
     this.setMaxIntValue(stats.getCurrentMaxIntValue());
     this.setMinIntValue(stats.getCurrentMinIntValue());
     this.setMinRealValue(stats.getCurrentMinRealValue());
     this.setMaxRealValue(stats.getCurrentMaxRealValue());
     this.setMaxLength(stats.getCurrentMaxLength());
-    this.setMaxStrValue(stats.getCurrentMaxStrValue());
-    this.setMinStrValue(stats.getCurrentMinStrValue());
+    this.setMaxStrNonCollated(stats.getCurrentMaxStrValue());
+    this.setMinStrNonCollated(stats.getCurrentMinStrValue());
+    this.setMaxStrValue(stats.getCurrentMaxColStrValue());
+    this.setMinStrValue(stats.getCurrentMinColStrValue());
     this.setNullCount(stats.getCurrentNullCount());
     this.setDistinctValues(stats.getDistinctValues());
   }
@@ -124,6 +133,33 @@ class FileColumnProperties {
     this.maxLength = maxLength;
   }
 
+  @JsonProperty("collation")
+  String getCollation() {
+    return collation;
+  }
+
+  void setCollation(String collation) {
+    this.collation = collation;
+  }
+
+  @JsonProperty("minStrNonCollated")
+  String getMinStrNonCollated() {
+    return minStrNonCollated;
+  }
+
+  void setMinStrNonCollated(String minStrNonCollated) {
+    this.minStrNonCollated = minStrNonCollated;
+  }
+
+  @JsonProperty("maxStrNonCollated")
+  String getMaxStrNonCollated() {
+    return maxStrNonCollated;
+  }
+
+  void setMaxStrNonCollated(String maxStrNonCollated) {
+    this.maxStrNonCollated = maxStrNonCollated;
+  }
+
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("{");
@@ -137,6 +173,9 @@ class FileColumnProperties {
     {
       sb.append(", \"minStrValue\": \"").append(minStrValue).append('"');
       sb.append(", \"maxStrValue\": \"").append(maxStrValue).append('"');
+      sb.append(", \"minStrNonCollatedValue\": \"").append(minStrNonCollated).append('"');
+      sb.append(", \"maxStrNonCollatedValue\": \"").append(maxStrNonCollated).append('"');
+      sb.append(", \"collation\": \"").append(collation).append('"');
       sb.append(", \"maxLength\": ").append(maxLength);
     }
     sb.append(", \"distinctValues\": ").append(distinctValues);
@@ -154,6 +193,9 @@ class FileColumnProperties {
         && maxLength == that.maxLength
         && Objects.equals(minStrValue, that.minStrValue)
         && Objects.equals(maxStrValue, that.maxStrValue)
+        && Objects.equals(collation, that.collation)
+        && Objects.equals(minStrNonCollated, that.minStrNonCollated)
+        && Objects.equals(maxStrNonCollated, that.maxStrNonCollated)
         && Objects.equals(minIntValue, that.minIntValue)
         && Objects.equals(maxIntValue, that.maxIntValue)
         && Objects.equals(minRealValue, that.minRealValue)
@@ -165,6 +207,9 @@ class FileColumnProperties {
     return Objects.hash(
         minStrValue,
         maxStrValue,
+        collation,
+        minStrNonCollated,
+        maxStrNonCollated,
         minIntValue,
         maxIntValue,
         minRealValue,

@@ -10,8 +10,11 @@ public class RowBufferStatsTest {
   public void testEmptyState() throws Exception {
     RowBufferStats stats = new RowBufferStats();
 
+    Assert.assertNull(stats.getCollationDefinitionString());
     Assert.assertNull(stats.getCurrentMinRealValue());
     Assert.assertNull(stats.getCurrentMaxRealValue());
+    Assert.assertNull(stats.getCurrentMinColStrValue());
+    Assert.assertNull(stats.getCurrentMaxColStrValue());
     Assert.assertNull(stats.getCurrentMinIntValue());
     Assert.assertNull(stats.getCurrentMaxIntValue());
     Assert.assertNull(stats.getCurrentMinStrValue());
@@ -22,22 +25,63 @@ public class RowBufferStatsTest {
   }
 
   @Test
-  public void testMinMaxStr() throws Exception {
+  public void testMinMaxStrNonCol() throws Exception {
     RowBufferStats stats = new RowBufferStats();
 
     stats.addStrValue("bob");
     Assert.assertEquals("bob", stats.getCurrentMinStrValue());
     Assert.assertEquals("bob", stats.getCurrentMaxStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMinColStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMaxColStrValue());
     Assert.assertEquals(-1, stats.getDistinctValues());
 
     stats.addStrValue("charlie");
     Assert.assertEquals("bob", stats.getCurrentMinStrValue());
     Assert.assertEquals("charlie", stats.getCurrentMaxStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMinColStrValue());
+    Assert.assertEquals("charlie", stats.getCurrentMaxColStrValue());
     Assert.assertEquals(-1, stats.getDistinctValues());
 
     stats.addStrValue("alice");
     Assert.assertEquals("alice", stats.getCurrentMinStrValue());
     Assert.assertEquals("charlie", stats.getCurrentMaxStrValue());
+    Assert.assertEquals("alice", stats.getCurrentMinColStrValue());
+    Assert.assertEquals("charlie", stats.getCurrentMaxColStrValue());
+    Assert.assertEquals(-1, stats.getDistinctValues());
+
+    Assert.assertNull(stats.getCurrentMinRealValue());
+    Assert.assertNull(stats.getCurrentMaxRealValue());
+    Assert.assertNull(stats.getCollationDefinitionString());
+    Assert.assertNull(stats.getCurrentMinIntValue());
+    Assert.assertNull(stats.getCurrentMaxIntValue());
+    Assert.assertEquals(0, stats.getCurrentNullCount());
+  }
+
+  @Test
+  public void testMinMaxStrCol() throws Exception {
+    RowBufferStats stats = new RowBufferStats("en-ci");
+
+    Assert.assertEquals("en-ci", stats.getCollationDefinitionString());
+
+    stats.addStrValue("bob");
+    Assert.assertEquals("bob", stats.getCurrentMinStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMaxStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMinColStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMaxColStrValue());
+    Assert.assertEquals(-1, stats.getDistinctValues());
+
+    stats.addStrValue("Bob");
+    Assert.assertEquals("Bob", stats.getCurrentMinStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMaxStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMinColStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMaxColStrValue());
+    Assert.assertEquals(-1, stats.getDistinctValues());
+
+    stats.addStrValue("Alice");
+    Assert.assertEquals("Alice", stats.getCurrentMinStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMaxStrValue());
+    Assert.assertEquals("Alice", stats.getCurrentMinColStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMaxColStrValue());
     Assert.assertEquals(-1, stats.getDistinctValues());
 
     Assert.assertNull(stats.getCurrentMinRealValue());
@@ -70,6 +114,9 @@ public class RowBufferStatsTest {
     Assert.assertNull(stats.getCurrentMaxRealValue());
     Assert.assertNull(stats.getCurrentMinStrValue());
     Assert.assertNull(stats.getCurrentMaxStrValue());
+    Assert.assertNull(stats.getCollationDefinitionString());
+    Assert.assertNull(stats.getCurrentMinColStrValue());
+    Assert.assertNull(stats.getCurrentMaxColStrValue());
     Assert.assertEquals(0, stats.getCurrentNullCount());
   }
 
@@ -96,6 +143,9 @@ public class RowBufferStatsTest {
     Assert.assertNull(stats.getCurrentMaxIntValue());
     Assert.assertNull(stats.getCurrentMinStrValue());
     Assert.assertNull(stats.getCurrentMaxStrValue());
+    Assert.assertNull(stats.getCollationDefinitionString());
+    Assert.assertNull(stats.getCurrentMinColStrValue());
+    Assert.assertNull(stats.getCurrentMaxColStrValue());
     Assert.assertEquals(0, stats.getCurrentNullCount());
   }
 
@@ -172,10 +222,13 @@ public class RowBufferStatsTest {
 
     Assert.assertNull(result.getCurrentMinStrValue());
     Assert.assertNull(result.getCurrentMaxStrValue());
+    Assert.assertNull(result.getCollationDefinitionString());
+    Assert.assertNull(result.getCurrentMinColStrValue());
+    Assert.assertNull(result.getCurrentMaxColStrValue());
     Assert.assertNull(result.getCurrentMinIntValue());
     Assert.assertNull(result.getCurrentMaxIntValue());
 
-    // Test for Strings
+    // Test for Strings without collation
     one = new RowBufferStats();
     two = new RowBufferStats();
 
@@ -194,6 +247,37 @@ public class RowBufferStatsTest {
     result = RowBufferStats.getCombinedStats(one, two);
     Assert.assertEquals("a", result.getCurrentMinStrValue());
     Assert.assertEquals("g", result.getCurrentMaxStrValue());
+    Assert.assertEquals("a", result.getCurrentMinColStrValue());
+    Assert.assertEquals("g", result.getCurrentMaxColStrValue());
+    Assert.assertEquals(-1, result.getDistinctValues());
+    Assert.assertEquals(2, result.getCurrentNullCount());
+
+    Assert.assertNull(result.getCurrentMinRealValue());
+    Assert.assertNull(result.getCurrentMaxRealValue());
+    Assert.assertNull(result.getCurrentMinIntValue());
+    Assert.assertNull(result.getCurrentMaxIntValue());
+
+    // Test for Strings with collation
+    one = new RowBufferStats("en-ci");
+    two = new RowBufferStats("en-ci");
+
+    one.addStrValue("a");
+    one.addStrValue("d");
+    one.addStrValue("f");
+    one.addStrValue("g");
+    one.incCurrentNullCount();
+
+    two.addStrValue("Alpha");
+    two.addStrValue("b");
+    two.addStrValue("c");
+    two.addStrValue("d");
+    two.incCurrentNullCount();
+
+    result = RowBufferStats.getCombinedStats(one, two);
+    Assert.assertEquals("Alpha", result.getCurrentMinStrValue());
+    Assert.assertEquals("g", result.getCurrentMaxStrValue());
+    Assert.assertEquals("a", result.getCurrentMinColStrValue());
+    Assert.assertEquals("g", result.getCurrentMaxColStrValue());
     Assert.assertEquals(-1, result.getDistinctValues());
     Assert.assertEquals(2, result.getCurrentNullCount());
 
