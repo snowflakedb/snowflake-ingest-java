@@ -17,7 +17,6 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.util.Text;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class RowBufferTest {
@@ -37,42 +36,42 @@ public class RowBufferTest {
     ColumnMetadata colTinyIntCase = new ColumnMetadata();
     colTinyIntCase.setName("colTinyInt");
     colTinyIntCase.setPhysicalType("SB1");
-    colTinyIntCase.setNullable(false);
+    colTinyIntCase.setNullable(true);
     colTinyIntCase.setLogicalType("FIXED");
     colTinyIntCase.setScale(0);
 
     ColumnMetadata colTinyInt = new ColumnMetadata();
     colTinyInt.setName("COLTINYINT");
     colTinyInt.setPhysicalType("SB1");
-    colTinyInt.setNullable(false);
+    colTinyInt.setNullable(true);
     colTinyInt.setLogicalType("FIXED");
     colTinyInt.setScale(0);
 
     ColumnMetadata colSmallInt = new ColumnMetadata();
     colSmallInt.setName("COLSMALLINT");
     colSmallInt.setPhysicalType("SB2");
-    colSmallInt.setNullable(false);
+    colSmallInt.setNullable(true);
     colSmallInt.setLogicalType("FIXED");
     colSmallInt.setScale(0);
 
     ColumnMetadata colInt = new ColumnMetadata();
     colInt.setName("COLINT");
     colInt.setPhysicalType("SB4");
-    colInt.setNullable(false);
+    colInt.setNullable(true);
     colInt.setLogicalType("FIXED");
     colInt.setScale(0);
 
     ColumnMetadata colBigInt = new ColumnMetadata();
     colBigInt.setName("COLBIGINT");
     colBigInt.setPhysicalType("SB8");
-    colBigInt.setNullable(false);
+    colBigInt.setNullable(true);
     colBigInt.setLogicalType("FIXED");
     colBigInt.setScale(0);
 
     ColumnMetadata colDecimal = new ColumnMetadata();
     colDecimal.setName("COLDECIMAL");
     colDecimal.setPhysicalType("SB16");
-    colDecimal.setNullable(false);
+    colDecimal.setNullable(true);
     colDecimal.setLogicalType("FIXED");
     colDecimal.setPrecision(38);
     colDecimal.setScale(2);
@@ -557,36 +556,10 @@ public class RowBufferTest {
   }
 
   @Test
-  @Ignore // TODO SNOW-348857: verify that null can't be inserted into non-nullable column
-  public void testInsertNullToNotNullColumn() {
-    ColumnMetadata colNotNull = new ColumnMetadata();
-    colNotNull.setName("COLNOTNULL");
-    colNotNull.setPhysicalType("SB16");
-    colNotNull.setNullable(false);
-    colNotNull.setLogicalType("FIXED");
-    colNotNull.setPrecision(38);
-    colNotNull.setScale(0);
-
-    this.rowBuffer.setupSchema(Arrays.asList(colNotNull));
-
-    // Insert null to non-nullable column should fail
-    Map<String, Object> row = new HashMap<>();
-    row.put("colInt", null);
-    row.put("colDecimal", null);
-    row.put("colChar", null);
-    row.put("colNotNull", null);
-    InsertValidationResponse response =
-        this.rowBuffer.insertRows(Collections.singletonList(row), null);
-    Assert.assertTrue(response.hasErrors());
-    Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(),
-        response.getInsertErrors().get(0).getException().getVendorCode());
-  }
-
-  @Test
   public void testInsertRow() {
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
+    row.put("\"colTinyInt\"", (byte) 1);
     row.put("colSmallInt", (short) 2);
     row.put("colInt", 3);
     row.put("colBigInt", 4L);
@@ -602,6 +575,7 @@ public class RowBufferTest {
   public void testInsertRows() {
     Map<String, Object> row1 = new HashMap<>();
     row1.put("colTinyInt", (byte) 1);
+    row1.put("\"colTinyInt\"", (byte) 1);
     row1.put("colSmallInt", (short) 2);
     row1.put("colInt", 3);
     row1.put("colBigInt", 4L);
@@ -610,6 +584,7 @@ public class RowBufferTest {
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("colTinyInt", (byte) 1);
+    row2.put("\"colTinyInt\"", (byte) 1);
     row2.put("colSmallInt", (short) 2);
     row2.put("colInt", 3);
     row2.put("colBigInt", 4L);
@@ -644,6 +619,7 @@ public class RowBufferTest {
     String offsetToken = "1";
     Map<String, Object> row1 = new HashMap<>();
     row1.put("colTinyInt", (byte) 1);
+    row1.put("\"colTinyInt\"", (byte) 1);
     row1.put("colSmallInt", (short) 2);
     row1.put("colInt", 3);
     row1.put("colBigInt", 4L);
@@ -652,6 +628,7 @@ public class RowBufferTest {
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("colTinyInt", (byte) 1);
+    row2.put("\"colTinyInt\"", (byte) 1);
     row2.put("colSmallInt", (short) 2);
     row2.put("colInt", 3);
     row2.put("colBigInt", 4L);
@@ -676,7 +653,7 @@ public class RowBufferTest {
     ColumnMetadata colDoubleQuotes = new ColumnMetadata();
     colDoubleQuotes.setName("colDoubleQuotes");
     colDoubleQuotes.setPhysicalType("SB16");
-    colDoubleQuotes.setNullable(false);
+    colDoubleQuotes.setNullable(true);
     colDoubleQuotes.setLogicalType("FIXED");
     colDoubleQuotes.setPrecision(38);
     colDoubleQuotes.setScale(0);
@@ -685,6 +662,7 @@ public class RowBufferTest {
 
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
+    row.put("\"colTinyInt\"", (byte) 1);
     row.put("colSmallInt", (short) 2);
     row.put("colInt", 3);
     row.put("colBigInt", 4L);
@@ -739,6 +717,7 @@ public class RowBufferTest {
     row1.put("colSmallInt", (short) 2);
     row1.put("colInt", 3);
     row1.put("colBigInt", 4L);
+    row1.put("colDecimal", 4);
     row1.put("colChar", "2");
 
     InsertValidationResponse response = this.rowBuffer.insertRows(Arrays.asList(row1), null);
@@ -749,6 +728,8 @@ public class RowBufferTest {
     Assert.assertEquals((short) 2, this.rowBuffer.vectors.get("COLSMALLINT").getObject(0));
     Assert.assertEquals(3, this.rowBuffer.vectors.get("COLINT").getObject(0));
     Assert.assertEquals(4L, this.rowBuffer.vectors.get("COLBIGINT").getObject(0));
+    Assert.assertEquals(
+        new BigDecimal("4.00"), this.rowBuffer.vectors.get("COLDECIMAL").getObject(0));
     Assert.assertEquals(new Text("2"), this.rowBuffer.vectors.get("COLCHAR").getObject(0));
   }
 
@@ -835,6 +816,7 @@ public class RowBufferTest {
     row1.put("colSmallInt", (short) 2);
     row1.put("colInt", 3);
     row1.put("colBigInt", 4L);
+    row1.put("colDecimal", 5);
     row1.put("colChar", "2");
 
     Map<String, Object> row2 = new HashMap<>();
@@ -843,6 +825,7 @@ public class RowBufferTest {
     row2.put("colSmallInt", (short) 3);
     row2.put("colInt", null);
     row2.put("colBigInt", 40L);
+    row2.put("colDecimal", 4);
     row2.put("colChar", "alice");
 
     InsertValidationResponse response = this.rowBuffer.insertRows(Arrays.asList(row1, row2), null);
@@ -900,21 +883,21 @@ public class RowBufferTest {
     ColumnMetadata colTimestampLtzSB8 = new ColumnMetadata();
     colTimestampLtzSB8.setName("COLTIMESTAMPLTZ_SB8");
     colTimestampLtzSB8.setPhysicalType("SB8");
-    colTimestampLtzSB8.setNullable(false);
+    colTimestampLtzSB8.setNullable(true);
     colTimestampLtzSB8.setLogicalType("TIMESTAMP_LTZ");
     colTimestampLtzSB8.setScale(0);
 
     ColumnMetadata colTimestampLtzSB16 = new ColumnMetadata();
     colTimestampLtzSB16.setName("COLTIMESTAMPLTZ_SB16");
     colTimestampLtzSB16.setPhysicalType("SB16");
-    colTimestampLtzSB16.setNullable(false);
+    colTimestampLtzSB16.setNullable(true);
     colTimestampLtzSB16.setLogicalType("TIMESTAMP_LTZ");
     colTimestampLtzSB16.setScale(9);
 
     ColumnMetadata colTimestampLtzSB16Scale6 = new ColumnMetadata();
     colTimestampLtzSB16Scale6.setName("COLTIMESTAMPLTZ_SB16_SCALE6");
     colTimestampLtzSB16Scale6.setPhysicalType("SB16");
-    colTimestampLtzSB16Scale6.setNullable(false);
+    colTimestampLtzSB16Scale6.setNullable(true);
     colTimestampLtzSB16Scale6.setLogicalType("TIMESTAMP_LTZ");
     colTimestampLtzSB16Scale6.setScale(6);
 
@@ -976,7 +959,7 @@ public class RowBufferTest {
     ColumnMetadata colDate = new ColumnMetadata();
     colDate.setName("COLDATE");
     colDate.setPhysicalType("SB8");
-    colDate.setNullable(false);
+    colDate.setNullable(true);
     colDate.setLogicalType("DATE");
     colDate.setScale(0);
 
@@ -1019,14 +1002,14 @@ public class RowBufferTest {
     ColumnMetadata colTimeSB4 = new ColumnMetadata();
     colTimeSB4.setName("COLTIMESB4");
     colTimeSB4.setPhysicalType("SB4");
-    colTimeSB4.setNullable(false);
+    colTimeSB4.setNullable(true);
     colTimeSB4.setLogicalType("TIME");
     colTimeSB4.setScale(0);
 
     ColumnMetadata colTimeSB8 = new ColumnMetadata();
     colTimeSB8.setName("COLTIMESB8");
     colTimeSB8.setPhysicalType("SB8");
-    colTimeSB8.setNullable(false);
+    colTimeSB8.setNullable(true);
     colTimeSB8.setLogicalType("TIME");
     colTimeSB8.setScale(3);
 
@@ -1077,13 +1060,69 @@ public class RowBufferTest {
   }
 
   @Test
-  public void testE2EBoolean() {
+  public void testNullableCheck() {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
     colBoolean.setName("COLBOOLEAN");
     colBoolean.setPhysicalType("SB1");
     colBoolean.setNullable(false);
+    colBoolean.setLogicalType("BOOLEAN");
+    colBoolean.setScale(0);
+
+    innerBuffer.setupSchema(Arrays.asList(colBoolean));
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLBOOLEAN", true);
+
+    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row), "1");
+    Assert.assertFalse(response.hasErrors());
+    ;
+
+    row.put("COLBOOLEAN", null);
+    response = innerBuffer.insertRows(Arrays.asList(row), "1");
+    Assert.assertTrue(response.hasErrors());
+    Assert.assertEquals(
+        ErrorCode.INVALID_ROW.getMessageCode(),
+        response.getInsertErrors().get(0).getException().getVendorCode());
+  }
+
+  @Test
+  public void testMissingColumnCheck() {
+    ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
+
+    ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setName("COLBOOLEAN");
+    colBoolean.setPhysicalType("SB1");
+    colBoolean.setNullable(false);
+    colBoolean.setLogicalType("BOOLEAN");
+    colBoolean.setScale(0);
+
+    ColumnMetadata colBoolean2 = new ColumnMetadata();
+    colBoolean.setName("COLBOOLEAN2");
+    colBoolean.setPhysicalType("SB1");
+    colBoolean.setNullable(false);
+    colBoolean.setLogicalType("BOOLEAN");
+    colBoolean.setScale(0);
+
+    innerBuffer.setupSchema(Arrays.asList(colBoolean));
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLBOOLEAN", true);
+
+    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row), "1");
+    Assert.assertTrue(response.hasErrors());
+    Assert.assertEquals(
+        ErrorCode.INVALID_ROW.getMessageCode(),
+        response.getInsertErrors().get(0).getException().getVendorCode());
+  }
+
+  @Test
+  public void testE2EBoolean() {
+    ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
+
+    ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setName("COLBOOLEAN");
+    colBoolean.setPhysicalType("SB1");
+    colBoolean.setNullable(true);
     colBoolean.setLogicalType("BOOLEAN");
     colBoolean.setScale(0);
 
@@ -1125,7 +1164,7 @@ public class RowBufferTest {
     ColumnMetadata colBinary = new ColumnMetadata();
     colBinary.setName("COLBINARY");
     colBinary.setPhysicalType("LOB");
-    colBinary.setNullable(false);
+    colBinary.setNullable(true);
     colBinary.setLogicalType("BINARY");
     colBinary.setScale(0);
 
@@ -1170,7 +1209,7 @@ public class RowBufferTest {
     ColumnMetadata colReal = new ColumnMetadata();
     colReal.setName("COLREAL");
     colReal.setPhysicalType("SB16");
-    colReal.setNullable(false);
+    colReal.setNullable(true);
     colReal.setLogicalType("REAL");
     colReal.setScale(0);
 

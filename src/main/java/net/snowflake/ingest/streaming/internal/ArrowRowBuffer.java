@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -12,8 +13,10 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -510,22 +513,37 @@ class ArrowRowBuffer {
     return new Field(column.getName(), fieldType, children);
   }
 
+  private String formatColumnName(String columnName) {
+    return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
+        ? columnName.substring(1, columnName.length() - 1)
+        : columnName.toUpperCase();
+  }
+
   /**
    * Convert the input row to the correct Arrow format
    *
    * @param row input row
    */
-  // TODO: need to verify each row with the table schema
   private float convertRowToArrow(Map<String, Object> row) {
     float rowBufferSize = 0F;
+
+    // We require all fields to be specified in the row object, even if they're null valued
+    Set<String> inputColumns =
+        row.keySet().stream()
+            .map((String c) -> this.formatColumnName(c))
+            .collect(Collectors.toSet());
+    if (!inputColumns.containsAll(this.fields.keySet())) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          "Missing columns: " + Sets.difference(this.fields.keySet(), inputColumns).toString(),
+          "Values for all columns must be specified");
+    }
+
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
       String columnName = entry.getKey();
       Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
-      columnName =
-          (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
-              ? columnName.substring(1, columnName.length() - 1)
-              : columnName.toUpperCase();
+      columnName = this.formatColumnName(columnName);
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
@@ -539,6 +557,10 @@ class ArrowRowBuffer {
           ColumnPhysicalType.valueOf(field.getMetadata().get(COLUMN_PHYSICAL_TYPE));
 
       if (value == null) {
+        if (!field.getFieldType().isNullable()) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
+        }
         if (BaseFixedWidthVector.class.isAssignableFrom(vector.getClass())) {
           ((BaseFixedWidthVector) vector).setNull(this.curRowIndex);
         } else if (BaseVariableWidthVector.class.isAssignableFrom(vector.getClass())) {
