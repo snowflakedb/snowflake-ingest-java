@@ -96,12 +96,12 @@ class RegisterService {
               futureBlob -> {
                 try {
                   logger.logDebug(
-                      "Start waiting on uploading blob={}", futureBlob.getKey().getFileName());
+                      "Start waiting on uploading blob={}", futureBlob.getKey().getFilePath());
                   // Wait for uploading to finish, add a timeout in case something bad happens
                   BlobMetadata blob =
                       futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
                   logger.logDebug(
-                      "Finish waiting on uploading blob={}", futureBlob.getKey().getFileName());
+                      "Finish waiting on uploading blob={}", futureBlob.getKey().getFilePath());
                   if (blob != null) {
                     blobs.add(blob);
                   }
@@ -112,7 +112,7 @@ class RegisterService {
                   // exceptions
                   logger.logError(
                       "Building or uploading blob failed={}, exception={}, cause={}",
-                      futureBlob.getKey().getFileName(),
+                      futureBlob.getKey().getFilePath(),
                       e,
                       e.getCause());
                   errorBlobs.add(futureBlob.getKey());
@@ -131,7 +131,7 @@ class RegisterService {
               blobs.forEach(
                   blob ->
                       latencyTimerContextMap.computeIfPresent(
-                          blob.getName(),
+                          blob.getPath(),
                           (k, v) -> {
                             v.stop();
                             return null;

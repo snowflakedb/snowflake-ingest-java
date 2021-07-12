@@ -60,16 +60,16 @@ class FlushService {
   // Static class to save the list of channels that are used to build a blob, which is mainly used
   // to invalidate all the channels when there is a failure
   static class BlobData {
-    private final String fileName;
+    private final String filePath;
     private final List<List<ChannelData>> data;
 
-    BlobData(String fileName, List<List<ChannelData>> data) {
-      this.fileName = fileName;
+    BlobData(String filePath, List<List<ChannelData>> data) {
+      this.filePath = filePath;
       this.data = data;
     }
 
-    String getFileName() {
-      return fileName;
+    String getFilePath() {
+      return filePath;
     }
 
     List<List<ChannelData>> getData() {
@@ -263,14 +263,14 @@ class FlushService {
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
         itr = this.channelCache.iterator();
     List<Pair<BlobData, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
-    String fileName = null;
+    String filePath = null;
 
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
-      fileName = fileName == null ? getFileName(this.targetStage.getClientPrefix()) : fileName;
+      filePath = filePath == null ? getFilePath(this.targetStage.getClientPrefix()) : filePath;
       if (this.owningClient.flushLatency != null) {
-        latencyTimerContextMap.putIfAbsent(fileName, this.owningClient.flushLatency.time());
+        latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
       }
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
@@ -295,17 +295,17 @@ class FlushService {
 
       // Kick off a build job
       if (!blobData.isEmpty()) {
-        String finalFileName = fileName;
-        fileName = null;
+        String finalFilePath = filePath;
+        filePath = null;
         blobs.add(
             new Pair<>(
-                new BlobData(finalFileName, blobData),
+                new BlobData(finalFilePath, blobData),
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        return buildAndUpload(finalFileName, blobData);
+                        return buildAndUpload(finalFilePath, blobData);
                       } catch (IOException e) {
-                        logger.logError("Building blob failed={}, exception={}", finalFileName, e);
+                        logger.logError("Building blob failed={}, exception={}", finalFilePath, e);
                         invalidateAllChannelsInBlob(blobData);
                         return null;
                       } catch (NoSuchAlgorithmException e) {
@@ -323,13 +323,13 @@ class FlushService {
   /**
    * Builds and uploads file to cloud storage.
    *
-   * @param fileName Name of the destination file in cloud storage
+   * @param filePath Path of the destination file in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belong to the same table. Will error if this is not the case
    * @return BlobMetadata for FlushService.upload
    * @throws IOException
    */
-  BlobMetadata buildAndUpload(String fileName, List<List<ChannelData>> blobData)
+  BlobMetadata buildAndUpload(String filePath, List<List<ChannelData>> blobData)
       throws IOException, NoSuchAlgorithmException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
@@ -364,7 +364,7 @@ class FlushService {
               data.getChannel().getFullyQualifiedName(),
               data.getRowCount(),
               data.getBufferSize(),
-              fileName);
+              filePath);
 
           if (root == null) {
             columnEpStatsMapCombined = data.getColumnEps();
@@ -403,7 +403,7 @@ class FlushService {
               data.getChannel().getFullyQualifiedName(),
               data.getRowCount(),
               data.getBufferSize(),
-              fileName);
+              filePath);
         }
       } finally {
         if (streamWriter != null) {
@@ -414,7 +414,7 @@ class FlushService {
 
       if (!channelsMetadataList.isEmpty()) {
         // Compress the chunk data
-        byte[] compressedChunkData = BlobBuilder.compress(fileName, chunkData);
+        byte[] compressedChunkData = BlobBuilder.compress(filePath, chunkData);
         String md5 = BlobBuilder.computeMD5(compressedChunkData);
         int compressedChunkDataSize = compressedChunkData.length;
 
@@ -440,7 +440,7 @@ class FlushService {
         logger.logDebug(
             "Finish building chunk in blob:{}, table:{}, rowCount:{}, uncompressedSize:{},"
                 + " compressedSize:{}",
-            fileName,
+            filePath,
             firstChannel.getFullyQualifiedTableName(),
             rowCount,
             chunkData.size(),
@@ -455,23 +455,23 @@ class FlushService {
       buildContext.stop();
     }
 
-    return upload(fileName, blob, chunksMetadataList);
+    return upload(filePath, blob, chunksMetadataList);
   }
 
   /**
    * Upload a blob to Streaming Ingest dedicated stage
    *
-   * @param fileName name of the blob file
+   * @param filePath full path of the blob file
    * @param blob blob data
    * @param metadata a list of chunk metadata
    * @return BlobMetadata object used to create the register blob request
    */
-  BlobMetadata upload(String fileName, byte[] blob, List<ChunkMetadata> metadata) {
-    logger.logDebug("Start uploading file={}, size={}", fileName, blob.length);
+  BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata) {
+    logger.logDebug("Start uploading file={}, size={}", filePath, blob.length);
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
 
-    this.targetStage.put(fileName, blob);
+    this.targetStage.put(filePath, blob);
 
     if (uploadContext != null) {
       uploadContext.stop();
@@ -479,9 +479,9 @@ class FlushService {
       this.owningClient.blobSizeHistogram.update(blob.length);
     }
 
-    logger.logDebug("Finish uploading file={}", fileName);
+    logger.logDebug("Finish uploading file={}", filePath);
 
-    return new BlobMetadata(fileName, fileName /* TODO: SNOW-331093 */, metadata);
+    return new BlobMetadata(filePath, metadata);
   }
 
   /**
@@ -507,18 +507,19 @@ class FlushService {
   }
 
   /**
-   * Generate a blob name, which is: "YEAR/MONTH/DAY_OF_MONTH/HOUR_OF_DAY/CLIENT_PREFIX/<current
-   * time + thread id + increasing counter>"
+   * Generate a blob file path, which is:
+   * "YEAR/MONTH/DAY_OF_MONTH/HOUR_OF_DAY/CLIENT_PREFIX/<current time + thread id + increasing
+   * counter>"
    *
-   * @return the generated blob name
+   * @return the generated blob file path
    */
-  private String getFileName(String clientPrefix) {
+  private String getFilePath(String clientPrefix) {
     Calendar calendar = Calendar.getInstance();
-    return getFileName(calendar, clientPrefix);
+    return getFilePath(calendar, clientPrefix);
   }
 
   /** For TESTING */
-  String getFileName(Calendar calendar, String clientPrefix) {
+  String getFilePath(Calendar calendar, String clientPrefix) {
     if (isTestMode && clientPrefix == null) {
       clientPrefix = "testPrefix";
     }

@@ -51,12 +51,12 @@ class BlobBuilder {
   /**
    * Gzip compress the given chunk data
    *
-   * @param fileName blob file name
+   * @param filePath blob file full path
    * @param chunkData uncompressed chunk data
    * @return compressed chunk data
    * @throws IOException
    */
-  static byte[] compress(String fileName, ByteArrayOutputStream chunkData) throws IOException {
+  static byte[] compress(String filePath, ByteArrayOutputStream chunkData) throws IOException {
     int uncompressedSize = chunkData.size();
     ByteArrayOutputStream compressedOutputStream = new ByteArrayOutputStream(uncompressedSize);
     try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(compressedOutputStream, true)) {
@@ -81,7 +81,7 @@ class BlobBuilder {
     logger.logDebug(
         "Finish compressing chunk in blob={}, uncompressedSize={}, firstCompressedSize={},"
             + " doubleCompressedSize={}",
-        fileName,
+        filePath,
         uncompressedSize,
         firstCompressedSize,
         doubleCompressedSize);

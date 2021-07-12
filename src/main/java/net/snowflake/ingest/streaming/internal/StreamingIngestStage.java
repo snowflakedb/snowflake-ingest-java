@@ -126,7 +126,7 @@ class StreamingIngestStage {
 
   private void putRemote(String fullFilePath, byte[] data, int retryCount)
       throws SnowflakeSQLException, IOException {
-    // Set filename to be uploaded
+    // Set file path to be uploaded
     SnowflakeFileTransferMetadataV1 fileTransferMetadata =
         fileTransferMetadataWithAge.fileTransferMetadata;
 
@@ -262,15 +262,15 @@ class StreamingIngestStage {
   /**
    * Upload file to internal stage
    *
-   * @param fileName
+   * @param filePath
    * @param blob
    */
-  void put(String fileName, byte[] blob) {
+  void put(String filePath, byte[] blob) {
     if (this.isLocalFS()) {
-      putLocal(fileName, blob);
+      putLocal(filePath, blob);
     } else {
       try {
-        putRemote(fileName, blob);
+        putRemote(filePath, blob);
       } catch (SnowflakeSQLException | IOException e) {
         throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
       }

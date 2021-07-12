@@ -81,11 +81,11 @@ public class FlushServiceTest {
   }
 
   @Test
-  public void testGetFileName() {
+  public void testGetFilePath() {
     FlushService flushService = new FlushService(client, channelCache, stage, false);
     Calendar calendar = Calendar.getInstance();
     String clientPrefix = "honk";
-    String outputString = flushService.getFileName(calendar, clientPrefix);
+    String outputString = flushService.getFilePath(calendar, clientPrefix);
     Path outputPath = Paths.get(outputString);
     Assert.assertEquals(clientPrefix, outputPath.getParent().getFileName().toString());
     Assert.assertEquals(
