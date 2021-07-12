@@ -558,14 +558,16 @@ class FlushService {
     blobData.forEach(
         chunkData ->
             chunkData.forEach(
-                channelData ->
-                    this.owningClient
-                        .getChannelCache()
-                        .invalidateAndRemoveChannelIfSequencersMatch(
-                            channelData.getChannel().getDBName(),
-                            channelData.getChannel().getSchemaName(),
-                            channelData.getChannel().getTableName(),
-                            channelData.getChannel().getName(),
-                            channelData.getChannel().getChannelSequencer())));
+                channelData -> {
+                  channelData.getVectors().forEach(vector -> vector.close());
+                  this.owningClient
+                      .getChannelCache()
+                      .invalidateAndRemoveChannelIfSequencersMatch(
+                          channelData.getChannel().getDBName(),
+                          channelData.getChannel().getSchemaName(),
+                          channelData.getChannel().getTableName(),
+                          channelData.getChannel().getName(),
+                          channelData.getChannel().getChannelSequencer());
+                }));
   }
 }
