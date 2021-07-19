@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -132,6 +133,9 @@ class ArrowRowBuffer {
   // Reference to the Streaming Ingest channel that owns this buffer
   private final SnowflakeStreamingIngestChannelInternal owningChannel;
 
+  // Names of non-nullable columns
+  private Set<String> nonNullableFieldNames;
+
   /**
    * Given a set of col names to stats, build the right ep info
    *
@@ -163,6 +167,7 @@ class ArrowRowBuffer {
     this.allocator = channel.getAllocator();
     this.vectors = new HashMap<>();
     this.fields = new HashMap<>();
+    this.nonNullableFieldNames = new HashSet<>();
     this.flushLock = new ReentrantLock();
     this.rowCount = 0L;
     this.bufferSize = 0F;
@@ -181,6 +186,9 @@ class ArrowRowBuffer {
     for (ColumnMetadata column : columns) {
       Field field = buildField(column);
       FieldVector vector = field.createVector(this.allocator);
+      if (!field.isNullable()) {
+        this.nonNullableFieldNames.add(field.getName());
+      }
       this.fields.put(column.getName(), field);
       this.vectors.put(column.getName(), vector);
       this.statsMap.put(column.getName(), new RowBufferStats());
@@ -526,12 +534,12 @@ class ArrowRowBuffer {
   private float convertRowToArrow(Map<String, Object> row) {
     float rowBufferSize = 0F;
 
-    // We require all fields to be specified in the row object, even if they're null valued
     Set<String> inputColumns =
         row.keySet().stream()
             .map((String c) -> this.formatColumnName(c))
             .collect(Collectors.toSet());
-    if (!inputColumns.containsAll(this.fields.keySet())) {
+
+    if (!inputColumns.containsAll(this.nonNullableFieldNames)) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           "Missing columns: " + Sets.difference(this.fields.keySet(), inputColumns).toString(),

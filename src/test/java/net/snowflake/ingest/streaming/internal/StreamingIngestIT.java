@@ -242,4 +242,66 @@ public class StreamingIngestIT {
     }
     Assert.fail("Row sequencer not updated before timeout");
   }
+
+  @Test
+  public void testNullableColumns() throws Exception {
+    String multiTableName = "multi_column";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (s text, notnull text NOT NULL);", multiTableName));
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("CHANNEL_MULTI")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(multiTableName)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("s", "honk");
+    row.put("notnull", "foo");
+    channel1.insertRow(row, "1");
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("s", null);
+    row2.put("notnull", "bar");
+    channel1.insertRow(row2, "2");
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("notnull", "foobar");
+    channel1.insertRow(row3, "3");
+
+    client.flush().get();
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("3")) {
+        ResultSet result = null;
+        result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format("select * from %s.%s.%s", TEST_DB, TEST_SCHEMA, multiTableName));
+
+        result.next();
+        Assert.assertEquals("honk", result.getString("S"));
+        Assert.assertEquals("foo", result.getString("NOTNULL"));
+
+        result.next();
+        Assert.assertNull(result.getString("S"));
+        Assert.assertEquals("bar", result.getString("NOTNULL"));
+
+        result.next();
+        Assert.assertNull(result.getString("S"));
+        Assert.assertEquals("foobar", result.getString("NOTNULL"));
+        return;
+      } else {
+        Thread.sleep(2000);
+      }
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
 }

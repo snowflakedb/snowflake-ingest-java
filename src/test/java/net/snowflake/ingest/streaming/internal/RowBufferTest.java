@@ -1098,17 +1098,22 @@ public class RowBufferTest {
     colBoolean.setScale(0);
 
     ColumnMetadata colBoolean2 = new ColumnMetadata();
-    colBoolean.setName("COLBOOLEAN2");
-    colBoolean.setPhysicalType("SB1");
-    colBoolean.setNullable(false);
-    colBoolean.setLogicalType("BOOLEAN");
-    colBoolean.setScale(0);
+    colBoolean2.setName("COLBOOLEAN2");
+    colBoolean2.setPhysicalType("SB1");
+    colBoolean2.setNullable(true);
+    colBoolean2.setLogicalType("BOOLEAN");
+    colBoolean2.setScale(0);
 
-    innerBuffer.setupSchema(Arrays.asList(colBoolean));
+    innerBuffer.setupSchema(Arrays.asList(colBoolean, colBoolean2));
     Map<String, Object> row = new HashMap<>();
     row.put("COLBOOLEAN", true);
 
     InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row), "1");
+    Assert.assertFalse(response.hasErrors());
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("COLBOOLEAN2", true);
+    response = innerBuffer.insertRows(Arrays.asList(row2), "2");
     Assert.assertTrue(response.hasErrors());
     Assert.assertEquals(
         ErrorCode.INVALID_ROW.getMessageCode(),
