@@ -17,6 +17,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.streaming.internal.InsertValidationResponse;
 
 /** Examples on how to use the Streaming Ingest client APIs */
 public class SnowflakeStreamingIngestExample {
@@ -46,7 +47,10 @@ public class SnowflakeStreamingIngestExample {
       for (int val = 0; val < 1000; val++) {
         Map<String, Object> row = new HashMap<>();
         row.put("c1", Integer.toString(val));
-        channel1.insertRow(row, null);
+        InsertValidationResponse response = channel1.insertRow(row, null);
+        if (response.hasErrors()) {
+          throw response.getInsertErrors().get(0).getException();
+        }
       }
     } finally {
       client.close().get();

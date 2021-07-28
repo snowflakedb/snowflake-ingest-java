@@ -56,7 +56,7 @@ class ChannelCache {
   }
 
   /** Remove a channel in the channel cache if the channel sequencer matches */
-  // TODO SNOW-330045: background cleaner to cleanup old stale channels that are not closed?
+  // TODO: background cleaner to cleanup old stale channels that are not closed?
   void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
     cache.computeIfPresent(
         channel.getFullyQualifiedTableName(),

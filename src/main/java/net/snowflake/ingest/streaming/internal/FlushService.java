@@ -384,6 +384,7 @@ class FlushService {
             columnEpStatsMapCombined =
                 ChannelData.getCombinedColumnStatsMap(
                     columnEpStatsMapCombined, data.getColumnEps());
+            root.setRowCount(Math.toIntExact(data.getRowCount()));
 
             for (int vectorIdx = 0; vectorIdx < data.getVectors().size(); vectorIdx++) {
               FieldVector sourceVector = data.getVectors().get(vectorIdx);

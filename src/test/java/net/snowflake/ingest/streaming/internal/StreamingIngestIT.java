@@ -86,7 +86,7 @@ public class StreamingIngestIT {
     for (int val = 0; val < 1000; val++) {
       Map<String, Object> row = new HashMap<>();
       row.put("c1", Integer.toString(val));
-      channel1.insertRow(row, Integer.toString(val));
+      verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
     client.flush().get();
     for (int i = 1; i < 15; i++) {
@@ -112,6 +112,7 @@ public class StreamingIngestIT {
         Assert.assertEquals("0", result2.getString(1));
         result2.next();
         Assert.assertEquals("1", result2.getString(1));
+
         // Verify perf metrics
         if (ENABLE_PERF_MEASUREMENT) {
           Assert.assertEquals(1, client.blobSizeHistogram.getCount());
@@ -152,11 +153,11 @@ public class StreamingIngestIT {
 
     Map<String, Object> row = new HashMap<>();
     row.put("tinyfloat", -1.1);
-    channel1.insertRow(row, null);
+    verifyInsertValidationResponse(channel1.insertRow(row, null));
     row.put("tinyfloat", 2.2);
-    channel1.insertRow(row, null);
+    verifyInsertValidationResponse(channel1.insertRow(row, null));
     row.put("tinyfloat", BigInteger.valueOf(10).pow(35));
-    channel1.insertRow(row, "1");
+    verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     client.flush().get();
     for (int i = 1; i < 15; i++) {
@@ -213,7 +214,7 @@ public class StreamingIngestIT {
     row.put("tinyfloat", 1.1);
     row.put("var", "{\"e\":2.7}");
     row.put("t", timestamp);
-    channel1.insertRow(row, "1");
+    verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     client.flush().get();
     for (int i = 1; i < 15; i++) {
@@ -252,7 +253,7 @@ public class StreamingIngestIT {
             String.format(
                 "create or replace table %s (s text, notnull text NOT NULL);", multiTableName));
     OpenChannelRequest request1 =
-        OpenChannelRequest.builder("CHANNEL_MULTI")
+        OpenChannelRequest.builder("CHANNEL_MULTI1")
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(multiTableName)
@@ -261,47 +262,74 @@ public class StreamingIngestIT {
     // Open a streaming ingest channel from the given client
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
-    Map<String, Object> row = new HashMap<>();
-    row.put("s", "honk");
-    row.put("notnull", "foo");
-    channel1.insertRow(row, "1");
+    OpenChannelRequest request2 =
+        OpenChannelRequest.builder("CHANNEL_MULTI2")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(multiTableName)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel2 = client.openChannel(request2);
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("s", "honk");
+    row1.put("notnull", "1");
+    verifyInsertValidationResponse(channel1.insertRow(row1, "1"));
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("s", null);
-    row2.put("notnull", "bar");
-    channel1.insertRow(row2, "2");
+    row2.put("notnull", "2");
+    verifyInsertValidationResponse(channel1.insertRow(row2, "2"));
 
     Map<String, Object> row3 = new HashMap<>();
-    row3.put("notnull", "foobar");
-    channel1.insertRow(row3, "3");
+    row3.put("notnull", "3");
+    verifyInsertValidationResponse(channel1.insertRow(row3, "3"));
+
+    verifyInsertValidationResponse(channel2.insertRow(row3, "1"));
 
     client.flush().get();
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
-          && channel1.getLatestCommittedOffsetToken().equals("3")) {
+          && channel1.getLatestCommittedOffsetToken().equals("3")
+          && channel2.getLatestCommittedOffsetToken() != null
+          && channel2.getLatestCommittedOffsetToken().equals("1")) {
         ResultSet result = null;
         result =
             jdbcConnection
                 .createStatement()
                 .executeQuery(
-                    String.format("select * from %s.%s.%s", TEST_DB, TEST_SCHEMA, multiTableName));
+                    String.format(
+                        "select * from %s.%s.%s order by notnull",
+                        TEST_DB, TEST_SCHEMA, multiTableName));
 
         result.next();
         Assert.assertEquals("honk", result.getString("S"));
-        Assert.assertEquals("foo", result.getString("NOTNULL"));
+        Assert.assertEquals("1", result.getString("NOTNULL"));
 
         result.next();
         Assert.assertNull(result.getString("S"));
-        Assert.assertEquals("bar", result.getString("NOTNULL"));
+        Assert.assertEquals("2", result.getString("NOTNULL"));
 
         result.next();
         Assert.assertNull(result.getString("S"));
-        Assert.assertEquals("foobar", result.getString("NOTNULL"));
+        Assert.assertEquals("3", result.getString("NOTNULL"));
+
+        result.next();
+        Assert.assertNull(result.getString("S"));
+        Assert.assertEquals("3", result.getString("NOTNULL"));
         return;
       } else {
         Thread.sleep(2000);
       }
     }
     Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  /** Verify the insert validation response and throw the exception if needed */
+  private void verifyInsertValidationResponse(InsertValidationResponse response) {
+    if (response.hasErrors()) {
+      throw response.getInsertErrors().get(0).getException();
+    }
   }
 }

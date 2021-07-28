@@ -115,6 +115,9 @@ class ArrowRowBuffer {
   // Map the column name to Arrow column field
   private final Map<String, Field> fields;
 
+  // Map the column name to the stats
+  Map<String, RowBufferStats> statsMap;
+
   // Lock used to protect the buffers from concurrent read/write
   private final Lock flushLock;
 
@@ -154,8 +157,6 @@ class ArrowRowBuffer {
     }
     return epInfo;
   }
-
-  Map<String, RowBufferStats> statsMap;
 
   /**
    * Construct a ArrowRowBuffer object
@@ -424,7 +425,6 @@ class ArrowRowBuffer {
           case SB8:
             arrowType = Types.MinorType.BIGINT.getType();
             break;
-          case SB1: // TODO: Snowflake returns SB1 physical type for empty TIMESTAMP columns
           case SB16:
             arrowType = Types.MinorType.STRUCT.getType();
             FieldType fieldTypeEpoch =
@@ -521,9 +521,42 @@ class ArrowRowBuffer {
   }
 
   private String formatColumnName(String columnName) {
+    Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
     return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
         ? columnName.substring(1, columnName.length() - 1)
         : columnName.toUpperCase();
+  }
+
+  /**
+   * Verify that the input row columns are all valid
+   *
+   * @param row the input row
+   * @return the set of input column names
+   */
+  private Set<String> verifyInputColumns(Map<String, Object> row) {
+    Set<String> inputColumns =
+        row.keySet().stream().map(this::formatColumnName).collect(Collectors.toSet());
+
+    for (String columnName : this.nonNullableFieldNames) {
+      if (!inputColumns.contains(columnName)) {
+        throw new SFException(
+            ErrorCode.INVALID_ROW,
+            "Missing column: " + columnName,
+            "Values for all non-nullable columns must be specified.");
+      }
+    }
+
+    for (String columnName : inputColumns) {
+      Field field = this.fields.get(columnName);
+      if (field == null) {
+        throw new SFException(
+            ErrorCode.INVALID_ROW,
+            "Extra column: " + columnName,
+            "Columns not present in the table shouldn't be specified.");
+      }
+    }
+
+    return inputColumns;
   }
 
   /**
@@ -532,25 +565,13 @@ class ArrowRowBuffer {
    * @param row input row
    */
   private float convertRowToArrow(Map<String, Object> row) {
+    // Verify all the input columns are valid
+    Set<String> inputColumnNames = verifyInputColumns(row);
+
     float rowBufferSize = 0F;
-
-    Set<String> inputColumns =
-        row.keySet().stream()
-            .map((String c) -> this.formatColumnName(c))
-            .collect(Collectors.toSet());
-
-    if (!inputColumns.containsAll(this.nonNullableFieldNames)) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          "Missing columns: " + Sets.difference(this.fields.keySet(), inputColumns).toString(),
-          "Values for all columns must be specified");
-    }
-
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
-      String columnName = entry.getKey();
-      Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
-      columnName = this.formatColumnName(columnName);
+      String columnName = this.formatColumnName(entry.getKey());
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
@@ -568,22 +589,7 @@ class ArrowRowBuffer {
           throw new SFException(
               ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
         }
-        if (BaseFixedWidthVector.class.isAssignableFrom(vector.getClass())) {
-          ((BaseFixedWidthVector) vector).setNull(this.curRowIndex);
-        } else if (BaseVariableWidthVector.class.isAssignableFrom(vector.getClass())) {
-          ((BaseVariableWidthVector) vector).setNull(this.curRowIndex);
-        } else if (vector instanceof StructVector) {
-          ((StructVector) vector).setNull(this.curRowIndex);
-          ((StructVector) vector)
-              .getChildrenFromFields()
-              .forEach(
-                  child -> {
-                    ((BaseFixedWidthVector) child).setNull(this.curRowIndex);
-                  });
-        } else {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Unexpected FieldType");
-        }
-        stats.incCurrentNullCount();
+        insertNull(vector, stats);
       } else {
         switch (logicalType) {
           case FIXED:
@@ -665,7 +671,6 @@ class ArrowRowBuffer {
                   rowBufferSize += 8;
                   break;
                 }
-              case SB1:
               case SB16:
                 {
                   StructVector structVector = (StructVector) vector;
@@ -749,8 +754,34 @@ class ArrowRowBuffer {
         }
       }
     }
+
+    // Insert nulls to the columns that doesn't show up in the input
+    for (String columnName : Sets.difference(fields.keySet(), inputColumnNames)) {
+      insertNull(this.vectors.get(columnName), this.statsMap.get(columnName));
+    }
+
     this.curRowIndex++;
     this.bufferSize += rowBufferSize;
     return rowBufferSize;
+  }
+
+  /** Helper function to insert null value to a field vector */
+  private void insertNull(FieldVector vector, RowBufferStats stats) {
+    if (BaseFixedWidthVector.class.isAssignableFrom(vector.getClass())) {
+      ((BaseFixedWidthVector) vector).setNull(this.curRowIndex);
+    } else if (BaseVariableWidthVector.class.isAssignableFrom(vector.getClass())) {
+      ((BaseVariableWidthVector) vector).setNull(this.curRowIndex);
+    } else if (vector instanceof StructVector) {
+      ((StructVector) vector).setNull(this.curRowIndex);
+      ((StructVector) vector)
+          .getChildrenFromFields()
+          .forEach(
+              child -> {
+                ((BaseFixedWidthVector) child).setNull(this.curRowIndex);
+              });
+    } else {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "Unexpected FieldType");
+    }
+    stats.incCurrentNullCount();
   }
 }
