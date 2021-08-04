@@ -37,6 +37,7 @@ import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.util.Text;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -81,6 +82,7 @@ public class FlushServiceTest {
   }
 
   @Test
+  @Ignore // TODO: SNOW-414124 Put test back after EP server fix
   public void testGetFilePath() {
     FlushService flushService = new FlushService(client, channelCache, stage, false);
     Calendar calendar = Calendar.getInstance();

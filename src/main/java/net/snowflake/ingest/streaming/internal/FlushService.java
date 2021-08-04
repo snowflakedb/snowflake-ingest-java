@@ -18,8 +18,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -519,36 +517,55 @@ class FlushService {
     return getFilePath(calendar, clientPrefix);
   }
 
+  // TODO: SNOW-414124: Remove this method after fixing EP logic on server
   /** For TESTING */
   String getFilePath(Calendar calendar, String clientPrefix) {
     if (isTestMode && clientPrefix == null) {
       clientPrefix = "testPrefix";
     }
     Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
-    int year = calendar.get(Calendar.YEAR);
-    int month = calendar.get(Calendar.MONTH);
-    int day = calendar.get(Calendar.DAY_OF_MONTH);
-    int hour = calendar.get(Calendar.HOUR_OF_DAY);
     long time = calendar.getTimeInMillis();
     long threadId = Thread.currentThread().getId();
-    String fileName =
-        Long.toString(time, 36)
-            + "_"
-            + threadId
-            + "_"
-            + this.counter.getAndIncrement()
-            + "."
-            + BLOB_EXTENSION_TYPE;
-    Path filePath =
-        Paths.get(
-            Integer.toString(year),
-            Integer.toString(month),
-            Integer.toString(day),
-            Integer.toString(hour),
-            clientPrefix,
-            fileName);
-    return filePath.toString();
+    return Long.toString(time, 36)
+        + "_"
+        + threadId
+        + "_"
+        + this.counter.getAndIncrement()
+        + "."
+        + BLOB_EXTENSION_TYPE;
   }
+
+  // TODO: SNOW-414124: Use this method after fixing EP logic on server
+  /** For TESTING */
+  //  String getFilePath(Calendar calendar, String clientPrefix) {
+  //    if (isTestMode && clientPrefix == null) {
+  //      clientPrefix = "testPrefix";
+  //    }
+  //    Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
+  //    int year = calendar.get(Calendar.YEAR);
+  //    int month = calendar.get(Calendar.MONTH);
+  //    int day = calendar.get(Calendar.DAY_OF_MONTH);
+  //    int hour = calendar.get(Calendar.HOUR_OF_DAY);
+  //    long time = calendar.getTimeInMillis();
+  //    long threadId = Thread.currentThread().getId();
+  //    String fileName =
+  //        Long.toString(time, 36)
+  //            + "_"
+  //            + threadId
+  //            + "_"
+  //            + this.counter.getAndIncrement()
+  //            + "."
+  //            + BLOB_EXTENSION_TYPE;
+  //    Path filePath =
+  //        Paths.get(
+  //            Integer.toString(year),
+  //            Integer.toString(month),
+  //            Integer.toString(day),
+  //            Integer.toString(hour),
+  //            clientPrefix,
+  //            fileName);
+  //    return filePath.toString();
+  //  }
 
   /**
    * Invalidate all the channels in the blob data
