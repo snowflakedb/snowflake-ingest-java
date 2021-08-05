@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
@@ -13,6 +14,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -459,6 +463,34 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertEquals(1, data.getVectors().size());
     Assert.assertEquals("2", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
+  }
+
+  @Test
+  public void testInsertRowThrottling() {
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal("client");
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+
+    Runtime mockedRunTime = Mockito.mock(Runtime.class);
+    Mockito.when(mockedRunTime.totalMemory()).thenReturn(1000000L);
+    Mockito.when(mockedRunTime.freeMemory())
+        .thenReturn(1000000L * (INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE - 1) / 100);
+
+    CompletableFuture<Void> future =
+        CompletableFuture.runAsync(
+            () -> {
+              channel.throttleInsertIfNeeded(mockedRunTime);
+            });
+
+    try {
+      future.get(1L, TimeUnit.SECONDS);
+      Assert.fail("the insert should be throttled.");
+    } catch (TimeoutException ignored) {
+    } catch (Exception e) {
+      Assert.fail("unexpected exception encountered.");
+    }
   }
 
   @Test

@@ -199,12 +199,7 @@ class FlushService {
       this.lastFlushTime = System.currentTimeMillis();
       return CompletableFuture.runAsync(
           () -> {
-            this.registerService
-                .registerBlobs(latencyTimerContextMap)
-                .forEach(
-                    errorBlobData -> {
-                      invalidateAllChannelsInBlob(errorBlobData.getData());
-                    });
+            this.registerService.registerBlobs(latencyTimerContextMap);
           },
           this.registerWorker);
     }
@@ -303,7 +298,11 @@ class FlushService {
                       try {
                         return buildAndUpload(finalFilePath, blobData);
                       } catch (IOException e) {
-                        logger.logError("Building blob failed={}, exception={}", finalFilePath, e);
+                        logger.logError(
+                            "Building blob failed={}, exception={}, all channels in the blob will"
+                                + " be invalidated",
+                            finalFilePath,
+                            e);
                         invalidateAllChannelsInBlob(blobData);
                         return null;
                       } catch (NoSuchAlgorithmException e) {
@@ -486,18 +485,26 @@ class FlushService {
   /**
    * Release all resources
    *
-   * @return a boolean indicates whether the shutdown is successful or not
    * @throws InterruptedException
    */
-  boolean shutdown() throws InterruptedException {
+  void shutdown() throws InterruptedException {
     this.flushWorker.shutdown();
     this.registerWorker.shutdown();
     this.buildUploadWorkers.shutdown();
 
-    return this.flushWorker.awaitTermination(THREAD_SHUTDOWN_TIMEOUT_IN_SEC, TimeUnit.SECONDS)
-        && this.registerWorker.awaitTermination(THREAD_SHUTDOWN_TIMEOUT_IN_SEC, TimeUnit.SECONDS)
-        && this.buildUploadWorkers.awaitTermination(
-            THREAD_SHUTDOWN_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+    boolean isTerminated =
+        this.flushWorker.awaitTermination(THREAD_SHUTDOWN_TIMEOUT_IN_SEC, TimeUnit.SECONDS)
+            && this.registerWorker.awaitTermination(
+                THREAD_SHUTDOWN_TIMEOUT_IN_SEC, TimeUnit.SECONDS)
+            && this.buildUploadWorkers.awaitTermination(
+                THREAD_SHUTDOWN_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+
+    if (!isTerminated) {
+      logger.logWarn("Tasks can't be terminated within the timeout, force shutdown now.");
+      this.flushWorker.shutdownNow();
+      this.registerWorker.shutdownNow();
+      this.buildUploadWorkers.shutdownNow();
+    }
   }
 
   /** Set the flag to indicate that a flush is needed */
@@ -572,7 +579,7 @@ class FlushService {
    *
    * @param blobData list of channels that belongs to the blob
    */
-  private void invalidateAllChannelsInBlob(List<List<ChannelData>> blobData) {
+  void invalidateAllChannelsInBlob(List<List<ChannelData>> blobData) {
     blobData.forEach(
         chunkData ->
             chunkData.forEach(

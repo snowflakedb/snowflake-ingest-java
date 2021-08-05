@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
 import com.codahale.metrics.Timer;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import net.snowflake.ingest.utils.Logging;
@@ -90,34 +92,56 @@ class RegisterService {
           this.blobsListLock.unlock();
         }
 
-        if (!oldList.isEmpty()) {
+        // If no exception, we will register all blobs in the blob list
+        // If hitting non-timeout exception, we will log it and continue
+        // If hitting timeout exception, we will register all the previous blobs in the blob list
+        // and retry until the hitting BLOB_UPLOAD_MAX_RETRY_COUNT
+        int idx = 0;
+        int retry = 0;
+        while (idx < oldList.size()) {
           List<BlobMetadata> blobs = new ArrayList<>();
-          oldList.forEach(
-              futureBlob -> {
-                try {
-                  logger.logDebug(
-                      "Start waiting on uploading blob={}", futureBlob.getKey().getFilePath());
-                  // Wait for uploading to finish, add a timeout in case something bad happens
-                  BlobMetadata blob =
-                      futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
-                  logger.logDebug(
-                      "Finish waiting on uploading blob={}", futureBlob.getKey().getFilePath());
-                  if (blob != null) {
-                    blobs.add(blob);
-                  }
-                } catch (Exception e) {
-                  // Don't throw here if the blob upload times out or encounters other exceptions,
-                  // since we still want to continue register the good blobs in the list
-                  // In the future we may want to do error-specific handling for unexpected
-                  // exceptions
-                  logger.logError(
-                      "Building or uploading blob failed={}, exception={}, cause={}",
-                      futureBlob.getKey().getFilePath(),
-                      e,
-                      e.getCause());
-                  errorBlobs.add(futureBlob.getKey());
-                }
-              });
+          while (idx < oldList.size()) {
+            Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> futureBlob =
+                oldList.get(idx);
+            try {
+              logger.logDebug(
+                  "Start waiting on uploading blob={}", futureBlob.getKey().getFilePath());
+              // Wait for uploading to finish
+              BlobMetadata blob =
+                  futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+              logger.logDebug(
+                  "Finish waiting on uploading blob={}", futureBlob.getKey().getFilePath());
+              if (blob != null) {
+                blobs.add(blob);
+              }
+              retry = 0;
+              idx++;
+            } catch (Exception e) {
+              // Don't throw here if the blob upload encounters exceptions, since we still want to
+              // continue register the following blobs after the bad one. Note that it's possible
+              // that the following blobs contain invalid data from the invalidated channels if the
+              // blobs are generated before these channels got invalidated.
+
+              // Retry logic for timeout exception only
+              if (e instanceof TimeoutException && retry < BLOB_UPLOAD_MAX_RETRY_COUNT) {
+                retry++;
+                break;
+              }
+
+              logger.logError(
+                  "Building or uploading blob failed={}, exception={}, cause={}, all channels"
+                      + " in the blob will be invalidated",
+                  futureBlob.getKey().getFilePath(),
+                  e,
+                  e.getCause());
+              this.owningClient
+                  .getFlushService()
+                  .invalidateAllChannelsInBlob(futureBlob.getKey().getData());
+              errorBlobs.add(futureBlob.getKey());
+              retry = 0;
+              idx++;
+            }
+          }
 
           if (blobs.size() > 0 && !isTestMode) {
             Timer.Context registerContext =

@@ -367,6 +367,13 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                 .forEach(
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
+                                        logger.logError(
+                                            "Channel has been invalidated because of failure"
+                                                + " response, name={}, channel sequencer={},"
+                                                + " status code={}",
+                                            channelStatus.getChannelName(),
+                                            channelStatus.getChannelSequencer(),
+                                            channelStatus.getStatusCode());
                                         channelCache.invalidateAndRemoveChannelIfSequencersMatch(
                                             chunkStatus.getDBName(),
                                             chunkStatus.getSchemaName(),
@@ -404,7 +411,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     // First mark all the channels as closed, then flush any leftover rows in the buffer
     this.channelCache.closeAllChannels();
     return flush(true)
-        .thenRun(
+        .thenRunAsync(
             () -> {
               // Collect the perf metrics before closing if needed
               if (metrics != null) {
@@ -418,11 +425,12 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
               try {
                 this.flushService.shutdown();
-                this.allocator.getChildAllocators().forEach(BufferAllocator::close);
-                this.allocator.close();
               } catch (InterruptedException e) {
                 throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
               }
+
+              this.allocator.getChildAllocators().forEach(BufferAllocator::close);
+              this.allocator.close();
 
               // Throw an exception if there is any channels with uncommitted rows
               if (!uncommittedChannels.isEmpty()) {
@@ -493,6 +501,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   /** Get the channel cache */
   ChannelCache getChannelCache() {
     return this.channelCache;
+  }
+
+  /** Get the flush service */
+  FlushService getFlushService() {
+    return this.flushService;
   }
 
   /**

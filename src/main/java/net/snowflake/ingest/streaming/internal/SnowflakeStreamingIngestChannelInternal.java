@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_INTERVAL_IN_MS;
+import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE;
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 
 import java.util.Collections;
@@ -276,11 +278,12 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     markClosed();
     this.owningClient.removeChannelIfSequencersMatch(this);
     return flush(true)
-        .thenRun(
+        .thenRunAsync(
             () -> {
               List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
                   this.owningClient.verifyChannelsAreFullyCommitted(
                       Collections.singletonList(this));
+
               this.arrowBuffer.close();
 
               // Throw an exception if the channel has any uncommitted rows
@@ -358,6 +361,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       throw new SFException(ErrorCode.CLOSED_CHANNEL);
     }
 
+    throttleInsertIfNeeded(Runtime.getRuntime());
     InsertValidationResponse response = this.arrowBuffer.insertRows(rows, offsetToken);
 
     // Start flush task if the chunk size reaches a certain size
@@ -384,5 +388,24 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
         .getChannelsStatus(Collections.singletonList(this))
         .getChannels()[0]
         .getPersistedOffsetToken();
+  }
+
+  /**
+   * Check whether we need to throttle the insert API under the following low memory condition:
+   * <li>system free_memory/total_memory < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE
+   */
+  void throttleInsertIfNeeded(Runtime runtime) {
+    while (runtime.freeMemory() * 100 / runtime.totalMemory()
+        < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE) {
+      logger.logWarn(
+          "Insert throttled due to JVM memory pressure, total memory={}, free memory={}.",
+          runtime.totalMemory(),
+          runtime.freeMemory());
+      try {
+        Thread.sleep(INSERT_THROTTLE_INTERVAL_IN_MS);
+      } catch (InterruptedException e) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
+      }
+    }
   }
 }
