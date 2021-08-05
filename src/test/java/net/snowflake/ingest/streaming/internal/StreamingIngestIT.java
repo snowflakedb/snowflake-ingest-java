@@ -8,9 +8,14 @@ import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import net.snowflake.client.jdbc.SnowflakeDriver;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -321,6 +326,67 @@ public class StreamingIngestIT {
         return;
       } else {
         Thread.sleep(2000);
+      }
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testMultiThread() throws Exception {
+    String multiThreadTable = "multi_thread";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format("create or replace table %s (numcol NUMBER(10,2));", multiThreadTable));
+    int numThreads = 20;
+    int numRows = 1000000;
+    ExecutorService testThreadPool = Executors.newFixedThreadPool(numThreads);
+    CompletableFuture[] futures = new CompletableFuture[numThreads];
+    List<SnowflakeStreamingIngestChannel> channelList = new ArrayList<>();
+    for (int i = 0; i < numThreads; i++) {
+      final String channelName = "CHANNEL" + i;
+      futures[i] =
+          CompletableFuture.runAsync(
+              () -> {
+                OpenChannelRequest request =
+                    OpenChannelRequest.builder(channelName)
+                        .setDBName(TEST_DB)
+                        .setSchemaName(TEST_SCHEMA)
+                        .setTableName(multiThreadTable)
+                        .build();
+                SnowflakeStreamingIngestChannel channel = client.openChannel(request);
+                channelList.add(channel);
+                for (int val = 1; val <= numRows; val++) {
+                  Map<String, Object> row = new HashMap<>();
+                  row.put("numcol", val);
+                  verifyInsertValidationResponse(channel.insertRow(row, Integer.toString(val)));
+                }
+              },
+              testThreadPool);
+    }
+    CompletableFuture joined = CompletableFuture.allOf(futures);
+    joined.get();
+    client.flush().get();
+    for (int i = 1; i < 15; i++) {
+      if (channelList.stream()
+          .allMatch(
+              c ->
+                  c.getLatestCommittedOffsetToken() != null
+                      && c.getLatestCommittedOffsetToken().equals(Integer.toString(numRows)))) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(*), max(*) from %s.%s.%s",
+                        TEST_DB, TEST_SCHEMA, multiThreadTable));
+
+        result.next();
+        Assert.assertEquals(numRows * numThreads, result.getInt(1));
+        Assert.assertEquals(Double.valueOf(numRows), result.getDouble(2), 10);
+        return;
+      } else {
+        Thread.sleep(3000);
       }
     }
     Assert.fail("Row sequencer not updated before timeout");

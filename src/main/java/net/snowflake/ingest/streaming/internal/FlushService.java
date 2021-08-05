@@ -395,6 +395,8 @@ class FlushService {
           // Write channel data using the stream writer
           streamWriter.writeBatch();
           rowCount += data.getRowCount();
+          // Clear out the root buffers, so we can reuse them on the next loop iteration
+          root.clear();
 
           logger.logDebug(
               "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
