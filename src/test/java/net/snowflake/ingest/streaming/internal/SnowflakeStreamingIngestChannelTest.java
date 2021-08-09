@@ -10,6 +10,7 @@ import static net.snowflake.ingest.utils.Constants.USER_NAME;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -503,7 +504,7 @@ public class SnowflakeStreamingIngestChannelTest {
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
-    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[0]);
+    response.setChannels(new ArrayList<>());
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
@@ -528,7 +529,7 @@ public class SnowflakeStreamingIngestChannelTest {
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
-    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[0]);
+    response.setChannels(new ArrayList<>());
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
@@ -556,7 +557,7 @@ public class SnowflakeStreamingIngestChannelTest {
         new ChannelsStatusResponse.ChannelStatusResponseDTO();
     channelStatus.setStatusCode((long) ROW_SEQUENCER_IS_COMMITTED);
     channelStatus.setPersistedOffsetToken(offsetToken);
-    response.setChannels(new ChannelsStatusResponse.ChannelStatusResponseDTO[] {channelStatus});
+    response.setChannels(Collections.singletonList(channelStatus));
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 

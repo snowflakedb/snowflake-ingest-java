@@ -73,35 +73,25 @@ class ChannelCache {
         });
   }
 
-  /** Invalidate and remove a channel in the channel cache if the channel sequencer matches */
-  void invalidateAndRemoveChannelIfSequencersMatch(
+  /** Invalidate a channel in the channel cache if the channel sequencer matches */
+  void invalidateChannelIfSequencersMatch(
       String dbName,
       String schemaName,
       String tableName,
       String channelName,
       Long channelSequencer) {
     String fullyQualifiedTableName = String.format("%s.%s.%s", dbName, schemaName, tableName);
-    cache.computeIfPresent(
-        fullyQualifiedTableName,
-        (k, v) -> {
-          SnowflakeStreamingIngestChannelInternal channelInCache = v.get(channelName);
-          // We need to compare the channel sequencer in case the old channel was already been
-          // removed
-          return channelInCache != null
-                  && channelInCache.getChannelSequencer().equals(channelSequencer)
-                  && v.remove(channelName) != null
-                  && channelInCache.invalidate()
-                  && v.isEmpty()
-              ? null
-              : v;
-        });
+    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> channelsMapPerTable =
+        cache.get(fullyQualifiedTableName);
+    if (channelsMapPerTable != null) {
+      SnowflakeStreamingIngestChannelInternal channel = channelsMapPerTable.get(channelName);
+      if (channel != null && channel.getChannelSequencer().equals(channelSequencer)) {
+        channel.invalidate();
+      }
+    }
   }
 
-  /**
-   * Get the number of key-value pairs in the cache
-   *
-   * @return
-   */
+  /** Get the number of key-value pairs in the cache */
   int getSize() {
     return cache.size();
   }

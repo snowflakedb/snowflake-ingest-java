@@ -202,8 +202,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    *
    * @return the client's role
    */
-  @Override
-  public String getRole() {
+  String getRole() {
     return this.role;
   }
 
@@ -374,7 +373,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                             channelStatus.getChannelName(),
                                             channelStatus.getChannelSequencer(),
                                             channelStatus.getStatusCode());
-                                        channelCache.invalidateAndRemoveChannelIfSequencersMatch(
+                                        channelCache.invalidateChannelIfSequencersMatch(
                                             chunkStatus.getDBName(),
                                             chunkStatus.getSchemaName(),
                                             chunkStatus.getTableName(),
@@ -401,7 +400,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         itr = this.channelCache.iterator();
     while (itr.hasNext()) {
       for (SnowflakeStreamingIngestChannelInternal channel : itr.next().getValue().values()) {
-        if (channel.isValid() && !channel.isClosed()) {
+        if (!channel.isClosed()) {
           channels.add(channel);
         }
       }
@@ -413,15 +412,15 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return flush(true)
         .thenRunAsync(
             () -> {
+              // Check if any channels has uncommitted rows
+              List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
+                  verifyChannelsAreFullyCommitted(channels);
+
               // Collect the perf metrics before closing if needed
               if (metrics != null) {
                 ConsoleReporter reporter = ConsoleReporter.forRegistry(metrics).build();
                 reporter.report();
               }
-
-              // Check if any channels has uncommitted rows
-              List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
-                  verifyChannelsAreFullyCommitted(channels);
 
               try {
                 this.flushService.shutdown();
@@ -522,24 +521,46 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     // Start checking the status of all the channels in the list
     int retry = 0;
+    List<ChannelsStatusResponse.ChannelStatusResponseDTO> oldChannelsStatus = new ArrayList<>();
     do {
-      ChannelsStatusResponse.ChannelStatusResponseDTO[] channelsStatus =
+      List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
           getChannelsStatus(channels).getChannels();
       List<SnowflakeStreamingIngestChannelInternal> tempChannels = new ArrayList<>();
+      List<ChannelsStatusResponse.ChannelStatusResponseDTO> tempChannelsStatus = new ArrayList<>();
 
-      for (int idx = 0; idx < channelsStatus.length; idx++) {
-        if (channelsStatus[idx].getStatusCode() != ROW_SEQUENCER_IS_COMMITTED) {
+      for (int idx = 0; idx < channelsStatus.size(); idx++) {
+        if (channelsStatus.get(idx).getStatusCode() != ROW_SEQUENCER_IS_COMMITTED) {
           tempChannels.add(channels.get(idx));
+          tempChannelsStatus.add(channelsStatus.get(idx));
+        }
+      }
+
+      // Check whether the server side commit is making progress
+      boolean isMakingProgress = tempChannels.size() != channels.size();
+      if (!isMakingProgress) {
+        for (int idx = 0; idx < channelsStatus.size(); idx++) {
+          if (oldChannelsStatus.isEmpty()
+              || !channelsStatus
+                  .get(idx)
+                  .getPersistedRowSequencer()
+                  .equals(oldChannelsStatus.get(idx).getPersistedRowSequencer())) {
+            isMakingProgress = true;
+            break;
+          }
         }
       }
 
       // Break if all the channels are fully committed, otherwise retry and check again
+      oldChannelsStatus = tempChannelsStatus;
       channels = tempChannels;
       if (channels.isEmpty()) {
         break;
       }
 
-      retry++;
+      // If we know the commit is making progress, don't increase the retry count
+      if (!isMakingProgress) {
+        retry++;
+      }
 
       try {
         Thread.sleep(COMMIT_RETRY_INTERVAL_IN_MS);

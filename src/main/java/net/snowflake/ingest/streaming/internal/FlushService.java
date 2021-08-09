@@ -299,10 +299,11 @@ class FlushService {
                         return buildAndUpload(finalFilePath, blobData);
                       } catch (IOException e) {
                         logger.logError(
-                            "Building blob failed={}, exception={}, all channels in the blob will"
-                                + " be invalidated",
+                            "Building blob failed={}, exception={}, detail={}, all channels in the"
+                                + " blob will be invalidated",
                             finalFilePath,
-                            e);
+                            e,
+                            e.getMessage());
                         invalidateAllChannelsInBlob(blobData);
                         return null;
                       } catch (NoSuchAlgorithmException e) {
@@ -589,7 +590,7 @@ class FlushService {
                   channelData.getVectors().forEach(vector -> vector.close());
                   this.owningClient
                       .getChannelCache()
-                      .invalidateAndRemoveChannelIfSequencersMatch(
+                      .invalidateChannelIfSequencersMatch(
                           channelData.getChannel().getDBName(),
                           channelData.getChannel().getSchemaName(),
                           channelData.getChannel().getTableName(),

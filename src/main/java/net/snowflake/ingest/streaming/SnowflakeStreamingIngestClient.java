@@ -41,13 +41,6 @@ public interface SnowflakeStreamingIngestClient {
    */
   String getName();
 
-  /**
-   * Get the role used by the client
-   *
-   * @return the client's role
-   */
-  String getRole();
-
   /** @return a boolean to indicate whether the client is closed or not */
   boolean isClosed();
 }

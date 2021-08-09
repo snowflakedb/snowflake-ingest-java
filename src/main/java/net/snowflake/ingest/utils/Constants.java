@@ -24,8 +24,9 @@ public class Constants {
   public static final String INTERNAL_STAGE_SCHEMA_NAME = "PUBLIC";
   public static final long BUFFER_FLUSH_INTERVAL_IN_MS = 500;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MS = 100;
-  public static final long INSERT_THROTTLE_INTERVAL_IN_MS = 100;
+  public static final long INSERT_THROTTLE_INTERVAL_IN_MS = 500;
   public static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE = 5;
+  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 256000000L;
   public static final byte BLOB_FORMAT_VERSION = 0;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;

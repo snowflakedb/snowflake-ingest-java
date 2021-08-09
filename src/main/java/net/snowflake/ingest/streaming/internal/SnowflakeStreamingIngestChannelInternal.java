@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_INTERVAL_IN_MS;
+import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE;
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 
@@ -215,14 +216,13 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   }
 
   /** Mark the channel as invalid, and release resources */
-  boolean invalidate() {
+  void invalidate() {
     this.isValid = false;
     this.arrowBuffer.close();
     logger.logDebug(
         "Channel has been invalidated, name={}, channel sequencer={}",
         getFullyQualifiedName(),
         channelSequencer);
-    return true;
   }
 
   /** @return a boolean to indicate whether the channel is closed or not */
@@ -247,18 +247,20 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    */
   @Override
   public CompletableFuture<Void> flush() {
+    checkValidation();
     return flush(false);
   }
 
   private CompletableFuture<Void> flush(boolean closing) {
-    if (!isValid()) {
-      throw new SFException(ErrorCode.INVALID_CHANNEL);
-    }
-
     // Skip this check for closing because we need to set the channel to closed first and then flush
     // in case there is any leftover rows
     if (isClosed() && !closing) {
       throw new SFException(ErrorCode.CLOSED_CHANNEL);
+    }
+
+    // Simply return if there is no data in the channel
+    if (this.arrowBuffer.getSize() == 0) {
+      return CompletableFuture.completedFuture(null);
     }
 
     return this.owningClient.flush();
@@ -271,6 +273,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    */
   @Override
   public CompletableFuture<Void> close() {
+    checkValidation();
+
     if (isClosed()) {
       return CompletableFuture.completedFuture(null);
     }
@@ -353,9 +357,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
-    if (!isValid()) {
-      throw new SFException(ErrorCode.INVALID_CHANNEL);
-    }
+    checkValidation();
 
     if (isClosed()) {
       throw new SFException(ErrorCode.CLOSED_CHANNEL);
@@ -384,9 +386,12 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   /** Get the latest committed offset token from Snowflake */
   @Override
   public String getLatestCommittedOffsetToken() {
+    checkValidation();
+
     return this.owningClient
         .getChannelsStatus(Collections.singletonList(this))
-        .getChannels()[0]
+        .getChannels()
+        .get(0)
         .getPersistedOffsetToken();
   }
 
@@ -395,17 +400,40 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    * <li>system free_memory/total_memory < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE
    */
   void throttleInsertIfNeeded(Runtime runtime) {
-    while (runtime.freeMemory() * 100 / runtime.totalMemory()
+    if (runtime.freeMemory() * 100 / runtime.totalMemory()
         < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE) {
+      long oldTotalMem = runtime.totalMemory();
+      long oldFreeMem = runtime.freeMemory();
+      int retry = 0;
+
+      while (runtime.freeMemory() * 100 / runtime.totalMemory()
+              < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE
+          && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
+        try {
+          Thread.sleep(INSERT_THROTTLE_INTERVAL_IN_MS);
+          retry++;
+        } catch (InterruptedException e) {
+          throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
+        }
+      }
+
       logger.logWarn(
-          "Insert throttled due to JVM memory pressure, total memory={}, free memory={}.",
+          "Insert throttled for {} ms due to JVM memory pressure, old total memory={}, old free"
+              + " memory={}, new total memory={}, new free memory={}.",
+          retry * INSERT_THROTTLE_INTERVAL_IN_MS,
+          oldTotalMem,
+          oldFreeMem,
           runtime.totalMemory(),
           runtime.freeMemory());
-      try {
-        Thread.sleep(INSERT_THROTTLE_INTERVAL_IN_MS);
-      } catch (InterruptedException e) {
-        throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
-      }
+    }
+  }
+
+  /** Check whether the channel is still valid, cleanup and throw an error if not */
+  private void checkValidation() {
+    if (!isValid()) {
+      this.owningClient.removeChannelIfSequencersMatch(this);
+      this.arrowBuffer.close();
+      throw new SFException(ErrorCode.INVALID_CHANNEL);
     }
   }
 }

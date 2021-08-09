@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 
 /** Class used to serialize a response for the channels status endpoint */
 class ChannelsStatusResponse {
@@ -64,7 +65,7 @@ class ChannelsStatusResponse {
   }
 
   // Channel array to return
-  private ChannelStatusResponseDTO[] channels;
+  private List<ChannelStatusResponseDTO> channels;
   private Long statusCode;
   private String message;
 
@@ -89,12 +90,12 @@ class ChannelsStatusResponse {
   }
 
   @JsonProperty("channels")
-  void setChannels(ChannelStatusResponseDTO[] channels) {
+  void setChannels(List<ChannelStatusResponseDTO> channels) {
     this.channels = channels;
   }
 
   @JsonProperty("channels")
-  ChannelStatusResponseDTO[] getChannels() {
+  List<ChannelStatusResponseDTO> getChannels() {
     return channels;
   }
 }

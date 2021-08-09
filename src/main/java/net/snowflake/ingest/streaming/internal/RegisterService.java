@@ -127,13 +127,14 @@ class RegisterService {
                 retry++;
                 break;
               }
-
               logger.logError(
-                  "Building or uploading blob failed={}, exception={}, cause={}, all channels"
-                      + " in the blob will be invalidated",
+                  "Building or uploading blob failed={}, exception={}, detail={}, cause={},"
+                      + " detail={}, all channels in the blob will be invalidated",
                   futureBlob.getKey().getFilePath(),
                   e,
-                  e.getCause());
+                  e.getMessage(),
+                  e.getCause(),
+                  e.getCause() == null ? null : e.getCause().getMessage());
               this.owningClient
                   .getFlushService()
                   .invalidateAllChannelsInBlob(futureBlob.getKey().getData());
