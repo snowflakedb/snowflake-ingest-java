@@ -237,7 +237,7 @@ class FlushService {
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
     int buildUploadThreadCount =
         Math.max(
-            1,
+            10,
             Math.min(Runtime.getRuntime().availableProcessors(), MAX_THREAD_COUNT) - threadCount);
     this.buildUploadWorkers =
         Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
