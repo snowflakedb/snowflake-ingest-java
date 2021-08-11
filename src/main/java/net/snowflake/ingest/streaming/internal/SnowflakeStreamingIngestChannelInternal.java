@@ -243,27 +243,23 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   /**
    * Flush all data in memory to persistent storage and register with a Snowflake table
    *
+   * @param closing whether the flush is called as part of channel closing
    * @return future which will be complete when the flush the data is registered
    */
-  @Override
-  public CompletableFuture<Void> flush() {
-    checkValidation();
-    return flush(false);
-  }
-
-  private CompletableFuture<Void> flush(boolean closing) {
+  CompletableFuture<Void> flush(boolean closing) {
     // Skip this check for closing because we need to set the channel to closed first and then flush
     // in case there is any leftover rows
     if (isClosed() && !closing) {
       throw new SFException(ErrorCode.CLOSED_CHANNEL);
     }
 
-    // Simply return if there is no data in the channel
+    // Simply return if there is no data in the channel, this might not work if we support public
+    // flush API since there could a concurrent insert at the same time
     if (this.arrowBuffer.getSize() == 0) {
       return CompletableFuture.completedFuture(null);
     }
 
-    return this.owningClient.flush();
+    return this.owningClient.flush(false);
   }
 
   /**

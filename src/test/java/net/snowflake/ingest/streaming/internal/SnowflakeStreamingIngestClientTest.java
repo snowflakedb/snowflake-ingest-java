@@ -549,12 +549,12 @@ public class SnowflakeStreamingIngestClientTest {
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
-    client.flush().get();
+    client.flush(false).get();
 
     // Calling flush on closed client should fail
     client.close().get();
     try {
-      client.flush().get();
+      client.flush(false).get();
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.CLOSED_CLIENT.getMessageCode(), e.getVendorCode());
     }

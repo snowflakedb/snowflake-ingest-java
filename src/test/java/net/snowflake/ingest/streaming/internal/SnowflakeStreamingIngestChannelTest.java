@@ -138,10 +138,10 @@ public class SnowflakeStreamingIngestChannelTest {
       Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
     }
 
-    // Can't flush on invalid channel
+    // Can't get latest committed offset token on invalid channel
     try {
-      channel.flush();
-      Assert.fail("Channel flush should failed");
+      channel.getLatestCommittedOffsetToken();
+      Assert.fail("Channel get offset token should failed");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
     }
@@ -498,7 +498,7 @@ public class SnowflakeStreamingIngestChannelTest {
   public void testFlush() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
-    SnowflakeStreamingIngestChannel channel =
+    SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
             "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -508,12 +508,12 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
-    channel.flush().get();
+    channel.flush(false).get();
 
     // Calling flush on closed client should fail
     channel.close().get();
     try {
-      channel.flush().get();
+      channel.flush(false).get();
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.CLOSED_CHANNEL.getMessageCode(), e.getVendorCode());
     }

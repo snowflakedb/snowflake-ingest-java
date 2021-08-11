@@ -28,13 +28,6 @@ public interface SnowflakeStreamingIngestClient {
   CompletableFuture<Void> close();
 
   /**
-   * Flush all data in memory to persistent storage and register with a Snowflake table
-   *
-   * @return future which will be complete when the flush the data is registered
-   */
-  CompletableFuture<Void> flush();
-
-  /**
    * Get the client name
    *
    * @return the client name

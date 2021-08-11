@@ -93,7 +93,7 @@ public class StreamingIngestIT {
       row.put("c1", Integer.toString(val));
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
-    client.flush().get();
+
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("999")) {
@@ -164,7 +164,6 @@ public class StreamingIngestIT {
     row.put("tinyfloat", BigInteger.valueOf(10).pow(35));
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
-    client.flush().get();
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("1")) {
@@ -221,7 +220,6 @@ public class StreamingIngestIT {
     row.put("t", timestamp);
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
-    client.flush().get();
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("1")) {
@@ -293,7 +291,6 @@ public class StreamingIngestIT {
 
     verifyInsertValidationResponse(channel2.insertRow(row3, "1"));
 
-    client.flush().get();
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("3")
@@ -366,7 +363,7 @@ public class StreamingIngestIT {
     }
     CompletableFuture joined = CompletableFuture.allOf(futures);
     joined.get();
-    client.flush().get();
+
     for (int i = 1; i < 15; i++) {
       if (channelList.stream()
           .allMatch(

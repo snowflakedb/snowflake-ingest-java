@@ -445,14 +445,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   /**
    * Flush all data in memory to persistent storage and register with a Snowflake table
    *
+   * @param closing whether the flush is called as part of client closing
    * @return future which will be complete when the flush the data is registered
    */
-  @Override
-  public CompletableFuture<Void> flush() {
-    return flush(false);
-  }
-
-  private CompletableFuture<Void> flush(boolean closing) {
+  CompletableFuture<Void> flush(boolean closing) {
     if (isClosed() && !closing) {
       throw new SFException(ErrorCode.CLOSED_CLIENT);
     }
