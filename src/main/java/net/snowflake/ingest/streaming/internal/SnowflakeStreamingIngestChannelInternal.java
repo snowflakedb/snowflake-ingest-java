@@ -414,9 +414,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       }
 
       logger.logWarn(
-          "Insert throttled for {} ms due to JVM memory pressure, old total memory={}, old free"
-              + " memory={}, new total memory={}, new free memory={}.",
+          "Insert throttled for {} ms due to JVM memory pressure, max memory={}, old total"
+              + " memory={}, old free memory={}, new total memory={}, new free memory={}.",
           retry * INSERT_THROTTLE_INTERVAL_IN_MS,
+          runtime.maxMemory(),
           oldTotalMem,
           oldFreeMem,
           runtime.totalMemory(),

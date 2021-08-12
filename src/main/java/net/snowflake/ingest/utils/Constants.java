@@ -37,6 +37,7 @@ public class Constants {
   public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 5L;
   public static final String BLOB_EXTENSION_TYPE = "bdec";
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
+  public static final int CPU_IO_TIME_RATIO = 1;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
   public static final int COMMIT_MAX_RETRY_COUNT = 10;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 500;

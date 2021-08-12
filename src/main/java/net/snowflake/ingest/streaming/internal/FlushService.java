@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_CHECK_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_INTERVAL_IN_MS;
+import static net.snowflake.ingest.utils.Constants.CPU_IO_TIME_RATIO;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
 import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
@@ -40,10 +41,11 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.vector.FieldVector;
+import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.VectorUnloader;
 import org.apache.arrow.vector.ipc.ArrowStreamWriter;
-import org.apache.arrow.vector.ipc.message.ArrowFieldNode;
+import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -209,8 +211,6 @@ class FlushService {
 
   /** Create the workers for each specific job */
   private void createWorkers() {
-    int threadCount = 0;
-
     // Create thread for checking and scheduling flush job
     ThreadFactory flushThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-flush-thread").build();
@@ -222,30 +222,28 @@ class FlushService {
         0,
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MS,
         TimeUnit.MILLISECONDS);
-    threadCount++;
 
     // Create thread for registering blobs
     ThreadFactory registerThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-register-thread").build();
     this.registerWorker = Executors.newSingleThreadExecutor(registerThreadFactory);
-    threadCount++;
 
     // Create threads for building and uploading blobs
-    // Min: 1
-    // Max: number of available processors - thread for scheduling flush - thread for registering
+    // Size: number of available processors * (1 + IO time/CPU time), currently the
+    // CPU_IO_TIME_RATIO is 1 under the assumption that build and upload will take similar time
     ThreadFactory buildUploadThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
     int buildUploadThreadCount =
-        Math.max(
-            10,
-            Math.min(Runtime.getRuntime().availableProcessors(), MAX_THREAD_COUNT) - threadCount);
+        Math.min(
+            Runtime.getRuntime().availableProcessors() * (1 + CPU_IO_TIME_RATIO), MAX_THREAD_COUNT);
     this.buildUploadWorkers =
         Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
 
     logger.logDebug(
-        "Create {} threads for build/upload blobs for client={}",
+        "Create {} threads for build/upload blobs for client={}, total available processors={}",
         buildUploadThreadCount,
-        this.owningClient.getName());
+        this.owningClient.getName(),
+        Runtime.getRuntime().availableProcessors());
   }
 
   /**
@@ -341,6 +339,7 @@ class FlushService {
       long rowCount = 0L;
       VectorSchemaRoot root = null;
       ArrowStreamWriter streamWriter = null;
+      VectorLoader loader = null;
       SnowflakeStreamingIngestChannelInternal firstChannel = null;
       ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
       Map<String, RowBufferStats> columnEpStatsMapCombined = null;
@@ -368,6 +367,7 @@ class FlushService {
             columnEpStatsMapCombined = data.getColumnEps();
             root = new VectorSchemaRoot(data.getVectors());
             streamWriter = new ArrowStreamWriter(root, null, chunkData);
+            loader = new VectorLoader(root);
             firstChannel = data.getChannel();
             streamWriter.start();
           } else {
@@ -382,22 +382,18 @@ class FlushService {
             columnEpStatsMapCombined =
                 ChannelData.getCombinedColumnStatsMap(
                     columnEpStatsMapCombined, data.getColumnEps());
-            root.setRowCount(Math.toIntExact(data.getRowCount()));
 
-            for (int vectorIdx = 0; vectorIdx < data.getVectors().size(); vectorIdx++) {
-              FieldVector sourceVector = data.getVectors().get(vectorIdx);
-              ArrowFieldNode node =
-                  new ArrowFieldNode(sourceVector.getValueCount(), sourceVector.getNullCount());
-              root.getVector(vectorIdx).loadFieldBuffers(node, sourceVector.getFieldBuffers());
-              sourceVector.close();
-            }
+            VectorSchemaRoot sourceRoot = new VectorSchemaRoot(data.getVectors());
+            VectorUnloader unloader = new VectorUnloader(sourceRoot);
+            ArrowRecordBatch recordBatch = unloader.getRecordBatch();
+            loader.load(recordBatch);
+            recordBatch.close();
+            sourceRoot.close();
           }
 
           // Write channel data using the stream writer
           streamWriter.writeBatch();
           rowCount += data.getRowCount();
-          // Clear out the root buffers, so we can reuse them on the next loop iteration
-          root.clear();
 
           logger.logDebug(
               "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
@@ -478,6 +474,8 @@ class FlushService {
       uploadContext.stop();
       this.owningClient.uploadThroughput.mark(blob.length);
       this.owningClient.blobSizeHistogram.update(blob.length);
+      this.owningClient.blobRowCountHistogram.update(
+          metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
     }
 
     logger.logDebug("Finish uploading file={}", filePath);

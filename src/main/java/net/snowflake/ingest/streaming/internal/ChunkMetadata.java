@@ -41,21 +41,6 @@ class ChunkMetadata {
       return this;
     }
 
-    Builder setDBName(String dbName) {
-      this.dbName = dbName;
-      return this;
-    }
-
-    Builder setSchemaName(String schemaName) {
-      this.schemaName = schemaName;
-      return this;
-    }
-
-    Builder setTableName(String tableName) {
-      this.tableName = tableName;
-      return this;
-    }
-
     Builder setEpInfo(EpInfo epInfo) {
       this.epInfo = epInfo;
       return this;

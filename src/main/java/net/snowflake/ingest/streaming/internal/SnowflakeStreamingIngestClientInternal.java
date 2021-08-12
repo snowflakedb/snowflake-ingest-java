@@ -94,6 +94,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Performance testing related metrics
   MetricRegistry metrics;
   Histogram blobSizeHistogram; // Histogram for blob size after compression
+  Histogram blobRowCountHistogram; // Histogram for blob row count
   Histogram cpuHistogram; // Histogram for jvm process cpu usage
   Timer flushLatency; // Latency for end to end flushing
   Timer buildLatency; // Latency for building a blob
@@ -147,6 +148,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     if (ENABLE_PERF_MEASUREMENT) {
       metrics = new MetricRegistry();
       blobSizeHistogram = metrics.histogram(MetricRegistry.name(name, "blob", "size", "histogram"));
+      blobRowCountHistogram =
+          metrics.histogram(MetricRegistry.name(name, "blob", "row", "count", "histogram"));
       cpuHistogram = metrics.histogram(MetricRegistry.name(name, "cpu", "usage", "histogram"));
       flushLatency = metrics.timer(MetricRegistry.name(name, "flush", "latency"));
       buildLatency = metrics.timer(MetricRegistry.name(name, "build", "latency"));
