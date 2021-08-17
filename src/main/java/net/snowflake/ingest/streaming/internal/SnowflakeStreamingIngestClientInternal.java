@@ -15,11 +15,11 @@ import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
 
-import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
+import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -64,8 +65,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestClientInternal.class);
 
-  // object mapper for all marshalling and unmarshalling
+  // Object mapper for all marshalling and unmarshalling
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  // Counter to generate unique request ids per client
+  private final AtomicLong counter = new AtomicLong(0);
 
   // Name of the client
   private final String name;
@@ -234,6 +238,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     try {
       Map<Object, Object> payload = new HashMap<>();
+      payload.put(
+          "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
       payload.put("channel", request.getChannelName());
       payload.put("table", request.getTableName());
       payload.put("database", request.getDBName());
@@ -297,6 +303,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               .collect(Collectors.toList());
       request.setChannels(requestDTOs);
       request.setRole(this.role);
+      request.setRequestId(this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
 
       String payload = objectMapper.writeValueAsString(request);
       ChannelsStatusResponse response =
@@ -331,7 +338,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     RegisterBlobResponse response = null;
     try {
       Map<Object, Object> payload = new HashMap<>();
-      payload.put("request_id", null);
+      payload.put(
+          "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
       payload.put("blobs", blobs);
       payload.put("role", this.role);
 
@@ -369,7 +377,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                 .forEach(
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
-                                        logger.logError(
+                                        logger.logWarn(
                                             "Channel has been invalidated because of failure"
                                                 + " response, name={}, channel sequencer={},"
                                                 + " status code={}",
@@ -421,8 +429,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
               // Collect the perf metrics before closing if needed
               if (metrics != null) {
-                ConsoleReporter reporter = ConsoleReporter.forRegistry(metrics).build();
-                reporter.report();
+                Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
               }
 
               try {
@@ -520,6 +527,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     // Start checking the status of all the channels in the list
     int retry = 0;
+    boolean isTimeout = true;
     List<ChannelsStatusResponse.ChannelStatusResponseDTO> oldChannelsStatus = new ArrayList<>();
     do {
       List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
@@ -553,6 +561,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       oldChannelsStatus = tempChannelsStatus;
       channels = tempChannels;
       if (channels.isEmpty()) {
+        isTimeout = false;
         break;
       }
 
@@ -567,6 +576,12 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
       }
     } while (retry < COMMIT_MAX_RETRY_COUNT);
+
+    if (isTimeout) {
+      logger.logWarn(
+          "Commit service at server side is not making progress, stop retrying for client={}.",
+          this.name);
+    }
 
     return channels;
   }

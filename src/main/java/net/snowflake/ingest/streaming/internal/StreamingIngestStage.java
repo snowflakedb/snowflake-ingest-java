@@ -304,6 +304,7 @@ class StreamingIngestStage {
     }
   }
 
+  /** Get the server generated unique prefix for this client */
   String getClientPrefix() {
     return this.clientPrefix;
   }

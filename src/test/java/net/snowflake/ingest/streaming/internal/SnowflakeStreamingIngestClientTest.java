@@ -211,6 +211,7 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
     ChannelsStatusRequest request = new ChannelsStatusRequest();
+    request.setRequestId("null_0");
     request.setChannels(Collections.singletonList(dto));
     ChannelsStatusResponse result = client.getChannelsStatus(Collections.singletonList(channel));
     Assert.assertEquals(response.getMessage(), result.getMessage());

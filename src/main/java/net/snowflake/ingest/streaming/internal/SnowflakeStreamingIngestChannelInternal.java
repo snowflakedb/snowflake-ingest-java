@@ -219,7 +219,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   void invalidate() {
     this.isValid = false;
     this.arrowBuffer.close();
-    logger.logDebug(
+    logger.logWarn(
         "Channel has been invalidated, name={}, channel sequencer={}",
         getFullyQualifiedName(),
         channelSequencer);

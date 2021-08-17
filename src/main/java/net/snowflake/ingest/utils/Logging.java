@@ -78,6 +78,10 @@ public class Logging {
     }
   }
 
+  public Logger getLogger() {
+    return log;
+  }
+
   // static elements
 
   // log message tag
