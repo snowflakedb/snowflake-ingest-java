@@ -203,7 +203,7 @@ public class FlushServiceTest {
     channel2Data.setBufferSize(100);
     channel2Data.setChannel(channel2);
 
-    flushService.buildAndUpload("file_name", blobData);
+    BlobMetadata blobMetadata = flushService.buildAndUpload("file_name", blobData);
 
     EpInfo expectedChunkEpInfo =
         ArrowRowBuffer.buildEpInfoFromStats(3, ChannelData.getCombinedColumnStatsMap(eps1, eps2));
@@ -241,6 +241,8 @@ public class FlushServiceTest {
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
+
+    Assert.assertEquals(BlobBuilder.computeMD5(blobCaptor.getValue()), blobMetadata.getMD5());
 
     Assert.assertEquals(
         expectedChunkEpInfo.getRowCount(), metadataResult.getEpInfo().getRowCount());
@@ -429,21 +431,6 @@ public class FlushServiceTest {
 
   @Test
   public void testShutDown() throws Exception {
-    FlushService flushService = new FlushService(client, channelCache, stage, false);
-
-    Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());
-    Assert.assertFalse(flushService.registerWorker.isShutdown());
-    Assert.assertFalse(flushService.flushWorker.isShutdown());
-
-    flushService.shutdown();
-
-    Assert.assertTrue(flushService.buildUploadWorkers.isShutdown());
-    Assert.assertTrue(flushService.registerWorker.isShutdown());
-    Assert.assertTrue(flushService.flushWorker.isShutdown());
-  }
-
-  @Test
-  public void testComputeMD5() throws Exception {
     FlushService flushService = new FlushService(client, channelCache, stage, false);
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());

@@ -463,7 +463,8 @@ class FlushService {
    * @param metadata a list of chunk metadata
    * @return BlobMetadata object used to create the register blob request
    */
-  BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata) {
+  BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata)
+      throws NoSuchAlgorithmException {
     logger.logDebug("Start uploading file={}, size={}", filePath, blob.length);
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
@@ -480,7 +481,7 @@ class FlushService {
 
     logger.logDebug("Finish uploading file={}", filePath);
 
-    return new BlobMetadata(filePath, metadata);
+    return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), metadata);
   }
 
   /**

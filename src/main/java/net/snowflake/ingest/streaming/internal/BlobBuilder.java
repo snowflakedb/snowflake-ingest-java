@@ -141,18 +141,18 @@ class BlobBuilder {
   }
 
   /**
-   * Compute the MD5 for the compressed chunk data
+   * Compute the MD5 for a byte array
    *
-   * @param chunkData
+   * @param data the input byte array
    * @return lower case MD5 for the compressed chunk data
    * @throws NoSuchAlgorithmException
    */
-  static String computeMD5(byte[] chunkData) throws NoSuchAlgorithmException {
+  static String computeMD5(byte[] data) throws NoSuchAlgorithmException {
     // CASEC-2936
     // https://github.com/snowflakedb/snowflake-ingest-java-private/pull/22
     MessageDigest md = // nosem: java.lang.security.audit.crypto.weak-hash.use-of-md5
         MessageDigest.getInstance("MD5");
-    md.update(chunkData);
+    md.update(data);
     byte[] digest = md.digest();
     return DatatypeConverter.printHexBinary(digest).toLowerCase();
   }
