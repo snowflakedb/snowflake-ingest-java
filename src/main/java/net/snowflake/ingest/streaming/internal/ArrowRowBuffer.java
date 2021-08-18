@@ -247,14 +247,19 @@ class ArrowRowBuffer {
           this.rowCount++;
         } catch (SFException e) {
           response.addError(new InsertValidationResponse.InsertError(row, e));
+        } catch (Throwable e) {
+          logger.logWarn("Unexpected error happens during insertRows: {}", e.getMessage());
+          response.addError(
+              new InsertValidationResponse.InsertError(
+                  row, new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage())));
         }
       }
       this.owningChannel.setOffsetToken(offsetToken);
+      this.owningChannel.collectRowSize(rowSize);
     } finally {
       this.flushLock.unlock();
     }
 
-    this.owningChannel.collectRowSize(rowSize);
     return response;
   }
 
