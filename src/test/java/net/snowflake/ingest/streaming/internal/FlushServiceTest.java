@@ -37,7 +37,6 @@ import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.util.Text;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
@@ -82,14 +81,16 @@ public class FlushServiceTest {
   }
 
   @Test
-  @Ignore // TODO: SNOW-414124 Put test back after EP server fix
   public void testGetFilePath() {
     FlushService flushService = new FlushService(client, channelCache, stage, false);
     Calendar calendar = Calendar.getInstance();
     String clientPrefix = "honk";
     String outputString = flushService.getFilePath(calendar, clientPrefix);
     Path outputPath = Paths.get(outputString);
-    Assert.assertEquals(clientPrefix, outputPath.getParent().getFileName().toString());
+    Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.MINUTE)),
+        outputPath.getParent().getFileName().toString());
     Assert.assertEquals(
         Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
         outputPath.getParent().getParent().getFileName().toString());
@@ -101,7 +102,14 @@ public class FlushServiceTest {
         outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
     Assert.assertEquals(
         Integer.toString(calendar.get(Calendar.YEAR)),
-        outputPath.getParent().getParent().getParent().getParent().getParent().toString());
+        outputPath
+            .getParent()
+            .getParent()
+            .getParent()
+            .getParent()
+            .getParent()
+            .getFileName()
+            .toString());
   }
 
   @Test
