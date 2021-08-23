@@ -117,23 +117,23 @@ public class FlushServiceTest {
     FlushService flushService = Mockito.spy(new FlushService(client, channelCache, stage, false));
 
     // Nothing to flush
-    flushService.flush(false);
+    flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(0)).distributeFlushTasks();
 
     // Force = true flushes
-    flushService.flush(true);
+    flushService.flush(true).get();
     Mockito.verify(flushService).distributeFlushTasks();
     Mockito.verify(flushService, Mockito.times(1)).distributeFlushTasks();
 
     // isNeedFlush = true flushes
     flushService.isNeedFlush = true;
-    flushService.flush(false);
+    flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks();
     Assert.assertFalse(flushService.isNeedFlush);
 
     // lastFlushTime causes flush
     flushService.lastFlushTime = 0;
-    flushService.flush(false);
+    flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(3)).distributeFlushTasks();
     Assert.assertTrue(flushService.lastFlushTime > 0);
   }

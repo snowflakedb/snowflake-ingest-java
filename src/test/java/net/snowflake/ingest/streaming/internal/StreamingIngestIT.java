@@ -22,6 +22,8 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.junit.After;
@@ -38,10 +40,10 @@ public class StreamingIngestIT {
 
   private SnowflakeStreamingIngestClientInternal client;
   private Connection jdbcConnection;
+  private Properties prop = new Properties();
 
   @Before
   public void beforeAll() throws Exception {
-    Properties prop = new Properties();
     prop.load(new FileInputStream(PROFILE_PATH));
 
     // Create a streaming ingest client
@@ -387,6 +389,110 @@ public class StreamingIngestIT {
       }
     }
     Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  /**
+   * Tests client's handling of invalidated channels
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testTwoClientsOneChannel() throws Exception {
+    SnowflakeStreamingIngestClientInternal clientA =
+        (SnowflakeStreamingIngestClientInternal)
+            SnowflakeStreamingIngestClientFactory.builder("clientA").setProperties(prop).build();
+    SnowflakeStreamingIngestClientInternal clientB =
+        (SnowflakeStreamingIngestClientInternal)
+            SnowflakeStreamingIngestClientFactory.builder("clientB").setProperties(prop).build();
+
+    OpenChannelRequest requestA =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(TEST_TABLE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channelA = clientA.openChannel(requestA);
+    Map<String, Object> row = new HashMap<>();
+    row.put("c1", "1");
+    verifyInsertValidationResponse(channelA.insertRow(row, "1"));
+    clientA.flush(false).get();
+
+    // ClientB opens channel and invalidates ClientA
+    SnowflakeStreamingIngestChannel channelB = clientB.openChannel(requestA);
+    row.put("c1", "2");
+    verifyInsertValidationResponse(channelB.insertRow(row, "2"));
+    clientB.flush(false).get();
+
+    // ClientA tries to write, but will fail to register because it's invalid
+    row.put("c1", "3");
+    verifyInsertValidationResponse(channelA.insertRow(row, "3"));
+    clientA.flush(false).get();
+
+    // ClientA will error trying to write to invalid channel
+    try {
+      row.put("c1", "4");
+      verifyInsertValidationResponse(channelA.insertRow(row, "4"));
+      Assert.fail();
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
+    }
+
+    // ClientA will not be kept down, reopens the channel, invalidating ClientB
+    SnowflakeStreamingIngestChannel channelA2 = clientA.openChannel(requestA);
+
+    // ClientB tries to write but the register will be rejected, invalidating the channel
+    row.put("c1", "5");
+    verifyInsertValidationResponse(channelB.insertRow(row, "5"));
+    clientB.flush(false).get();
+
+    // ClientB fails to write to invalid channel
+    try {
+      row.put("c1", "6");
+      verifyInsertValidationResponse(channelB.insertRow(row, "6"));
+      Assert.fail();
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_CHANNEL.getMessageCode(), e.getVendorCode());
+    }
+
+    // ClientA is victorious, writes to table
+    row.put("c1", "7");
+    verifyInsertValidationResponse(channelA2.insertRow(row, "7"));
+    clientA.flush(false).get();
+    row.put("c1", "8");
+    verifyInsertValidationResponse(channelA2.insertRow(row, "8"));
+
+    for (int i = 1; i < 15; i++) {
+      if (channelA2.getLatestCommittedOffsetToken() != null
+          && channelA2.getLatestCommittedOffsetToken().equals("8")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
+        result.next();
+        Assert.assertEquals(4, result.getLong(1));
+
+        ResultSet result2 =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select * from %s.%s.%s order by c1", TEST_DB, TEST_SCHEMA, TEST_TABLE));
+        result2.next();
+        Assert.assertEquals("1", result2.getString(1));
+        result2.next();
+        Assert.assertEquals("2", result2.getString(1));
+        result2.next();
+        Assert.assertEquals("7", result2.getString(1));
+        result2.next();
+        Assert.assertEquals("8", result2.getString(1));
+        return;
+      }
+      Thread.sleep(500);
+    }
   }
 
   /** Verify the insert validation response and throw the exception if needed */

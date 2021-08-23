@@ -462,11 +462,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     if (isClosed() && !closing) {
       throw new SFException(ErrorCode.CLOSED_CLIENT);
     }
-    return CompletableFuture.runAsync(
-        () -> {
-          this.flushService.flush(true);
-        },
-        this.flushService.flushWorker);
+    return this.flushService.flush(true);
   }
 
   /** Set the flag to indicate that a flush is needed */

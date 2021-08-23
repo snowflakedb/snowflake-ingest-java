@@ -170,6 +170,60 @@ class FlushService {
   }
 
   /**
+   * Updates performance stats enabled
+   *
+   * @return
+   */
+  private CompletableFuture<Void> statsFuture() {
+    return CompletableFuture.runAsync(
+        () -> {
+          if (this.owningClient.cpuHistogram != null) {
+            double cpuLoad =
+                ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class)
+                    .getProcessCpuLoad();
+            this.owningClient.cpuHistogram.update((long) (cpuLoad * 100));
+          }
+          return;
+        },
+        this.flushWorker);
+  }
+
+  /**
+   * @param isForce if true will flush regardless of other conditions
+   * @param timeDiffMillis Time in milliseconds since the last flush
+   * @return
+   */
+  private CompletableFuture<Void> distributeFlush(boolean isForce, long timeDiffMillis) {
+    return CompletableFuture.runAsync(
+        () -> {
+          logger.logDebug(
+              "Submit flush task on client={}, isForce={}, isNeedFlush={}, timeDiffMillis={},"
+                  + " currentDiffMillis={}",
+              this.owningClient.getName(),
+              isForce,
+              this.isNeedFlush,
+              timeDiffMillis,
+              System.currentTimeMillis() - this.lastFlushTime);
+
+          distributeFlushTasks();
+          this.isNeedFlush = false;
+          this.lastFlushTime = System.currentTimeMillis();
+          return;
+        },
+        this.flushWorker);
+  }
+
+  /**
+   * Registers blobs with Snowflake
+   *
+   * @return
+   */
+  private CompletableFuture<Void> registerFuture() {
+    return CompletableFuture.runAsync(
+        () -> this.registerService.registerBlobs(latencyTimerContextMap), this.registerWorker);
+  }
+
+  /**
    * Kick off a flush job and distribute the tasks if one of the following conditions is met:
    * <li>Flush is forced by the users
    * <li>One or more buffers have reached the flush size
@@ -180,35 +234,18 @@ class FlushService {
    *     if none of the conditions is met above
    */
   CompletableFuture<Void> flush(boolean isForce) {
-    if (this.owningClient.cpuHistogram != null) {
-      double cpuLoad =
-          ManagementFactory.getPlatformMXBean(com.sun.management.OperatingSystemMXBean.class)
-              .getProcessCpuLoad();
-      this.owningClient.cpuHistogram.update((long) (cpuLoad * 100));
-    }
-    long timeDiff = System.currentTimeMillis() - this.lastFlushTime;
+
+    long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
             && !this.isTestMode
-            && (this.isNeedFlush || timeDiff >= BUFFER_FLUSH_INTERVAL_IN_MS))) {
-      logger.logDebug(
-          "Submit flush task on client={}, isForce={}, isNeedFlush={}, time diff in ms={}",
-          this.owningClient.getName(),
-          isForce,
-          this.isNeedFlush,
-          timeDiff);
+            && (this.isNeedFlush || timeDiffMillis >= BUFFER_FLUSH_INTERVAL_IN_MS))) {
 
-      distributeFlushTasks();
-      this.isNeedFlush = false;
-      this.lastFlushTime = System.currentTimeMillis();
-      return CompletableFuture.runAsync(
-          () -> {
-            this.registerService.registerBlobs(latencyTimerContextMap);
-          },
-          this.registerWorker);
+      return this.statsFuture()
+          .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
+          .thenCompose((v) -> this.registerFuture());
     }
-
-    return CompletableFuture.completedFuture(null);
+    return this.statsFuture();
   }
 
   /** Create the workers for each specific job */
