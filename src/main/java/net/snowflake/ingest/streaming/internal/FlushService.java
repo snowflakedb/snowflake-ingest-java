@@ -234,7 +234,6 @@ class FlushService {
    *     if none of the conditions is met above
    */
   CompletableFuture<Void> flush(boolean isForce) {
-
     long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH

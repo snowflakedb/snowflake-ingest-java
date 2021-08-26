@@ -406,7 +406,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     // Get all the valid and active channels in the channel cache
-    ArrayList<SnowflakeStreamingIngestChannelInternal> channels = new ArrayList<>();
+    List<SnowflakeStreamingIngestChannelInternal> channels = new ArrayList<>();
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
         itr = this.channelCache.iterator();
     while (itr.hasNext()) {
@@ -421,8 +421,20 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     // First mark all the channels as closed, then flush any leftover rows in the buffer
     this.channelCache.closeAllChannels();
     return flush(true)
-        .thenRunAsync(
-            () -> {
+        .handleAsync(
+            (result, ex) -> {
+              if (ex != null) {
+                Throwable rootCause = ex;
+                // Get the root cause as the original exception could be wrapped by SFException
+                while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
+                  rootCause = rootCause.getCause();
+                }
+                logger.logError(
+                    "Flush failed during close, exception={}, cause={}",
+                    ex.getMessage(),
+                    rootCause.getMessage());
+              }
+
               // Check if any channels has uncommitted rows
               List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
                   verifyChannelsAreFullyCommitted(channels);
@@ -449,6 +461,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                         .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
                         .collect(Collectors.toList()));
               }
+              return null;
             });
   }
 
