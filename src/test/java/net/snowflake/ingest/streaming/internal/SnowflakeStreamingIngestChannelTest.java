@@ -84,6 +84,7 @@ public class SnowflakeStreamingIngestChannelTest {
     String schemaName = "SCHEMA";
     String tableName = "TABLE";
     String offsetToken = "0";
+    String encryptionKey = "key";
     Long channelSequencer = 0L;
     Long rowSequencer = 0L;
 
@@ -99,6 +100,7 @@ public class SnowflakeStreamingIngestChannelTest {
             .setRowSequencer(rowSequencer)
             .setChannelSequencer(channelSequencer)
             .setOwningClient(client)
+            .setEncryptionKey(encryptionKey)
             .build();
 
     Assert.assertEquals(name, channel.getName());
@@ -122,7 +124,7 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal("client");
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
 
     Assert.assertTrue(channel.isValid());
     channel.invalidate();
@@ -161,7 +163,7 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal("client");
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
 
     Assert.assertTrue(!channel.isClosed());
     channel.markClosed();
@@ -388,7 +390,8 @@ public class SnowflakeStreamingIngestChannelTest {
             + "    \"byte_length\" : null,\n"
             + "    \"length\" : null,\n"
             + "    \"nullable\" : true\n"
-            + "  } ]\n"
+            + "  } ],\n"
+            + "  \"encryption_key\" : \"3/l6q2xeDurO4ljfde4DXA==\"\n"
             + "}";
 
     HttpClient httpClient = Mockito.mock(HttpClient.class);
@@ -432,7 +435,7 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal("client");
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
 
     ColumnMetadata col = new ColumnMetadata();
     col.setName("COL");
@@ -472,7 +475,7 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal("client");
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
 
     Runtime mockedRunTime = Mockito.mock(Runtime.class);
     Mockito.when(mockedRunTime.totalMemory()).thenReturn(1000000L);
@@ -500,7 +503,7 @@ public class SnowflakeStreamingIngestChannelTest {
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -525,7 +528,7 @@ public class SnowflakeStreamingIngestChannelTest {
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannel channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -548,7 +551,7 @@ public class SnowflakeStreamingIngestChannelTest {
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannel channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", offsetToken, 0L, 0L, client, true);
+            "channel", "db", "schema", "table", offsetToken, 0L, 0L, client, "key", true);
 
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);

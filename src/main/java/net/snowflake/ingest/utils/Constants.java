@@ -42,6 +42,7 @@ public class Constants {
   public static final int COMMIT_MAX_RETRY_COUNT = 10;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 500;
   public static final int ROW_SEQUENCER_IS_COMMITTED = 26;
+  public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
@@ -58,4 +59,5 @@ public class Constants {
   public static final boolean COMPRESS_BLOB_TWICE = false;
   public static final boolean ENABLE_PERF_MEASUREMENT = false;
   public static final boolean BLOB_NO_HEADER = true;
+  public static final boolean ENABLE_ENCRYPTION = false;
 }

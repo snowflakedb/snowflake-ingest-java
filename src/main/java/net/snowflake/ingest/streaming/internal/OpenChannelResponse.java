@@ -19,6 +19,7 @@ class OpenChannelResponse {
   private Long rowSequencer;
   private String offsetToken;
   private List<ColumnMetadata> tableColumns;
+  private String encryptionKey;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -108,5 +109,14 @@ class OpenChannelResponse {
 
   List<ColumnMetadata> getTableColumns() {
     return this.tableColumns;
+  }
+
+  @JsonProperty("encryption_key")
+  void setEncryptionKey(String encryptionKey) {
+    this.encryptionKey = encryptionKey;
+  }
+
+  String getEncryptionKey() {
+    return this.encryptionKey;
   }
 }

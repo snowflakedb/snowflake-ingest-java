@@ -22,6 +22,7 @@ class SnowflakeStreamingIngestChannelFactory {
     private Long channelSequencer;
     private Long rowSequencer;
     private SnowflakeStreamingIngestClientInternal owningClient;
+    private String encryptionKey;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;
@@ -57,6 +58,11 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
+    SnowflakeStreamingIngestChannelBuilder setEncryptionKey(String encryptionKey) {
+      this.encryptionKey = encryptionKey;
+      return this;
+    }
+
     SnowflakeStreamingIngestChannelBuilder setOwningClient(
         SnowflakeStreamingIngestClientInternal client) {
       this.owningClient = client;
@@ -71,6 +77,7 @@ class SnowflakeStreamingIngestChannelFactory {
       Utils.assertNotNull("channel sequencer", this.channelSequencer);
       Utils.assertNotNull("row sequencer", this.rowSequencer);
       Utils.assertNotNull("channel owning client", this.owningClient);
+      Utils.assertStringNotNullOrEmpty("encryption key", this.encryptionKey);
       return new SnowflakeStreamingIngestChannelInternal(
           this.name,
           this.dbName,
@@ -79,7 +86,8 @@ class SnowflakeStreamingIngestChannelFactory {
           this.offsetToken,
           this.channelSequencer,
           this.rowSequencer,
-          this.owningClient);
+          this.owningClient,
+          this.encryptionKey);
     }
   }
 }

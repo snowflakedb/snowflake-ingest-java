@@ -30,7 +30,7 @@ public class RowBufferTest {
         new SnowflakeStreamingIngestClientInternal("client");
     channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, true);
+            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
     this.rowBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTinyIntCase = new ColumnMetadata();

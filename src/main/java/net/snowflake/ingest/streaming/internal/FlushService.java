@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -37,7 +39,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.CRC32;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
@@ -344,6 +350,12 @@ class FlushService {
                         return null;
                       } catch (NoSuchAlgorithmException e) {
                         throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
+                      } catch (InvalidAlgorithmParameterException
+                          | NoSuchPaddingException
+                          | IllegalBlockSizeException
+                          | BadPaddingException
+                          | InvalidKeyException e) {
+                        throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
                       }
                     },
                     this.buildUploadWorkers)));
@@ -364,7 +376,9 @@ class FlushService {
    * @throws IOException
    */
   BlobMetadata buildAndUpload(String filePath, List<List<ChannelData>> blobData)
-      throws IOException, NoSuchAlgorithmException {
+      throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
+          NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
+          InvalidKeyException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
     long curDataSize = 0L;
@@ -450,8 +464,15 @@ class FlushService {
       if (!channelsMetadataList.isEmpty()) {
         // Compress the chunk data
         byte[] compressedChunkData = BlobBuilder.compress(filePath, chunkData);
-        String md5 = BlobBuilder.computeMD5(compressedChunkData);
-        int compressedChunkDataSize = compressedChunkData.length;
+
+        // Encrypt the compressed chunk data, the encryption key is derived using the key from
+        // server with the full blob path
+        byte[] encryptedCompressedChunkData =
+            Cryptor.encrypt(compressedChunkData, firstChannel.getEncryptionKey(), filePath);
+
+        // Compute the md5 of the chunk data
+        String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData);
+        int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
 
         // Create chunk metadata
         ChunkMetadata chunkMetadata =
@@ -460,7 +481,7 @@ class FlushService {
                 // The start offset will be updated later in BlobBuilder#build to include the blob
                 // header
                 .setChunkStartOffset(curDataSize)
-                .setChunkLength(compressedChunkDataSize)
+                .setChunkLength(encryptedCompressedChunkDataSize)
                 .setChannelList(channelsMetadataList)
                 .setChunkMD5(md5)
                 .setEpInfo(ArrowRowBuffer.buildEpInfoFromStats(rowCount, columnEpStatsMapCombined))
@@ -468,18 +489,19 @@ class FlushService {
 
         // Add chunk metadata and data to the list
         chunksMetadataList.add(chunkMetadata);
-        chunksDataList.add(compressedChunkData);
-        curDataSize += compressedChunkDataSize;
-        crc.update(compressedChunkData, 0, compressedChunkData.length);
+        chunksDataList.add(encryptedCompressedChunkData);
+        curDataSize += encryptedCompressedChunkDataSize;
+        crc.update(encryptedCompressedChunkData, 0, encryptedCompressedChunkDataSize);
 
         logger.logDebug(
-            "Finish building chunk in blob:{}, table:{}, rowCount:{}, uncompressedSize:{},"
-                + " compressedSize:{}",
+            "Finish building chunk in blob={}, table={}, rowCount={}, uncompressedSize={},"
+                + " compressedSize={}, encryptedCompressedSize={}",
             filePath,
             firstChannel.getFullyQualifiedTableName(),
             rowCount,
             chunkData.size(),
-            compressedChunkDataSize);
+            compressedChunkData.length,
+            encryptedCompressedChunkDataSize);
       }
     }
 

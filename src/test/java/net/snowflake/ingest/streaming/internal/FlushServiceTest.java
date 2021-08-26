@@ -18,14 +18,22 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeConnectionV1;
+import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
@@ -45,7 +53,14 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-@PowerMockIgnore({"com.sun.org.apache.xerces.*", "javax.xml.*", "org.xml.*", "javax.management.*"})
+@PowerMockIgnore({
+  "com.sun.org.apache.xerces.*",
+  "javax.xml.*",
+  "org.xml.*",
+  "javax.management.*",
+  "javax.crypto.JceSecurity.*",
+  "javax.crypto.*"
+})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({
   Utils.class,
@@ -69,15 +84,15 @@ public class FlushServiceTest {
     conn = Mockito.mock(SnowflakeConnectionV1.class);
     channel1 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel1", "db1", "schema1", "table1", "offset1", 0L, 0L, client, true);
+            "channel1", "db1", "schema1", "table1", "offset1", 0L, 0L, client, "key", true);
 
     channel2 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel2", "db1", "schema1", "table1", "offset2", 10L, 100L, client, true);
+            "channel2", "db1", "schema1", "table1", "offset2", 10L, 100L, client, "key", true);
 
     channel3 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel3", "db2", "schema1", "table2", "offset3", 0L, 0L, client, true);
+            "channel3", "db2", "schema1", "table2", "offset3", 0L, 0L, client, "key", true);
   }
 
   @Test
@@ -450,5 +465,20 @@ public class FlushServiceTest {
     Assert.assertTrue(flushService.buildUploadWorkers.isShutdown());
     Assert.assertTrue(flushService.registerWorker.isShutdown());
     Assert.assertTrue(flushService.flushWorker.isShutdown());
+  }
+
+  @Test
+  public void testEncryptionDecryption()
+      throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException,
+          NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+    byte[] data = "testEncryptionDecryption".getBytes(StandardCharsets.UTF_8);
+    String encryptionKey =
+        Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));
+    String diversifier = "2021/08/10/blob.bdec";
+
+    byte[] encryptedData = Cryptor.encrypt(data, encryptionKey, diversifier);
+    byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier);
+
+    Assert.assertArrayEquals(data, decryptedData);
   }
 }
