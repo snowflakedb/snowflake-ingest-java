@@ -141,6 +141,53 @@ public class StreamingIngestIT {
   }
 
   @Test
+  public void testCollation() throws Exception {
+    String collationTable = "collation_table";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (noncol char(10), col char(10) collate 'en-ci');",
+                collationTable));
+
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(collationTable)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+    Map<String, Object> row = new HashMap<>();
+    row.put("col", "AA");
+    row.put("noncol", "AA");
+    verifyInsertValidationResponse(channel1.insertRow(row, "1"));
+    row.put("col", "a");
+    row.put("noncol", "a");
+    verifyInsertValidationResponse(channel1.insertRow(row, "2"));
+
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("2")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select min(col), min(noncol) from %s.%s.%s",
+                        TEST_DB, TEST_SCHEMA, collationTable));
+        result.next();
+        Assert.assertEquals("a", result.getString(1));
+        Assert.assertEquals("AA", result.getString(2));
+        return;
+      }
+      Thread.sleep(1000);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
   public void testDecimalColumnIngest() throws Exception {
     String decimalTableName = "decimal_table";
     jdbcConnection

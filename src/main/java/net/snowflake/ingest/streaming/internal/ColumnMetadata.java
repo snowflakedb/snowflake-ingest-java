@@ -19,6 +19,7 @@ class ColumnMetadata {
   private Integer byteLength;
   private Integer length;
   private boolean nullable;
+  private String collation;
 
   @JsonProperty("name")
   void setName(String name) {
@@ -27,6 +28,15 @@ class ColumnMetadata {
 
   String getName() {
     return this.name;
+  }
+
+  @JsonProperty("collation")
+  public String getCollation() {
+    return collation;
+  }
+
+  public void setCollation(String collation) {
+    this.collation = collation;
   }
 
   @JsonProperty("type")

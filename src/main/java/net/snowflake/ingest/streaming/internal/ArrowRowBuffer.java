@@ -192,7 +192,7 @@ class ArrowRowBuffer {
       }
       this.fields.put(column.getName(), field);
       this.vectors.put(column.getName(), vector);
-      this.statsMap.put(column.getName(), new RowBufferStats());
+      this.statsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
     }
   }
 
