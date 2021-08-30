@@ -7,6 +7,67 @@ import org.junit.Test;
 public class RowBufferStatsTest {
 
   @Test
+  public void testCollationStates() throws Exception {
+    RowBufferStats ai = new RowBufferStats("en-ai");
+    RowBufferStats as = new RowBufferStats("en-as");
+    RowBufferStats pi = new RowBufferStats("en-pi");
+    RowBufferStats ps = new RowBufferStats("en-ps");
+    RowBufferStats fu = new RowBufferStats("en-fu");
+    RowBufferStats fl = new RowBufferStats("en-fl");
+    RowBufferStats lower = new RowBufferStats("lower");
+    RowBufferStats upper = new RowBufferStats("upper");
+    RowBufferStats ltrim = new RowBufferStats("ltrim");
+    RowBufferStats rtrim = new RowBufferStats("rtrim");
+    RowBufferStats trim = new RowBufferStats("trim");
+
+    // Accents
+    ai.addStrValue("a");
+    ai.addStrValue("à");
+    as.addStrValue("a");
+    as.addStrValue("à");
+    Assert.assertEquals("a", ai.getCurrentMinColStrValue());
+    Assert.assertEquals("a", ai.getCurrentMaxColStrValue());
+    Assert.assertEquals("a", as.getCurrentMinColStrValue());
+    Assert.assertEquals("à", as.getCurrentMaxColStrValue());
+
+    // Punctuation
+    pi.addStrValue(".b");
+    pi.addStrValue("a");
+    ps.addStrValue(".b");
+    ps.addStrValue("a");
+
+    Assert.assertEquals("a", pi.getCurrentMinColStrValue());
+    Assert.assertEquals(".b", ps.getCurrentMinColStrValue());
+
+    // First Lower and Upper
+    fl.addStrValue("C");
+    fl.addStrValue("b");
+    fu.addStrValue("b");
+    fu.addStrValue("C");
+    Assert.assertEquals("b", fl.getCurrentMinColStrValue());
+    Assert.assertEquals("b", fu.getCurrentMinColStrValue());
+
+    // Lower and Upper
+    lower.addStrValue("AA");
+    lower.addStrValue("a");
+    upper.addStrValue("AA");
+    upper.addStrValue("aaa");
+    Assert.assertEquals("a", lower.getCurrentMinColStrValue());
+    Assert.assertEquals("AA", upper.getCurrentMinColStrValue());
+
+    // Trim settings
+    trim.addStrValue(" z ");
+    trim.addStrValue("b");
+    ltrim.addStrValue(" z");
+    ltrim.addStrValue("b");
+    rtrim.addStrValue("z ");
+    rtrim.addStrValue("b");
+    Assert.assertEquals("b", trim.getCurrentMinColStrValue());
+    Assert.assertEquals("b", ltrim.getCurrentMinColStrValue());
+    Assert.assertEquals("b", rtrim.getCurrentMinColStrValue());
+  }
+
+  @Test
   public void testEmptyState() throws Exception {
     RowBufferStats stats = new RowBufferStats();
 

@@ -80,7 +80,9 @@ public class FlushServiceTest {
   public void setup() {
     client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
     stage = Mockito.mock(StreamingIngestStage.class);
+    Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     channelCache = new ChannelCache();
+    Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     conn = Mockito.mock(SnowflakeConnectionV1.class);
     channel1 =
         new SnowflakeStreamingIngestChannelInternal(
@@ -93,6 +95,9 @@ public class FlushServiceTest {
     channel3 =
         new SnowflakeStreamingIngestChannelInternal(
             "channel3", "db2", "schema1", "table2", "offset3", 0L, 0L, client, "key", true);
+    channelCache.addChannel(channel1);
+    channelCache.addChannel(channel2);
+    channelCache.addChannel(channel3);
   }
 
   @Test
@@ -360,6 +365,56 @@ public class FlushServiceTest {
     } catch (SFException err) {
       Assert.assertEquals(ErrorCode.INVALID_DATA_IN_CHUNK.getMessageCode(), err.getVendorCode());
     }
+  }
+
+  @Test
+  public void testInvalidateChannels() throws Exception {
+    // Create a new Client in order to not interfere with other tests
+    SnowflakeStreamingIngestClientInternal client =
+        Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
+    ChannelCache channelCache = new ChannelCache();
+    Mockito.when(client.getChannelCache()).thenReturn(channelCache);
+    SnowflakeStreamingIngestChannelInternal channel1 =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel1", "db1", "schema1", "table1", "offset1", 0L, 0L, client, "key", true);
+
+    SnowflakeStreamingIngestChannelInternal channel2 =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel2", "db1", "schema1", "table1", "offset2", 10L, 100L, client, "key", true);
+
+    channelCache.addChannel(channel1);
+    channelCache.addChannel(channel2);
+
+    List<List<ChannelData>> blobData = new ArrayList<>();
+    List<ChannelData> innerData = new ArrayList<>();
+    blobData.add(innerData);
+
+    ChannelData channel1Data = new ChannelData();
+    ChannelData channel2Data = new ChannelData();
+    channel1Data.setChannel(channel1);
+    channel2Data.setChannel(channel1);
+
+    FieldVector vector1 = new VarCharVector("vector1", allocator);
+    FieldVector vector2 = new IntVector("vector2", allocator);
+    FieldVector vector3 = new VarCharVector("vector3", allocator);
+    FieldVector vector4 = new IntVector("vector4", allocator);
+    List<FieldVector> vectorList1 = new ArrayList<>();
+    vectorList1.add(vector1);
+    vectorList1.add(vector2);
+    List<FieldVector> vectorList2 = new ArrayList<>();
+    vectorList2.add(vector3);
+    vectorList2.add(vector4);
+
+    channel1Data.setVectors(vectorList1);
+    channel2Data.setVectors(vectorList2);
+    innerData.add(channel1Data);
+    innerData.add(channel2Data);
+
+    FlushService flushService = new FlushService(client, channelCache, stage, false);
+    flushService.invalidateAllChannelsInBlob(blobData);
+
+    Assert.assertFalse(channel1.isValid());
+    Assert.assertTrue(channel2.isValid());
   }
 
   @Test

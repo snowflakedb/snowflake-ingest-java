@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
@@ -22,6 +23,7 @@ import org.junit.Test;
 public class RowBufferTest {
   private ArrowRowBuffer rowBuffer;
   private SnowflakeStreamingIngestChannelInternal channel;
+  private static final Logging logger = new Logging(RegisterService.class);
 
   @Before
   public void setupRowBuffer() {
@@ -701,12 +703,14 @@ public class RowBufferTest {
     Assert.assertEquals("alice", strColumnResult.getMinStrValue());
     Assert.assertEquals("bob", strColumnResult.getMaxStrValue());
     Assert.assertEquals(1, strColumnResult.getNullCount());
+    logger.logDebug("strColumnResult={}", strColumnResult.toString());
 
     FileColumnProperties intColumnResult = columnResults.get("intColumn");
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
     Assert.assertEquals(BigInteger.valueOf(1), intColumnResult.getMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(10), intColumnResult.getMaxIntValue());
     Assert.assertEquals(0, intColumnResult.getNullCount());
+    logger.logDebug("intColumnResult={}", strColumnResult.toString());
   }
 
   @Test

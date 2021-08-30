@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.ingest.TestUtils;
@@ -591,6 +592,42 @@ public class SnowflakeStreamingIngestClientTest {
     response.setChannels(new ArrayList<>());
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
+
+    Assert.assertFalse(client.isClosed());
+    client.close().get();
+    Assert.assertTrue(client.isClosed());
+
+    // Calling close again on closed client shouldn't fail
+    client.close().get();
+
+    // Calling open channel on closed client should fail
+    try {
+      OpenChannelRequest request =
+          OpenChannelRequest.builder("CHANNEL")
+              .setDBName("STREAMINGINGEST_TEST")
+              .setSchemaName("PUBLIC")
+              .setTableName("T_STREAMINGINGEST")
+              .build();
+
+      client.openChannel(request);
+      Assert.fail("request should fail on closed client.");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CLIENT.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
+  public void testCloseWithError() throws Exception {
+    SnowflakeStreamingIngestClientInternal client =
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(20L);
+    response.setMessage("Failure");
+    response.setChannels(new ArrayList<>());
+
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    future.completeExceptionally(new Exception("Simulating Error"));
+    Mockito.when(client.flush(true)).thenReturn(future);
 
     Assert.assertFalse(client.isClosed());
     client.close().get();

@@ -147,10 +147,10 @@ class RowBufferStats {
             name,
             "Options 'upper' and 'lower' are mutually exclusive");
 
-      if ((name == null
-          || name.equalsIgnoreCase(LANG_EMPTY)
-          || name.equalsIgnoreCase(LANG_UTF8)
-          || name.equalsIgnoreCase(LANG_BIN))) {
+      if ((language == null
+          || language.equalsIgnoreCase(LANG_EMPTY)
+          || language.equalsIgnoreCase(LANG_UTF8)
+          || language.equalsIgnoreCase(LANG_BIN))) {
         // Check we didn't provide any of the ICU-specific options
         if (caseSensitive != null)
           throw new SFException(
