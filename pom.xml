@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Arifact name and version information -->
+    <!-- Artifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
     <version>0.10.3</version>
@@ -341,6 +341,10 @@
                                 <relocation>
                                     <pattern>org.apache</pattern>
                                     <shadedPattern>${shadeBase}.apache</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern> com.google.guava</pattern>
+                                    <shadedPattern>${shadeBase}.google.guava</shadedPattern>
                                 </relocation>
                             </relocations>
                             <filters>
