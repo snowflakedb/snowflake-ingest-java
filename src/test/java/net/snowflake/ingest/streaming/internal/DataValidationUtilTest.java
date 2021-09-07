@@ -2,12 +2,15 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.MAX_BIGINTEGER;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import javax.xml.bind.DatatypeConverter;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -16,6 +19,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class DataValidationUtilTest {
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+
   private static final Object[] goodIntegersValue10 =
       new Object[] {10D, 10F, 10L, new BigInteger("10"), 10, "10", "1e1", "1.0e1"};
 
@@ -161,7 +166,8 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseString() {
-    Assert.assertEquals("honk", DataValidationUtil.validateAndParseString("honk"));
+    Assert.assertEquals(
+        "honk", DataValidationUtil.validateAndParseString("honk", Optional.empty()));
 
     // Check max String length
     StringBuilder longBuilder = new StringBuilder();
@@ -170,7 +176,27 @@ public class DataValidationUtilTest {
     }
     String tooLong = longBuilder.toString();
 
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseString, tooLong);
+    try {
+      DataValidationUtil.validateAndParseString(tooLong, Optional.empty());
+      Assert.fail("Expected error for String too long");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    try {
+      DataValidationUtil.validateAndParseString("123", Optional.of(2));
+      Assert.fail("Expected error for String too long");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
+  public void testValidateAndParseVariant() throws Exception {
+    String stringVariant = "{\"key\":1}";
+    Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(stringVariant));
+    JsonNode nodeVariant = objectMapper.readTree(stringVariant);
+    Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(nodeVariant));
   }
 
   @Test

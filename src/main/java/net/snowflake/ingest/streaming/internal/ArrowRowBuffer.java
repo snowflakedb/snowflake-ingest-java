@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -648,7 +649,12 @@ class ArrowRowBuffer {
           case CHAR:
           case TEXT:
             {
-              String str = DataValidationUtil.validateAndParseVariant(value);
+              String maxLengthString = field.getMetadata().get(COLUMN_CHAR_LENGTH);
+              String str =
+                  DataValidationUtil.validateAndParseString(
+                      value,
+                      Optional.ofNullable(maxLengthString)
+                          .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(this.curRowIndex, text);
               stats.addStrValue(str);

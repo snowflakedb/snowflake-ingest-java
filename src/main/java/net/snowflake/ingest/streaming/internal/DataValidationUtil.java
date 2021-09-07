@@ -4,10 +4,12 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Sets;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import javax.xml.bind.DatatypeConverter;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
@@ -16,7 +18,7 @@ import net.snowflake.ingest.utils.SFException;
 
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
-  static final long MAX_STRING_LENGTH = 16777216;
+  static final int MAX_STRING_LENGTH = 16777216;
   static final BigInteger MAX_BIGINTEGER = BigInteger.valueOf(10).pow(38);
   static final BigInteger MIN_BIGINTEGER =
       BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38));
@@ -28,7 +30,16 @@ class DataValidationUtil {
    */
   // TODO enforce max size? TODO enforce valid JSON?
   static String validateAndParseVariant(Object input) {
-    return (String) input;
+    if (input instanceof String) {
+      return (String) input;
+    } else if (input instanceof JsonNode) {
+      return input.toString();
+    } else {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          input.toString(),
+          String.format("OBJECT, ARRAY, and VARIANT columns only accept String or JsonNode"));
+    }
   }
 
   /**
@@ -68,19 +79,21 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates the input is less than the maximum allowed string in Snowflake
-   * (https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar)
+   * Validates the input is less than the suppoed maximum allowed string
    *
-   * @param input
+   * @param input Object to validate and parse to String
+   * @param maxLengthOptional Maximum allowed length of the output String, if empty then uses
+   *     maximum allowed by Snowflake
+   *     (https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar)
    */
-  static String validateAndParseString(Object input) {
+  static String validateAndParseString(Object input, Optional<Integer> maxLengthOptional) {
+    int maxLength = maxLengthOptional.orElse(MAX_STRING_LENGTH);
     String output = getStringValue(input);
-    if (output.length() > MAX_STRING_LENGTH) {
+    if (output.length() > maxLength) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
-          String.format(
-              "String too long.  length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+          String.format("String too long.  length=%d maxLength=%d", output.length(), maxLength));
     }
     return output;
   }

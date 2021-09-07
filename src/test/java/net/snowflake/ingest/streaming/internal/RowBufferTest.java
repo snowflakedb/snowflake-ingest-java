@@ -558,6 +558,38 @@ public class RowBufferTest {
   }
 
   @Test
+  public void testStringLength() {
+    Map<String, Object> row = new HashMap<>();
+    row.put("colTinyInt", (byte) 1);
+    row.put("\"colTinyInt\"", (byte) 1);
+    row.put("colSmallInt", (short) 2);
+    row.put("colInt", 3);
+    row.put("colBigInt", 4L);
+    row.put("colDecimal", 1.23);
+    row.put("colChar", "1234567890"); // still fits
+
+    InsertValidationResponse response =
+        this.rowBuffer.insertRows(Collections.singletonList(row), null);
+    Assert.assertFalse(response.hasErrors());
+
+    row.put("colTinyInt", (byte) 1);
+    row.put("\"colTinyInt\"", (byte) 1);
+    row.put("colSmallInt", (short) 2);
+    row.put("colInt", 3);
+    row.put("colBigInt", 4L);
+    row.put("colDecimal", 1.23);
+    row.put("colChar", "1111111111111111111111"); // too big
+
+    response = this.rowBuffer.insertRows(Collections.singletonList(row), null);
+    Assert.assertTrue(response.hasErrors());
+    Assert.assertEquals(1, response.getErrorRowCount());
+    Assert.assertEquals(
+        ErrorCode.INVALID_ROW.getMessageCode(),
+        response.getInsertErrors().get(0).getException().getVendorCode());
+    Assert.assertTrue(response.getInsertErrors().get(0).getMessage().contains("String too long"));
+  }
+
+  @Test
   public void testInsertRow() {
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
