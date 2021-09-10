@@ -86,6 +86,7 @@ public class RowBufferTest {
     colChar.setByteLength(14);
     colChar.setLength(11);
     colChar.setScale(0);
+    colChar.setCollation("en-ci");
 
     // Setup column fields and vectors
     this.rowBuffer.setupSchema(
@@ -512,10 +513,12 @@ public class RowBufferTest {
     RowBufferStats stats = this.rowBuffer.statsMap.get("COLCHAR");
     stats.addIntValue(BigInteger.valueOf(1));
     Assert.assertEquals(BigInteger.valueOf(1), stats.getCurrentMaxIntValue());
+    Assert.assertEquals("en-ci", stats.getCollationDefinitionString());
     this.rowBuffer.reset();
     RowBufferStats resetStats = this.rowBuffer.statsMap.get("COLCHAR");
     Assert.assertNotNull(resetStats);
     Assert.assertNull(resetStats.getCurrentMaxIntValue());
+    Assert.assertEquals("en-ci", resetStats.getCollationDefinitionString());
   }
 
   @Test

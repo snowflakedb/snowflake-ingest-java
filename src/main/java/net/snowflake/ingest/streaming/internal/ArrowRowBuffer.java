@@ -214,7 +214,8 @@ class ArrowRowBuffer {
     this.rowCount = 0L;
     this.bufferSize = 0F;
     this.curRowIndex = 0;
-    this.statsMap.replaceAll((key, value) -> new RowBufferStats());
+    this.statsMap.replaceAll(
+        (key, value) -> new RowBufferStats(value.getCollationDefinitionString()));
   }
 
   /**
