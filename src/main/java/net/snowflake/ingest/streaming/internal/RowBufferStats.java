@@ -395,6 +395,7 @@ class RowBufferStats {
     }
 
     combined.currentNullCount = left.currentNullCount + right.currentNullCount;
+    combined.currentMaxLength = Math.max(left.currentMaxLength, right.currentMaxLength);
 
     return combined;
   }
