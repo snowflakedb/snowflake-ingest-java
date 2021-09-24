@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +87,7 @@ public class StreamingIngestIT {
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(TEST_TABLE)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -155,6 +157,7 @@ public class StreamingIngestIT {
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(collationTable)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -200,6 +203,7 @@ public class StreamingIngestIT {
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(decimalTableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -254,6 +258,7 @@ public class StreamingIngestIT {
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(multiTableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -309,6 +314,7 @@ public class StreamingIngestIT {
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(multiTableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -319,6 +325,7 @@ public class StreamingIngestIT {
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(multiTableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -399,6 +406,7 @@ public class StreamingIngestIT {
                         .setDBName(TEST_DB)
                         .setSchemaName(TEST_SCHEMA)
                         .setTableName(multiThreadTable)
+                        .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
                         .build();
                 SnowflakeStreamingIngestChannel channel = client.openChannel(request);
                 channelList.add(channel);
@@ -424,12 +432,13 @@ public class StreamingIngestIT {
                 .createStatement()
                 .executeQuery(
                     String.format(
-                        "select count(*), max(*) from %s.%s.%s",
+                        "select count(*), max(numcol), min(numcol) from %s.%s.%s",
                         TEST_DB, TEST_SCHEMA, multiThreadTable));
 
         result.next();
         Assert.assertEquals(numRows * numThreads, result.getInt(1));
         Assert.assertEquals(Double.valueOf(numRows), result.getDouble(2), 10);
+        Assert.assertEquals(1D, result.getDouble(3), 10);
         return;
       } else {
         Thread.sleep(3000);
@@ -457,6 +466,7 @@ public class StreamingIngestIT {
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(TEST_TABLE)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -540,6 +550,68 @@ public class StreamingIngestIT {
       }
       Thread.sleep(500);
     }
+  }
+
+  @Test
+  public void testAbortOnErrorOption() throws Exception {
+    String onErrorOptionTable = "abort_on_error_option";
+    jdbcConnection
+        .createStatement()
+        .execute(String.format("create or replace table %s (c1 int);", onErrorOptionTable));
+
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(onErrorOptionTable)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel = client.openChannel(request);
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("c1", 1);
+    channel.insertRow(row1, "1");
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("c1", 2);
+    channel.insertRow(row2, "2");
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("c1", "a");
+    try {
+      channel.insertRow(row3, "3");
+      Assert.fail("insert should fail");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+    try {
+      channel.insertRows(Arrays.asList(row1, row2, row3), "6");
+      Assert.fail("insert should fail");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+    Map<String, Object> row7 = new HashMap<>();
+    row7.put("c1", 7);
+    channel.insertRow(row7, "7");
+
+    for (int i = 1; i < 15; i++) {
+      if (channel.getLatestCommittedOffsetToken() != null
+          && channel.getLatestCommittedOffsetToken().equals("7")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(c1), min(c1), max(c1) from %s.%s.%s",
+                        TEST_DB, TEST_SCHEMA, onErrorOptionTable));
+        result.next();
+        Assert.assertEquals("3", result.getString(1));
+        Assert.assertEquals("1", result.getString(2));
+        Assert.assertEquals("7", result.getString(3));
+        return;
+      }
+      Thread.sleep(1000);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
   }
 
   /** Verify the insert validation response and throw the exception if needed */

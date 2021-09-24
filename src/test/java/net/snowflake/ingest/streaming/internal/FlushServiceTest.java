@@ -33,6 +33,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeConnectionV1;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -42,6 +43,7 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.util.Text;
 import org.junit.Assert;
 import org.junit.Before;
@@ -86,15 +88,45 @@ public class FlushServiceTest {
     conn = Mockito.mock(SnowflakeConnectionV1.class);
     channel1 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel1", "db1", "schema1", "table1", "offset1", 0L, 0L, client, "key", true);
+            "channel1",
+            "db1",
+            "schema1",
+            "table1",
+            "offset1",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
 
     channel2 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel2", "db1", "schema1", "table1", "offset2", 10L, 100L, client, "key", true);
+            "channel2",
+            "db1",
+            "schema1",
+            "table1",
+            "offset2",
+            10L,
+            100L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
 
     channel3 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel3", "db2", "schema1", "table2", "offset3", 0L, 0L, client, "key", true);
+            "channel3",
+            "db2",
+            "schema1",
+            "table2",
+            "offset3",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     channelCache.addChannel(channel1);
     channelCache.addChannel(channel2);
     channelCache.addChannel(channel3);
@@ -180,8 +212,13 @@ public class FlushServiceTest {
     vectorList2.add(vector3);
     vectorList2.add(vector4);
 
-    channel1Data.setVectors(vectorList1);
-    channel2Data.setVectors(vectorList2);
+    VectorSchemaRoot vectorRoot1 = new VectorSchemaRoot(vectorList1);
+    vectorRoot1.setRowCount(2);
+    VectorSchemaRoot vectorRoot2 = new VectorSchemaRoot(vectorList2);
+    vectorRoot2.setRowCount(1);
+
+    channel1Data.setVectors(vectorRoot1);
+    channel2Data.setVectors(vectorRoot2);
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
     Map<String, RowBufferStats> eps2 = new HashMap<>();
@@ -221,13 +258,11 @@ public class FlushServiceTest {
 
     channel1Data.setRowSequencer(0L);
     channel1Data.setOffsetToken("offset1");
-    channel1Data.setRowCount(2);
     channel1Data.setBufferSize(100);
     channel1Data.setChannel(channel1);
 
     channel2Data.setRowSequencer(10L);
     channel2Data.setOffsetToken("offset2");
-    channel2Data.setRowCount(1);
     channel2Data.setBufferSize(100);
     channel2Data.setChannel(channel2);
 
@@ -333,8 +368,13 @@ public class FlushServiceTest {
     List<FieldVector> vectorList2 = new ArrayList<>();
     vectorList1.add(vector3);
 
-    data1.setVectors(vectorList1);
-    data2.setVectors(vectorList2);
+    VectorSchemaRoot vectorRoot1 = new VectorSchemaRoot(vectorList1);
+    vectorRoot1.setRowCount(2);
+    VectorSchemaRoot vectorRoot2 = new VectorSchemaRoot(vectorList2);
+    vectorRoot2.setRowCount(1);
+
+    data1.setVectors(vectorRoot1);
+    data2.setVectors(vectorRoot2);
 
     channelData1.add(data1);
     channelData1.add(data2);
@@ -349,13 +389,11 @@ public class FlushServiceTest {
 
     data1.setRowSequencer(0L);
     data1.setOffsetToken("offset1");
-    data1.setRowCount(2);
     data1.setBufferSize(100);
     data1.setChannel(channel1);
 
     data2.setRowSequencer(10L);
     data2.setOffsetToken("offset3");
-    data2.setRowCount(1);
     data2.setBufferSize(100);
     data2.setChannel(channel3);
 
@@ -376,11 +414,31 @@ public class FlushServiceTest {
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     SnowflakeStreamingIngestChannelInternal channel1 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel1", "db1", "schema1", "table1", "offset1", 0L, 0L, client, "key", true);
+            "channel1",
+            "db1",
+            "schema1",
+            "table1",
+            "offset1",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
 
     SnowflakeStreamingIngestChannelInternal channel2 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel2", "db1", "schema1", "table1", "offset2", 10L, 100L, client, "key", true);
+            "channel2",
+            "db1",
+            "schema1",
+            "table1",
+            "offset2",
+            10L,
+            100L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
 
     channelCache.addChannel(channel1);
     channelCache.addChannel(channel2);
@@ -405,8 +463,11 @@ public class FlushServiceTest {
     vectorList2.add(vector3);
     vectorList2.add(vector4);
 
-    channel1Data.setVectors(vectorList1);
-    channel2Data.setVectors(vectorList2);
+    VectorSchemaRoot vectorRoot1 = new VectorSchemaRoot(vectorList1);
+    VectorSchemaRoot vectorRoot2 = new VectorSchemaRoot(vectorList2);
+
+    channel1Data.setVectors(vectorRoot1);
+    channel2Data.setVectors(vectorRoot2);
     innerData.add(channel1Data);
     innerData.add(channel2Data);
 

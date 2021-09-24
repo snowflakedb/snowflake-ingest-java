@@ -312,11 +312,22 @@ class RowBufferStats {
   // for binary or string columns
   private long currentMaxLength;
   private CollationDefinition collationDefinition;
-  private String collationDefinitionString;
+  private final String collationDefinitionString;
 
   /** Creates empty stats */
   RowBufferStats(String collationDefinitionString) {
     this.collationDefinitionString = collationDefinitionString;
+    if (collationDefinitionString != null) {
+      this.collationDefinition = new CollationDefinition(collationDefinitionString);
+    }
+    reset();
+  }
+
+  RowBufferStats() {
+    this(null);
+  }
+
+  void reset() {
     this.currentMaxStrValue = null;
     this.currentMinStrValue = null;
     this.currentMaxColStrValue = null;
@@ -331,14 +342,6 @@ class RowBufferStats {
     this.currentMinRealValue = null;
     this.currentNullCount = 0;
     this.currentMaxLength = 0;
-
-    if (collationDefinitionString != null) {
-      this.collationDefinition = new CollationDefinition(collationDefinitionString);
-    }
-  }
-
-  RowBufferStats() {
-    this(null);
   }
 
   byte[] getCollatedBytes(String value) {
@@ -349,7 +352,7 @@ class RowBufferStats {
   }
 
   // TODO performance test this vs in place update
-  public static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
+  static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
     if (left.getCollationDefinitionString() != right.collationDefinitionString) {
       throw new SFException(
           ErrorCode.INVALID_COLLATION_STRING,

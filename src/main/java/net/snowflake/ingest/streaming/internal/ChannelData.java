@@ -5,11 +5,10 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.vector.FieldVector;
+import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Contains the data and metadata returned for each channel flush, which will be used to build the
@@ -18,8 +17,7 @@ import org.apache.arrow.vector.FieldVector;
 class ChannelData {
   private Long rowSequencer;
   private String offsetToken;
-  private List<FieldVector> vectors;
-  private long rowCount;
+  private VectorSchemaRoot vectors;
   private float bufferSize;
   private SnowflakeStreamingIngestChannelInternal channel;
   private Map<String, RowBufferStats> columnEps;
@@ -80,20 +78,16 @@ class ChannelData {
     this.offsetToken = offsetToken;
   }
 
-  List<FieldVector> getVectors() {
+  VectorSchemaRoot getVectors() {
     return this.vectors;
   }
 
-  void setVectors(List<FieldVector> vectors) {
+  void setVectors(VectorSchemaRoot vectors) {
     this.vectors = vectors;
   }
 
-  long getRowCount() {
-    return this.rowCount;
-  }
-
-  void setRowCount(long rowCount) {
-    this.rowCount = rowCount;
+  int getRowCount() {
+    return this.vectors.getRowCount();
   }
 
   float getBufferSize() {

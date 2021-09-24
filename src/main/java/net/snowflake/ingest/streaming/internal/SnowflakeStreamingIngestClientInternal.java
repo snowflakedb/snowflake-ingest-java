@@ -275,6 +275,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               .setChannelSequencer(response.getClientSequencer())
               .setOwningClient(this)
               .setEncryptionKey(response.getEncryptionKey())
+              .setOnErrorOption(request.getOnErrorOption())
               .build();
 
       // Setup the row buffer schema

@@ -39,6 +39,7 @@ public class SnowflakeStreamingIngestExample {
               .setDBName(INTERNAL_STAGE_DB_NAME)
               .setSchemaName(INTERNAL_STAGE_SCHEMA_NAME)
               .setTableName("T_STREAMINGINGEST")
+              .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
               .build();
 
       // Open a streaming ingest channel from the given client

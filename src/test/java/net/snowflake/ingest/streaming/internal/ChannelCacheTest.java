@@ -3,6 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,13 +25,43 @@ public class ChannelCacheTest {
     client = new SnowflakeStreamingIngestClientInternal("client");
     channel1 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel1", dbName, schemaName, table1Name, "0", 0L, 0L, client, "key", true);
+            "channel1",
+            dbName,
+            schemaName,
+            table1Name,
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     channel2 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel2", dbName, schemaName, table1Name, "0", 0L, 0L, client, "key", true);
+            "channel2",
+            dbName,
+            schemaName,
+            table1Name,
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     channel3 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel3", dbName, schemaName, table2Name, "0", 0L, 0L, client, "key", true);
+            "channel3",
+            dbName,
+            schemaName,
+            table2Name,
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     cache.addChannel(channel1);
     cache.addChannel(channel2);
     cache.addChannel(channel3);
@@ -45,14 +76,34 @@ public class ChannelCacheTest {
     Assert.assertEquals(0, cache.getSize());
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            channelName, dbName, schemaName, tableName, "0", 0L, 0L, client, "key", true);
+            channelName,
+            dbName,
+            schemaName,
+            tableName,
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     cache.addChannel(channel);
     Assert.assertEquals(1, cache.getSize());
     Assert.assertTrue(channel == cache.iterator().next().getValue().get(channelName));
 
     SnowflakeStreamingIngestChannelInternal channelDup =
         new SnowflakeStreamingIngestChannelInternal(
-            channelName, dbName, schemaName, tableName, "0", 1L, 0L, client, "key", true);
+            channelName,
+            dbName,
+            schemaName,
+            tableName,
+            "0",
+            1L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     cache.addChannel(channelDup);
     // The old channel should be invalid now
     Assert.assertTrue(!channel.isValid());
@@ -112,7 +163,17 @@ public class ChannelCacheTest {
 
     SnowflakeStreamingIngestChannelInternal channel3Dup =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel3", dbName, schemaName, table1Name, "0", 1L, 0L, client, "key", true);
+            "channel3",
+            dbName,
+            schemaName,
+            table1Name,
+            "0",
+            1L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     cache.removeChannelIfSequencersMatch(channel3Dup);
     // Verify that remove the same channel with a different channel sequencer is a no op
     Assert.assertEquals(1, cache.getSize());

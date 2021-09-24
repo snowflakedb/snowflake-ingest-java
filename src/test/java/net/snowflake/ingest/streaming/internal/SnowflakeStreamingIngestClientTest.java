@@ -207,7 +207,17 @@ public class SnowflakeStreamingIngestClientTest {
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schemaName", "tableName", "0", 0L, 0L, null, "key", true);
+            "channel",
+            "db",
+            "schemaName",
+            "tableName",
+            "0",
+            0L,
+            0L,
+            null,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
 
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
@@ -253,7 +263,17 @@ public class SnowflakeStreamingIngestClientTest {
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schemaName", "tableName", "0", 0L, 0L, null, "key", true);
+            "channel",
+            "db",
+            "schemaName",
+            "tableName",
+            "0",
+            0L,
+            0L,
+            null,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
 
     try {
       client.getChannelsStatus(Collections.singletonList(channel));
@@ -279,7 +299,17 @@ public class SnowflakeStreamingIngestClientTest {
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schemaName", "tableName", "0", 0L, 0L, null, "key", true);
+            "channel",
+            "db",
+            "schemaName",
+            "tableName",
+            "0",
+            0L,
+            0L,
+            null,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
@@ -532,6 +562,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             client,
             "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     SnowflakeStreamingIngestChannelInternal channel2 =
         new SnowflakeStreamingIngestChannelInternal(
@@ -544,6 +575,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             client,
             "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     client.getChannelCache().addChannel(channel1);
     client.getChannelCache().addChannel(channel2);
@@ -607,6 +639,7 @@ public class SnowflakeStreamingIngestClientTest {
               .setDBName("STREAMINGINGEST_TEST")
               .setSchemaName("PUBLIC")
               .setTableName("T_STREAMINGINGEST")
+              .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
               .build();
 
       client.openChannel(request);
@@ -643,6 +676,7 @@ public class SnowflakeStreamingIngestClientTest {
               .setDBName("STREAMINGINGEST_TEST")
               .setSchemaName("PUBLIC")
               .setTableName("T_STREAMINGINGEST")
+              .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
               .build();
 
       client.openChannel(request);
@@ -658,10 +692,30 @@ public class SnowflakeStreamingIngestClientTest {
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannelInternal channel1 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel1", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
+            "channel1",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     SnowflakeStreamingIngestChannelInternal channel2 =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel2", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
+            "channel2",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     client.getChannelCache().addChannel(channel1);
     client.getChannelCache().addChannel(channel2);
 
@@ -718,7 +772,17 @@ public class SnowflakeStreamingIngestClientTest {
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel1", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
+            "channel1",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
     client.getChannelCache().addChannel(channel);
 
     ChannelsStatusResponse response = new ChannelsStatusResponse();

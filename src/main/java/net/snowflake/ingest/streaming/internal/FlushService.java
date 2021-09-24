@@ -417,7 +417,7 @@ class FlushService {
 
           if (root == null) {
             columnEpStatsMapCombined = data.getColumnEps();
-            root = new VectorSchemaRoot(data.getVectors());
+            root = data.getVectors();
             streamWriter = new ArrowStreamWriter(root, null, chunkData);
             loader = new VectorLoader(root);
             firstChannel = data.getChannel();
@@ -435,12 +435,11 @@ class FlushService {
                 ChannelData.getCombinedColumnStatsMap(
                     columnEpStatsMapCombined, data.getColumnEps());
 
-            VectorSchemaRoot sourceRoot = new VectorSchemaRoot(data.getVectors());
-            VectorUnloader unloader = new VectorUnloader(sourceRoot);
+            VectorUnloader unloader = new VectorUnloader(data.getVectors());
             ArrowRecordBatch recordBatch = unloader.getRecordBatch();
             loader.load(recordBatch);
             recordBatch.close();
-            sourceRoot.close();
+            data.getVectors().close();
           }
 
           // Write channel data using the stream writer
@@ -630,7 +629,7 @@ class FlushService {
         chunkData ->
             chunkData.forEach(
                 channelData -> {
-                  channelData.getVectors().forEach(vector -> vector.close());
+                  channelData.getVectors().close();
                   this.owningClient
                       .getChannelCache()
                       .invalidateChannelIfSequencersMatch(

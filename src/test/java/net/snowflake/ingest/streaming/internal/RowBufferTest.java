@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -21,19 +22,48 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class RowBufferTest {
-  private ArrowRowBuffer rowBuffer;
-  private SnowflakeStreamingIngestChannelInternal channel;
   private static final Logging logger = new Logging(RegisterService.class);
+
+  private ArrowRowBuffer rowBufferOnErrorContinue;
+  private SnowflakeStreamingIngestChannelInternal channelOnErrorContinue;
+
+  private ArrowRowBuffer rowBufferOnErrorAbort;
+  private SnowflakeStreamingIngestChannelInternal channelOnErrorAbort;
 
   @Before
   public void setupRowBuffer() {
     // Create row buffer
     SnowflakeStreamingIngestClientInternal client =
         new SnowflakeStreamingIngestClientInternal("client");
-    channel =
+    this.channelOnErrorContinue =
         new SnowflakeStreamingIngestChannelInternal(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", true);
-    this.rowBuffer = new ArrowRowBuffer(channel);
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+    this.rowBufferOnErrorContinue = new ArrowRowBuffer(this.channelOnErrorContinue);
+
+    this.channelOnErrorAbort =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            OpenChannelRequest.OnErrorOption.ABORT,
+            true);
+    this.rowBufferOnErrorAbort = new ArrowRowBuffer(this.channelOnErrorAbort);
 
     ColumnMetadata colTinyIntCase = new ColumnMetadata();
     colTinyIntCase.setName("colTinyInt");
@@ -89,7 +119,10 @@ public class RowBufferTest {
     colChar.setCollation("en-ci");
 
     // Setup column fields and vectors
-    this.rowBuffer.setupSchema(
+    this.rowBufferOnErrorContinue.setupSchema(
+        Arrays.asList(
+            colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar));
+    this.rowBufferOnErrorAbort.setupSchema(
         Arrays.asList(
             colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar));
   }
@@ -107,7 +140,7 @@ public class RowBufferTest {
     testCol.setScale(0);
     testCol.setPrecision(4);
     try {
-      Field result = this.rowBuffer.buildField(testCol);
+      Field result = this.rowBufferOnErrorContinue.buildField(testCol);
       Assert.fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
@@ -118,7 +151,7 @@ public class RowBufferTest {
     testCol.setPhysicalType("LOB");
     testCol.setLogicalType("FIXED");
     try {
-      Field result = this.rowBuffer.buildField(testCol);
+      Field result = this.rowBufferOnErrorContinue.buildField(testCol);
       Assert.fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
@@ -129,7 +162,7 @@ public class RowBufferTest {
     testCol.setPhysicalType("SB2");
     testCol.setLogicalType("TIMESTAMP_NTZ");
     try {
-      Field result = this.rowBuffer.buildField(testCol);
+      Field result = this.rowBufferOnErrorContinue.buildField(testCol);
       Assert.fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
@@ -152,7 +185,7 @@ public class RowBufferTest {
     testCol.setPhysicalType("SB16");
     testCol.setLogicalType("TIME");
     try {
-      Field result = this.rowBuffer.buildField(testCol);
+      Field result = this.rowBufferOnErrorContinue.buildField(testCol);
       Assert.fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
@@ -171,7 +204,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.TINYINT.getType());
@@ -193,7 +226,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.SMALLINT.getType());
@@ -215,7 +248,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.INT.getType());
@@ -237,7 +270,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIGINT.getType());
@@ -259,7 +292,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     ArrowType expectedType =
         new ArrowType.Decimal(testCol.getPrecision(), testCol.getScale(), DECIMAL_BIT_WIDTH);
@@ -284,7 +317,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.VARCHAR.getType());
@@ -306,7 +339,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIGINT.getType());
@@ -328,7 +361,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
@@ -409,7 +442,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.DATEDAY.getType());
@@ -431,7 +464,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.INT.getType());
@@ -453,7 +486,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIGINT.getType());
@@ -475,7 +508,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIT.getType());
@@ -497,7 +530,7 @@ public class RowBufferTest {
     testCol.setLength(11);
     testCol.setScale(0);
     testCol.setPrecision(4);
-    Field result = this.rowBuffer.buildField(testCol);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.FLOAT8.getType());
@@ -510,12 +543,12 @@ public class RowBufferTest {
 
   @Test
   public void testReset() {
-    RowBufferStats stats = this.rowBuffer.statsMap.get("COLCHAR");
+    RowBufferStats stats = this.rowBufferOnErrorContinue.statsMap.get("COLCHAR");
     stats.addIntValue(BigInteger.valueOf(1));
     Assert.assertEquals(BigInteger.valueOf(1), stats.getCurrentMaxIntValue());
     Assert.assertEquals("en-ci", stats.getCollationDefinitionString());
-    this.rowBuffer.reset();
-    RowBufferStats resetStats = this.rowBuffer.statsMap.get("COLCHAR");
+    this.rowBufferOnErrorContinue.reset();
+    RowBufferStats resetStats = this.rowBufferOnErrorContinue.statsMap.get("COLCHAR");
     Assert.assertNotNull(resetStats);
     Assert.assertNull(resetStats.getCurrentMaxIntValue());
     Assert.assertEquals("en-ci", resetStats.getCollationDefinitionString());
@@ -533,7 +566,7 @@ public class RowBufferTest {
     colInvalidLogical.setScale(0);
 
     try {
-      this.rowBuffer.setupSchema(Arrays.asList(colInvalidLogical));
+      this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(colInvalidLogical));
       Assert.fail("Setup should fail if invalid column metadata is provided");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
@@ -553,7 +586,7 @@ public class RowBufferTest {
     colInvalidPhysical.setScale(0);
 
     try {
-      this.rowBuffer.setupSchema(Arrays.asList(colInvalidPhysical));
+      this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(colInvalidPhysical));
       Assert.fail("Setup should fail if invalid column metadata is provided");
     } catch (SFException e) {
       Assert.assertEquals(e.getVendorCode(), ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode());
@@ -562,6 +595,11 @@ public class RowBufferTest {
 
   @Test
   public void testStringLength() {
+    testStringLengthHelper(this.rowBufferOnErrorContinue);
+    testStringLengthHelper(this.rowBufferOnErrorAbort);
+  }
+
+  private void testStringLengthHelper(ArrowRowBuffer rowBuffer) {
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
     row.put("\"colTinyInt\"", (byte) 1);
@@ -571,8 +609,7 @@ public class RowBufferTest {
     row.put("colDecimal", 1.23);
     row.put("colChar", "1234567890"); // still fits
 
-    InsertValidationResponse response =
-        this.rowBuffer.insertRows(Collections.singletonList(row), null);
+    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
     Assert.assertFalse(response.hasErrors());
 
     row.put("colTinyInt", (byte) 1);
@@ -583,17 +620,30 @@ public class RowBufferTest {
     row.put("colDecimal", 1.23);
     row.put("colChar", "1111111111111111111111"); // too big
 
-    response = this.rowBuffer.insertRows(Collections.singletonList(row), null);
-    Assert.assertTrue(response.hasErrors());
-    Assert.assertEquals(1, response.getErrorRowCount());
-    Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(),
-        response.getInsertErrors().get(0).getException().getVendorCode());
-    Assert.assertTrue(response.getInsertErrors().get(0).getMessage().contains("String too long"));
+    if (rowBuffer.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+      response = rowBuffer.insertRows(Collections.singletonList(row), null);
+      Assert.assertTrue(response.hasErrors());
+      Assert.assertEquals(1, response.getErrorRowCount());
+      Assert.assertEquals(
+          ErrorCode.INVALID_ROW.getMessageCode(),
+          response.getInsertErrors().get(0).getException().getVendorCode());
+      Assert.assertTrue(response.getInsertErrors().get(0).getMessage().contains("String too long"));
+    } else {
+      try {
+        rowBuffer.insertRows(Collections.singletonList(row), null);
+      } catch (SFException e) {
+        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      }
+    }
   }
 
   @Test
   public void testInsertRow() {
+    testInsertRowHelper(this.rowBufferOnErrorContinue);
+    testInsertRowHelper(this.rowBufferOnErrorAbort);
+  }
+
+  private void testInsertRowHelper(ArrowRowBuffer rowBuffer) {
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
     row.put("\"colTinyInt\"", (byte) 1);
@@ -603,13 +653,17 @@ public class RowBufferTest {
     row.put("colDecimal", 1.23);
     row.put("colChar", "2");
 
-    InsertValidationResponse response =
-        this.rowBuffer.insertRows(Collections.singletonList(row), null);
+    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
     Assert.assertFalse(response.hasErrors());
   }
 
   @Test
   public void testInsertRows() {
+    testInsertRowsHelper(this.rowBufferOnErrorContinue);
+    testInsertRowsHelper(this.rowBufferOnErrorAbort);
+  }
+
+  private void testInsertRowsHelper(ArrowRowBuffer rowBuffer) {
     Map<String, Object> row1 = new HashMap<>();
     row1.put("colTinyInt", (byte) 1);
     row1.put("\"colTinyInt\"", (byte) 1);
@@ -628,13 +682,13 @@ public class RowBufferTest {
     row2.put("colDecimal", 2.34);
     row2.put("colChar", "3");
 
-    InsertValidationResponse response = this.rowBuffer.insertRows(Arrays.asList(row1, row2), null);
+    InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null);
     Assert.assertFalse(response.hasErrors());
   }
 
   @Test
   public void testClose() {
-    this.rowBuffer.close();
+    this.rowBufferOnErrorContinue.close();
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
     row.put("colSmallInt", (short) 2);
@@ -644,7 +698,7 @@ public class RowBufferTest {
     row.put("colChar", "2");
 
     try {
-      this.rowBuffer.insertRows(Collections.singletonList(row), null);
+      this.rowBufferOnErrorContinue.insertRows(Collections.singletonList(row), null);
       Assert.fail("Insert should fail after buffer is closed");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
@@ -653,6 +707,11 @@ public class RowBufferTest {
 
   @Test
   public void testFlush() {
+    testFlushHelper(this.rowBufferOnErrorAbort);
+    testFlushHelper(this.rowBufferOnErrorContinue);
+  }
+
+  private void testFlushHelper(ArrowRowBuffer rowBuffer) {
     String offsetToken = "1";
     Map<String, Object> row1 = new HashMap<>();
     row1.put("colTinyInt", (byte) 1);
@@ -673,20 +732,27 @@ public class RowBufferTest {
     row2.put("colChar", "3");
 
     InsertValidationResponse response =
-        this.rowBuffer.insertRows(Arrays.asList(row1, row2), offsetToken);
+        rowBuffer.insertRows(Arrays.asList(row1, row2), offsetToken);
     Assert.assertFalse(response.hasErrors());
-    float bufferSize = this.rowBuffer.getSize();
+    float bufferSize = rowBuffer.getSize();
 
-    ChannelData data = this.rowBuffer.flush();
+    ChannelData data = rowBuffer.flush();
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
-    Assert.assertEquals(7, data.getVectors().size());
+    Assert.assertEquals(7, data.getVectors().getFieldVectors().size());
     Assert.assertEquals(offsetToken, data.getOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
   }
 
   @Test
   public void testDoubleQuotesColumnName() {
+    testDoubleQuotesColumnNameHelper(this.channelOnErrorAbort);
+    testDoubleQuotesColumnNameHelper(this.channelOnErrorContinue);
+  }
+
+  private void testDoubleQuotesColumnNameHelper(SnowflakeStreamingIngestChannelInternal channel) {
+    ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
+
     ColumnMetadata colDoubleQuotes = new ColumnMetadata();
     colDoubleQuotes.setName("colDoubleQuotes");
     colDoubleQuotes.setPhysicalType("SB16");
@@ -695,20 +761,13 @@ public class RowBufferTest {
     colDoubleQuotes.setPrecision(38);
     colDoubleQuotes.setScale(0);
 
-    this.rowBuffer.setupSchema(Arrays.asList(colDoubleQuotes));
+    innerBuffer.setupSchema(Collections.singletonList(colDoubleQuotes));
 
     Map<String, Object> row = new HashMap<>();
-    row.put("colTinyInt", (byte) 1);
-    row.put("\"colTinyInt\"", (byte) 1);
-    row.put("colSmallInt", (short) 2);
-    row.put("colInt", 3);
-    row.put("colBigInt", 4L);
-    row.put("colDecimal", 1.23);
-    row.put("colChar", "2");
     row.put("\"colDoubleQuotes\"", 1);
 
     InsertValidationResponse response =
-        this.rowBuffer.insertRows(Collections.singletonList(row), null);
+        innerBuffer.insertRows(Collections.singletonList(row), null);
     Assert.assertFalse(response.hasErrors());
   }
 
@@ -750,6 +809,11 @@ public class RowBufferTest {
 
   @Test
   public void testArrowE2E() {
+    testArrowE2EHelper(this.rowBufferOnErrorAbort);
+    testArrowE2EHelper(this.rowBufferOnErrorContinue);
+  }
+
+  private void testArrowE2EHelper(ArrowRowBuffer rowBuffer) {
     Map<String, Object> row1 = new HashMap<>();
     row1.put("\"colTinyInt\"", (byte) 10);
     row1.put("colTinyInt", (byte) 1);
@@ -759,21 +823,26 @@ public class RowBufferTest {
     row1.put("colDecimal", 4);
     row1.put("colChar", "2");
 
-    InsertValidationResponse response = this.rowBuffer.insertRows(Arrays.asList(row1), null);
+    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row1), null);
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals((byte) 10, this.rowBuffer.vectors.get("colTinyInt").getObject(0));
-    Assert.assertEquals((byte) 1, this.rowBuffer.vectors.get("COLTINYINT").getObject(0));
-    Assert.assertEquals((short) 2, this.rowBuffer.vectors.get("COLSMALLINT").getObject(0));
-    Assert.assertEquals(3, this.rowBuffer.vectors.get("COLINT").getObject(0));
-    Assert.assertEquals(4L, this.rowBuffer.vectors.get("COLBIGINT").getObject(0));
+    Assert.assertEquals((byte) 10, rowBuffer.vectorsRoot.getVector("colTinyInt").getObject(0));
+    Assert.assertEquals((byte) 1, rowBuffer.vectorsRoot.getVector("COLTINYINT").getObject(0));
+    Assert.assertEquals((short) 2, rowBuffer.vectorsRoot.getVector("COLSMALLINT").getObject(0));
+    Assert.assertEquals(3, rowBuffer.vectorsRoot.getVector("COLINT").getObject(0));
+    Assert.assertEquals(4L, rowBuffer.vectorsRoot.getVector("COLBIGINT").getObject(0));
     Assert.assertEquals(
-        new BigDecimal("4.00"), this.rowBuffer.vectors.get("COLDECIMAL").getObject(0));
-    Assert.assertEquals(new Text("2"), this.rowBuffer.vectors.get("COLCHAR").getObject(0));
+        new BigDecimal("4.00"), rowBuffer.vectorsRoot.getVector("COLDECIMAL").getObject(0));
+    Assert.assertEquals(new Text("2"), rowBuffer.vectorsRoot.getVector("COLCHAR").getObject(0));
   }
 
   @Test
   public void testArrowE2ETimestampLTZ() {
+    testArrowE2ETimestampLTZHelper(this.channelOnErrorContinue);
+    testArrowE2ETimestampLTZHelper(this.channelOnErrorAbort);
+  }
+
+  private void testArrowE2ETimestampLTZHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimestampLtzSB8 = new ColumnMetadata();
@@ -796,28 +865,40 @@ public class RowBufferTest {
     row.put("COLTIMESTAMPLTZ_SB8", "1621899220");
     row.put("COLTIMESTAMPLTZ_SB16", new BigDecimal("1621899220.123456789"));
 
-    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row), null);
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Collections.singletonList(row), null);
     Assert.assertFalse(response.hasErrors());
-    Assert.assertEquals(1621899220l, innerBuffer.vectors.get("COLTIMESTAMPLTZ_SB8").getObject(0));
+    Assert.assertEquals(
+        1621899220l, innerBuffer.vectorsRoot.getVector("COLTIMESTAMPLTZ_SB8").getObject(0));
     Assert.assertEquals(
         "epoch",
-        innerBuffer.vectors.get("COLTIMESTAMPLTZ_SB16").getChildrenFromFields().get(0).getName());
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPLTZ_SB16")
+            .getChildrenFromFields()
+            .get(0)
+            .getName());
     Assert.assertEquals(
         1621899220l,
         innerBuffer
-            .vectors
-            .get("COLTIMESTAMPLTZ_SB16")
+            .vectorsRoot
+            .getVector("COLTIMESTAMPLTZ_SB16")
             .getChildrenFromFields()
             .get(0)
             .getObject(0));
     Assert.assertEquals(
         "fraction",
-        innerBuffer.vectors.get("COLTIMESTAMPLTZ_SB16").getChildrenFromFields().get(1).getName());
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPLTZ_SB16")
+            .getChildrenFromFields()
+            .get(1)
+            .getName());
     Assert.assertEquals(
         123456789,
         innerBuffer
-            .vectors
-            .get("COLTIMESTAMPLTZ_SB16")
+            .vectorsRoot
+            .getVector("COLTIMESTAMPLTZ_SB16")
             .getChildrenFromFields()
             .get(1)
             .getObject(0));
@@ -825,6 +906,11 @@ public class RowBufferTest {
 
   @Test
   public void testArrowE2ETimestampErrors() {
+    testArrowE2ETimestampErrorsHelper(this.channelOnErrorAbort);
+    testArrowE2ETimestampErrorsHelper(this.channelOnErrorContinue);
+  }
+
+  private void testArrowE2ETimestampErrorsHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimestampLtzSB16 = new ColumnMetadata();
@@ -834,21 +920,36 @@ public class RowBufferTest {
     colTimestampLtzSB16.setLogicalType("TIMESTAMP_LTZ");
     colTimestampLtzSB16.setScale(6);
 
-    innerBuffer.setupSchema(Arrays.asList(colTimestampLtzSB16));
+    innerBuffer.setupSchema(Collections.singletonList(colTimestampLtzSB16));
 
     Map<String, Object> row = new HashMap<>();
     row.put("COLTIMESTAMPLTZ_SB8", "1621899220");
     row.put("COLTIMESTAMPLTZ_SB16", "1621899220.1234567");
 
-    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row), null);
-    Assert.assertTrue(response.hasErrors());
-    Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(),
-        response.getInsertErrors().get(0).getException().getVendorCode());
+    if (channel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+      InsertValidationResponse response =
+          innerBuffer.insertRows(Collections.singletonList(row), null);
+      Assert.assertTrue(response.hasErrors());
+      Assert.assertEquals(
+          ErrorCode.INVALID_ROW.getMessageCode(),
+          response.getInsertErrors().get(0).getException().getVendorCode());
+    } else {
+      try {
+        InsertValidationResponse response =
+            innerBuffer.insertRows(Collections.singletonList(row), null);
+      } catch (SFException e) {
+        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      }
+    }
   }
 
   @Test
   public void testStatsE2E() {
+    testStatsE2EHelper(this.rowBufferOnErrorAbort);
+    testStatsE2EHelper(this.rowBufferOnErrorContinue);
+  }
+
+  private void testStatsE2EHelper(ArrowRowBuffer rowBuffer) {
     Map<String, Object> row1 = new HashMap<>();
     row1.put("\"colTinyInt\"", (byte) 10);
     row1.put("colTinyInt", (byte) 1);
@@ -867,9 +968,9 @@ public class RowBufferTest {
     row2.put("colDecimal", 4);
     row2.put("colChar", "alice");
 
-    InsertValidationResponse response = this.rowBuffer.insertRows(Arrays.asList(row1, row2), null);
+    InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData result = this.rowBuffer.flush();
+    ChannelData result = rowBuffer.flush();
     Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
 
     Assert.assertEquals(
@@ -911,12 +1012,17 @@ public class RowBufferTest {
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
     // Confirm we reset
-    ChannelData resetResults = this.rowBuffer.flush();
+    ChannelData resetResults = rowBuffer.flush();
     Assert.assertNull(resetResults);
   }
 
   @Test
   public void testStatsE2ETimestamp() {
+    testStatsE2ETimestampHelper(this.channelOnErrorAbort);
+    testStatsE2ETimestampHelper(this.channelOnErrorContinue);
+  }
+
+  private void testStatsE2ETimestampHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimestampLtzSB8 = new ColumnMetadata();
@@ -993,6 +1099,11 @@ public class RowBufferTest {
 
   @Test
   public void testE2EDate() {
+    testE2EDateHelper(this.channelOnErrorContinue);
+    testE2EDateHelper(this.channelOnErrorAbort);
+  }
+
+  private void testE2EDateHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colDate = new ColumnMetadata();
@@ -1002,7 +1113,7 @@ public class RowBufferTest {
     colDate.setLogicalType("DATE");
     colDate.setScale(0);
 
-    innerBuffer.setupSchema(Arrays.asList(colDate));
+    innerBuffer.setupSchema(Collections.singletonList(colDate));
 
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLDATE", "18772");
@@ -1018,9 +1129,9 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into Arrow correctly
-    Assert.assertEquals(18772, innerBuffer.vectors.get("COLDATE").getObject(0));
-    Assert.assertEquals(18773, innerBuffer.vectors.get("COLDATE").getObject(1));
-    Assert.assertNull(innerBuffer.vectors.get("COLDATE").getObject(2));
+    Assert.assertEquals(18772, innerBuffer.vectorsRoot.getVector("COLDATE").getObject(0));
+    Assert.assertEquals(18773, innerBuffer.vectorsRoot.getVector("COLDATE").getObject(1));
+    Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLDATE").getObject(2));
 
     // Check stats generation
     ChannelData result = innerBuffer.flush();
@@ -1036,6 +1147,11 @@ public class RowBufferTest {
 
   @Test
   public void testE2ETime() {
+    testE2ETimeHelper(this.channelOnErrorAbort);
+    testE2ETimeHelper(this.channelOnErrorContinue);
+  }
+
+  private void testE2ETimeHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimeSB4 = new ColumnMetadata();
@@ -1071,13 +1187,13 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into Arrow correctly
-    Assert.assertEquals(43200, innerBuffer.vectors.get("COLTIMESB4").getObject(0));
-    Assert.assertEquals(43260, innerBuffer.vectors.get("COLTIMESB4").getObject(1));
-    Assert.assertNull(innerBuffer.vectors.get("COLTIMESB4").getObject(2));
+    Assert.assertEquals(43200, innerBuffer.vectorsRoot.getVector("COLTIMESB4").getObject(0));
+    Assert.assertEquals(43260, innerBuffer.vectorsRoot.getVector("COLTIMESB4").getObject(1));
+    Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLTIMESB4").getObject(2));
 
-    Assert.assertEquals(44200123l, innerBuffer.vectors.get("COLTIMESB8").getObject(0));
-    Assert.assertEquals(44201000l, innerBuffer.vectors.get("COLTIMESB8").getObject(1));
-    Assert.assertNull(innerBuffer.vectors.get("COLTIMESB8").getObject(2));
+    Assert.assertEquals(44200123l, innerBuffer.vectorsRoot.getVector("COLTIMESB8").getObject(0));
+    Assert.assertEquals(44201000l, innerBuffer.vectorsRoot.getVector("COLTIMESB8").getObject(1));
+    Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLTIMESB8").getObject(2));
 
     // Check stats generation
     ChannelData result = innerBuffer.flush();
@@ -1100,6 +1216,11 @@ public class RowBufferTest {
 
   @Test
   public void testNullableCheck() {
+    testNullableCheckHelper(this.channelOnErrorContinue);
+    testNullableCheckHelper(this.channelOnErrorAbort);
+  }
+
+  private void testNullableCheckHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
@@ -1109,24 +1230,37 @@ public class RowBufferTest {
     colBoolean.setLogicalType("BOOLEAN");
     colBoolean.setScale(0);
 
-    innerBuffer.setupSchema(Arrays.asList(colBoolean));
+    innerBuffer.setupSchema(Collections.singletonList(colBoolean));
     Map<String, Object> row = new HashMap<>();
     row.put("COLBOOLEAN", true);
 
-    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row), "1");
+    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertFalse(response.hasErrors());
     ;
 
     row.put("COLBOOLEAN", null);
-    response = innerBuffer.insertRows(Arrays.asList(row), "1");
-    Assert.assertTrue(response.hasErrors());
-    Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(),
-        response.getInsertErrors().get(0).getException().getVendorCode());
+    if (channel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+      response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+      Assert.assertTrue(response.hasErrors());
+      Assert.assertEquals(
+          ErrorCode.INVALID_ROW.getMessageCode(),
+          response.getInsertErrors().get(0).getException().getVendorCode());
+    } else {
+      try {
+        innerBuffer.insertRows(Collections.singletonList(row), "1");
+      } catch (SFException e) {
+        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      }
+    }
   }
 
   @Test
   public void testMissingColumnCheck() {
+    testMissingColumnCheckHelper(this.channelOnErrorContinue);
+    testMissingColumnCheckHelper(this.channelOnErrorAbort);
+  }
+
+  private void testMissingColumnCheckHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
@@ -1147,20 +1281,33 @@ public class RowBufferTest {
     Map<String, Object> row = new HashMap<>();
     row.put("COLBOOLEAN", true);
 
-    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row), "1");
+    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertFalse(response.hasErrors());
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLBOOLEAN2", true);
-    response = innerBuffer.insertRows(Arrays.asList(row2), "2");
-    Assert.assertTrue(response.hasErrors());
-    Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(),
-        response.getInsertErrors().get(0).getException().getVendorCode());
+    if (channel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+      response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
+      Assert.assertTrue(response.hasErrors());
+      Assert.assertEquals(
+          ErrorCode.INVALID_ROW.getMessageCode(),
+          response.getInsertErrors().get(0).getException().getVendorCode());
+    } else {
+      try {
+        innerBuffer.insertRows(Collections.singletonList(row2), "2");
+      } catch (SFException e) {
+        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      }
+    }
   }
 
   @Test
   public void testE2EBoolean() {
+    testE2EBooleanHelper(this.channelOnErrorContinue);
+    testE2EBooleanHelper(this.channelOnErrorAbort);
+  }
+
+  private void testE2EBooleanHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
@@ -1170,7 +1317,7 @@ public class RowBufferTest {
     colBoolean.setLogicalType("BOOLEAN");
     colBoolean.setScale(0);
 
-    innerBuffer.setupSchema(Arrays.asList(colBoolean));
+    innerBuffer.setupSchema(Collections.singletonList(colBoolean));
 
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLBOOLEAN", true);
@@ -1181,14 +1328,15 @@ public class RowBufferTest {
     Map<String, Object> row3 = new HashMap<>();
     row3.put("COLBOOLEAN", null);
 
+    // innerBuffer.insertRows(Collections.singletonList(row1));
     InsertValidationResponse response =
         innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into Arrow correctly
-    Assert.assertEquals(true, innerBuffer.vectors.get("COLBOOLEAN").getObject(0));
-    Assert.assertEquals(false, innerBuffer.vectors.get("COLBOOLEAN").getObject(1));
-    Assert.assertNull(innerBuffer.vectors.get("COLBOOLEAN").getObject(2));
+    Assert.assertEquals(true, innerBuffer.vectorsRoot.getVector("COLBOOLEAN").getObject(0));
+    Assert.assertEquals(false, innerBuffer.vectorsRoot.getVector("COLBOOLEAN").getObject(1));
+    Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLBOOLEAN").getObject(2));
 
     // Check stats generation
     ChannelData result = innerBuffer.flush();
@@ -1203,6 +1351,11 @@ public class RowBufferTest {
 
   @Test
   public void testE2EBinary() {
+    testE2EBinaryHelper(this.channelOnErrorAbort);
+    testE2EBinaryHelper(this.channelOnErrorContinue);
+  }
+
+  private void testE2EBinaryHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBinary = new ColumnMetadata();
@@ -1212,7 +1365,7 @@ public class RowBufferTest {
     colBinary.setLogicalType("BINARY");
     colBinary.setScale(0);
 
-    innerBuffer.setupSchema(Arrays.asList(colBinary));
+    innerBuffer.setupSchema(Collections.singletonList(colBinary));
 
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLBINARY", "Hello World".getBytes(StandardCharsets.UTF_8));
@@ -1231,12 +1384,14 @@ public class RowBufferTest {
     Assert.assertEquals(
         "Hello World",
         new String(
-            (byte[]) innerBuffer.vectors.get("COLBINARY").getObject(0), StandardCharsets.UTF_8));
+            (byte[]) innerBuffer.vectorsRoot.getVector("COLBINARY").getObject(0),
+            StandardCharsets.UTF_8));
     Assert.assertEquals(
         "Honk Honk",
         new String(
-            (byte[]) innerBuffer.vectors.get("COLBINARY").getObject(1), StandardCharsets.UTF_8));
-    Assert.assertNull(innerBuffer.vectors.get("COLBINARY").getObject(2));
+            (byte[]) innerBuffer.vectorsRoot.getVector("COLBINARY").getObject(1),
+            StandardCharsets.UTF_8));
+    Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLBINARY").getObject(2));
 
     // Check stats generation
     ChannelData result = innerBuffer.flush();
@@ -1248,6 +1403,11 @@ public class RowBufferTest {
 
   @Test
   public void testE2EReal() {
+    testE2ERealHelper(this.channelOnErrorContinue);
+    testE2ERealHelper(this.channelOnErrorAbort);
+  }
+
+  private void testE2ERealHelper(SnowflakeStreamingIngestChannelInternal channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colReal = new ColumnMetadata();
@@ -1257,7 +1417,7 @@ public class RowBufferTest {
     colReal.setLogicalType("REAL");
     colReal.setScale(0);
 
-    innerBuffer.setupSchema(Arrays.asList(colReal));
+    innerBuffer.setupSchema(Collections.singletonList(colReal));
 
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLREAL", 123.456);
@@ -1273,9 +1433,9 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into Arrow correctly
-    Assert.assertEquals(123.456, innerBuffer.vectors.get("COLREAL").getObject(0));
-    Assert.assertEquals(123.4567, innerBuffer.vectors.get("COLREAL").getObject(1));
-    Assert.assertNull(innerBuffer.vectors.get("COLREAL").getObject(2));
+    Assert.assertEquals(123.456, innerBuffer.vectorsRoot.getVector("COLREAL").getObject(0));
+    Assert.assertEquals(123.4567, innerBuffer.vectorsRoot.getVector("COLREAL").getObject(1));
+    Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLREAL").getObject(2));
 
     // Check stats generation
     ChannelData result = innerBuffer.flush();
@@ -1286,5 +1446,81 @@ public class RowBufferTest {
     Assert.assertEquals(
         Double.valueOf(123.4567), result.getColumnEps().get("COLREAL").getCurrentMaxRealValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLREAL").getCurrentNullCount());
+  }
+
+  @Test
+  public void testOnErrorAbortFailures() {
+    ArrowRowBuffer innerBuffer = new ArrowRowBuffer(this.channelOnErrorAbort);
+
+    ColumnMetadata colDecimal = new ColumnMetadata();
+    colDecimal.setName("COLDECIMAL");
+    colDecimal.setPhysicalType("SB16");
+    colDecimal.setNullable(true);
+    colDecimal.setLogicalType("FIXED");
+    colDecimal.setPrecision(38);
+    colDecimal.setScale(0);
+
+    innerBuffer.setupSchema(Collections.singletonList(colDecimal));
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLDECIMAL", 1);
+
+    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    Assert.assertFalse(response.hasErrors());
+
+    Assert.assertEquals(1, innerBuffer.rowCount);
+    Assert.assertEquals(0, innerBuffer.tempVectorsRoot.getRowCount());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("COLDECIMAL", 2);
+    response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
+    Assert.assertFalse(response.hasErrors());
+
+    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(0, innerBuffer.tempVectorsRoot.getRowCount());
+    Assert.assertEquals(
+        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("COLDECIMAL", true);
+    try {
+      innerBuffer.insertRows(Collections.singletonList(row3), "3");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(0, innerBuffer.tempVectorsRoot.getRowCount());
+    Assert.assertEquals(
+        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    row3.put("COLDECIMAL", 3);
+    response = innerBuffer.insertRows(Collections.singletonList(row3), "3");
+    Assert.assertFalse(response.hasErrors());
+    Assert.assertEquals(3, innerBuffer.rowCount);
+    Assert.assertEquals(0, innerBuffer.tempVectorsRoot.getRowCount());
+    Assert.assertEquals(
+        3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    ChannelData data = innerBuffer.flush();
+    Assert.assertEquals(3, data.getVectors().getRowCount());
+    Assert.assertEquals(0, innerBuffer.rowCount);
   }
 }

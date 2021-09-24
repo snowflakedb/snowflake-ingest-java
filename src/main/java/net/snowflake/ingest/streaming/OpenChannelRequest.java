@@ -8,10 +8,16 @@ import net.snowflake.ingest.utils.Utils;
 
 /** The request that gets sent to Snowflake to open/create a Streaming Ingest channel */
 public class OpenChannelRequest {
+  public enum OnErrorOption {
+    CONTINUE, // CONTINUE loading the rows, and return all the errors in the response
+    ABORT, // ABORT the entire batch, and throw an exception when we hit the first error
+  }
+
   private final String channelName;
   private final String dbName;
   private final String schemaName;
   private final String tableName;
+  private final OnErrorOption onErrorOption;
 
   public static OpenChannelRequestBuilder builder(String channelName) {
     return new OpenChannelRequestBuilder(channelName);
@@ -23,6 +29,7 @@ public class OpenChannelRequest {
     private String dbName;
     private String schemaName;
     private String tableName;
+    private OnErrorOption onErrorOption;
 
     public OpenChannelRequestBuilder(String channelName) {
       this.channelName = channelName;
@@ -43,6 +50,11 @@ public class OpenChannelRequest {
       return this;
     }
 
+    public OpenChannelRequestBuilder setOnErrorOption(OnErrorOption onErrorOption) {
+      this.onErrorOption = onErrorOption;
+      return this;
+    }
+
     public OpenChannelRequest build() {
       return new OpenChannelRequest(this);
     }
@@ -53,11 +65,13 @@ public class OpenChannelRequest {
     Utils.assertStringNotNullOrEmpty("database name", builder.dbName);
     Utils.assertStringNotNullOrEmpty("schema name", builder.schemaName);
     Utils.assertStringNotNullOrEmpty("table name", builder.tableName);
+    Utils.assertNotNull("on_error option", builder.onErrorOption);
 
     this.channelName = builder.channelName;
     this.dbName = builder.dbName;
     this.schemaName = builder.schemaName;
     this.tableName = builder.tableName;
+    this.onErrorOption = builder.onErrorOption;
   }
 
   public String getDBName() {
@@ -78,5 +92,9 @@ public class OpenChannelRequest {
 
   public String getFullyQualifiedTableName() {
     return String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
+  }
+
+  public OnErrorOption getOnErrorOption() {
+    return this.onErrorOption;
   }
 }

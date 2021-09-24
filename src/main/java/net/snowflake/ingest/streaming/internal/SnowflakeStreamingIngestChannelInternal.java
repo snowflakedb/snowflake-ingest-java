@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -59,6 +60,9 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   // Indicates whether we're using it as of the any tests
   private boolean isTestMode;
 
+  // ON_ERROR option for this channel
+  private final OpenChannelRequest.OnErrorOption onErrorOption;
+
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
    *
@@ -82,6 +86,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       Long rowSequencer,
       SnowflakeStreamingIngestClientInternal client,
       String encryptionKey,
+      OpenChannelRequest.OnErrorOption onErrorOption,
       boolean isTestMode) {
     this.channelName = name;
     this.dbName = dbName;
@@ -102,6 +107,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                 .newChildAllocator(name, 0, this.owningClient.getAllocator().getLimit());
     this.arrowBuffer = new ArrowRowBuffer(this);
     this.encryptionKey = encryptionKey;
+    this.onErrorOption = onErrorOption;
     logger.logDebug("Channel={} created for table={}", this.channelName, this.tableName);
   }
 
@@ -126,7 +132,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       Long channelSequencer,
       Long rowSequencer,
       SnowflakeStreamingIngestClientInternal client,
-      String encryptionKey) {
+      String encryptionKey,
+      OpenChannelRequest.OnErrorOption onErrorOption) {
     this(
         name,
         dbName,
@@ -137,6 +144,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
         rowSequencer,
         client,
         encryptionKey,
+        onErrorOption,
         false);
   }
 
@@ -443,5 +451,9 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       this.arrowBuffer.close();
       throw new SFException(ErrorCode.INVALID_CHANNEL);
     }
+  }
+
+  OpenChannelRequest.OnErrorOption getOnErrorOption() {
+    return this.onErrorOption;
   }
 }
