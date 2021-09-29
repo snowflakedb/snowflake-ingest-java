@@ -12,15 +12,18 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 
-/** Builds a Streaming Ingest client for a specific account */
+/** Factory class used to build a {@link SnowflakeStreamingIngestClient} for a specific account */
 public class SnowflakeStreamingIngestClientFactory {
   public static Builder builder(String name) {
     return new Builder(name);
   }
 
-  /** Build class to build a SnowflakeStreamingIngestClient */
+  /** Builder class to build a {@link SnowflakeStreamingIngestClient} */
   public static class Builder {
+    // Name of the client
     private final String name;
+
+    // Properties that contains info used for Snowflake authentication and authorization
     private Properties prop;
 
     private Builder(String name) {

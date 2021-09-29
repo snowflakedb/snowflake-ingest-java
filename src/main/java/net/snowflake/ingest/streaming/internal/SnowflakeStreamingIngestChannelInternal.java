@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -149,10 +150,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   }
 
   /**
-   * Get the fully qualified channel name, the format will be
-   * dbName.schemaName.tableName.channelName
+   * Get the fully qualified channel name
    *
-   * @return fully qualified name of the channel
+   * @return fully qualified name of the channel, in the format of
+   *     dbName.schemaName.tableName.channelName
    */
   @Override
   public String getFullyQualifiedName() {
@@ -212,7 +213,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   /**
    * Get the fully qualified table name that the channel belongs to
    *
-   * @return fully qualified table name
+   * @return fully qualified table name, in the format of dbName.schemaName.tableName
    */
   @Override
   public String getFullyQualifiedTableName() {
@@ -343,7 +344,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    */
 
   /**
-   * The row is represented using Map where the key is column name and the value is data row
+   * The row is represented using Map where the key is column name and the value is a row of data
    *
    * @param row object data to write
    * @param offsetToken offset of given row, used for replay in case of failures
@@ -362,7 +363,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    */
 
   /**
-   * Each row is represented using Map where the key is column name and the value is data row
+   * Each row is represented using Map where the key is column name and the value is a row of data
    *
    * @param rows object data to write
    * @param offsetToken offset of last row in the row-set, used for replay in case of failures
@@ -398,7 +399,11 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     }
   }
 
-  /** Get the latest committed offset token from Snowflake */
+  /**
+   * Get the latest committed offset token from Snowflake
+   *
+   * @return the latest committed offset token
+   */
   @Override
   public String getLatestCommittedOffsetToken() {
     checkValidation();

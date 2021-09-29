@@ -6,26 +6,35 @@ package net.snowflake.ingest.streaming;
 
 import net.snowflake.ingest.utils.Utils;
 
-/** The request that gets sent to Snowflake to open/create a Streaming Ingest channel */
+/** A class that is used to open/create a {@link SnowflakeStreamingIngestChannel} */
 public class OpenChannelRequest {
   public enum OnErrorOption {
     CONTINUE, // CONTINUE loading the rows, and return all the errors in the response
     ABORT, // ABORT the entire batch, and throw an exception when we hit the first error
   }
 
+  // Name of the channel
   private final String channelName;
+
+  // Name of the database that the channel belongs to
   private final String dbName;
+
+  // Name of the schema that the channel belongs to
   private final String schemaName;
+
+  // Name of the table that the channel belongs to
   private final String tableName;
+
+  // On_error option on this channel
   private final OnErrorOption onErrorOption;
 
   public static OpenChannelRequestBuilder builder(String channelName) {
     return new OpenChannelRequestBuilder(channelName);
   }
 
-  /** Builder class to build a OpenChannelRequest */
+  /** A builder class to build a OpenChannelRequest */
   public static class OpenChannelRequestBuilder {
-    private String channelName;
+    private final String channelName;
     private String dbName;
     private String schemaName;
     private String tableName;

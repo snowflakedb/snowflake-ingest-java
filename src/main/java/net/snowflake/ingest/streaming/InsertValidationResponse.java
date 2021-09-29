@@ -2,7 +2,7 @@
  * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
  */
 
-package net.snowflake.ingest.streaming.internal;
+package net.snowflake.ingest.streaming;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +13,7 @@ import net.snowflake.ingest.utils.SFException;
  * objects if there is any failure during insertion.
  */
 public class InsertValidationResponse {
+  // List of insertion errors, empty means no error
   private final List<InsertError> insertErrors = new ArrayList<>();
 
   /**
@@ -39,7 +40,7 @@ public class InsertValidationResponse {
    *
    * @param error {@link InsertError} object which contains the row content and exception
    */
-  void addError(InsertError error) {
+  public void addError(InsertError error) {
     insertErrors.add(error);
   }
 
@@ -48,7 +49,7 @@ public class InsertValidationResponse {
     private final Object rowContent;
     private final SFException exception;
 
-    InsertError(Object row, SFException exception) {
+    public InsertError(Object row, SFException exception) {
       this.rowContent = row;
       this.exception = exception;
     }

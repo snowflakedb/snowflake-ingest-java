@@ -7,7 +7,6 @@ package net.snowflake.ingest.streaming;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
-import net.snowflake.ingest.streaming.internal.InsertValidationResponse;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
@@ -19,10 +18,10 @@ import net.snowflake.ingest.streaming.internal.InsertValidationResponse;
  */
 public interface SnowflakeStreamingIngestChannel {
   /**
-   * Get the fully qualified channel name, the format will be
-   * dbName.schemaName.tableName.channelName
+   * Get the fully qualified channel name
    *
-   * @return fully qualified name of the channel
+   * @return fully qualified name of the channel, in the format of
+   *     dbName.schemaName.tableName.channelName
    */
   String getFullyQualifiedName();
 
@@ -36,52 +35,47 @@ public interface SnowflakeStreamingIngestChannel {
   /**
    * Get the database name
    *
-   * @return
+   * @return name of the database
    */
   String getDBName();
 
   /**
    * Get the schema name
    *
-   * @return
+   * @return name of the schema
    */
   String getSchemaName();
 
   /**
    * Get the table name
    *
-   * @return
+   * @return name of the table
    */
   String getTableName();
 
   /**
    * Get the fully qualified table name that the channel belongs to
    *
-   * @return fully qualified table name
+   * @return fully qualified table name, in the format of dbName.schemaName.tableName
    */
   String getFullyQualifiedTableName();
 
-  /** @return a boolean to indicate whether the channel is valid or not */
+  /** @return a boolean which indicates whether the channel is valid */
   boolean isValid();
 
-  /** @return a boolean to indicate whether the channel is closed or not */
+  /** @return a boolean which indicates whether the channel is closed */
   boolean isClosed();
 
   /**
-   * Close the channel (this will flush in-flight buffered data)
+   * Close the channel, this will make sure all the data in this channel is committed before closing
    *
-   * @return future which will be complete when the channel is closed
+   * @return a completable future which will be completed when the channel is closed
    */
   CompletableFuture<Void> close();
 
   /**
-   * --------------------------------------------------------------------------------------------
-   * Insert one row into the channel
-   * --------------------------------------------------------------------------------------------
-   */
-
-  /**
-   * The row is represented using Map where the key is column name and the value is data row
+   * Insert one row into the channel, the row is represented using Map where the key is column name
+   * and the value is a row of data
    *
    * @param row object data to write
    * @param offsetToken offset of given row, used for replay in case of failures. It could be null
@@ -91,13 +85,8 @@ public interface SnowflakeStreamingIngestChannel {
   InsertValidationResponse insertRow(Map<String, Object> row, @Nullable String offsetToken);
 
   /**
-   * --------------------------------------------------------------------------------------------
-   * Insert a batch of rows into the channel
-   * --------------------------------------------------------------------------------------------
-   */
-
-  /**
-   * Each row is represented using Map where the key is column name and the value is data row
+   * Insert a batch of rows into the channel, each row is represented using Map where the key is
+   * column name and the value is a row of data
    *
    * @param rows object data to write
    * @param offsetToken offset of last row in the row-set, used for replay in case of failures, It
@@ -107,6 +96,10 @@ public interface SnowflakeStreamingIngestChannel {
   InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
 
-  /** Get the latest committed offset token from Snowflake */
+  /**
+   * Get the latest committed offset token from Snowflake
+   *
+   * @return the latest committed offset token
+   */
   String getLatestCommittedOffsetToken();
 }

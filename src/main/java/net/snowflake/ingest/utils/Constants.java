@@ -20,8 +20,6 @@ public class Constants {
   public static final long RESPONSE_SUCCESS = 0L;
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 5L;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 12;
-  public static final String INTERNAL_STAGE_DB_NAME = "DB_STREAMINGINGEST";
-  public static final String INTERNAL_STAGE_SCHEMA_NAME = "PUBLIC";
   public static final long BUFFER_FLUSH_INTERVAL_IN_MS = 500;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MS = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MS = 500;
