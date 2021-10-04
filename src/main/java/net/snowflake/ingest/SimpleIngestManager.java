@@ -5,8 +5,8 @@
 package net.snowflake.ingest;
 
 import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
-import com.google.common.base.Strings;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.security.KeyFactory;
@@ -185,7 +185,7 @@ public class SimpleIngestManager implements AutoCloseable {
      * builder object
      */
     public SimpleIngestManager build() {
-      if (Strings.isNullOrEmpty(hostName)) {
+      if (isNullOrEmpty(hostName)) {
         return new SimpleIngestManager(
             account, user, pipe, DEFAULT_HOST_SUFFIX, keypair, userAgentSuffix);
       }

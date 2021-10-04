@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.utils;
 
-import com.google.common.base.Strings;
 import java.security.Security;
 import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
@@ -30,6 +29,8 @@ import org.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+
 /** Created by hyu on 8/10/17. */
 public class HttpUtil {
   private static String USE_PROXY = "http.useProxy";
@@ -39,8 +40,8 @@ public class HttpUtil {
   private static final String HTTP_PROXY_USER = "http.proxyUser";
   private static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
 
-  private static String PROXY_SCHEME = "http";
-  private static int MAX_RETRIES = 3;
+  private static final String PROXY_SCHEME = "http";
+  private static final int MAX_RETRIES = 3;
 
   private static HttpClient httpClient;
 
@@ -93,7 +94,7 @@ public class HttpUtil {
       // Check if proxy username and password are set
       final String proxyUser = System.getProperty(HTTP_PROXY_USER);
       final String proxyPassword = System.getProperty(HTTP_PROXY_PASSWORD);
-      if (!Strings.isNullOrEmpty(proxyUser) && !Strings.isNullOrEmpty(proxyPassword)) {
+      if (!isNullOrEmpty(proxyUser) && !isNullOrEmpty(proxyPassword)) {
         Credentials credentials = new UsernamePasswordCredentials(proxyUser, proxyPassword);
         AuthScope authScope = new AuthScope(proxyHost, proxyPort);
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();

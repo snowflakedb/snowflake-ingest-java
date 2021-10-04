@@ -5,7 +5,6 @@
 package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Strings;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +29,8 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
 /**
  * This class handles constructing the URIs for our requests as well as putting together the
@@ -461,7 +462,7 @@ public final class RequestBuilder {
    *     default one. If it is null or empty, only default one is used.
    */
   private static void addUserAgent(HttpUriRequest request, String userAgentSuffix) {
-    if (!Strings.isNullOrEmpty(userAgentSuffix)) {
+    if (isNullOrEmpty(userAgentSuffix)) {
       final String userAgent = buildCustomUserAgent(userAgentSuffix);
       request.setHeader(HttpHeaders.USER_AGENT, userAgent);
       return;
