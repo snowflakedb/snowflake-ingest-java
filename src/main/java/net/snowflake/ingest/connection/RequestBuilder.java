@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.connection;
 
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -29,8 +31,6 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
 /**
  * This class handles constructing the URIs for our requests as well as putting together the

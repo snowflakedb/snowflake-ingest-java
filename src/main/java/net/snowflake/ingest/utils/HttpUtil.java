@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.utils;
 
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+
 import java.security.Security;
 import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
@@ -28,8 +30,6 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
 /** Created by hyu on 8/10/17. */
 public class HttpUtil {

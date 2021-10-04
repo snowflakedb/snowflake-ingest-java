@@ -5,7 +5,7 @@
 package net.snowflake.ingest.utils;
 
 public class StringsUtils {
-    public static boolean isNullOrEmpty(String string){
-        return string == null || string.isEmpty();
-    }
+  public static boolean isNullOrEmpty(String string) {
+    return string == null || string.isEmpty();
+  }
 }
