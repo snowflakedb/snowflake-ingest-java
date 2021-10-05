@@ -462,7 +462,7 @@ public final class RequestBuilder {
    *     default one. If it is null or empty, only default one is used.
    */
   private static void addUserAgent(HttpUriRequest request, String userAgentSuffix) {
-    if (isNullOrEmpty(userAgentSuffix)) {
+    if (!isNullOrEmpty(userAgentSuffix)) {
       final String userAgent = buildCustomUserAgent(userAgentSuffix);
       request.setHeader(HttpHeaders.USER_AGENT, userAgent);
       return;
