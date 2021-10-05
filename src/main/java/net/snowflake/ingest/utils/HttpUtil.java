@@ -4,7 +4,8 @@
 
 package net.snowflake.ingest.utils;
 
-import com.google.common.base.Strings;
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+
 import java.security.Security;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -45,8 +46,8 @@ public class HttpUtil {
   private static final String HTTP_PROXY_USER = "http.proxyUser";
   private static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
 
-  private static String PROXY_SCHEME = "http";
-  private static int MAX_RETRIES = 3;
+  private static final String PROXY_SCHEME = "http";
+  private static final int MAX_RETRIES = 3;
 
   private static CloseableHttpClient httpClient;
 
@@ -155,7 +156,7 @@ public class HttpUtil {
       // Check if proxy username and password are set
       final String proxyUser = System.getProperty(HTTP_PROXY_USER);
       final String proxyPassword = System.getProperty(HTTP_PROXY_PASSWORD);
-      if (!Strings.isNullOrEmpty(proxyUser) && !Strings.isNullOrEmpty(proxyPassword)) {
+      if (!isNullOrEmpty(proxyUser) && !isNullOrEmpty(proxyPassword)) {
         Credentials credentials = new UsernamePasswordCredentials(proxyUser, proxyPassword);
         AuthScope authScope = new AuthScope(proxyHost, proxyPort);
         CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
