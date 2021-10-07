@@ -314,6 +314,8 @@ class RowBufferStats {
   private CollationDefinition collationDefinition;
   private final String collationDefinitionString;
 
+  private static final int MAX_LOB_LEN = 32;
+
   /** Creates empty stats */
   RowBufferStats(String collationDefinitionString) {
     this.collationDefinitionString = collationDefinitionString;
@@ -403,7 +405,10 @@ class RowBufferStats {
     return combined;
   }
 
-  void addStrValue(String value) {
+  void addStrValue(String inputValue) {
+    this.setCurrentMaxLength(inputValue.length());
+    String value =
+        inputValue.length() > MAX_LOB_LEN ? inputValue.substring(0, MAX_LOB_LEN) : inputValue;
 
     byte[] valueBytes = value != null ? value.getBytes(StandardCharsets.UTF_8) : null;
     byte[] collatedValueBytes = value != null ? getCollatedBytes(value) : null;
@@ -411,13 +416,31 @@ class RowBufferStats {
     // Check if new min/max string
     if (this.currentMinStrValue == null) {
       this.currentMinStrValue = value;
-      this.currentMaxStrValue = value;
       this.currentMinColStrValue = value;
-      this.currentMaxColStrValue = value;
       this.currentMinStrValueInBytes = valueBytes;
-      this.currentMaxStrValueInBytes = valueBytes;
       this.currentMinColStrValueInBytes = collatedValueBytes;
-      this.currentMaxColStrValueInBytes = collatedValueBytes;
+
+      /*
+      Snowflake stores the first MAX_LOB_LEN characters of a string.
+      When truncating the max value, we increment the last max value
+      byte by one to ensure the max value stat is greater than the actual max value.
+       */
+      if (inputValue.length() > MAX_LOB_LEN) {
+        byte[] incrementedValueBytes = valueBytes.clone();
+        byte[] incrementedCollatedValueBytes = collatedValueBytes.clone();
+        incrementedValueBytes[MAX_LOB_LEN - 1]++;
+        incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
+        String incrementedValue = new String(incrementedValueBytes);
+        this.currentMaxStrValue = incrementedValue;
+        this.currentMaxColStrValue = incrementedValue;
+        this.currentMaxStrValueInBytes = incrementedValueBytes;
+        this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
+      } else {
+        this.currentMaxStrValue = value;
+        this.currentMaxColStrValue = value;
+        this.currentMaxStrValueInBytes = valueBytes;
+        this.currentMaxColStrValueInBytes = collatedValueBytes;
+      }
     } else {
       // Non-collated comparison
       if (compare(currentMinStrValueInBytes, valueBytes) > 0) {

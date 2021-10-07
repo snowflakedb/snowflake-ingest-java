@@ -119,6 +119,14 @@ public class RowBufferStatsTest {
   }
 
   @Test
+  public void testStrTruncation() throws Exception {
+    RowBufferStats stats = new RowBufferStats();
+    stats.addStrValue("abcde|abcde|abcde|abcde|abcde|abcde|");
+    Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", stats.getCurrentMinStrValue());
+    Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ac", stats.getCurrentMaxStrValue());
+  }
+
+  @Test
   public void testMinMaxStrCol() throws Exception {
     RowBufferStats stats = new RowBufferStats("en-ci");
 
