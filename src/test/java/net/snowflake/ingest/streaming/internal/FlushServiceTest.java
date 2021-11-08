@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -135,14 +136,15 @@ public class FlushServiceTest {
   @Test
   public void testGetFilePath() {
     FlushService flushService = new FlushService(client, channelCache, stage, false);
-    Calendar calendar = Calendar.getInstance();
+    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
     String outputString = flushService.getFilePath(calendar, clientPrefix);
     Path outputPath = Paths.get(outputString);
     Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.MINUTE)),
-        outputPath.getParent().getFileName().toString());
+    Assert.assertTrue(
+        calendar.get(Calendar.MINUTE)
+                - Integer.parseInt(outputPath.getParent().getFileName().toString())
+            <= 1);
     Assert.assertEquals(
         Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
         outputPath.getParent().getParent().getFileName().toString());
