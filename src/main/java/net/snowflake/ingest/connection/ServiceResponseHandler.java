@@ -60,20 +60,8 @@ public final class ServiceResponseHandler {
       throw new IllegalArgumentException();
     }
 
-    // Grab the status line from the response
-    StatusLine statusLine = response.getStatusLine();
-
-    // If we didn't get a good status code, handle it
-    if (!isStatusOK(statusLine)) {
-
-      // Exception status
-      LOGGER.warn(
-          "Exceptional Status Code found in unmarshallInsert Response  - {}",
-          statusLine.getStatusCode());
-
-      handleExceptionalStatus(statusLine, response);
-      return null;
-    }
+    // handle the exceptional status code
+    handleExceptionalStatus(response);
 
     // grab the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -99,18 +87,8 @@ public final class ServiceResponseHandler {
       throw new IllegalArgumentException();
     }
 
-    // Grab the status line
-    StatusLine line = response.getStatusLine();
-
-    if (!isStatusOK(line)) {
-      // A network issue occurred!
-      LOGGER.warn(
-          "Exceptional Status Code found in unmarshallHistoryResponse - {}", line.getStatusCode());
-
-      // handle the exceptional status code
-      handleExceptionalStatus(line, response);
-      return null;
-    }
+    // handle the exceptional status code
+    handleExceptionalStatus(response);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -128,18 +106,8 @@ public final class ServiceResponseHandler {
       throw new IllegalArgumentException();
     }
 
-    // Grab the status line
-    StatusLine line = response.getStatusLine();
-    if (!isStatusOK(line)) {
-      // A network issue occurred!
-      LOGGER.warn(
-          "Exceptional Status Code found in " + "unmarshallHistoryRangeResponse - {}",
-          line.getStatusCode());
-
-      // handle the exceptional status code
-      handleExceptionalStatus(line, response);
-      return null;
-    }
+    // handle the exceptional status code
+    handleExceptionalStatus(response);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -149,28 +117,83 @@ public final class ServiceResponseHandler {
   }
 
   /**
-   * handleExceptionStatusCode - throws the correct error for a status
+   * unmarshallConfigureClientResponse - Given an HttpResponse object, attempts to deserialize it into a ConfigureClientResponse
+   * @param response HttpResponse
+   * @return ConfigureClientResponse
+   * @throws IOException
+   * @throws IngestResponseException
+   */
+  public static ConfigureClientResponse unmarshallConfigureClientResponse(HttpResponse response) throws IOException, IngestResponseException{
+    if(response == null){
+      LOGGER.warn("Null response passed to unmarshallConfigureClientResponse");
+      throw new IllegalArgumentException();
+    }
+
+    // handle the exceptional status code
+    handleExceptionalStatus(response);
+
+    // grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    // read out our blob into a pojo
+    return mapper.readValue(blob, ConfigureClientResponse.class);
+  }
+
+  /**
+   * unmarshallGetClientStatus - Given an HttpResponse object, attempts to deserialize it into a ClientStatusResponse
+   * @param response HttpResponse
+   * @return ClientStatusResponse
+   * @throws IOException
+   * @throws IngestResponseException
+   */
+  public static ClientStatusResponse unmarshallGetClientStatus(HttpResponse response) throws IOException, IngestResponseException{
+    if(response == null){
+      LOGGER.warn("Null response passed to unmarshallClientStatusResponse");
+      throw new IllegalArgumentException();
+    }
+
+    // handle the exceptional status code
+    handleExceptionalStatus(response);
+
+    // grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    // read out our blob into a pojo
+    return mapper.readValue(blob, ClientStatusResponse.class);
+  }
+
+
+  /**
+   * handleExceptionStatusCode - throws the correct error when response status is not OK
    *
-   * @param statusLine the status line we want to check
+   * @param response
    * @throws BackOffException -- if we have a 503 exception
    * @throws IOException - if we don't know what it is
    */
-  private static void handleExceptionalStatus(StatusLine statusLine, HttpResponse response)
+  private static void handleExceptionalStatus(HttpResponse response)
       throws IOException, IngestResponseException {
-    // if we have a 503 exception throw a backoff
-    switch (statusLine.getStatusCode()) {
-        // If we have a 503, BACKOFF
-      case HttpStatus.SC_SERVICE_UNAVAILABLE:
-        LOGGER.warn("503 Status hit, backoff");
-        throw new BackOffException();
+    StatusLine statusLine = response.getStatusLine();
+    if (!isStatusOK(statusLine)) {
+      // A network issue occurred!
+      LOGGER.warn(
+              "Exceptional Status Code found in " + "unmarshallHistoryRangeResponse - {}",
+              statusLine.getStatusCode());
 
-        // We don't know how to respond now...
-      default:
-        LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
-        String blob = EntityUtils.toString(response.getEntity());
-        throw new IngestResponseException(
-            statusLine.getStatusCode(),
-            IngestResponseException.IngestExceptionBody.parseBody(blob));
+      // if we have a 503 exception throw a backoff
+      switch (statusLine.getStatusCode()) {
+        // If we have a 503, BACKOFF
+        case HttpStatus.SC_SERVICE_UNAVAILABLE:
+          LOGGER.warn("503 Status hit, backoff");
+          throw new BackOffException();
+
+          // We don't know how to respond now...
+        default:
+          LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
+          String blob = EntityUtils.toString(response.getEntity());
+          throw new IngestResponseException(
+                  statusLine.getStatusCode(),
+                  IngestResponseException.IngestExceptionBody.parseBody(blob));
+      }
     }
   }
 }

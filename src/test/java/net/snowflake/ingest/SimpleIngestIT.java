@@ -13,8 +13,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import net.snowflake.ingest.connection.HistoryResponse;
-import net.snowflake.ingest.connection.IngestResponse;
+
+import net.snowflake.ingest.connection.*;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
@@ -65,8 +65,8 @@ public class SimpleIngestIT {
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + num;
 
-    TestUtils.executeQuery("use database SNOWPIPE_SDK_DB");
-    TestUtils.executeQuery("use schema public");
+//    TestUtils.executeQuery("use database SNOWPIPE_SDK_DB");
+//    TestUtils.executeQuery("use schema public");
 
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
@@ -313,6 +313,62 @@ public class SimpleIngestIT {
                 System.getProperty("os.arch"));
         assertTrue(h.getValue().contains(osInformation));
       }
+    }
+  }
+
+  @Test
+  public void testConfigureClientHappyCase() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    ConfigureClientResponse configureClientResponse = manager.configureClient(null);
+    assertEquals(0L,configureClientResponse.getClientSequencer().longValue());
+  }
+
+  @Test
+  public void testConfigureClientNoPipeFound() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
+    try {
+      manager.configureClient(null);
+    } catch (IngestResponseException exception) {
+      assertEquals(
+          exception.getMessage(),
+          "HTTP Status: 404 ErrorBody: {\n"
+              + "  \"data\" : null,\n"
+              + "  \"code\" : \"390404\",\n"
+              + "  \"message\" : \"Specified object does not exist or not authorized. Pipe not found\",\n"
+              + "  \"success\" : false,\n"
+              + "  \"headers\" : null\n"
+              + "}");
+    }
+  }
+
+  @Test
+  public void testGetClientStatusHappyCase() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    manager.configureClient(null);
+    ClientStatusResponse clientStatusResponse = manager.getClientStatus(null);
+    assertEquals(0L,clientStatusResponse.getClientSequencer().longValue());
+    assertEquals(null,clientStatusResponse.getOffsetToken());
+  }
+
+  @Test
+  public void testGetClientStatusNoPipeFound() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
+    try {
+      manager.getClientStatus(null);
+    } catch (IngestResponseException exception) {
+      assertEquals(
+          exception.getMessage(),
+          "HTTP Status: 404 ErrorBody: {\n"
+              + "  \"data\" : null,\n"
+              + "  \"code\" : \"390404\",\n"
+              + "  \"message\" : \"Specified object does not exist or not authorized. Pipe not found\",\n"
+              + "  \"success\" : false,\n"
+              + "  \"headers\" : null\n"
+              + "}");
     }
   }
 }

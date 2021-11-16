@@ -13,7 +13,7 @@ import java.io.IOException;
  * Exception will capture error message when Snowflake encounters an error during ingest or if
  * trying to retrieve history report/ Created by vganesh on 5/20/17.
  */
-public class IngestResponseException extends java.lang.Exception {
+public class IngestResponseException extends Exception {
   // HTTP error code sent back from Snowflake
   private int errorCode;
   private IngestExceptionBody errorBody;
@@ -62,7 +62,7 @@ public class IngestResponseException extends java.lang.Exception {
     static IngestExceptionBody parseBody(String blob) throws IOException {
       IngestExceptionBody body;
       try {
-        body = mapper.readValue(blob, IngestResponseException.IngestExceptionBody.class);
+        body = mapper.readValue(blob, IngestExceptionBody.class);
       } catch (JsonParseException | JsonMappingException e) {
         body = new IngestExceptionBody(blob);
       }

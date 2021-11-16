@@ -22,12 +22,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import net.snowflake.ingest.connection.HistoryRangeResponse;
-import net.snowflake.ingest.connection.HistoryResponse;
-import net.snowflake.ingest.connection.IngestResponse;
-import net.snowflake.ingest.connection.IngestResponseException;
-import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.ServiceResponseHandler;
+
+import net.snowflake.ingest.connection.*;
 import net.snowflake.ingest.utils.BackOffException;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.StagedFileWrapper;
@@ -597,7 +593,7 @@ public class SimpleIngestManager implements AutoCloseable {
    * Pings the service to see the current ingest history for this table
    *
    * @param requestId a UUID we use to label the request, if null, one is generated for the user
-   *     * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format. Missing
+   * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format. Missing
    *     millisecond part in string will lead to a zero milliseconds. This is a required query
    *     parameter, and a 400 will be returned if this query parameter is missing
    * @param endTimeExclusive End time exclusive of scan range. If this query parameter is missing or
@@ -623,6 +619,44 @@ public class SimpleIngestManager implements AutoCloseable {
 
     LOGGER.info("Attempting to unmarshall history range response - {}", response);
     return ServiceResponseHandler.unmarshallHistoryRangeResponse(response);
+  }
+
+  /**
+   * Register a snowpipe client and returns the client sequencer
+   *
+   * @param requestId  a UUID we use to label the request, if null, one is generated for the user
+   * @return
+   * @throws URISyntaxException
+   * @throws IOException
+   * @throws IngestResponseException
+   */
+  public ConfigureClientResponse configureClient(
+          UUID requestId) throws URISyntaxException, IOException, IngestResponseException {
+    if (requestId == null) {
+      requestId = UUID.randomUUID();
+    }
+    HttpResponse response = httpClient.execute(builder.generateConfigureClientRequest(requestId, pipe));
+    LOGGER.info("Attempting to unmarshall configure client response - {}", response);
+    return ServiceResponseHandler.unmarshallConfigureClientResponse(response);
+  }
+
+  /**
+   * Get client status for snowpipe which contains offset token and client sequencer
+   *
+   * @param requestId  a UUID we use to label the request, if null, one is generated for the user
+   * @return
+   * @throws URISyntaxException
+   * @throws IOException
+   * @throws IngestResponseException
+   */
+  public ClientStatusResponse getClientStatus(
+          UUID requestId) throws URISyntaxException, IOException, IngestResponseException {
+    if (requestId == null) {
+      requestId = UUID.randomUUID();
+    }
+    HttpResponse response = httpClient.execute(builder.generateGetClientStatusRequest(requestId, pipe));
+    LOGGER.info("Attempting to unmarshall get client status response - {}", response);
+    return ServiceResponseHandler.unmarshallGetClientStatus(response);
   }
 
   /**
