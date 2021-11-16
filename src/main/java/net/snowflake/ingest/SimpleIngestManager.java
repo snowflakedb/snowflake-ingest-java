@@ -624,18 +624,19 @@ public class SimpleIngestManager implements AutoCloseable {
   /**
    * Register a snowpipe client and returns the client sequencer
    *
-   * @param requestId  a UUID we use to label the request, if null, one is generated for the user
+   * @param requestId a UUID we use to label the request, if null, one is generated for the user
    * @return
    * @throws URISyntaxException
    * @throws IOException
    * @throws IngestResponseException
    */
-  public ConfigureClientResponse configureClient(
-          UUID requestId) throws URISyntaxException, IOException, IngestResponseException {
+  public ConfigureClientResponse configureClient(UUID requestId)
+      throws URISyntaxException, IOException, IngestResponseException {
     if (requestId == null) {
       requestId = UUID.randomUUID();
     }
-    HttpResponse response = httpClient.execute(builder.generateConfigureClientRequest(requestId, pipe));
+    HttpResponse response =
+        httpClient.execute(builder.generateConfigureClientRequest(requestId, pipe));
     LOGGER.info("Attempting to unmarshall configure client response - {}", response);
     return ServiceResponseHandler.unmarshallConfigureClientResponse(response);
   }
@@ -643,18 +644,19 @@ public class SimpleIngestManager implements AutoCloseable {
   /**
    * Get client status for snowpipe which contains offset token and client sequencer
    *
-   * @param requestId  a UUID we use to label the request, if null, one is generated for the user
+   * @param requestId a UUID we use to label the request, if null, one is generated for the user
    * @return
    * @throws URISyntaxException
    * @throws IOException
    * @throws IngestResponseException
    */
-  public ClientStatusResponse getClientStatus(
-          UUID requestId) throws URISyntaxException, IOException, IngestResponseException {
+  public ClientStatusResponse getClientStatus(UUID requestId)
+      throws URISyntaxException, IOException, IngestResponseException {
     if (requestId == null) {
       requestId = UUID.randomUUID();
     }
-    HttpResponse response = httpClient.execute(builder.generateGetClientStatusRequest(requestId, pipe));
+    HttpResponse response =
+        httpClient.execute(builder.generateGetClientStatusRequest(requestId, pipe));
     LOGGER.info("Attempting to unmarshall get client status response - {}", response);
     return ServiceResponseHandler.unmarshallGetClientStatus(response);
   }

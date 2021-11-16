@@ -318,7 +318,7 @@ public class SimpleIngestIT {
     final String userAgentSuffix = "kafka-provider/NONE";
     SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
     ConfigureClientResponse configureClientResponse = manager.configureClient(null);
-    assertEquals(0L,configureClientResponse.getClientSequencer().longValue());
+    assertEquals(0L, configureClientResponse.getClientSequencer().longValue());
   }
 
   @Test
@@ -346,8 +346,8 @@ public class SimpleIngestIT {
     SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
     manager.configureClient(null);
     ClientStatusResponse clientStatusResponse = manager.getClientStatus(null);
-    assertEquals(0L,clientStatusResponse.getClientSequencer().longValue());
-    assertEquals(null,clientStatusResponse.getOffsetToken());
+    assertEquals(0L, clientStatusResponse.getClientSequencer().longValue());
+    assertEquals(null, clientStatusResponse.getOffsetToken());
   }
 
   @Test

@@ -81,7 +81,8 @@ public final class RequestBuilder {
   private static final String HISTORY_RANGE_ENDPOINT_FORMAT = "/v1/data/pipes/%s/loadHistoryScan";
 
   // the endpoint for configure snowpipe client
-  private static final String CONFIGURE_CLIENT_ENDPOINT_FORMAT = "/v1/data/pipes/%s/client/configure";
+  private static final String CONFIGURE_CLIENT_ENDPOINT_FORMAT =
+      "/v1/data/pipes/%s/client/configure";
 
   // the endpoint for get snowpipe client status
   private static final String CLIENT_STATUS_ENDPOINT_FORMAT = "/v1/data/pipes/%s/client/status";
@@ -434,16 +435,16 @@ public final class RequestBuilder {
   }
 
   /**
-   * makeConfigureClientURI - Given a request UUID, and a fully qualified pipe name make a URI for the
-   * configure snowpipe client
+   * makeConfigureClientURI - Given a request UUID, and a fully qualified pipe name make a URI for
+   * the configure snowpipe client
+   *
    * @param requestId the label for this request
    * @param pipe the pipe name
    * @return configure snowpipe client URI
    * @throws URISyntaxException
    */
-  private URI makeConfigureClientURI(
-          UUID requestId, String pipe) throws URISyntaxException {
-    if (pipe == null){
+  private URI makeConfigureClientURI(UUID requestId, String pipe) throws URISyntaxException {
+    if (pipe == null) {
       throw new IllegalArgumentException();
     }
     URIBuilder builder = makeBaseURI(requestId);
@@ -453,19 +454,20 @@ public final class RequestBuilder {
   }
 
   /**
-   * makeGetClientURI - Given a request UUID, and a fully qualified pipe name make a URI for getting snowpipe client
+   * makeGetClientURI - Given a request UUID, and a fully qualified pipe name make a URI for getting
+   * snowpipe client
+   *
    * @param requestId the label for this request
    * @param pipe the pipe name
    * @return get client URI
    * @throws URISyntaxException
    */
-  private URI makeGetClientURI(
-          UUID requestId, String pipe) throws URISyntaxException {
-    if (pipe == null){
+  private URI makeGetClientURI(UUID requestId, String pipe) throws URISyntaxException {
+    if (pipe == null) {
       throw new IllegalArgumentException();
     }
     URIBuilder builder = makeBaseURI(requestId);
-    builder.setPath(String.format(CLIENT_STATUS_ENDPOINT_FORMAT , pipe));
+    builder.setPath(String.format(CLIENT_STATUS_ENDPOINT_FORMAT, pipe));
     LOGGER.info("Final Get Client URIBuilder - {}", builder);
     return builder.build();
   }
@@ -612,14 +614,14 @@ public final class RequestBuilder {
 
   /**
    * generateConfigureClientRequest - given a requestId and a pipe, make a configure client request
+   *
    * @param requestID a UUID we will use to label this request
    * @param pipe a fully qualified pipe name
    * @return configure client request
    * @throws URISyntaxException
    */
-  public HttpPost generateConfigureClientRequest(
-          UUID requestID, String pipe)
-    throws URISyntaxException {
+  public HttpPost generateConfigureClientRequest(UUID requestID, String pipe)
+      throws URISyntaxException {
     URI configureClientURI = makeConfigureClientURI(requestID, pipe);
     HttpPost post = new HttpPost(configureClientURI);
     addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
@@ -628,20 +630,19 @@ public final class RequestBuilder {
 
   /**
    * generateGetClientStatusRequest - given a requestId and a pipe, make a get client status request
+   *
    * @param requestID UUID
    * @param pipe a fully qualified pipe name
    * @return get client status request
    * @throws URISyntaxException
    */
-  public HttpGet generateGetClientStatusRequest(
-          UUID requestID, String pipe)
-    throws URISyntaxException {
+  public HttpGet generateGetClientStatusRequest(UUID requestID, String pipe)
+      throws URISyntaxException {
     URI getClientStatusURI = makeGetClientURI(requestID, pipe);
     HttpGet get = new HttpGet(getClientStatusURI);
     addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
     return get;
   }
-
 
   /**
    * Closes the resources being used by RequestBuilder object. {@link SecurityManager} is one such
