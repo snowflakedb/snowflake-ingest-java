@@ -34,7 +34,7 @@ public final class ServiceResponseHandler {
   /**
    * isStatusOK - Checks if we have a status in the 2xx range
    *
-   * @param statusLine - the status line containing the code
+   * @param statusLine the status line containing the code
    * @return whether the status x is in the range [200, 300)
    */
   private static boolean isStatusOK(StatusLine statusLine) {
@@ -49,7 +49,7 @@ public final class ServiceResponseHandler {
    *
    * @param response the HTTPResponse we want to distill into an IngestResponse
    * @return An IngestResponse with all of the parsed out information
-   * @throws IOException - if our entity is somehow corrupt or we can't get it
+   * @throws IOException if our entity is somehow corrupt or we can't get it
    * @throws BackOffException if we have a 503 response
    */
   public static IngestResponse unmarshallIngestResponse(HttpResponse response)
@@ -166,9 +166,9 @@ public final class ServiceResponseHandler {
   /**
    * handleExceptionStatusCode - throws the correct error when response status is not OK
    *
-   * @param response
-   * @throws BackOffException -- if we have a 503 exception
-   * @throws IOException - if we don't know what it is
+   * @param response HttpResponse
+   * @throws BackOffException if we have a 503 exception
+   * @throws IOException if we don't know what it is
    */
   private static void handleExceptionalStatus(HttpResponse response)
       throws IOException, IngestResponseException {
@@ -186,7 +186,6 @@ public final class ServiceResponseHandler {
           LOGGER.warn("503 Status hit, backoff");
           throw new BackOffException();
 
-          // We don't know how to respond now...
         default:
           LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
           String blob = EntityUtils.toString(response.getEntity());

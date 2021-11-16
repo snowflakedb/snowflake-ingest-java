@@ -65,9 +65,6 @@ public class SimpleIngestIT {
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + num;
 
-//    TestUtils.executeQuery("use database SNOWPIPE_SDK_DB");
-//    TestUtils.executeQuery("use schema public");
-
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
     TestUtils.executeQuery("create or replace stage " + stageName);

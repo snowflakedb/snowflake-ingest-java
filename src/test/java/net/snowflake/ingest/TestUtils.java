@@ -18,7 +18,7 @@ import org.apache.commons.codec.binary.Base64;
 
 public class TestUtils {
   // profile path, follow readme for the format
-  private static final String PROFILE_PATH = "profile.json.example";
+  private static final String PROFILE_PATH = "profile.json";
 
   private static final ObjectMapper mapper = new ObjectMapper();
 
