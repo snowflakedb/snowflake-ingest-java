@@ -555,9 +555,6 @@ public class SimpleIngestManager implements AutoCloseable {
       requestId = UUID.randomUUID();
     }
 
-    // We're about to send this request number
-    LOGGER.info("Sending Request UUID - {}", requestId);
-
     HttpPost httpPostForIngestFile =
         builder.generateInsertRequest(requestId, pipe, files, showSkippedFiles);
 

@@ -173,7 +173,7 @@ public final class ServiceResponseHandler {
    *
    * @param response HttpResponse
    * @throws BackOffException if we have a 503 exception
-   * @throws IngestResponseException  for all other non OK status
+   * @throws IngestResponseException for all other non OK status
    */
   private static void handleExceptionalStatus(HttpResponse response)
       throws IOException, IngestResponseException {

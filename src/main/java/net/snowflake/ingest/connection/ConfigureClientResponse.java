@@ -16,6 +16,7 @@ public class ConfigureClientResponse {
 
   /**
    * unique identifier for the client
+   *
    * @return clientSequencer
    */
   public Long getClientSequencer() {

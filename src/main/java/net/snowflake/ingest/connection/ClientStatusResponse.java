@@ -25,6 +25,7 @@ public class ClientStatusResponse {
 
   /**
    * unique identifier for the client
+   *
    * @return clientSequencer
    */
   public Long getClientSequencer() {
@@ -33,6 +34,7 @@ public class ClientStatusResponse {
 
   /**
    * offset number for kafka connector
+   *
    * @return offsetToken
    */
   public String getOffsetToken() {
