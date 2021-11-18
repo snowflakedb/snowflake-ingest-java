@@ -23,10 +23,18 @@ public class ClientStatusResponse {
         + '}';
   }
 
+  /**
+   * unique identifier for the client
+   * @return clientSequencer
+   */
   public Long getClientSequencer() {
     return clientSequencer;
   }
 
+  /**
+   * offset number for kafka connector
+   * @return offsetToken
+   */
   public String getOffsetToken() {
     return offsetToken;
   }

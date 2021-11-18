@@ -23,7 +23,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import net.snowflake.ingest.connection.*;
+import net.snowflake.ingest.connection.ClientStatusResponse;
+import net.snowflake.ingest.connection.ConfigureClientResponse;
+import net.snowflake.ingest.connection.HistoryRangeResponse;
+import net.snowflake.ingest.connection.HistoryResponse;
+import net.snowflake.ingest.connection.IngestResponse;
+import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.BackOffException;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.StagedFileWrapper;
@@ -544,13 +551,15 @@ public class SimpleIngestManager implements AutoCloseable {
       throws URISyntaxException, IOException, IngestResponseException {
 
     // the request id we want to send with this payload
-    UUID request = requestId == null ? UUID.randomUUID() : requestId;
+    if (requestId == null || requestId.toString().isEmpty()) {
+      requestId = UUID.randomUUID();
+    }
 
     // We're about to send this request number
-    LOGGER.info("Sending Request UUID - {}", request);
+    LOGGER.info("Sending Request UUID - {}", requestId);
 
     HttpPost httpPostForIngestFile =
-        builder.generateInsertRequest(request, pipe, files, showSkippedFiles);
+        builder.generateInsertRequest(requestId, pipe, files, showSkippedFiles);
 
     // send the request and get a response....
     HttpResponse response = httpClient.execute(httpPostForIngestFile);
@@ -575,7 +584,7 @@ public class SimpleIngestManager implements AutoCloseable {
   public HistoryResponse getHistory(UUID requestId, Integer recentSeconds, String beginMark)
       throws URISyntaxException, IOException, IngestResponseException {
     // if we have no requestId generate one
-    if (requestId == null) {
+    if (requestId == null || requestId.toString().isEmpty()) {
       requestId = UUID.randomUUID();
     }
 
@@ -608,7 +617,7 @@ public class SimpleIngestManager implements AutoCloseable {
   public HistoryRangeResponse getHistoryRange(
       UUID requestId, String startTimeInclusive, String endTimeExclusive)
       throws URISyntaxException, IOException, IngestResponseException {
-    if (requestId == null) {
+    if (requestId == null || requestId.toString().isEmpty()) {
       requestId = UUID.randomUUID();
     }
 
@@ -632,7 +641,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public ConfigureClientResponse configureClient(UUID requestId)
       throws URISyntaxException, IOException, IngestResponseException {
-    if (requestId == null) {
+    if (requestId == null || requestId.toString().isEmpty()) {
       requestId = UUID.randomUUID();
     }
     HttpResponse response =
@@ -652,7 +661,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public ClientStatusResponse getClientStatus(UUID requestId)
       throws URISyntaxException, IOException, IngestResponseException {
-    if (requestId == null) {
+    if (requestId == null || requestId.toString().isEmpty()) {
       requestId = UUID.randomUUID();
     }
     HttpResponse response =

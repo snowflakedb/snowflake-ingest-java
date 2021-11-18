@@ -173,17 +173,12 @@ public final class ServiceResponseHandler {
    *
    * @param response HttpResponse
    * @throws BackOffException if we have a 503 exception
-   * @throws IOException if we don't know what it is
+   * @throws IngestResponseException  for all other non OK status
    */
   private static void handleExceptionalStatus(HttpResponse response)
       throws IOException, IngestResponseException {
     StatusLine statusLine = response.getStatusLine();
     if (!isStatusOK(statusLine)) {
-      // A network issue occurred!
-      LOGGER.warn(
-          "Exceptional Status Code found in " + "unmarshallHistoryRangeResponse - {}",
-          statusLine.getStatusCode());
-
       // if we have a 503 exception throw a backoff
       switch (statusLine.getStatusCode()) {
           // If we have a 503, BACKOFF

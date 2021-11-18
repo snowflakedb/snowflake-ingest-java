@@ -14,6 +14,10 @@ public class ConfigureClientResponse {
     return "IngestResponse{" + "clientSequencer='" + clientSequencer + '\'' + '}';
   }
 
+  /**
+   * unique identifier for the client
+   * @return clientSequencer
+   */
   public Long getClientSequencer() {
     return clientSequencer;
   }

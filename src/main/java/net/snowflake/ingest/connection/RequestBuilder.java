@@ -435,9 +435,19 @@ public final class RequestBuilder {
   }
 
   /**
-   * makeConfigureClientURI - Given a request UUID, and a fully qualified pipe name make a URI for
-   * the configure snowpipe client
+   * Given a request UUID, and a fully qualified pipe name make a URI for configure snowpipe client
+   * http://snowflakeURL{:PORT}/v1/data/pipes/{pipeName}/client/configure
    *
+   * <p>Where snowflake URL can be an old url or new regionless URL.
+   *
+   * <p>Request Body is Empty
+   *
+   * <p>And our response looks like:
+   * <pre>
+   *   {
+   *      'clientSequencer': LONG
+   *   }
+   * </pre>
    * @param requestId the label for this request
    * @param pipe the pipe name
    * @return configure snowpipe client URI
@@ -456,7 +466,19 @@ public final class RequestBuilder {
   /**
    * makeGetClientURI - Given a request UUID, and a fully qualified pipe name make a URI for getting
    * snowpipe client
+   * http://snowflakeURL{:PORT}/v1/data/pipes/{pipeName}/client/status
    *
+   * <p>Where snowflake URL can be an old url or new regionless URL.
+   *
+   * <p>Request Body is Empty
+   *
+   * <p>And our response looks like:
+   * <pre>
+   *   {
+   *      'offsetToken': STRING
+   *      'clientSequencer': LONG
+   *   }
+   * </pre>
    * @param requestId the label for this request
    * @param pipe the pipe name
    * @return get client URI
@@ -613,7 +635,7 @@ public final class RequestBuilder {
   }
 
   /**
-   * generateConfigureClientRequest - given a requestId and a pipe, make a configure client request
+   * Given a requestId and a pipe, make a configure client request
    *
    * @param requestID a UUID we will use to label this request
    * @param pipe a fully qualified pipe name
@@ -629,7 +651,7 @@ public final class RequestBuilder {
   }
 
   /**
-   * generateGetClientStatusRequest - given a requestId and a pipe, make a get client status request
+   * Given a requestId and a pipe, make a get client status request
    *
    * @param requestID UUID
    * @param pipe a fully qualified pipe name

@@ -24,13 +24,31 @@ public class IngestResponseException extends Exception {
     this.errorBody = body;
   }
 
+  /**
+   * Getter for error code
+   *
+   * @return int errorCode
+   */
+  public int getErrorCode() {
+    return errorCode;
+  }
+
+  /**
+   * Getter for error body
+   *
+   * @return IngestExceptionBody errorBody
+   */
+  public IngestExceptionBody getErrorBody() {
+    return errorBody;
+  }
+
   @Override
   public String toString() {
     return "\nHTTP Status: " + errorCode + "\n" + errorBody.toString();
   }
 
   /** Response exception REST message body sent back from Snowflake */
-  static class IngestExceptionBody {
+  public static class IngestExceptionBody {
     // Detailed object based information, if available
     private Object data;
 
@@ -47,6 +65,9 @@ public class IngestResponseException extends Exception {
     // a plain text blob.
     boolean validJson = true;
     String messageBlob;
+
+    // Snowflake message headers
+    private String headers;
 
     // POJO constructor for mapper
     public IngestExceptionBody() {}
@@ -119,6 +140,14 @@ public class IngestResponseException extends Exception {
 
     public void setSuccess(boolean success) {
       this.success = success;
+    }
+
+    public String getHeaders() {
+      return headers;
+    }
+
+    public void setHeaders(String headers) {
+      this.headers = headers;
     }
   }
 }
