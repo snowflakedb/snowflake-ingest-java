@@ -342,7 +342,9 @@ public class SimpleIngestIT {
       manager.configureClient(null);
     } catch (IngestResponseException exception) {
       assertEquals(404, exception.getErrorCode());
-      assertEquals("Specified object does not exist or not authorized. Pipe not found",  exception.getErrorBody().getMessage());
+      assertEquals(
+          "Specified object does not exist or not authorized. Pipe not found",
+          exception.getErrorBody().getMessage());
     }
   }
 
@@ -366,7 +368,9 @@ public class SimpleIngestIT {
       manager.getClientStatus(null);
     } catch (IngestResponseException exception) {
       assertEquals(404, exception.getErrorCode());
-      assertEquals("Specified object does not exist or not authorized. Pipe not found",  exception.getErrorBody().getMessage());
+      assertEquals(
+          "Specified object does not exist or not authorized. Pipe not found",
+          exception.getErrorBody().getMessage());
     }
   }
 }
