@@ -6,7 +6,6 @@ package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import net.snowflake.ingest.utils.BackOffException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
@@ -14,6 +13,9 @@ import org.apache.http.StatusLine;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.UUID;
 
 /**
  * This class handles taking the HttpResponses we've gotten back, and producing an appropriate
@@ -52,7 +54,7 @@ public final class ServiceResponseHandler {
    * @throws IOException if our entity is somehow corrupt or we can't get it
    * @throws BackOffException if we have a 503 response
    */
-  public static IngestResponse unmarshallIngestResponse(HttpResponse response)
+  public static IngestResponse unmarshallIngestResponse(HttpResponse response, UUID requestId)
       throws IOException, IngestResponseException {
     // we can't unmarshall a null response
     if (response == null) {
@@ -61,7 +63,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response);
+    handleExceptionalStatus(response, requestId, "InsertFiles");
 
     // grab the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -79,7 +81,7 @@ public final class ServiceResponseHandler {
    * @throws IOException - if we have an uncategorized network issue
    * @throws BackOffException - if have a 503 issue
    */
-  public static HistoryResponse unmarshallHistoryResponse(HttpResponse response)
+  public static HistoryResponse unmarshallHistoryResponse(HttpResponse response, UUID requestId)
       throws IOException, IngestResponseException {
     // we can't unmarshall a null response
     if (response == null) {
@@ -88,7 +90,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response);
+    handleExceptionalStatus(response, requestId, "GetHistory");
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -97,8 +99,8 @@ public final class ServiceResponseHandler {
     return mapper.readValue(blob, HistoryResponse.class);
   }
 
-  public static HistoryRangeResponse unmarshallHistoryRangeResponse(HttpResponse response)
-      throws IOException, IngestResponseException {
+  public static HistoryRangeResponse unmarshallHistoryRangeResponse(
+      HttpResponse response, UUID requestId) throws IOException, IngestResponseException {
 
     // we can't unmarshall a null response
     if (response == null) {
@@ -107,7 +109,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response);
+    handleExceptionalStatus(response, requestId, "GetHistoryRange");
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -125,15 +127,15 @@ public final class ServiceResponseHandler {
    * @throws IOException
    * @throws IngestResponseException
    */
-  public static ConfigureClientResponse unmarshallConfigureClientResponse(HttpResponse response)
-      throws IOException, IngestResponseException {
+  public static ConfigureClientResponse unmarshallConfigureClientResponse(
+      HttpResponse response, UUID requestId) throws IOException, IngestResponseException {
     if (response == null) {
       LOGGER.warn("Null response passed to unmarshallConfigureClientResponse");
       throw new IllegalArgumentException();
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response);
+    handleExceptionalStatus(response, requestId, "ConfigureClient");
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -151,15 +153,15 @@ public final class ServiceResponseHandler {
    * @throws IOException
    * @throws IngestResponseException
    */
-  public static ClientStatusResponse unmarshallGetClientStatus(HttpResponse response)
-      throws IOException, IngestResponseException {
+  public static ClientStatusResponse unmarshallGetClientStatus(
+      HttpResponse response, UUID requestId) throws IOException, IngestResponseException {
     if (response == null) {
       LOGGER.warn("Null response passed to unmarshallClientStatusResponse");
       throw new IllegalArgumentException();
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response);
+    handleExceptionalStatus(response, requestId, "GetClientStatus");
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -174,11 +176,17 @@ public final class ServiceResponseHandler {
    * @param response HttpResponse
    * @throws BackOffException if we have a 503 exception
    * @throws IngestResponseException for all other non OK status
+   * @trhows
    */
-  private static void handleExceptionalStatus(HttpResponse response)
+  private static void handleExceptionalStatus(HttpResponse response, UUID requestId, String apiName)
       throws IOException, IngestResponseException {
     StatusLine statusLine = response.getStatusLine();
     if (!isStatusOK(statusLine)) {
+      LOGGER.error(
+          "Exceptional Status Code from {}: {}, requestId:{}",
+          apiName,
+          statusLine.getStatusCode(),
+          requestId.toString());
       // if we have a 503 exception throw a backoff
       switch (statusLine.getStatusCode()) {
           // If we have a 503, BACKOFF
@@ -187,12 +195,13 @@ public final class ServiceResponseHandler {
           throw new BackOffException();
 
         default:
-          LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
           String blob = EntityUtils.toString(response.getEntity());
           throw new IngestResponseException(
               statusLine.getStatusCode(),
               IngestResponseException.IngestExceptionBody.parseBody(blob));
       }
+    } else {
+      LOGGER.info("OK status code from {}, requestId: {}", apiName, requestId.toString());
     }
   }
 }

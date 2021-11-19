@@ -4,10 +4,6 @@
 
 package net.snowflake.ingest.utils;
 
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
-
-import java.security.Security;
-import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -31,11 +27,16 @@ import org.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import java.security.Security;
+
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+
 /** Created by hyu on 8/10/17. */
 public class HttpUtil {
-  private static String USE_PROXY = "http.useProxy";
-  private static String PROXY_HOST = "http.proxyHost";
-  private static String PROXY_PORT = "http.proxyPort";
+  private static final String USE_PROXY = "http.useProxy";
+  private static final String PROXY_HOST = "http.proxyHost";
+  private static final String PROXY_PORT = "http.proxyPort";
 
   private static final String HTTP_PROXY_USER = "http.proxyUser";
   private static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
@@ -109,17 +110,19 @@ public class HttpUtil {
   private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
     return new ServiceUnavailableRetryStrategy() {
       private int executionCount = 0;
-      int REQUEST_TIMEOUT = 408;
+      final int REQUEST_TIMEOUT = 408;
 
       @Override
       public boolean retryRequest(
           final HttpResponse response, final int executionCount, final HttpContext context) {
         this.executionCount = executionCount;
         int statusCode = response.getStatusLine().getStatusCode();
-        LOGGER.info(
-            "In retryRequest for service unavailability with statusCode:{} and uri:{}",
-            statusCode,
-            getRequestUriFromContext(context));
+        if (statusCode != 200) {
+          LOGGER.debug(
+              "In retryRequest for service unavailability with statusCode:{} and uri:{}",
+              statusCode,
+              getRequestUriFromContext(context));
+        }
         if (executionCount == MAX_RETRIES + 1) {
           LOGGER.info("Reached the max retry time, not retrying anymore");
           return false;

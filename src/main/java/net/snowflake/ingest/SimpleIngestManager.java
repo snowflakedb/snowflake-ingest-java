@@ -4,25 +4,6 @@
 
 package net.snowflake.ingest;
 
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.interfaces.RSAPrivateCrtKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
 import net.snowflake.ingest.connection.ClientStatusResponse;
 import net.snowflake.ingest.connection.ConfigureClientResponse;
 import net.snowflake.ingest.connection.HistoryRangeResponse;
@@ -40,6 +21,25 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
 /**
  * This class provides a basic, low-level abstraction over the Snowflake Ingest Service REST api
@@ -495,7 +495,7 @@ public class SimpleIngestManager implements AutoCloseable {
    *     construction failure
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId)
-      throws URISyntaxException, IOException, Exception {
+      throws Exception {
     return ingestFiles(Collections.singletonList(file), requestId);
   }
 
@@ -512,7 +512,7 @@ public class SimpleIngestManager implements AutoCloseable {
    *     construction failure
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId, boolean showSkippedFiles)
-      throws URISyntaxException, IOException, Exception {
+      throws Exception {
     return ingestFiles(Collections.singletonList(file), requestId, showSkippedFiles);
   }
 
@@ -562,7 +562,7 @@ public class SimpleIngestManager implements AutoCloseable {
     HttpResponse response = httpClient.execute(httpPostForIngestFile);
 
     LOGGER.info("Attempting to unmarshall insert response - {}", response);
-    return ServiceResponseHandler.unmarshallIngestResponse(response);
+    return ServiceResponseHandler.unmarshallIngestResponse(response, requestId);
   }
 
   /**
@@ -592,7 +592,7 @@ public class SimpleIngestManager implements AutoCloseable {
     HttpResponse response = httpClient.execute(httpGetHistory);
 
     LOGGER.info("Attempting to unmarshall history response - {}", response);
-    return ServiceResponseHandler.unmarshallHistoryResponse(response);
+    return ServiceResponseHandler.unmarshallHistoryResponse(response, requestId);
   }
 
   /**
@@ -624,7 +624,7 @@ public class SimpleIngestManager implements AutoCloseable {
                 requestId, pipe, startTimeInclusive, endTimeExclusive));
 
     LOGGER.info("Attempting to unmarshall history range response - {}", response);
-    return ServiceResponseHandler.unmarshallHistoryRangeResponse(response);
+    return ServiceResponseHandler.unmarshallHistoryRangeResponse(response, requestId);
   }
 
   /**
@@ -644,7 +644,7 @@ public class SimpleIngestManager implements AutoCloseable {
     HttpResponse response =
         httpClient.execute(builder.generateConfigureClientRequest(requestId, pipe));
     LOGGER.info("Attempting to unmarshall configure client response - {}", response);
-    return ServiceResponseHandler.unmarshallConfigureClientResponse(response);
+    return ServiceResponseHandler.unmarshallConfigureClientResponse(response, requestId);
   }
 
   /**
@@ -664,7 +664,7 @@ public class SimpleIngestManager implements AutoCloseable {
     HttpResponse response =
         httpClient.execute(builder.generateGetClientStatusRequest(requestId, pipe));
     LOGGER.info("Attempting to unmarshall get client status response - {}", response);
-    return ServiceResponseHandler.unmarshallGetClientStatus(response);
+    return ServiceResponseHandler.unmarshallGetClientStatus(response, requestId);
   }
 
   /**

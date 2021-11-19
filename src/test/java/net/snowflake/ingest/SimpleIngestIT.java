@@ -1,21 +1,5 @@
 package net.snowflake.ingest;
 
-import static net.snowflake.ingest.connection.RequestBuilder.CLIENT_NAME;
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
-import static net.snowflake.ingest.connection.RequestBuilder.JAVA_USER_AGENT;
-import static net.snowflake.ingest.connection.RequestBuilder.OS_INFO_USER_AGENT_FORMAT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.net.URL;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.connection.ClientStatusResponse;
 import net.snowflake.ingest.connection.ConfigureClientResponse;
@@ -30,6 +14,25 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import java.net.URL;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static net.snowflake.ingest.connection.RequestBuilder.CLIENT_NAME;
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
+import static net.snowflake.ingest.connection.RequestBuilder.JAVA_USER_AGENT;
+import static net.snowflake.ingest.connection.RequestBuilder.OS_INFO_USER_AGENT_FORMAT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /** Example ingest sdk integration test */
 public class SimpleIngestIT {
