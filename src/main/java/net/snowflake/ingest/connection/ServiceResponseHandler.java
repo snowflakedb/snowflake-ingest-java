@@ -50,12 +50,14 @@ public final class ServiceResponseHandler {
    * IngestResponse object
    *
    * @param response the HTTPResponse we want to distill into an IngestResponse
+   * @param requestId
    * @return An IngestResponse with all of the parsed out information
    * @throws IOException if our entity is somehow corrupt or we can't get it
-   * @throws BackOffException if we have a 503 response
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
    */
   public static IngestResponse unmarshallIngestResponse(HttpResponse response, UUID requestId)
-      throws IOException, IngestResponseException {
+      throws IOException, IngestResponseException, BackOffException {
     // we can't unmarshall a null response
     if (response == null) {
       LOGGER.warn("Null argument passed to unmarshallIngestResponse");
@@ -77,12 +79,14 @@ public final class ServiceResponseHandler {
    * HistoryResponse object
    *
    * @param response the HttpResponse object we are trying to deserialize
+   * @param requestId
    * @return a HistoryResponse with all the parsed out information
-   * @throws IOException - if we have an uncategorized network issue
-   * @throws BackOffException - if have a 503 issue
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
    */
   public static HistoryResponse unmarshallHistoryResponse(HttpResponse response, UUID requestId)
-      throws IOException, IngestResponseException {
+      throws IOException, IngestResponseException, BackOffException {
     // we can't unmarshall a null response
     if (response == null) {
       LOGGER.warn("Null response passed to unmarshallHistoryResponse");
@@ -99,8 +103,19 @@ public final class ServiceResponseHandler {
     return mapper.readValue(blob, HistoryResponse.class);
   }
 
+  /**
+   * Given an HttpResponse object - attempts to deserialize it into a HistoryRangeResponse
+   *
+   * @param response the HttpResponse object we are trying to deserialize
+   * @param requestId
+   * @return HistoryRangeResponse
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
+   */
   public static HistoryRangeResponse unmarshallHistoryRangeResponse(
-      HttpResponse response, UUID requestId) throws IOException, IngestResponseException {
+      HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
 
     // we can't unmarshall a null response
     if (response == null) {
@@ -123,12 +138,15 @@ public final class ServiceResponseHandler {
    * into a ConfigureClientResponse
    *
    * @param response HttpResponse
+   * @param requestId
    * @return ConfigureClientResponse
-   * @throws IOException
-   * @throws IngestResponseException
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
    */
   public static ConfigureClientResponse unmarshallConfigureClientResponse(
-      HttpResponse response, UUID requestId) throws IOException, IngestResponseException {
+      HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
     if (response == null) {
       LOGGER.warn("Null response passed to unmarshallConfigureClientResponse");
       throw new IllegalArgumentException();
@@ -149,12 +167,15 @@ public final class ServiceResponseHandler {
    * ClientStatusResponse
    *
    * @param response HttpResponse
+   * @param requestId
    * @return ClientStatusResponse
-   * @throws IOException
-   * @throws IngestResponseException
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
    */
   public static ClientStatusResponse unmarshallGetClientStatus(
-      HttpResponse response, UUID requestId) throws IOException, IngestResponseException {
+      HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
     if (response == null) {
       LOGGER.warn("Null response passed to unmarshallClientStatusResponse");
       throw new IllegalArgumentException();
@@ -174,12 +195,13 @@ public final class ServiceResponseHandler {
    * handleExceptionStatusCode - throws the correct error when response status is not OK
    *
    * @param response HttpResponse
-   * @throws BackOffException if we have a 503 exception
-   * @throws IngestResponseException for all other non OK status
-   * @trhows
+   * @param requestId
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - for all other non OK status
+   * @throws BackOffException - if we have a 503 issue
    */
   private static void handleExceptionalStatus(HttpResponse response, UUID requestId, String apiName)
-      throws IOException, IngestResponseException {
+      throws IOException, IngestResponseException, BackOffException {
     StatusLine statusLine = response.getStatusLine();
     if (!isStatusOK(statusLine)) {
       LOGGER.error(
