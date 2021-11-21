@@ -117,12 +117,6 @@ public class HttpUtil {
           final HttpResponse response, final int executionCount, final HttpContext context) {
         this.executionCount = executionCount;
         int statusCode = response.getStatusLine().getStatusCode();
-        if (statusCode != 200) {
-          LOGGER.debug(
-              "In retryRequest for service unavailability with statusCode:{} and uri:{}",
-              statusCode,
-              getRequestUriFromContext(context));
-        }
         if (executionCount == MAX_RETRIES + 1) {
           LOGGER.info("Reached the max retry time, not retrying anymore");
           return false;
@@ -132,6 +126,10 @@ public class HttpUtil {
                 && executionCount < MAX_RETRIES + 1;
         if (needNextRetry) {
           long interval = (1 << executionCount) * 1000;
+          LOGGER.info(
+                  "In retryRequest for service unavailability with statusCode:{} and uri:{}",
+                  statusCode,
+                  getRequestUriFromContext(context));
           LOGGER.info("Sleep time in millisecond: {}, retryCount: {}", interval, executionCount);
         }
         return needNextRetry;
