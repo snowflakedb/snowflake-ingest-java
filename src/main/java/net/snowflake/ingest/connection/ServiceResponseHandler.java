@@ -24,7 +24,9 @@ import java.util.UUID;
 public final class ServiceResponseHandler {
   // Create a logger for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
-
+  private enum ApiName{
+    InsertFiles, GetHistory, GetHistoryRange, ConfigureClient, GetClientStatus
+  }
   // the object mapper we use for deserialization
   static ObjectMapper mapper = new ObjectMapper();
 
@@ -65,7 +67,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, "InsertFiles");
+    handleExceptionalStatus(response, requestId, ApiName.InsertFiles);
 
     // grab the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -94,7 +96,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, "GetHistory");
+    handleExceptionalStatus(response, requestId, ApiName.GetHistory);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -124,7 +126,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, "GetHistoryRange");
+    handleExceptionalStatus(response, requestId, ApiName.GetHistoryRange);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -153,7 +155,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, "ConfigureClient");
+    handleExceptionalStatus(response, requestId, ApiName.ConfigureClient);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -182,7 +184,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, "GetClientStatus");
+    handleExceptionalStatus(response, requestId, ApiName.GetClientStatus);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -200,7 +202,7 @@ public final class ServiceResponseHandler {
    * @throws IngestResponseException - for all other non OK status
    * @throws BackOffException - if we have a 503 issue
    */
-  private static void handleExceptionalStatus(HttpResponse response, UUID requestId, String apiName)
+  private static void handleExceptionalStatus(HttpResponse response, UUID requestId, ApiName apiName)
       throws IOException, IngestResponseException, BackOffException {
     StatusLine statusLine = response.getStatusLine();
     if (!isStatusOK(statusLine)) {
@@ -222,8 +224,6 @@ public final class ServiceResponseHandler {
               statusLine.getStatusCode(),
               IngestResponseException.IngestExceptionBody.parseBody(blob));
       }
-    } else {
-      LOGGER.info("OK status code from {}, requestId: {}", apiName, requestId.toString());
     }
   }
 }
