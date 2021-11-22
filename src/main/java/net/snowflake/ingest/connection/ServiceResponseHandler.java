@@ -24,7 +24,11 @@ public final class ServiceResponseHandler {
   // Create a logger for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
 
-  /** Enum for every public api, used in handleExceptionalStatus for logging purpose */
+  /**
+   * Enums for Snowpipe REST API:
+   * https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-apis.html Used in
+   * handleExceptionalStatus for logging purpose
+   */
   private enum ApiName {
     INSERT_FILES("POST"),
     INSERT_REPORT("GET"),
@@ -221,19 +225,19 @@ public final class ServiceResponseHandler {
       throws IOException, IngestResponseException, BackOffException {
     StatusLine statusLine = response.getStatusLine();
     if (!isStatusOK(statusLine)) {
-      LOGGER.error(
-          "Exceptional Status Code from {}: {}, requestId:{}",
-          apiName,
-          statusLine.getStatusCode(),
-          requestId.toString());
       // if we have a 503 exception throw a backoff
       switch (statusLine.getStatusCode()) {
           // If we have a 503, BACKOFF
         case HttpStatus.SC_SERVICE_UNAVAILABLE:
-          LOGGER.warn("503 Status hit, backoff");
+          LOGGER.warn(
+              "503 Status hit from {}, backoff, requestId:{}", apiName, requestId.toString());
           throw new BackOffException();
-
         default:
+          LOGGER.error(
+              "Exceptional Status Code from {}: {}, requestId:{}",
+              apiName,
+              statusLine.getStatusCode(),
+              requestId.toString());
           String blob = EntityUtils.toString(response.getEntity());
           throw new IngestResponseException(
               statusLine.getStatusCode(),
