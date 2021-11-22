@@ -24,9 +24,7 @@ public final class ServiceResponseHandler {
   // Create a logger for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
 
-  /**
-   * Enum for every public api, used in handleExceptionalStatus for logging purpose
-   */
+  /** Enum for every public api, used in handleExceptionalStatus for logging purpose */
   private enum ApiName {
     INSERT_FILES("POST"),
     INSERT_REPORT("GET"),
