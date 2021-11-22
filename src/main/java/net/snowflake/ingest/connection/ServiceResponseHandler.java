@@ -6,6 +6,8 @@ package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.UUID;
 import net.snowflake.ingest.utils.BackOffException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
@@ -14,9 +16,6 @@ import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.UUID;
-
 /**
  * This class handles taking the HttpResponses we've gotten back, and producing an appropriate
  * response object for usage
@@ -24,8 +23,22 @@ import java.util.UUID;
 public final class ServiceResponseHandler {
   // Create a logger for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
-  private enum ApiName{
-    InsertFiles, GetHistory, GetHistoryRange, ConfigureClient, GetClientStatus
+
+  private enum ApiName {
+    INSERT_FILES("POST"),
+    INSERT_REPORT("GET"),
+    LOAD_HISTORY_SCAN("GET"),
+    CLIENT_CONFIGURE("POST"),
+    CLIENT_STATUS("GET");
+    private final String httpMethod;
+
+    private ApiName(String httpMethod) {
+      this.httpMethod = httpMethod;
+    }
+
+    public String getHttpMethod() {
+      return httpMethod;
+    }
   }
   // the object mapper we use for deserialization
   static ObjectMapper mapper = new ObjectMapper();
@@ -67,7 +80,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.InsertFiles);
+    handleExceptionalStatus(response, requestId, ApiName.INSERT_FILES);
 
     // grab the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -96,7 +109,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.GetHistory);
+    handleExceptionalStatus(response, requestId, ApiName.INSERT_REPORT);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -126,7 +139,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.GetHistoryRange);
+    handleExceptionalStatus(response, requestId, ApiName.LOAD_HISTORY_SCAN);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -155,7 +168,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.ConfigureClient);
+    handleExceptionalStatus(response, requestId, ApiName.CLIENT_CONFIGURE);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -184,7 +197,7 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.GetClientStatus);
+    handleExceptionalStatus(response, requestId, ApiName.CLIENT_STATUS);
 
     // grab the string version of the response entity
     String blob = EntityUtils.toString(response.getEntity());
@@ -202,7 +215,8 @@ public final class ServiceResponseHandler {
    * @throws IngestResponseException - for all other non OK status
    * @throws BackOffException - if we have a 503 issue
    */
-  private static void handleExceptionalStatus(HttpResponse response, UUID requestId, ApiName apiName)
+  private static void handleExceptionalStatus(
+      HttpResponse response, UUID requestId, ApiName apiName)
       throws IOException, IngestResponseException, BackOffException {
     StatusLine statusLine = response.getStatusLine();
     if (!isStatusOK(statusLine)) {

@@ -4,6 +4,24 @@
 
 package net.snowflake.ingest;
 
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPublicKeySpec;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.connection.ClientStatusResponse;
 import net.snowflake.ingest.connection.ConfigureClientResponse;
 import net.snowflake.ingest.connection.HistoryRangeResponse;
@@ -21,25 +39,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.interfaces.RSAPrivateCrtKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
 /**
  * This class provides a basic, low-level abstraction over the Snowflake Ingest Service REST api

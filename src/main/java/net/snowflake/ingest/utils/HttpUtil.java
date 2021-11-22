@@ -4,6 +4,10 @@
 
 package net.snowflake.ingest.utils;
 
+import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+
+import java.security.Security;
+import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -26,11 +30,6 @@ import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.net.ssl.SSLContext;
-import java.security.Security;
-
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
 /** Created by hyu on 8/10/17. */
 public class HttpUtil {
@@ -127,9 +126,9 @@ public class HttpUtil {
         if (needNextRetry) {
           long interval = (1 << executionCount) * 1000;
           LOGGER.info(
-                  "In retryRequest for service unavailability with statusCode:{} and uri:{}",
-                  statusCode,
-                  getRequestUriFromContext(context));
+              "In retryRequest for service unavailability with statusCode:{} and uri:{}",
+              statusCode,
+              getRequestUriFromContext(context));
           LOGGER.info("Sleep time in millisecond: {}, retryCount: {}", interval, executionCount);
         }
         return needNextRetry;
