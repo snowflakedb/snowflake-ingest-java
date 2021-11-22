@@ -125,7 +125,7 @@ public class HttpUtil {
                 && executionCount < MAX_RETRIES + 1;
         if (needNextRetry) {
           long interval = (1 << executionCount) * 1000;
-          LOGGER.info(
+          LOGGER.warn(
               "In retryRequest for service unavailability with statusCode:{} and uri:{}",
               statusCode,
               getRequestUriFromContext(context));
