@@ -33,9 +33,9 @@ import org.slf4j.LoggerFactory;
 
 /** Created by hyu on 8/10/17. */
 public class HttpUtil {
-  private static String USE_PROXY = "http.useProxy";
-  private static String PROXY_HOST = "http.proxyHost";
-  private static String PROXY_PORT = "http.proxyPort";
+  private static final String USE_PROXY = "http.useProxy";
+  private static final String PROXY_HOST = "http.proxyHost";
+  private static final String PROXY_PORT = "http.proxyPort";
 
   private static final String HTTP_PROXY_USER = "http.proxyUser";
   private static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
@@ -109,17 +109,13 @@ public class HttpUtil {
   private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
     return new ServiceUnavailableRetryStrategy() {
       private int executionCount = 0;
-      int REQUEST_TIMEOUT = 408;
+      final int REQUEST_TIMEOUT = 408;
 
       @Override
       public boolean retryRequest(
           final HttpResponse response, final int executionCount, final HttpContext context) {
         this.executionCount = executionCount;
         int statusCode = response.getStatusLine().getStatusCode();
-        LOGGER.info(
-            "In retryRequest for service unavailability with statusCode:{} and uri:{}",
-            statusCode,
-            getRequestUriFromContext(context));
         if (executionCount == MAX_RETRIES + 1) {
           LOGGER.info("Reached the max retry time, not retrying anymore");
           return false;
@@ -129,6 +125,10 @@ public class HttpUtil {
                 && executionCount < MAX_RETRIES + 1;
         if (needNextRetry) {
           long interval = (1 << executionCount) * 1000;
+          LOGGER.warn(
+              "In retryRequest for service unavailability with statusCode:{} and uri:{}",
+              statusCode,
+              getRequestUriFromContext(context));
           LOGGER.info("Sleep time in millisecond: {}, retryCount: {}", interval, executionCount);
         }
         return needNextRetry;

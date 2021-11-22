@@ -13,7 +13,7 @@ import java.io.IOException;
  * Exception will capture error message when Snowflake encounters an error during ingest or if
  * trying to retrieve history report/ Created by vganesh on 5/20/17.
  */
-public class IngestResponseException extends java.lang.Exception {
+public class IngestResponseException extends Exception {
   // HTTP error code sent back from Snowflake
   private int errorCode;
   private IngestExceptionBody errorBody;
@@ -24,13 +24,31 @@ public class IngestResponseException extends java.lang.Exception {
     this.errorBody = body;
   }
 
+  /**
+   * Getter for error code
+   *
+   * @return int errorCode
+   */
+  public int getErrorCode() {
+    return errorCode;
+  }
+
+  /**
+   * Getter for error body
+   *
+   * @return IngestExceptionBody errorBody
+   */
+  public IngestExceptionBody getErrorBody() {
+    return errorBody;
+  }
+
   @Override
   public String toString() {
     return "\nHTTP Status: " + errorCode + "\n" + errorBody.toString();
   }
 
   /** Response exception REST message body sent back from Snowflake */
-  static class IngestExceptionBody {
+  public static class IngestExceptionBody {
     // Detailed object based information, if available
     private Object data;
 
@@ -48,6 +66,9 @@ public class IngestResponseException extends java.lang.Exception {
     boolean validJson = true;
     String messageBlob;
 
+    // Snowflake message headers
+    private String headers;
+
     // POJO constructor for mapper
     public IngestExceptionBody() {}
     // When exception JSON does not match, store message as blob
@@ -62,7 +83,7 @@ public class IngestResponseException extends java.lang.Exception {
     static IngestExceptionBody parseBody(String blob) throws IOException {
       IngestExceptionBody body;
       try {
-        body = mapper.readValue(blob, IngestResponseException.IngestExceptionBody.class);
+        body = mapper.readValue(blob, IngestExceptionBody.class);
       } catch (JsonParseException | JsonMappingException e) {
         body = new IngestExceptionBody(blob);
       }
@@ -119,6 +140,14 @@ public class IngestResponseException extends java.lang.Exception {
 
     public void setSuccess(boolean success) {
       this.success = success;
+    }
+
+    public String getHeaders() {
+      return headers;
+    }
+
+    public void setHeaders(String headers) {
+      this.headers = headers;
     }
   }
 }

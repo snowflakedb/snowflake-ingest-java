@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.connection.ClientStatusResponse;
+import net.snowflake.ingest.connection.ConfigureClientResponse;
 import net.snowflake.ingest.connection.HistoryRangeResponse;
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;
@@ -486,13 +488,14 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param file - a wrapper around a filename and size
    * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @return an insert response from the server
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
    * @throws URISyntaxException - if the provided account name was illegal and caused a URI
    *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException - if we have a 503 response
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId)
-      throws URISyntaxException, IOException, Exception {
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
     return ingestFiles(Collections.singletonList(file), requestId);
   }
 
@@ -503,13 +506,14 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @param showSkippedFiles - a flag which returns the files that were skipped when set to true.
    * @return an insert response from the server
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
    * @throws URISyntaxException - if the provided account name was illegal and caused a URI
    *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException - if we have a 503 response
    */
   public IngestResponse ingestFile(StagedFileWrapper file, UUID requestId, boolean showSkippedFiles)
-      throws URISyntaxException, IOException, Exception {
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
     return ingestFiles(Collections.singletonList(file), requestId, showSkippedFiles);
   }
 
@@ -519,14 +523,14 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param files - list of wrappers around filenames and sizes
    * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @return an insert response from the server
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws IngestResponseException - if snowflake encountered error during ingest
    * @throws URISyntaxException - if the provided account name was illegal and caused a URI
    *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException - if we have a 503 response
    */
   public IngestResponse ingestFiles(List<StagedFileWrapper> files, UUID requestId)
-      throws URISyntaxException, IOException, IngestResponseException {
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
     return ingestFiles(files, requestId, false);
   }
 
@@ -537,30 +541,29 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @param showSkippedFiles - a flag which returns the files that were skipped when set to true.
    * @return an insert response from the server
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws IngestResponseException - if snowflake encountered error during ingest
    * @throws URISyntaxException - if the provided account name was illegal and caused a URI
    *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException - if we have a 503 response
    */
   public IngestResponse ingestFiles(
       List<StagedFileWrapper> files, UUID requestId, boolean showSkippedFiles)
-      throws URISyntaxException, IOException, IngestResponseException {
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
 
     // the request id we want to send with this payload
-    UUID request = requestId == null ? UUID.randomUUID() : requestId;
-
-    // We're about to send this request number
-    LOGGER.info("Sending Request UUID - {}", request);
+    if (requestId == null || requestId.toString().isEmpty()) {
+      requestId = UUID.randomUUID();
+    }
 
     HttpPost httpPostForIngestFile =
-        builder.generateInsertRequest(request, pipe, files, showSkippedFiles);
+        builder.generateInsertRequest(requestId, pipe, files, showSkippedFiles);
 
     // send the request and get a response....
     HttpResponse response = httpClient.execute(httpPostForIngestFile);
 
     LOGGER.info("Attempting to unmarshall insert response - {}", response);
-    return ServiceResponseHandler.unmarshallIngestResponse(response);
+    return ServiceResponseHandler.unmarshallIngestResponse(response, requestId);
   }
 
   /**
@@ -570,16 +573,16 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param recentSeconds history only for items in the recentSeconds window
    * @param beginMark mark from which history should be fetched
    * @return a response showing the available ingest history from the service
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws IngestResponseException - if snowflake encountered a service error
    * @throws URISyntaxException - if the provided account name was illegal and caused a URI
    *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException - if we have a 503 response
    */
   public HistoryResponse getHistory(UUID requestId, Integer recentSeconds, String beginMark)
-      throws URISyntaxException, IOException, IngestResponseException {
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
     // if we have no requestId generate one
-    if (requestId == null) {
+    if (requestId == null || requestId.toString().isEmpty()) {
       requestId = UUID.randomUUID();
     }
 
@@ -590,29 +593,29 @@ public class SimpleIngestManager implements AutoCloseable {
     HttpResponse response = httpClient.execute(httpGetHistory);
 
     LOGGER.info("Attempting to unmarshall history response - {}", response);
-    return ServiceResponseHandler.unmarshallHistoryResponse(response);
+    return ServiceResponseHandler.unmarshallHistoryResponse(response, requestId);
   }
 
   /**
    * Pings the service to see the current ingest history for this table
    *
    * @param requestId a UUID we use to label the request, if null, one is generated for the user
-   *     * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format. Missing
+   * @param startTimeInclusive Start time inclusive of scan range, in ISO-8601 format. Missing
    *     millisecond part in string will lead to a zero milliseconds. This is a required query
    *     parameter, and a 400 will be returned if this query parameter is missing
    * @param endTimeExclusive End time exclusive of scan range. If this query parameter is missing or
    *     user provided value is later than current millis, then current millis is used.
    * @return a response showing the available ingest history from the service
-   * @throws BackOffException - if we have a 503 response
-   * @throws IOException - if we have some other network failure
-   * @throws IngestResponseException -if snowflake encountered a service error
-   * @throws URISyntaxException - if the provided account name was illegal and caused a URI
+   * @throws URISyntaxException if the provided account name was illegal and caused a URI
    *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException if we have a 503 response
    */
   public HistoryRangeResponse getHistoryRange(
       UUID requestId, String startTimeInclusive, String endTimeExclusive)
-      throws URISyntaxException, IOException, IngestResponseException {
-    if (requestId == null) {
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
+    if (requestId == null || requestId.toString().isEmpty()) {
       requestId = UUID.randomUUID();
     }
 
@@ -622,7 +625,51 @@ public class SimpleIngestManager implements AutoCloseable {
                 requestId, pipe, startTimeInclusive, endTimeExclusive));
 
     LOGGER.info("Attempting to unmarshall history range response - {}", response);
-    return ServiceResponseHandler.unmarshallHistoryRangeResponse(response);
+    return ServiceResponseHandler.unmarshallHistoryRangeResponse(response, requestId);
+  }
+
+  /**
+   * Register a snowpipe client and returns the client sequencer
+   *
+   * @param requestId a UUID we use to label the request, if null, one is generated for the user
+   * @return
+   * @throws URISyntaxException - if the provided account name was illegal and caused a URI
+   *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException - if we have a 503 response
+   */
+  public ConfigureClientResponse configureClient(UUID requestId)
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
+    if (requestId == null || requestId.toString().isEmpty()) {
+      requestId = UUID.randomUUID();
+    }
+    HttpResponse response =
+        httpClient.execute(builder.generateConfigureClientRequest(requestId, pipe));
+    LOGGER.info("Attempting to unmarshall configure client response - {}", response);
+    return ServiceResponseHandler.unmarshallConfigureClientResponse(response, requestId);
+  }
+
+  /**
+   * Get client status for snowpipe which contains offset token and client sequencer
+   *
+   * @param requestId a UUID we use to label the request, if null, one is generated for the user
+   * @return
+   * @throws URISyntaxException - if the provided account name was illegal and caused a URI
+   *     construction failure
+   * @throws IOException - if we have some other network failure
+   * @throws IngestResponseException - if snowflake encountered error during ingest
+   * @throws BackOffException - if we have a 503 response
+   */
+  public ClientStatusResponse getClientStatus(UUID requestId)
+      throws URISyntaxException, IOException, IngestResponseException, BackOffException {
+    if (requestId == null || requestId.toString().isEmpty()) {
+      requestId = UUID.randomUUID();
+    }
+    HttpResponse response =
+        httpClient.execute(builder.generateGetClientStatusRequest(requestId, pipe));
+    LOGGER.info("Attempting to unmarshall get client status response - {}", response);
+    return ServiceResponseHandler.unmarshallGetClientStatus(response, requestId);
   }
 
   /**

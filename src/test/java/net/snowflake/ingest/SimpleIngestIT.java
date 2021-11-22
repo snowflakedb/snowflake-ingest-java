@@ -5,22 +5,32 @@ import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
 import static net.snowflake.ingest.connection.RequestBuilder.JAVA_USER_AGENT;
 import static net.snowflake.ingest.connection.RequestBuilder.OS_INFO_USER_AGENT_FORMAT;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URL;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import net.snowflake.ingest.connection.ClientStatusResponse;
+import net.snowflake.ingest.connection.ConfigureClientResponse;
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;
+import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.Header;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpPost;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Example ingest sdk integration test */
@@ -38,6 +48,9 @@ public class SimpleIngestIT {
   private String stageWithPatternName = "";
 
   private final String PRODUCT_AND_PRODUCT_VERSION = CLIENT_NAME + "/" + DEFAULT_VERSION;
+
+  // the object mapper we use for deserialization
+  static ObjectMapper mapper = new ObjectMapper();
 
   /** Create test table and pipe */
   @Before
@@ -64,9 +77,6 @@ public class SimpleIngestIT {
     stageName = "ingest_sdk_test_stage_" + num;
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + num;
-
-    TestUtils.executeQuery("use database SNOWPIPE_SDK_DB");
-    TestUtils.executeQuery("use schema public");
 
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
@@ -313,6 +323,56 @@ public class SimpleIngestIT {
                 System.getProperty("os.arch"));
         assertTrue(h.getValue().contains(osInformation));
       }
+    }
+  }
+
+  @Ignore
+  @Test
+  public void testConfigureClientHappyCase() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    ConfigureClientResponse configureClientResponse = manager.configureClient(null);
+    assertEquals(0L, configureClientResponse.getClientSequencer().longValue());
+  }
+
+  @Ignore
+  @Test
+  public void testConfigureClientNoPipeFound() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
+    try {
+      manager.configureClient(null);
+    } catch (IngestResponseException exception) {
+      assertEquals(404, exception.getErrorCode());
+      assertEquals(
+          "Specified object does not exist or not authorized. Pipe not found",
+          exception.getErrorBody().getMessage());
+    }
+  }
+
+  @Ignore
+  @Test
+  public void testGetClientStatusHappyCase() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    manager.configureClient(null);
+    ClientStatusResponse clientStatusResponse = manager.getClientStatus(null);
+    assertEquals(0L, clientStatusResponse.getClientSequencer().longValue());
+    assertNull(clientStatusResponse.getOffsetToken());
+  }
+
+  @Ignore
+  @Test
+  public void testGetClientStatusNoPipeFound() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
+    try {
+      manager.getClientStatus(null);
+    } catch (IngestResponseException exception) {
+      assertEquals(404, exception.getErrorCode());
+      assertEquals(
+          "Specified object does not exist or not authorized. Pipe not found",
+          exception.getErrorBody().getMessage());
     }
   }
 }
