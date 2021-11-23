@@ -73,7 +73,7 @@ public class HttpUtil {
         RequestConfig.custom()
             .setConnectTimeout(TIMEOUT * 1000)
             .setConnectionRequestTimeout(TIMEOUT * 1000)
-            .setSocketTimeout(TIMEOUT)
+            .setSocketTimeout(TIMEOUT * 1000)
             .build();
     /**
      * Use a anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
