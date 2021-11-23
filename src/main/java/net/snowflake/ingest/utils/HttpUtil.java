@@ -19,6 +19,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
@@ -42,7 +43,7 @@ public class HttpUtil {
 
   private static final String PROXY_SCHEME = "http";
   private static final int MAX_RETRIES = 3;
-
+  private static final int TIMEOUT = 300; // 5 minutes
   private static HttpClient httpClient;
 
   public static HttpClient getHttpClient() {
@@ -64,7 +65,16 @@ public class HttpUtil {
     SSLConnectionSocketFactory f =
         new SSLConnectionSocketFactory(
             sslContext, new String[] {"TLSv1.2"}, null, new DefaultHostnameVerifier());
-
+    // Set connectionTimeout which is the timeout until a connection with the server is established
+    // Set connectionRequestTimeout which is the time to wait for getting a connection from the
+    // connection pool
+    // Set socketTimeout which is the max time gap between two consecutive data packets
+    RequestConfig requestConfig =
+        RequestConfig.custom()
+            .setConnectTimeout(TIMEOUT * 1000)
+            .setConnectionRequestTimeout(TIMEOUT * 1000)
+            .setSocketTimeout(TIMEOUT)
+            .build();
     /**
      * Use a anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
      * retry time is 3. The interval time is backoff.
@@ -73,7 +83,8 @@ public class HttpUtil {
         HttpClients.custom()
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
-            .setRetryHandler(getHttpRequestRetryHandler());
+            .setRetryHandler(getHttpRequestRetryHandler())
+            .setDefaultRequestConfig(requestConfig);
 
     // proxy settings
     if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY))) {
