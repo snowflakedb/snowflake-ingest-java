@@ -532,6 +532,7 @@ public final class RequestBuilder {
    * @param files the list of files we want to send
    * @param clientInfo optional clientInfo which can be empty.
    * @return the string json blob
+   * @throws IllegalArgumentException if files passed in is null
    */
   private String serializeInsertFilesRequest(
       List<StagedFileWrapper> files, Optional<InsertFilesClientInfo> clientInfo) {
@@ -542,8 +543,7 @@ public final class RequestBuilder {
     }
 
     // create pojo
-    IngestRequest ingestRequest;
-    ingestRequest =
+    IngestRequest ingestRequest =
         clientInfo
             .map(insertFilesClientInfo -> new IngestRequest(files, insertFilesClientInfo))
             .orElseGet(() -> new IngestRequest(files));

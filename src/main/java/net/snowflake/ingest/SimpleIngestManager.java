@@ -552,20 +552,7 @@ public class SimpleIngestManager implements AutoCloseable {
   public IngestResponse ingestFiles(
       List<StagedFileWrapper> files, UUID requestId, boolean showSkippedFiles)
       throws URISyntaxException, IOException, IngestResponseException, BackOffException {
-
-    // the request id we want to send with this payload
-    if (requestId == null || requestId.toString().isEmpty()) {
-      requestId = UUID.randomUUID();
-    }
-
-    HttpPost httpPostForIngestFile =
-        builder.generateInsertRequest(requestId, pipe, files, showSkippedFiles);
-
-    // send the request and get a response....
-    HttpResponse response = httpClient.execute(httpPostForIngestFile);
-
-    LOGGER.info("Attempting to unmarshall insert response - {}", response);
-    return ServiceResponseHandler.unmarshallIngestResponse(response, requestId);
+    return ingestFiles(files, requestId, showSkippedFiles, null /* Client info is null */);
   }
 
   /**
@@ -580,7 +567,7 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param files - list of wrappers around filenames and sizes
    * @param requestId - a requestId that we'll use to label - if null, we generate one for the user
    * @param showSkippedFiles - a flag which returns the files that were skipped when set to true.
-   * @param clientInfo - clientSequencer and offsetToken to pass along with files.
+   * @param clientInfo - clientSequencer and offsetToken to pass along with files. Can be null.
    * @return an insert response from the server
    * @throws URISyntaxException - if the provided account name was illegal and caused a URI
    *     construction failure
@@ -600,17 +587,17 @@ public class SimpleIngestManager implements AutoCloseable {
       requestId = UUID.randomUUID();
     }
 
-    if (clientInfo == null) {
-      return ingestFiles(files, requestId, showSkippedFiles);
-    }
     HttpPost httpPostForIngestFile =
         builder.generateInsertRequest(
-            requestId, pipe, files, showSkippedFiles, Optional.of(clientInfo));
+            requestId, pipe, files, showSkippedFiles, Optional.ofNullable(clientInfo));
 
     // send the request and get a response....
     HttpResponse response = httpClient.execute(httpPostForIngestFile);
 
-    LOGGER.info("Attempting to unmarshall insert response with clientInfo - {}", response);
+    LOGGER.info(
+        "Attempting to unmarshall insert response - {}, with clientInfo - {}",
+        response,
+        clientInfo);
     return ServiceResponseHandler.unmarshallIngestResponse(response, requestId);
   }
 

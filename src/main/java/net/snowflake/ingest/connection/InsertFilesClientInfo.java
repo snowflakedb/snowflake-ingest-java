@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ */
 package net.snowflake.ingest.connection;
 
 /**
@@ -46,5 +49,11 @@ public class InsertFilesClientInfo {
   /** Gets offsetToken associated with this clientInfo record. */
   public String getOffsetToken() {
     return offsetToken;
+  }
+
+  /** Only printing clientSequencer */
+  @Override
+  public String toString() {
+    return "InsertFilesClientInfo{" + "clientSequencer=" + clientSequencer + '}';
   }
 }
