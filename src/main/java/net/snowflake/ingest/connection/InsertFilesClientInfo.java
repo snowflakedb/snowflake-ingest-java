@@ -37,6 +37,9 @@ public class InsertFilesClientInfo {
 
   /** Constructor with both fields as required. */
   public InsertFilesClientInfo(long clientSequencer, String offsetToken) {
+    if (clientSequencer < 0) {
+      throw new IllegalArgumentException("ClientSequencer should be non negative.");
+    }
     this.clientSequencer = clientSequencer;
     this.offsetToken = offsetToken;
   }
