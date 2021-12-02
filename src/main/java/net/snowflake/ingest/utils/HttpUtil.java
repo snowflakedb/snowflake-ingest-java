@@ -73,9 +73,14 @@ public class HttpUtil {
     // Set socketTimeout which is the max time gap between two consecutive data packets
     RequestConfig requestConfig =
         RequestConfig.custom()
-            .setConnectTimeout((int)TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
-            .setConnectionRequestTimeout((int)TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
-            .setSocketTimeout((int)TimeUnit.MILLISECONDS.convert(DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT, TimeUnit.MINUTES))
+            .setConnectTimeout(
+                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+            .setConnectionRequestTimeout(
+                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+            .setSocketTimeout(
+                (int)
+                    TimeUnit.MILLISECONDS.convert(
+                        DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT, TimeUnit.MINUTES))
             .build();
     /**
      * Use a anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
