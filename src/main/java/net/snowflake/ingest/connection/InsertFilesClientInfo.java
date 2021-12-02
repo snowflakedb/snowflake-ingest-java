@@ -3,6 +3,8 @@
  */
 package net.snowflake.ingest.connection;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * Just a wrapper class which is serialised into REST request for insertFiles.
  *
@@ -29,6 +31,9 @@ package net.snowflake.ingest.connection;
  * </pre>
  */
 public class InsertFilesClientInfo {
+  //  FDB constant
+  public static final int FDB_MAX_VALUE_SIZE = 100000;
+
   // client sequencer which the caller thinks it currently has
   private final long clientSequencer;
 
@@ -39,6 +44,13 @@ public class InsertFilesClientInfo {
   public InsertFilesClientInfo(long clientSequencer, String offsetToken) {
     if (clientSequencer < 0) {
       throw new IllegalArgumentException("ClientSequencer should be non negative.");
+    }
+    if (offsetToken == null || offsetToken.isEmpty()) {
+      throw new IllegalArgumentException("OffsetToken can not be null or empty.");
+    }
+    /* Keeping some buffer */
+    if (offsetToken.getBytes(StandardCharsets.UTF_8).length > FDB_MAX_VALUE_SIZE - 1000) {
+      throw new IllegalArgumentException("OffsetToken size too large.");
     }
     this.clientSequencer = clientSequencer;
     this.offsetToken = offsetToken;
