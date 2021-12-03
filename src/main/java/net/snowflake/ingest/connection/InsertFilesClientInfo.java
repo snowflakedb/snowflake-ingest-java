@@ -49,7 +49,8 @@ public class InsertFilesClientInfo {
       throw new IllegalArgumentException("OffsetToken can not be null or empty.");
     }
     /* Keeping some buffer */
-    if (offsetToken.getBytes(StandardCharsets.UTF_8).length > MAX_ALLOWED_OFFSET_TOKEN_BYTE_SIZE - 1000) {
+    if (offsetToken.getBytes(StandardCharsets.UTF_8).length
+        > MAX_ALLOWED_OFFSET_TOKEN_BYTE_SIZE - 1000) {
       throw new IllegalArgumentException("OffsetToken size too large.");
     }
     this.clientSequencer = clientSequencer;
