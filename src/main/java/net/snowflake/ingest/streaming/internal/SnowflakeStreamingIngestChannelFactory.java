@@ -24,6 +24,7 @@ class SnowflakeStreamingIngestChannelFactory {
     private Long rowSequencer;
     private SnowflakeStreamingIngestClientInternal owningClient;
     private String encryptionKey;
+    private Long encryptionKeyId;
     private OpenChannelRequest.OnErrorOption onErrorOption;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
@@ -65,6 +66,11 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
+    SnowflakeStreamingIngestChannelBuilder setEncryptionKeyId(Long encryptionKeyId) {
+      this.encryptionKeyId = encryptionKeyId;
+      return this;
+    }
+
     SnowflakeStreamingIngestChannelBuilder setOnErrorOption(
         OpenChannelRequest.OnErrorOption onErrorOption) {
       this.onErrorOption = onErrorOption;
@@ -86,6 +92,7 @@ class SnowflakeStreamingIngestChannelFactory {
       Utils.assertNotNull("row sequencer", this.rowSequencer);
       Utils.assertNotNull("channel owning client", this.owningClient);
       Utils.assertStringNotNullOrEmpty("encryption key", this.encryptionKey);
+      Utils.assertNotNull("encryption key_id", this.encryptionKeyId);
       Utils.assertNotNull("on_error option", this.onErrorOption);
       return new SnowflakeStreamingIngestChannelInternal(
           this.name,
@@ -97,6 +104,7 @@ class SnowflakeStreamingIngestChannelFactory {
           this.rowSequencer,
           this.owningClient,
           this.encryptionKey,
+          this.encryptionKeyId,
           this.onErrorOption);
     }
   }

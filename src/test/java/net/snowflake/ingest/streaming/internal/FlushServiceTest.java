@@ -98,6 +98,7 @@ public class FlushServiceTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -112,6 +113,7 @@ public class FlushServiceTest {
             100L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -126,6 +128,7 @@ public class FlushServiceTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     channelCache.addChannel(channel1);
@@ -292,6 +295,7 @@ public class FlushServiceTest {
             .setChunkLength(248)
             .setChannelList(Lists.newArrayList(expectedChannel1Metadata, expectedChannel2Metadata))
             .setChunkMD5("md5")
+            .setEncryptionKeyId(1234L)
             .setEpInfo(expectedChunkEpInfo)
             .build();
 
@@ -425,6 +429,7 @@ public class FlushServiceTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -439,6 +444,7 @@ public class FlushServiceTest {
             100L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -514,6 +520,7 @@ public class FlushServiceTest {
             .setChunkLength(dataSize)
             .setChannelList(Lists.newArrayList(channelMetadata))
             .setChunkMD5("md5")
+            .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
             .build();
 

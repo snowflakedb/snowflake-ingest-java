@@ -34,6 +34,7 @@ public class ChannelCacheTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     channel2 =
@@ -47,6 +48,7 @@ public class ChannelCacheTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     channel3 =
@@ -60,6 +62,7 @@ public class ChannelCacheTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     cache.addChannel(channel1);
@@ -85,6 +88,7 @@ public class ChannelCacheTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     cache.addChannel(channel);
@@ -102,6 +106,7 @@ public class ChannelCacheTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     cache.addChannel(channelDup);
@@ -172,6 +177,7 @@ public class ChannelCacheTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     cache.removeChannelIfSequencersMatch(channel3Dup);

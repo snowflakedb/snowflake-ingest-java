@@ -275,6 +275,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               .setChannelSequencer(response.getClientSequencer())
               .setOwningClient(this)
               .setEncryptionKey(response.getEncryptionKey())
+              .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
               .build();
 

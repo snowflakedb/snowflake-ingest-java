@@ -216,6 +216,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             null,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -272,6 +273,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             null,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -308,6 +310,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             null,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -329,6 +332,7 @@ public class SnowflakeStreamingIngestClientTest {
             .setChunkLength(100)
             .setChannelList(Collections.singletonList(channelMetadata))
             .setChunkMD5("md5")
+            .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
             .build();
 
@@ -562,6 +566,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     SnowflakeStreamingIngestChannelInternal channel2 =
@@ -575,6 +580,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     client.getChannelCache().addChannel(channel1);
@@ -701,6 +707,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     SnowflakeStreamingIngestChannelInternal channel2 =
@@ -714,6 +721,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     client.getChannelCache().addChannel(channel1);
@@ -781,6 +789,7 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     client.getChannelCache().addChannel(channel);

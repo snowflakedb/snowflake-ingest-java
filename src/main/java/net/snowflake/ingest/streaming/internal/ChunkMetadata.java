@@ -18,6 +18,7 @@ class ChunkMetadata {
   private final List<ChannelMetadata> channels;
   private final String chunkMD5;
   private final EpInfo epInfo;
+  private final Long encryptionKeyId;
 
   static Builder builder() {
     return new Builder();
@@ -33,6 +34,7 @@ class ChunkMetadata {
     private List<ChannelMetadata> channels;
     private String chunkMD5;
     private EpInfo epInfo;
+    private Long encryptionKeyId;
 
     Builder setOwningTable(SnowflakeStreamingIngestChannelInternal channel) {
       this.dbName = channel.getDBName();
@@ -66,6 +68,11 @@ class ChunkMetadata {
       return this;
     }
 
+    Builder setEncryptionKeyId(Long encryptionKeyId) {
+      this.encryptionKeyId = encryptionKeyId;
+      return this;
+    }
+
     ChunkMetadata build() {
       return new ChunkMetadata(this);
     }
@@ -80,6 +87,7 @@ class ChunkMetadata {
     Utils.assertNotNull("chunk channels", builder.channels);
     Utils.assertNotNull("chunk MD5", builder.chunkMD5);
     Utils.assertNotNull("chunk ep info", builder.epInfo);
+    Utils.assertNotNull("encryption key id", builder.encryptionKeyId);
 
     this.dbName = builder.dbName;
     this.schemaName = builder.schemaName;
@@ -89,6 +97,7 @@ class ChunkMetadata {
     this.channels = builder.channels;
     this.chunkMD5 = builder.chunkMD5;
     this.epInfo = builder.epInfo;
+    this.encryptionKeyId = builder.encryptionKeyId;
   }
 
   /**
@@ -138,5 +147,10 @@ class ChunkMetadata {
   @JsonProperty("eps")
   EpInfo getEpInfo() {
     return this.epInfo;
+  }
+
+  @JsonProperty("encryption_key_id")
+  Long getEncryptionKeyId() {
+    return this.encryptionKeyId;
   }
 }
