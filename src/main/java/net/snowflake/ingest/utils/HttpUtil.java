@@ -7,6 +7,7 @@ package net.snowflake.ingest.utils;
 import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
 import java.security.Security;
+import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -19,6 +20,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
@@ -42,7 +44,8 @@ public class HttpUtil {
 
   private static final String PROXY_SCHEME = "http";
   private static final int MAX_RETRIES = 3;
-
+  static final int DEFAULT_CONNECTION_TIMEOUT = 1; // minute
+  static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT = 5; // minutes
   private static HttpClient httpClient;
 
   public static HttpClient getHttpClient() {
@@ -64,7 +67,21 @@ public class HttpUtil {
     SSLConnectionSocketFactory f =
         new SSLConnectionSocketFactory(
             sslContext, new String[] {"TLSv1.2"}, null, new DefaultHostnameVerifier());
-
+    // Set connectionTimeout which is the timeout until a connection with the server is established
+    // Set connectionRequestTimeout which is the time to wait for getting a connection from the
+    // connection pool
+    // Set socketTimeout which is the max time gap between two consecutive data packets
+    RequestConfig requestConfig =
+        RequestConfig.custom()
+            .setConnectTimeout(
+                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+            .setConnectionRequestTimeout(
+                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+            .setSocketTimeout(
+                (int)
+                    TimeUnit.MILLISECONDS.convert(
+                        DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT, TimeUnit.MINUTES))
+            .build();
     /**
      * Use a anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
      * retry time is 3. The interval time is backoff.
@@ -73,7 +90,8 @@ public class HttpUtil {
         HttpClients.custom()
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
-            .setRetryHandler(getHttpRequestRetryHandler());
+            .setRetryHandler(getHttpRequestRetryHandler())
+            .setDefaultRequestConfig(requestConfig);
 
     // proxy settings
     if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY))) {
