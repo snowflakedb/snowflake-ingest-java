@@ -1,3 +1,6 @@
+/*
+ * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ */
 package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

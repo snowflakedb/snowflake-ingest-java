@@ -6,6 +6,7 @@ package net.snowflake.ingest.connection;
 
 import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import net.snowflake.ingest.SimpleIngestManager;
@@ -287,14 +289,40 @@ public final class RequestBuilder {
   private static String buildCustomUserAgent(String additionalUserAgentInfo) {
     return USER_AGENT.trim() + " " + additionalUserAgentInfo;
   }
-  /**
-   * A simple POJO for generating our POST body to the insert endpoint
-   *
-   * @author obabarinsa
-   */
+  /** A simple POJO for generating our POST body to the insert endpoint */
   private static class IngestRequest {
     // the list of files we're loading
-    public List<StagedFileWrapper> files;
+    private final List<StagedFileWrapper> files;
+
+    // additional info passed along with files which includes clientSequencer and offsetToken
+    // can be null
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final InsertFilesClientInfo clientInfo;
+
+    /** Constructor used when both files and clientInfo are passed in request */
+    public IngestRequest(List<StagedFileWrapper> files, InsertFilesClientInfo clientInfo) {
+      this.files = files;
+      this.clientInfo = clientInfo;
+    }
+
+    /**
+     * Ctor used when only files is used in request body.
+     *
+     * <p>clientInfo will be defaulted to null
+     */
+    public IngestRequest(List<StagedFileWrapper> files) {
+      this(files, null);
+    }
+
+    /* Gets the list of files which were added in request */
+    public List<StagedFileWrapper> getFiles() {
+      return files;
+    }
+
+    /* Gets the clientInfo associated with files which was added in request */
+    public InsertFilesClientInfo getClientInfo() {
+      return clientInfo;
+    }
   }
 
   /**
@@ -498,12 +526,16 @@ public final class RequestBuilder {
   }
 
   /**
-   * generateFilesJSON - Given a list of files, make some json to represent it
+   * Given a list of files, and an optional clientInfo generate json string which later can be
+   * passed in request body of insertFiles API
    *
    * @param files the list of files we want to send
+   * @param clientInfo optional clientInfo which can be empty.
    * @return the string json blob
+   * @throws IllegalArgumentException if files passed in is null
    */
-  private String generateFilesJSON(List<StagedFileWrapper> files) {
+  private String serializeInsertFilesRequest(
+      List<StagedFileWrapper> files, Optional<InsertFilesClientInfo> clientInfo) {
     // if the files argument is null, throw
     if (files == null) {
       LOGGER.info("Null files argument in RequestBuilder");
@@ -511,12 +543,14 @@ public final class RequestBuilder {
     }
 
     // create pojo
-    IngestRequest pojo = new IngestRequest();
-    pojo.files = files;
+    IngestRequest ingestRequest =
+        clientInfo
+            .map(insertFilesClientInfo -> new IngestRequest(files, insertFilesClientInfo))
+            .orElseGet(() -> new IngestRequest(files));
 
     // serialize to a string
     try {
-      return objectMapper.writeValueAsString(pojo);
+      return objectMapper.writeValueAsString(ingestRequest);
     }
     // if we have an exception we need to log and throw
     catch (Exception e) {
@@ -571,6 +605,28 @@ public final class RequestBuilder {
   public HttpPost generateInsertRequest(
       UUID requestId, String pipe, List<StagedFileWrapper> files, boolean showSkippedFiles)
       throws URISyntaxException {
+    return generateInsertRequest(requestId, pipe, files, showSkippedFiles, Optional.empty());
+  }
+
+  /**
+   * generateInsertRequest - given a pipe, list of files and clientInfo, make a request for the
+   * insert endpoint
+   *
+   * @param requestId a UUID we will use to label this request
+   * @param pipe a fully qualified pipe name
+   * @param files a list of files
+   * @param showSkippedFiles a boolean which returns skipped files when set to true
+   * @param clientInfo
+   * @return a post request with all the data we need
+   * @throws URISyntaxException if the URI components provided are improper
+   */
+  public HttpPost generateInsertRequest(
+      UUID requestId,
+      String pipe,
+      List<StagedFileWrapper> files,
+      boolean showSkippedFiles,
+      Optional<InsertFilesClientInfo> clientInfo)
+      throws URISyntaxException {
     // make the insert URI
     URI insertURI = makeInsertURI(requestId, pipe, showSkippedFiles);
     LOGGER.info("Created Insert Request : {} ", insertURI);
@@ -582,7 +638,8 @@ public final class RequestBuilder {
 
     // the entity for the containing the json
     final StringEntity entity =
-        new StringEntity(generateFilesJSON(files), ContentType.APPLICATION_JSON);
+        new StringEntity(
+            serializeInsertFilesRequest(files, clientInfo), ContentType.APPLICATION_JSON);
     post.setEntity(entity);
 
     return post;
