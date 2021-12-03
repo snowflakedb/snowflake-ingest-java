@@ -32,7 +32,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class InsertFilesClientInfo {
   //  FDB constant
-  public static final int FDB_MAX_VALUE_SIZE = 100000;
+  public static final int MAX_ALLOWED_OFFSET_TOKEN_BYTE_SIZE = 100000;
 
   // client sequencer which the caller thinks it currently has
   private final long clientSequencer;
