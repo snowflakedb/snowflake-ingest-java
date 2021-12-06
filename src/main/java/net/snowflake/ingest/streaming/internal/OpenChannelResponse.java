@@ -20,6 +20,7 @@ class OpenChannelResponse {
   private String offsetToken;
   private List<ColumnMetadata> tableColumns;
   private String encryptionKey;
+  private Long encryptionKeyId;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -118,5 +119,15 @@ class OpenChannelResponse {
 
   String getEncryptionKey() {
     return this.encryptionKey;
+  }
+
+  @JsonProperty("encryption_key_id")
+  void setEncryptionKeyId(Long encryptionKeyId) {
+    this.encryptionKeyId = encryptionKeyId;
+  }
+
+  Long getEncryptionKeyId() {
+    // SNOW-514965 Remove comparison once server side change goes in
+    return this.encryptionKeyId != null ? this.encryptionKeyId : 0L;
   }
 }

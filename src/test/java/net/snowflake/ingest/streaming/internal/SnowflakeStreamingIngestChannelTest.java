@@ -102,6 +102,7 @@ public class SnowflakeStreamingIngestChannelTest {
             .setChannelSequencer(channelSequencer)
             .setOwningClient(client)
             .setEncryptionKey(encryptionKey)
+            .setEncryptionKeyId(1234L)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .build();
 
@@ -135,6 +136,7 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -184,6 +186,7 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -470,6 +473,7 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -520,6 +524,7 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
@@ -558,6 +563,7 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -593,6 +599,7 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -626,6 +633,7 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 

@@ -47,6 +47,7 @@ public class RowBufferTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
     this.rowBufferOnErrorContinue = new ArrowRowBuffer(this.channelOnErrorContinue);
@@ -62,6 +63,7 @@ public class RowBufferTest {
             0L,
             client,
             "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.ABORT,
             true);
     this.rowBufferOnErrorAbort = new ArrowRowBuffer(this.channelOnErrorAbort);

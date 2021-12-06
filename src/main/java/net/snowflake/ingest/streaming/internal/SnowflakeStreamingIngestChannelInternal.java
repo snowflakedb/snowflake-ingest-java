@@ -58,6 +58,9 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   // Data encryption key
   private final String encryptionKey;
 
+  // Data encryption key Id
+  private final Long encryptionKeyId;
+
   // Indicates whether we're using it as of the any tests
   private boolean isTestMode;
 
@@ -87,6 +90,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       Long rowSequencer,
       SnowflakeStreamingIngestClientInternal client,
       String encryptionKey,
+      Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       boolean isTestMode) {
     this.channelName = name;
@@ -108,6 +112,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                 .newChildAllocator(name, 0, this.owningClient.getAllocator().getLimit());
     this.arrowBuffer = new ArrowRowBuffer(this);
     this.encryptionKey = encryptionKey;
+    this.encryptionKeyId = encryptionKeyId;
     this.onErrorOption = onErrorOption;
     logger.logDebug("Channel={} created for table={}", this.channelName, this.tableName);
   }
@@ -134,6 +139,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       Long rowSequencer,
       SnowflakeStreamingIngestClientInternal client,
       String encryptionKey,
+      Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption) {
     this(
         name,
@@ -145,6 +151,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
         rowSequencer,
         client,
         encryptionKey,
+        encryptionKeyId,
         onErrorOption,
         false);
   }
@@ -208,6 +215,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
 
   String getEncryptionKey() {
     return this.encryptionKey;
+  }
+
+  Long getEncryptionKeyId() {
+    return this.encryptionKeyId;
   }
 
   /**
