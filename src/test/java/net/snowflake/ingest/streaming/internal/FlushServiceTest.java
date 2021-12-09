@@ -155,7 +155,7 @@ public class FlushServiceTest {
         Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
         outputPath.getParent().getParent().getParent().getFileName().toString());
     Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.MONTH)),
+        Integer.toString(calendar.get(Calendar.MONTH) + 1),
         outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
     Assert.assertEquals(
         Integer.toString(calendar.get(Calendar.YEAR)),
