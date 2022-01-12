@@ -5,13 +5,13 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.collect.Sets;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import javax.xml.bind.DatatypeConverter;
+import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;

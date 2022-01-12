@@ -4,6 +4,9 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
@@ -252,7 +255,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               httpClient.execute(
                   requestBuilder.generateStreamingIngestPostRequest(
                       payload, OPEN_CHANNEL_ENDPOINT, "open channel")),
-              OpenChannelResponse.class);
+              OpenChannelResponse.class,
+              STREAMING_OPEN_CHANNEL);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
@@ -314,7 +318,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               httpClient.execute(
                   requestBuilder.generateStreamingIngestPostRequest(
                       payload, CHANNEL_STATUS_ENDPOINT, "channel status")),
-              ChannelsStatusResponse.class);
+              ChannelsStatusResponse.class,
+              STREAMING_CHANNEL_STATUS);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
@@ -351,7 +356,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               httpClient.execute(
                   requestBuilder.generateStreamingIngestPostRequest(
                       payload, REGISTER_BLOB_ENDPOINT, "register blob")),
-              RegisterBlobResponse.class);
+              RegisterBlobResponse.class,
+              STREAMING_REGISTER_BLOB);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {

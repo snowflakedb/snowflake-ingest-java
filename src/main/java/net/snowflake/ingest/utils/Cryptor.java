@@ -3,7 +3,6 @@ package net.snowflake.ingest.utils;
 import static net.snowflake.ingest.utils.Constants.ENABLE_ENCRYPTION;
 import static net.snowflake.ingest.utils.Constants.ENCRYPTION_ALGORITHM;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -17,6 +16,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import org.apache.arrow.util.VisibleForTesting;
 
 public class Cryptor {
 

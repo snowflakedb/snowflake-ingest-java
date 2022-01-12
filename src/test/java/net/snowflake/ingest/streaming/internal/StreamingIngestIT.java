@@ -35,14 +35,14 @@ import org.junit.Test;
 
 /** Example streaming ingest sdk integration test */
 public class StreamingIngestIT {
-  private static String PROFILE_PATH = "profile.properties";
-  private static String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
-  private static String TEST_DB = "STREAMING_INGEST_TEST_DB";
-  private static String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
+  private static final String PROFILE_PATH = "profile.properties";
+  private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
+  private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
+  private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
   private SnowflakeStreamingIngestClientInternal client;
   private Connection jdbcConnection;
-  private Properties prop = new Properties();
+  private final Properties prop = new Properties();
 
   @Before
   public void beforeAll() throws Exception {
@@ -66,7 +66,10 @@ public class StreamingIngestIT {
         .execute("alter session set enable_streaming_ingest_reads=true;");
     jdbcConnection
         .createStatement()
-        .execute("alter session set ENABLE_STREAMING_INGEST_UNNAMED_STAGE_QUERY=true;");
+        .execute(
+            String.format(
+                "alter table %s set ENABLE_STREAMING_INGEST_UNNAMED_STAGE_QUERY=true;",
+                TEST_TABLE));
     jdbcConnection
         .createStatement()
         .execute(String.format("use warehouse %s", prop.get("warehouse")));

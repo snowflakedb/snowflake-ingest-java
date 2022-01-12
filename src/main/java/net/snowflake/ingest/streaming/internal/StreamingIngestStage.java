@@ -4,10 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +33,7 @@ import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.util.VisibleForTesting;
 import org.apache.http.client.HttpClient;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
@@ -204,7 +205,8 @@ class StreamingIngestStage {
               httpClient.execute(
                   requestBuilder.generateStreamingIngestPostRequest(
                       payload, CLIENT_CONFIGURE_ENDPOINT, "client configure")),
-              Map.class);
+              Map.class,
+              STREAMING_CLIENT_CONFIGURE);
 
       // Check for Snowflake specific response code
       if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {

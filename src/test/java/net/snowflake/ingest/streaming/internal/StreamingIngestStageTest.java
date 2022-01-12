@@ -1,6 +1,5 @@
 package net.snowflake.ingest.streaming.internal;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +22,7 @@ import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.amazonaws.util.IOUtils;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.Constants;

@@ -13,11 +13,10 @@ import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
+import static net.snowflake.ingest.utils.Utils.toByteArray;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.primitives.Ints;
-import com.google.common.primitives.Longs;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -122,9 +121,9 @@ class BlobBuilder {
     if (!BLOB_NO_HEADER) {
       blob.write(BLOB_EXTENSION_TYPE.getBytes());
       blob.write(BLOB_FORMAT_VERSION);
-      blob.write(Longs.toByteArray(metadataSize + chunksDataSize));
-      blob.write(Longs.toByteArray(chunksChecksum));
-      blob.write(Ints.toByteArray(chunkMetadataListInBytes.length));
+      blob.write(toByteArray(metadataSize + chunksDataSize));
+      blob.write(toByteArray(chunksChecksum));
+      blob.write(toByteArray(chunkMetadataListInBytes.length));
       blob.write(chunkMetadataListInBytes);
     }
     for (byte[] arrowData : chunksDataList) {

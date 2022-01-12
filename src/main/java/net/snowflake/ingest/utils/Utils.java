@@ -10,7 +10,6 @@ import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.ROLE_NAME;
 
 import com.codahale.metrics.Timer;
-import com.google.common.base.Strings;
 import java.io.StringReader;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -47,7 +46,7 @@ public class Utils {
    * @throws SFException
    */
   public static void assertStringNotNullOrEmpty(String name, String value) throws SFException {
-    if (Strings.isNullOrEmpty(value)) {
+    if (isNullOrEmpty(value)) {
       throw new SFException(ErrorCode.NULL_OR_EMPTY_STRING, name);
     }
   }
@@ -220,5 +219,29 @@ public class Utils {
   /** Create a new timer context if input is not null */
   public static Timer.Context createTimerContext(Timer timer) {
     return timer == null ? null : timer.time();
+  }
+
+  /** Convert long value to a byte array */
+  public static byte[] toByteArray(long value) {
+    byte[] result = new byte[8];
+
+    for (int i = 7; i >= 0; --i) {
+      result[i] = (byte) ((int) (value & 255L));
+      value >>= 8;
+    }
+
+    return result;
+  }
+
+  /** Convert int value to a byte array */
+  public static byte[] toByteArray(int value) {
+    return new byte[] {
+      (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) value
+    };
+  }
+
+  /** Utility function to check whether a streing is null or empty */
+  public static boolean isNullOrEmpty(String string) {
+    return string == null || string.isEmpty();
   }
 }

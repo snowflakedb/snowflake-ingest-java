@@ -10,7 +10,6 @@ import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.Lists;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -293,7 +292,7 @@ public class FlushServiceTest {
             .setOwningTable(channel1)
             .setChunkStartOffset(0L)
             .setChunkLength(248)
-            .setChannelList(Lists.newArrayList(expectedChannel1Metadata, expectedChannel2Metadata))
+            .setChannelList(Arrays.asList(expectedChannel1Metadata, expectedChannel2Metadata))
             .setChunkMD5("md5")
             .setEncryptionKeyId(1234L)
             .setEpInfo(expectedChunkEpInfo)
@@ -518,7 +517,7 @@ public class FlushServiceTest {
             .setOwningTable(channel1)
             .setChunkStartOffset(0L)
             .setChunkLength(dataSize)
-            .setChannelList(Lists.newArrayList(channelMetadata))
+            .setChannelList(Arrays.asList(channelMetadata))
             .setChunkMD5("md5")
             .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
