@@ -29,12 +29,16 @@ public final class ServiceResponseHandler {
    * https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-apis.html Used in
    * handleExceptionalStatus for logging purpose
    */
-  private enum ApiName {
+  public enum ApiName {
     INSERT_FILES("POST"),
     INSERT_REPORT("GET"),
     LOAD_HISTORY_SCAN("GET"),
     CLIENT_CONFIGURE("POST"),
-    CLIENT_STATUS("GET");
+    CLIENT_STATUS("GET"),
+    STREAMING_OPEN_CHANNEL("POST"),
+    STREAMING_CHANNEL_STATUS("POST"),
+    STREAMING_REGISTER_BLOB("POST"),
+    STREAMING_CLIENT_CONFIGURE("POST");
     private final String httpMethod;
 
     private ApiName(String httpMethod) {
@@ -212,6 +216,36 @@ public final class ServiceResponseHandler {
   }
 
   /**
+   * unmarshallStreamingIngestResponse Given an HttpResponse object - attempts to deserialize it
+   * into an Object based on input type
+   *
+   * @param response http response from server
+   * @param valueType the class type
+   * @param apiName enum to represent the corresponding api name
+   * @return the corresponding response object based on input class type
+   * @throws IOException if a low-level I/O problem
+   * @throws IngestResponseException if received an exceptional status code
+   */
+  public static <T> T unmarshallStreamingIngestResponse(
+      HttpResponse response, Class<T> valueType, ApiName apiName)
+      throws IOException, IngestResponseException {
+    // We can't unmarshall a null response
+    if (response == null) {
+      LOGGER.warn("Null response passed to {}", valueType.getName());
+      throw new IllegalArgumentException();
+    }
+
+    // Handle the exceptional status code
+    handleExceptionalStatus(response, null, apiName);
+
+    // Grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    // Read out our blob into a pojo
+    return mapper.readValue(blob, valueType);
+  }
+
+  /**
    * handleExceptionStatusCode - throws the correct error when response status is not OK
    *
    * @param response HttpResponse
@@ -230,14 +264,16 @@ public final class ServiceResponseHandler {
           // If we have a 503, BACKOFF
         case HttpStatus.SC_SERVICE_UNAVAILABLE:
           LOGGER.warn(
-              "503 Status hit from {}, backoff, requestId:{}", apiName, requestId.toString());
+              "503 Status hit from {}, backoff, requestId:{}",
+              apiName,
+              requestId == null ? "" : requestId.toString());
           throw new BackOffException();
         default:
           LOGGER.error(
               "Exceptional Status Code from {}: {}, requestId:{}",
               apiName,
               statusLine.getStatusCode(),
-              requestId.toString());
+              requestId == null ? "" : requestId.toString());
           String blob = EntityUtils.toString(response.getEntity());
           throw new IngestResponseException(
               statusLine.getStatusCode(),

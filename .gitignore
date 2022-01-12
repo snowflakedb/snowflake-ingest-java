@@ -3,3 +3,8 @@
 .idea
 target/
 profile.json
+profile.properties
+*.log
+src/main/resources/log4j.properties
+src/test/resources/log4j.properties
+testOutput/

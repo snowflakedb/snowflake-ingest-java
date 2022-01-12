@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.utils;
 
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.security.Security;
 import java.util.concurrent.TimeUnit;
