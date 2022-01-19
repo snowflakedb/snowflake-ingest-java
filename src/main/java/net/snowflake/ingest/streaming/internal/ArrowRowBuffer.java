@@ -107,6 +107,7 @@ class ArrowRowBuffer {
   // Arrow reader
   private static final String COLUMN_PHYSICAL_TYPE = "physicalType";
   private static final String COLUMN_LOGICAL_TYPE = "logicalType";
+  private static final String COLUMN_NULLABLE = "nullable";
   static final String COLUMN_SCALE = "scale";
   private static final String COLUMN_PRECISION = "precision";
   private static final String COLUMN_CHAR_LENGTH = "charLength";
@@ -421,6 +422,7 @@ class ArrowRowBuffer {
     Map<String, String> metadata = new HashMap<>();
     metadata.put(COLUMN_LOGICAL_TYPE, column.getLogicalType());
     metadata.put(COLUMN_PHYSICAL_TYPE, column.getPhysicalType());
+    metadata.put(COLUMN_NULLABLE, String.valueOf(column.getNullable()));
 
     ColumnPhysicalType physicalType;
     ColumnLogicalType logicalType;
