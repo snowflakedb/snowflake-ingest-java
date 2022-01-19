@@ -214,6 +214,7 @@ public class RowBufferTest {
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB1");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
     Assert.assertEquals(result.getFieldType().getMetadata().get("logicalType"), "FIXED");
+    Assert.assertEquals(result.getFieldType().getMetadata().get("nullable"), "true");
     Assert.assertTrue(result.getFieldType().isNullable());
     Assert.assertEquals(result.getChildren().size(), 0);
   }
@@ -223,7 +224,7 @@ public class RowBufferTest {
     ColumnMetadata testCol = new ColumnMetadata();
     testCol.setName("testCol");
     testCol.setPhysicalType("SB2");
-    testCol.setNullable(true);
+    testCol.setNullable(false);
     testCol.setLogicalType("FIXED");
     testCol.setByteLength(14);
     testCol.setLength(11);
@@ -236,7 +237,8 @@ public class RowBufferTest {
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB2");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
     Assert.assertEquals(result.getFieldType().getMetadata().get("logicalType"), "FIXED");
-    Assert.assertTrue(result.getFieldType().isNullable());
+    Assert.assertEquals(result.getFieldType().getMetadata().get("nullable"), "false");
+    Assert.assertFalse(result.getFieldType().isNullable());
     Assert.assertEquals(result.getChildren().size(), 0);
   }
 
