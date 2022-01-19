@@ -59,11 +59,34 @@ public class DataValidationUtilTest {
     Map<String, String> metadata = new HashMap<>();
     metadata.put(ArrowRowBuffer.COLUMN_SCALE, "0");
     Assert.assertEquals(
-        new BigInteger("1"), DataValidationUtil.validateAndParseTime("1", metadata));
+            new BigInteger("1595289600"),
+            DataValidationUtil.validateAndParseTime("1595289600", metadata));
 
-    metadata.put(ArrowRowBuffer.COLUMN_SCALE, "1");
+    metadata.put(ArrowRowBuffer.COLUMN_SCALE, "0");
     Assert.assertEquals(
-        new BigInteger("10"), DataValidationUtil.validateAndParseTime("1", metadata));
+            new BigInteger("1595289600"),
+            DataValidationUtil.validateAndParseTime("2020-07-21", metadata));
+
+    Assert.assertEquals(
+            new BigInteger("1595374380"),
+            DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00", metadata));
+
+    metadata.put(ArrowRowBuffer.COLUMN_SCALE, "3");
+    Assert.assertEquals(
+            new BigInteger("1595289600000"),
+            DataValidationUtil.validateAndParseTime("1595289600", metadata));
+
+    Assert.assertEquals(
+            new BigInteger("1595289600000"),
+            DataValidationUtil.validateAndParseTime("2020-07-21", metadata));
+
+    Assert.assertEquals(
+            new BigInteger("1595374380000"),
+            DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00", metadata));
+
+    Assert.assertEquals(
+            new BigInteger("1595374380123"),
+            DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00.123", metadata));
   }
 
   @Test
