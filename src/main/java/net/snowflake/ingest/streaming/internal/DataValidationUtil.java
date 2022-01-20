@@ -6,14 +6,13 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import javax.xml.bind.DatatypeConverter;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
@@ -29,7 +28,7 @@ class DataValidationUtil {
       BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38));
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final SnowflakeDateTimeFormat snowflakeDateTimeFormatter =
-          SnowflakeDateTimeFormat.fromSqlFormat("auto");
+      SnowflakeDateTimeFormat.fromSqlFormat("auto");
 
   /**
    * Expects string JSON
@@ -50,7 +49,6 @@ class DataValidationUtil {
     }
   }
 
-
   /**
    * Expects string JSON or JsonNode
    *
@@ -66,15 +64,15 @@ class DataValidationUtil {
         return input.toString();
       } else {
         throw new SFException(
-                ErrorCode.INVALID_ROW,
-                input.toString(),
-                String.format("VARIANT columns only accept String or JsonNode"));
+            ErrorCode.INVALID_ROW,
+            input.toString(),
+            String.format("VARIANT columns only accept String or JsonNode"));
       }
     } catch (JsonProcessingException e) {
       throw new SFException(
-              ErrorCode.INVALID_ROW,
-              input.toString(),
-              String.format("OBJECT columns must be valid JSON"));
+          ErrorCode.INVALID_ROW,
+          input.toString(),
+          String.format("OBJECT columns must be valid JSON"));
     }
   }
 
@@ -413,14 +411,13 @@ class DataValidationUtil {
   }
 
   /**
-   *
    * @param input Seconds past the epoch. or String Time representation
    * @param metadata
    * @return
    */
   static BigInteger validateAndParseTime(Object input, Map<String, String> metadata) {
-      int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
-      return getTimeInScale(getStringValue(input), scale);
+    int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
+    return getTimeInScale(getStringValue(input), scale);
   }
 
   /**
@@ -437,17 +434,17 @@ class DataValidationUtil {
       return epochScale.toBigInteger();
     } catch (NumberFormatException e) {
       Optional<SFTimestamp> timestamp =
-              Optional.ofNullable(snowflakeDateTimeFormatter.parse(value));
+          Optional.ofNullable(snowflakeDateTimeFormatter.parse(value));
       return timestamp
-              .map(
-                      t ->
-                              t.getNanosSinceEpoch()
-                                      .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
-                                      .toBigInteger())
-              .orElseThrow(
-                      () ->
-                              new SFException(
-                                      ErrorCode.INVALID_ROW, value, "Cannot be converted to a time value"));
+          .map(
+              t ->
+                  t.getNanosSinceEpoch()
+                      .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
+                      .toBigInteger())
+          .orElseThrow(
+              () ->
+                  new SFException(
+                      ErrorCode.INVALID_ROW, value, "Cannot be converted to a time value"));
     }
   }
 

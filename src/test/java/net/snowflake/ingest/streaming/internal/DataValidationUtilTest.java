@@ -59,34 +59,34 @@ public class DataValidationUtilTest {
     Map<String, String> metadata = new HashMap<>();
     metadata.put(ArrowRowBuffer.COLUMN_SCALE, "0");
     Assert.assertEquals(
-            new BigInteger("1595289600"),
-            DataValidationUtil.validateAndParseTime("1595289600", metadata));
+        new BigInteger("1595289600"),
+        DataValidationUtil.validateAndParseTime("1595289600", metadata));
 
     metadata.put(ArrowRowBuffer.COLUMN_SCALE, "0");
     Assert.assertEquals(
-            new BigInteger("1595289600"),
-            DataValidationUtil.validateAndParseTime("2020-07-21", metadata));
+        new BigInteger("1595289600"),
+        DataValidationUtil.validateAndParseTime("2020-07-21", metadata));
 
     Assert.assertEquals(
-            new BigInteger("1595374380"),
-            DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00", metadata));
+        new BigInteger("1595374380"),
+        DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00", metadata));
 
     metadata.put(ArrowRowBuffer.COLUMN_SCALE, "3");
     Assert.assertEquals(
-            new BigInteger("1595289600000"),
-            DataValidationUtil.validateAndParseTime("1595289600", metadata));
+        new BigInteger("1595289600000"),
+        DataValidationUtil.validateAndParseTime("1595289600", metadata));
 
     Assert.assertEquals(
-            new BigInteger("1595289600000"),
-            DataValidationUtil.validateAndParseTime("2020-07-21", metadata));
+        new BigInteger("1595289600000"),
+        DataValidationUtil.validateAndParseTime("2020-07-21", metadata));
 
     Assert.assertEquals(
-            new BigInteger("1595374380000"),
-            DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00", metadata));
+        new BigInteger("1595374380000"),
+        DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00", metadata));
 
     Assert.assertEquals(
-            new BigInteger("1595374380123"),
-            DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00.123", metadata));
+        new BigInteger("1595374380123"),
+        DataValidationUtil.validateAndParseTime("2020-07-21 23:33:00.123", metadata));
   }
 
   @Test
@@ -220,6 +220,22 @@ public class DataValidationUtilTest {
     Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(stringVariant));
     JsonNode nodeVariant = objectMapper.readTree(stringVariant);
     Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(nodeVariant));
+  }
+
+  @Test
+  public void testValidateAndParseObject() throws Exception {
+    String stringObject = "{\"key\":1}";
+    Assert.assertEquals(stringObject, DataValidationUtil.validateAndParseObject(stringObject));
+    JsonNode nodeObject = objectMapper.readTree(stringObject);
+    Assert.assertEquals(stringObject, DataValidationUtil.validateAndParseObject(nodeObject));
+
+    String badObject = "foo";
+    try {
+      DataValidationUtil.validateAndParseObject(badObject);
+      Assert.fail("Expected INVALID_ROW error");
+    } catch (SFException err) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
+    }
   }
 
   @Test
