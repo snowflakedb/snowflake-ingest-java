@@ -3,12 +3,11 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.ROLE_NAME;
+import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
-import static net.snowflake.ingest.utils.Constants.USER_NAME;
+import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -63,7 +62,7 @@ public class SnowflakeStreamingIngestClientTest {
     Properties prop = new Properties();
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
-    prop.put(ROLE_NAME, "role");
+    prop.put(ROLE, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -77,9 +76,9 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testClientFactoryMissingURL() throws Exception {
     Properties prop = new Properties();
-    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(USER, TestUtils.getUser());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
-    prop.put(ROLE_NAME, "role");
+    prop.put(ROLE, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -93,10 +92,10 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testClientFactoryInvalidURL() throws Exception {
     Properties prop = new Properties();
-    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(USER, TestUtils.getUser());
     prop.put(ACCOUNT_URL, "invalid");
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
-    prop.put(ROLE_NAME, "role");
+    prop.put(ROLE, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -110,10 +109,10 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testClientFactoryInvalidPrivateKey() throws Exception {
     Properties prop = new Properties();
-    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(USER, TestUtils.getUser());
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, "invalid");
-    prop.put(ROLE_NAME, "role");
+    prop.put(ROLE, "role");
 
     try {
       SnowflakeStreamingIngestClient client =
@@ -130,10 +129,10 @@ public class SnowflakeStreamingIngestClientTest {
   // connection
   public void testClientFactorySuccess() throws Exception {
     Properties prop = new Properties();
-    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(USER, TestUtils.getUser());
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
-    prop.put(ROLE_NAME, "role");
+    prop.put(ROLE, "role");
 
     SnowflakeStreamingIngestClient client =
         SnowflakeStreamingIngestClientFactory.builder("client").setProperties(prop).build();
@@ -287,17 +286,16 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testRegisterBlobRequestCreationSuccess() throws Exception {
     Properties prop = new Properties();
-    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(USER, TestUtils.getUser());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
-    prop.put(ROLE_NAME, "role");
+    prop.put(ROLE, "role");
     prop = Utils.createProperties(prop, false);
 
     String urlStr = "https://sfctest0.snowflakecomputing.com:80";
     SnowflakeURL url = new SnowflakeURL(urlStr);
 
     KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
-    RequestBuilder requestBuilder =
-        new RequestBuilder(url, prop.get(JDBC_USER).toString(), keyPair);
+    RequestBuilder requestBuilder = new RequestBuilder(url, prop.get(USER).toString(), keyPair);
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(

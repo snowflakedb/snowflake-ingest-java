@@ -8,14 +8,21 @@ package net.snowflake.ingest.utils;
 public class Constants {
 
   // Client level constants
-  public static final String USER_NAME = "snowflake.user.name";
+  public static final String USER = "user";
+  public static final String ACCOUNT = "account";
+  public static final String PORT = "port";
+  public static final String SSL = "ssl";
+  public static final String DATABASE = "database";
+  public static final String SCHEMA = "schema";
+  public static final String CONNECT_STRING = "connect_string";
+  public static final String HOST = "host";
+  public static final String WAREHOUSE = "warehouse";
+  public static final String SCHEME = "scheme";
   public static final String ACCOUNT_URL = "snowflake.url.name";
-  public static final String PRIVATE_KEY = "snowflake.private.key";
-  public static final String ROLE_NAME = "snowflake.role.name";
+  public static final String PRIVATE_KEY = "private_key";
+  public static final String ROLE = "role";
   public static final String PRIVATE_KEY_PASSPHRASE = "snowflake.private.key.passphrase";
-  public static final String JDBC_USER = "user";
   public static final String JDBC_PRIVATE_KEY = "privateKey";
-  public static final String JDBC_SSL = "ssl";
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final long RESPONSE_SUCCESS = 0L;
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 5L;
