@@ -25,6 +25,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Optional;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -88,7 +89,8 @@ public class TestUtils {
     warehouse = profile.get(WAREHOUSE).asText();
     host = profile.get(HOST).asText();
     scheme = profile.get(SCHEME).asText();
-    role = profile.get(ROLE).asText();
+
+    role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
 
     privateKeyPem = profile.get(PRIVATE_KEY).asText();
 
