@@ -12,11 +12,11 @@ import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
+import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
@@ -139,12 +139,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     if (!isTestMode) {
       // Setup request builder for communication with the server side
-      this.role = prop.getProperty(Constants.ROLE_NAME);
+      this.role = prop.getProperty(Constants.ROLE);
       try {
         KeyPair keyPair =
             Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
-        this.requestBuilder =
-            new RequestBuilder(accountURL, prop.get(JDBC_USER).toString(), keyPair);
+        this.requestBuilder = new RequestBuilder(accountURL, prop.get(USER).toString(), keyPair);
       } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
         throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
       }

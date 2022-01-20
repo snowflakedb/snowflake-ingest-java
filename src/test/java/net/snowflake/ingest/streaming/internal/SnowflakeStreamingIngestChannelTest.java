@@ -2,11 +2,10 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.JDBC_USER;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
-import static net.snowflake.ingest.utils.Constants.USER_NAME;
+import static net.snowflake.ingest.utils.Constants.USER;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -236,7 +235,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testOpenChannelPostRequest() throws Exception {
     Properties prop = new Properties();
-    prop.put(USER_NAME, TestUtils.getUser());
+    prop.put(USER, TestUtils.getUser());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
     prop = Utils.createProperties(prop, false);
 
@@ -244,8 +243,7 @@ public class SnowflakeStreamingIngestChannelTest {
     SnowflakeURL url = new SnowflakeURL(urlStr);
 
     KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
-    RequestBuilder requestBuilder =
-        new RequestBuilder(url, prop.get(JDBC_USER).toString(), keyPair);
+    RequestBuilder requestBuilder = new RequestBuilder(url, prop.get(USER).toString(), keyPair);
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("channel", "CHANNEL");

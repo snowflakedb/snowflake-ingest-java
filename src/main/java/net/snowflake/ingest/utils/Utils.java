@@ -5,11 +5,12 @@
 package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.JDBC_SSL;
-import static net.snowflake.ingest.utils.Constants.JDBC_USER;
-import static net.snowflake.ingest.utils.Constants.ROLE_NAME;
+import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.Constants.SSL;
+import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Timer;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.StringReader;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -22,6 +23,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.apache.commons.codec.binary.Base64;
@@ -86,11 +88,11 @@ public class Utils {
         case Constants.PRIVATE_KEY:
           privateKey = val;
           break;
-        case Constants.USER_NAME:
-          properties.put(JDBC_USER, val);
+        case Constants.USER:
+          properties.put(USER, val);
           break;
-        case Constants.ROLE_NAME:
-          properties.put(ROLE_NAME, val);
+        case Constants.ROLE:
+          properties.put(ROLE, val);
           break;
         case Constants.PRIVATE_KEY_PASSPHRASE:
           privateKeyPassphrase = val;
@@ -112,20 +114,46 @@ public class Utils {
 
     // set ssl
     if (sslEnabled) {
-      properties.put(JDBC_SSL, "on");
+      properties.put(SSL, "on");
     } else {
-      properties.put(JDBC_SSL, "off");
+      properties.put(SSL, "off");
     }
 
     if (!properties.containsKey(JDBC_PRIVATE_KEY)) {
       throw new SFException(ErrorCode.MISSING_CONFIG, "private key");
     }
 
-    if (!properties.containsKey(JDBC_USER)) {
+    if (!properties.containsKey(USER)) {
       throw new SFException(ErrorCode.MISSING_CONFIG, "user name");
     }
 
     return properties;
+  }
+
+  public static String constructAccountUrl(String scheme, String host, int port) {
+    return String.format("%s://%s:%d", scheme, host, port);
+  }
+
+  public static Properties getPropertiesFromJson(ObjectNode json) {
+    Properties props = new Properties();
+    Optional.ofNullable(json.get(Constants.USER))
+        .ifPresent(u -> props.put(Constants.USER, u.asText()));
+    Optional.ofNullable(json.get(Constants.PRIVATE_KEY))
+        .ifPresent(u -> props.put(Constants.PRIVATE_KEY, u.asText()));
+    Optional.ofNullable(json.get(Constants.ROLE)).ifPresent(u -> props.put(ROLE, u.asText()));
+    Optional.ofNullable(json.get(Constants.PRIVATE_KEY_PASSPHRASE))
+        .ifPresent(u -> props.put(Constants.PRIVATE_KEY_PASSPHRASE, u.asText()));
+
+    Optional.ofNullable(json.get(Constants.SCHEME))
+        .ifPresent(u -> props.put(Constants.SCHEME, u.asText()));
+    Optional.ofNullable(json.get(Constants.HOST))
+        .ifPresent(u -> props.put(Constants.HOST, u.asText()));
+    Optional.ofNullable(json.get(Constants.PORT))
+        .ifPresent(u -> props.put(Constants.PORT, u.asInt()));
+    Optional.ofNullable(json.get(Constants.ACCOUNT_URL))
+        .ifPresent(u -> props.put(Constants.ACCOUNT_URL, u.asText()));
+
+    return props;
   }
 
   /**
