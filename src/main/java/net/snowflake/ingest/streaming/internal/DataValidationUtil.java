@@ -35,18 +35,27 @@ class DataValidationUtil {
    *
    * @param input
    */
-  // TODO(SNOW-534044) enforce max size
   static String validateAndParseVariant(Object input) {
+    String output;
     if (input instanceof String) {
-      return (String) input;
+      output = (String) input;
     } else if (input instanceof JsonNode) {
-      return input.toString();
+      output = input.toString();
     } else {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
           String.format("OBJECT, ARRAY, and VARIANT columns only accept String or JsonNode"));
     }
+
+    if (output.length() > MAX_STRING_LENGTH) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          input.toString(),
+          String.format(
+              "Variant too long.  length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+    }
+    return output;
   }
 
   /**
@@ -55,18 +64,19 @@ class DataValidationUtil {
    * @param input Must be valid string JSON or JsonNode
    */
   static String validateAndParseObject(Object input) {
+    String output;
     try {
       if (input instanceof String) {
         // Most be valid JSON
         objectMapper.readTree((String) input);
-        return (String) input;
+        output = (String) input;
       } else if (input instanceof JsonNode) {
-        return input.toString();
+        output = input.toString();
       } else {
         throw new SFException(
             ErrorCode.INVALID_ROW,
             input.toString(),
-            String.format("VARIANT columns only accept String or JsonNode"));
+            String.format("OBJECT columns only accept String or JsonNode"));
       }
     } catch (JsonProcessingException e) {
       throw new SFException(
@@ -74,6 +84,14 @@ class DataValidationUtil {
           input.toString(),
           String.format("OBJECT columns must be valid JSON"));
     }
+    if (output.length() > MAX_STRING_LENGTH) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          input.toString(),
+          String.format(
+              "Object too large.  length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+    }
+    return output;
   }
 
   /**
