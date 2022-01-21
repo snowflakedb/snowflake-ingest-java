@@ -84,6 +84,7 @@ public class StreamingIngestStageTest {
             "role",
             null,
             null,
+            "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
@@ -125,6 +126,7 @@ public class StreamingIngestStageTest {
                 "role",
                 null,
                 null,
+                "clientName",
                 new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                     fullFilePath, Optional.of(System.currentTimeMillis()))));
     Mockito.doReturn(true).when(stage).isLocalFS();
@@ -151,6 +153,7 @@ public class StreamingIngestStageTest {
             "role",
             null,
             null,
+            "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
@@ -203,7 +206,8 @@ public class StreamingIngestStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(entity);
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    StreamingIngestStage stage = new StreamingIngestStage(true, "role", mockClient, mockBuilder);
+    StreamingIngestStage stage =
+        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName");
 
     StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
         stage.refreshSnowflakeMetadata(true);
@@ -251,6 +255,7 @@ public class StreamingIngestStageTest {
             "role",
             mockClient,
             mockBuilder,
+            "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(0L)));
 

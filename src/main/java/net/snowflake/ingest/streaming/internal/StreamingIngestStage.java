@@ -77,13 +77,19 @@ class StreamingIngestStage {
   private final HttpClient httpClient;
   private final RequestBuilder requestBuilder;
   private final String role;
+  private final String clientName;
 
   StreamingIngestStage(
-      boolean isTestMode, String role, HttpClient httpClient, RequestBuilder requestBuilder)
+      boolean isTestMode,
+      String role,
+      HttpClient httpClient,
+      RequestBuilder requestBuilder,
+      String clientName)
       throws SnowflakeSQLException, IOException {
     this.httpClient = httpClient;
     this.role = role;
     this.requestBuilder = requestBuilder;
+    this.clientName = clientName;
 
     if (!isTestMode) {
       refreshSnowflakeMetadata();
@@ -95,8 +101,9 @@ class StreamingIngestStage {
    *
    * @param isTestMode must be true
    * @param role Snowflake role used by the Client
-   * @param httpClient
-   * @param requestBuilder
+   * @param httpClient http client reference
+   * @param requestBuilder request builder to build the HTTP request
+   * @param clientName the client name
    * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
    */
   StreamingIngestStage(
@@ -104,6 +111,7 @@ class StreamingIngestStage {
       String role,
       HttpClient httpClient,
       RequestBuilder requestBuilder,
+      String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata) {
     if (!isTestMode) {
       throw new SFException(ErrorCode.INTERNAL_ERROR);
@@ -111,6 +119,7 @@ class StreamingIngestStage {
     this.httpClient = httpClient;
     this.role = role;
     this.requestBuilder = requestBuilder;
+    this.clientName = clientName;
     this.fileTransferMetadataWithAge = testMetadata;
   }
 
@@ -160,6 +169,8 @@ class StreamingIngestStage {
               .setUploadStream(inStream)
               .setRequireCompress(false)
               .setOcspMode(OCSPMode.FAIL_OPEN)
+              .setStreamingIngestClientKey(this.clientPrefix)
+              .setStreamingIngestClientName(this.clientName)
               .build());
     } catch (NullPointerException npe) {
       // TODO SNOW-350701 Update JDBC driver to throw a reliable token expired error
