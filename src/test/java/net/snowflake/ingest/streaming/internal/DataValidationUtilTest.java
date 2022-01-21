@@ -220,6 +220,16 @@ public class DataValidationUtilTest {
     Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(stringVariant));
     JsonNode nodeVariant = objectMapper.readTree(stringVariant);
     Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(nodeVariant));
+
+    char[] data = new char[20000000];
+    Arrays.fill(data, 'a');
+    String stringVal = new String(data);
+    try {
+      DataValidationUtil.validateAndParseVariant(stringVal);
+      Assert.fail("Expected INVALID_ROW error");
+    } catch (SFException err) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
+    }
   }
 
   @Test
@@ -232,6 +242,19 @@ public class DataValidationUtilTest {
     String badObject = "foo";
     try {
       DataValidationUtil.validateAndParseObject(badObject);
+      Assert.fail("Expected INVALID_ROW error");
+    } catch (SFException err) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
+    }
+
+    char[] data = new char[20000000];
+    Arrays.fill(data, 'a');
+    String stringVal = new String(data);
+    Map<String, String> mapVal = new HashMap<>();
+    mapVal.put("key", stringVal);
+    String tooLargeObject = objectMapper.writeValueAsString(mapVal);
+    try {
+      DataValidationUtil.validateAndParseObject(tooLargeObject);
       Assert.fail("Expected INVALID_ROW error");
     } catch (SFException err) {
       Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
