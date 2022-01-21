@@ -4,7 +4,9 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
@@ -12,6 +14,8 @@ import java.util.Optional;
 import java.util.Set;
 import javax.xml.bind.DatatypeConverter;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
+import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
+import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -22,13 +26,16 @@ class DataValidationUtil {
   static final BigInteger MAX_BIGINTEGER = BigInteger.valueOf(10).pow(38);
   static final BigInteger MIN_BIGINTEGER =
       BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38));
+  private static final ObjectMapper objectMapper = new ObjectMapper();
+  private static final SnowflakeDateTimeFormat snowflakeDateTimeFormatter =
+      SnowflakeDateTimeFormat.fromSqlFormat("auto");
 
   /**
    * Expects string JSON
    *
    * @param input
    */
-  // TODO enforce max size? TODO enforce valid JSON?
+  // TODO(SNOW-534044) enforce max size
   static String validateAndParseVariant(Object input) {
     if (input instanceof String) {
       return (String) input;
@@ -39,6 +46,33 @@ class DataValidationUtil {
           ErrorCode.INVALID_ROW,
           input.toString(),
           String.format("OBJECT, ARRAY, and VARIANT columns only accept String or JsonNode"));
+    }
+  }
+
+  /**
+   * Expects string JSON or JsonNode
+   *
+   * @param input Must be valid string JSON or JsonNode
+   */
+  static String validateAndParseObject(Object input) {
+    try {
+      if (input instanceof String) {
+        // Most be valid JSON
+        objectMapper.readTree((String) input);
+        return (String) input;
+      } else if (input instanceof JsonNode) {
+        return input.toString();
+      } else {
+        throw new SFException(
+            ErrorCode.INVALID_ROW,
+            input.toString(),
+            String.format("VARIANT columns only accept String or JsonNode"));
+      }
+    } catch (JsonProcessingException e) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          input.toString(),
+          String.format("OBJECT columns must be valid JSON"));
     }
   }
 
@@ -376,13 +410,13 @@ class DataValidationUtil {
     }
   }
 
+  /**
+   * @param input Seconds past the epoch. or String Time representation
+   * @param metadata
+   */
   static BigInteger validateAndParseTime(Object input, Map<String, String> metadata) {
-    try {
-      int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
-      return getTimeInScale(getStringValue(input), scale);
-    } catch (NumberFormatException e) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
-    }
+    int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
+    return getTimeInScale(getStringValue(input), scale);
   }
 
   /**
@@ -393,9 +427,26 @@ class DataValidationUtil {
    *     nanoseconds scale = 9
    */
   static BigInteger getTimeInScale(String value, int scale) {
-    BigDecimal decVal = new BigDecimal(value);
-    BigDecimal epochScale = decVal.multiply(BigDecimal.valueOf(Power10.intTable[scale]));
-    return epochScale.toBigInteger();
+    try {
+      BigDecimal decVal = new BigDecimal(value);
+      BigDecimal epochScale = decVal.multiply(BigDecimal.valueOf(Power10.intTable[scale]));
+      return epochScale.toBigInteger();
+    } catch (NumberFormatException e) {
+      // Try parsing the time from a String
+      Optional<SFTimestamp> timestamp =
+          Optional.ofNullable(snowflakeDateTimeFormatter.parse(value));
+      return timestamp
+          .map(
+              t ->
+                  // Adjust nanoseconds past the epoch to match the column scale value
+                  t.getNanosSinceEpoch()
+                      .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
+                      .toBigInteger())
+          .orElseThrow(
+              () ->
+                  new SFException(
+                      ErrorCode.INVALID_ROW, value, "Cannot be converted to a time value"));
+    }
   }
 
   static String getStringValue(Object value) {

@@ -1,5 +1,19 @@
 package net.snowflake.ingest;
 
+import static net.snowflake.ingest.utils.Constants.ACCOUNT;
+import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
+import static net.snowflake.ingest.utils.Constants.CONNECT_STRING;
+import static net.snowflake.ingest.utils.Constants.DATABASE;
+import static net.snowflake.ingest.utils.Constants.HOST;
+import static net.snowflake.ingest.utils.Constants.PORT;
+import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.Constants.SCHEMA;
+import static net.snowflake.ingest.utils.Constants.SCHEME;
+import static net.snowflake.ingest.utils.Constants.SSL;
+import static net.snowflake.ingest.utils.Constants.USER;
+import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -11,6 +25,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Optional;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -27,6 +42,8 @@ public class TestUtils {
   private static ObjectNode profile = null;
 
   private static String user = "";
+
+  private static String role = "";
 
   private static String privateKeyPem = "";
 
@@ -62,18 +79,20 @@ public class TestUtils {
   private static void init() throws Exception {
     profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH))));
 
-    user = profile.get("user").asText();
-    account = profile.get("account").asText();
-    port = profile.get("port").asInt();
-    ssl = profile.get("ssl").asText();
-    database = profile.get("database").asText();
-    connectString = profile.get("connect_string").asText();
-    schema = profile.get("schema").asText();
-    warehouse = profile.get("warehouse").asText();
-    host = profile.get("host").asText();
-    scheme = profile.get("scheme").asText();
+    user = profile.get(USER).asText();
+    account = profile.get(ACCOUNT).asText();
+    port = profile.get(PORT).asInt();
+    ssl = profile.get(SSL).asText();
+    database = profile.get(DATABASE).asText();
+    connectString = profile.get(CONNECT_STRING).asText();
+    schema = profile.get(SCHEMA).asText();
+    warehouse = profile.get(WAREHOUSE).asText();
+    host = profile.get(HOST).asText();
+    scheme = profile.get(SCHEME).asText();
 
-    privateKeyPem = profile.get("private_key").asText();
+    role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
+
+    privateKeyPem = profile.get(PRIVATE_KEY).asText();
 
     java.security.Security.addProvider(new BouncyCastleProvider());
 
@@ -90,6 +109,21 @@ public class TestUtils {
       init();
     }
     return user;
+  }
+
+  public static String getAccountURL() throws Exception {
+    if (profile == null) {
+      init();
+    }
+
+    return Utils.constructAccountUrl(scheme, host, port);
+  }
+
+  public static String getWarehouse() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return warehouse;
   }
 
   public static String getHost() throws Exception {
@@ -111,6 +145,24 @@ public class TestUtils {
       init();
     }
     return keyPair;
+  }
+
+  public static Properties getProperties() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    Properties props = new Properties();
+
+    props.put(USER, user);
+    props.put(ACCOUNT, account);
+    props.put(SSL, ssl);
+    props.put(DATABASE, database);
+    props.put(SCHEMA, schema);
+    props.put(WAREHOUSE, warehouse);
+    props.put(PRIVATE_KEY, privateKeyPem);
+    props.put(ROLE, role);
+    props.put(ACCOUNT_URL, getAccountURL());
+    return props;
   }
 
   /**

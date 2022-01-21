@@ -40,10 +40,21 @@ public class SnowflakeStreamingIngestClientFactory {
       Utils.assertNotNull("connection properties", this.prop);
 
       if (!this.prop.containsKey(Constants.ACCOUNT_URL)) {
-        throw new SFException(ErrorCode.MISSING_CONFIG, "Account URL");
+        if (this.prop.containsKey(Constants.HOST)
+            && this.prop.containsKey(Constants.SCHEME)
+            && this.prop.containsKey(Constants.PORT)) {
+          this.prop.put(
+              Constants.ACCOUNT_URL,
+              Utils.constructAccountUrl(
+                  this.prop.get(Constants.SCHEME).toString(),
+                  this.prop.get(Constants.HOST).toString(),
+                  Integer.parseInt(prop.get(Constants.PORT).toString())));
+        } else {
+          throw new SFException(ErrorCode.MISSING_CONFIG, "Account URL");
+        }
       }
 
-      if (!this.prop.containsKey(Constants.ROLE_NAME)) {
+      if (!this.prop.containsKey(Constants.ROLE)) {
         throw new SFException(ErrorCode.MISSING_CONFIG, "Role Name");
       }
 

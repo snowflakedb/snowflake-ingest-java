@@ -4,8 +4,11 @@
 
 package net.snowflake.ingest.streaming.example;
 
-import java.io.FileInputStream;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -15,15 +18,18 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.utils.Utils;
 
 /** Examples on how to use the Streaming Ingest client APIs */
 public class SnowflakeStreamingIngestExample {
-  private static String PROFILE_PATH = "profile.properties";
+  private static String PROFILE_PATH = "profile.json";
+  private static final ObjectMapper mapper = new ObjectMapper();
 
   public static void main(String[] args)
       throws ExecutionException, InterruptedException, IOException {
-    Properties prop = new Properties();
-    prop.load(new FileInputStream(PROFILE_PATH));
+    ObjectNode profile =
+        (ObjectNode) mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH))));
+    Properties prop = Utils.getPropertiesFromJson(profile);
 
     // Create a streaming ingest client
     SnowflakeStreamingIngestClient client =

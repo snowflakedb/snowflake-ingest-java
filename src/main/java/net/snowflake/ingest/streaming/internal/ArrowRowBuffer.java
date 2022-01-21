@@ -727,13 +727,22 @@ class ArrowRowBuffer {
               break;
             }
           case OBJECT:
+            {
+              String str = DataValidationUtil.validateAndParseObject(value);
+              Text text = new Text(str);
+              ((VarCharVector) vector).setSafe(curRowIndex, text);
+              rowBufferSize += text.getBytes().length;
+              break;
+            }
           case ARRAY:
           case VARIANT:
-            String str = DataValidationUtil.validateAndParseVariant(value);
-            Text text = new Text(str);
-            ((VarCharVector) vector).setSafe(curRowIndex, text);
-            rowBufferSize += text.getBytes().length;
-            break;
+            {
+              String str = DataValidationUtil.validateAndParseVariant(value);
+              Text text = new Text(str);
+              ((VarCharVector) vector).setSafe(curRowIndex, text);
+              rowBufferSize += text.getBytes().length;
+              break;
+            }
           case TIMESTAMP_LTZ:
           case TIMESTAMP_NTZ:
             switch (physicalType) {

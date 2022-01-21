@@ -4,7 +4,6 @@ import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 
-import java.io.FileInputStream;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -17,17 +16,14 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import net.snowflake.client.jdbc.SnowflakeDriver;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
+import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.Utils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -35,23 +31,18 @@ import org.junit.Test;
 
 /** Example streaming ingest sdk integration test */
 public class StreamingIngestIT {
-  private static final String PROFILE_PATH = "profile.properties";
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
+  private Properties prop;
 
   private SnowflakeStreamingIngestClientInternal client;
   private Connection jdbcConnection;
-  private final Properties prop = new Properties();
 
   @Before
   public void beforeAll() throws Exception {
-    prop.load(new FileInputStream(PROFILE_PATH));
-
     // Create a streaming ingest client
-    SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
-    Properties parsedProp = Utils.createProperties(prop, accountURL.sslEnabled());
-    jdbcConnection = new SnowflakeDriver().connect(accountURL.getJdbcUrl(), parsedProp);
+    jdbcConnection = TestUtils.getConnection();
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace database %s;", TEST_DB));
@@ -72,7 +63,9 @@ public class StreamingIngestIT {
                 TEST_TABLE));
     jdbcConnection
         .createStatement()
-        .execute(String.format("use warehouse %s", prop.get("warehouse")));
+        .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
+
+    prop = TestUtils.getProperties();
     client =
         (SnowflakeStreamingIngestClientInternal)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
