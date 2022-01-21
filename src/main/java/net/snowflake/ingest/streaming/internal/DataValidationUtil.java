@@ -35,7 +35,7 @@ class DataValidationUtil {
    *
    * @param input
    */
-  // TODO enforce max size
+  // TODO(SNOW-534044) enforce max size
   static String validateAndParseVariant(Object input) {
     if (input instanceof String) {
       return (String) input;
@@ -413,7 +413,6 @@ class DataValidationUtil {
   /**
    * @param input Seconds past the epoch. or String Time representation
    * @param metadata
-   * @return
    */
   static BigInteger validateAndParseTime(Object input, Map<String, String> metadata) {
     int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
@@ -433,11 +432,13 @@ class DataValidationUtil {
       BigDecimal epochScale = decVal.multiply(BigDecimal.valueOf(Power10.intTable[scale]));
       return epochScale.toBigInteger();
     } catch (NumberFormatException e) {
+      // Try parsing the time from a String
       Optional<SFTimestamp> timestamp =
           Optional.ofNullable(snowflakeDateTimeFormatter.parse(value));
       return timestamp
           .map(
               t ->
+                  // Adjust nanoseconds past the epoch to match the column scale value
                   t.getNanosSinceEpoch()
                       .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
                       .toBigInteger())
