@@ -162,7 +162,11 @@ class FlushService {
     try {
       this.targetStage =
           new StreamingIngestStage(
-              isTestMode, client.getRole(), client.getHttpClient(), client.getRequestBuilder());
+              isTestMode,
+              client.getRole(),
+              client.getHttpClient(),
+              client.getRequestBuilder(),
+              client.getName());
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }
