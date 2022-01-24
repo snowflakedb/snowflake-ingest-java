@@ -80,7 +80,9 @@ public class FlushServiceTest {
 
   @Before
   public void setup() {
+    ParameterProvider parameterProvider = new ParameterProvider();
     client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
+    Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
     stage = Mockito.mock(StreamingIngestStage.class);
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     channelCache = new ChannelCache();
@@ -415,8 +417,10 @@ public class FlushServiceTest {
     // Create a new Client in order to not interfere with other tests
     SnowflakeStreamingIngestClientInternal client =
         Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
+    ParameterProvider parameterProvider = new ParameterProvider();
     ChannelCache channelCache = new ChannelCache();
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
+    Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
     SnowflakeStreamingIngestChannelInternal channel1 =
         new SnowflakeStreamingIngestChannelInternal(
             "channel1",
