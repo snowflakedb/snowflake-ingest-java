@@ -26,6 +26,7 @@ class SnowflakeStreamingIngestChannelFactory {
     private String encryptionKey;
     private Long encryptionKeyId;
     private OpenChannelRequest.OnErrorOption onErrorOption;
+    private ParameterProvider parameterProvider;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;

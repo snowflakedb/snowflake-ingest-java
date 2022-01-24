@@ -5,11 +5,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_CHECK_INTERVAL_IN_MS;
-import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.CPU_IO_TIME_RATIO;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
 import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
 
@@ -166,7 +163,8 @@ class FlushService {
               client.getRole(),
               client.getHttpClient(),
               client.getRequestBuilder(),
-              client.getName());
+              client.getName(),
+              this.owningClient.getParameterProvider());
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }
@@ -249,7 +247,9 @@ class FlushService {
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
             && !this.isTestMode
-            && (this.isNeedFlush || timeDiffMillis >= BUFFER_FLUSH_INTERVAL_IN_MS))) {
+            && (this.isNeedFlush
+                || timeDiffMillis
+                    >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
 
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
@@ -269,7 +269,7 @@ class FlushService {
           flush(false);
         },
         0,
-        BUFFER_FLUSH_CHECK_INTERVAL_IN_MS,
+        this.owningClient.getParameterProvider().getBufferFlushCheckIntervalInMs(),
         TimeUnit.MILLISECONDS);
 
     // Create thread for registering blobs
@@ -304,6 +304,7 @@ class FlushService {
         itr = this.channelCache.iterator();
     List<Pair<BlobData, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     String filePath = null;
+    long maxBlobSizeInBytes = owningClient.getParameterProvider().getMaxBlobSizeInBytes();
 
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();
@@ -314,7 +315,7 @@ class FlushService {
       }
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
-      while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
+      while (itr.hasNext() && totalBufferSize <= maxBlobSizeInBytes) {
         ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> table =
             itr.next().getValue();
         List<ChannelData> channelsDataPerTable = new ArrayList<>();
