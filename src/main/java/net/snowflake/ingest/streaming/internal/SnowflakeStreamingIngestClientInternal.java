@@ -34,12 +34,10 @@ import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.connection.IngestResponseException;
@@ -215,12 +213,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return this.role;
   }
 
-  /** @return a boolean to indicate whether the client is closed or not */
-  @Override
-  public boolean isClosed() {
-    return isClosed;
-  }
-
   /**
    * Open a channel against a Snowflake table
    *
@@ -229,7 +221,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   @Override
   public SnowflakeStreamingIngestChannelInternal openChannel(OpenChannelRequest request) {
-    if (isClosed()) {
+    if (isClosed) {
       throw new SFException(ErrorCode.CLOSED_CLIENT);
     }
 
@@ -402,75 +394,30 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                     })));
   }
 
-  /**
-   * Close the client, which will flush first and then release all the resources
-   *
-   * @return future which will be complete when the channel is closed
-   */
+  /** Close the client and release all the resources */
   @Override
-  public CompletableFuture<Void> close() {
-    if (isClosed()) {
-      return CompletableFuture.completedFuture(null);
-    }
-
-    // Get all the valid and active channels in the channel cache
-    List<SnowflakeStreamingIngestChannelInternal> channels = new ArrayList<>();
-    Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
-        itr = this.channelCache.iterator();
-    while (itr.hasNext()) {
-      for (SnowflakeStreamingIngestChannelInternal channel : itr.next().getValue().values()) {
-        if (!channel.isClosed()) {
-          channels.add(channel);
-        }
-      }
+  public void close() {
+    if (isClosed) {
+      return;
     }
 
     isClosed = true;
-    // First mark all the channels as closed, then flush any leftover rows in the buffer
     this.channelCache.closeAllChannels();
-    return flush(true)
-        .handleAsync(
-            (result, ex) -> {
-              if (ex != null) {
-                Throwable rootCause = ex;
-                // Get the root cause as the original exception could be wrapped by SFException
-                while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
-                  rootCause = rootCause.getCause();
-                }
-                logger.logError(
-                    "Flush failed during close, exception={}, cause={}",
-                    ex.getMessage(),
-                    rootCause.getMessage());
-              }
 
-              // Check if any channels has uncommitted rows
-              List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
-                  verifyChannelsAreFullyCommitted(channels);
+    // Collect the perf metrics before closing if needed
+    if (metrics != null) {
+      Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
+    }
 
-              // Collect the perf metrics before closing if needed
-              if (metrics != null) {
-                Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
-              }
-
-              try {
-                this.flushService.shutdown();
-              } catch (InterruptedException e) {
-                throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
-              }
-
-              this.allocator.getChildAllocators().forEach(BufferAllocator::close);
-              this.allocator.close();
-
-              // Throw an exception if there is any channels with uncommitted rows
-              if (!uncommittedChannels.isEmpty()) {
-                throw new SFException(
-                    ErrorCode.CHANNEL_WITH_UNCOMMITTED_ROWS,
-                    uncommittedChannels.stream()
-                        .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
-                        .collect(Collectors.toList()));
-              }
-              return null;
-            });
+    // Cleanup resources
+    try {
+      this.flushService.shutdown();
+    } catch (InterruptedException e) {
+      throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
+    } finally {
+      this.allocator.getChildAllocators().forEach(BufferAllocator::close);
+      this.allocator.close();
+    }
   }
 
   /**
@@ -480,7 +427,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @return future which will be complete when the flush the data is registered
    */
   CompletableFuture<Void> flush(boolean closing) {
-    if (isClosed() && !closing) {
+    if (isClosed && !closing) {
       throw new SFException(ErrorCode.CLOSED_CLIENT);
     }
     return this.flushService.flush(true);

@@ -73,7 +73,7 @@ public class StreamingIngestIT {
 
   @After
   public void afterAll() throws Exception {
-    client.close().get();
+    client.close();
     jdbcConnection.createStatement().execute(String.format("drop database %s", TEST_DB));
   }
 

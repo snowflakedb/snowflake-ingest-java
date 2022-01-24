@@ -58,7 +58,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   // Data encryption key
   private final String encryptionKey;
 
-  // Data encryption key Id
+  // Data encryption key id
   private final Long encryptionKeyId;
 
   // Indicates whether we're using it as of the any tests
