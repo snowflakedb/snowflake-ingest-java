@@ -24,6 +24,7 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.core.type.TypeReference;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -31,6 +32,7 @@ import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
@@ -38,6 +40,8 @@ import org.apache.http.client.HttpClient;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
+  private static final Logging logger = new Logging(StreamingIngestStage.class);
+
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
@@ -78,18 +82,21 @@ class StreamingIngestStage {
   private final RequestBuilder requestBuilder;
   private final String role;
   private final String clientName;
+  private final ParameterProvider parameterProvider;
 
   StreamingIngestStage(
       boolean isTestMode,
       String role,
       HttpClient httpClient,
       RequestBuilder requestBuilder,
-      String clientName)
+      String clientName,
+      ParameterProvider parameterProvider)
       throws SnowflakeSQLException, IOException {
     this.httpClient = httpClient;
     this.role = role;
     this.requestBuilder = requestBuilder;
     this.clientName = clientName;
+    this.parameterProvider = parameterProvider;
 
     if (!isTestMode) {
       refreshSnowflakeMetadata();
@@ -112,6 +119,7 @@ class StreamingIngestStage {
       HttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName,
+      ParameterProvider parameterProvider,
       SnowflakeFileTransferMetadataWithAge testMetadata) {
     if (!isTestMode) {
       throw new SFException(ErrorCode.INTERNAL_ERROR);
@@ -121,6 +129,7 @@ class StreamingIngestStage {
     this.requestBuilder = requestBuilder;
     this.clientName = clientName;
     this.fileTransferMetadataWithAge = testMetadata;
+    this.parameterProvider = parameterProvider;
   }
 
   /**

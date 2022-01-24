@@ -73,6 +73,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Counter to generate unique request ids per client
   private final AtomicLong counter = new AtomicLong(0);
 
+  // Provides constant values set by Snowflake server
+  private static final ParameterProvider parameterProvider = new ParameterProvider();
+
   // Name of the client
   private final String name;
 
@@ -563,5 +566,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     return channels;
+  }
+
+  ParameterProvider getParameterProvider() {
+    return parameterProvider;
   }
 }

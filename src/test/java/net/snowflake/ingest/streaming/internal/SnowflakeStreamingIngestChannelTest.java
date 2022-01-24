@@ -1,6 +1,5 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
@@ -528,8 +527,10 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Runtime mockedRunTime = Mockito.mock(Runtime.class);
     Mockito.when(mockedRunTime.totalMemory()).thenReturn(1000000L);
+    ParameterProvider parameterProvider = new ParameterProvider();
     Mockito.when(mockedRunTime.freeMemory())
-        .thenReturn(1000000L * (INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE - 1) / 100);
+        .thenReturn(
+            1000000L * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
 
     CompletableFuture<Void> future =
         CompletableFuture.runAsync(

@@ -4,10 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE;
-import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 
 import java.util.Collections;
 import java.util.List;
@@ -400,7 +397,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
-    if (this.arrowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
+    if (this.arrowBuffer.getSize()
+        >= this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()) {
       this.owningClient.setNeedFlush();
     }
 
@@ -435,17 +433,20 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    * <li>system free_memory/total_memory < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE
    */
   void throttleInsertIfNeeded(Runtime runtime) {
-    if (runtime.freeMemory() * 100 / runtime.totalMemory()
-        < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE) {
+    int insertThrottleThresholdInPercentage =
+        this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
+    if (runtime.freeMemory() * 100 / runtime.totalMemory() < insertThrottleThresholdInPercentage) {
       long oldTotalMem = runtime.totalMemory();
       long oldFreeMem = runtime.freeMemory();
       int retry = 0;
 
+      long insertThrottleIntervalInMs =
+          this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
       while (runtime.freeMemory() * 100 / runtime.totalMemory()
-              < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE
+              < insertThrottleThresholdInPercentage
           && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
         try {
-          Thread.sleep(INSERT_THROTTLE_INTERVAL_IN_MS);
+          Thread.sleep(insertThrottleIntervalInMs);
           retry++;
         } catch (InterruptedException e) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
@@ -455,7 +456,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       logger.logWarn(
           "Insert throttled for {} ms due to JVM memory pressure, max memory={}, old total"
               + " memory={}, old free memory={}, new total memory={}, new free memory={}.",
-          retry * INSERT_THROTTLE_INTERVAL_IN_MS,
+          retry * insertThrottleIntervalInMs,
           runtime.maxMemory(),
           oldTotalMem,
           oldFreeMem,
