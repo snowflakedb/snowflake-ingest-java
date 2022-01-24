@@ -34,8 +34,8 @@ public class SnowflakeStreamingIngestExample {
       // Create an open channel request on table T_STREAMINGINGEST
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("CHANNEL")
-              .setDBName("DB_SSTREAMINGINGEST")
-              .setSchemaName("PUBLIC")
+              .setDBName("DB_STREAMINGINGEST")
+              .setSchemaName("SCHEMA_STREAMINGINGEST")
               .setTableName("T_STREAMINGINGEST")
               .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
               .build();
