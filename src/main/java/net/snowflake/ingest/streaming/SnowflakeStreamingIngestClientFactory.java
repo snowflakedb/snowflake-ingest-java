@@ -40,22 +40,26 @@ public class SnowflakeStreamingIngestClientFactory {
       Utils.assertNotNull("connection properties", this.prop);
 
       if (!this.prop.containsKey(Constants.ACCOUNT_URL)) {
-        if (this.prop.containsKey(Constants.HOST)
-            && this.prop.containsKey(Constants.SCHEME)
-            && this.prop.containsKey(Constants.PORT)) {
-          this.prop.put(
-              Constants.ACCOUNT_URL,
-              Utils.constructAccountUrl(
-                  this.prop.get(Constants.SCHEME).toString(),
-                  this.prop.get(Constants.HOST).toString(),
-                  Integer.parseInt(prop.get(Constants.PORT).toString())));
-        } else {
-          throw new SFException(ErrorCode.MISSING_CONFIG, "Account URL");
+        if (!this.prop.containsKey(Constants.HOST)) {
+          throw new SFException(ErrorCode.MISSING_CONFIG, "host");
         }
+        if (!this.prop.containsKey(Constants.SCHEME)) {
+          throw new SFException(ErrorCode.MISSING_CONFIG, "scheme");
+        }
+        if (!this.prop.containsKey(Constants.PORT)) {
+          throw new SFException(ErrorCode.MISSING_CONFIG, "port");
+        }
+
+        this.prop.put(
+            Constants.ACCOUNT_URL,
+            Utils.constructAccountUrl(
+                this.prop.get(Constants.SCHEME).toString(),
+                this.prop.get(Constants.HOST).toString(),
+                Integer.parseInt(prop.get(Constants.PORT).toString())));
       }
 
       if (!this.prop.containsKey(Constants.ROLE)) {
-        throw new SFException(ErrorCode.MISSING_CONFIG, "Role Name");
+        throw new SFException(ErrorCode.MISSING_CONFIG, "role");
       }
 
       SnowflakeURL accountURL = new SnowflakeURL(this.prop.getProperty(Constants.ACCOUNT_URL));
