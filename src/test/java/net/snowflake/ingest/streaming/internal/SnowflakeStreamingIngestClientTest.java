@@ -22,6 +22,13 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMWriter;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.OperatorCreationException;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfoBuilder;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.jcajce.JcaPKCS8EncryptedPrivateKeyInfoBuilder;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.jcajce.JcePKCSPBEOutputEncryptorBuilder;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -37,13 +44,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
-import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
-import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
-import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
-import org.bouncycastle.operator.OperatorCreationException;
-import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfoBuilder;
-import org.bouncycastle.pkcs.jcajce.JcaPKCS8EncryptedPrivateKeyInfoBuilder;
-import org.bouncycastle.pkcs.jcajce.JcePKCSPBEOutputEncryptorBuilder;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -154,7 +154,7 @@ public class SnowflakeStreamingIngestClientTest {
 
   private String generateAESKey(PrivateKey key, char[] passwd)
       throws IOException, OperatorCreationException {
-    Security.addProvider(new BouncyCastleFipsProvider());
+    Security.addProvider(new BouncyCastleProvider());
     StringWriter writer = new StringWriter();
     JcaPEMWriter pemWriter = new JcaPEMWriter(writer);
     PKCS8EncryptedPrivateKeyInfoBuilder pkcs8EncryptedPrivateKeyInfoBuilder =
@@ -162,7 +162,7 @@ public class SnowflakeStreamingIngestClientTest {
     pemWriter.writeObject(
         pkcs8EncryptedPrivateKeyInfoBuilder.build(
             new JcePKCSPBEOutputEncryptorBuilder(NISTObjectIdentifiers.id_aes256_CBC)
-                .setProvider("BCFIPS")
+                .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                 .build(passwd)));
     pemWriter.close();
     return writer.toString();

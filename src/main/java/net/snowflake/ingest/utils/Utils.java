@@ -25,15 +25,14 @@ import java.security.spec.RSAPublicKeySpec;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 import org.apache.commons.codec.binary.Base64;
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
-import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
-import org.bouncycastle.operator.InputDecryptorProvider;
-import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 
 /** Contains Ingest related utility functions */
 public class Utils {
@@ -200,7 +199,7 @@ public class Utils {
     }
     builder.append("\n-----END ENCRYPTED PRIVATE KEY-----");
     key = builder.toString();
-    Security.addProvider(new BouncyCastleFipsProvider());
+    Security.addProvider(new BouncyCastleProvider());
     try {
       PEMParser pemParser = new PEMParser(new StringReader(key));
       PKCS8EncryptedPrivateKeyInfo encryptedPrivateKeyInfo =
@@ -209,7 +208,7 @@ public class Utils {
       InputDecryptorProvider pkcs8Prov =
           new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase.toCharArray());
       JcaPEMKeyConverter converter =
-          new JcaPEMKeyConverter().setProvider(BouncyCastleFipsProvider.PROVIDER_NAME);
+          new JcaPEMKeyConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME);
       PrivateKeyInfo decryptedPrivateKeyInfo =
           encryptedPrivateKeyInfo.decryptPrivateKeyInfo(pkcs8Prov);
       return converter.getPrivateKey(decryptedPrivateKeyInfo);
