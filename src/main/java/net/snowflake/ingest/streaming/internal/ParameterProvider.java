@@ -22,8 +22,13 @@ public class ParameterProvider {
   static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
   static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 5;
 
+  /** Map of parameter name to parameter value. This will be set by client/configure API Call */
   private Map<String, Long> parameterMap = new HashMap<>();
 
+  /**
+   * Construct empty ParameterProvider that will supply default values until updated by
+   * client/configure API call
+   */
   public ParameterProvider() {}
 
   /**
