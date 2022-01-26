@@ -319,6 +319,35 @@ class ArrowRowBuffer {
     return response;
   }
 
+  //  private void transferVectors(VectorSchemaRoot source, VectorSchemaRoot target) {
+  //    for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
+  //      vector.setValueCount(this.rowCount);
+  //      if (vector instanceof DecimalVector) {
+  //        // DecimalVectors do not transfer FieldType metadata when using
+  //        // vector.getTransferPair. We need to explicitly create the new vector to transfer to
+  //        // in order to keep the metadata.
+  //        ArrowType arrowType =
+  //            new ArrowType.Decimal(
+  //                ((DecimalVector) vector).getPrecision(),
+  //                ((DecimalVector) vector).getScale(),
+  //                DECIMAL_BIT_WIDTH);
+  //        FieldType fieldType =
+  //            new FieldType(
+  //                vector.getField().isNullable(), arrowType, null,
+  // vector.getField().getMetadata());
+  //        Field f = new Field(vector.getName(), fieldType, null);
+  //        DecimalVector newVector = new DecimalVector(f, this.allocator);
+  //        TransferPair t = vector.makeTransferPair(newVector);
+  //        t.transfer();
+  //        oldVectors.add((FieldVector) t.getTo());
+  //      } else {
+  //        TransferPair t = vector.getTransferPair(this.allocator);
+  //        t.transfer();
+  //        oldVectors.add((FieldVector) t.getTo());
+  //      }
+  //    }
+  //  }
+
   /**
    * Flush the data in the row buffer by taking the ownership of the old vectors and pass all the
    * required info back to the flush service to build the blob
@@ -505,49 +534,48 @@ class ArrowRowBuffer {
                 ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
         }
         break;
+      case TIMESTAMP_TZ:
+        switch (physicalType) {
+          case SB8:
+            {
+              arrowType = Types.MinorType.STRUCT.getType();
+              FieldType fieldTypeEpoch =
+                  new FieldType(true, Types.MinorType.BIGINT.getType(), null, metadata);
+              FieldType fieldTypeTimezone =
+                  new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
+              Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
+              Field fieldTimezone = new Field(FIELD_TIME_ZONE, fieldTypeTimezone, null);
+              children = new LinkedList<>();
+              children.add(fieldEpoch);
+              children.add(fieldTimezone);
+              break;
+            }
+          case SB16:
+            {
+              arrowType = Types.MinorType.STRUCT.getType();
+              FieldType fieldTypeEpoch =
+                  new FieldType(true, Types.MinorType.BIGINT.getType(), null, metadata);
+              FieldType fieldTypeFraction =
+                  new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
+              FieldType fieldTypeTimezone =
+                  new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
+              Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
+              Field fieldFraction =
+                  new Field(FIELD_FRACTION_IN_NANOSECONDS, fieldTypeFraction, null);
+              Field fieldTimezone = new Field(FIELD_TIME_ZONE, fieldTypeTimezone, null);
 
-        // TODO: not currently supported in convertRowToArrow
-        //      case TIMESTAMP_TZ:
-        //        switch (physicalType) {
-        //          case SB8:
-        //            arrowType = Types.MinorType.STRUCT.getType();
-        //            FieldType fieldTypeEpoch =
-        //                new FieldType(true, Types.MinorType.BIGINT.getType(), null, metadata);
-        //            FieldType fieldTypeTimezone =
-        //                new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
-        //            Field fieldEpoch = new Field(Constants.FIELD_NAME_EPOCH, fieldTypeEpoch,
-        // null);
-        //            Field fieldTimezone = new Field(Constants.FIELD_NAME_FRACTION,
-        // fieldTypeTimezone, null);
-        //            children = new LinkedList<>();
-        //            children.add(fieldEpoch);
-        //            children.add(fieldTimezone);
-        //            break;
-        //          case SB16:
-        //            arrowType = Types.MinorType.STRUCT.getType();
-        //            fieldTypeEpoch = new FieldType(true, Types.MinorType.BIGINT.getType(), null,
-        // metadata);
-        //            FieldType fieldTypeFraction =
-        //                new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
-        //            fieldTypeTimezone = new FieldType(true, Types.MinorType.INT.getType(), null,
-        // metadata);
-        //            fieldEpoch = new Field(Constants.FIELD_NAME_EPOCH, fieldTypeEpoch, null);
-        //            Field fieldFraction = new Field(Constants.FIELD_NAME_FRACTION,
-        // fieldTypeFraction, null);
-        //            fieldTimezone =
-        //                new Field(Constants.FIELD_NAME_TIME_ZONE_INDEX, fieldTypeTimezone, null);
-        //
-        //            children = new LinkedList<>();
-        //            children.add(fieldEpoch);
-        //            children.add(fieldFraction);
-        //            children.add(fieldTimezone);
-        //            break;
-        //          default:
-        //            throw new SFException(
-        //                ErrorCode.UNKNOWN_DATA_TYPE,
-        //                "Unknown physical type for TIMESTAMP_TZ: " + physicalType);
-        //        }
-        //        break;
+              children = new LinkedList<>();
+              children.add(fieldEpoch);
+              children.add(fieldFraction);
+              children.add(fieldTimezone);
+              break;
+            }
+          default:
+            throw new SFException(
+                ErrorCode.UNKNOWN_DATA_TYPE,
+                "Unknown physical type for TIMESTAMP_TZ: " + physicalType);
+        }
+        break;
       case DATE:
         arrowType = Types.MinorType.DATEDAY.getType();
         break;
@@ -772,6 +800,68 @@ class ArrowRowBuffer {
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   rowBufferSize += 12;
+                  stats.addIntValue(timestampWrapper.getTimeInScale());
+                  break;
+                }
+              default:
+                throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+            }
+            break;
+          case TIMESTAMP_TZ:
+            switch (physicalType) {
+              case SB8:
+                {
+                  StructVector structVector = (StructVector) vector;
+                  BigIntVector epochVector =
+                      (BigIntVector) structVector.getChild(FIELD_EPOCH_IN_SECONDS);
+                  IntVector timezoneVector = (IntVector) structVector.getChild(FIELD_TIME_ZONE);
+                  rowBufferSize += 0.25; // for children vector's null value
+
+                  TimestampWrapper timestampWrapper =
+                      DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
+
+                  epochVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
+                  timezoneVector.setSafe(
+                      curRowIndex,
+                      timestampWrapper
+                          .getTimezoneOffset()
+                          .orElseThrow(
+                              () ->
+                                  new SFException(
+                                      ErrorCode.INVALID_ROW,
+                                      value,
+                                      "Unable to parse timezone for TIMESTAMP_TZ column")));
+                  stats.addIntValue(timestampWrapper.getTimeInScale());
+                  rowBufferSize += 8;
+                  break;
+                }
+              case SB16:
+                {
+                  StructVector structVector = (StructVector) vector;
+                  BigIntVector epochVector =
+                      (BigIntVector) structVector.getChild(FIELD_EPOCH_IN_SECONDS);
+                  IntVector fractionVector =
+                      (IntVector) structVector.getChild(FIELD_FRACTION_IN_NANOSECONDS);
+                  IntVector timezoneVector = (IntVector) structVector.getChild(FIELD_TIME_ZONE);
+
+                  rowBufferSize += 0.50; // for children vector's null value
+                  structVector.setIndexDefined(curRowIndex);
+
+                  TimestampWrapper timestampWrapper =
+                      DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
+                  epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
+                  fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
+                  timezoneVector.setSafe(
+                      curRowIndex,
+                      timestampWrapper
+                          .getTimezoneOffset()
+                          .orElseThrow(
+                              () ->
+                                  new SFException(
+                                      ErrorCode.INVALID_ROW,
+                                      value,
+                                      "Unable to parse timezone for TIMESTAMP_TZ column")));
+                  rowBufferSize += 16;
                   stats.addIntValue(timestampWrapper.getTimeInScale());
                   break;
                 }

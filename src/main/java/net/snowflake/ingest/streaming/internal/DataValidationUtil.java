@@ -131,6 +131,56 @@ class DataValidationUtil {
   }
 
   /**
+   * Validates and parses input for TIMESTAMP_TZ Snowflake type
+   *
+   * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
+   * @param metadata Column metadata containing scale
+   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
+   *     scale
+   */
+  static TimestampWrapper validateAndParseTimestampTz(Object input, Map<String, String> metadata) {
+    try {
+      if (input instanceof String) {
+        String stringInput = (String) input;
+        int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
+        SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(stringInput);
+        if (timestamp == null) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW, input, "Cannot be converted to a time value");
+        }
+
+        BigDecimal epochSecondsInNanoSeconds =
+            new BigDecimal(
+                timestamp.getSeconds().multiply(BigInteger.valueOf(Power10.intTable[9])));
+        int fraction =
+            timestamp.getNanosSinceEpoch().subtract(epochSecondsInNanoSeconds).intValue();
+
+        BigDecimal epochTimeAtSecondsScale =
+            timestamp.getNanosSinceEpoch().divide(BigDecimal.valueOf(Power10.intTable[9]));
+        if (fraction % Power10.intTable[9 - scale] != 0) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW,
+              input.toString(),
+              String.format(
+                  "Row specifies accuracy greater than column scale.  fraction=%d, scale=%d",
+                  fraction, scale));
+        }
+        TimestampWrapper wrapper =
+            new TimestampWrapper(
+                timestamp.getSeconds().longValue(),
+                fraction,
+                getTimeInScale(getStringValue(epochTimeAtSecondsScale), scale),
+                timestamp.getTimeZoneOffsetMillis());
+        return wrapper;
+      } else {
+        throw new SFException(ErrorCode.INVALID_ROW, input, "Cannot be converted to a time value");
+      }
+    } catch (NumberFormatException e) {
+      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
+    }
+  }
+
+  /**
    * Validates the input is less than the suppoed maximum allowed string
    *
    * @param input Object to validate and parse to String

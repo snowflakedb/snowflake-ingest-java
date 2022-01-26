@@ -171,17 +171,16 @@ public class RowBufferTest {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
 
-    // TODO: timestamp_tz not currently supported in convertRowToArrow
     // TIMESTAMP_TZ SB1
-    //    testCol = new ColumnMetadata();
-    //    testCol.setPhysicalType("SB1");
-    //    testCol.setLogicalType("TIMESTAMP_TZ");
-    //    try {
-    //      Field result = this.rowBuffer.buildField(testCol);
-    //      Assert.fail("Expected error");
-    //    } catch (SFException e) {
-    //      Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
-    //    }
+    testCol = new ColumnMetadata();
+    testCol.setPhysicalType("SB1");
+    testCol.setLogicalType("TIMESTAMP_TZ");
+    try {
+      Field result = this.rowBufferOnErrorContinue.buildField(testCol);
+      Assert.fail("Expected error");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
+    }
 
     // TIME SB16
     testCol = new ColumnMetadata();
@@ -381,60 +380,59 @@ public class RowBufferTest {
         result.getChildren().get(1).getFieldType().getType(), Types.MinorType.INT.getType());
   }
 
-  // TODO: timetamp_tz not currently supported in convertRowToArrow
-  //  @Test
-  //  public void buildFieldTimestampTzSB8() throws Exception {
-  //    ColumnMetadata testCol = new ColumnMetadata();
-  //    testCol.setName("testCol");
-  //    testCol.setPhysicalType("SB8");
-  //    testCol.setNullable(true);
-  //    testCol.setLogicalType("TIMESTAMP_TZ");
-  //    testCol.setByteLength(14);
-  //    testCol.setLength(11);
-  //    testCol.setScale(0);
-  //    testCol.setPrecision(4);
-  //    Field result = this.rowBuffer.buildField(testCol);
-  //
-  //    Assert.assertEquals("testCol", result.getName());
-  //    Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
-  //    Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB8");
-  //    Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
-  //    Assert.assertEquals(result.getFieldType().getMetadata().get("logicalType"), "TIMESTAMP_TZ");
-  //    Assert.assertTrue(result.getFieldType().isNullable());
-  //    Assert.assertEquals(result.getChildren().size(), 2);
-  //    Assert.assertEquals(
-  //        result.getChildren().get(0).getFieldType().getType(), Types.MinorType.BIGINT.getType());
-  //    Assert.assertEquals(
-  //        result.getChildren().get(1).getFieldType().getType(), Types.MinorType.INT.getType());
-  //  }
-  //
-  //  @Test
-  //  public void buildFieldTimestampTzSB16() throws Exception {
-  //    ColumnMetadata testCol = new ColumnMetadata();
-  //    testCol.setName("testCol");
-  //    testCol.setPhysicalType("SB16");
-  //    testCol.setNullable(true);
-  //    testCol.setLogicalType("TIMESTAMP_TZ");
-  //    testCol.setByteLength(14);
-  //    testCol.setLength(11);
-  //    testCol.setScale(0);
-  //    testCol.setPrecision(4);
-  //    Field result = this.rowBuffer.buildField(testCol);
-  //
-  //    Assert.assertEquals("testCol", result.getName());
-  //    Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
-  //    Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB16");
-  //    Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
-  //    Assert.assertEquals(result.getFieldType().getMetadata().get("logicalType"), "TIMESTAMP_TZ");
-  //    Assert.assertTrue(result.getFieldType().isNullable());
-  //    Assert.assertEquals(result.getChildren().size(), 3);
-  //    Assert.assertEquals(
-  //        result.getChildren().get(0).getFieldType().getType(), Types.MinorType.BIGINT.getType());
-  //    Assert.assertEquals(
-  //        result.getChildren().get(1).getFieldType().getType(), Types.MinorType.INT.getType());
-  //    Assert.assertEquals(
-  //        result.getChildren().get(2).getFieldType().getType(), Types.MinorType.INT.getType());
-  //  }
+  @Test
+  public void buildFieldTimestampTzSB8() throws Exception {
+    ColumnMetadata testCol = new ColumnMetadata();
+    testCol.setName("testCol");
+    testCol.setPhysicalType("SB8");
+    testCol.setNullable(true);
+    testCol.setLogicalType("TIMESTAMP_TZ");
+    testCol.setByteLength(14);
+    testCol.setLength(11);
+    testCol.setScale(0);
+    testCol.setPrecision(4);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
+
+    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
+    Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB8");
+    Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
+    Assert.assertEquals(result.getFieldType().getMetadata().get("logicalType"), "TIMESTAMP_TZ");
+    Assert.assertTrue(result.getFieldType().isNullable());
+    Assert.assertEquals(result.getChildren().size(), 2);
+    Assert.assertEquals(
+        result.getChildren().get(0).getFieldType().getType(), Types.MinorType.BIGINT.getType());
+    Assert.assertEquals(
+        result.getChildren().get(1).getFieldType().getType(), Types.MinorType.INT.getType());
+  }
+
+  @Test
+  public void buildFieldTimestampTzSB16() throws Exception {
+    ColumnMetadata testCol = new ColumnMetadata();
+    testCol.setName("testCol");
+    testCol.setPhysicalType("SB16");
+    testCol.setNullable(true);
+    testCol.setLogicalType("TIMESTAMP_TZ");
+    testCol.setByteLength(14);
+    testCol.setLength(11);
+    testCol.setScale(0);
+    testCol.setPrecision(4);
+    Field result = this.rowBufferOnErrorContinue.buildField(testCol);
+
+    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
+    Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB16");
+    Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
+    Assert.assertEquals(result.getFieldType().getMetadata().get("logicalType"), "TIMESTAMP_TZ");
+    Assert.assertTrue(result.getFieldType().isNullable());
+    Assert.assertEquals(result.getChildren().size(), 3);
+    Assert.assertEquals(
+        result.getChildren().get(0).getFieldType().getType(), Types.MinorType.BIGINT.getType());
+    Assert.assertEquals(
+        result.getChildren().get(1).getFieldType().getType(), Types.MinorType.INT.getType());
+    Assert.assertEquals(
+        result.getChildren().get(2).getFieldType().getType(), Types.MinorType.INT.getType());
+  }
 
   @Test
   public void buildFieldTimestampDate() {
@@ -906,6 +904,127 @@ public class RowBufferTest {
             .getVector("COLTIMESTAMPLTZ_SB16")
             .getChildrenFromFields()
             .get(1)
+            .getObject(0));
+  }
+
+  @Test
+  public void testArrowE2ETimestampTZ() {
+    testArrowE2ETimestampTZHelper(this.channelOnErrorContinue);
+    testArrowE2ETimestampTZHelper(this.channelOnErrorAbort);
+  }
+
+  private void testArrowE2ETimestampTZHelper(SnowflakeStreamingIngestChannelInternal channel) {
+    ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
+
+    ColumnMetadata colTimestampTzSB8 = new ColumnMetadata();
+    colTimestampTzSB8.setName("COLTIMESTAMPTZ_SB8");
+    colTimestampTzSB8.setPhysicalType("SB8");
+    colTimestampTzSB8.setNullable(false);
+    colTimestampTzSB8.setLogicalType("TIMESTAMP_TZ");
+    colTimestampTzSB8.setScale(0);
+
+    ColumnMetadata colTimestampTzSB16 = new ColumnMetadata();
+    colTimestampTzSB16.setName("COLTIMESTAMPTZ_SB16");
+    colTimestampTzSB16.setPhysicalType("SB16");
+    colTimestampTzSB16.setNullable(false);
+    colTimestampTzSB16.setLogicalType("TIMESTAMP_TZ");
+    colTimestampTzSB16.setScale(9);
+
+    innerBuffer.setupSchema(Arrays.asList(colTimestampTzSB8, colTimestampTzSB16));
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLTIMESTAMPTZ_SB8", "2021-01-01 01:00:00 +0100");
+    row.put("COLTIMESTAMPTZ_SB16", "2021-01-01 10:00:00.123456789 +1000");
+
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Collections.singletonList(row), null);
+    Assert.assertFalse(response.hasErrors());
+
+    // SB8
+    Assert.assertEquals(
+        "epoch",
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB8")
+            .getChildrenFromFields()
+            .get(0)
+            .getName());
+    Assert.assertEquals(
+        1609459200l,
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB8")
+            .getChildrenFromFields()
+            .get(0)
+            .getObject(0));
+
+    Assert.assertEquals(
+        "timezone",
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB8")
+            .getChildrenFromFields()
+            .get(1)
+            .getName());
+    Assert.assertEquals(
+        3600000,
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB8")
+            .getChildrenFromFields()
+            .get(1)
+            .getObject(0));
+
+    // SB16
+    Assert.assertEquals(
+        "epoch",
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB16")
+            .getChildrenFromFields()
+            .get(0)
+            .getName());
+    Assert.assertEquals(
+        1609459200l,
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB16")
+            .getChildrenFromFields()
+            .get(0)
+            .getObject(0));
+
+    Assert.assertEquals(
+        "fraction",
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB16")
+            .getChildrenFromFields()
+            .get(1)
+            .getName());
+    Assert.assertEquals(
+        123456789,
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB16")
+            .getChildrenFromFields()
+            .get(1)
+            .getObject(0));
+
+    Assert.assertEquals(
+        "timezone",
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB16")
+            .getChildrenFromFields()
+            .get(2)
+            .getName());
+    Assert.assertEquals(
+        36000000,
+        innerBuffer
+            .vectorsRoot
+            .getVector("COLTIMESTAMPTZ_SB16")
+            .getChildrenFromFields()
+            .get(2)
             .getObject(0));
   }
 

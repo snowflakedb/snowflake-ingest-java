@@ -118,6 +118,30 @@ public class DataValidationUtilTest {
   }
 
   @Test
+  public void testValidateAndPareTimestampTz() {
+    Map<String, String> metadata = new HashMap<>();
+    metadata.put(ArrowRowBuffer.COLUMN_SCALE, "3");
+    Assert.assertEquals(
+        new TimestampWrapper(1609459200, 123000000, BigInteger.valueOf(1609459200123L), 3600000),
+        DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", metadata));
+
+    // Expect errors
+    try {
+      DataValidationUtil.validateAndParseTimestampNtzSb16("honk", metadata);
+      Assert.fail("Expected Exception");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+    metadata.put(ArrowRowBuffer.COLUMN_SCALE, "1");
+    try {
+      DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", metadata);
+      Assert.fail("Expected Exception");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
   public void testValidateAndParseBigInteger() {
     for (Object input : goodIntegersValue10) {
       Assert.assertEquals(
