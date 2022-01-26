@@ -11,7 +11,7 @@ public class ParameterProviderTest {
   public void withValuesSet() {
     ParameterProvider parameterProvider = new ParameterProvider();
 
-    Map<String, Long> parameterMap = new HashMap<>();
+    Map<String, Object> parameterMap = new HashMap<>();
     parameterMap.put(parameterProvider.MAX_CHUNK_SIZE_IN_BYTES_MAP_KEY, 1l);
     parameterMap.put(parameterProvider.MAX_BLOB_SIZE_IN_BYTES_MAP_KEY, 2l);
     parameterMap.put(parameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3l);

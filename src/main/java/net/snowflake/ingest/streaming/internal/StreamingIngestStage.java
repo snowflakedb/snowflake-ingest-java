@@ -25,6 +25,7 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.core.type.TypeReference;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.DeserializationFeature;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -98,6 +99,12 @@ class StreamingIngestStage {
     this.clientName = clientName;
     this.parameterProvider = parameterProvider;
 
+    /*
+    All integer numbers will be deserialized as longs.
+    If this is false Jackson will deserialize to int or long based on size
+    */
+    this.mapper.configure(DeserializationFeature.USE_LONG_FOR_INTS, true);
+
     if (!isTestMode) {
       refreshSnowflakeMetadata();
     }
@@ -130,6 +137,7 @@ class StreamingIngestStage {
     this.clientName = clientName;
     this.fileTransferMetadataWithAge = testMetadata;
     this.parameterProvider = parameterProvider;
+    this.mapper.configure(DeserializationFeature.USE_LONG_FOR_INTS, true);
   }
 
   /**
@@ -237,9 +245,9 @@ class StreamingIngestStage {
       JsonNode responseNode = mapper.valueToTree(response);
 
       // Update parameter map with the latest values from server
-      Map<String, Long> parameterMap =
+      Map<String, Object> parameterMap =
           mapper.convertValue(
-              responseNode.get("parameter_map"), new TypeReference<Map<String, Long>>() {});
+              responseNode.get("parameter_map"), new TypeReference<Map<String, Object>>() {});
       if (parameterMap != null) {
         this.parameterProvider.setParameterMap(parameterMap);
       } else {
@@ -287,6 +295,10 @@ class StreamingIngestStage {
                     SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
                 Optional.of(System.currentTimeMillis()));
       }
+      logger.logInfo(
+          "Refreshed Client Metadata.  prefix={}, parameterMap={}",
+          this.clientPrefix,
+          parameterMap);
       return this.fileTransferMetadataWithAge;
     } catch (IngestResponseException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE);
