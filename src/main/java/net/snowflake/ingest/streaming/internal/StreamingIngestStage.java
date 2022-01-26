@@ -25,6 +25,7 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.core.type.TypeReference;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.DeserializationFeature;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -98,6 +99,12 @@ class StreamingIngestStage {
     this.clientName = clientName;
     this.parameterProvider = parameterProvider;
 
+    /*
+    All integer numbers will be deserialized as longs.
+    If this is false Jackson will deserialize to int or long based on size
+    */
+    this.mapper.configure(DeserializationFeature.USE_LONG_FOR_INTS, true);
+
     if (!isTestMode) {
       refreshSnowflakeMetadata();
     }
@@ -130,6 +137,7 @@ class StreamingIngestStage {
     this.clientName = clientName;
     this.fileTransferMetadataWithAge = testMetadata;
     this.parameterProvider = parameterProvider;
+    this.mapper.configure(DeserializationFeature.USE_LONG_FOR_INTS, true);
   }
 
   /**
