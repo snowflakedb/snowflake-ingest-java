@@ -164,7 +164,7 @@ class FlushService {
               client.getHttpClient(),
               client.getRequestBuilder(),
               client.getName(),
-              this.owningClient.getParameterProvider());
+              client.getParameterProvider());
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }
