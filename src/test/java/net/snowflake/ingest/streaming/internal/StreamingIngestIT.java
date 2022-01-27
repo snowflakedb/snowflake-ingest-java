@@ -301,7 +301,7 @@ public class StreamingIngestIT {
     row.put("tsmall", "03:00:00.123");
     row.put("tbig", "11:00:00.12345678");
     row.put("tntzsmall", "1809462800.123");
-    row.put("tntzbig", "1809462800.12345");
+    row.put("tntzbig", "2031-01-01 09:00:00.12345678");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     for (int i = 1; i < 15; i++) {
@@ -348,8 +348,8 @@ public class StreamingIngestIT {
         Assert.assertEquals(39600123, result.getTimestamp("MTBIG").getTime());
         Assert.assertEquals(123456780, result.getTimestamp("MTBIG").getNanos());
         Assert.assertEquals(1809462800123L, result.getTimestamp("MTNTZSMALL").getTime());
-        Assert.assertEquals(1809462800123L, result.getTimestamp("MTNTZBIG").getTime());
-        Assert.assertEquals(123450000, result.getTimestamp("MTNTZBIG").getNanos());
+        Assert.assertEquals(1925024400123L, result.getTimestamp("MTNTZBIG").getTime());
+        Assert.assertEquals(123456780, result.getTimestamp("MTNTZBIG").getNanos());
 
         return;
       } else {

@@ -97,8 +97,8 @@ class DataValidationUtil {
   /**
    * Validates and parses input for TIMESTAMP_NTZ Snowflake type
    *
-   * @param input Seconds past the epoch. Accepts fractional seconds with precision up to the
-   *     column's scale
+   * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
+   *     with precision up to the column's scale
    * @param metadata
    * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
    *     scale
@@ -109,13 +109,21 @@ class DataValidationUtil {
       int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
       String valueString = getStringValue(input);
 
-      String[] items = valueString.split("\\.");
-      long epoch = Long.parseLong(items[0]);
-      int l = items.length > 1 ? items[1].length() : 0;
-      // Fraction is in nanoseconds, but Snowflake will error if the fraction gives
-      // accuracy greater than the scale
-      int fraction =
-          l == 0 ? 0 : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
+      long epoch;
+      int fraction;
+
+      SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(valueString);
+      if (timestamp != null) {
+        epoch = timestamp.getSeconds().longValue();
+        fraction = getFractionFromTimestamp(timestamp);
+      } else {
+        String[] items = valueString.split("\\.");
+        epoch = Long.parseLong(items[0]);
+        int l = items.length > 1 ? items[1].length() : 0;
+        // Fraction is in nanoseconds, but Snowflake will error if the fraction gives
+        // accuracy greater than the scale
+        fraction = l == 0 ? 0 : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
+      }
       if (fraction % Power10.intTable[9 - scale] != 0) {
         throw new SFException(
             ErrorCode.INVALID_ROW,
@@ -128,6 +136,19 @@ class DataValidationUtil {
     } catch (NumberFormatException e) {
       throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
     }
+  }
+
+  /**
+   * Given a SFTimestamp, get the number of nanoseconds since the last whole second. This
+   * corresponds to the fraction component for Timestamp types
+   *
+   * @param input SFTimestamp
+   * @return Timestamp fraction value, the number of nanoseconds since the last whole second
+   */
+  private static int getFractionFromTimestamp(SFTimestamp input) {
+    BigDecimal epochSecondsInNanoSeconds =
+        new BigDecimal(input.getSeconds().multiply(BigInteger.valueOf(Power10.intTable[9])));
+    return input.getNanosSinceEpoch().subtract(epochSecondsInNanoSeconds).intValue();
   }
 
   /**
@@ -149,11 +170,7 @@ class DataValidationUtil {
               ErrorCode.INVALID_ROW, input, "Cannot be converted to a time value");
         }
 
-        BigDecimal epochSecondsInNanoSeconds =
-            new BigDecimal(
-                timestamp.getSeconds().multiply(BigInteger.valueOf(Power10.intTable[9])));
-        int fraction =
-            timestamp.getNanosSinceEpoch().subtract(epochSecondsInNanoSeconds).intValue();
+        int fraction = getFractionFromTimestamp(timestamp);
 
         BigDecimal epochTimeAtSecondsScale =
             timestamp.getNanosSinceEpoch().divide(BigDecimal.valueOf(Power10.intTable[9]));

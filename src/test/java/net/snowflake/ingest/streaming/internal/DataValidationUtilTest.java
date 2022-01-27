@@ -101,6 +101,10 @@ public class DataValidationUtilTest {
         new TimestampWrapper(1, 123, BigInteger.valueOf(1000000123)),
         DataValidationUtil.validateAndParseTimestampNtzSb16("1.000000123", metadata));
 
+    Assert.assertEquals(
+        new TimestampWrapper(1609462800, 123000000, new BigInteger("1609462800123000000")),
+        DataValidationUtil.validateAndParseTimestampNtzSb16("2021-01-01 01:00:00.123", metadata));
+
     // Expect errors
     try {
       DataValidationUtil.validateAndParseTimestampNtzSb16("honk", metadata);
