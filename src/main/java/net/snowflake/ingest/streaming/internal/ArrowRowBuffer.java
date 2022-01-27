@@ -518,17 +518,20 @@ class ArrowRowBuffer {
             arrowType = Types.MinorType.BIGINT.getType();
             break;
           case SB16:
-            arrowType = Types.MinorType.STRUCT.getType();
-            FieldType fieldTypeEpoch =
-                new FieldType(true, Types.MinorType.BIGINT.getType(), null, metadata);
-            FieldType fieldTypeFraction =
-                new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
-            Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
-            Field fieldFraction = new Field(FIELD_FRACTION_IN_NANOSECONDS, fieldTypeFraction, null);
-            children = new LinkedList<>();
-            children.add(fieldEpoch);
-            children.add(fieldFraction);
-            break;
+            {
+              arrowType = Types.MinorType.STRUCT.getType();
+              FieldType fieldTypeEpoch =
+                  new FieldType(true, Types.MinorType.BIGINT.getType(), null, metadata);
+              FieldType fieldTypeFraction =
+                  new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
+              Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
+              Field fieldFraction =
+                  new Field(FIELD_FRACTION_IN_NANOSECONDS, fieldTypeFraction, null);
+              children = new LinkedList<>();
+              children.add(fieldEpoch);
+              children.add(fieldFraction);
+              break;
+            }
           default:
             throw new SFException(
                 ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
@@ -816,6 +819,7 @@ class ArrowRowBuffer {
                       (BigIntVector) structVector.getChild(FIELD_EPOCH_IN_SECONDS);
                   IntVector timezoneVector = (IntVector) structVector.getChild(FIELD_TIME_ZONE);
                   rowBufferSize += 0.25; // for children vector's null value
+                  structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
@@ -832,7 +836,7 @@ class ArrowRowBuffer {
                                       value,
                                       "Unable to parse timezone for TIMESTAMP_TZ column")));
                   stats.addIntValue(timestampWrapper.getTimeInScale());
-                  rowBufferSize += 8;
+                  rowBufferSize += 12;
                   break;
                 }
               case SB16:
