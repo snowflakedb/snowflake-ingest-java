@@ -170,7 +170,8 @@ class DataValidationUtil {
                 timestamp.getSeconds().longValue(),
                 fraction,
                 getTimeInScale(getStringValue(epochTimeAtSecondsScale), scale),
-                timestamp.getTimeZoneOffsetMillis());
+                timestamp.getTimeZoneOffsetMillis(),
+                timestamp);
         return wrapper;
       } else {
         throw new SFException(ErrorCode.INVALID_ROW, input, "Cannot be converted to a time value");

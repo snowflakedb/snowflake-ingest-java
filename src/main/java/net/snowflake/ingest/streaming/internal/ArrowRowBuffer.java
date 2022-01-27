@@ -548,6 +548,7 @@ class ArrowRowBuffer {
                   new FieldType(true, Types.MinorType.INT.getType(), null, metadata);
               Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
               Field fieldTimezone = new Field(FIELD_TIME_ZONE, fieldTypeTimezone, null);
+
               children = new LinkedList<>();
               children.add(fieldEpoch);
               children.add(fieldTimezone);
@@ -818,25 +819,35 @@ class ArrowRowBuffer {
                   BigIntVector epochVector =
                       (BigIntVector) structVector.getChild(FIELD_EPOCH_IN_SECONDS);
                   IntVector timezoneVector = (IntVector) structVector.getChild(FIELD_TIME_ZONE);
+
                   rowBufferSize += 0.25; // for children vector's null value
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
-
                   epochVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
                   timezoneVector.setSafe(
                       curRowIndex,
                       timestampWrapper
-                          .getTimezoneOffset()
+                          .getTimeZoneIndex()
                           .orElseThrow(
                               () ->
                                   new SFException(
                                       ErrorCode.INVALID_ROW,
                                       value,
                                       "Unable to parse timezone for TIMESTAMP_TZ column")));
-                  stats.addIntValue(timestampWrapper.getTimeInScale());
                   rowBufferSize += 12;
+                  BigInteger timeInBinary =
+                      timestampWrapper
+                          .getSfTimestamp()
+                          .orElseThrow(
+                              () ->
+                                  new SFException(
+                                      ErrorCode.INVALID_ROW,
+                                      value,
+                                      "Unable to parse timezone for TIMESTAMP_TZ column"))
+                          .toBinary(Integer.parseInt(field.getMetadata().get(COLUMN_SCALE)), true);
+                  stats.addIntValue(timeInBinary);
                   break;
                 }
               case SB16:
@@ -858,7 +869,7 @@ class ArrowRowBuffer {
                   timezoneVector.setSafe(
                       curRowIndex,
                       timestampWrapper
-                          .getTimezoneOffset()
+                          .getTimeZoneIndex()
                           .orElseThrow(
                               () ->
                                   new SFException(
@@ -866,7 +877,17 @@ class ArrowRowBuffer {
                                       value,
                                       "Unable to parse timezone for TIMESTAMP_TZ column")));
                   rowBufferSize += 16;
-                  stats.addIntValue(timestampWrapper.getTimeInScale());
+                  BigInteger timeInBinary =
+                      timestampWrapper
+                          .getSfTimestamp()
+                          .orElseThrow(
+                              () ->
+                                  new SFException(
+                                      ErrorCode.INVALID_ROW,
+                                      value,
+                                      "Unable to parse timezone for TIMESTAMP_TZ column"))
+                          .toBinary(Integer.parseInt(field.getMetadata().get(COLUMN_SCALE)), true);
+                  stats.addIntValue(timeInBinary);
                   break;
                 }
               default:

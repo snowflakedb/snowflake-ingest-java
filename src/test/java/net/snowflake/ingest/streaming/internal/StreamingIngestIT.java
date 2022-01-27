@@ -54,7 +54,21 @@ public class StreamingIngestIT {
         .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
     jdbcConnection
         .createStatement()
-        .execute("alter session set enable_streaming_ingest_reads=true;");
+        .execute("alter session set enable_streaming_ingest_reads=false;");
+    jdbcConnection
+        .createStatement()
+        .execute("alter session set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;");
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "alter database %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_DB));
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_TABLE));
+    jdbcConnection.createStatement().execute("alter session set ENABLE_UNIFIED_TABLE_SCAN=true;");
     jdbcConnection
         .createStatement()
         .execute(
@@ -232,6 +246,111 @@ public class StreamingIngestIT {
         result.next();
         Assert.assertEquals(
             BigInteger.valueOf(10).pow(35).floatValue(), result.getFloat("TINYFLOAT"), 10);
+        return;
+      } else {
+        Thread.sleep(2000);
+      }
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testTimeColumnIngest() throws Exception {
+    String timeTableName = "time_table";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (tsmall TIME(3), tntzsmall TIMESTAMP_NTZ(3), ttzsmall"
+                    + " TIMESTAMP_TZ(3), tbig TIME(9), tntzbig TIMESTAMP_NTZ(9), ttzbig"
+                    + " TIMESTAMP_TZ(9) );",
+                timeTableName));
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", timeTableName));
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("CHANNEL_TIME")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(timeTableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("ttzsmall", "2021-01-01 01:00:00.123 -0300");
+    row.put("ttzbig", "2021-01-01 09:00:00.12345678 -0300");
+    row.put("tsmall", "01:00:00.123");
+    row.put("tbig", "09:00:00.12345678");
+    row.put("tntzsmall", "1609462800.123");
+    row.put("tntzbig", "1609462800.12345");
+    verifyInsertValidationResponse(channel1.insertRow(row, null));
+    row.put("ttzsmall", "2021-01-01 10:00:00.123 +0700");
+    row.put("ttzbig", "2021-01-01 19:00:00.12345678 -0300");
+    row.put("tsmall", "02:00:00.123");
+    row.put("tbig", "10:00:00.12345678");
+    row.put("tntzsmall", "1709462800.123");
+    row.put("tntzbig", "1709462800.12345");
+    verifyInsertValidationResponse(channel1.insertRow(row, null));
+    row.put("ttzsmall", "2021-01-01 05:00:00 +0100");
+    row.put("ttzbig", "2021-01-01 23:00:00.12345678 -0300");
+    row.put("tsmall", "03:00:00.123");
+    row.put("tbig", "11:00:00.12345678");
+    row.put("tntzsmall", "1809462800.123");
+    row.put("tntzbig", "1809462800.12345");
+    verifyInsertValidationResponse(channel1.insertRow(row, "1"));
+
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("1")) {
+        ResultSet result = null;
+        result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format("select * from %s.%s.%s", TEST_DB, TEST_SCHEMA, timeTableName));
+
+        result.next();
+        Assert.assertEquals(1609473600123l, result.getTimestamp("TTZSMALL").getTime());
+        Assert.assertEquals(1609502400123l, result.getTimestamp("TTZBIG").getTime());
+        Assert.assertEquals(123456780, result.getTimestamp("TTZBIG").getNanos());
+        Assert.assertEquals(3600123, result.getTimestamp("TSMALL").getTime());
+        Assert.assertEquals(32400123, result.getTimestamp("TBIG").getTime());
+        Assert.assertEquals(123456780, result.getTimestamp("TBIG").getNanos());
+        Assert.assertEquals(1609462800123L, result.getTimestamp("TNTZSMALL").getTime());
+        Assert.assertEquals(1609462800123L, result.getTimestamp("TNTZBIG").getTime());
+        Assert.assertEquals(123450000, result.getTimestamp("TNTZBIG").getNanos());
+
+        result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select "
+                            + "max(ttzsmall) as mttzsmall,"
+                            + "max(ttzbig) as mttzbig,"
+                            + "max(tsmall) as mtsmall,"
+                            + "max(tbig) as mtbig,"
+                            + "max(tntzsmall) as mtntzsmall,"
+                            + "max(tntzbig) as mtntzbig"
+                            + " from %s.%s.%s",
+                        TEST_DB, TEST_SCHEMA, timeTableName));
+
+        result.next();
+        Assert.assertEquals(1609473600123L, result.getTimestamp("MTTZSMALL").getTime());
+        Assert.assertEquals(1609552800123L, result.getTimestamp("MTTZBIG").getTime());
+        Assert.assertEquals(123456780, result.getTimestamp("MTTZBIG").getNanos());
+        Assert.assertEquals(10800123, result.getTimestamp("MTSMALL").getTime());
+        Assert.assertEquals(39600123, result.getTimestamp("MTBIG").getTime());
+        Assert.assertEquals(123456780, result.getTimestamp("MTBIG").getNanos());
+        Assert.assertEquals(1809462800123L, result.getTimestamp("MTNTZSMALL").getTime());
+        Assert.assertEquals(1809462800123L, result.getTimestamp("MTNTZBIG").getTime());
+        Assert.assertEquals(123450000, result.getTimestamp("MTNTZBIG").getNanos());
+
         return;
       } else {
         Thread.sleep(2000);

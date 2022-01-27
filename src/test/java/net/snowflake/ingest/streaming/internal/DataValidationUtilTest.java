@@ -121,9 +121,12 @@ public class DataValidationUtilTest {
   public void testValidateAndPareTimestampTz() {
     Map<String, String> metadata = new HashMap<>();
     metadata.put(ArrowRowBuffer.COLUMN_SCALE, "3");
-    Assert.assertEquals(
-        new TimestampWrapper(1609459200, 123000000, BigInteger.valueOf(1609459200123L), 3600000),
-        DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", metadata));
+    TimestampWrapper result =
+        DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", metadata);
+    Assert.assertEquals(1609459200, result.getEpoch());
+    Assert.assertEquals(123000000, result.getFraction());
+    Assert.assertEquals(Optional.of(3600000), result.getTimezoneOffset());
+    Assert.assertEquals(Optional.of(1500), result.getTimeZoneIndex());
 
     // Expect errors
     try {

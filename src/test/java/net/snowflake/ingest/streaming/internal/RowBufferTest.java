@@ -967,7 +967,7 @@ public class RowBufferTest {
             .get(1)
             .getName());
     Assert.assertEquals(
-        3600000,
+        1500,
         innerBuffer
             .vectorsRoot
             .getVector("COLTIMESTAMPTZ_SB8")
@@ -1019,7 +1019,7 @@ public class RowBufferTest {
             .get(2)
             .getName());
     Assert.assertEquals(
-        36000000,
+        2040,
         innerBuffer
             .vectorsRoot
             .getVector("COLTIMESTAMPTZ_SB16")

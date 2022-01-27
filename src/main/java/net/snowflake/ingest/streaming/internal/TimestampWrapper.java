@@ -7,12 +7,14 @@ package net.snowflake.ingest.streaming.internal;
 import java.math.BigInteger;
 import java.util.Objects;
 import java.util.Optional;
+import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
 
 class TimestampWrapper {
   private long epoch;
   private int fraction;
   private BigInteger timeInScale;
   private Optional<Integer> timezoneOffset = Optional.empty();
+  private Optional<SFTimestamp> sfTimestamp = Optional.empty();
 
   public TimestampWrapper(long epoch, int fraction, BigInteger timeInScale) {
     this.epoch = epoch;
@@ -20,11 +22,17 @@ class TimestampWrapper {
     this.timeInScale = timeInScale;
   }
 
-  public TimestampWrapper(long epoch, int fraction, BigInteger timeInScale, int timezoneOffset) {
+  public TimestampWrapper(
+      long epoch,
+      int fraction,
+      BigInteger timeInScale,
+      int timezoneOffset,
+      SFTimestamp sfTimestamp) {
     this.epoch = epoch;
     this.fraction = fraction;
     this.timeInScale = timeInScale;
     this.timezoneOffset = Optional.ofNullable(timezoneOffset);
+    this.sfTimestamp = Optional.ofNullable(sfTimestamp);
   }
 
   public long getEpoch() {
@@ -43,6 +51,14 @@ class TimestampWrapper {
     return timezoneOffset;
   }
 
+  public Optional<Integer> getTimeZoneIndex() {
+    return timezoneOffset.map(t -> (t / 1000 / 60) + 1440);
+  }
+
+  public Optional<SFTimestamp> getSfTimestamp() {
+    return sfTimestamp;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -51,11 +67,12 @@ class TimestampWrapper {
     return epoch == that.epoch
         && fraction == that.fraction
         && Objects.equals(timeInScale, that.timeInScale)
-        && Objects.equals(timezoneOffset, that.timezoneOffset);
+        && timezoneOffset.equals(that.timezoneOffset)
+        && sfTimestamp.equals(that.sfTimestamp);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(epoch, fraction, timeInScale, timezoneOffset);
+    return Objects.hash(epoch, fraction, timeInScale, timezoneOffset, sfTimestamp);
   }
 }
