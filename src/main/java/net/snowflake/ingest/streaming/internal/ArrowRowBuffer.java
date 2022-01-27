@@ -319,35 +319,6 @@ class ArrowRowBuffer {
     return response;
   }
 
-  //  private void transferVectors(VectorSchemaRoot source, VectorSchemaRoot target) {
-  //    for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
-  //      vector.setValueCount(this.rowCount);
-  //      if (vector instanceof DecimalVector) {
-  //        // DecimalVectors do not transfer FieldType metadata when using
-  //        // vector.getTransferPair. We need to explicitly create the new vector to transfer to
-  //        // in order to keep the metadata.
-  //        ArrowType arrowType =
-  //            new ArrowType.Decimal(
-  //                ((DecimalVector) vector).getPrecision(),
-  //                ((DecimalVector) vector).getScale(),
-  //                DECIMAL_BIT_WIDTH);
-  //        FieldType fieldType =
-  //            new FieldType(
-  //                vector.getField().isNullable(), arrowType, null,
-  // vector.getField().getMetadata());
-  //        Field f = new Field(vector.getName(), fieldType, null);
-  //        DecimalVector newVector = new DecimalVector(f, this.allocator);
-  //        TransferPair t = vector.makeTransferPair(newVector);
-  //        t.transfer();
-  //        oldVectors.add((FieldVector) t.getTo());
-  //      } else {
-  //        TransferPair t = vector.getTransferPair(this.allocator);
-  //        t.transfer();
-  //        oldVectors.add((FieldVector) t.getTo());
-  //      }
-  //    }
-  //  }
-
   /**
    * Flush the data in the row buffer by taking the ownership of the old vectors and pass all the
    * required info back to the flush service to build the blob
