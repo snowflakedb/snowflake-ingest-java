@@ -97,8 +97,8 @@ class DataValidationUtil {
   /**
    * Validates and parses input for TIMESTAMP_NTZ Snowflake type
    *
-   * @param input Seconds past the epoch. Accepts fractional seconds with precision up to the
-   *     column's scale
+   * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
+   *     with precision up to the column's scale
    * @param metadata
    * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
    *     scale
@@ -109,13 +109,34 @@ class DataValidationUtil {
       int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
       String valueString = getStringValue(input);
 
-      String[] items = valueString.split("\\.");
-      long epoch = Long.parseLong(items[0]);
-      int l = items.length > 1 ? items[1].length() : 0;
-      // Fraction is in nanoseconds, but Snowflake will error if the fraction gives
-      // accuracy greater than the scale
-      int fraction =
-          l == 0 ? 0 : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
+      long epoch;
+      int fraction;
+
+      SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(valueString);
+      // The formatter will not correctly parse numbers with decimal values
+      if (timestamp != null) {
+        epoch = timestamp.getSeconds().longValue();
+        fraction = getFractionFromTimestamp(timestamp);
+      } else {
+        /*
+         * Assume the data is of the form "<epoch_seconds>.<fraction of second>". For example "10.5"
+         * is interpreted as meaning 10.5 seconds past the epoch. The following logic breaks out and
+         * stores the epoch seconds and fractional seconds values separately
+         */
+        String[] items = valueString.split("\\.");
+        if (items.length != 2) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW,
+              input.toString(),
+              String.format("Unable to parse timestamp from value.  value=%s", valueString));
+        }
+        epoch = Long.parseLong(items[0]);
+        int l = items.length > 1 ? items[1].length() : 0;
+        /* Fraction is in nanoseconds, but Snowflake will error if the fraction gives
+         * accuracy greater than the scale
+         * */
+        fraction = l == 0 ? 0 : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
+      }
       if (fraction % Power10.intTable[9 - scale] != 0) {
         throw new SFException(
             ErrorCode.INVALID_ROW,
@@ -125,6 +146,66 @@ class DataValidationUtil {
                 fraction, scale));
       }
       return new TimestampWrapper(epoch, fraction, getTimeInScale(valueString, scale));
+    } catch (NumberFormatException e) {
+      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
+    }
+  }
+
+  /**
+   * Given a SFTimestamp, get the number of nanoseconds since the last whole second. This
+   * corresponds to the fraction component for Timestamp types
+   *
+   * @param input SFTimestamp
+   * @return Timestamp fraction value, the number of nanoseconds since the last whole second
+   */
+  private static int getFractionFromTimestamp(SFTimestamp input) {
+    BigDecimal epochSecondsInNanoSeconds =
+        new BigDecimal(input.getSeconds().multiply(BigInteger.valueOf(Power10.intTable[9])));
+    return input.getNanosSinceEpoch().subtract(epochSecondsInNanoSeconds).intValue();
+  }
+
+  /**
+   * Validates and parses input for TIMESTAMP_TZ Snowflake type
+   *
+   * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
+   * @param metadata Column metadata containing scale
+   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
+   *     scale
+   */
+  static TimestampWrapper validateAndParseTimestampTz(Object input, Map<String, String> metadata) {
+    try {
+      if (input instanceof String) {
+        String stringInput = (String) input;
+        int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
+        SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(stringInput);
+        if (timestamp == null) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW, input, "Cannot be converted to a timestamp_tz value");
+        }
+
+        int fraction = getFractionFromTimestamp(timestamp);
+
+        BigDecimal epochTimeAtSecondsScale =
+            timestamp.getNanosSinceEpoch().divide(BigDecimal.valueOf(Power10.intTable[9]));
+        if (fraction % Power10.intTable[9 - scale] != 0) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW,
+              input.toString(),
+              String.format(
+                  "Row specifies accuracy greater than column scale.  fraction=%d, scale=%d",
+                  fraction, scale));
+        }
+        TimestampWrapper wrapper =
+            new TimestampWrapper(
+                timestamp.getSeconds().longValue(),
+                fraction,
+                getTimeInScale(getStringValue(epochTimeAtSecondsScale), scale),
+                timestamp);
+        return wrapper;
+      } else {
+        throw new SFException(
+            ErrorCode.INVALID_ROW, input, "Cannot be converted to a timestamp_tz value");
+      }
     } catch (NumberFormatException e) {
       throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
     }
