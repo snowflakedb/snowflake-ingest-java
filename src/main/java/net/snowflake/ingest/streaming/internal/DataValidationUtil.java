@@ -200,7 +200,6 @@ class DataValidationUtil {
                 timestamp.getSeconds().longValue(),
                 fraction,
                 getTimeInScale(getStringValue(epochTimeAtSecondsScale), scale),
-                timestamp.getTimeZoneOffsetMillis(),
                 timestamp);
         return wrapper;
       } else {

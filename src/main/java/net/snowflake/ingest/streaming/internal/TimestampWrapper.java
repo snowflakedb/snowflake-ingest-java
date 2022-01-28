@@ -10,10 +10,17 @@ import java.util.Optional;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
 
 class TimestampWrapper {
+
+  /** Seconds since the epoch */
   private long epoch;
+
+  /** Fraction of a second since the epoch in nanoseconds */
   private int fraction;
+
+  /** Epoch time in column's scale, e.g. for scale=3 this milliseconds past the epoch */
   private BigInteger timeInScale;
-  private Optional<Integer> timezoneOffset = Optional.empty();
+
+  /** SFTimestamp including timezone information */
   private Optional<SFTimestamp> sfTimestamp = Optional.empty();
 
   public TimestampWrapper(long epoch, int fraction, BigInteger timeInScale) {
@@ -23,15 +30,10 @@ class TimestampWrapper {
   }
 
   public TimestampWrapper(
-      long epoch,
-      int fraction,
-      BigInteger timeInScale,
-      int timezoneOffset,
-      SFTimestamp sfTimestamp) {
+      long epoch, int fraction, BigInteger timeInScale, SFTimestamp sfTimestamp) {
     this.epoch = epoch;
     this.fraction = fraction;
     this.timeInScale = timeInScale;
-    this.timezoneOffset = Optional.ofNullable(timezoneOffset);
     this.sfTimestamp = Optional.ofNullable(sfTimestamp);
   }
 
@@ -48,11 +50,11 @@ class TimestampWrapper {
   }
 
   public Optional<Integer> getTimezoneOffset() {
-    return timezoneOffset;
+    return sfTimestamp.map(t -> t.getTimeZoneOffsetMillis());
   }
 
   public Optional<Integer> getTimeZoneIndex() {
-    return timezoneOffset.map(t -> (t / 1000 / 60) + 1440);
+    return this.getTimezoneOffset().map(t -> (t / 1000 / 60) + 1440);
   }
 
   public Optional<SFTimestamp> getSfTimestamp() {
@@ -67,12 +69,11 @@ class TimestampWrapper {
     return epoch == that.epoch
         && fraction == that.fraction
         && Objects.equals(timeInScale, that.timeInScale)
-        && timezoneOffset.equals(that.timezoneOffset)
         && sfTimestamp.equals(that.sfTimestamp);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(epoch, fraction, timeInScale, timezoneOffset, sfTimestamp);
+    return Objects.hash(epoch, fraction, timeInScale, sfTimestamp);
   }
 }

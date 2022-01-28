@@ -815,7 +815,7 @@ class ArrowRowBuffer {
                                   new SFException(
                                       ErrorCode.INVALID_ROW,
                                       value,
-                                      "Unable to parse timezone for TIMESTAMP_TZ column"))
+                                      "Unable to parse timestamp for TIMESTAMP_TZ column"))
                           .toBinary(Integer.parseInt(field.getMetadata().get(COLUMN_SCALE)), true);
                   stats.addIntValue(timeInBinary);
                   break;
@@ -829,7 +829,7 @@ class ArrowRowBuffer {
                       (IntVector) structVector.getChild(FIELD_FRACTION_IN_NANOSECONDS);
                   IntVector timezoneVector = (IntVector) structVector.getChild(FIELD_TIME_ZONE);
 
-                  rowBufferSize += 0.50; // for children vector's null value
+                  rowBufferSize += 0.375; // for children vector's null value
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
@@ -855,7 +855,7 @@ class ArrowRowBuffer {
                                   new SFException(
                                       ErrorCode.INVALID_ROW,
                                       value,
-                                      "Unable to parse timezone for TIMESTAMP_TZ column"))
+                                      "Unable to parse timestamp for TIMESTAMP_TZ column"))
                           .toBinary(Integer.parseInt(field.getMetadata().get(COLUMN_SCALE)), true);
                   stats.addIntValue(timeInBinary);
                   break;
