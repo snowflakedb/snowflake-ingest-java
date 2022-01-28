@@ -401,7 +401,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                     })));
   }
 
-  /** Close the client and release all the resources */
+  /** Close the client, which will flush first and then release all the resources */
   @Override
   public void close() throws Exception {
     if (isClosed) {
