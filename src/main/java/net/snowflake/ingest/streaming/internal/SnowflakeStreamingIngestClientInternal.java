@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.connection.IngestResponseException;
@@ -396,7 +397,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
   /** Close the client and release all the resources */
   @Override
-  public void close() {
+  public void close() throws Exception {
     if (isClosed) {
       return;
     }
@@ -409,13 +410,19 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
     }
 
-    // Cleanup resources
+    // Flush any remaining rows and cleanup all the resources
     try {
-      this.flushService.shutdown();
-    } catch (InterruptedException e) {
+      this.flush(true).get();
+    } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
-      this.allocator.getChildAllocators().forEach(BufferAllocator::close);
+      this.flushService.shutdown();
+
+      for (BufferAllocator alloc : this.allocator.getChildAllocators()) {
+        alloc.releaseBytes(alloc.getAllocatedMemory());
+        alloc.close();
+      }
+      this.allocator.releaseBytes(this.allocator.getAllocatedMemory());
       this.allocator.close();
     }
   }

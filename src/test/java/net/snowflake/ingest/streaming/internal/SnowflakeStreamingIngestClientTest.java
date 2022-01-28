@@ -613,7 +613,7 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
-  public void testClose() {
+  public void testClose() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -679,7 +679,7 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
-  public void testVerifyChannelsAreFullyCommittedSuccess() {
+  public void testVerifyChannelsAreFullyCommittedSuccess() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannelInternal channel =
