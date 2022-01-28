@@ -9,7 +9,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -498,7 +497,7 @@ class ArrowRowBuffer {
               Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
               Field fieldFraction =
                   new Field(FIELD_FRACTION_IN_NANOSECONDS, fieldTypeFraction, null);
-              children = new LinkedList<>();
+              children = new ArrayList<>();
               children.add(fieldEpoch);
               children.add(fieldFraction);
               break;
@@ -520,7 +519,7 @@ class ArrowRowBuffer {
               Field fieldEpoch = new Field(FIELD_EPOCH_IN_SECONDS, fieldTypeEpoch, null);
               Field fieldTimezone = new Field(FIELD_TIME_ZONE, fieldTypeTimezone, null);
 
-              children = new LinkedList<>();
+              children = new ArrayList<>();
               children.add(fieldEpoch);
               children.add(fieldTimezone);
               break;
@@ -539,7 +538,7 @@ class ArrowRowBuffer {
                   new Field(FIELD_FRACTION_IN_NANOSECONDS, fieldTypeFraction, null);
               Field fieldTimezone = new Field(FIELD_TIME_ZONE, fieldTypeTimezone, null);
 
-              children = new LinkedList<>();
+              children = new ArrayList<>();
               children.add(fieldEpoch);
               children.add(fieldFraction);
               children.add(fieldTimezone);

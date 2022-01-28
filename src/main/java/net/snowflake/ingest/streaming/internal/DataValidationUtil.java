@@ -113,15 +113,28 @@ class DataValidationUtil {
       int fraction;
 
       SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(valueString);
+      // The formatter will not correctly parse numbers with decimal values
       if (timestamp != null) {
         epoch = timestamp.getSeconds().longValue();
         fraction = getFractionFromTimestamp(timestamp);
       } else {
+        /*
+         * Assume the data is of the form "<epoch_seconds>.<fraction of second>". For example "10.5"
+         * is interpreted as meaning 10.5 seconds past the epoch. The following logic breaks out and
+         * stores the epoch seconds and fractional seconds values separately
+         */
         String[] items = valueString.split("\\.");
+        if (items.length != 2) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW,
+              input.toString(),
+              String.format("Unable to parse timestamp from value.  value=%s", valueString));
+        }
         epoch = Long.parseLong(items[0]);
         int l = items.length > 1 ? items[1].length() : 0;
-        // Fraction is in nanoseconds, but Snowflake will error if the fraction gives
-        // accuracy greater than the scale
+        /* Fraction is in nanoseconds, but Snowflake will error if the fraction gives
+         * accuracy greater than the scale
+         * */
         fraction = l == 0 ? 0 : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
       }
       if (fraction % Power10.intTable[9 - scale] != 0) {
@@ -167,7 +180,7 @@ class DataValidationUtil {
         SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(stringInput);
         if (timestamp == null) {
           throw new SFException(
-              ErrorCode.INVALID_ROW, input, "Cannot be converted to a time value");
+              ErrorCode.INVALID_ROW, input, "Cannot be converted to a timestamp_tz value");
         }
 
         int fraction = getFractionFromTimestamp(timestamp);
@@ -191,7 +204,8 @@ class DataValidationUtil {
                 timestamp);
         return wrapper;
       } else {
-        throw new SFException(ErrorCode.INVALID_ROW, input, "Cannot be converted to a time value");
+        throw new SFException(
+            ErrorCode.INVALID_ROW, input, "Cannot be converted to a timestamp_tz value");
       }
     } catch (NumberFormatException e) {
       throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
