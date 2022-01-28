@@ -657,7 +657,13 @@ public class SnowflakeStreamingIngestClientTest {
     future.completeExceptionally(new Exception("Simulating Error"));
     Mockito.when(client.flush(true)).thenReturn(future);
 
-    client.close();
+    try {
+      client.close();
+      Assert.fail("close should throw");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.RESOURCE_CLEANUP_FAILURE.getMessageCode(), e.getVendorCode());
+    }
+
     // Calling close again on closed client shouldn't fail
     client.close();
 
