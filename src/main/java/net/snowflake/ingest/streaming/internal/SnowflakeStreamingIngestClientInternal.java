@@ -214,6 +214,12 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return this.role;
   }
 
+  /** @return a boolean to indicate whether the client is closed or not */
+  @Override
+  public boolean isClosed() {
+    return isClosed;
+  }
+
   /**
    * Open a channel against a Snowflake table
    *

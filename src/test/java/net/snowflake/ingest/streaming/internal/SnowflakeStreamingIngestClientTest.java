@@ -133,6 +133,7 @@ public class SnowflakeStreamingIngestClientTest {
         SnowflakeStreamingIngestClientFactory.builder("client").setProperties(prop).build();
 
     Assert.assertEquals("client", client.getName());
+    Assert.assertFalse(client.isClosed());
   }
 
   @Test
@@ -623,7 +624,9 @@ public class SnowflakeStreamingIngestClientTest {
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
+    Assert.assertFalse(client.isClosed());
     client.close();
+    Assert.assertTrue(client.isClosed());
     // Calling close again on closed client shouldn't fail
     client.close();
 
@@ -657,12 +660,14 @@ public class SnowflakeStreamingIngestClientTest {
     future.completeExceptionally(new Exception("Simulating Error"));
     Mockito.when(client.flush(true)).thenReturn(future);
 
+    Assert.assertFalse(client.isClosed());
     try {
       client.close();
       Assert.fail("close should throw");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.RESOURCE_CLEANUP_FAILURE.getMessageCode(), e.getVendorCode());
     }
+    Assert.assertTrue(client.isClosed());
 
     // Calling close again on closed client shouldn't fail
     client.close();
