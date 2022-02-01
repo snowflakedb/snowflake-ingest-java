@@ -101,6 +101,10 @@ public class DataValidationUtilTest {
         new TimestampWrapper(1, 123, BigInteger.valueOf(1000000123)),
         DataValidationUtil.validateAndParseTimestampNtzSb16("1.000000123", metadata));
 
+    Assert.assertEquals(
+        new TimestampWrapper(1609462800, 123000000, new BigInteger("1609462800123000000")),
+        DataValidationUtil.validateAndParseTimestampNtzSb16("2021-01-01 01:00:00.123", metadata));
+
     // Expect errors
     try {
       DataValidationUtil.validateAndParseTimestampNtzSb16("honk", metadata);
@@ -111,6 +115,33 @@ public class DataValidationUtilTest {
     metadata.put(ArrowRowBuffer.COLUMN_SCALE, "1");
     try {
       DataValidationUtil.validateAndParseTimestampNtzSb16("1.23", metadata);
+      Assert.fail("Expected Exception");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
+  public void testValidateAndPareTimestampTz() {
+    Map<String, String> metadata = new HashMap<>();
+    metadata.put(ArrowRowBuffer.COLUMN_SCALE, "3");
+    TimestampWrapper result =
+        DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", metadata);
+    Assert.assertEquals(1609459200, result.getEpoch());
+    Assert.assertEquals(123000000, result.getFraction());
+    Assert.assertEquals(Optional.of(3600000), result.getTimezoneOffset());
+    Assert.assertEquals(Optional.of(1500), result.getTimeZoneIndex());
+
+    // Expect errors
+    try {
+      DataValidationUtil.validateAndParseTimestampNtzSb16("honk", metadata);
+      Assert.fail("Expected Exception");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+    metadata.put(ArrowRowBuffer.COLUMN_SCALE, "1");
+    try {
+      DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", metadata);
       Assert.fail("Expected Exception");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());

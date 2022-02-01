@@ -119,20 +119,22 @@ public class Utils {
     }
 
     if (!properties.containsKey(JDBC_PRIVATE_KEY)) {
-      throw new SFException(ErrorCode.MISSING_CONFIG, "private key");
+      throw new SFException(ErrorCode.MISSING_CONFIG, "private_key");
     }
 
     if (!properties.containsKey(USER)) {
-      throw new SFException(ErrorCode.MISSING_CONFIG, "user name");
+      throw new SFException(ErrorCode.MISSING_CONFIG, "user");
     }
 
     return properties;
   }
 
+  /** Construct account url from input schema, host and port */
   public static String constructAccountUrl(String scheme, String host, int port) {
     return String.format("%s://%s:%d", scheme, host, port);
   }
 
+  /** Get the properties out from a json node */
   public static Properties getPropertiesFromJson(ObjectNode json) {
     Properties props = new Properties();
     Optional.ofNullable(json.get(Constants.USER))
@@ -156,7 +158,7 @@ public class Utils {
   }
 
   /**
-   * Parse a unencrypted private key
+   * Parse an unencrypted private key
    *
    * @param key unencrypted private key
    * @return the unencrypted private key
@@ -178,7 +180,7 @@ public class Utils {
   }
 
   /**
-   * Parse a encrypted private key
+   * Parse an encrypted private key
    *
    * @param key encrypted private key
    * @param passphrase private key phrase

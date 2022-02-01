@@ -613,7 +613,7 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
-  public void testClose() {
+  public void testClose() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -623,7 +623,9 @@ public class SnowflakeStreamingIngestClientTest {
 
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
+    Assert.assertFalse(client.isClosed());
     client.close();
+    Assert.assertTrue(client.isClosed());
     // Calling close again on closed client shouldn't fail
     client.close();
 
@@ -657,7 +659,15 @@ public class SnowflakeStreamingIngestClientTest {
     future.completeExceptionally(new Exception("Simulating Error"));
     Mockito.when(client.flush(true)).thenReturn(future);
 
-    client.close();
+    Assert.assertFalse(client.isClosed());
+    try {
+      client.close();
+      Assert.fail("close should throw");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.RESOURCE_CLEANUP_FAILURE.getMessageCode(), e.getVendorCode());
+    }
+    Assert.assertTrue(client.isClosed());
+
     // Calling close again on closed client shouldn't fail
     client.close();
 
@@ -679,7 +689,7 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
-  public void testVerifyChannelsAreFullyCommittedSuccess() {
+  public void testVerifyChannelsAreFullyCommittedSuccess() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
         Mockito.spy(new SnowflakeStreamingIngestClientInternal("client"));
     SnowflakeStreamingIngestChannelInternal channel =

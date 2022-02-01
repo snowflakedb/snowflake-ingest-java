@@ -18,10 +18,10 @@ public class Constants {
   public static final String HOST = "host";
   public static final String WAREHOUSE = "warehouse";
   public static final String SCHEME = "scheme";
-  public static final String ACCOUNT_URL = "snowflake.url.name";
-  public static final String PRIVATE_KEY = "private_key";
+  public static final String ACCOUNT_URL = "url";
   public static final String ROLE = "role";
-  public static final String PRIVATE_KEY_PASSPHRASE = "snowflake.private.key.passphrase";
+  public static final String PRIVATE_KEY = "private_key";
+  public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
   public static final String JDBC_PRIVATE_KEY = "privateKey";
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final long RESPONSE_SUCCESS = 0L;
