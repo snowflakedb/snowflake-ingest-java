@@ -6,13 +6,11 @@ package net.snowflake.ingest.streaming.example;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -25,17 +23,14 @@ public class SnowflakeStreamingIngestExample {
   private static String PROFILE_PATH = "profile.json";
   private static final ObjectMapper mapper = new ObjectMapper();
 
-  public static void main(String[] args)
-      throws ExecutionException, InterruptedException, IOException {
+  public static void main(String[] args) throws Exception {
     ObjectNode profile =
         (ObjectNode) mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH))));
     Properties prop = Utils.getPropertiesFromJson(profile);
 
     // Create a streaming ingest client
-    SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("CLIENT").setProperties(prop).build();
-
-    try {
+    try (SnowflakeStreamingIngestClient client =
+        SnowflakeStreamingIngestClientFactory.builder("CLIENT").setProperties(prop).build()) {
       // Create an open channel request on table T_STREAMINGINGEST
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("CHANNEL")
@@ -58,8 +53,6 @@ public class SnowflakeStreamingIngestExample {
           throw response.getInsertErrors().get(0).getException();
         }
       }
-    } finally {
-      client.close().get();
     }
   }
 }

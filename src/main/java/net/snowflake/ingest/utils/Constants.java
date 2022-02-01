@@ -39,7 +39,7 @@ public class Constants {
   public static final int BLOB_FILE_SIZE_SIZE_IN_BYTES = 8;
   public static final int BLOB_CHECKSUM_SIZE_IN_BYTES = 8;
   public static final int BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES = 4;
-  public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 5L;
+  public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 300L;
   public static final String BLOB_EXTENSION_TYPE = "bdec";
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final int CPU_IO_TIME_RATIO = 1;
