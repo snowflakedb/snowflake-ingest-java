@@ -133,6 +133,7 @@ public class SnowflakeStreamingIngestClientTest {
         SnowflakeStreamingIngestClientFactory.builder("client").setProperties(prop).build();
 
     Assert.assertEquals("client", client.getName());
+    Assert.assertFalse(client.isClosed());
   }
 
   @Test
