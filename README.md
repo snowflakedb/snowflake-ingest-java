@@ -83,15 +83,6 @@ you would need to remove the following scope limits in pom.xml
 &lt;/dependency&gt;
 </pre>
 
-<pre>
-&lt;!-- Remove provided scope from bcpkix-fips --&gt;
-&lt;dependency&gt;
-    &lt;groupId&gt;org.bouncycastle&lt;/groupId&gt;
-    &lt;artifactId&gt;bcpkix-fips&lt;/artifactId&gt;
-    <s>&lt;scope&gt;provided&lt;/scope&gt;</s>
-&lt;/dependency&gt;
-</pre>
-
 # Testing (SimpleIngestIT Test)
 
 -   Modify `TestUtils.java` file and replace *PROFILE_PATH* with `profile.json.example` for testing.
