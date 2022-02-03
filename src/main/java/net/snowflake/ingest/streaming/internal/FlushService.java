@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.CPU_IO_TIME_RATIO;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
 import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
 
@@ -163,8 +164,7 @@ class FlushService {
               client.getRole(),
               client.getHttpClient(),
               client.getRequestBuilder(),
-              client.getName(),
-              client.getParameterProvider());
+              client.getName());
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }
@@ -304,7 +304,7 @@ class FlushService {
         itr = this.channelCache.iterator();
     List<Pair<BlobData, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     String filePath = null;
-    long maxBlobSizeInBytes = owningClient.getParameterProvider().getMaxBlobSizeInBytes();
+    long maxBlobSizeInBytes = MAX_BLOB_SIZE_IN_BYTES;
 
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();

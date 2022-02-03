@@ -27,6 +27,8 @@ public class Constants {
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 5L;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 12;
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
+  public static final long MAX_BLOB_SIZE_IN_BYTES = 256000000L;
+  public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final byte BLOB_FORMAT_VERSION = 0;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
   public static final int BLOB_VERSION_SIZE_IN_BYTES = 1;

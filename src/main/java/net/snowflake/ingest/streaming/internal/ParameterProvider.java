@@ -2,25 +2,20 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
-/** Utility class to provide configurable constants with values set by Snowflake servers */
+/** Utility class to provide configurable constants */
 public class ParameterProvider {
-  final String MAX_CHUNK_SIZE_IN_BYTES_MAP_KEY =
-      "STREAMING_INGEST_CLIENT_SDK_MAX_CHUNK_SIZE_IN_BYTES";
-  final String MAX_BLOB_SIZE_IN_BYTES_MAP_KEY =
-      "STREAMING_INGEST_CLIENT_SDK_MAX_BLOB_SIZE_IN_BYTES";
-  final String BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY =
+  static final String BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY =
       "STREAMING_INGEST_CLIENT_SDK_BUFFER_FLUSH_INTERVAL_IN_MILLIS";
-  final String BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY =
+  static final String BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY =
       "STREAMING_INGEST_CLIENT_SDK_BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS";
-  final String INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY =
+  static final String INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY =
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_INTERVAL_IN_MILLIS";
-  final String INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY =
+  static final String INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY =
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE";
 
-  // Default values in the event no value is set by the server
-  static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 16000000L;
-  static final long MAX_BLOB_SIZE_IN_BYTES_DEFAULT = 256000000L;
+  // Default values
   static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
@@ -35,27 +30,47 @@ public class ParameterProvider {
    */
   public ParameterProvider() {}
 
+  private void updateValue(
+      String key, Object defaultValue, Map<String, Object> parameterOverrides, Properties props) {
+    if (parameterOverrides != null && props != null) {
+      this.parameterMap.put(
+          key, parameterOverrides.getOrDefault(key, props.getOrDefault(key, defaultValue)));
+    } else if (parameterOverrides != null) {
+      this.parameterMap.put(key, parameterOverrides.getOrDefault(key, defaultValue));
+    } else if (props != null) {
+      this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
+    }
+  }
   /**
-   * Sets the latest values from the server with data from the client configure API
+   * Sets parameter values by first checking 1. parameterOverrides 2. props 3. default value
    *
-   * @param parameterMap Map<String, Long> of parameter name -> valuen
+   * @param parameterOverrides Map<String, Object> of parameter name -> value
+   * @param props Properties file provided to client constructor
    */
-  public void setParameterMap(Map<String, Object> parameterMap) {
-    this.parameterMap = parameterMap;
-  }
+  public void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
+    this.updateValue(
+        BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY,
+        BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT,
+        parameterOverrides,
+        props);
 
-  /** @return Maximum chunk size in bytes */
-  public long getMaxChunkSizeInBytes() {
-    return (long)
-        this.parameterMap.getOrDefault(
-            MAX_CHUNK_SIZE_IN_BYTES_MAP_KEY, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
-  }
+    this.updateValue(
+        BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY,
+        BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
+        parameterOverrides,
+        props);
 
-  /** @return Maximum blob size in bytes */
-  public long getMaxBlobSizeInBytes() {
-    return (long)
-        this.parameterMap.getOrDefault(
-            MAX_BLOB_SIZE_IN_BYTES_MAP_KEY, MAX_BLOB_SIZE_IN_BYTES_DEFAULT);
+    this.updateValue(
+        INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY,
+        INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
+        parameterOverrides,
+        props);
+
+    this.updateValue(
+        INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY,
+        INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT,
+        parameterOverrides,
+        props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */

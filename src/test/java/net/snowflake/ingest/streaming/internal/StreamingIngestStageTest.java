@@ -67,7 +67,7 @@ public class StreamingIngestStageTest {
           + " \"endPoint\": null}}}";
 
   String exampleRemoteMetaResponse =
-      "{\"parameter_map\": {\"MAX_CHUNK_SIZE_IN_BYTES\": 123}, \"src_locations\": [\"foo/\"],"
+      "{\"src_locations\": [\"foo/\"],"
           + " \"status_code\": 0, \"message\": \"Success\", \"prefix\":"
           + " \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
           + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
@@ -98,7 +98,6 @@ public class StreamingIngestStageTest {
             null,
             null,
             "clientName",
-            new ParameterProvider(),
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
@@ -141,7 +140,6 @@ public class StreamingIngestStageTest {
                 null,
                 null,
                 "clientName",
-                new ParameterProvider(),
                 new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                     fullFilePath, Optional.of(System.currentTimeMillis()))));
     Mockito.doReturn(true).when(stage).isLocalFS();
@@ -169,7 +167,6 @@ public class StreamingIngestStageTest {
             null,
             null,
             "clientName",
-            new ParameterProvider(),
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
@@ -252,8 +249,7 @@ public class StreamingIngestStageTest {
 
     ParameterProvider parameterProvider = new ParameterProvider();
     StreamingIngestStage stage =
-        new StreamingIngestStage(
-            true, "role", mockClient, mockBuilder, "clientName", parameterProvider);
+        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName");
 
     StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
         stage.refreshSnowflakeMetadata(true);
@@ -271,8 +267,6 @@ public class StreamingIngestStageTest {
         "foo/streaming_ingest/", metadataWithAge.fileTransferMetadata.getStageInfo().getLocation());
     Assert.assertEquals(
         "placeholder", metadataWithAge.fileTransferMetadata.getPresignedUrlFileName());
-
-    Assert.assertEquals(123, parameterProvider.getMaxChunkSizeInBytes());
   }
 
   @Test
@@ -336,7 +330,6 @@ public class StreamingIngestStageTest {
             mockClient,
             mockBuilder,
             "clientName",
-            new ParameterProvider(),
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(0L)));
 

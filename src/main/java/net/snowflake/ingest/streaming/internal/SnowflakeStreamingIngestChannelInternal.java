@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
+import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 
 import java.util.Collections;
 import java.util.List;
@@ -397,8 +398,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
-    if (this.arrowBuffer.getSize()
-        >= this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()) {
+    if (this.arrowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
       this.owningClient.setNeedFlush();
     }
 

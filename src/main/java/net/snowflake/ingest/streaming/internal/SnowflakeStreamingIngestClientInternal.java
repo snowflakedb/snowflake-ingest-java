@@ -130,7 +130,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       Properties prop,
       HttpClient httpClient,
       boolean isTestMode,
-      RequestBuilder requestBuilder) {
+      RequestBuilder requestBuilder,
+      Map<String, Object> parameterOverrides) {
     this.name = name;
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient() : httpClient;
@@ -170,6 +171,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       SharedMetricRegistries.add("Metrics", metrics);
     }
 
+    this.parameterProvider.setParameterMap(parameterOverrides, prop);
+
     logger.logDebug(
         "Client created, name={}, account={}. isTestMode={}",
         name,
@@ -185,8 +188,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param prop connection properties
    */
   public SnowflakeStreamingIngestClientInternal(
-      String name, SnowflakeURL accountURL, Properties prop) {
-    this(name, accountURL, prop, null, false, null);
+      String name,
+      SnowflakeURL accountURL,
+      Properties prop,
+      Map<String, Object> parameterOverrides) {
+    this(name, accountURL, prop, null, false, null, parameterOverrides);
   }
 
   /**
@@ -195,7 +201,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param name the name of the client
    */
   SnowflakeStreamingIngestClientInternal(String name) {
-    this(name, null, null, null, true, null);
+    this(name, null, null, null, true, null, null);
   }
 
   /**

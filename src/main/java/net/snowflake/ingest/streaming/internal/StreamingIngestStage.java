@@ -24,7 +24,6 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.core.type.TypeReference;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.DeserializationFeature;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
@@ -83,22 +82,18 @@ class StreamingIngestStage {
   private final RequestBuilder requestBuilder;
   private final String role;
   private final String clientName;
-  private final ParameterProvider parameterProvider;
 
   StreamingIngestStage(
       boolean isTestMode,
       String role,
       HttpClient httpClient,
       RequestBuilder requestBuilder,
-      String clientName,
-      ParameterProvider parameterProvider)
+      String clientName)
       throws SnowflakeSQLException, IOException {
     this.httpClient = httpClient;
     this.role = role;
     this.requestBuilder = requestBuilder;
     this.clientName = clientName;
-    this.parameterProvider = parameterProvider;
-
     /*
     All integer numbers will be deserialized as longs.
     If this is false Jackson will deserialize to int or long based on size
@@ -126,7 +121,6 @@ class StreamingIngestStage {
       HttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName,
-      ParameterProvider parameterProvider,
       SnowflakeFileTransferMetadataWithAge testMetadata) {
     if (!isTestMode) {
       throw new SFException(ErrorCode.INTERNAL_ERROR);
@@ -136,7 +130,6 @@ class StreamingIngestStage {
     this.requestBuilder = requestBuilder;
     this.clientName = clientName;
     this.fileTransferMetadataWithAge = testMetadata;
-    this.parameterProvider = parameterProvider;
     this.mapper.configure(DeserializationFeature.USE_LONG_FOR_INTS, true);
   }
 
