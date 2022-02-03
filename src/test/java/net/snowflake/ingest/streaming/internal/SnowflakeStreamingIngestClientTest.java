@@ -53,6 +53,7 @@ public class SnowflakeStreamingIngestClientTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
+  @Ignore // Until able to test in PROD
   public void testConstructorParameters() throws Exception {
     Properties prop = new Properties();
     prop.put(USER, TestUtils.getUser());

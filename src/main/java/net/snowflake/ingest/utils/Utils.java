@@ -74,6 +74,7 @@ public class Utils {
    */
   public static Properties createProperties(Properties inputProp, boolean sslEnabled) {
     Properties properties = new Properties();
+    properties.putAll(inputProp);
 
     // decrypt rsa key
     String privateKey = "";
@@ -87,17 +88,8 @@ public class Utils {
         case Constants.PRIVATE_KEY:
           privateKey = val;
           break;
-        case Constants.USER:
-          properties.put(USER, val);
-          break;
-        case Constants.ROLE:
-          properties.put(ROLE, val);
-          break;
         case Constants.PRIVATE_KEY_PASSPHRASE:
           privateKeyPassphrase = val;
-          break;
-        case Constants.ACCOUNT_URL:
-          // do nothing as we already read it
           break;
         default:
           // ignore other keys
@@ -105,10 +97,16 @@ public class Utils {
       }
     }
 
-    if (!privateKeyPassphrase.isEmpty()) {
-      properties.put(JDBC_PRIVATE_KEY, parseEncryptedPrivateKey(privateKey, privateKeyPassphrase));
-    } else if (!privateKey.isEmpty()) {
-      properties.put(JDBC_PRIVATE_KEY, parsePrivateKey(privateKey));
+    if (properties.getProperty(Constants.PRIVATE_KEY_PASSPHRASE) != null
+        && properties.getProperty(Constants.PRIVATE_KEY) != null) {
+      properties.put(
+          JDBC_PRIVATE_KEY,
+          parseEncryptedPrivateKey(
+              properties.getProperty(Constants.PRIVATE_KEY),
+              properties.getProperty(Constants.PRIVATE_KEY_PASSPHRASE)));
+    } else if (properties.getProperty(Constants.PRIVATE_KEY) != null) {
+      properties.put(
+          JDBC_PRIVATE_KEY, parsePrivateKey(properties.getProperty(Constants.PRIVATE_KEY)));
     }
 
     // set ssl
