@@ -304,7 +304,6 @@ class FlushService {
         itr = this.channelCache.iterator();
     List<Pair<BlobData, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     String filePath = null;
-    long maxBlobSizeInBytes = MAX_BLOB_SIZE_IN_BYTES;
 
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();
@@ -315,7 +314,7 @@ class FlushService {
       }
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
-      while (itr.hasNext() && totalBufferSize <= maxBlobSizeInBytes) {
+      while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
         ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> table =
             itr.next().getValue();
         List<ChannelData> channelsDataPerTable = new ArrayList<>();
