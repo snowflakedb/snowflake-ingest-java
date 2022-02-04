@@ -16,9 +16,11 @@ import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.sql.Connection;
@@ -71,37 +73,52 @@ public class TestUtils {
 
   private static Connection conn = null;
 
+  private static String dummyUser = "user";
+  private static int dummyPort = 443;
+  private static String dummyHost = "snowflake.qa1.int.snowflakecomputing.com";
+
   /**
    * load all login info from profile
    *
    * @throws IOException if can't read profile
    */
   private static void init() throws Exception {
-    profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH))));
+    Path path = Paths.get(PROFILE_PATH);
 
-    user = profile.get(USER).asText();
-    account = profile.get(ACCOUNT).asText();
-    port = profile.get(PORT).asInt();
-    ssl = profile.get(SSL).asText();
-    database = profile.get(DATABASE).asText();
-    connectString = profile.get(CONNECT_STRING).asText();
-    schema = profile.get(SCHEMA).asText();
-    warehouse = profile.get(WAREHOUSE).asText();
-    host = profile.get(HOST).asText();
-    scheme = profile.get(SCHEME).asText();
+    if (Files.exists(path)) {
+      profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(path)));
 
-    role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
+      user = profile.get(USER).asText();
+      account = profile.get(ACCOUNT).asText();
+      port = profile.get(PORT).asInt();
+      ssl = profile.get(SSL).asText();
+      database = profile.get(DATABASE).asText();
+      connectString = profile.get(CONNECT_STRING).asText();
+      schema = profile.get(SCHEMA).asText();
+      warehouse = profile.get(WAREHOUSE).asText();
+      host = profile.get(HOST).asText();
+      scheme = profile.get(SCHEME).asText();
+      role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
+      privateKeyPem = profile.get(PRIVATE_KEY).asText();
 
-    privateKeyPem = profile.get(PRIVATE_KEY).asText();
+      java.security.Security.addProvider(new BouncyCastleProvider());
 
-    java.security.Security.addProvider(new BouncyCastleProvider());
+      byte[] encoded = Base64.decodeBase64(privateKeyPem);
+      KeyFactory kf = KeyFactory.getInstance("RSA");
 
-    byte[] encoded = Base64.decodeBase64(privateKeyPem);
-    KeyFactory kf = KeyFactory.getInstance("RSA");
-
-    PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
-    privateKey = kf.generatePrivate(keySpec);
-    keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
+      PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
+      privateKey = kf.generatePrivate(keySpec);
+      keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
+    } else {
+      user = dummyUser;
+      port = dummyPort;
+      host = dummyHost;
+      KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+      kpg.initialize(2048);
+      keyPair = kpg.generateKeyPair();
+      privateKey = keyPair.getPrivate();
+      privateKeyPem = java.util.Base64.getEncoder().encodeToString(privateKey.getEncoded());
+    }
   }
 
   public static String getUser() throws Exception {
