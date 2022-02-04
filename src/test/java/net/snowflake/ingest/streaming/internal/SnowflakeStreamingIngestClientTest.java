@@ -137,6 +137,7 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
+  @Ignore // SNOW-540567: NON-FIPS provider causing failures during release jekins job
   public void testEncryptedPrivateKey() throws Exception {
     String testPassphrase = "TestPassword1234!";
     String testKey =
