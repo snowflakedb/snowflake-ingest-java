@@ -137,6 +137,7 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
+  @Ignore //
   public void testEncryptedPrivateKey() throws Exception {
     String testPassphrase = "TestPassword1234!";
     String testKey =
