@@ -215,69 +215,42 @@ class StreamingIngestStage {
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("role", this.role);
-    try {
-      Map<String, Object> response =
-          ServiceResponseHandler.unmarshallStreamingIngestResponse(
-              httpClient.execute(
-                  requestBuilder.generateStreamingIngestPostRequest(
-                      payload, CLIENT_CONFIGURE_ENDPOINT, "client configure")),
-              Map.class,
-              STREAMING_CLIENT_CONFIGURE);
+    Map<String, Object> response = this.makeClientConfigureCall(payload);
 
-      // Check for Snowflake specific response code
-      if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {
-        throw new SFException(
-            ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
-      }
-
-      JsonNode responseNode = mapper.valueToTree(response);
-      // Do not change the prefix everytime we have to refresh credentials
-      if (Utils.isNullOrEmpty(this.clientPrefix)) {
-        this.clientPrefix = responseNode.get("prefix").textValue();
-      }
-      Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
-
-      // Currently have a few mismatches between the client/configure response and what
-      // SnowflakeFileTransferAgent expects
-      ObjectNode mutable = (ObjectNode) responseNode;
-      mutable.putObject("data");
-      ObjectNode dataNode = (ObjectNode) mutable.get("data");
-      dataNode.set("stageInfo", responseNode.get("stage_location"));
-
-      // JDBC expects this field which maps to presignedFileUrlName.  We override
-      // presignedFileUrlName on each upload.
-      dataNode.putArray("src_locations").add("placeholder");
-
-      if (responseNode
-          .get("data")
-          .get("stageInfo")
-          .get("locationType")
-          .toString()
-          .replaceAll(
-              "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
-          .equals(StageInfo.StageType.LOCAL_FS.name())) {
-        this.fileTransferMetadataWithAge =
-            new SnowflakeFileTransferMetadataWithAge(
-                responseNode
-                    .get("data")
-                    .get("stageInfo")
-                    .get("location")
-                    .toString()
-                    .replaceAll(
-                        "^[\"]|[\"]$",
-                        ""), // Replace the first and last character if they're double quotes
-                Optional.of(System.currentTimeMillis()));
-      } else {
-        this.fileTransferMetadataWithAge =
-            new SnowflakeFileTransferMetadataWithAge(
-                (SnowflakeFileTransferMetadataV1)
-                    SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
-                Optional.of(System.currentTimeMillis()));
-      }
-      return this.fileTransferMetadataWithAge;
-    } catch (IngestResponseException e) {
-      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE);
+    JsonNode responseNode = this.parseClientConfigureResponse(response);
+    // Do not change the prefix everytime we have to refresh credentials
+    if (Utils.isNullOrEmpty(this.clientPrefix)) {
+      this.clientPrefix = responseNode.get("prefix").textValue();
     }
+    Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
+
+    if (responseNode
+        .get("data")
+        .get("stageInfo")
+        .get("locationType")
+        .toString()
+        .replaceAll(
+            "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
+        .equals(StageInfo.StageType.LOCAL_FS.name())) {
+      this.fileTransferMetadataWithAge =
+          new SnowflakeFileTransferMetadataWithAge(
+              responseNode
+                  .get("data")
+                  .get("stageInfo")
+                  .get("location")
+                  .toString()
+                  .replaceAll(
+                      "^[\"]|[\"]$",
+                      ""), // Replace the first and last character if they're double quotes
+              Optional.of(System.currentTimeMillis()));
+    } else {
+      this.fileTransferMetadataWithAge =
+          new SnowflakeFileTransferMetadataWithAge(
+              (SnowflakeFileTransferMetadataV1)
+                  SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+              Optional.of(System.currentTimeMillis()));
+    }
+    return this.fileTransferMetadataWithAge;
   }
 
   /**
@@ -292,6 +265,35 @@ class StreamingIngestStage {
     Map<Object, Object> payload = new HashMap<>();
     payload.put("role", this.role);
     payload.put("file_name", fileName);
+    Map<String, Object> response = this.makeClientConfigureCall(payload);
+
+    JsonNode responseNode = this.parseClientConfigureResponse(response);
+
+    SnowflakeFileTransferMetadataV1 metadata =
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
+    // Transfer agent trims path for fileName
+    metadata.setPresignedUrlFileName(fileName);
+    return metadata;
+  }
+
+  private JsonNode parseClientConfigureResponse(Map<String, Object> response) {
+    JsonNode responseNode = mapper.valueToTree(response);
+
+    // Currently there are a few mismatches between the client/configure response and what
+    // SnowflakeFileTransferAgent expects
+    ObjectNode mutable = (ObjectNode) responseNode;
+    mutable.putObject("data");
+    ObjectNode dataNode = (ObjectNode) mutable.get("data");
+    dataNode.set("stageInfo", responseNode.get("stage_location"));
+
+    // JDBC expects this field which maps to presignedFileUrlName.  We will set this later
+    dataNode.putArray("src_locations").add("placeholder");
+    return responseNode;
+  }
+
+  private Map<String, Object> makeClientConfigureCall(Map<Object, Object> payload)
+      throws IOException {
     try {
       Map<String, Object> response =
           ServiceResponseHandler.unmarshallStreamingIngestResponse(
@@ -306,22 +308,7 @@ class StreamingIngestStage {
         throw new SFException(
             ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
       }
-
-      JsonNode responseNode = mapper.valueToTree(response);
-
-      // Currently there are a few mismatches between the client/configure response and what
-      // SnowflakeFileTransferAgent expects
-      ObjectNode mutable = (ObjectNode) responseNode;
-      mutable.putObject("data");
-      ObjectNode dataNode = (ObjectNode) mutable.get("data");
-      dataNode.set("stageInfo", responseNode.get("stage_location"));
-
-      // JDBC expects this field which maps to presignedFileUrlName.
-      dataNode.putArray("src_locations").add(fileName);
-
-      return (SnowflakeFileTransferMetadataV1)
-          SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
-
+      return response;
     } catch (IngestResponseException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE);
     }
