@@ -60,5 +60,4 @@ public class Constants {
   public static final boolean COMPRESS_BLOB_TWICE = false;
   public static final boolean ENABLE_PERF_MEASUREMENT = false;
   public static final boolean BLOB_NO_HEADER = true;
-  public static final boolean ENABLE_ENCRYPTION = false;
 }

@@ -1,6 +1,5 @@
 package net.snowflake.ingest.utils;
 
-import static net.snowflake.ingest.utils.Constants.ENABLE_ENCRYPTION;
 import static net.snowflake.ingest.utils.Constants.ENCRYPTION_ALGORITHM;
 
 import java.nio.charset.StandardCharsets;
@@ -101,10 +100,6 @@ public class Cryptor {
   public static byte[] encrypt(byte[] compressedChunkData, String encryptionKey, String diversifier)
       throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-    if (!ENABLE_ENCRYPTION) {
-      return compressedChunkData;
-    }
-
     // Generate the derived key
     SecretKey derivedKey = deriveKey(encryptionKey, diversifier);
 
@@ -126,10 +121,6 @@ public class Cryptor {
   public static byte[] decrypt(byte[] input, String encryptionKey, String diversifier)
       throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-    if (!ENABLE_ENCRYPTION) {
-      return input;
-    }
-
     // Generate the derived key
     SecretKey derivedKey = deriveKey(encryptionKey, diversifier);
 
