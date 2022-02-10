@@ -74,7 +74,6 @@ public class Utils {
    */
   public static Properties createProperties(Properties inputProp, boolean sslEnabled) {
     Properties properties = new Properties();
-    properties.putAll(inputProp);
 
     // decrypt rsa key
     String privateKey = "";
@@ -97,6 +96,8 @@ public class Utils {
         case Constants.ROLE:
           properties.put(ROLE, val);
           break;
+        default:
+          properties.put(key, val);
       }
     }
 
