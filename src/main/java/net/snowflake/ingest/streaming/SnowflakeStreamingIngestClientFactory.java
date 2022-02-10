@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming;
 
+import java.util.Map;
 import java.util.Properties;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
@@ -26,12 +27,20 @@ public class SnowflakeStreamingIngestClientFactory {
     // Properties that contains info used for Snowflake authentication and authorization
     private Properties prop;
 
+    // Allows client to override some default parameter values
+    private Map<String, Object> parameterOverrides;
+
     private Builder(String name) {
       this.name = name;
     }
 
     public Builder setProperties(Properties prop) {
       this.prop = prop;
+      return this;
+    }
+
+    public Builder setParameterOverrides(Map<String, Object> parameterOverrides) {
+      this.parameterOverrides = parameterOverrides;
       return this;
     }
 
@@ -64,7 +73,8 @@ public class SnowflakeStreamingIngestClientFactory {
 
       SnowflakeURL accountURL = new SnowflakeURL(this.prop.getProperty(Constants.ACCOUNT_URL));
       Properties prop = Utils.createProperties(this.prop, accountURL.sslEnabled());
-      return new SnowflakeStreamingIngestClientInternal(this.name, accountURL, prop);
+      return new SnowflakeStreamingIngestClientInternal(
+          this.name, accountURL, prop, parameterOverrides);
     }
   }
 }

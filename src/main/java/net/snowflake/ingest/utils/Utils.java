@@ -87,21 +87,17 @@ public class Utils {
         case Constants.PRIVATE_KEY:
           privateKey = val;
           break;
+        case Constants.PRIVATE_KEY_PASSPHRASE:
+          privateKeyPassphrase = val;
+          break;
         case Constants.USER:
           properties.put(USER, val);
           break;
         case Constants.ROLE:
           properties.put(ROLE, val);
           break;
-        case Constants.PRIVATE_KEY_PASSPHRASE:
-          privateKeyPassphrase = val;
-          break;
-        case Constants.ACCOUNT_URL:
-          // do nothing as we already read it
-          break;
         default:
-          // ignore other keys
-          logger.logDebug("Ignored property in input properties={}", key.toLowerCase());
+          properties.put(key, val);
       }
     }
 

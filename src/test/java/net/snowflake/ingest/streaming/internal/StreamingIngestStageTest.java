@@ -67,7 +67,8 @@ public class StreamingIngestStageTest {
           + " \"endPoint\": null}}}";
 
   String exampleRemoteMetaResponse =
-      "{\"src_locations\": [\"foo/\"],\"status_code\": 0, \"message\": \"Success\", \"prefix\":"
+      "{\"src_locations\": [\"foo/\"],"
+          + " \"status_code\": 0, \"message\": \"Success\", \"prefix\":"
           + " \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
           + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
           + " \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true,"
@@ -246,6 +247,7 @@ public class StreamingIngestStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(entity);
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
+    ParameterProvider parameterProvider = new ParameterProvider();
     StreamingIngestStage stage =
         new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName");
 

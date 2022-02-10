@@ -73,6 +73,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Counter to generate unique request ids per client
   private final AtomicLong counter = new AtomicLong(0);
 
+  // Provides constant values that can be set by constructor
+  private final ParameterProvider parameterProvider;
+
   // Name of the client
   private final String name;
 
@@ -127,7 +130,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       Properties prop,
       HttpClient httpClient,
       boolean isTestMode,
-      RequestBuilder requestBuilder) {
+      RequestBuilder requestBuilder,
+      Map<String, Object> parameterOverrides) {
+    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
+
     this.name = name;
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient() : httpClient;
@@ -168,10 +174,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     logger.logDebug(
-        "Client created, name={}, account={}. isTestMode={}",
+        "Client created, name={}, account={}. isTestMode={}, parameters={}",
         name,
         accountURL == null ? "" : accountURL.getAccount(),
-        isTestMode);
+        isTestMode,
+        parameterProvider);
   }
 
   /**
@@ -182,8 +189,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param prop connection properties
    */
   public SnowflakeStreamingIngestClientInternal(
-      String name, SnowflakeURL accountURL, Properties prop) {
-    this(name, accountURL, prop, null, false, null);
+      String name,
+      SnowflakeURL accountURL,
+      Properties prop,
+      Map<String, Object> parameterOverrides) {
+    this(name, accountURL, prop, null, false, null, parameterOverrides);
   }
 
   /**
@@ -192,7 +202,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param name the name of the client
    */
   SnowflakeStreamingIngestClientInternal(String name) {
-    this(name, null, null, null, true, null);
+    this(name, null, null, null, true, null, new HashMap<>());
   }
 
   /**
@@ -214,9 +224,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return this.role;
   }
 
-  /**
-   * @return a boolean to indicate whether the client is closed or not
-   */
+  /** @return a boolean to indicate whether the client is closed or not */
   @Override
   public boolean isClosed() {
     return isClosed;
@@ -563,5 +571,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     return channels;
+  }
+
+  /**
+   * Get get ParameterProvider with configurable parameters
+   *
+   * @return ParameterProvider used by the client
+   */
+  ParameterProvider getParameterProvider() {
+    return parameterProvider;
   }
 }

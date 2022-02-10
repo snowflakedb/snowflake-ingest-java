@@ -5,8 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_CHECK_INTERVAL_IN_MS;
-import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.CPU_IO_TIME_RATIO;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
 import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
@@ -249,7 +247,9 @@ class FlushService {
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
             && !this.isTestMode
-            && (this.isNeedFlush || timeDiffMillis >= BUFFER_FLUSH_INTERVAL_IN_MS))) {
+            && (this.isNeedFlush
+                || timeDiffMillis
+                    >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
 
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
@@ -269,7 +269,7 @@ class FlushService {
           flush(false);
         },
         0,
-        BUFFER_FLUSH_CHECK_INTERVAL_IN_MS,
+        this.owningClient.getParameterProvider().getBufferFlushCheckIntervalInMs(),
         TimeUnit.MILLISECONDS);
 
     // Create thread for registering blobs
