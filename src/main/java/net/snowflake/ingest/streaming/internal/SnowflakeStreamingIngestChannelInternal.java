@@ -238,9 +238,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     return this.arrowBuffer.flush();
   }
 
-  /**
-   * @return a boolean to indicate whether the channel is valid or not
-   */
+  /** @return a boolean to indicate whether the channel is valid or not */
   @Override
   public boolean isValid() {
     return this.isValid;
@@ -256,9 +254,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
         channelSequencer);
   }
 
-  /**
-   * @return a boolean to indicate whether the channel is closed or not
-   */
+  /** @return a boolean to indicate whether the channel is closed or not */
   @Override
   public boolean isClosed() {
     return this.isClosed;

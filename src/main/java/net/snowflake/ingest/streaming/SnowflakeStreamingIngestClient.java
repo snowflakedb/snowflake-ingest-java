@@ -27,8 +27,6 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
    */
   String getName();
 
-  /**
-   * @return a boolean to indicate whether the client is closed
-   */
+  /** @return a boolean to indicate whether the client is closed */
   boolean isClosed();
 }
