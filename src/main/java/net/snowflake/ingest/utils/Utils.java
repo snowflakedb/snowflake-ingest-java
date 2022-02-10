@@ -91,22 +91,19 @@ public class Utils {
         case Constants.PRIVATE_KEY_PASSPHRASE:
           privateKeyPassphrase = val;
           break;
-        default:
-          // ignore other keys
-          logger.logDebug("Ignored property in input properties={}", key.toLowerCase());
+        case Constants.USER:
+          properties.put(USER, val);
+          break;
+        case Constants.ROLE:
+          properties.put(ROLE, val);
+          break;
       }
     }
 
-    if (properties.getProperty(Constants.PRIVATE_KEY_PASSPHRASE) != null
-        && properties.getProperty(Constants.PRIVATE_KEY) != null) {
-      properties.put(
-          JDBC_PRIVATE_KEY,
-          parseEncryptedPrivateKey(
-              properties.getProperty(Constants.PRIVATE_KEY),
-              properties.getProperty(Constants.PRIVATE_KEY_PASSPHRASE)));
-    } else if (properties.getProperty(Constants.PRIVATE_KEY) != null) {
-      properties.put(
-          JDBC_PRIVATE_KEY, parsePrivateKey(properties.getProperty(Constants.PRIVATE_KEY)));
+    if (!privateKeyPassphrase.isEmpty()) {
+      properties.put(JDBC_PRIVATE_KEY, parseEncryptedPrivateKey(privateKey, privateKeyPassphrase));
+    } else if (!privateKey.isEmpty()) {
+      properties.put(JDBC_PRIVATE_KEY, parsePrivateKey(privateKey));
     }
 
     // set ssl

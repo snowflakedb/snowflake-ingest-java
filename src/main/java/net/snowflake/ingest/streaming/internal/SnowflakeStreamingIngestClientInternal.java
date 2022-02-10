@@ -74,7 +74,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   private final AtomicLong counter = new AtomicLong(0);
 
   // Provides constant values that can be set by constructor
-  private ParameterProvider parameterProvider;
+  private final ParameterProvider parameterProvider;
 
   // Name of the client
   private final String name;
@@ -132,6 +132,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
+    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
+
     this.name = name;
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient() : httpClient;
@@ -170,8 +172,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       metrics.register(MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
       SharedMetricRegistries.add("Metrics", metrics);
     }
-
-    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     logger.logDebug(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
@@ -575,6 +575,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return channels;
   }
 
+  /**
+   * Get get ParameterProvider with configurable parameters
+   *
+   * @return ParameterProvider used by the client
+   */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
   }
