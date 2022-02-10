@@ -25,10 +25,20 @@ public class ParameterProvider {
   private Map<String, Object> parameterMap = new HashMap<>();
 
   /**
-   * Construct empty ParameterProvider that will supply default values until updated by
-   * client/configure API call
+   * Constructor. Takes properties from profile file and properties from client constructor and
+   * resolves final parameter value
+   *
+   * @param parameterOverrides Map<String, Object> of parameter name -> value
+   * @param props Properties from profile file
    */
-  public ParameterProvider() {}
+  public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
+    this.setParameterMap(parameterOverrides, props);
+  }
+
+  /** Empty constructor for tests */
+  ParameterProvider() {
+    this(null, null);
+  }
 
   private void updateValue(
       String key, Object defaultValue, Map<String, Object> parameterOverrides, Properties props) {
@@ -47,7 +57,7 @@ public class ParameterProvider {
    * @param parameterOverrides Map<String, Object> of parameter name -> value
    * @param props Properties file provided to client constructor
    */
-  public void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
+  private void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
     this.updateValue(
         BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY,
         BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT,
@@ -102,5 +112,10 @@ public class ParameterProvider {
                 INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY,
                 INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT))
         .intValue();
+  }
+
+  @Override
+  public String toString() {
+    return "ParameterProvider{" + "parameterMap=" + parameterMap + '}';
   }
 }

@@ -74,7 +74,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   private final AtomicLong counter = new AtomicLong(0);
 
   // Provides constant values that can be set by constructor
-  private static final ParameterProvider parameterProvider = new ParameterProvider();
+  private ParameterProvider parameterProvider;
 
   // Name of the client
   private final String name;
@@ -171,13 +171,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       SharedMetricRegistries.add("Metrics", metrics);
     }
 
-    this.parameterProvider.setParameterMap(parameterOverrides, prop);
+    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     logger.logDebug(
-        "Client created, name={}, account={}. isTestMode={}",
+        "Client created, name={}, account={}. isTestMode={}, parameters={}",
         name,
         accountURL == null ? "" : accountURL.getAccount(),
-        isTestMode);
+        isTestMode,
+        parameterProvider);
   }
 
   /**

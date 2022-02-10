@@ -10,14 +10,13 @@ public class ParameterProviderTest {
 
   @Test
   public void withValuesSet() {
-    ParameterProvider parameterProvider = new ParameterProvider();
     Properties prop = new Properties();
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(parameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3l);
-    parameterMap.put(parameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4l);
-    parameterMap.put(parameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6l);
-    parameterMap.put(parameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, 7l);
-    parameterProvider.setParameterMap(parameterMap, prop);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3l);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4l);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6l);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, 7l);
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -27,12 +26,11 @@ public class ParameterProviderTest {
 
   @Test
   public void withNullProps() {
-    ParameterProvider parameterProvider = new ParameterProvider();
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(parameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3l);
-    parameterMap.put(parameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4l);
-    parameterMap.put(parameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6l);
-    parameterProvider.setParameterMap(parameterMap, null);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3l);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4l);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6l);
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, null);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -44,12 +42,11 @@ public class ParameterProviderTest {
 
   @Test
   public void withNullParameterMap() {
-    ParameterProvider parameterProvider = new ParameterProvider();
     Properties props = new Properties();
-    props.put(parameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3l);
-    props.put(parameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4l);
-    props.put(parameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6l);
-    parameterProvider.setParameterMap(null, props);
+    props.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3l);
+    props.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4l);
+    props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6l);
+    ParameterProvider parameterProvider = new ParameterProvider(null, props);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -61,8 +58,7 @@ public class ParameterProviderTest {
 
   @Test
   public void withNullInputs() {
-    ParameterProvider parameterProvider = new ParameterProvider();
-    parameterProvider.setParameterMap(null, null);
+    ParameterProvider parameterProvider = new ParameterProvider(null, null);
 
     Assert.assertEquals(
         parameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT,
