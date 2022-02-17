@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static org.mockito.Mockito.times;
 
 import java.io.ByteArrayInputStream;
@@ -20,6 +21,7 @@ import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.amazonaws.util.IOUtils;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
@@ -170,8 +172,10 @@ public class StreamingIngestStageTest {
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
-
-    PowerMockito.doThrow(new NullPointerException()).when(SnowflakeFileTransferAgent.class);
+    SnowflakeSQLException e =
+        new SnowflakeSQLException(
+            "Fake bad creds", CLOUD_STORAGE_CREDENTIALS_EXPIRED, "S3 credentials have expired");
+    PowerMockito.doThrow(e).when(SnowflakeFileTransferAgent.class);
     SnowflakeFileTransferAgent.uploadWithoutConnection(Mockito.any());
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
@@ -179,7 +183,7 @@ public class StreamingIngestStageTest {
     try {
       stage.putRemote("test/path", dataBytes);
       Assert.assertTrue(false);
-    } catch (NullPointerException npe) {
+    } catch (SnowflakeSQLException ex) {
       // Expected behavior given mocked response
     }
     PowerMockito.verifyStatic(
