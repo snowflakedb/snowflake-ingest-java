@@ -77,7 +77,7 @@ public class InsertValidationResponse {
 
     /**
      * Get the rowIndex. Please note, this index is 0 based so it can be used in fetching nth row
-     * from list.
+     * from the input. ({@link SnowflakeStreamingIngestChannel#insertRows(Iterable, String)})
      */
     public long getRowIndex() {
       return rowIndex;
