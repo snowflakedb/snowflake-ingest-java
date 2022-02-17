@@ -263,19 +263,22 @@ class ArrowRowBuffer {
     this.flushLock.lock();
     try {
       if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+        // Used to map incoming row(nth row) to InsertError(for nth row) in response
+        long rowIndex = 0;
         for (Map<String, Object> row : rows) {
           try {
             rowSize += convertRowToArrow(row, this.vectorsRoot, this.rowCount, this.statsMap);
             this.rowCount++;
             this.bufferSize += rowSize;
           } catch (SFException e) {
-            response.addError(new InsertValidationResponse.InsertError(row, e));
+            response.addError(new InsertValidationResponse.InsertError(row, e, rowIndex));
           } catch (Throwable e) {
             logger.logWarn("Unexpected error happens during insertRows: {}", e.getMessage());
             response.addError(
                 new InsertValidationResponse.InsertError(
-                    row, new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage())));
+                    row, new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()), rowIndex));
           }
+          rowIndex++;
         }
       } else {
         // If the on_error option is ABORT, simply throw the first exception
