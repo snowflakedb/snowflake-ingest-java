@@ -49,9 +49,15 @@ public class InsertValidationResponse {
     private final Object rowContent;
     private final SFException exception;
 
-    public InsertError(Object row, SFException exception) {
+    // Used to map this error row with original row in the insertRows Iterable.
+    // i.e the rowIndex can be index 9 in the list of 10 rows.
+    // index is 0 based so as to match with incoming Iterable
+    private final long rowIndex;
+
+    public InsertError(Object row, SFException exception, long rowIndex) {
       this.rowContent = row;
       this.exception = exception;
+      this.rowIndex = rowIndex;
     }
 
     /** Get the row content */
@@ -67,6 +73,14 @@ public class InsertValidationResponse {
     /** Get the exception */
     public SFException getException() {
       return this.exception;
+    }
+
+    /**
+     * Get the rowIndex. Please note, this index is 0 based so it can be used in fetching nth row
+     * from list.
+     */
+    public long getRowIndex() {
+      return rowIndex;
     }
   }
 }
