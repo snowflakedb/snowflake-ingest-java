@@ -5,9 +5,11 @@ import static net.snowflake.ingest.streaming.internal.ArrowRowBuffer.DECIMAL_BIT
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -600,6 +602,31 @@ public class RowBufferTest {
   public void testStringLength() {
     testStringLengthHelper(this.rowBufferOnErrorContinue);
     testStringLengthHelper(this.rowBufferOnErrorAbort);
+  }
+
+  @Test
+  public void testRowIndexWithMultipleRowsWithErrorr() {
+    List<Map<String, Object>> rows = new ArrayList<>();
+    Map<String, Object> row = new HashMap<>();
+
+    // row with good data
+    row.put("colInt", 3);
+    rows.add(row);
+
+    row = new HashMap<>();
+    row.put("colChar", "1111111111111111111111"); // too big
+
+    // lets add a row with bad data
+    rows.add(row);
+
+    InsertValidationResponse response = this.rowBufferOnErrorContinue.insertRows(rows, null);
+    Assert.assertTrue(response.hasErrors());
+
+    Assert.assertEquals(1, response.getErrorRowCount());
+
+    // second row out of the rows we sent was having bad data.
+    // so InsertError corresponds to second row.
+    Assert.assertEquals(1, response.getInsertErrors().get(0).getRowIndex());
   }
 
   private void testStringLengthHelper(ArrowRowBuffer rowBuffer) {
