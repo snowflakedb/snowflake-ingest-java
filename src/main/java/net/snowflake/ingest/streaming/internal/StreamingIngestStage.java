@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
@@ -177,10 +178,9 @@ class StreamingIngestStage {
               .setStreamingIngestClientKey(this.clientPrefix)
               .setStreamingIngestClientName(this.clientName)
               .build());
-    } catch (NullPointerException npe) {
-      // TODO SNOW-350701 Update JDBC driver to throw a reliable token expired error
-      if (retryCount >= MAX_RETRY_COUNT) {
-        throw npe;
+    } catch (SnowflakeSQLException e) {
+      if (e.getErrorCode() != CLOUD_STORAGE_CREDENTIALS_EXPIRED || retryCount >= MAX_RETRY_COUNT) {
+        throw e;
       }
       this.refreshSnowflakeMetadata();
       this.putRemote(fullFilePath, data, ++retryCount);
