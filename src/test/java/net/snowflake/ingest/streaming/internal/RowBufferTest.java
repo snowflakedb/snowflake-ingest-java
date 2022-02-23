@@ -1549,6 +1549,10 @@ public class RowBufferTest {
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
+    Assert.assertEquals(
+        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinStrValue());
+    Assert.assertEquals(
+        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxStrValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLBINARY").getCurrentNullCount());
   }
 
