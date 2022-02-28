@@ -447,9 +447,6 @@ class RowBufferStats {
         this.currentMinStrValue = value;
         this.currentMinStrValueInBytes = valueBytes;
       } else if (compare(currentMaxStrValueInBytes, valueBytes) < 0) {
-        this.currentMaxStrValue = value;
-        this.currentMaxStrValueInBytes = valueBytes;
-
         /*
         Snowflake stores the first MAX_LOB_LEN characters of a string.
         When truncating the max value, we increment the last max value
@@ -474,9 +471,6 @@ class RowBufferStats {
         this.currentMinColStrValue = value;
         this.currentMinColStrValueInBytes = collatedValueBytes;
       } else if (compare(currentMaxColStrValueInBytes, collatedValueBytes) < 0) {
-        this.currentMaxColStrValue = value;
-        this.currentMaxColStrValueInBytes = collatedValueBytes;
-
         /*
         Snowflake stores the first MAX_LOB_LEN characters of a string.
         When truncating the max value, we increment the last max value
