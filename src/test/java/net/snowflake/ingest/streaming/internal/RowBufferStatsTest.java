@@ -124,6 +124,19 @@ public class RowBufferStatsTest {
     stats.addStrValue("abcde|abcde|abcde|abcde|abcde|abcde|");
     Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", stats.getCurrentMinStrValue());
     Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ac", stats.getCurrentMaxStrValue());
+
+    stats.addStrValue("zabcde|abcde|abcde|abcde|abcde|abcde|");
+    Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", stats.getCurrentMinStrValue());
+    Assert.assertEquals("zabcde|abcde|abcde|abcde|abcde|b", stats.getCurrentMaxStrValue());
+
+    RowBufferStats ai = new RowBufferStats("en-ai");
+    ai.addStrValue("abcde|abcde|abcde|abcde|abcde|abcde|");
+    Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", ai.getCurrentMinColStrValue());
+    Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ac", ai.getCurrentMaxColStrValue());
+
+    ai.addStrValue("zabcde|abcde|abcde|abcde|abcde|abcde|");
+    Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", ai.getCurrentMinColStrValue());
+    Assert.assertEquals("zabcde|abcde|abcde|abcde|abcde|b", ai.getCurrentMaxColStrValue());
   }
 
   @Test

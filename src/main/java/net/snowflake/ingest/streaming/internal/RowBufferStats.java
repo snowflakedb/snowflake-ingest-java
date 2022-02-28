@@ -449,6 +449,24 @@ class RowBufferStats {
       } else if (compare(currentMaxStrValueInBytes, valueBytes) < 0) {
         this.currentMaxStrValue = value;
         this.currentMaxStrValueInBytes = valueBytes;
+
+        /*
+        Snowflake stores the first MAX_LOB_LEN characters of a string.
+        When truncating the max value, we increment the last max value
+        byte by one to ensure the max value stat is greater than the actual max value.
+         */
+        if (inputValue.length() > MAX_LOB_LEN) {
+          byte[] incrementedValueBytes = valueBytes.clone();
+          byte[] incrementedCollatedValueBytes = collatedValueBytes.clone();
+          incrementedValueBytes[MAX_LOB_LEN - 1]++;
+          incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
+          String incrementedValue = new String(incrementedValueBytes);
+          this.currentMaxStrValue = incrementedValue;
+          this.currentMaxStrValueInBytes = incrementedValueBytes;
+        } else {
+          this.currentMaxStrValue = value;
+          this.currentMaxStrValueInBytes = valueBytes;
+        }
       }
 
       // Collated comparison
@@ -458,6 +476,24 @@ class RowBufferStats {
       } else if (compare(currentMaxColStrValueInBytes, collatedValueBytes) < 0) {
         this.currentMaxColStrValue = value;
         this.currentMaxColStrValueInBytes = collatedValueBytes;
+
+        /*
+        Snowflake stores the first MAX_LOB_LEN characters of a string.
+        When truncating the max value, we increment the last max value
+        byte by one to ensure the max value stat is greater than the actual max value.
+         */
+        if (inputValue.length() > MAX_LOB_LEN) {
+          byte[] incrementedValueBytes = valueBytes.clone();
+          byte[] incrementedCollatedValueBytes = collatedValueBytes.clone();
+          incrementedValueBytes[MAX_LOB_LEN - 1]++;
+          incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
+          String incrementedValue = new String(incrementedValueBytes);
+          this.currentMaxColStrValue = incrementedValue;
+          this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
+        } else {
+          this.currentMaxColStrValue = value;
+          this.currentMaxColStrValueInBytes = collatedValueBytes;
+        }
       }
     }
   }
