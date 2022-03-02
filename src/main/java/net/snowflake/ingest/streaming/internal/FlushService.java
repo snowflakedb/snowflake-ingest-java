@@ -340,6 +340,8 @@ class FlushService {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
+                        logger.logDebug(
+                            "buildUploadWorkers stats={}", this.buildUploadWorkers.toString());
                         return buildAndUpload(filePath, blobData);
                       } catch (IOException e) {
                         logger.logError(
