@@ -50,6 +50,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
@@ -433,13 +434,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
       this.flushService.shutdown();
-
-      for (BufferAllocator alloc : this.allocator.getChildAllocators()) {
-        alloc.releaseBytes(alloc.getAllocatedMemory());
-        alloc.close();
-      }
-      this.allocator.releaseBytes(this.allocator.getAllocatedMemory());
-      this.allocator.close();
+      Utils.closeAllocator(this.allocator);
     }
   }
 

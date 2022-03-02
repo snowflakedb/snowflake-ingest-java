@@ -226,7 +226,7 @@ class ArrowRowBuffer {
       this.tempVectorsRoot.close();
     }
     this.fields.clear();
-    this.allocator.close();
+    Utils.closeAllocator(this.allocator);
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */

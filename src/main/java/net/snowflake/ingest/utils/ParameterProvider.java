@@ -1,4 +1,4 @@
-package net.snowflake.ingest.streaming.internal;
+package net.snowflake.ingest.utils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,13 +16,13 @@ public class ParameterProvider {
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE".toLowerCase();
 
   // Default values
-  static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
-  static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
-  static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
-  static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 5;
+  public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
+  public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
+  public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
+  public static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 15;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
-  private Map<String, Object> parameterMap = new HashMap<>();
+  private final Map<String, Object> parameterMap = new HashMap<>();
 
   /**
    * Constructor. Takes properties from profile file and properties from client constructor and
@@ -36,7 +36,7 @@ public class ParameterProvider {
   }
 
   /** Empty constructor for tests */
-  ParameterProvider() {
+  public ParameterProvider() {
     this(null, null);
   }
 
