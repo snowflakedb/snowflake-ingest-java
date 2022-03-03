@@ -205,10 +205,10 @@ class FlushService {
   private CompletableFuture<Void> distributeFlush(boolean isForce, long timeDiffMillis) {
     return CompletableFuture.runAsync(
         () -> {
-          if (this.isNeedFlush) {
+          if (this.isNeedFlush || isForce) {
             logger.logDebug(
-                "Submit forced or ad-hoc flush task on client={}, isForce={}, isNeedFlush={}, timeDiffMillis={},"
-                    + " currentDiffMillis={}",
+                "Submit forced or ad-hoc flush task on client={}, isForce={}, isNeedFlush={},"
+                    + " timeDiffMillis={}, currentDiffMillis={}",
                 this.owningClient.getName(),
                 isForce,
                 this.isNeedFlush,
