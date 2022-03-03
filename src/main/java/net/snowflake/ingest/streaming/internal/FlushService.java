@@ -207,7 +207,7 @@ class FlushService {
         () -> {
           if (this.isNeedFlush) {
             logger.logDebug(
-                "Submit flush task on client={}, isForce={}, isNeedFlush={}, timeDiffMillis={},"
+                "Submit forced or ad-hoc flush task on client={}, isForce={}, isNeedFlush={}, timeDiffMillis={},"
                     + " currentDiffMillis={}",
                 this.owningClient.getName(),
                 isForce,
