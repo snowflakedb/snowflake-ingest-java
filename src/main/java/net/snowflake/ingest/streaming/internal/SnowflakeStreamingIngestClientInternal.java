@@ -50,6 +50,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
@@ -268,6 +269,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        logger.logDebug(
+            "Open channel request failed, channel={}, table={}, message={}",
+            request.getChannelName(),
+            request.getFullyQualifiedTableName(),
+            response.getMessage());
         throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
       }
 
@@ -369,6 +375,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        logger.logDebug(
+            "Register blob request failed for blob={}, client={}, message={}",
+            blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
+            this.name,
+            response.getMessage());
         throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.getMessage());
       }
     } catch (IOException | IngestResponseException e) {
@@ -433,13 +444,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
       this.flushService.shutdown();
-
-      for (BufferAllocator alloc : this.allocator.getChildAllocators()) {
-        alloc.releaseBytes(alloc.getAllocatedMemory());
-        alloc.close();
-      }
-      this.allocator.releaseBytes(this.allocator.getAllocatedMemory());
-      this.allocator.close();
+      Utils.closeAllocator(this.allocator);
     }
   }
 

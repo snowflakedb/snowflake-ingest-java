@@ -4,8 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigInteger;
 import java.util.Objects;
 
-// TODO https://snowflakecomputing.atlassian.net/browse/SNOW-354886.
-//  Audit register endpoint/FileColumnPorpertyDTO property list.
+/** Audit register endpoint/FileColumnPropertyDTO property list. */
 class FileColumnProperties {
   private String minStrValue;
 

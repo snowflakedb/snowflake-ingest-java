@@ -35,6 +35,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;

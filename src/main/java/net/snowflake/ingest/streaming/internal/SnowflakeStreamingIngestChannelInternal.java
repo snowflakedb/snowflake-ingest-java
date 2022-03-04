@@ -382,13 +382,13 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
+    throttleInsertIfNeeded(Runtime.getRuntime());
     checkValidation();
 
     if (isClosed()) {
       throw new SFException(ErrorCode.CLOSED_CHANNEL);
     }
 
-    throttleInsertIfNeeded(Runtime.getRuntime());
     InsertValidationResponse response = this.arrowBuffer.insertRows(rows, offsetToken);
 
     // Start flush task if the chunk size reaches a certain size
@@ -450,8 +450,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       }
 
       logger.logWarn(
-          "Insert throttled for {} ms due to JVM memory pressure, max memory={}, old total"
-              + " memory={}, old free memory={}, new total memory={}, new free memory={}.",
+          "InsertRows throttled due to JVM memory pressure, channel={}, timeInMs={}, max memory={},"
+              + " old total memory={}, old free memory={}, new total memory={}, new free"
+              + " memory={}.",
+          getFullyQualifiedName(),
           retry * insertThrottleIntervalInMs,
           runtime.maxMemory(),
           oldTotalMem,
