@@ -19,7 +19,7 @@ public class ParameterProvider {
   static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
-  static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 5;
+  static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private Map<String, Object> parameterMap = new HashMap<>();
