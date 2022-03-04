@@ -269,6 +269,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        logger.logDebug(
+            "Open channel request failed, channel={}, table={}, message={}",
+            request.getChannelName(),
+            request.getFullyQualifiedTableName(),
+            response.getMessage());
         throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
       }
 
@@ -370,6 +375,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        logger.logDebug(
+            "Register blob request failed for blob={}, client={}, message={}",
+            blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
+            this.name,
+            response.getMessage());
         throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.getMessage());
       }
     } catch (IOException | IngestResponseException e) {
