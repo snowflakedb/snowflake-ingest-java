@@ -54,9 +54,6 @@ public class StreamingIngestIT {
         .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
     jdbcConnection
         .createStatement()
-        .execute("alter session set enable_streaming_ingest_reads=false;");
-    jdbcConnection
-        .createStatement()
         .execute("alter session set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;");
     jdbcConnection
         .createStatement()
@@ -69,12 +66,6 @@ public class StreamingIngestIT {
             String.format(
                 "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_TABLE));
     jdbcConnection.createStatement().execute("alter session set ENABLE_UNIFIED_TABLE_SCAN=true;");
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "alter table %s set ENABLE_STREAMING_INGEST_UNNAMED_STAGE_QUERY=true;",
-                TEST_TABLE));
     jdbcConnection
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
