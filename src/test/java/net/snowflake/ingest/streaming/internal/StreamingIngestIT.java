@@ -7,6 +7,7 @@ import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,6 +17,9 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
+import java.util.stream.IntStream;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -33,6 +37,10 @@ public class StreamingIngestIT {
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
+
+  private static final String INTERLEAVED_TABLE_PREFIX = "t_interleaved_test_";
+  private static final int INTERLEAVED_CHANNEL_NUMBER = 3;
+
   private Properties prop;
 
   private SnowflakeStreamingIngestClientInternal client;
@@ -141,6 +149,26 @@ public class StreamingIngestIT {
       Thread.sleep(500);
     }
     Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testInterleavedIngest() {
+    Consumer<IntConsumer> iter =
+        f -> IntStream.rangeClosed(1, INTERLEAVED_CHANNEL_NUMBER).forEach(f);
+
+    iter.accept(i -> createTableForInterleavedTest(INTERLEAVED_TABLE_PREFIX + i));
+
+    SnowflakeStreamingIngestChannel[] channels =
+        new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
+    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_TABLE_PREFIX + i));
+
+    iter.accept(
+        i ->
+            produceRowsForInterleavedTest(
+                channels[i - 1], INTERLEAVED_TABLE_PREFIX + i, 1 << (i + 1)));
+    iter.accept(i -> waitChannelFlushed(channels[i - 1], 1 << (i + 1)));
+
+    iter.accept(i -> verifyInterleavedResult(1 << (i + 1), INTERLEAVED_TABLE_PREFIX + i));
   }
 
   @Test
@@ -722,6 +750,77 @@ public class StreamingIngestIT {
   private void verifyInsertValidationResponse(InsertValidationResponse response) {
     if (response.hasErrors()) {
       throw response.getInsertErrors().get(0).getException();
+    }
+  }
+
+  private void createTableForInterleavedTest(String tableName) {
+    try {
+      jdbcConnection
+          .createStatement()
+          .execute(
+              String.format(
+                  "create or replace table %s (num NUMBER(38,0 ), str VARCHAR);", tableName));
+    } catch (SQLException e) {
+      throw new RuntimeException("Cannot create table " + tableName, e);
+    }
+  }
+
+  private SnowflakeStreamingIngestChannel openChannel(String tableName) {
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(tableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    return client.openChannel(request);
+  }
+
+  private void produceRowsForInterleavedTest(
+      SnowflakeStreamingIngestChannel channel, String tableName, int rowNumber) {
+    // Insert a few rows into the channel
+    for (int val = 0; val < rowNumber; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("num", val);
+      row.put("str", tableName + "_value_" + val);
+      verifyInsertValidationResponse(channel.insertRow(row, Integer.toString(val)));
+    }
+  }
+
+  private void waitChannelFlushed(SnowflakeStreamingIngestChannel channel, int numberOfRows) {
+    for (int i = 1; i < 15; i++) {
+      if (channel.getLatestCommittedOffsetToken() != null
+          && channel.getLatestCommittedOffsetToken().equals(Integer.toString(numberOfRows - 1))) {
+        return;
+      }
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(
+            "Interrupted waitChannelFlushed for " + numberOfRows + " rows", e);
+      }
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  private void verifyInterleavedResult(int rowNumber, String tableName) {
+    ResultSet result;
+    try {
+      result =
+          jdbcConnection
+              .createStatement()
+              .executeQuery(
+                  String.format(
+                      "select * from %s.%s.%s order by num", TEST_DB, TEST_SCHEMA, tableName));
+      for (int val = 0; val < rowNumber; val++) {
+        result.next();
+        Assert.assertEquals(val, result.getLong("NUM"));
+        Assert.assertEquals(tableName + "_value_" + val, result.getString("STR"));
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException("Cannot verifyInterleavedResult for " + tableName, e);
     }
   }
 }

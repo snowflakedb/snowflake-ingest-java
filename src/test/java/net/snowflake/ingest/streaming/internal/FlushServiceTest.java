@@ -605,8 +605,8 @@ public class FlushServiceTest {
         Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));
     String diversifier = "2021/08/10/blob.bdec";
 
-    byte[] encryptedData = Cryptor.encrypt(data, encryptionKey, diversifier);
-    byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier);
+    byte[] encryptedData = Cryptor.encrypt(data, encryptionKey, diversifier, 0);
+    byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier, 0);
 
     Assert.assertArrayEquals(data, decryptedData);
   }
