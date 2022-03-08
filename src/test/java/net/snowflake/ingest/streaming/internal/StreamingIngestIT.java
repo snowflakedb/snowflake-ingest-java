@@ -16,7 +16,6 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -54,9 +53,6 @@ public class StreamingIngestIT {
         .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
     jdbcConnection
         .createStatement()
-        .execute("alter session set enable_streaming_ingest_reads=false;");
-    jdbcConnection
-        .createStatement()
         .execute("alter session set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;");
     jdbcConnection
         .createStatement()
@@ -69,12 +65,6 @@ public class StreamingIngestIT {
             String.format(
                 "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_TABLE));
     jdbcConnection.createStatement().execute("alter session set ENABLE_UNIFIED_TABLE_SCAN=true;");
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "alter table %s set ENABLE_STREAMING_INGEST_UNNAMED_STAGE_QUERY=true;",
-                TEST_TABLE));
     jdbcConnection
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
@@ -406,9 +396,7 @@ public class StreamingIngestIT {
         Assert.assertEquals(3.14, result.getFloat("F"), 0.0001);
         Assert.assertEquals(1.1, result.getFloat("TINYFLOAT"), 0.001);
         Assert.assertEquals("{\n" + "  \"e\": 2.7\n" + "}", result.getString("VAR"));
-        SnowflakeDateTimeFormat ntzFormat =
-            SnowflakeDateTimeFormat.fromSqlFormat("DY, DD MON YYYY HH24:MI:SS TZHTZM");
-        Assert.assertEquals(timestamp * 1000, ntzFormat.parse(result.getString("T")).getTime());
+        Assert.assertEquals(timestamp * 1000, result.getTimestamp("T").getTime());
         return;
       } else {
         Thread.sleep(2000);

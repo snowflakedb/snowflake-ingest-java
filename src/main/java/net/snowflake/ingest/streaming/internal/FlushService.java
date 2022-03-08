@@ -314,15 +314,10 @@ class FlushService {
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
         itr = this.channelCache.iterator();
     List<Pair<BlobData, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
-    String filePath = null;
 
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
-      filePath = filePath == null ? getFilePath(this.targetStage.getClientPrefix()) : filePath;
-      if (this.owningClient.flushLatency != null) {
-        latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
-      }
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
       while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
@@ -346,20 +341,24 @@ class FlushService {
 
       // Kick off a build job
       if (!blobData.isEmpty()) {
-        String finalFilePath = filePath;
-        filePath = null;
+        String filePath = getFilePath(this.targetStage.getClientPrefix());
+        if (this.owningClient.flushLatency != null) {
+          latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
+        }
         blobs.add(
             new Pair<>(
-                new BlobData(finalFilePath, blobData),
+                new BlobData(filePath, blobData),
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        return buildAndUpload(finalFilePath, blobData);
+                        logger.logDebug(
+                            "buildUploadWorkers stats={}", this.buildUploadWorkers.toString());
+                        return buildAndUpload(filePath, blobData);
                       } catch (IOException e) {
                         logger.logError(
                             "Building blob failed={}, exception={}, detail={}, all channels in the"
                                 + " blob will be invalidated",
-                            finalFilePath,
+                            filePath,
                             e,
                             e.getMessage());
                         invalidateAllChannelsInBlob(blobData);
@@ -387,9 +386,8 @@ class FlushService {
    *
    * @param filePath Path of the destination file in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
-   *     belong to the same table. Will error if this is not the case
+   *     belongs to the same table. Will error if this is not the case
    * @return BlobMetadata for FlushService.upload
-   * @throws IOException
    */
   BlobMetadata buildAndUpload(String filePath, List<List<ChannelData>> blobData)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
