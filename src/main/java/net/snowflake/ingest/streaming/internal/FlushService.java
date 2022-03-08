@@ -205,21 +205,32 @@ class FlushService {
   private CompletableFuture<Void> distributeFlush(boolean isForce, long timeDiffMillis) {
     return CompletableFuture.runAsync(
         () -> {
-          logger.logDebug(
-              "Submit flush task on client={}, isForce={}, isNeedFlush={}, timeDiffMillis={},"
-                  + " currentDiffMillis={}",
-              this.owningClient.getName(),
-              isForce,
-              this.isNeedFlush,
-              timeDiffMillis,
-              System.currentTimeMillis() - this.lastFlushTime);
-
+          logFlushTask(isForce, timeDiffMillis);
           distributeFlushTasks();
           this.isNeedFlush = false;
           this.lastFlushTime = System.currentTimeMillis();
           return;
         },
         this.flushWorker);
+  }
+
+  /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
+  private void logFlushTask(boolean isForce, long timeDiffMillis) {
+    final String flushTaskLogFormat =
+        String.format(
+            "Submit forced or ad-hoc flush task on client=%s, isForce=%s,"
+                + " isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s",
+            this.owningClient.getName(),
+            isForce,
+            this.isNeedFlush,
+            timeDiffMillis,
+            System.currentTimeMillis() - this.lastFlushTime);
+    if (logger.isTraceEnabled()) {
+      logger.logTrace(flushTaskLogFormat);
+    }
+    if (!logger.isTraceEnabled() && (this.isNeedFlush || isForce)) {
+      logger.logDebug(flushTaskLogFormat);
+    }
   }
 
   /**
