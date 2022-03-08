@@ -738,6 +738,7 @@ public class RequestBuilder {
    */
   public HttpPost generateStreamingIngestPostRequest(
       String payload, String endPoint, String message) {
+    LOGGER.debug("Generate Snowpipe streaming request: endpoint={}, payload={}", endPoint, payload);
     // Make the corresponding URI
     URI uri = null;
     try {
