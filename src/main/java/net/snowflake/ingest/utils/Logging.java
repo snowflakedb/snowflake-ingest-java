@@ -29,6 +29,11 @@ public class Logging {
     }
   }
 
+  /** @return true if trace is enabled */
+  public boolean isTraceEnabled() {
+    return log.isTraceEnabled();
+  }
+
   public void logDebug(String msg) {
     if (log.isDebugEnabled()) {
       log.debug(logMessage(msg));

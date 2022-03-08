@@ -249,9 +249,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     this.isValid = false;
     this.arrowBuffer.close();
     logger.logWarn(
-        "Channel is invalidated, name={}, channel sequencer={}",
+        "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}",
         getFullyQualifiedName(),
-        channelSequencer);
+        channelSequencer,
+        rowSequencer);
   }
 
   /** @return a boolean to indicate whether the channel is closed or not */
@@ -264,9 +265,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   void markClosed() {
     this.isClosed = true;
     logger.logDebug(
-        "Channel is closed, name={}, channel sequencer={}",
+        "Channel is closed, name={}, channel sequencer={}, row sequencer={}",
         getFullyQualifiedName(),
-        channelSequencer);
+        channelSequencer,
+        rowSequencer);
   }
 
   /**
