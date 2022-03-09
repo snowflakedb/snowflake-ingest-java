@@ -10,22 +10,22 @@ import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STR
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
-import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
+import static net.snowflake.ingest.utils.Constants.STREAMING_JMX_METRIC_PREFIX;
+import static net.snowflake.ingest.utils.Constants.STREAMING_SHARED_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
-import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.Timer;
-import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
-import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
+import com.codahale.metrics.jmx.JmxReporter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.security.KeyPair;
@@ -39,8 +39,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
@@ -101,6 +104,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
+  // If true, we will emit specific metrics related to streaming API
+  private final boolean enableJmxMetrics;
+
   // Performance testing related metrics
   MetricRegistry metrics;
   Histogram blobSizeHistogram; // Histogram for blob size after compression
@@ -124,6 +130,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param prop connection properties
    * @param httpClient http client for sending request
    * @param isTestMode whether we're under test mode
+   * @param requestBuilder http request builder
+   * @param parameterOverrides parameters we override incase we want to set different values
+   * @param enableJmxMetrics true if jmx metrics should be emitted for this client
    */
   SnowflakeStreamingIngestClientInternal(
       String name,
@@ -132,7 +141,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       HttpClient httpClient,
       boolean isTestMode,
       RequestBuilder requestBuilder,
-      Map<String, Object> parameterOverrides) {
+      Map<String, Object> parameterOverrides,
+      boolean enableJmxMetrics) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
@@ -142,6 +152,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     this.allocator = new RootAllocator();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
+    this.enableJmxMetrics = enableJmxMetrics;
 
     if (!isTestMode) {
       // Setup request builder for communication with the server side
@@ -157,21 +168,34 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
 
-    if (ENABLE_PERF_MEASUREMENT) {
+    if (this.enableJmxMetrics) {
       metrics = new MetricRegistry();
-      blobSizeHistogram = metrics.histogram(MetricRegistry.name(name, "blob", "size", "histogram"));
+      // Blob histograms
+      blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
       blobRowCountHistogram =
-          metrics.histogram(MetricRegistry.name(name, "blob", "row", "count", "histogram"));
-      cpuHistogram = metrics.histogram(MetricRegistry.name(name, "cpu", "usage", "histogram"));
-      flushLatency = metrics.timer(MetricRegistry.name(name, "flush", "latency"));
-      buildLatency = metrics.timer(MetricRegistry.name(name, "build", "latency"));
-      uploadLatency = metrics.timer(MetricRegistry.name(name, "upload", "latency"));
-      registerLatency = metrics.timer(MetricRegistry.name(name, "register", "latency"));
-      uploadThroughput = metrics.meter(MetricRegistry.name(name, "upload", "throughput"));
-      inputThroughput = metrics.meter(MetricRegistry.name(name, "input", "throughput"));
-      metrics.register(MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
-      metrics.register(MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
-      SharedMetricRegistries.add("Metrics", metrics);
+          metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
+      cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
+
+      // latency metrics
+      flushLatency = metrics.timer(MetricRegistry.name("latency", "flush"));
+      buildLatency = metrics.timer(MetricRegistry.name("latency", "build"));
+      uploadLatency = metrics.timer(MetricRegistry.name("latency", "upload"));
+      registerLatency = metrics.timer(MetricRegistry.name("latency", "register"));
+
+      // throughput metrics
+      uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
+      inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
+      SharedMetricRegistries.add(STREAMING_SHARED_METRICS_REGISTRY, metrics);
+
+      JmxReporter jmxReporter =
+          JmxReporter.forRegistry(this.metrics)
+              .inDomain(STREAMING_JMX_METRIC_PREFIX)
+              .convertDurationsTo(TimeUnit.SECONDS)
+              .createsObjectNamesWith(
+                  (ignoreMeterType, jmxDomain, metricName) ->
+                      getObjectName(this.getName(), jmxDomain, metricName))
+              .build();
+      jmxReporter.start();
     }
 
     logger.logDebug(
@@ -188,13 +212,16 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param name the name of the client
    * @param accountURL Snowflake account url
    * @param prop connection properties
+   * @param parameterOverrides map of parameters to override for this client
+   * @param enableJmxMetrics enables metrics for JMX monitoring
    */
   public SnowflakeStreamingIngestClientInternal(
       String name,
       SnowflakeURL accountURL,
       Properties prop,
-      Map<String, Object> parameterOverrides) {
-    this(name, accountURL, prop, null, false, null, parameterOverrides);
+      Map<String, Object> parameterOverrides,
+      boolean enableJmxMetrics) {
+    this(name, accountURL, prop, null, false, null, parameterOverrides, enableJmxMetrics);
   }
 
   /**
@@ -203,7 +230,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param name the name of the client
    */
   SnowflakeStreamingIngestClientInternal(String name) {
-    this(name, null, null, null, true, null, new HashMap<>());
+    this(name, null, null, null, true, null, new HashMap<>(), false);
   }
 
   /**
@@ -432,9 +459,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     isClosed = true;
     this.channelCache.closeAllChannels();
 
-    // Collect the perf metrics before closing if needed
-    if (metrics != null) {
-      Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
+    // unregister jmx metrics
+    if (this.enableJmxMetrics && this.metrics != null) {
+      removeMetricsFromRegistry();
     }
 
     // Flush any remaining rows and cleanup all the resources
@@ -503,6 +530,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   /** Get the flush service */
   FlushService getFlushService() {
     return this.flushService;
+  }
+
+  /** @return true if jmx metrics are enabled for this client */
+  public boolean isEnableJmxMetrics() {
+    return enableJmxMetrics;
   }
 
   /**
@@ -585,5 +617,36 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
+  }
+
+  /**
+   * This method is called to fetch an object name for all registered metrics. It can be called
+   * during registration or unregistration. (Internal implementation of codehale)
+   *
+   * @param clientName name of the client. Passed in builder
+   * @param jmxDomain JMX Domain
+   * @param metricName metric name used while registering the metric.
+   * @return Object Name constructed from above three args
+   */
+  static ObjectName getObjectName(String clientName, String jmxDomain, String metricName) {
+    try {
+      StringBuilder sb = new StringBuilder(jmxDomain).append(":clientName=").append(clientName);
+
+      sb.append(",name=").append(metricName);
+
+      return new ObjectName(sb.toString());
+    } catch (MalformedObjectNameException e) {
+      logger.logWarn("Could not create Object name for MetricName:{}", metricName);
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "Invalid metric name");
+    }
+  }
+
+  /** Unregister all streaming related metrics from registry */
+  private void removeMetricsFromRegistry() {
+    if (metrics.getMetrics().size() != 0) {
+      logger.logDebug("Unregistering all metrics for client:{}", this.getName());
+      metrics.removeMatching(MetricFilter.startsWith(STREAMING_JMX_METRIC_PREFIX));
+      SharedMetricRegistries.remove(STREAMING_SHARED_METRICS_REGISTRY);
+    }
   }
 }

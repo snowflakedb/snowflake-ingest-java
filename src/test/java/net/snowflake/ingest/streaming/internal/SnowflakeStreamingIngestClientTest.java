@@ -80,6 +80,28 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
+  @Ignore
+  public void testClientFactoryWithJmxMetrics() throws Exception {
+    Properties prop = new Properties();
+    prop.put(USER, TestUtils.getUser());
+    prop.put(ACCOUNT_URL, TestUtils.getHost());
+    prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE, "role");
+
+    SnowflakeStreamingIngestClientInternal client =
+        (SnowflakeStreamingIngestClientInternal)
+            SnowflakeStreamingIngestClientFactory.builder("client")
+                .setProperties(prop)
+                .enableJmxMetrics(true)
+                .build();
+
+    Assert.assertEquals("client", client.getName());
+    Assert.assertFalse(client.isClosed());
+
+    Assert.assertTrue(client.isEnableJmxMetrics());
+  }
+
+  @Test
   public void testClientFactoryMissingName() throws Exception {
     Properties prop = new Properties();
     prop.put(ACCOUNT_URL, TestUtils.getHost());
@@ -226,7 +248,8 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
@@ -284,7 +307,8 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
@@ -408,7 +432,8 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     try {
       List<BlobMetadata> blobs =
@@ -456,7 +481,8 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     try {
       List<BlobMetadata> blobs =
@@ -513,7 +539,8 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>()));
@@ -580,7 +607,8 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     SnowflakeStreamingIngestChannelInternal channel1 =
         new SnowflakeStreamingIngestChannelInternal(

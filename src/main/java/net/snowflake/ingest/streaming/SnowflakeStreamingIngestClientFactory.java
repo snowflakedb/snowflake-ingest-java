@@ -30,6 +30,9 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
+    // emits metrics for latency, throughput only if this is enabled. Default is false
+    private boolean enableJmxMetrics = false;
+
     private Builder(String name) {
       this.name = name;
     }
@@ -41,6 +44,17 @@ public class SnowflakeStreamingIngestClientFactory {
 
     public Builder setParameterOverrides(Map<String, Object> parameterOverrides) {
       this.parameterOverrides = parameterOverrides;
+      return this;
+    }
+
+    /**
+     * Optional builder to enable JMX metrics for streaming client.
+     *
+     * @param enableJmxMetrics true if metrics per client needs to be emitted
+     * @return this builder instance
+     */
+    public Builder enableJmxMetrics(final boolean enableJmxMetrics) {
+      this.enableJmxMetrics = enableJmxMetrics;
       return this;
     }
 
@@ -74,7 +88,7 @@ public class SnowflakeStreamingIngestClientFactory {
       SnowflakeURL accountURL = new SnowflakeURL(this.prop.getProperty(Constants.ACCOUNT_URL));
       Properties prop = Utils.createProperties(this.prop, accountURL.sslEnabled());
       return new SnowflakeStreamingIngestClientInternal(
-          this.name, accountURL, prop, parameterOverrides);
+          this.name, accountURL, prop, parameterOverrides, this.enableJmxMetrics);
     }
   }
 }

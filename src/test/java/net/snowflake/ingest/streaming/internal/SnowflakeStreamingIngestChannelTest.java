@@ -293,7 +293,8 @@ public class SnowflakeStreamingIngestChannelTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -363,7 +364,8 @@ public class SnowflakeStreamingIngestChannelTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -442,7 +444,8 @@ public class SnowflakeStreamingIngestChannelTest {
             httpClient,
             true,
             requestBuilder,
-            null);
+            null,
+            false);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder(name)

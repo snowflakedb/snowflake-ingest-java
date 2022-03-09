@@ -341,6 +341,12 @@
             <artifactId>metrics-jvm</artifactId>
             <version>4.1.22</version>
         </dependency>
+
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-jmx</artifactId>
+            <version>4.2.3</version>
+        </dependency>
     </dependencies>
 
     <profiles>

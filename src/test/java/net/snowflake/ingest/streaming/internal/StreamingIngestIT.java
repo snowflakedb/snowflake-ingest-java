@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
-import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -124,7 +123,7 @@ public class StreamingIngestIT {
         Assert.assertEquals("1", result2.getString(1));
 
         // Verify perf metrics
-        if (ENABLE_PERF_MEASUREMENT) {
+        if (client.isEnableJmxMetrics()) {
           Assert.assertEquals(1, client.blobSizeHistogram.getCount());
           if (BLOB_NO_HEADER && COMPRESS_BLOB_TWICE) {
             Assert.assertEquals(3445, client.blobSizeHistogram.getSnapshot().getMax());
