@@ -15,8 +15,8 @@ import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
-import static net.snowflake.ingest.utils.Constants.STREAMING_JMX_METRIC_PREFIX;
-import static net.snowflake.ingest.utils.Constants.STREAMING_SHARED_METRICS_REGISTRY;
+import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
+import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Histogram;
@@ -104,9 +104,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
-  // If true, we will emit specific metrics related to streaming API
-  private final boolean enableJmxMetrics;
-
   // Performance testing related metrics
   MetricRegistry metrics;
   Histogram blobSizeHistogram; // Histogram for blob size after compression
@@ -132,7 +129,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param isTestMode whether we're under test mode
    * @param requestBuilder http request builder
    * @param parameterOverrides parameters we override incase we want to set different values
-   * @param enableJmxMetrics true if jmx metrics should be emitted for this client
    */
   SnowflakeStreamingIngestClientInternal(
       String name,
@@ -141,8 +137,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       HttpClient httpClient,
       boolean isTestMode,
       RequestBuilder requestBuilder,
-      Map<String, Object> parameterOverrides,
-      boolean enableJmxMetrics) {
+      Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
@@ -152,7 +147,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     this.allocator = new RootAllocator();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
-    this.enableJmxMetrics = enableJmxMetrics;
 
     if (!isTestMode) {
       // Setup request builder for communication with the server side
@@ -168,7 +162,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
 
-    if (this.enableJmxMetrics) {
+    if (this.parameterProvider.hasEnabledSnowpipeStreamingJmxMetrics()) {
       metrics = new MetricRegistry();
       // Blob histograms
       blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
@@ -185,11 +179,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       // throughput metrics
       uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
       inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
-      SharedMetricRegistries.add(STREAMING_SHARED_METRICS_REGISTRY, metrics);
+      SharedMetricRegistries.add(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY, metrics);
 
       JmxReporter jmxReporter =
           JmxReporter.forRegistry(this.metrics)
-              .inDomain(STREAMING_JMX_METRIC_PREFIX)
+              .inDomain(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX)
               .convertDurationsTo(TimeUnit.SECONDS)
               .createsObjectNamesWith(
                   (ignoreMeterType, jmxDomain, metricName) ->
@@ -213,15 +207,13 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param parameterOverrides map of parameters to override for this client
-   * @param enableJmxMetrics enables metrics for JMX monitoring
    */
   public SnowflakeStreamingIngestClientInternal(
       String name,
       SnowflakeURL accountURL,
       Properties prop,
-      Map<String, Object> parameterOverrides,
-      boolean enableJmxMetrics) {
-    this(name, accountURL, prop, null, false, null, parameterOverrides, enableJmxMetrics);
+      Map<String, Object> parameterOverrides) {
+    this(name, accountURL, prop, null, false, null, parameterOverrides);
   }
 
   /**
@@ -230,7 +222,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param name the name of the client
    */
   SnowflakeStreamingIngestClientInternal(String name) {
-    this(name, null, null, null, true, null, new HashMap<>(), false);
+    this(name, null, null, null, true, null, new HashMap<>());
   }
 
   /**
@@ -460,7 +452,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     this.channelCache.closeAllChannels();
 
     // unregister jmx metrics
-    if (this.enableJmxMetrics && this.metrics != null) {
+    if (this.metrics != null) {
       removeMetricsFromRegistry();
     }
 
@@ -530,11 +522,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   /** Get the flush service */
   FlushService getFlushService() {
     return this.flushService;
-  }
-
-  /** @return true if jmx metrics are enabled for this client */
-  public boolean isEnableJmxMetrics() {
-    return enableJmxMetrics;
   }
 
   /**
@@ -636,7 +623,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       return new ObjectName(sb.toString());
     } catch (MalformedObjectNameException e) {
-      logger.logWarn("Could not create Object name for MetricName:{}", metricName);
+      logger.logWarn("Could not create Object name for MetricName={}", metricName);
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Invalid metric name");
     }
   }
@@ -644,9 +631,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   /** Unregister all streaming related metrics from registry */
   private void removeMetricsFromRegistry() {
     if (metrics.getMetrics().size() != 0) {
-      logger.logDebug("Unregistering all metrics for client:{}", this.getName());
-      metrics.removeMatching(MetricFilter.startsWith(STREAMING_JMX_METRIC_PREFIX));
-      SharedMetricRegistries.remove(STREAMING_SHARED_METRICS_REGISTRY);
+      logger.logDebug("Unregistering all metrics for client={}", this.getName());
+      metrics.removeMatching(MetricFilter.startsWith(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX));
+      SharedMetricRegistries.remove(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY);
     }
   }
 }

@@ -123,7 +123,7 @@ public class StreamingIngestIT {
         Assert.assertEquals("1", result2.getString(1));
 
         // Verify perf metrics
-        if (client.isEnableJmxMetrics()) {
+        if (client.getParameterProvider().hasEnabledSnowpipeStreamingJmxMetrics()) {
           Assert.assertEquals(1, client.blobSizeHistogram.getCount());
           if (BLOB_NO_HEADER && COMPRESS_BLOB_TWICE) {
             Assert.assertEquals(3445, client.blobSizeHistogram.getSnapshot().getMax());

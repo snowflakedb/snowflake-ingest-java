@@ -47,17 +47,6 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
-    /**
-     * Optional builder to enable JMX metrics for streaming client.
-     *
-     * @param enableJmxMetrics true if metrics per client needs to be emitted
-     * @return this builder instance
-     */
-    public Builder enableJmxMetrics(final boolean enableJmxMetrics) {
-      this.enableJmxMetrics = enableJmxMetrics;
-      return this;
-    }
-
     public SnowflakeStreamingIngestClient build() {
       Utils.assertStringNotNullOrEmpty("client name", this.name);
       Utils.assertNotNull("connection properties", this.prop);
@@ -88,7 +77,7 @@ public class SnowflakeStreamingIngestClientFactory {
       SnowflakeURL accountURL = new SnowflakeURL(this.prop.getProperty(Constants.ACCOUNT_URL));
       Properties prop = Utils.createProperties(this.prop, accountURL.sslEnabled());
       return new SnowflakeStreamingIngestClientInternal(
-          this.name, accountURL, prop, parameterOverrides, this.enableJmxMetrics);
+          this.name, accountURL, prop, parameterOverrides);
     }
   }
 }
