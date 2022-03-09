@@ -16,6 +16,7 @@ import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
+import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JVM_AND_THREAD_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.USER;
 
@@ -24,8 +25,11 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
+import com.codahale.metrics.Slf4jReporter;
 import com.codahale.metrics.Timer;
 import com.codahale.metrics.jmx.JmxReporter;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.security.KeyPair;
@@ -116,6 +120,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   Meter uploadThroughput; // Throughput for uploading blobs
   Meter inputThroughput; // Throughput for inserting into the Arrow buffer
 
+  // JVM and thread related metrics
+  MetricRegistry jvmAndThreadMetrics;
+
   // The request builder who handles building the HttpRequests we send
   private RequestBuilder requestBuilder;
 
@@ -190,6 +197,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                       getObjectName(this.getName(), jmxDomain, metricName))
               .build();
       jmxReporter.start();
+
+      // add JVM and thread metrics too
+      jvmAndThreadMetrics.register(MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
+      jvmAndThreadMetrics.register(
+          MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
+
+      SharedMetricRegistries.add(
+          SNOWPIPE_STREAMING_JVM_AND_THREAD_METRICS_REGISTRY, jvmAndThreadMetrics);
     }
 
     logger.logDebug(
@@ -454,6 +469,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     // unregister jmx metrics
     if (this.metrics != null) {
       removeMetricsFromRegistry();
+
+      // LOG jvm and thread metrics at the end
+      Slf4jReporter.forRegistry(jvmAndThreadMetrics).outputTo(logger.getLogger()).build().report();
     }
 
     // Flush any remaining rows and cleanup all the resources

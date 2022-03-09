@@ -335,6 +335,13 @@
             <version>4.1.22</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-jvm -->
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-jvm</artifactId>
+            <version>4.1.22</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-jmx -->
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
