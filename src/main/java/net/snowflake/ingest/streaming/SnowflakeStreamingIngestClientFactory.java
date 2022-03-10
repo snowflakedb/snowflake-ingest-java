@@ -30,9 +30,6 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
-    // emits metrics for latency, throughput only if this is enabled. Default is false
-    private boolean enableJmxMetrics = false;
-
     private Builder(String name) {
       this.name = name;
     }

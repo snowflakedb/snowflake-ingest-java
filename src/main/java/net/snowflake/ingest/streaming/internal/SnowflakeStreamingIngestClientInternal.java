@@ -170,41 +170,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
 
     if (this.parameterProvider.hasEnabledSnowpipeStreamingJmxMetrics()) {
-      metrics = new MetricRegistry();
-      // Blob histograms
-      blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
-      blobRowCountHistogram =
-          metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
-      cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
-
-      // latency metrics
-      flushLatency = metrics.timer(MetricRegistry.name("latency", "flush"));
-      buildLatency = metrics.timer(MetricRegistry.name("latency", "build"));
-      uploadLatency = metrics.timer(MetricRegistry.name("latency", "upload"));
-      registerLatency = metrics.timer(MetricRegistry.name("latency", "register"));
-
-      // throughput metrics
-      uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
-      inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
-      SharedMetricRegistries.add(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY, metrics);
-
-      JmxReporter jmxReporter =
-          JmxReporter.forRegistry(this.metrics)
-              .inDomain(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX)
-              .convertDurationsTo(TimeUnit.SECONDS)
-              .createsObjectNamesWith(
-                  (ignoreMeterType, jmxDomain, metricName) ->
-                      getObjectName(this.getName(), jmxDomain, metricName))
-              .build();
-      jmxReporter.start();
-
-      // add JVM and thread metrics too
-      jvmAndThreadMetrics.register(MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
-      jvmAndThreadMetrics.register(
-          MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
-
-      SharedMetricRegistries.add(
-          SNOWPIPE_STREAMING_JVM_AND_THREAD_METRICS_REGISTRY, jvmAndThreadMetrics);
+      this.registerMetricsForClient();
     }
 
     logger.logDebug(
@@ -622,6 +588,44 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
+  }
+
+  /** Registers the performance metrics along with JVM and Threads. */
+  private void registerMetricsForClient() {
+    metrics = new MetricRegistry();
+    // Blob histograms
+    blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
+    blobRowCountHistogram =
+        metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
+    cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
+
+    // latency metrics
+    flushLatency = metrics.timer(MetricRegistry.name("latency", "flush"));
+    buildLatency = metrics.timer(MetricRegistry.name("latency", "build"));
+    uploadLatency = metrics.timer(MetricRegistry.name("latency", "upload"));
+    registerLatency = metrics.timer(MetricRegistry.name("latency", "register"));
+
+    // throughput metrics
+    uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
+    inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
+    SharedMetricRegistries.add(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY, metrics);
+
+    JmxReporter jmxReporter =
+        JmxReporter.forRegistry(this.metrics)
+            .inDomain(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX)
+            .convertDurationsTo(TimeUnit.SECONDS)
+            .createsObjectNamesWith(
+                (ignoreMeterType, jmxDomain, metricName) ->
+                    getObjectName(this.getName(), jmxDomain, metricName))
+            .build();
+    jmxReporter.start();
+
+    // add JVM and thread metrics too
+    jvmAndThreadMetrics.register(MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
+    jvmAndThreadMetrics.register(MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
+
+    SharedMetricRegistries.add(
+        SNOWPIPE_STREAMING_JVM_AND_THREAD_METRICS_REGISTRY, jvmAndThreadMetrics);
   }
 
   /**
