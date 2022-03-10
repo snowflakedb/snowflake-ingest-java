@@ -14,7 +14,7 @@ public class ParameterProvider {
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_INTERVAL_IN_MILLIS".toLowerCase();
   public static final String INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY =
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE".toLowerCase();
-  public static final String ENABLE_SNOWPIPE_STREAMING_JMX_METRICS_MAP_KEY =
+  public static final String ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY =
       "ENABLE_SNOWPIPE_STREAMING_JMX_METRICS".toLowerCase();
 
   // Default values
@@ -22,7 +22,7 @@ public class ParameterProvider {
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
   public static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
-  public static final boolean SNOWPIPE_STREAMING_JMX_METRICS_DEFAULT = false;
+  public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -86,8 +86,8 @@ public class ParameterProvider {
         props);
 
     this.updateValue(
-        ENABLE_SNOWPIPE_STREAMING_JMX_METRICS_MAP_KEY,
-        SNOWPIPE_STREAMING_JMX_METRICS_DEFAULT,
+        ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY,
+        SNOWPIPE_STREAMING_METRICS_DEFAULT,
         parameterOverrides,
         props);
   }
@@ -124,10 +124,10 @@ public class ParameterProvider {
   }
 
   /** @return true if jmx metrics are enabled for a client */
-  public boolean hasEnabledSnowpipeStreamingJmxMetrics() {
+  public boolean hasEnabledSnowpipeStreamingMetrics() {
     return (Boolean)
         this.parameterMap.getOrDefault(
-            ENABLE_SNOWPIPE_STREAMING_JMX_METRICS_MAP_KEY, SNOWPIPE_STREAMING_JMX_METRICS_DEFAULT);
+            ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, SNOWPIPE_STREAMING_METRICS_DEFAULT);
   }
 
   @Override

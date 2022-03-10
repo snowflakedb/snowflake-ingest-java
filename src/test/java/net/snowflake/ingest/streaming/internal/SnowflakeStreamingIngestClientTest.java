@@ -7,7 +7,7 @@ import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
-import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_SNOWPIPE_STREAMING_JMX_METRICS_MAP_KEY;
+import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -94,13 +94,13 @@ public class SnowflakeStreamingIngestClientTest {
             SnowflakeStreamingIngestClientFactory.builder("client")
                 .setProperties(prop)
                 .setParameterOverrides(
-                    Collections.singletonMap(ENABLE_SNOWPIPE_STREAMING_JMX_METRICS_MAP_KEY, true))
+                    Collections.singletonMap(ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, true))
                 .build();
 
     Assert.assertEquals("client", client.getName());
     Assert.assertFalse(client.isClosed());
 
-    Assert.assertTrue(client.getParameterProvider().hasEnabledSnowpipeStreamingJmxMetrics());
+    Assert.assertTrue(client.getParameterProvider().hasEnabledSnowpipeStreamingMetrics());
   }
 
   @Test

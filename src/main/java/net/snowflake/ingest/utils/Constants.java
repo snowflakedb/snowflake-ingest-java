@@ -64,6 +64,6 @@ public class Constants {
   public static final String SNOWPIPE_STREAMING_JMX_METRIC_PREFIX = "snowflake.ingest.sdk";
   public static final String SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY =
       "SnowpipeStreamingMetrics";
-  public static final String SNOWPIPE_STREAMING_JVM_AND_THREAD_METRICS_REGISTRY =
-      "SnowpipeStreamingJvmAndThreadMetrics";
+  public static final String SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY =
+      "SnowpipeStreamingJvmMemoryAndThreadMetrics";
 }
