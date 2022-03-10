@@ -33,12 +33,12 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeConnectionV1;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.FieldVector;
@@ -49,25 +49,9 @@ import org.apache.arrow.vector.util.Text;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-@PowerMockIgnore({
-  "com.sun.org.apache.xerces.*",
-  "javax.xml.*",
-  "org.xml.*",
-  "javax.management.*",
-  "javax.crypto.JceSecurity.*",
-  "javax.crypto.*"
-})
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({
-  Utils.class,
-})
 public class FlushServiceTest {
   private SnowflakeStreamingIngestClientInternal client;
   private ChannelCache channelCache;
@@ -81,6 +65,8 @@ public class FlushServiceTest {
 
   @Before
   public void setup() {
+    java.security.Security.addProvider(new BouncyCastleProvider());
+
     ParameterProvider parameterProvider = new ParameterProvider();
     client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
@@ -605,8 +591,8 @@ public class FlushServiceTest {
         Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));
     String diversifier = "2021/08/10/blob.bdec";
 
-    byte[] encryptedData = Cryptor.encrypt(data, encryptionKey, diversifier);
-    byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier);
+    byte[] encryptedData = Cryptor.encrypt(data, encryptionKey, diversifier, 0);
+    byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier, 0);
 
     Assert.assertArrayEquals(data, decryptedData);
   }

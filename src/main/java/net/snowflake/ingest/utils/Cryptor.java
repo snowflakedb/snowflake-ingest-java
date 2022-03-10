@@ -2,6 +2,7 @@ package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Constants.ENCRYPTION_ALGORITHM;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -18,9 +19,6 @@ import javax.crypto.spec.SecretKeySpec;
 import org.apache.arrow.util.VisibleForTesting;
 
 public class Cryptor {
-
-  /** Initialize 0 IV */
-  private static final IvParameterSpec zeroIv = new IvParameterSpec(new byte[16]);
 
   /**
    * Hashes input bytes using SHA-256.
@@ -95,9 +93,11 @@ public class Cryptor {
    * @param compressedChunkData bytes to encrypt
    * @param encryptionKey symmetric encryption key
    * @param diversifier diversifier for the encryption key
+   * @param iv IV to use for encryption
    * @return encrypted bytes, padded, prefixed with initialization vector
    */
-  public static byte[] encrypt(byte[] compressedChunkData, String encryptionKey, String diversifier)
+  public static byte[] encrypt(
+      byte[] compressedChunkData, String encryptionKey, String diversifier, long iv)
       throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
     // Generate the derived key
@@ -105,7 +105,8 @@ public class Cryptor {
 
     // Encrypt with zero IV
     Cipher cipher = Cipher.getInstance(ENCRYPTION_ALGORITHM);
-    cipher.init(Cipher.ENCRYPT_MODE, derivedKey, zeroIv);
+    byte[] ivBytes = ByteBuffer.allocate(2 * Long.BYTES).putLong(0).putLong(iv).array();
+    cipher.init(Cipher.ENCRYPT_MODE, derivedKey, new IvParameterSpec(ivBytes));
     return cipher.doFinal(compressedChunkData);
   }
 
@@ -115,10 +116,12 @@ public class Cryptor {
    *
    * @param input bytes to encrypt
    * @param encryptionKey symmetric encryption key
+   * @param diversifier diversifier for the decryption key
+   * @param iv IV to use for decryption
    * @return decrypted ciphertext
    */
   @VisibleForTesting
-  public static byte[] decrypt(byte[] input, String encryptionKey, String diversifier)
+  public static byte[] decrypt(byte[] input, String encryptionKey, String diversifier, long iv)
       throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
     // Generate the derived key
@@ -126,7 +129,8 @@ public class Cryptor {
 
     // Decrypt with zero IV
     Cipher cipher = Cipher.getInstance(ENCRYPTION_ALGORITHM);
-    cipher.init(Cipher.DECRYPT_MODE, derivedKey, zeroIv);
+    byte[] ivBytes = ByteBuffer.allocate(2 * Long.BYTES).putLong(0).putLong(iv).array();
+    cipher.init(Cipher.DECRYPT_MODE, derivedKey, new IvParameterSpec(ivBytes));
     return cipher.doFinal(input);
   }
 }

@@ -41,6 +41,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -479,16 +480,28 @@ class FlushService {
         byte[] compressedChunkData = BlobBuilder.compress(filePath, chunkData);
 
         // Encrypt the compressed chunk data, the encryption key is derived using the key from
-        // server with the full blob path
+        // server with the full blob path.
+        // We need to maintain IV as a block counter for the whole file, even interleaved,
+        // to align with decryption on the Snowflake query path.
+        // TODO: address alignment for the header SNOW-557866
+        long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(compressedChunkData, firstChannel.getEncryptionKey(), filePath);
+            Cryptor.encrypt(compressedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
+
+        // Encryption adds padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
+        // to align with decryption on the Snowflake query path starting from this chunk offset.
+        // The padding does not have arrow data and not compressed.
+        // Hence, the actual chunk size is smaller by the padding size.
+        // The compression on the Snowflake query path needs the correct size of the compressed
+        // data.
+        int compressedChunkLength = compressedChunkData.length;
 
         // SNOW-514965 Do not default to 0 once server side code to send back TMK ID makes it in
         Long encryptionKeyIdToUse =
             firstChannel.getEncryptionKeyId() != null ? firstChannel.getEncryptionKeyId() : 0L;
 
         // Compute the md5 of the chunk data
-        String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData);
+        String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
         int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
 
         // Create chunk metadata
@@ -498,7 +511,10 @@ class FlushService {
                 // The start offset will be updated later in BlobBuilder#build to include the blob
                 // header
                 .setChunkStartOffset(curDataSize)
-                .setChunkLength(encryptedCompressedChunkDataSize)
+                // The compressedChunkLength is used because it is the actual data size used for
+                // decompression
+                // and md5 calculation on server side.
+                .setChunkLength(compressedChunkLength)
                 .setChannelList(channelsMetadataList)
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(encryptionKeyIdToUse)
@@ -513,13 +529,14 @@ class FlushService {
 
         logger.logDebug(
             "Finish building chunk in blob={}, table={}, rowCount={}, uncompressedSize={},"
-                + " compressedSize={}, encryptedCompressedSize={}",
+                + " compressedChunkLength={}, encryptedCompressedSize={}",
             filePath,
             firstChannel.getFullyQualifiedTableName(),
             rowCount,
             chunkData.size(),
-            compressedChunkData.length,
-            encryptedCompressedChunkDataSize);
+            compressedChunkLength,
+            encryptedCompressedChunkDataSize,
+            compressedChunkLength);
       }
     }
 
