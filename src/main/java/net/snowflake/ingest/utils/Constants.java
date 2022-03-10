@@ -59,6 +59,12 @@ public class Constants {
   // Parameters
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;
-  public static final boolean ENABLE_PERF_MEASUREMENT = false;
   public static final boolean BLOB_NO_HEADER = true;
+
+  // Metrics
+  public static final String SNOWPIPE_STREAMING_JMX_METRIC_PREFIX = "snowflake.ingest.sdk";
+  public static final String SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY =
+      "SnowpipeStreamingMetrics";
+  public static final String SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY =
+      "SnowpipeStreamingJvmMemoryAndThreadMetrics";
 }
