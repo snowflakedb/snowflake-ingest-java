@@ -43,7 +43,8 @@ public class Constants {
   public static final int COMMIT_MAX_RETRY_COUNT = 10;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 500;
   public static final int ROW_SEQUENCER_IS_COMMITTED = 26;
-  public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
+  public static final String ENCRYPTION_ALGORITHM = "AES/CTR/PKCS7Padding";
+  public static final long ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
@@ -58,6 +59,12 @@ public class Constants {
   // Parameters
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;
-  public static final boolean ENABLE_PERF_MEASUREMENT = false;
   public static final boolean BLOB_NO_HEADER = true;
+
+  // Metrics
+  public static final String SNOWPIPE_STREAMING_JMX_METRIC_PREFIX = "snowflake.ingest.sdk";
+  public static final String SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY =
+      "SnowpipeStreamingMetrics";
+  public static final String SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY =
+      "SnowpipeStreamingJvmMemoryAndThreadMetrics";
 }
