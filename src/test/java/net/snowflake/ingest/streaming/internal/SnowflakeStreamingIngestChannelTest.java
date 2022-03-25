@@ -398,6 +398,7 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  \"client_sequencer\" : 0,\n"
             + "  \"row_sequencer\" : 0,\n"
             + "  \"offset_token\" : \"\",\n"
+            + "  \"encryption_key_id\" : 17229585102,\n"
             + "  \"table_columns\" : [ {\n"
             + "    \"name\" : \"C1\",\n"
             + "    \"type\" : \"NUMBER(38,0)\",\n"

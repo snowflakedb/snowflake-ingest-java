@@ -62,7 +62,7 @@ class DataValidationUtil {
     String output;
     try {
       JsonNode node = objectMapper.readTree(input.toString());
-      output = node.isValueNode() ? node.asText() : node.toString();
+      output = node.toString();
     } catch (Exception e) {
       throw new SFException(
           e, ErrorCode.INVALID_ROW, input.toString(), "Input column can't be convert to Json");
