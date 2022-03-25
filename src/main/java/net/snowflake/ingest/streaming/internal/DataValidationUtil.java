@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -33,19 +32,15 @@ class DataValidationUtil {
   /**
    * Expects string JSON
    *
-   * @param input
+   * @param input the input data, must be able to convert to String
    */
   static String validateAndParseVariant(Object input) {
     String output;
-    if (input instanceof String) {
-      output = (String) input;
-    } else if (input instanceof JsonNode) {
+    try {
       output = input.toString();
-    } else {
+    } catch (Exception e) {
       throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          String.format("OBJECT, ARRAY, and VARIANT columns only accept String or JsonNode"));
+          e, ErrorCode.INVALID_ROW, input.toString(), "Input column can't be convert to String.");
     }
 
     if (output.length() > MAX_STRING_LENGTH) {
@@ -53,7 +48,7 @@ class DataValidationUtil {
           ErrorCode.INVALID_ROW,
           input.toString(),
           String.format(
-              "Variant too long.  length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+              "Variant too long. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
     }
     return output;
   }
@@ -66,30 +61,19 @@ class DataValidationUtil {
   static String validateAndParseObject(Object input) {
     String output;
     try {
-      if (input instanceof String) {
-        // Most be valid JSON
-        objectMapper.readTree((String) input);
-        output = (String) input;
-      } else if (input instanceof JsonNode) {
-        output = input.toString();
-      } else {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            input.toString(),
-            String.format("OBJECT columns only accept String or JsonNode"));
-      }
-    } catch (JsonProcessingException e) {
+      JsonNode node = objectMapper.readTree(input.toString());
+      output = node.toString();
+    } catch (Exception e) {
       throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          String.format("OBJECT columns must be valid JSON"));
+          e, ErrorCode.INVALID_ROW, input.toString(), "Input column can't be convert to Json");
     }
+
     if (output.length() > MAX_STRING_LENGTH) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
           String.format(
-              "Object too large.  length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+              "Object too large. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
     }
     return output;
   }

@@ -13,8 +13,8 @@ import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
-import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY;
@@ -534,7 +534,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       List<ChannelsStatusResponse.ChannelStatusResponseDTO> tempChannelsStatus = new ArrayList<>();
 
       for (int idx = 0; idx < channelsStatus.size(); idx++) {
-        if (channelsStatus.get(idx).getStatusCode() != ROW_SEQUENCER_IS_COMMITTED) {
+        if (channelsStatus.get(idx).getStatusCode() != RESPONSE_ROW_SEQUENCER_IS_COMMITTED) {
           tempChannels.add(channels.get(idx));
           tempChannelsStatus.add(channelsStatus.get(idx));
         }
