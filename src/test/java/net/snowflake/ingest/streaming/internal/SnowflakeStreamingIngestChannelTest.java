@@ -3,7 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import java.security.KeyPair;
@@ -645,7 +645,7 @@ public class SnowflakeStreamingIngestChannelTest {
     response.setMessage("Success");
     ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
         new ChannelsStatusResponse.ChannelStatusResponseDTO();
-    channelStatus.setStatusCode((long) ROW_SEQUENCER_IS_COMMITTED);
+    channelStatus.setStatusCode((long) RESPONSE_ROW_SEQUENCER_IS_COMMITTED);
     channelStatus.setPersistedOffsetToken(offsetToken);
     response.setChannels(Collections.singletonList(channelStatus));
 

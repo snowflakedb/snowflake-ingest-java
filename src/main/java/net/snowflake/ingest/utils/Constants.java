@@ -23,7 +23,7 @@ public class Constants {
   public static final String PRIVATE_KEY = "private_key";
   public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
   public static final String JDBC_PRIVATE_KEY = "privateKey";
-  public static final long RESPONSE_SUCCESS = 0L;
+  public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 5L;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 12;
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
@@ -42,7 +42,8 @@ public class Constants {
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
   public static final int COMMIT_MAX_RETRY_COUNT = 10;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 500;
-  public static final int ROW_SEQUENCER_IS_COMMITTED = 26;
+  public static final int RESPONSE_ROW_SEQUENCER_IS_COMMITTED =
+      26; // Don't change, should match server side
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/PKCS7Padding";
   public static final long ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
 

@@ -127,7 +127,6 @@ class OpenChannelResponse {
   }
 
   Long getEncryptionKeyId() {
-    // SNOW-514965 Remove comparison once server side change goes in
-    return this.encryptionKeyId != null ? this.encryptionKeyId : 0L;
+    return this.encryptionKeyId;
   }
 }
