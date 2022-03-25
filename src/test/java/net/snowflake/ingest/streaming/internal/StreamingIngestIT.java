@@ -4,6 +4,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -57,7 +58,7 @@ public class StreamingIngestIT {
         .execute(String.format("create or replace schema %s;", TEST_SCHEMA));
     jdbcConnection
         .createStatement()
-        .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
+        .execute(String.format("create or replace table %s (c1 binary);", TEST_TABLE));
     jdbcConnection
         .createStatement()
         .execute("alter session set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;");
@@ -102,7 +103,7 @@ public class StreamingIngestIT {
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
     for (int val = 0; val < 1000; val++) {
       Map<String, Object> row = new HashMap<>();
-      row.put("c1", Integer.toString(val));
+      row.put("c1", Integer.toString(val).getBytes(StandardCharsets.UTF_8));
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
 
