@@ -496,10 +496,6 @@ class FlushService {
         // data.
         int compressedChunkLength = compressedChunkData.length;
 
-        // SNOW-514965 Do not default to 0 once server side code to send back TMK ID makes it in
-        Long encryptionKeyIdToUse =
-            firstChannel.getEncryptionKeyId() != null ? firstChannel.getEncryptionKeyId() : 0L;
-
         // Compute the md5 of the chunk data
         String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
         int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
@@ -517,7 +513,7 @@ class FlushService {
                 .setChunkLength(compressedChunkLength)
                 .setChannelList(channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(encryptionKeyIdToUse)
+                .setEncryptionKeyId(firstChannel.getEncryptionKeyId())
                 .setEpInfo(ArrowRowBuffer.buildEpInfoFromStats(rowCount, columnEpStatsMapCombined))
                 .build();
 
