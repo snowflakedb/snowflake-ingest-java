@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
@@ -136,30 +137,35 @@ class StreamingIngestStage {
 
   private void putRemote(String fullFilePath, byte[] data, int retryCount)
       throws SnowflakeSQLException, IOException {
-    // Set file path to be uploaded
-    SnowflakeFileTransferMetadataV1 fileTransferMetadata =
-        fileTransferMetadataWithAge.fileTransferMetadata;
+    SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy;
+    if (this.fileTransferMetadataWithAge.fileTransferMetadata.getStageInfo().getStageType()
+        == StageInfo.StageType.GCS) {
+      fileTransferMetadataCopy = this.fetchSignedURL(fullFilePath);
+    } else {
+      // Set file path to be uploaded
+      SnowflakeFileTransferMetadataV1 fileTransferMetadata =
+          fileTransferMetadataWithAge.fileTransferMetadata;
 
-    /*
-    Since we can have multiple calls to putRemote in parallel and because the metadata includes the file path
-    we use a copy for the upload to prevent us from using the wrong file path.
-     */
-    SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy =
-        new SnowflakeFileTransferMetadataV1(
-            fileTransferMetadata.getPresignedUrl(),
-            fullFilePath,
-            fileTransferMetadata.getEncryptionMaterial() != null
-                ? fileTransferMetadata.getEncryptionMaterial().getQueryStageMasterKey()
-                : null,
-            fileTransferMetadata.getEncryptionMaterial() != null
-                ? fileTransferMetadata.getEncryptionMaterial().getQueryId()
-                : null,
-            fileTransferMetadata.getEncryptionMaterial() != null
-                ? fileTransferMetadata.getEncryptionMaterial().getSmkId()
-                : null,
-            fileTransferMetadata.getCommandType(),
-            fileTransferMetadata.getStageInfo());
-
+      /*
+      Since we can have multiple calls to putRemote in parallel and because the metadata includes the file path
+      we use a copy for the upload to prevent us from using the wrong file path.
+       */
+      fileTransferMetadataCopy =
+          new SnowflakeFileTransferMetadataV1(
+              fileTransferMetadata.getPresignedUrl(),
+              fullFilePath,
+              fileTransferMetadata.getEncryptionMaterial() != null
+                  ? fileTransferMetadata.getEncryptionMaterial().getQueryStageMasterKey()
+                  : null,
+              fileTransferMetadata.getEncryptionMaterial() != null
+                  ? fileTransferMetadata.getEncryptionMaterial().getQueryId()
+                  : null,
+              fileTransferMetadata.getEncryptionMaterial() != null
+                  ? fileTransferMetadata.getEncryptionMaterial().getSmkId()
+                  : null,
+              fileTransferMetadata.getCommandType(),
+              fileTransferMetadata.getStageInfo());
+    }
     InputStream inStream = new ByteArrayInputStream(data);
 
     try {
@@ -172,10 +178,9 @@ class StreamingIngestStage {
               .setStreamingIngestClientKey(this.clientPrefix)
               .setStreamingIngestClientName(this.clientName)
               .build());
-    } catch (NullPointerException npe) {
-      // TODO SNOW-350701 Update JDBC driver to throw a reliable token expired error
-      if (retryCount >= MAX_RETRY_COUNT) {
-        throw npe;
+    } catch (SnowflakeSQLException e) {
+      if (e.getErrorCode() != CLOUD_STORAGE_CREDENTIALS_EXPIRED || retryCount >= MAX_RETRY_COUNT) {
+        throw e;
       }
       this.refreshSnowflakeMetadata();
       this.putRemote(fullFilePath, data, ++retryCount);
@@ -210,6 +215,85 @@ class StreamingIngestStage {
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("role", this.role);
+    Map<String, Object> response = this.makeClientConfigureCall(payload);
+
+    JsonNode responseNode = this.parseClientConfigureResponse(response);
+    // Do not change the prefix everytime we have to refresh credentials
+    if (Utils.isNullOrEmpty(this.clientPrefix)) {
+      this.clientPrefix = responseNode.get("prefix").textValue();
+    }
+    Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
+
+    if (responseNode
+        .get("data")
+        .get("stageInfo")
+        .get("locationType")
+        .toString()
+        .replaceAll(
+            "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
+        .equals(StageInfo.StageType.LOCAL_FS.name())) {
+      this.fileTransferMetadataWithAge =
+          new SnowflakeFileTransferMetadataWithAge(
+              responseNode
+                  .get("data")
+                  .get("stageInfo")
+                  .get("location")
+                  .toString()
+                  .replaceAll(
+                      "^[\"]|[\"]$",
+                      ""), // Replace the first and last character if they're double quotes
+              Optional.of(System.currentTimeMillis()));
+    } else {
+      this.fileTransferMetadataWithAge =
+          new SnowflakeFileTransferMetadataWithAge(
+              (SnowflakeFileTransferMetadataV1)
+                  SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+              Optional.of(System.currentTimeMillis()));
+    }
+    return this.fileTransferMetadataWithAge;
+  }
+
+  /**
+   * GCS requires a signed url per file. We need to fetch this from the server for each put
+   *
+   * @throws SnowflakeSQLException
+   * @throws IOException
+   */
+  SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
+      throws SnowflakeSQLException, IOException {
+
+    Map<Object, Object> payload = new HashMap<>();
+    payload.put("role", this.role);
+    payload.put("file_name", fileName);
+    Map<String, Object> response = this.makeClientConfigureCall(payload);
+
+    JsonNode responseNode = this.parseClientConfigureResponse(response);
+
+    SnowflakeFileTransferMetadataV1 metadata =
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
+    // Transfer agent trims path for fileName
+    metadata.setPresignedUrlFileName(fileName);
+    return metadata;
+  }
+
+  private JsonNode parseClientConfigureResponse(Map<String, Object> response) {
+    JsonNode responseNode = mapper.valueToTree(response);
+
+    // Currently there are a few mismatches between the client/configure response and what
+    // SnowflakeFileTransferAgent expects
+    ObjectNode mutable = (ObjectNode) responseNode;
+    mutable.putObject("data");
+    ObjectNode dataNode = (ObjectNode) mutable.get("data");
+    dataNode.set("stageInfo", responseNode.get("stage_location"));
+
+    // JDBC expects this field which maps to presignedFileUrlName.  We will set this later
+    dataNode.putArray("src_locations").add("placeholder");
+    return responseNode;
+  }
+
+  private Map<String, Object> makeClientConfigureCall(Map<Object, Object> payload)
+      throws IOException {
     try {
       Map<String, Object> response =
           ServiceResponseHandler.unmarshallStreamingIngestResponse(
@@ -224,49 +308,7 @@ class StreamingIngestStage {
         throw new SFException(
             ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
       }
-
-      JsonNode responseNode = mapper.valueToTree(response);
-      this.clientPrefix = responseNode.get("prefix").textValue();
-      Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
-
-      // Currently have a few mismatches between the client/configure response and what
-      // SnowflakeFileTransferAgent expects
-      ObjectNode mutable = (ObjectNode) responseNode;
-      mutable.putObject("data");
-      ObjectNode dataNode = (ObjectNode) mutable.get("data");
-      dataNode.set("stageInfo", responseNode.get("stage_location"));
-
-      // JDBC expects this field which maps to presignedFileUrlName.  We override
-      // presignedFileUrlName on each upload.
-      dataNode.putArray("src_locations").add("placeholder");
-
-      if (responseNode
-          .get("data")
-          .get("stageInfo")
-          .get("locationType")
-          .toString()
-          .replaceAll(
-              "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
-          .equals(StageInfo.StageType.LOCAL_FS.name())) {
-        this.fileTransferMetadataWithAge =
-            new SnowflakeFileTransferMetadataWithAge(
-                responseNode
-                    .get("data")
-                    .get("stageInfo")
-                    .get("location")
-                    .toString()
-                    .replaceAll(
-                        "^[\"]|[\"]$",
-                        ""), // Replace the first and last character if they're double quotes
-                Optional.of(System.currentTimeMillis()));
-      } else {
-        this.fileTransferMetadataWithAge =
-            new SnowflakeFileTransferMetadataWithAge(
-                (SnowflakeFileTransferMetadataV1)
-                    SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
-                Optional.of(System.currentTimeMillis()));
-      }
-      return this.fileTransferMetadataWithAge;
+      return response;
     } catch (IngestResponseException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE);
     }

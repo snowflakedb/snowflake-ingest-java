@@ -127,7 +127,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "0.10.5-beta";
+  public static final String DEFAULT_VERSION = "1.0.1-beta";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -738,6 +738,7 @@ public class RequestBuilder {
    */
   public HttpPost generateStreamingIngestPostRequest(
       String payload, String endPoint, String message) {
+    LOGGER.debug("Generate Snowpipe streaming request: endpoint={}, payload={}", endPoint, payload);
     // Make the corresponding URI
     URI uri = null;
     try {

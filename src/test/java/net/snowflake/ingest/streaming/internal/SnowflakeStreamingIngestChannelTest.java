@@ -1,10 +1,9 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.ROW_SEQUENCER_IS_COMMITTED;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import java.security.KeyPair;
@@ -25,6 +24,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
@@ -292,7 +292,8 @@ public class SnowflakeStreamingIngestChannelTest {
             null,
             httpClient,
             true,
-            requestBuilder);
+            requestBuilder,
+            null);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -361,7 +362,8 @@ public class SnowflakeStreamingIngestChannelTest {
             null,
             httpClient,
             true,
-            requestBuilder);
+            requestBuilder,
+            null);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
@@ -396,6 +398,7 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  \"client_sequencer\" : 0,\n"
             + "  \"row_sequencer\" : 0,\n"
             + "  \"offset_token\" : \"\",\n"
+            + "  \"encryption_key_id\" : 17229585102,\n"
             + "  \"table_columns\" : [ {\n"
             + "    \"name\" : \"C1\",\n"
             + "    \"type\" : \"NUMBER(38,0)\",\n"
@@ -439,7 +442,8 @@ public class SnowflakeStreamingIngestChannelTest {
             null,
             httpClient,
             true,
-            requestBuilder);
+            requestBuilder,
+            null);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder(name)
@@ -528,8 +532,10 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Runtime mockedRunTime = Mockito.mock(Runtime.class);
     Mockito.when(mockedRunTime.totalMemory()).thenReturn(1000000L);
+    ParameterProvider parameterProvider = new ParameterProvider();
     Mockito.when(mockedRunTime.freeMemory())
-        .thenReturn(1000000L * (INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE - 1) / 100);
+        .thenReturn(
+            1000000L * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
 
     CompletableFuture<Void> future =
         CompletableFuture.runAsync(
@@ -640,7 +646,7 @@ public class SnowflakeStreamingIngestChannelTest {
     response.setMessage("Success");
     ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
         new ChannelsStatusResponse.ChannelStatusResponseDTO();
-    channelStatus.setStatusCode((long) ROW_SEQUENCER_IS_COMMITTED);
+    channelStatus.setStatusCode((long) RESPONSE_ROW_SEQUENCER_IS_COMMITTED);
     channelStatus.setPersistedOffsetToken(offsetToken);
     response.setChannels(Collections.singletonList(channelStatus));
 

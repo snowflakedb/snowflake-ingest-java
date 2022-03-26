@@ -5,8 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_CHECK_INTERVAL_IN_MS;
-import static net.snowflake.ingest.utils.Constants.BUFFER_FLUSH_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.CPU_IO_TIME_RATIO;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
 import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
@@ -43,6 +41,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -207,21 +206,32 @@ class FlushService {
   private CompletableFuture<Void> distributeFlush(boolean isForce, long timeDiffMillis) {
     return CompletableFuture.runAsync(
         () -> {
-          logger.logDebug(
-              "Submit flush task on client={}, isForce={}, isNeedFlush={}, timeDiffMillis={},"
-                  + " currentDiffMillis={}",
-              this.owningClient.getName(),
-              isForce,
-              this.isNeedFlush,
-              timeDiffMillis,
-              System.currentTimeMillis() - this.lastFlushTime);
-
+          logFlushTask(isForce, timeDiffMillis);
           distributeFlushTasks();
           this.isNeedFlush = false;
           this.lastFlushTime = System.currentTimeMillis();
           return;
         },
         this.flushWorker);
+  }
+
+  /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
+  private void logFlushTask(boolean isForce, long timeDiffMillis) {
+    final String flushTaskLogFormat =
+        String.format(
+            "Submit forced or ad-hoc flush task on client=%s, isForce=%s,"
+                + " isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s",
+            this.owningClient.getName(),
+            isForce,
+            this.isNeedFlush,
+            timeDiffMillis,
+            System.currentTimeMillis() - this.lastFlushTime);
+    if (logger.isTraceEnabled()) {
+      logger.logTrace(flushTaskLogFormat);
+    }
+    if (!logger.isTraceEnabled() && (this.isNeedFlush || isForce)) {
+      logger.logDebug(flushTaskLogFormat);
+    }
   }
 
   /**
@@ -249,7 +259,9 @@ class FlushService {
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
             && !this.isTestMode
-            && (this.isNeedFlush || timeDiffMillis >= BUFFER_FLUSH_INTERVAL_IN_MS))) {
+            && (this.isNeedFlush
+                || timeDiffMillis
+                    >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
 
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
@@ -269,7 +281,7 @@ class FlushService {
           flush(false);
         },
         0,
-        BUFFER_FLUSH_CHECK_INTERVAL_IN_MS,
+        this.owningClient.getParameterProvider().getBufferFlushCheckIntervalInMs(),
         TimeUnit.MILLISECONDS);
 
     // Create thread for registering blobs
@@ -303,15 +315,10 @@ class FlushService {
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
         itr = this.channelCache.iterator();
     List<Pair<BlobData, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
-    String filePath = null;
 
     while (itr.hasNext()) {
       List<List<ChannelData>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
-      filePath = filePath == null ? getFilePath(this.targetStage.getClientPrefix()) : filePath;
-      if (this.owningClient.flushLatency != null) {
-        latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
-      }
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
       while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
@@ -335,20 +342,24 @@ class FlushService {
 
       // Kick off a build job
       if (!blobData.isEmpty()) {
-        String finalFilePath = filePath;
-        filePath = null;
+        String filePath = getFilePath(this.targetStage.getClientPrefix());
+        if (this.owningClient.flushLatency != null) {
+          latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
+        }
         blobs.add(
             new Pair<>(
-                new BlobData(finalFilePath, blobData),
+                new BlobData(filePath, blobData),
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        return buildAndUpload(finalFilePath, blobData);
+                        logger.logDebug(
+                            "buildUploadWorkers stats={}", this.buildUploadWorkers.toString());
+                        return buildAndUpload(filePath, blobData);
                       } catch (IOException e) {
                         logger.logError(
                             "Building blob failed={}, exception={}, detail={}, all channels in the"
                                 + " blob will be invalidated",
-                            finalFilePath,
+                            filePath,
                             e,
                             e.getMessage());
                         invalidateAllChannelsInBlob(blobData);
@@ -376,9 +387,8 @@ class FlushService {
    *
    * @param filePath Path of the destination file in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
-   *     belong to the same table. Will error if this is not the case
+   *     belongs to the same table. Will error if this is not the case
    * @return BlobMetadata for FlushService.upload
-   * @throws IOException
    */
   BlobMetadata buildAndUpload(String filePath, List<List<ChannelData>> blobData)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
@@ -470,16 +480,24 @@ class FlushService {
         byte[] compressedChunkData = BlobBuilder.compress(filePath, chunkData);
 
         // Encrypt the compressed chunk data, the encryption key is derived using the key from
-        // server with the full blob path
+        // server with the full blob path.
+        // We need to maintain IV as a block counter for the whole file, even interleaved,
+        // to align with decryption on the Snowflake query path.
+        // TODO: address alignment for the header SNOW-557866
+        long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(compressedChunkData, firstChannel.getEncryptionKey(), filePath);
+            Cryptor.encrypt(compressedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
 
-        // SNOW-514965 Do not default to 0 once server side code to send back TMK ID makes it in
-        Long encryptionKeyIdToUse =
-            firstChannel.getEncryptionKeyId() != null ? firstChannel.getEncryptionKeyId() : 0L;
+        // Encryption adds padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
+        // to align with decryption on the Snowflake query path starting from this chunk offset.
+        // The padding does not have arrow data and not compressed.
+        // Hence, the actual chunk size is smaller by the padding size.
+        // The compression on the Snowflake query path needs the correct size of the compressed
+        // data.
+        int compressedChunkLength = compressedChunkData.length;
 
         // Compute the md5 of the chunk data
-        String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData);
+        String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
         int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
 
         // Create chunk metadata
@@ -489,10 +507,13 @@ class FlushService {
                 // The start offset will be updated later in BlobBuilder#build to include the blob
                 // header
                 .setChunkStartOffset(curDataSize)
-                .setChunkLength(encryptedCompressedChunkDataSize)
+                // The compressedChunkLength is used because it is the actual data size used for
+                // decompression
+                // and md5 calculation on server side.
+                .setChunkLength(compressedChunkLength)
                 .setChannelList(channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(encryptionKeyIdToUse)
+                .setEncryptionKeyId(firstChannel.getEncryptionKeyId())
                 .setEpInfo(ArrowRowBuffer.buildEpInfoFromStats(rowCount, columnEpStatsMapCombined))
                 .build();
 
@@ -504,13 +525,14 @@ class FlushService {
 
         logger.logDebug(
             "Finish building chunk in blob={}, table={}, rowCount={}, uncompressedSize={},"
-                + " compressedSize={}, encryptedCompressedSize={}",
+                + " compressedChunkLength={}, encryptedCompressedSize={}",
             filePath,
             firstChannel.getFullyQualifiedTableName(),
             rowCount,
             chunkData.size(),
-            compressedChunkData.length,
-            encryptedCompressedChunkDataSize);
+            compressedChunkLength,
+            encryptedCompressedChunkDataSize,
+            compressedChunkLength);
       }
     }
 

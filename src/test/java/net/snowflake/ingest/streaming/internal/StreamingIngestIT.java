@@ -2,11 +2,11 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
-import static net.snowflake.ingest.utils.Constants.ENABLE_PERF_MEASUREMENT;
 
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,7 +16,9 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
+import java.util.stream.IntStream;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -34,6 +36,10 @@ public class StreamingIngestIT {
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
+
+  private static final String INTERLEAVED_TABLE_PREFIX = "t_interleaved_test_";
+  private static final int INTERLEAVED_CHANNEL_NUMBER = 3;
+
   private Properties prop;
 
   private SnowflakeStreamingIngestClientInternal client;
@@ -54,9 +60,6 @@ public class StreamingIngestIT {
         .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
     jdbcConnection
         .createStatement()
-        .execute("alter session set enable_streaming_ingest_reads=false;");
-    jdbcConnection
-        .createStatement()
         .execute("alter session set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;");
     jdbcConnection
         .createStatement()
@@ -69,12 +72,6 @@ public class StreamingIngestIT {
             String.format(
                 "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_TABLE));
     jdbcConnection.createStatement().execute("alter session set ENABLE_UNIFIED_TABLE_SCAN=true;");
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "alter table %s set ENABLE_STREAMING_INGEST_UNNAMED_STAGE_QUERY=true;",
-                TEST_TABLE));
     jdbcConnection
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
@@ -134,7 +131,7 @@ public class StreamingIngestIT {
         Assert.assertEquals("1", result2.getString(1));
 
         // Verify perf metrics
-        if (ENABLE_PERF_MEASUREMENT) {
+        if (client.getParameterProvider().hasEnabledSnowpipeStreamingMetrics()) {
           Assert.assertEquals(1, client.blobSizeHistogram.getCount());
           if (BLOB_NO_HEADER && COMPRESS_BLOB_TWICE) {
             Assert.assertEquals(3445, client.blobSizeHistogram.getSnapshot().getMax());
@@ -151,6 +148,26 @@ public class StreamingIngestIT {
       Thread.sleep(500);
     }
     Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testInterleavedIngest() {
+    Consumer<IntConsumer> iter =
+        f -> IntStream.rangeClosed(1, INTERLEAVED_CHANNEL_NUMBER).forEach(f);
+
+    iter.accept(i -> createTableForInterleavedTest(INTERLEAVED_TABLE_PREFIX + i));
+
+    SnowflakeStreamingIngestChannel[] channels =
+        new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
+    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_TABLE_PREFIX + i));
+
+    iter.accept(
+        i ->
+            produceRowsForInterleavedTest(
+                channels[i - 1], INTERLEAVED_TABLE_PREFIX + i, 1 << (i + 1)));
+    iter.accept(i -> waitChannelFlushed(channels[i - 1], 1 << (i + 1)));
+
+    iter.accept(i -> verifyInterleavedResult(1 << (i + 1), INTERLEAVED_TABLE_PREFIX + i));
   }
 
   @Test
@@ -406,9 +423,7 @@ public class StreamingIngestIT {
         Assert.assertEquals(3.14, result.getFloat("F"), 0.0001);
         Assert.assertEquals(1.1, result.getFloat("TINYFLOAT"), 0.001);
         Assert.assertEquals("{\n" + "  \"e\": 2.7\n" + "}", result.getString("VAR"));
-        SnowflakeDateTimeFormat ntzFormat =
-            SnowflakeDateTimeFormat.fromSqlFormat("DY, DD MON YYYY HH24:MI:SS TZHTZM");
-        Assert.assertEquals(timestamp * 1000, ntzFormat.parse(result.getString("T")).getTime());
+        Assert.assertEquals(timestamp * 1000, result.getTimestamp("T").getTime());
         return;
       } else {
         Thread.sleep(2000);
@@ -734,6 +749,77 @@ public class StreamingIngestIT {
   private void verifyInsertValidationResponse(InsertValidationResponse response) {
     if (response.hasErrors()) {
       throw response.getInsertErrors().get(0).getException();
+    }
+  }
+
+  private void createTableForInterleavedTest(String tableName) {
+    try {
+      jdbcConnection
+          .createStatement()
+          .execute(
+              String.format(
+                  "create or replace table %s (num NUMBER(38,0 ), str VARCHAR);", tableName));
+    } catch (SQLException e) {
+      throw new RuntimeException("Cannot create table " + tableName, e);
+    }
+  }
+
+  private SnowflakeStreamingIngestChannel openChannel(String tableName) {
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(tableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    return client.openChannel(request);
+  }
+
+  private void produceRowsForInterleavedTest(
+      SnowflakeStreamingIngestChannel channel, String tableName, int rowNumber) {
+    // Insert a few rows into the channel
+    for (int val = 0; val < rowNumber; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("num", val);
+      row.put("str", tableName + "_value_" + val);
+      verifyInsertValidationResponse(channel.insertRow(row, Integer.toString(val)));
+    }
+  }
+
+  private void waitChannelFlushed(SnowflakeStreamingIngestChannel channel, int numberOfRows) {
+    for (int i = 1; i < 15; i++) {
+      if (channel.getLatestCommittedOffsetToken() != null
+          && channel.getLatestCommittedOffsetToken().equals(Integer.toString(numberOfRows - 1))) {
+        return;
+      }
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(
+            "Interrupted waitChannelFlushed for " + numberOfRows + " rows", e);
+      }
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  private void verifyInterleavedResult(int rowNumber, String tableName) {
+    ResultSet result;
+    try {
+      result =
+          jdbcConnection
+              .createStatement()
+              .executeQuery(
+                  String.format(
+                      "select * from %s.%s.%s order by num", TEST_DB, TEST_SCHEMA, tableName));
+      for (int val = 0; val < rowNumber; val++) {
+        result.next();
+        Assert.assertEquals(val, result.getLong("NUM"));
+        Assert.assertEquals(tableName + "_value_" + val, result.getString("STR"));
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException("Cannot verifyInterleavedResult for " + tableName, e);
     }
   }
 }

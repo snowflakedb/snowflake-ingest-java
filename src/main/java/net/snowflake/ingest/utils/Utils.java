@@ -32,6 +32,7 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEM
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
+import org.apache.arrow.memory.BufferAllocator;
 import org.apache.commons.codec.binary.Base64;
 
 /** Contains Ingest related utility functions */
@@ -87,21 +88,17 @@ public class Utils {
         case Constants.PRIVATE_KEY:
           privateKey = val;
           break;
+        case Constants.PRIVATE_KEY_PASSPHRASE:
+          privateKeyPassphrase = val;
+          break;
         case Constants.USER:
           properties.put(USER, val);
           break;
         case Constants.ROLE:
           properties.put(ROLE, val);
           break;
-        case Constants.PRIVATE_KEY_PASSPHRASE:
-          privateKeyPassphrase = val;
-          break;
-        case Constants.ACCOUNT_URL:
-          // do nothing as we already read it
-          break;
         default:
-          // ignore other keys
-          logger.logDebug("Ignored property in input properties={}", key.toLowerCase());
+          properties.put(key, val);
       }
     }
 
@@ -272,5 +269,15 @@ public class Utils {
   /** Utility function to check whether a streing is null or empty */
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.isEmpty();
+  }
+
+  /** Release any outstanding memory and then close the buffer allocator */
+  public static void closeAllocator(BufferAllocator alloc) {
+    for (BufferAllocator childAlloc : alloc.getChildAllocators()) {
+      childAlloc.releaseBytes(childAlloc.getAllocatedMemory());
+      childAlloc.close();
+    }
+    alloc.releaseBytes(alloc.getAllocatedMemory());
+    alloc.close();
   }
 }
