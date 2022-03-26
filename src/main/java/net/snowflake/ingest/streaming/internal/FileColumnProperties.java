@@ -36,7 +36,7 @@ class FileColumnProperties {
   private long maxLength;
 
   // Default value to use for min/max int when all data in the given column is NULL
-  private static final BigInteger defaultMinMaxIntVal = BigInteger.valueOf(0);
+  public static final BigInteger defaultMinMaxIntVal = BigInteger.valueOf(0);
 
   FileColumnProperties(RowBufferStats stats) {
     this.setCollation(stats.getCollationDefinitionString());

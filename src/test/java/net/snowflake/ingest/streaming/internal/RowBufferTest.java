@@ -827,14 +827,34 @@ public class RowBufferTest {
     Assert.assertEquals("alice", strColumnResult.getMinStrValue());
     Assert.assertEquals("bob", strColumnResult.getMaxStrValue());
     Assert.assertEquals(1, strColumnResult.getNullCount());
-    logger.logDebug("strColumnResult={}", strColumnResult.toString());
 
     FileColumnProperties intColumnResult = columnResults.get("intColumn");
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
     Assert.assertEquals(BigInteger.valueOf(1), intColumnResult.getMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(10), intColumnResult.getMaxIntValue());
     Assert.assertEquals(0, intColumnResult.getNullCount());
-    logger.logDebug("intColumnResult={}", strColumnResult.toString());
+  }
+
+  @Test
+  public void testBuildEpInfoFromNullColumnStats() {
+    final String colName = "intCol";
+    Map<String, RowBufferStats> colStats = new HashMap<>();
+
+    RowBufferStats stats = new RowBufferStats();
+    stats.incCurrentNullCount();
+
+    colStats.put(colName, stats);
+
+    EpInfo result = ArrowRowBuffer.buildEpInfoFromStats(2, colStats);
+    Map<String, FileColumnProperties> columnResults = result.getColumnEps();
+    Assert.assertEquals(1, columnResults.keySet().size());
+
+    FileColumnProperties intColumnResult = columnResults.get(colName);
+    Assert.assertEquals(-1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(FileColumnProperties.defaultMinMaxIntVal, intColumnResult.getMinIntValue());
+    Assert.assertEquals(FileColumnProperties.defaultMinMaxIntVal, intColumnResult.getMaxIntValue());
+    Assert.assertEquals(1, intColumnResult.getNullCount());
+    Assert.assertEquals(0, intColumnResult.getMaxLength());
   }
 
   @Test
