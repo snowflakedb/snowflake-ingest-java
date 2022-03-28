@@ -153,7 +153,7 @@ class ArrowRowBuffer {
    *
    * @param rowCount: count of rows in the given arrow buffer
    * @param colStats: map of column name to RowBufferStats
-   * @return
+   * @return the EPs built from column stats
    */
   static EpInfo buildEpInfoFromStats(long rowCount, Map<String, RowBufferStats> colStats) {
     EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
