@@ -508,8 +508,7 @@ class FlushService {
                 // header
                 .setChunkStartOffset(curDataSize)
                 // The compressedChunkLength is used because it is the actual data size used for
-                // decompression
-                // and md5 calculation on server side.
+                // decompression and md5 calculation on server side.
                 .setChunkLength(compressedChunkLength)
                 .setChannelList(channelsMetadataList)
                 .setChunkMD5(md5)
