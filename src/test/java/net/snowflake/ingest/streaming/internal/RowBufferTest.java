@@ -851,8 +851,10 @@ public class RowBufferTest {
 
     FileColumnProperties intColumnResult = columnResults.get(colName);
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
-    Assert.assertEquals(FileColumnProperties.defaultMinMaxIntVal, intColumnResult.getMinIntValue());
-    Assert.assertEquals(FileColumnProperties.defaultMinMaxIntVal, intColumnResult.getMaxIntValue());
+    Assert.assertEquals(
+        FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMinIntValue());
+    Assert.assertEquals(
+        FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMaxIntValue());
     Assert.assertEquals(1, intColumnResult.getNullCount());
     Assert.assertEquals(0, intColumnResult.getMaxLength());
   }

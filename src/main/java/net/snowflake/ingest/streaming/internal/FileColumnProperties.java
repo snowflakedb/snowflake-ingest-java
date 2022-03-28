@@ -36,17 +36,17 @@ class FileColumnProperties {
   private long maxLength;
 
   // Default value to use for min/max int when all data in the given column is NULL
-  public static final BigInteger defaultMinMaxIntVal = BigInteger.valueOf(0);
+  public static final BigInteger DEFAULT_MIN_MAX_INT_VAL_FOR_EP = BigInteger.valueOf(0);
 
   FileColumnProperties(RowBufferStats stats) {
     this.setCollation(stats.getCollationDefinitionString());
     this.setMaxIntValue(
         stats.getCurrentMaxIntValue() == null
-            ? defaultMinMaxIntVal
+            ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
             : stats.getCurrentMaxIntValue());
     this.setMinIntValue(
         stats.getCurrentMinIntValue() == null
-            ? defaultMinMaxIntVal
+            ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
             : stats.getCurrentMinIntValue());
     this.setMinRealValue(stats.getCurrentMinRealValue());
     this.setMaxRealValue(stats.getCurrentMaxRealValue());
