@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.xml.bind.DatatypeConverter;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
+import net.snowflake.client.jdbc.internal.snowflake.common.core.SFDate;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
@@ -490,7 +491,7 @@ class DataValidationUtil {
           .map(
               t ->
                   // Adjust nanoseconds past the epoch to match the column scale value
-                  (int) TimeUnit.SECONDS.toDays(t.getSeconds().longValue()))
+                  (int) TimeUnit.MILLISECONDS.toDays(SFDate.fromTimestamp(t).getTime()))
           .orElseThrow(
               () ->
                   new SFException(

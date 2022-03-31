@@ -406,7 +406,7 @@ public class StreamingIngestIT {
     row.put("tinyfloat", 1.1);
     row.put("var", "{\"e\":2.7}");
     row.put("t", timestamp);
-    row.put("d", "2020-07-21");
+    row.put("d", "1967-06-23 01:01:01");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     for (int i = 1; i < 15; i++) {
@@ -426,7 +426,7 @@ public class StreamingIngestIT {
         Assert.assertEquals(1.1, result.getFloat("TINYFLOAT"), 0.001);
         Assert.assertEquals("{\n" + "  \"e\": 2.7\n" + "}", result.getString("VAR"));
         Assert.assertEquals(timestamp * 1000, result.getTimestamp("T").getTime());
-        Assert.assertEquals(18464, TimeUnit.MILLISECONDS.toDays(result.getDate("D").getTime()));
+        Assert.assertEquals(-923, TimeUnit.MILLISECONDS.toDays(result.getDate("D").getTime()));
         return;
       } else {
         Thread.sleep(2000);
