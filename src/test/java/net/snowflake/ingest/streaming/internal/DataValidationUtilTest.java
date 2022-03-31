@@ -412,6 +412,7 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseDate() {
+    Assert.assertEquals(-923, DataValidationUtil.validateAndParseDate("1967-06-23"));
     Assert.assertEquals(12341, DataValidationUtil.validateAndParseDate(12341));
   }
 

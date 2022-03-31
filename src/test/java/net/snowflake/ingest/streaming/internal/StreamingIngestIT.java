@@ -16,6 +16,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
@@ -384,7 +385,7 @@ public class StreamingIngestIT {
         .execute(
             String.format(
                 "create or replace table %s (s text, i integer, f float, var variant, t"
-                    + " timestamp_ntz, tinyfloat NUMBER(3,1));",
+                    + " timestamp_ntz, tinyfloat NUMBER(3,1), d DATE);",
                 multiTableName));
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_MULTI")
@@ -405,6 +406,7 @@ public class StreamingIngestIT {
     row.put("tinyfloat", 1.1);
     row.put("var", "{\"e\":2.7}");
     row.put("t", timestamp);
+    row.put("d", "2020-07-21");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     for (int i = 1; i < 15; i++) {
@@ -424,6 +426,7 @@ public class StreamingIngestIT {
         Assert.assertEquals(1.1, result.getFloat("TINYFLOAT"), 0.001);
         Assert.assertEquals("{\n" + "  \"e\": 2.7\n" + "}", result.getString("VAR"));
         Assert.assertEquals(timestamp * 1000, result.getTimestamp("T").getTime());
+        Assert.assertEquals(18464, TimeUnit.MILLISECONDS.toDays(result.getDate("D").getTime()));
         return;
       } else {
         Thread.sleep(2000);
