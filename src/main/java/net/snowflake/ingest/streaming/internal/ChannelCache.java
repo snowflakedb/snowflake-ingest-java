@@ -5,8 +5,12 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * In-memory cache that stores the active channels for a given Streaming Ingest client, and the
@@ -48,11 +52,22 @@ class ChannelCache {
     return this.cache.entrySet().iterator();
   }
 
-  /** Close all channels in the channel cache */
-  void closeAllChannels() {
-    this.cache
-        .values()
-        .forEach(channels -> channels.values().forEach(channel -> channel.markClosed()));
+  /** Synchronously closes all channels in the channel cache */
+  void closeAllChannels() throws Exception {
+    final List<CompletableFuture<Void>> terminationFutures =
+            cache.values().stream()
+                    .flatMap(channels ->
+                            channels.values().stream()
+                                    .map(SnowflakeStreamingIngestChannelInternal::close))
+                    .collect(Collectors.toList());
+
+    // this will rethrow any exception found.
+    CompletableFuture.allOf(terminationFutures.toArray(new CompletableFuture[0]))
+            .thenApply(f ->
+                    terminationFutures.stream()
+                            .map(CompletableFuture::join)
+                            .collect(Collectors.toList()))
+            .get(5, TimeUnit.MINUTES);
   }
 
   /** Remove a channel in the channel cache if the channel sequencer matches */

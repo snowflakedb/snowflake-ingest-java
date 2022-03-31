@@ -145,7 +145,7 @@ public class ChannelCacheTest {
   }
 
   @Test
-  public void testCloseAllChannels() {
+  public void testCloseAllChannels() throws Exception {
     cache.closeAllChannels();
     Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
         iter = cache.iterator();

@@ -189,8 +189,8 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
-    Assert.assertTrue(!channel.isClosed());
-    channel.markClosed();
+    Assert.assertFalse(channel.isClosed());
+    channel.close().join();
     Assert.assertTrue(channel.isClosed());
 
     // Can't insert rows to closed channel
