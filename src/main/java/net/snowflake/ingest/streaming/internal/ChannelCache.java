@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 class ChannelCache {
   // Cache to hold all the valid channels, the key for the outer map is FullyQualifiedTableName and
   // the key for the inner map is ChannelName
-  private ConcurrentHashMap<
+  private final ConcurrentHashMap<
           String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>
       cache = new ConcurrentHashMap<>();
 
