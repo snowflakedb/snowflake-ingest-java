@@ -204,7 +204,7 @@ public class HttpUtil {
    */
   public static Properties generateProxyPropertiesForJDBC() {
     Properties proxyProperties = new Properties();
-    if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY))) {
+    if (Boolean.parseBoolean(System.getProperty(USE_PROXY))) {
       if (isNullOrEmpty(System.getProperty(PROXY_PORT))) {
         throw new IllegalArgumentException(
             "proxy port number is not provided, please assign proxy port to http.proxyPort option");
