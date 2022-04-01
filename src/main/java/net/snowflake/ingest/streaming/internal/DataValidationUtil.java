@@ -11,8 +11,10 @@ import java.math.BigInteger;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.xml.bind.DatatypeConverter;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
+import net.snowflake.client.jdbc.internal.snowflake.common.core.SFDate;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
@@ -473,13 +475,28 @@ class DataValidationUtil {
   }
 
   /**
-   * Expects input in epoch days. Uses @see {@link #validateAndParseInteger(Object)} to validate and
-   * parse input as integer
+   * Expects input in epoch days or "YYYY-MM-DD" format. Uses @see {@link
+   * #validateAndParseInteger(Object)} to validate and parse input as integer
    *
-   * @param input epoch days
+   * @param input epoch days or "YYYY-MM-DD" date format
    */
   static int validateAndParseDate(Object input) {
-    return validateAndParseInteger(input);
+    try {
+      return validateAndParseInteger(input);
+    } catch (SFException e) {
+      // Try parsing the time from a String
+      Optional<SFTimestamp> timestamp =
+          Optional.ofNullable(snowflakeDateTimeFormatter.parse(input.toString()));
+      return timestamp
+          .map(
+              t ->
+                  // Adjust nanoseconds past the epoch to match the column scale value
+                  (int) TimeUnit.MILLISECONDS.toDays(SFDate.fromTimestamp(t).getTime()))
+          .orElseThrow(
+              () ->
+                  new SFException(
+                      ErrorCode.INVALID_ROW, input, "Cannot be converted to a Date value"));
+    }
   }
 
   static byte[] validateAndParseBinary(Object input) {
