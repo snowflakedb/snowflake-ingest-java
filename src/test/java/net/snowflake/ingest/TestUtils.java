@@ -164,6 +164,13 @@ public class TestUtils {
     return keyPair;
   }
 
+  public static String getRole() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return role;
+  }
+
   public static Properties getProperties() throws Exception {
     if (profile == null) {
       init();
@@ -247,11 +254,12 @@ public class TestUtils {
    * @param pipe pipe name
    * @param userAgentSuffix suffix we want to add in all request header of user-agent to the
    *     snowpipe API.
+   * @param role the role that will be used for authorization
    * @return ingest manager object
    * @throws Exception
    */
-  public static SimpleIngestManager getManager(String pipe, final String userAgentSuffix)
-      throws Exception {
+  public static SimpleIngestManager getManager(
+      String pipe, final String userAgentSuffix, String role) throws Exception {
     if (profile == null) init();
     return new SimpleIngestManager(
         account,
@@ -261,7 +269,8 @@ public class TestUtils {
         scheme,
         host,
         port,
-        userAgentSuffix);
+        userAgentSuffix,
+        role);
   }
 
   /**

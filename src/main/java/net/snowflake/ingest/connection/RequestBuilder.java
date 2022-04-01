@@ -65,6 +65,9 @@ public class RequestBuilder {
 
   private final String userAgentSuffix;
 
+  // the actual role name
+  private final String role;
+
   /* Member variables End */
 
   /* Static constants Begin */
@@ -136,6 +139,8 @@ public class RequestBuilder {
   public static final String SF_HEADER_AUTHORIZATION_TOKEN_TYPE =
       "X-Snowflake-Authorization-Token-Type";
 
+  public static final String SF_HEADER_ROLE = "X-Snowflake-Role";
+
   public static final String JWT_TOKEN_TYPE = "KEYPAIR_JWT";
 
   public static final String HTTP_HEADER_CONTENT_TYPE_JSON = "application/json";
@@ -165,6 +170,33 @@ public class RequestBuilder {
       KeyPair keyPair,
       String userAgentSuffix) {
     this(accountName, userName, keyPair, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
+  }
+
+  /**
+   * RequestBuilder constructor which uses default schemes, host and port.
+   *
+   * @param accountName - the name of the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param role - the role for which the actions are performed.
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      String hostName,
+      KeyPair keyPair,
+      String userAgentSuffix,
+      String role) {
+    this(
+        accountName,
+        userName,
+        keyPair,
+        DEFAULT_SCHEME,
+        hostName,
+        DEFAULT_PORT,
+        userAgentSuffix,
+        role);
   }
 
   /**
@@ -207,6 +239,30 @@ public class RequestBuilder {
       String hostName,
       int portNum,
       String userAgentSuffix) {
+    this(accountName, userName, keyPair, schemeName, hostName, portNum, userAgentSuffix, null);
+  }
+
+  /**
+   * RequestBuilder - this constructor is for testing purposes only
+   *
+   * @param accountName - the account name to which we're connecting
+   * @param userName - for whom are we connecting?
+   * @param keyPair - our auth credentials
+   * @param schemeName - are we HTTP or HTTPS?
+   * @param hostName - the host for this snowflake instance
+   * @param portNum - the port number
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param role - the role for which the actions are performed.
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      KeyPair keyPair,
+      String schemeName,
+      String hostName,
+      int portNum,
+      String userAgentSuffix,
+      String role) {
     // none of these arguments should be null
     if (accountName == null || userName == null || keyPair == null) {
       throw new IllegalArgumentException();
@@ -224,16 +280,18 @@ public class RequestBuilder {
     this.scheme = schemeName;
     this.host = hostName;
     this.userAgentSuffix = userAgentSuffix;
+    this.role = role;
 
     LOGGER.info(
-        "Creating a RequestBuilder with arguments : "
-            + "Account : {}, User : {}, Scheme : {}, Host : {}, Port : {}, userAgentSuffix: {}",
+        "Creating a RequestBuilder with arguments : Account : {}, User : {}, Scheme : {}, Host :"
+            + " {}, Port : {}, userAgentSuffix: {}, Role: {}",
         account,
         user,
         this.scheme,
         this.host,
         this.port,
-        this.userAgentSuffix);
+        this.userAgentSuffix,
+        this.role);
   }
 
   /**
@@ -615,11 +673,27 @@ public class RequestBuilder {
     request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, JWT_TOKEN_TYPE);
   }
 
-  private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
+  /**
+   * addToken - adds a X-Snowflake-Role to a request
+   *
+   * @param request the URI request
+   * @param role the role name to add
+   */
+  private static void addRoleHeader(HttpUriRequest request, String role) {
+    if (!isNullOrEmpty(role)) {
+      request.setHeader(SF_HEADER_ROLE, role);
+    }
+  }
+
+  private static void addHeaders(
+      HttpUriRequest request, String token, String userAgentSuffix, String role) {
     addUserAgent(request, userAgentSuffix);
 
     // Add the auth token
     addToken(request, token);
+
+    // Add the role header
+    addRoleHeader(request, role);
 
     // Add Accept header
     request.setHeader(HttpHeaders.ACCEPT, HTTP_HEADER_CONTENT_TYPE_JSON);
@@ -668,7 +742,7 @@ public class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(insertURI);
 
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(post, securityManager.getToken(), this.userAgentSuffix, this.role);
 
     // the entity for the containing the json
     final StringEntity entity =
@@ -697,7 +771,7 @@ public class RequestBuilder {
     // make the get request
     HttpGet get = new HttpGet(historyURI);
 
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(get, securityManager.getToken(), this.userAgentSuffix, this.role);
 
     return get;
   }
@@ -723,7 +797,11 @@ public class RequestBuilder {
 
     HttpGet get = new HttpGet(historyRangeURI);
 
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+    addHeaders(
+        get,
+        securityManager.getToken(),
+        this.userAgentSuffix /*User agent information*/,
+        this.role);
 
     return get;
   }
@@ -751,7 +829,11 @@ public class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(uri);
 
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+    addHeaders(
+        post,
+        securityManager.getToken(),
+        this.userAgentSuffix /*User agent information*/,
+        this.role);
 
     // The entity for the containing the json
     final StringEntity entity = new StringEntity(payload, ContentType.APPLICATION_JSON);
@@ -772,7 +854,7 @@ public class RequestBuilder {
       throws URISyntaxException {
     URI configureClientURI = makeConfigureClientURI(requestID, pipe);
     HttpPost post = new HttpPost(configureClientURI);
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(post, securityManager.getToken(), this.userAgentSuffix, this.role);
     return post;
   }
 
@@ -809,7 +891,7 @@ public class RequestBuilder {
       throws URISyntaxException {
     URI getClientStatusURI = makeGetClientURI(requestID, pipe);
     HttpGet get = new HttpGet(getClientStatusURI);
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(get, securityManager.getToken(), this.userAgentSuffix, this.role);
     return get;
   }
 
