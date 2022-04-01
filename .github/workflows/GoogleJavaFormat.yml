@@ -11,10 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: GoogleJavaFormat
-        id: googlejavaformat
-        uses: axel-op/googlejavaformat-action@v3
+      - uses: actions/setup-java@v2
         with:
-          skipCommit: true
-          version: 1.10.0
-          args: "-n --set-exit-if-changed"
+          distribution: 'adopt'
+          java-version: '17'
+      - name: Format code
+        run: ./format.sh
+      - if: ${{ failure() }}
+        run: git diff
