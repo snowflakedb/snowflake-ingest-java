@@ -7,8 +7,10 @@ package net.snowflake.ingest.utils;
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.security.Security;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLContext;
+import net.snowflake.client.core.SFSessionProperty;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -35,12 +37,12 @@ import org.slf4j.LoggerFactory;
 
 /** Created by hyu on 8/10/17. */
 public class HttpUtil {
-  private static final String USE_PROXY = "http.useProxy";
-  private static final String PROXY_HOST = "http.proxyHost";
-  private static final String PROXY_PORT = "http.proxyPort";
+  public static final String USE_PROXY = "http.useProxy";
+  public static final String PROXY_HOST = "http.proxyHost";
+  public static final String PROXY_PORT = "http.proxyPort";
 
-  private static final String HTTP_PROXY_USER = "http.proxyUser";
-  private static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
+  public static final String HTTP_PROXY_USER = "http.proxyUser";
+  public static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
 
   private static final String PROXY_SCHEME = "http";
   private static final int MAX_RETRIES = 3;
@@ -192,5 +194,41 @@ public class HttpUtil {
     HttpClientContext clientContext = HttpClientContext.adapt(httpContext);
     HttpRequest httpRequest = clientContext.getRequest();
     return httpRequest.getRequestLine().getUri();
+  }
+
+  /**
+   * Helper method to decide whether to add any properties related to proxy server. These properties
+   * are passed on to snowflake JDBC while calling put API.
+   *
+   * @return proxy parameters that could be used by JDBC
+   */
+  public static Properties generateProxyPropertiesForJDBC() {
+    Properties proxyProperties = new Properties();
+    if (Boolean.parseBoolean(System.getProperty(USE_PROXY))) {
+      if (isNullOrEmpty(System.getProperty(PROXY_PORT))) {
+        throw new IllegalArgumentException(
+            "proxy port number is not provided, please assign proxy port to http.proxyPort option");
+      }
+      if (isNullOrEmpty(System.getProperty(PROXY_HOST))) {
+        throw new IllegalArgumentException(
+            "proxy host IP is not provided, please assign proxy host IP to http.proxyHost option");
+      }
+
+      // Set proxy host and port
+      proxyProperties.put(SFSessionProperty.USE_PROXY.getPropertyKey(), "true");
+      proxyProperties.put(
+          SFSessionProperty.PROXY_HOST.getPropertyKey(), System.getProperty(PROXY_HOST));
+      proxyProperties.put(
+          SFSessionProperty.PROXY_PORT.getPropertyKey(), System.getProperty(PROXY_PORT));
+
+      // Check if proxy username and password are set
+      final String proxyUser = System.getProperty(HTTP_PROXY_USER);
+      final String proxyPassword = System.getProperty(HTTP_PROXY_PASSWORD);
+      if (!isNullOrEmpty(proxyUser) && !isNullOrEmpty(proxyPassword)) {
+        proxyProperties.put(SFSessionProperty.PROXY_USER.getPropertyKey(), proxyUser);
+        proxyProperties.put(SFSessionProperty.PROXY_PASSWORD.getPropertyKey(), proxyPassword);
+      }
+    }
+    return proxyProperties;
   }
 }
