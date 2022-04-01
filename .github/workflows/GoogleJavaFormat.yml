@@ -18,4 +18,4 @@ jobs:
       - name: Format code
         run: ./format.sh
       - if: ${{ failure() }}
-        run: git diff
+        run: git diff --color=always 
