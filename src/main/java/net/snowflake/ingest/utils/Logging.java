@@ -29,9 +29,7 @@ public class Logging {
     }
   }
 
-  /**
-   * @return true if trace is enabled
-   */
+  /** @return true if trace is enabled */
   public boolean isTraceEnabled() {
     return log.isTraceEnabled();
   }

@@ -92,18 +92,14 @@ public class ParameterProvider {
         props);
   }
 
-  /**
-   * @return Longest interval in milliseconds between buffer flushes
-   */
+  /** @return Longest interval in milliseconds between buffer flushes */
   public long getBufferFlushIntervalInMs() {
     return (long)
         this.parameterMap.getOrDefault(
             BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT);
   }
 
-  /**
-   * @return Time in milliseconds between checks to see if the buffer should be flushed
-   */
+  /** @return Time in milliseconds between checks to see if the buffer should be flushed */
   public long getBufferFlushCheckIntervalInMs() {
     return (long)
         this.parameterMap.getOrDefault(
@@ -111,18 +107,14 @@ public class ParameterProvider {
             BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT);
   }
 
-  /**
-   * @return Duration in milliseconds to delay data insertion to the buffer when throttled
-   */
+  /** @return Duration in milliseconds to delay data insertion to the buffer when throttled */
   public long getInsertThrottleIntervalInMs() {
     return (long)
         this.parameterMap.getOrDefault(
             INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT);
   }
 
-  /**
-   * @return Percent of free total memory at which we throttle row inserts
-   */
+  /** @return Percent of free total memory at which we throttle row inserts */
   public int getInsertThrottleThresholdInPercentage() {
     return ((Long)
             this.parameterMap.getOrDefault(
@@ -131,9 +123,7 @@ public class ParameterProvider {
         .intValue();
   }
 
-  /**
-   * @return true if jmx metrics are enabled for a client
-   */
+  /** @return true if jmx metrics are enabled for a client */
   public boolean hasEnabledSnowpipeStreamingMetrics() {
     return (Boolean)
         this.parameterMap.getOrDefault(
