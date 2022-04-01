@@ -39,30 +39,22 @@ public class Pair<F, S> {
         && Objects.equals(this.second, pair2.getSecond());
   }
 
-  /**
-   * @return the first
-   */
+  /** @return the first */
   public F getFirst() {
     return first;
   }
 
-  /**
-   * @return the second
-   */
+  /** @return the second */
   public S getSecond() {
     return second;
   }
 
-  /**
-   * @return the key
-   */
+  /** @return the key */
   public F getKey() {
     return getFirst();
   }
 
-  /**
-   * @return the value
-   */
+  /** @return the value */
   public S getValue() {
     return getSecond();
   }

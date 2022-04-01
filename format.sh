@@ -18,4 +18,4 @@ if ! command -v java > /dev/null; then
   exit 1
 fi
 echo "Running Google Java Format"
-find ./src -type f -name "*.java"  | xargs java -jar "${JAR_FILE}" --replace --set-exit-if-changed
+find ./src -type f -name "*.java"  | xargs java -jar "${JAR_FILE}" --replace --set-exit-if-changed && echo "OK"
