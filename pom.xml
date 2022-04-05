@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>1.0.1-beta</version>
+    <version>1.0.2-beta</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
@@ -17,7 +17,7 @@
     <licenses>
       <license>
         <name>The Apache Software License, Version 2.0</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
       </license>
     </licenses>
 
@@ -32,7 +32,7 @@
 
     <scm>
       <connection>scm:git:git://github.com/snowflakedb/snowflake-ingest-java</connection>
-      <url>http://github.com/snowflakedb/snowflake-ingest-java/tree/master</url>
+      <url>https://github.com/snowflakedb/snowflake-ingest-java/tree/master</url>
     </scm>
 
     <!-- Set our Language Level to Java 8 -->
