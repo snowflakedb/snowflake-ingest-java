@@ -17,7 +17,7 @@
     <licenses>
       <license>
         <name>The Apache Software License, Version 2.0</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
       </license>
     </licenses>
 
@@ -32,7 +32,7 @@
 
     <scm>
       <connection>scm:git:git://github.com/snowflakedb/snowflake-ingest-java</connection>
-      <url>http://github.com/snowflakedb/snowflake-ingest-java/tree/master</url>
+      <url>https://github.com/snowflakedb/snowflake-ingest-java/tree/master</url>
     </scm>
 
     <!-- Set our Language Level to Java 8 -->
