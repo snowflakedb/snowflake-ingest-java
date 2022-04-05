@@ -509,7 +509,6 @@ class RowBufferStats {
   }
 
   void addIntValue(BigInteger value) {
-
     // Set new min/max value
     if (this.currentMinIntValue == null) {
       this.currentMinIntValue = value;
@@ -530,7 +529,6 @@ class RowBufferStats {
   }
 
   void addRealValue(Double value) {
-
     // Set new min/max value
     if (this.currentMinRealValue == null) {
       this.currentMinRealValue = value;
