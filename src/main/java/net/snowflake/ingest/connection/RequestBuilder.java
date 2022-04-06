@@ -4,9 +4,10 @@
 
 package net.snowflake.ingest.connection;
 
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -19,10 +20,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import net.snowflake.ingest.SimpleIngestManager;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpGet;
@@ -40,7 +45,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author obabarinsa
  */
-public final class RequestBuilder {
+public class RequestBuilder {
   // a logger for all of our needs in this class
   private static final Logger LOGGER = LoggerFactory.getLogger(RequestBuilder.class.getName());
 
@@ -122,11 +127,18 @@ public final class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "0.10.4-beta";
+  public static final String DEFAULT_VERSION = "1.0.2-beta";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
   public static final String OS_INFO_USER_AGENT_FORMAT = "(%s %s %s)";
+
+  public static final String SF_HEADER_AUTHORIZATION_TOKEN_TYPE =
+      "X-Snowflake-Authorization-Token-Type";
+
+  public static final String JWT_TOKEN_TYPE = "KEYPAIR_JWT";
+
+  public static final String HTTP_HEADER_CONTENT_TYPE_JSON = "application/json";
 
   /**
    * RequestBuilder - general usage constructor
@@ -222,6 +234,23 @@ public final class RequestBuilder {
         this.host,
         this.port,
         this.userAgentSuffix);
+  }
+
+  /**
+   * RequestBuilder - constructor used by streaming ingest
+   *
+   * @param url - the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   */
+  public RequestBuilder(SnowflakeURL url, String userName, KeyPair keyPair) {
+    this(
+        url.getAccount(),
+        userName,
+        keyPair,
+        url.getScheme(),
+        url.getUrlWithoutPort(),
+        url.getPort());
   }
 
   private static Properties loadProperties() {
@@ -583,12 +612,17 @@ public final class RequestBuilder {
    */
   private static void addToken(HttpUriRequest request, String token) {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
+    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, JWT_TOKEN_TYPE);
   }
 
   private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
     addUserAgent(request, userAgentSuffix);
-    // add the auth token
+
+    // Add the auth token
     addToken(request, token);
+
+    // Add Accept header
+    request.setHeader(HttpHeaders.ACCEPT, HTTP_HEADER_CONTENT_TYPE_JSON);
   }
 
   /**
@@ -695,6 +729,38 @@ public final class RequestBuilder {
   }
 
   /**
+   * Generate post request for streaming ingest related APIs
+   *
+   * @param payload POST request payload as string
+   * @param endPoint REST API endpoint
+   * @param message error message if there are failures during HTTP building
+   * @return URI for the POST request
+   */
+  public HttpPost generateStreamingIngestPostRequest(
+      String payload, String endPoint, String message) {
+    LOGGER.debug("Generate Snowpipe streaming request: endpoint={}, payload={}", endPoint, payload);
+    // Make the corresponding URI
+    URI uri = null;
+    try {
+      uri =
+          new URIBuilder().setScheme(scheme).setHost(host).setPort(port).setPath(endPoint).build();
+    } catch (URISyntaxException e) {
+      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
+    }
+
+    // Make the post request
+    HttpPost post = new HttpPost(uri);
+
+    addHeaders(post, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+
+    // The entity for the containing the json
+    final StringEntity entity = new StringEntity(payload, ContentType.APPLICATION_JSON);
+    post.setEntity(entity);
+
+    return post;
+  }
+
+  /**
    * Given a requestId and a pipe, make a configure client request
    *
    * @param requestID a UUID we will use to label this request
@@ -708,6 +774,27 @@ public final class RequestBuilder {
     HttpPost post = new HttpPost(configureClientURI);
     addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
     return post;
+  }
+
+  /**
+   * Generate post request for streaming ingest related APIs
+   *
+   * @param payload POST request payload
+   * @param endPoint REST API endpoint
+   * @param message error message if there are failures during HTTP building
+   * @return URI for the POST request
+   */
+  public HttpPost generateStreamingIngestPostRequest(
+      Map<Object, Object> payload, String endPoint, String message) {
+    // Convert the payload to string
+    String payloadInString = null;
+    try {
+      payloadInString = objectMapper.writeValueAsString(payload);
+    } catch (JsonProcessingException e) {
+      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
+    }
+
+    return this.generateStreamingIngestPostRequest(payloadInString, endPoint, message);
   }
 
   /**

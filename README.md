@@ -71,17 +71,8 @@ mvn package
 However, for general usage, pulling a pre-built jar from maven is
 recommended.
 
-If you would like to run SnowflakeIngestBasicExample.java in the example folder, 
+If you would like to run SnowflakeIngestBasicExample.java or SnowflakeStreamingIngestExample.java in the example folder, 
 you would need to remove the following scope limits in pom.xml
-
-<pre>
-&lt;!-- Remove test scope from snowflake-jdbc --&gt;
-&lt;dependency&gt;
-    &lt;groupId&gt;net.snowflake&lt;groupId&gt;
-    &lt;artifactId&gt;snowflake-jdbc&lt;/artifactId&gt;
-    <s>&lt;scope&gt;test&lt;/scope&gt;</s>
-&lt;/dependency&gt;
-</pre>
 
 <pre>
 &lt;!-- Remove provided scope from slf4j-api --&gt;

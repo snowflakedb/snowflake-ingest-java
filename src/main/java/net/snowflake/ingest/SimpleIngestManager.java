@@ -5,18 +5,14 @@
 package net.snowflake.ingest;
 
 import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
-import static net.snowflake.ingest.utils.StringsUtils.isNullOrEmpty;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.RSAPublicKeySpec;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -35,6 +31,7 @@ import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.BackOffException;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.StagedFileWrapper;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -299,7 +296,7 @@ public class SimpleIngestManager implements AutoCloseable {
    */
   public SimpleIngestManager(String account, String user, String pipe, PrivateKey privateKey)
       throws InvalidKeySpecException, NoSuchAlgorithmException {
-    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
+    KeyPair keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
 
     // call our initializer method
     init(account, user, pipe, keyPair);
@@ -310,7 +307,7 @@ public class SimpleIngestManager implements AutoCloseable {
 
   /**
    * Using this constructor for Builder pattern. KeyPair can be passed in now since we have
-   * made @see {@link SimpleIngestManager#createKeyPairFromPrivateKey(PrivateKey)} public
+   * made @see {@link Utils#createKeyPairFromPrivateKey(PrivateKey)} public
    *
    * @param account The account into which we're loading Note: account should not include region or
    *     cloud provider info. e.g. if host is testaccount.us-east-1.azure .snowflakecomputing.com,
@@ -320,7 +317,7 @@ public class SimpleIngestManager implements AutoCloseable {
    * @param pipe the fully qualified name of the pipe
    * @param hostName the hostname
    * @param keyPair keyPair associated with the private key used for authentication. See @see {@link
-   *     SimpleIngestManager#createKeyPairFromPrivateKey} to generate KP from p8Key
+   *     Utils#createKeyPairFromPrivateKey} to generate KP from p8Key
    * @param userAgentSuffix user agent suffix we want to add.
    */
   public SimpleIngestManager(
@@ -363,7 +360,7 @@ public class SimpleIngestManager implements AutoCloseable {
       String hostName,
       int port)
       throws NoSuchAlgorithmException, InvalidKeySpecException {
-    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
+    KeyPair keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
     // call our initializer method
     init(account, user, pipe, keyPair);
 
@@ -382,7 +379,7 @@ public class SimpleIngestManager implements AutoCloseable {
       int port,
       String userAgentSuffix)
       throws NoSuchAlgorithmException, InvalidKeySpecException {
-    KeyPair keyPair = createKeyPairFromPrivateKey(privateKey);
+    KeyPair keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
     // call our initializer method
     init(account, user, pipe, keyPair);
 
@@ -412,31 +409,6 @@ public class SimpleIngestManager implements AutoCloseable {
     // make our client for sending requests
     httpClient = HttpUtil.getHttpClient();
     // make the request builder we'll use to build messages to the service
-  }
-
-  /**
-   * generate key pair object from private key
-   *
-   * @param privateKey private key
-   * @return a key pair object
-   * @throws NoSuchAlgorithmException if can't create key factory by using RSA algorithm
-   * @throws InvalidKeySpecException if private key or public key is invalid
-   */
-  public static KeyPair createKeyPairFromPrivateKey(PrivateKey privateKey)
-      throws NoSuchAlgorithmException, InvalidKeySpecException {
-    if (!(privateKey instanceof RSAPrivateCrtKey))
-      throw new IllegalArgumentException("Input private key is not a RSA private key");
-
-    KeyFactory kf = KeyFactory.getInstance("RSA");
-
-    // generate public key from private key
-    RSAPrivateCrtKey privk = (RSAPrivateCrtKey) privateKey;
-    RSAPublicKeySpec publicKeySpec =
-        new RSAPublicKeySpec(privk.getModulus(), privk.getPublicExponent());
-    PublicKey publicK = kf.generatePublic(publicKeySpec);
-
-    // create key pairs
-    return new KeyPair(publicK, privateKey);
   }
 
   /**
