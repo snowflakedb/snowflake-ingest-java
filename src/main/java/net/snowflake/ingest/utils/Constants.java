@@ -61,6 +61,7 @@ public class Constants {
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;
   public static final boolean BLOB_NO_HEADER = true;
+  public static final boolean ENABLE_TELEMETRY_TO_SF = true;
 
   // Metrics
   public static final String SNOWPIPE_STREAMING_JMX_METRIC_PREFIX = "snowflake.ingest.sdk";

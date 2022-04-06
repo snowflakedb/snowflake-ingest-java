@@ -10,6 +10,7 @@ import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STR
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
+import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
@@ -64,6 +65,7 @@ import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -126,6 +128,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // The request builder who handles building the HttpRequests we send
   private RequestBuilder requestBuilder;
 
+  // Reference to the telemetry service
+  private TelemetryService telemetryService;
+
   /**
    * Constructor
    *
@@ -135,7 +140,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param httpClient http client for sending request
    * @param isTestMode whether we're under test mode
    * @param requestBuilder http request builder
-   * @param parameterOverrides parameters we override incase we want to set different values
+   * @param parameterOverrides parameters we override in case we want to set different values
    */
   SnowflakeStreamingIngestClientInternal(
       String name,
@@ -169,9 +174,15 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
     this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
 
-    if (this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
-      this.registerMetricsForClient();
+    // Set up the telemetry service if needed
+    if (ENABLE_TELEMETRY_TO_SF) {
+      this.telemetryService =
+          new TelemetryService(
+              ((CloseableHttpClient) this.httpClient), this.name, accountURL.getFullUrl());
     }
+
+    // Publish client telemetries if needed
+    this.registerMetricsForClient();
 
     logger.logDebug(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
@@ -432,20 +443,20 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     isClosed = true;
     this.channelCache.closeAllChannels();
 
-    // unregister jmx metrics
-    if (this.metrics != null) {
-      removeMetricsFromRegistry();
-
-      // LOG jvm memory and thread metrics at the end
-      Slf4jReporter.forRegistry(jvmMemoryAndThreadMetrics)
-          .outputTo(logger.getLogger())
-          .build()
-          .report();
-    }
-
     // Flush any remaining rows and cleanup all the resources
     try {
       this.flush(true).get();
+
+      // Unregister jmx metrics
+      if (this.metrics != null) {
+        removeMetricsFromRegistry();
+
+        // LOG jvm memory and thread metrics at the end
+        Slf4jReporter.forRegistry(jvmMemoryAndThreadMetrics)
+            .outputTo(logger.getLogger())
+            .build()
+            .report();
+      }
     } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
@@ -599,42 +610,46 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * Latency and throughput metrics are emitted to JMX, jvm memory and thread metrics are logged to Slf4JLogger
    */
   private void registerMetricsForClient() {
-    metrics = new MetricRegistry();
-    // Blob histograms
-    blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
-    blobRowCountHistogram =
-        metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
-    cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
+    if (this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
+      metrics = new MetricRegistry();
+      // Blob histogram metrics
+      blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
+      blobRowCountHistogram =
+          metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
 
-    // latency metrics
-    flushLatency = metrics.timer(MetricRegistry.name("latency", "flush"));
-    buildLatency = metrics.timer(MetricRegistry.name("latency", "build"));
-    uploadLatency = metrics.timer(MetricRegistry.name("latency", "upload"));
-    registerLatency = metrics.timer(MetricRegistry.name("latency", "register"));
+      // CPU usage metric
+      cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
 
-    // throughput metrics
-    uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
-    inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
-    SharedMetricRegistries.add(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY, metrics);
+      // Latency metrics
+      flushLatency = metrics.timer(MetricRegistry.name("latency", "flush"));
+      buildLatency = metrics.timer(MetricRegistry.name("latency", "build"));
+      uploadLatency = metrics.timer(MetricRegistry.name("latency", "upload"));
+      registerLatency = metrics.timer(MetricRegistry.name("latency", "register"));
 
-    JmxReporter jmxReporter =
-        JmxReporter.forRegistry(this.metrics)
-            .inDomain(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX)
-            .convertDurationsTo(TimeUnit.SECONDS)
-            .createsObjectNamesWith(
-                (ignoreMeterType, jmxDomain, metricName) ->
-                    getObjectName(this.getName(), jmxDomain, metricName))
-            .build();
-    jmxReporter.start();
+      // Throughput metrics
+      uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
+      inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
+      SharedMetricRegistries.add(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY, metrics);
 
-    // add JVM and thread metrics too
-    jvmMemoryAndThreadMetrics.register(
-        MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
-    jvmMemoryAndThreadMetrics.register(
-        MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
+      JmxReporter jmxReporter =
+          JmxReporter.forRegistry(this.metrics)
+              .inDomain(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX)
+              .convertDurationsTo(TimeUnit.SECONDS)
+              .createsObjectNamesWith(
+                  (ignoreMeterType, jmxDomain, metricName) ->
+                      getObjectName(this.getName(), jmxDomain, metricName))
+              .build();
+      jmxReporter.start();
 
-    SharedMetricRegistries.add(
-        SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY, jvmMemoryAndThreadMetrics);
+      // Add JVM and thread metrics too
+      jvmMemoryAndThreadMetrics.register(
+          MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
+      jvmMemoryAndThreadMetrics.register(
+          MetricRegistry.name("jvm", "threads"), new ThreadStatesGaugeSet());
+
+      SharedMetricRegistries.add(
+          SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY, jvmMemoryAndThreadMetrics);
+    }
   }
 
   /**
