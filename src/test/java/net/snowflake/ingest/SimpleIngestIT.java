@@ -33,7 +33,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /** Example ingest sdk integration test */
@@ -329,7 +328,6 @@ public class SimpleIngestIT {
     }
   }
 
-  @Ignore
   @Test
   public void testConfigureClientHappyCase() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
@@ -338,7 +336,6 @@ public class SimpleIngestIT {
     assertEquals(0L, configureClientResponse.getClientSequencer().longValue());
   }
 
-  @Ignore
   @Test
   public void testConfigureClientNoPipeFound() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
@@ -353,7 +350,6 @@ public class SimpleIngestIT {
     }
   }
 
-  @Ignore
   @Test
   public void testGetClientStatusHappyCase() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
@@ -364,7 +360,6 @@ public class SimpleIngestIT {
     assertNull(clientStatusResponse.getOffsetToken());
   }
 
-  @Ignore
   @Test
   public void testGetClientStatusNoPipeFound() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
@@ -379,7 +374,6 @@ public class SimpleIngestIT {
     }
   }
 
-  @Ignore
   @Test
   public void testIngestFilesWithClientInfo() throws Exception {
 
@@ -415,7 +409,6 @@ public class SimpleIngestIT {
     assertEquals(offsetToken, clientStatusResponse.getOffsetToken());
   }
 
-  @Ignore
   @Test
   public void testIngestFilesWithClientInfoWithOldClientSequencer() throws Exception {
 
@@ -477,7 +470,6 @@ public class SimpleIngestIT {
     }
   }
 
-  @Ignore
   @Test
   public void testIngestFilesWithClientInfoWithNoClientSequencer() throws Exception {
     // first lets call configure client API
