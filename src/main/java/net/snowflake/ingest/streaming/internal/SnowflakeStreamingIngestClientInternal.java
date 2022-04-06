@@ -342,7 +342,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       return response;
     } catch (IOException | IngestResponseException e) {
-      throw new SFException(e, ErrorCode.CHANNEL_STATUS_FAILURE);
+      throw new SFException(e, ErrorCode.CHANNEL_STATUS_FAILURE, e.getMessage());
     }
   }
 
