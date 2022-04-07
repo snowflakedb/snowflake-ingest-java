@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
+import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
@@ -50,7 +51,6 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Constants;
@@ -260,12 +260,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       payload.put("role", this.role);
 
       OpenChannelResponse response =
-          ServiceResponseHandler.unmarshallStreamingIngestResponse(
-              httpClient.execute(
-                  requestBuilder.generateStreamingIngestPostRequest(
-                      payload, OPEN_CHANNEL_ENDPOINT, "open channel")),
+          executeWithRetries(
               OpenChannelResponse.class,
-              STREAMING_OPEN_CHANNEL);
+              OPEN_CHANNEL_ENDPOINT,
+              payload,
+              "open channel",
+              STREAMING_OPEN_CHANNEL,
+              httpClient,
+              requestBuilder);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
@@ -327,13 +329,16 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       request.setRequestId(this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
 
       String payload = objectMapper.writeValueAsString(request);
+
       ChannelsStatusResponse response =
-          ServiceResponseHandler.unmarshallStreamingIngestResponse(
-              httpClient.execute(
-                  requestBuilder.generateStreamingIngestPostRequest(
-                      payload, CHANNEL_STATUS_ENDPOINT, "channel status")),
+          executeWithRetries(
               ChannelsStatusResponse.class,
-              STREAMING_CHANNEL_STATUS);
+              CHANNEL_STATUS_ENDPOINT,
+              payload,
+              "channel status",
+              STREAMING_CHANNEL_STATUS,
+              httpClient,
+              requestBuilder);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
@@ -366,12 +371,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       payload.put("role", this.role);
 
       response =
-          ServiceResponseHandler.unmarshallStreamingIngestResponse(
-              httpClient.execute(
-                  requestBuilder.generateStreamingIngestPostRequest(
-                      payload, REGISTER_BLOB_ENDPOINT, "register blob")),
+          executeWithRetries(
               RegisterBlobResponse.class,
-              STREAMING_REGISTER_BLOB);
+              REGISTER_BLOB_ENDPOINT,
+              payload,
+              "register blob",
+              STREAMING_REGISTER_BLOB,
+              httpClient,
+              requestBuilder);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {

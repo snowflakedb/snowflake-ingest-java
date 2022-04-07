@@ -24,6 +24,10 @@ public class Constants {
   public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
   public static final String JDBC_PRIVATE_KEY = "privateKey";
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
+  public static final long RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST =
+      10L; // Don't change, should match server side
+  public static final long RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL =
+      7L; // Don't change, should match server side
   public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 5L;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 12;
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
