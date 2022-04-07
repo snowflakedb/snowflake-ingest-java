@@ -50,8 +50,7 @@ public class StreamingIngestUtils {
     T response =
         ServiceResponseHandler.unmarshallStreamingIngestResponse(
             httpClient.execute(
-                requestBuilder.generateStreamingIngestPostRequest(
-                    payload, endpoint, "open channel")),
+                requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message)),
             targetClass,
             apiName);
 
@@ -72,7 +71,7 @@ public class StreamingIngestUtils {
               || response.getStatusCode() == RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL) {
             retries++;
             try {
-              Thread.sleep(500 * retries);
+              Thread.sleep((1 << retries) * 1000);
             } catch (InterruptedException e) {
               throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
             }
