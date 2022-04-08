@@ -3,6 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Random;
 import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -42,6 +44,7 @@ public class StreamingIngestIT {
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
   private static final String INTERLEAVED_TABLE_PREFIX = "t_interleaved_test_";
+  private static final String INTERLEAVED_CHANNEL_TABLE = "t_interleaved_channel_test";
   private static final int INTERLEAVED_CHANNEL_NUMBER = 3;
 
   private Properties prop;
@@ -220,7 +223,7 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel[] channels =
         new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
-    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_TABLE_PREFIX + i));
+    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_TABLE_PREFIX + i, "CHANNEL"));
 
     iter.accept(
         i ->
@@ -228,7 +231,40 @@ public class StreamingIngestIT {
                 channels[i - 1], INTERLEAVED_TABLE_PREFIX + i, 1 << (i + 1)));
     iter.accept(i -> waitChannelFlushed(channels[i - 1], 1 << (i + 1)));
 
-    iter.accept(i -> verifyInterleavedResult(1 << (i + 1), INTERLEAVED_TABLE_PREFIX + i));
+    iter.accept(i -> verifyTableRowCount(1 << (i + 1), INTERLEAVED_TABLE_PREFIX + i));
+    iter.accept(
+        i ->
+            verifyInterleavedResult(
+                1 << (i + 1), INTERLEAVED_TABLE_PREFIX + i, INTERLEAVED_TABLE_PREFIX + i));
+  }
+
+  @Test
+  public void testMultiChannelChunk() {
+    Consumer<IntConsumer> iter =
+        f -> IntStream.rangeClosed(1, INTERLEAVED_CHANNEL_NUMBER).forEach(f);
+
+    createTableForInterleavedTest(INTERLEAVED_CHANNEL_TABLE);
+
+    SnowflakeStreamingIngestChannel[] channels =
+        new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
+    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_CHANNEL_TABLE, "CHANNEL_" + i));
+
+    iter.accept(
+        i ->
+            produceRowsForInterleavedTest(
+                channels[i - 1], INTERLEAVED_CHANNEL_TABLE + "_channel_" + i, 1 << (i + 1)));
+    iter.accept(i -> waitChannelFlushed(channels[i - 1], 1 << (i + 1)));
+
+    int rowNumber =
+        IntStream.rangeClosed(1, INTERLEAVED_CHANNEL_NUMBER).map(i -> 1 << (i + 1)).sum();
+    verifyTableRowCount(rowNumber, INTERLEAVED_CHANNEL_TABLE);
+
+    iter.accept(
+        i ->
+            verifyInterleavedResult(
+                1 << (i + 1),
+                INTERLEAVED_CHANNEL_TABLE,
+                INTERLEAVED_CHANNEL_TABLE + "_channel_" + i));
   }
 
   @Test
@@ -936,9 +972,9 @@ public class StreamingIngestIT {
     }
   }
 
-  private SnowflakeStreamingIngestChannel openChannel(String tableName) {
+  private SnowflakeStreamingIngestChannel openChannel(String tableName, String channelName) {
     OpenChannelRequest request =
-        OpenChannelRequest.builder("CHANNEL")
+        OpenChannelRequest.builder(channelName)
             .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(tableName)
@@ -950,20 +986,22 @@ public class StreamingIngestIT {
   }
 
   private void produceRowsForInterleavedTest(
-      SnowflakeStreamingIngestChannel channel, String tableName, int rowNumber) {
+      SnowflakeStreamingIngestChannel channel, String strPrefix, int rowNumber) {
     // Insert a few rows into the channel
     for (int val = 0; val < rowNumber; val++) {
       Map<String, Object> row = new HashMap<>();
       row.put("num", val);
-      row.put("str", tableName + "_value_" + val);
+      row.put("str", strPrefix + "_value_" + val);
       verifyInsertValidationResponse(channel.insertRow(row, Integer.toString(val)));
     }
   }
 
   private void waitChannelFlushed(SnowflakeStreamingIngestChannel channel, int numberOfRows) {
+    String latestCommittedOffsetToken = null;
     for (int i = 1; i < 15; i++) {
-      if (channel.getLatestCommittedOffsetToken() != null
-          && channel.getLatestCommittedOffsetToken().equals(Integer.toString(numberOfRows - 1))) {
+      latestCommittedOffsetToken = channel.getLatestCommittedOffsetToken();
+      if (latestCommittedOffsetToken != null
+          && latestCommittedOffsetToken.equals(Integer.toString(numberOfRows - 1))) {
         return;
       }
       try {
@@ -973,25 +1011,163 @@ public class StreamingIngestIT {
             "Interrupted waitChannelFlushed for " + numberOfRows + " rows", e);
       }
     }
-    Assert.fail("Row sequencer not updated before timeout");
+    Assert.fail(
+        "Row sequencer not updated before timeout, latestCommittedOffsetToken: "
+            + latestCommittedOffsetToken);
   }
 
-  private void verifyInterleavedResult(int rowNumber, String tableName) {
-    ResultSet result;
+  private void verifyInterleavedResult(int rowNumber, String tableName, String strPrefix) {
     try {
-      result =
+      ResultSet result =
           jdbcConnection
               .createStatement()
               .executeQuery(
                   String.format(
-                      "select * from %s.%s.%s order by num", TEST_DB, TEST_SCHEMA, tableName));
+                      "select * from %s.%s.%s where str ilike '%s%%' order by num",
+                      TEST_DB, TEST_SCHEMA, tableName, strPrefix));
       for (int val = 0; val < rowNumber; val++) {
         result.next();
         Assert.assertEquals(val, result.getLong("NUM"));
-        Assert.assertEquals(tableName + "_value_" + val, result.getString("STR"));
+        Assert.assertEquals(strPrefix + "_value_" + val, result.getString("STR"));
       }
     } catch (SQLException e) {
       throw new RuntimeException("Cannot verifyInterleavedResult for " + tableName, e);
     }
+  }
+
+  private void verifyTableRowCount(int rowNumber, String tableName) {
+    try {
+      ResultSet resultCount =
+          jdbcConnection
+              .createStatement()
+              .executeQuery(
+                  String.format("select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, tableName));
+      resultCount.next();
+      Assert.assertEquals(rowNumber, resultCount.getLong(1));
+    } catch (SQLException e) {
+      throw new RuntimeException("Cannot verifyTableRowCount for " + tableName, e);
+    }
+  }
+
+  @Test
+  public void testDataTypes() {
+    String tableName = "t_data_types";
+    try {
+      jdbcConnection
+          .createStatement()
+          .execute(
+              String.format(
+                  "create or replace table %s (num NUMBER, -- default FIXED\n"
+                      + "                                    num_10_5 NUMBER(10, 5), -- FIXED with"
+                      + " non zero scale: big dec\n"
+                      + "                                    num_38_0 NUMBER(38, 0), -- FIXED sb16:"
+                      + " big dec\n"
+                      + "                                    num_2_0 NUMBER(2, 0), -- FIXED sb1\n"
+                      + "                                    num_4_0 NUMBER(4, 0), -- FIXED sb2\n"
+                      + "                                    num_9_0 NUMBER(9, 0), -- FIXED sb4\n"
+                      + "                                    num_18_0 NUMBER(18, 0), -- FIXED sb8\n"
+                      + "                                    num_float FLOAT, -- REAL\n"
+                      + "                                    str_varchar VARCHAR(256), -- varchar,"
+                      + " char, any, string, text\n"
+                      + "                                    bin BINARY(256), -- BINARY, VARBINARY:"
+                      + " hex\n"
+                      + "                                    bl BOOLEAN, -- BOOLEAN: true/false\n"
+                      + "                                    var VARIANT, -- VARIANT: json\n"
+                      + "                                    obj OBJECT, -- OBJECT: json map\n"
+                      + "                                    arr ARRAY, -- ARRAY: array of"
+                      + " variants\n"
+                      + "                                    epochdays DATE,\n"
+                      + "                                    timesec TIME(0),\n"
+                      + "                                    timenano TIME(9),\n"
+                      + "                                    epochsec TIMESTAMP_NTZ(0),\n"
+                      + "                                    epochnano TIMESTAMP_NTZ(9));",
+                  tableName));
+    } catch (SQLException e) {
+      throw new RuntimeException("Cannot create table " + tableName, e);
+    }
+
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName, "CHANNEL");
+
+    Random r = new Random();
+    for (int val = 0; val < 10000; val++) {
+      verifyInsertValidationResponse(channel.insertRow(getRandomRow(r), Integer.toString(val)));
+    }
+    waitChannelFlushed(channel, 10000);
+  }
+
+  private static Map<String, Object> getRandomRow(Random r) {
+    Map<String, Object> row = new HashMap<>();
+    row.put("num", r.nextInt());
+    row.put("num_10_5", nextFloat(r));
+    row.put(
+        "num_38_0",
+        new BigDecimal("" + nextLongOfPrecision(r, 18) + Math.abs(nextLongOfPrecision(r, 18))));
+    row.put("num_2_0", r.nextInt(100));
+    row.put("num_4_0", r.nextInt(10000));
+    row.put("num_9_0", r.nextInt(1000000000));
+    row.put("num_18_0", nextLongOfPrecision(r, 18));
+    row.put("num_float", nextFloat(r));
+    row.put("str_varchar", nextString(r));
+    row.put("bin", nextBytes(r));
+    row.put("bl", r.nextBoolean());
+    row.put("var", nextJson(r));
+    row.put("obj", nextJson(r));
+    row.put("arr", Arrays.asList(r.nextInt(100), r.nextInt(100), r.nextInt(100)));
+    row.put("epochdays", Math.abs(r.nextInt()) % 18963); // DATE, 02.12.2021
+    row.put(
+        "timesec",
+        (r.nextInt(11) * 60 * 60 + r.nextInt(59) * 60 + r.nextInt(59)) * 10000
+            + r.nextInt(9999)); // TIME(4), 05:12:43.4536
+    row.put(
+        "timenano",
+        (14 * 60 * 60 + 26 * 60 + 34) * 1000000000L + 437582643); // TIME(9), 14:26:34.437582643
+    row.put(
+        "epochsec", Math.abs(r.nextLong()) % 1638459438); // TIMESTAMP_LTZ(0), 02.12.2021 15:37:18
+    row.put(
+        "epochnano",
+        new BigDecimal(
+            (Math.abs(r.nextInt()) % 1999999999)
+                + "."
+                + Math.abs(
+                    r.nextInt(999999999)))); // TIMESTAMP_LTZ(9), 18.05.2033 03:33:19.999999999
+    return row;
+  }
+
+  private static long nextLongOfPrecision(Random r, int precision) {
+    return r.nextLong() % Math.round(Math.pow(10, precision));
+  }
+
+  private static String nextString(Random r) {
+    return new String(nextBytes(r));
+  }
+
+  private static byte[] nextBytes(Random r) {
+    byte[] bin = new byte[128];
+    r.nextBytes(bin);
+    for (int i = 0; i < bin.length; i++) {
+      bin[i] = (byte) (Math.abs(bin[i]) % 25 + 97); // ascii letters
+    }
+    return bin;
+  }
+
+  private static double nextFloat(Random r) {
+    return (r.nextLong() % Math.round(Math.pow(10, 10))) / 100000d;
+  }
+
+  private static String nextJson(Random r) {
+    return String.format(
+        "{ \"%s\": %d, \"%s\": \"%s\", \"%s\": null, \"%s\": { \"%s\": %f, \"%s\": \"%s\", \"%s\":"
+            + " null } }",
+        nextString(r),
+        r.nextInt(),
+        nextString(r),
+        nextString(r),
+        nextString(r),
+        nextString(r),
+        nextString(r),
+        r.nextFloat(),
+        nextString(r),
+        nextString(r),
+        nextString(r));
   }
 }

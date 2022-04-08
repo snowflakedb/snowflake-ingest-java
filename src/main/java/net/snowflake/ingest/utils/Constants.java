@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.utils;
 
+import java.util.Arrays;
+
 /** Contains all the constants needed for Streaming Ingest */
 public class Constants {
 
@@ -33,7 +35,6 @@ public class Constants {
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 512000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 32000000L;
-  public static final byte BLOB_FORMAT_VERSION = 0;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
   public static final int BLOB_VERSION_SIZE_IN_BYTES = 1;
   public static final int BLOB_FILE_SIZE_SIZE_IN_BYTES = 8;
@@ -55,9 +56,63 @@ public class Constants {
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
-  public static enum WriteMode {
+  public enum WriteMode {
     CLOUD_STORAGE,
     REST_API,
+  }
+
+  /** Thw write mode to generate Arrow BDEC file. */
+  public enum ArrowBatchWriteMode {
+    /** Stream format is produced by {@link org.apache.arrow.vector.ipc.ArrowStreamWriter}. */
+    STREAM,
+
+    /**
+     * File format is produced by {@link org.apache.arrow.vector.ipc.ArrowFileWriter}.
+     *
+     * <p>The file format is same as stream format but it adds a footer at the end of the file. The
+     * footer contains metadata for quick random access of certain column data in batches when it is
+     * being read on server side. This way there is no need to download and parse the whole file if
+     * only certain columns are requested.
+     */
+    FILE,
+  }
+
+  /** Thw write mode to generate Arrow BDEC file. */
+  public enum BdecVerion {
+    /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#STREAM}. */
+    ONE(1),
+
+    /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#FILE}. */
+    TWO(2);
+
+    private final byte version;
+
+    BdecVerion(int version) {
+      if (version > Byte.MAX_VALUE || version < Byte.MIN_VALUE) {
+        throw new IllegalArgumentException("Version does not fit into the byte data type");
+      }
+      this.version = (byte) version;
+    }
+
+    public byte toByte() {
+      return version;
+    }
+
+    public static BdecVerion fromInt(int val) {
+      if (val > Byte.MAX_VALUE || val < Byte.MIN_VALUE) {
+        throw new IllegalArgumentException("Version does not fit into the byte data type");
+      }
+      byte version = (byte) val;
+      for (BdecVerion eversion : BdecVerion.values()) {
+        if (eversion.version == version) {
+          return eversion;
+        }
+      }
+      throw new IllegalArgumentException(
+          String.format(
+              "Unsupported BLOB_FORMAT_VERSION = '%d', allowed values are %s",
+              version, Arrays.asList(BdecVerion.values())));
+    }
   }
 
   // Parameters
