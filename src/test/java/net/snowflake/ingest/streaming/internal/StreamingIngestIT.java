@@ -26,6 +26,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
@@ -137,13 +138,62 @@ public class StreamingIngestIT {
           if (BLOB_NO_HEADER && COMPRESS_BLOB_TWICE) {
             Assert.assertEquals(3445, client.blobSizeHistogram.getSnapshot().getMax());
           } else if (BLOB_NO_HEADER) {
-            Assert.assertEquals(3579, client.blobSizeHistogram.getSnapshot().getMax());
+            Assert.assertEquals(3600, client.blobSizeHistogram.getSnapshot().getMax());
           } else if (COMPRESS_BLOB_TWICE) {
             Assert.assertEquals(3981, client.blobSizeHistogram.getSnapshot().getMax());
           } else {
             Assert.assertEquals(4115, client.blobSizeHistogram.getSnapshot().getMax());
           }
         }
+        return;
+      }
+      Thread.sleep(500);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testParameterOverrides() throws Exception {
+    Map<String, Object> parameterMap = new HashMap<>();
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 30L);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 50L);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 1L);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, 1L);
+    parameterMap.put(ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, true);
+    client =
+        (SnowflakeStreamingIngestClientInternal)
+            SnowflakeStreamingIngestClientFactory.builder("testParameterOverridesClient")
+                .setProperties(prop)
+                .setParameterOverrides(parameterMap)
+                .build();
+
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(TEST_TABLE)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+    for (int val = 0; val < 10; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("c1", Integer.toString(val));
+      verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
+    }
+
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("9")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
+        result.next();
+        Assert.assertEquals(10, result.getLong(1));
         return;
       }
       Thread.sleep(500);
