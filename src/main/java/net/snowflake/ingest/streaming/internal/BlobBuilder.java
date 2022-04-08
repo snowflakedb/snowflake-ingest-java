@@ -8,7 +8,6 @@ import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_FORMAT_VERSION;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
@@ -109,7 +108,8 @@ class BlobBuilder {
       List<ChunkMetadata> chunksMetadataList,
       List<byte[]> chunksDataList,
       long chunksChecksum,
-      long chunksDataSize)
+      long chunksDataSize,
+      int bdecVersion)
       throws IOException {
     byte[] chunkMetadataListInBytes = MAPPER.writeValueAsBytes(chunksMetadataList);
 
@@ -127,7 +127,7 @@ class BlobBuilder {
     ByteArrayOutputStream blob = new ByteArrayOutputStream();
     if (!BLOB_NO_HEADER) {
       blob.write(BLOB_EXTENSION_TYPE.getBytes());
-      blob.write(BLOB_FORMAT_VERSION);
+      blob.write((byte) bdecVersion);
       blob.write(toByteArray(metadataSize + chunksDataSize));
       blob.write(toByteArray(chunksChecksum));
       blob.write(toByteArray(chunkMetadataListInBytes.length));

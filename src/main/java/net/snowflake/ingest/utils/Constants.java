@@ -33,7 +33,6 @@ public class Constants {
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 512000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 32000000L;
-  public static final byte BLOB_FORMAT_VERSION = 0;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
   public static final int BLOB_VERSION_SIZE_IN_BYTES = 1;
   public static final int BLOB_FILE_SIZE_SIZE_IN_BYTES = 8;
@@ -55,9 +54,14 @@ public class Constants {
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
-  public static enum WriteMode {
+  public enum WriteMode {
     CLOUD_STORAGE,
     REST_API,
+  }
+
+  public enum ArrowBatchWriteMode {
+    STREAM,
+    FILE,
   }
 
   // Parameters

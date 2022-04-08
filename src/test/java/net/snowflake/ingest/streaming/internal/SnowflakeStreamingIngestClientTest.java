@@ -615,6 +615,8 @@ public class SnowflakeStreamingIngestClientTest {
         result.get(0).getChunks().get(0).getChannels().stream()
             .map(c -> c.getChannelName())
             .collect(Collectors.toSet()));
+    Assert.assertEquals(
+        ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, result.get(0).getVersion().byteValue());
   }
 
   @Test

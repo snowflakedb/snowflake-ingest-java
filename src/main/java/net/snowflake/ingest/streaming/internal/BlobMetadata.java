@@ -6,16 +6,23 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import net.snowflake.ingest.utils.ParameterProvider;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
   private final String path;
   private final String md5;
+  private final int bdecVersion;
   private final List<ChunkMetadata> chunks;
 
   BlobMetadata(String path, String md5, List<ChunkMetadata> chunks) {
+    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks);
+  }
+
+  BlobMetadata(String path, String md5, int bdecVersion, List<ChunkMetadata> chunks) {
     this.path = path;
     this.md5 = md5;
+    this.bdecVersion = bdecVersion;
     this.chunks = chunks;
   }
 
@@ -32,5 +39,10 @@ class BlobMetadata {
   @JsonProperty("chunks")
   List<ChunkMetadata> getChunks() {
     return this.chunks;
+  }
+
+  @JsonProperty("bdec_version")
+  Integer getVersion() {
+    return bdecVersion;
   }
 }

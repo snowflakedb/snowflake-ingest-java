@@ -17,12 +17,18 @@ public class ParameterProvider {
   public static final String ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY =
       "ENABLE_SNOWPIPE_STREAMING_JMX_METRICS".toLowerCase();
 
+  public static final String BLOB_FORMAT_VERSION = "BLOB_FORMAT_VERSION".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
   public static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
+
+  public static final int BLOB_FORMAT_VERSION_DEFAULT = 1;
+  public static final int BLOB_FORMAT_START_SUPPORTED_VERSION = 1;
+  public static final int BLOB_FORMAT_END_SUPPORTED_VERSION = 2;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -90,6 +96,9 @@ public class ParameterProvider {
         SNOWPIPE_STREAMING_METRICS_DEFAULT,
         parameterOverrides,
         props);
+
+    this.updateValue(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT, parameterOverrides, props);
+    getBlobFormatVersion(); // to verify parsing the configured value
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -128,6 +137,29 @@ public class ParameterProvider {
     return (Boolean)
         this.parameterMap.getOrDefault(
             ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, SNOWPIPE_STREAMING_METRICS_DEFAULT);
+  }
+
+  /** @return Blob format version: 1 (arrow stream write mode), 2 (arrow file write mode) etc */
+  public int getBlobFormatVersion() {
+    Object val = this.parameterMap.getOrDefault(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT);
+    if (val instanceof String) {
+      try {
+        val = Integer.parseInt((String) val);
+      } catch (Throwable t) {
+        throw new IllegalArgumentException(
+            String.format("Failed to parse BLOB_FORMAT_VERSION = '%s'", val), t);
+      }
+    }
+    int version = (int) val;
+    if (version < BLOB_FORMAT_START_SUPPORTED_VERSION
+        || version > BLOB_FORMAT_END_SUPPORTED_VERSION) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Unsupported BLOB_FORMAT_VERSION = '%d', allowed values are in range [%d, %d]"
+                  + " inclusively",
+              version, BLOB_FORMAT_START_SUPPORTED_VERSION, BLOB_FORMAT_END_SUPPORTED_VERSION));
+    }
+    return version;
   }
 
   @Override

@@ -4,7 +4,6 @@ import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_FORMAT_VERSION;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
@@ -516,7 +515,9 @@ public class FlushServiceTest {
 
     chunksMetadataList.add(chunkMetadata);
 
-    byte[] blob = BlobBuilder.build(chunksMetadataList, chunksDataList, checksum, dataSize);
+    final byte bdecVersion = ParameterProvider.BLOB_FORMAT_END_SUPPORTED_VERSION;
+    byte[] blob =
+        BlobBuilder.build(chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
 
     // Read the blob byte array back to valid the behavior
     InputStream input = new ByteArrayInputStream(blob);
@@ -528,8 +529,7 @@ public class FlushServiceTest {
               Arrays.copyOfRange(blob, offset, offset += BLOB_TAG_SIZE_IN_BYTES),
               StandardCharsets.UTF_8));
       Assert.assertEquals(
-          BLOB_FORMAT_VERSION,
-          Arrays.copyOfRange(blob, offset, offset += BLOB_VERSION_SIZE_IN_BYTES)[0]);
+          bdecVersion, Arrays.copyOfRange(blob, offset, offset += BLOB_VERSION_SIZE_IN_BYTES)[0]);
       long totalSize =
           ByteBuffer.wrap(Arrays.copyOfRange(blob, offset, offset += BLOB_FILE_SIZE_SIZE_IN_BYTES))
               .getLong();

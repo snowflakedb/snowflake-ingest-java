@@ -15,6 +15,7 @@ import com.codahale.metrics.Timer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
+import java.nio.channels.Channels;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -44,13 +45,16 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.VectorUnloader;
+import org.apache.arrow.vector.compression.CompressionUtil;
 import org.apache.arrow.vector.ipc.ArrowStreamWriter;
+import org.apache.arrow.vector.ipc.ArrowWriter;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 
 /**
@@ -121,6 +125,9 @@ class FlushService {
   // A map which stores the timer for each blob in order to capture the flush latency
   private final Map<String, Timer.Context> latencyTimerContextMap;
 
+  // blob file version
+  private final int bdecVersion;
+
   /**
    * Constructor for TESTING that takes (usually mocked) StreamingIngestStage
    *
@@ -142,6 +149,7 @@ class FlushService {
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new HashMap<>();
+    this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
     createWorkers();
   }
 
@@ -174,6 +182,7 @@ class FlushService {
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new HashMap<>();
+    this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
     createWorkers();
   }
 
@@ -403,7 +412,7 @@ class FlushService {
       List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
       long rowCount = 0L;
       VectorSchemaRoot root = null;
-      ArrowStreamWriter streamWriter = null;
+      ArrowWriter arrowWriter = null;
       VectorLoader loader = null;
       SnowflakeStreamingIngestChannelInternal firstChannel = null;
       ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
@@ -431,10 +440,16 @@ class FlushService {
           if (root == null) {
             columnEpStatsMapCombined = data.getColumnEps();
             root = data.getVectors();
-            streamWriter = new ArrowStreamWriter(root, null, chunkData);
+            arrowWriter =
+                getArrowBatchWriteMode() == Constants.ArrowBatchWriteMode.STREAM
+                    ? new ArrowStreamWriter(root, null, chunkData)
+                    : new ArrowFileWriterWithCompression(
+                        root,
+                        Channels.newChannel(chunkData),
+                        new CustomCompressionCodec(CompressionUtil.CodecType.ZSTD));
             loader = new VectorLoader(root);
             firstChannel = data.getChannel();
-            streamWriter.start();
+            arrowWriter.start();
           } else {
             // This method assumes that channelsDataPerTable is grouped by table. We double check
             // here and throw an error if the assumption is violated
@@ -456,7 +471,7 @@ class FlushService {
           }
 
           // Write channel data using the stream writer
-          streamWriter.writeBatch();
+          arrowWriter.writeBatch();
           rowCount += data.getRowCount();
 
           logger.logDebug(
@@ -467,23 +482,14 @@ class FlushService {
               filePath);
         }
       } finally {
-        if (streamWriter != null) {
-          streamWriter.close();
+        if (arrowWriter != null) {
+          arrowWriter.close();
           root.close();
         }
       }
 
       if (!channelsMetadataList.isEmpty()) {
-        // Compress the chunk data and pad it for encryption.
-        // Encryption needs padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
-        // to align with decryption on the Snowflake query path starting from this chunk offset.
-        // The padding does not have arrow data and not compressed.
-        // Hence, the actual chunk size is smaller by the padding size.
-        // The compression on the Snowflake query path needs the correct size of the compressed
-        // data.
-        Pair<byte[], Integer> compressionResult =
-            BlobBuilder.compress(
-                filePath, chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
+        Pair<byte[], Integer> compressionResult = compressIfNeededAndPadChunk(filePath, chunkData);
         byte[] compressedAndPaddedChunkData = compressionResult.getFirst();
         int compressedChunkLength = compressionResult.getSecond();
 
@@ -502,12 +508,13 @@ class FlushService {
         int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
 
         // Create chunk metadata
+        long startOffset = curDataSize;
         ChunkMetadata chunkMetadata =
             ChunkMetadata.builder()
                 .setOwningTable(firstChannel)
                 // The start offset will be updated later in BlobBuilder#build to include the blob
                 // header
-                .setChunkStartOffset(curDataSize)
+                .setChunkStartOffset(startOffset)
                 // The compressedChunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
                 .setChunkLength(compressedChunkLength)
@@ -524,26 +531,67 @@ class FlushService {
         crc.update(encryptedCompressedChunkData, 0, encryptedCompressedChunkDataSize);
 
         logger.logInfo(
-            "Finish building chunk in blob={}, table={}, rowCount={}, uncompressedSize={},"
-                + " compressedChunkLength={}, encryptedCompressedSize={}",
+            "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
+                + " uncompressedSize={}, compressedChunkLength={}, encryptedCompressedSize={},"
+                + " arrowBatchWriteMode={}",
             filePath,
             firstChannel.getFullyQualifiedTableName(),
             rowCount,
+            startOffset,
             chunkData.size(),
             compressedChunkLength,
             encryptedCompressedChunkDataSize,
-            compressedChunkLength);
+            getArrowBatchWriteMode());
       }
     }
 
     // Build blob file, and then upload to streaming ingest dedicated stage
     byte[] blob =
-        BlobBuilder.build(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize);
+        BlobBuilder.build(
+            chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
     if (buildContext != null) {
       buildContext.stop();
     }
 
     return upload(filePath, blob, chunksMetadataList);
+  }
+
+  private Pair<byte[], Integer> compressIfNeededAndPadChunk(
+      String filePath, ByteArrayOutputStream chunkData) throws IOException {
+    int blockSizeToAlignTo = Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
+    // Encryption needs padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
+    // to align with decryption on the Snowflake query path starting from this chunk offset.
+    // The padding does not have arrow data and not compressed.
+    // Hence, the actual chunk size is smaller by the padding size.
+    // The compression on the Snowflake query path needs the correct size of the compressed
+    // data.
+    if (getArrowBatchWriteMode() == Constants.ArrowBatchWriteMode.STREAM) {
+      // Stream write mode does not support column level compression.
+      // Compress the chunk data and pad it for encryption.
+      return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
+    } else {
+      int actualSize = chunkData.size();
+      int paddingSize = blockSizeToAlignTo - actualSize % blockSizeToAlignTo;
+      chunkData.write(new byte[paddingSize]);
+      return new Pair<>(chunkData.toByteArray(), actualSize);
+    }
+  }
+
+  private Constants.ArrowBatchWriteMode getArrowBatchWriteMode() {
+    switch (bdecVersion) {
+      case 1:
+        return Constants.ArrowBatchWriteMode.STREAM;
+      case 2:
+        return Constants.ArrowBatchWriteMode.FILE;
+      default:
+        throw new IllegalArgumentException(
+            String.format(
+                "Unsupported BLOB_FORMAT_VERSION = '%d', allowed values are in range [%d, %d]"
+                    + " inclusively",
+                bdecVersion,
+                ParameterProvider.BLOB_FORMAT_START_SUPPORTED_VERSION,
+                ParameterProvider.BLOB_FORMAT_END_SUPPORTED_VERSION));
+    }
   }
 
   /**
@@ -577,7 +625,7 @@ class FlushService {
         blob.length,
         System.currentTimeMillis() - startTime);
 
-    return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), metadata);
+    return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
   }
 
   /**

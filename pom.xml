@@ -42,6 +42,7 @@
         <shadeBase>net.snowflake.ingest.internal</shadeBase>
         <jacoco.skip.instrument>true</jacoco.skip.instrument>
         <jacoco.version>0.8.5</jacoco.version>
+        <arrow.version>8.0.0</arrow.version>
     </properties>
 
     <build>
@@ -319,13 +320,18 @@
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-vector</artifactId>
-            <version>8.0.0</version>
+            <version>${arrow.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-memory-netty</artifactId>
-            <version>8.0.0</version>
+            <version>${arrow.version}</version>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-compression</artifactId>
+            <version>${arrow.version}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-core -->
