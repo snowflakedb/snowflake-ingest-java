@@ -130,6 +130,8 @@ public class HttpUtil {
     return new ServiceUnavailableRetryStrategy() {
       private int executionCount = 0;
       final int REQUEST_TIMEOUT = 408;
+      final int TOO_MANY_REQUESTS = 429;
+      final int SERVER_ERRORS = 500;
 
       @Override
       public boolean retryRequest(
@@ -141,7 +143,9 @@ public class HttpUtil {
           return false;
         }
         boolean needNextRetry =
-            (statusCode == REQUEST_TIMEOUT || statusCode >= 500)
+            (statusCode == REQUEST_TIMEOUT
+                    || statusCode == TOO_MANY_REQUESTS
+                    || statusCode >= SERVER_ERRORS)
                 && executionCount < MAX_RETRIES + 1;
         if (needNextRetry) {
           long interval = (1 << executionCount) * 1000;
