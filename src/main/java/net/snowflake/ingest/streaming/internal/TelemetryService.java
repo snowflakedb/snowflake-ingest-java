@@ -6,13 +6,13 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.client.jdbc.telemetry.Telemetry;
 import net.snowflake.client.jdbc.telemetry.TelemetryClient;
 import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
 import net.snowflake.ingest.utils.Logging;
-import org.apache.http.impl.client.CloseableHttpClient;
 
 /**
  * Telemetry service to collect logs in the SDK and send them to Snowflake through JDBC client
@@ -59,11 +59,7 @@ class TelemetryService {
    */
   TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
     this.clientName = clientName;
-    this.telemetry =
-        TelemetryClient.createSessionlessTelemetry(
-            ((net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient)
-                httpClient),
-            url);
+    this.telemetry = TelemetryClient.createSessionlessTelemetry(httpClient, url);
   }
 
   /** Report the blob size histogram */

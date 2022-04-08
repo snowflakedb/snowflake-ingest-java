@@ -49,6 +49,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import net.snowflake.client.jdbc.internal.apache.http.client.HttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
@@ -64,8 +66,6 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.CloseableHttpClient;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -170,19 +170,19 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
         throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
       }
+
+      // Set up the telemetry service if needed
+      if (ENABLE_TELEMETRY_TO_SF) {
+        this.telemetryService =
+            new TelemetryService(
+                ((CloseableHttpClient) this.httpClient), this.name, accountURL.getFullUrl());
+      }
+
+      // Publish client telemetries if needed
+      this.registerMetricsForClient();
     }
 
     this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
-
-    // Set up the telemetry service if needed
-    if (ENABLE_TELEMETRY_TO_SF) {
-      this.telemetryService =
-          new TelemetryService(
-              ((CloseableHttpClient) this.httpClient), this.name, accountURL.getFullUrl());
-    }
-
-    // Publish client telemetries if needed
-    this.registerMetricsForClient();
 
     logger.logDebug(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
