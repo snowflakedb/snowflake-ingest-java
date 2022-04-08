@@ -12,8 +12,10 @@ import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.MAX_API_RETRY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
@@ -39,9 +41,12 @@ import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -357,6 +362,15 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param blobs list of uploaded blobs
    */
   void registerBlobs(List<BlobMetadata> blobs) {
+    this.registerBlobs(blobs, 0);
+  }
+  /**
+   * Register the uploaded blobs to a Snowflake table
+   *
+   * @param blobs list of uploaded blobs
+   * @param executionCount Number of times this call has been attempted, used to track retries
+   */
+  void registerBlobs(List<BlobMetadata> blobs, final int executionCount) {
     logger.logDebug(
         "Register blob request start for blob={}, client={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
@@ -398,7 +412,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name);
 
-    // Invalidate any channels that returns a failure status code
+    // We will retry any blob chunks that were rejected becuase internal Snowflake queues are full
+    Set<ChunkRegisterStatus> queueFullChunks = new HashSet<>();
     response
         .getBlobsStatus()
         .forEach(
@@ -412,21 +427,123 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                 .forEach(
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
-                                        logger.logWarn(
-                                            "Channel has been invalidated because of failure"
-                                                + " response, name={}, channel sequencer={},"
-                                                + " status code={}",
-                                            channelStatus.getChannelName(),
-                                            channelStatus.getChannelSequencer(),
-                                            channelStatus.getStatusCode());
-                                        channelCache.invalidateChannelIfSequencersMatch(
-                                            chunkStatus.getDBName(),
-                                            chunkStatus.getSchemaName(),
-                                            chunkStatus.getTableName(),
-                                            channelStatus.getChannelName(),
-                                            channelStatus.getChannelSequencer());
+                                        // If the chunk queue is full, we wait and retry the chunks
+                                        if (channelStatus.getStatusCode()
+                                                == RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL
+                                            && executionCount < MAX_API_RETRY) {
+                                          queueFullChunks.add(chunkStatus);
+                                        } else {
+                                          logger.logWarn(
+                                              "Channel has been invalidated because of failure"
+                                                  + " response, name={}, channel sequencer={},"
+                                                  + " status code={}",
+                                              channelStatus.getChannelName(),
+                                              channelStatus.getChannelSequencer(),
+                                              channelStatus.getStatusCode());
+                                          channelCache.invalidateChannelIfSequencersMatch(
+                                              chunkStatus.getDBName(),
+                                              chunkStatus.getSchemaName(),
+                                              chunkStatus.getTableName(),
+                                              channelStatus.getChannelName(),
+                                              channelStatus.getChannelSequencer());
+                                        }
                                       }
                                     })));
+
+    if (!queueFullChunks.isEmpty()) {
+      List<BlobMetadata> retryBlobs = this.getRetryBlobs(queueFullChunks, blobs);
+      if (retryBlobs.isEmpty()) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to retry queue full chunks");
+      }
+      try {
+        Thread.sleep((1 << (executionCount + 1)) * 1000);
+      } catch (InterruptedException e) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
+      }
+      this.registerBlobs(retryBlobs, executionCount + 1);
+    }
+  }
+
+  /**
+   * Constructs a new register blobs payload consisting of chunks that were rejected by a prior
+   * registration attempt
+   *
+   * @param queueFullChunks ChunkRegisterStatus values for the chunks that had been rejected
+   * @param blobs List<BlobMetadata> from the prior registration call
+   * @return a new List<BlobMetadata> for only chunks matching queueFullChunks
+   */
+  List<BlobMetadata> getRetryBlobs(
+      Set<ChunkRegisterStatus> queueFullChunks, List<BlobMetadata> blobs) {
+    /*
+    If a channel returns a RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL statusCode then all channels in the same chunk
+    will have that statusCode.  Here we collect all channels with RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL and use
+    them to pull out the chunks to retry from blobs
+     */
+    Set<ChannelKey> queueFullKeys =
+        queueFullChunks.stream()
+            .flatMap(
+                chunkRegisterStatus -> {
+                  return chunkRegisterStatus.getChannelsStatus().stream()
+                      .map(
+                          channelStatus ->
+                              new ChannelKey(
+                                  channelStatus.getChannelName(),
+                                  channelStatus.getChannelSequencer()));
+                })
+            .collect(Collectors.toSet());
+    List<BlobMetadata> retryBlobs = new ArrayList<>();
+    blobs.forEach(
+        blobMetadata -> {
+          List<ChunkMetadata> relevantChunks =
+              blobMetadata.getChunks().stream()
+                  .filter(
+                      chunkMetadata ->
+                          chunkMetadata.getChannels().stream()
+                              .map(
+                                  channelMetadata ->
+                                      new ChannelKey(
+                                          channelMetadata.getChannelName(),
+                                          channelMetadata.getClientSequencer()))
+                              .anyMatch(channelKey -> queueFullKeys.contains(channelKey)))
+                  .collect(Collectors.toList());
+          if (!relevantChunks.isEmpty()) {
+            retryBlobs.add(
+                new BlobMetadata(blobMetadata.getPath(), blobMetadata.getMD5(), relevantChunks));
+          }
+        });
+
+    return retryBlobs;
+  }
+
+  private static class ChannelKey {
+    private String channelName;
+    private Long clientSequencer;
+
+    public ChannelKey(String channelName, Long clientSequencer) {
+      this.channelName = channelName;
+      this.clientSequencer = clientSequencer;
+    }
+
+    String getChannelName() {
+      return this.channelName;
+    }
+
+    Long getClientSequencer() {
+      return this.clientSequencer;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ChannelKey that = (ChannelKey) o;
+      return channelName.equals(that.channelName) && clientSequencer.equals(that.clientSequencer);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(channelName, clientSequencer);
+    }
   }
 
   /** Close the client, which will flush first and then release all the resources */

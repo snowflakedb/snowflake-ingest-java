@@ -3,7 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,9 +65,9 @@ public class StreamingIngestUtilsTest {
   }
 
   @Test
-  public void testQueueFullRetries() throws Exception {
+  public void testRetries() throws Exception {
     ChannelsStatusResponse response = new ChannelsStatusResponse();
-    response.setStatusCode(RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL);
+    response.setStatusCode(RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST);
     //    response.setStatusCode(7L);
 
     response.setMessage("honk");
@@ -113,9 +113,9 @@ public class StreamingIngestUtilsTest {
   }
 
   @Test
-  public void testQueueFullRecovery() throws Exception {
+  public void testRetriesRecovery() throws Exception {
     ChannelsStatusResponse errorResponse = new ChannelsStatusResponse();
-    errorResponse.setStatusCode(RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL);
+    errorResponse.setStatusCode(RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST);
 
     errorResponse.setMessage("honkFailure");
     errorResponse.setChannels(new ArrayList<>());

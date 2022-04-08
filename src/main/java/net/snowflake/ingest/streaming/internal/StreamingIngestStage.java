@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
+import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
@@ -32,7 +33,6 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMappe
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
@@ -300,20 +300,22 @@ class StreamingIngestStage {
   private Map<String, Object> makeClientConfigureCall(Map<Object, Object> payload)
       throws IOException {
     try {
-      Map<String, Object> response =
-          ServiceResponseHandler.unmarshallStreamingIngestResponse(
-              httpClient.execute(
-                  requestBuilder.generateStreamingIngestPostRequest(
-                      payload, CLIENT_CONFIGURE_ENDPOINT, "client configure")),
-              Map.class,
-              STREAMING_CLIENT_CONFIGURE);
+
+      ClientConfigureResponse response =
+          executeWithRetries(
+              ClientConfigureResponse.class,
+              CLIENT_CONFIGURE_ENDPOINT,
+              payload,
+              "client configure",
+              STREAMING_CLIENT_CONFIGURE,
+              httpClient,
+              requestBuilder);
 
       // Check for Snowflake specific response code
-      if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {
-        throw new SFException(
-            ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
+      if (!response.getStatusCode().equals((int) RESPONSE_SUCCESS)) {
+        throw new SFException(ErrorCode.CLIENT_CONFIGURE_FAILURE, response.getMessage().toString());
       }
-      return response;
+      return response.getStageLocationInfo();
     } catch (IngestResponseException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
