@@ -315,7 +315,7 @@ class StreamingIngestStage {
       }
       return response;
     } catch (IngestResponseException e) {
-      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE);
+      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
   }
 

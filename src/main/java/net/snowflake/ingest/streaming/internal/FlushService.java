@@ -476,8 +476,18 @@ class FlushService {
       }
 
       if (!channelsMetadataList.isEmpty()) {
-        // Compress the chunk data
-        byte[] compressedChunkData = BlobBuilder.compress(filePath, chunkData);
+        // Compress the chunk data and pad it for encryption.
+        // Encryption needs padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
+        // to align with decryption on the Snowflake query path starting from this chunk offset.
+        // The padding does not have arrow data and not compressed.
+        // Hence, the actual chunk size is smaller by the padding size.
+        // The compression on the Snowflake query path needs the correct size of the compressed
+        // data.
+        Pair<byte[], Integer> compressionResult =
+            BlobBuilder.compress(
+                filePath, chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
+        byte[] compressedAndPaddedChunkData = compressionResult.getFirst();
+        int compressedChunkLength = compressionResult.getSecond();
 
         // Encrypt the compressed chunk data, the encryption key is derived using the key from
         // server with the full blob path.
@@ -486,15 +496,8 @@ class FlushService {
         // TODO: address alignment for the header SNOW-557866
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(compressedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
-
-        // Encryption adds padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
-        // to align with decryption on the Snowflake query path starting from this chunk offset.
-        // The padding does not have arrow data and not compressed.
-        // Hence, the actual chunk size is smaller by the padding size.
-        // The compression on the Snowflake query path needs the correct size of the compressed
-        // data.
-        int compressedChunkLength = compressedChunkData.length;
+            Cryptor.encrypt(
+                compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);

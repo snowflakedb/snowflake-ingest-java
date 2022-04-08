@@ -316,7 +316,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       return channel;
     } catch (IOException | IngestResponseException e) {
-      throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE);
+      throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
   }
 
@@ -353,7 +353,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       return response;
     } catch (IOException | IngestResponseException e) {
-      throw new SFException(e, ErrorCode.CHANNEL_STATUS_FAILURE);
+      throw new SFException(e, ErrorCode.CHANNEL_STATUS_FAILURE, e.getMessage());
     }
   }
 
@@ -394,7 +394,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.getMessage());
       }
     } catch (IOException | IngestResponseException e) {
-      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE);
+      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
     }
 
     logger.logDebug(
