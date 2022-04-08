@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.zip.GZIPOutputStream;
 import javax.xml.bind.DatatypeConverter;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -52,10 +53,13 @@ class BlobBuilder {
    *
    * @param filePath blob file full path
    * @param chunkData uncompressed chunk data
-   * @return compressed chunk data
+   * @param blockSizeToAlignTo block size to align to for encryption
+   * @return padded compressed chunk data, aligned to blockSizeToAlignTo, and actual length of
+   *     compressed data before padding at the end
    * @throws IOException
    */
-  static byte[] compress(String filePath, ByteArrayOutputStream chunkData) throws IOException {
+  static Pair<byte[], Integer> compress(
+      String filePath, ByteArrayOutputStream chunkData, int blockSizeToAlignTo) throws IOException {
     int uncompressedSize = chunkData.size();
     ByteArrayOutputStream compressedOutputStream = new ByteArrayOutputStream(uncompressedSize);
     try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(compressedOutputStream, true)) {
@@ -85,7 +89,10 @@ class BlobBuilder {
         firstCompressedSize,
         doubleCompressedSize);
 
-    return compressedOutputStream.toByteArray();
+    int compressedSize = compressedOutputStream.size();
+    int paddingSize = blockSizeToAlignTo - compressedSize % blockSizeToAlignTo;
+    compressedOutputStream.write(new byte[paddingSize]);
+    return new Pair<>(compressedOutputStream.toByteArray(), compressedSize);
   }
 
   /**

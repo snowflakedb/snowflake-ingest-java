@@ -44,8 +44,8 @@ public class Constants {
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 500;
   public static final int RESPONSE_ROW_SEQUENCER_IS_COMMITTED =
       26; // Don't change, should match server side
-  public static final String ENCRYPTION_ALGORITHM = "AES/CTR/PKCS7Padding";
-  public static final long ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
+  public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
+  public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
