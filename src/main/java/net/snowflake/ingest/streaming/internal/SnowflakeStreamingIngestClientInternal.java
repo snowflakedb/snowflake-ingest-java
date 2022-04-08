@@ -585,7 +585,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /**
-   * Get get ParameterProvider with configurable parameters
+   * Get ParameterProvider with configurable parameters
    *
    * @return ParameterProvider used by the client
    */
@@ -628,6 +628,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     jmxReporter.start();
 
     // add JVM and thread metrics too
+    jvmMemoryAndThreadMetrics = new MetricRegistry();
     jvmMemoryAndThreadMetrics.register(
         MetricRegistry.name("jvm", "memory"), new MemoryUsageGaugeSet());
     jvmMemoryAndThreadMetrics.register(
