@@ -1,9 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.MAX_API_RETRY;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,7 +17,16 @@ import org.apache.http.client.HttpClient;
 
 public class StreamingIngestUtils {
 
-  private static Interface StatusGettter
+  private static class DefaultStatusGetter<T extends StreamingIngestResponse>
+      implements Function<T, Long> {
+    public DefaultStatusGetter() {}
+
+    public Long apply(T input) {
+      return input.getStatusCode();
+    }
+  }
+
+  private static final DefaultStatusGetter defaultStatusGetter = new DefaultStatusGetter();
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -49,19 +56,21 @@ public class StreamingIngestUtils {
       String message,
       ServiceResponseHandler.ApiName apiName,
       HttpClient httpClient,
-      RequestBuilder requestBuilder) {
-    return executeWithRetries(
-        targetClass,
-        endpoint,
-        payload,
-        message,
-        apiName,
-        httpClient,
-        requestBuilder,
-        (T response) -> response.getStatusCode());
+      RequestBuilder requestBuilder)
+      throws IOException, IngestResponseException {
+    return (T)
+        executeWithRetries(
+            targetClass,
+            endpoint,
+            payload,
+            message,
+            apiName,
+            httpClient,
+            requestBuilder,
+            defaultStatusGetter);
   }
 
-  static <T extends StreamingIngestResponse> T executeWithRetries(
+  static <T> T executeWithRetries(
       Class<T> targetClass,
       String endpoint,
       String payload,
@@ -69,7 +78,7 @@ public class StreamingIngestUtils {
       ServiceResponseHandler.ApiName apiName,
       HttpClient httpClient,
       RequestBuilder requestBuilder,
-      Function<Object, Long> statusGetter)
+      Function<T, Long> statusGetter)
       throws IOException, IngestResponseException {
     T response =
         ServiceResponseHandler.unmarshallStreamingIngestResponse(
@@ -79,28 +88,24 @@ public class StreamingIngestUtils {
             apiName);
 
     // Check for Snowflake specific response code
-    if (response.getStatusCode() != RESPONSE_SUCCESS) {
-      if (response.getStatusCode() == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
-        int retries = 0;
-        while (retries < MAX_API_RETRY) {
-          response =
-              ServiceResponseHandler.unmarshallStreamingIngestResponse(
-                  httpClient.execute(
-                      requestBuilder.generateStreamingIngestPostRequest(
-                          payload, endpoint, message)),
-                  targetClass,
-                  apiName);
-          if ( response.getStatusCode() == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST
-              || response.getStatusCode() == RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL) {
-            retries++;
-            try {
-              Thread.sleep((1 << retries) * 1000);
-            } catch (InterruptedException e) {
-              throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
-            }
-          } else {
-            break;
+    if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
+      int retries = 0;
+      while (retries < MAX_API_RETRY) {
+        response =
+            ServiceResponseHandler.unmarshallStreamingIngestResponse(
+                httpClient.execute(
+                    requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message)),
+                targetClass,
+                apiName);
+        if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
+          retries++;
+          try {
+            Thread.sleep((1 << retries) * 1000);
+          } catch (InterruptedException e) {
+            throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
           }
+        } else {
+          break;
         }
       }
     }

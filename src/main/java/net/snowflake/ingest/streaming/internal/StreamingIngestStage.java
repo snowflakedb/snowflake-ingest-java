@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
@@ -282,6 +283,20 @@ class StreamingIngestStage {
     return metadata;
   }
 
+  private static class MapStatusGetter<T> implements Function<T, Long> {
+    public MapStatusGetter() {}
+
+    public Long apply(T input) {
+      try {
+        return ((Integer) ((Map<String, Object>) input).get("status_code")).longValue();
+      } catch (Exception e) {
+        return null;
+      }
+    }
+  }
+
+  private static final MapStatusGetter statusGetter = new MapStatusGetter();
+
   private JsonNode parseClientConfigureResponse(Map<String, Object> response) {
     JsonNode responseNode = mapper.valueToTree(response);
 
@@ -301,21 +316,23 @@ class StreamingIngestStage {
       throws IOException {
     try {
 
-      ClientConfigureResponse response =
+      Map<String, Object> response =
           executeWithRetries(
-              ClientConfigureResponse.class,
+              Map.class,
               CLIENT_CONFIGURE_ENDPOINT,
-              payload,
+              mapper.writeValueAsString(payload),
               "client configure",
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
-              requestBuilder);
+              requestBuilder,
+              statusGetter);
 
       // Check for Snowflake specific response code
-      if (!response.getStatusCode().equals((int) RESPONSE_SUCCESS)) {
-        throw new SFException(ErrorCode.CLIENT_CONFIGURE_FAILURE, response.getMessage().toString());
+      if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {
+        throw new SFException(
+            ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
       }
-      return response.getStageLocationInfo();
+      return response;
     } catch (IngestResponseException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
