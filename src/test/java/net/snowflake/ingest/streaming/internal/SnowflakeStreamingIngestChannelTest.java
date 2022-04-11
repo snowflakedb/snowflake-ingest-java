@@ -583,8 +583,17 @@ public class SnowflakeStreamingIngestChannelTest {
     channel.close().get();
     try {
       channel.flush(false).get();
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.CLOSED_CHANNEL.getMessageCode(), e.getVendorCode());
+    } catch (Exception e) {
+      Throwable t = e;
+      while (t != null) {
+        t = e.getCause();
+        if (t instanceof SFException) {
+          Assert.assertEquals(
+              ErrorCode.CLOSED_CHANNEL.getMessageCode(), ((SFException) t).getVendorCode());
+          return;
+        }
+      }
+      Assert.fail("Wrong exception: " + e.getMessage());
     }
   }
 

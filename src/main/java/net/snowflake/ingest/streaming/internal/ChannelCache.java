@@ -52,7 +52,9 @@ class ChannelCache {
   void closeAllChannels() {
     this.cache
         .values()
-        .forEach(channels -> channels.values().forEach(channel -> channel.markClosed()));
+        .forEach(
+            channels ->
+                channels.values().forEach(SnowflakeStreamingIngestChannelInternal::markClosed));
   }
 
   /** Remove a channel in the channel cache if the channel sequencer matches */
@@ -65,7 +67,7 @@ class ChannelCache {
           // We need to compare the channel sequencer in case the old channel was already been
           // removed
           return channelInCache != null
-                  && channelInCache.getChannelSequencer() == channel.getChannelSequencer()
+                  && channelInCache.getChannelSequencer() == channel.getChannelSequencer() // TODO: 4/11/22 this is wrong because the long is boxed so == checks refs and not the value
                   && v.remove(channel.getName()) != null
                   && v.isEmpty()
               ? null

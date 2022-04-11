@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -45,7 +46,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   private volatile boolean isValid;
 
   // Indicates whether the channel is closed
-  private volatile boolean isClosed;
+  private final AtomicReference<Boolean> isClosed;
 
   // Reference to the client that owns this channel
   private final SnowflakeStreamingIngestClientInternal owningClient;
@@ -64,6 +65,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
 
   // ON_ERROR option for this channel
   private final OpenChannelRequest.OnErrorOption onErrorOption;
+
+  private final CompletableFuture<Void> terminationFuture;
 
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
@@ -99,7 +102,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     this.channelSequencer = channelSequencer;
     this.rowSequencer = new AtomicLong(rowSequencer);
     this.isValid = true;
-    this.isClosed = false;
+    this.isClosed = new AtomicReference<>(false);
     this.owningClient = client;
     this.isTestMode = isTestMode;
     this.allocator =
@@ -112,6 +115,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     this.encryptionKey = encryptionKey;
     this.encryptionKeyId = encryptionKeyId;
     this.onErrorOption = onErrorOption;
+    this.terminationFuture = new CompletableFuture<>();
+
     logger.logDebug("Channel={} created for table={}", this.channelName, this.tableName);
   }
 
@@ -255,20 +260,31 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
         rowSequencer);
   }
 
-  /** @return a boolean to indicate whether the channel is closed or not */
+  /**
+   * @return {@code true} if the channel was closed, {@code false} otherwise. A return value of
+   *     {@code true} does not mean that the data is committed. For this, you should call {@link
+   *     #close()} and wait on the returned future.
+   */
   @Override
   public boolean isClosed() {
-    return this.isClosed;
+    return this.isClosed.get();
   }
 
-  /** Mark the channel as closed */
-  void markClosed() {
-    this.isClosed = true;
-    logger.logDebug(
-        "Channel is closed, name={}, channel sequencer={}, row sequencer={}",
-        getFullyQualifiedName(),
-        channelSequencer,
-        rowSequencer);
+  /**
+   * Mark the channel as closed atomically.
+   *
+   * @return {@code true} if the channel was already closed, {@code false} otherwise.
+   */
+  boolean markClosed() {
+    final boolean wasAlreadyClosed = this.isClosed.getAndSet(true);
+    if (!wasAlreadyClosed) {
+      logger.logDebug(
+          "Channel is closed, name={}, channel sequencer={}, row sequencer={}",
+          getFullyQualifiedName(),
+          channelSequencer,
+          rowSequencer);
+    }
+    return wasAlreadyClosed;
   }
 
   /**
@@ -281,7 +297,9 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     // Skip this check for closing because we need to set the channel to closed first and then flush
     // in case there is any leftover rows
     if (isClosed() && !closing) {
-      throw new SFException(ErrorCode.CLOSED_CHANNEL);
+      final CompletableFuture<Void> res = new CompletableFuture<>();
+      res.completeExceptionally(new SFException(ErrorCode.CLOSED_CHANNEL));
+      return res;
     }
 
     // Simply return if there is no data in the channel, this might not work if we support public
@@ -294,38 +312,51 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   }
 
   /**
-   * Close the channel (this will flush in-flight buffered data)
+   * Close the channel and flush in-flight buffered data.
    *
-   * @return future which will be complete when the channel is closed
+   * @return a {@link CompletableFuture} which will be completed when the channel is closed and the
+   *     data is successfully committed or has failed to be committed for some reason.
    */
   @Override
   public CompletableFuture<Void> close() {
     checkValidation();
 
-    if (isClosed()) {
-      return CompletableFuture.completedFuture(null);
+    if (!markClosed()) {
+      this.owningClient.removeChannelIfSequencersMatch(this);
+
+      // here we flush even if removal fails because, for some reason,
+      // the client sequencers did not match.
+      // This does not seem like the desirable behavior.
+
+      flush(true)
+          .thenRunAsync(
+              () -> {
+                List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
+                    this.owningClient.verifyChannelsAreFullyCommitted(
+                        Collections.singletonList(this));
+
+                this.arrowBuffer.close();
+
+                // Throw an exception if the channel has any uncommitted rows
+                if (!uncommittedChannels.isEmpty()) {
+                  throw new SFException(
+                      ErrorCode.CHANNEL_WITH_UNCOMMITTED_ROWS,
+                      uncommittedChannels.stream()
+                          .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
+                          .collect(Collectors.toList()));
+                }
+              })
+          .handle(
+              (ignored, t) -> {
+                if (t != null) {
+                  terminationFuture.completeExceptionally(t);
+                } else {
+                  terminationFuture.complete(null);
+                }
+                return null;
+              });
     }
-
-    markClosed();
-    this.owningClient.removeChannelIfSequencersMatch(this);
-    return flush(true)
-        .thenRunAsync(
-            () -> {
-              List<SnowflakeStreamingIngestChannelInternal> uncommittedChannels =
-                  this.owningClient.verifyChannelsAreFullyCommitted(
-                      Collections.singletonList(this));
-
-              this.arrowBuffer.close();
-
-              // Throw an exception if the channel has any uncommitted rows
-              if (!uncommittedChannels.isEmpty()) {
-                throw new SFException(
-                    ErrorCode.CHANNEL_WITH_UNCOMMITTED_ROWS,
-                    uncommittedChannels.stream()
-                        .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
-                        .collect(Collectors.toList()));
-              }
-            });
+    return terminationFuture;
   }
 
   /**
