@@ -16,7 +16,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -268,10 +267,10 @@ public class StreamingIngestStageTest {
         stage.refreshSnowflakeMetadata(true);
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
-    final ArgumentCaptor<Map<Object, Object>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+    final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
-            mapCaptor.capture(), endpointCaptor.capture(), Mockito.any());
+            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
     Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
     Assert.assertTrue(metadataWithAge.timestamp.isPresent());
     Assert.assertEquals(
@@ -304,10 +303,10 @@ public class StreamingIngestStageTest {
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
-    final ArgumentCaptor<Map<Object, Object>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+    final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
-            mapCaptor.capture(), endpointCaptor.capture(), Mockito.any());
+            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
     Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
     Assert.assertEquals(StageInfo.StageType.S3, metadata.getStageInfo().getStageType());
     Assert.assertEquals("foo/streaming_ingest/", metadata.getStageInfo().getLocation());
