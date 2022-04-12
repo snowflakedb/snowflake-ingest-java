@@ -307,7 +307,6 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     }
 
     markClosed();
-    this.owningClient.removeChannelIfSequencersMatch(this);
     return flush(true)
         .thenRunAsync(
             () -> {
@@ -316,6 +315,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                       Collections.singletonList(this));
 
               this.arrowBuffer.close();
+              this.owningClient.removeChannelIfSequencersMatch(this);
 
               // Throw an exception if the channel has any uncommitted rows
               if (!uncommittedChannels.isEmpty()) {
