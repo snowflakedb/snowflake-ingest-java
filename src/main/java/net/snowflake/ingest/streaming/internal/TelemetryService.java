@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Snapshot;
+import com.codahale.metrics.Timer;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -20,7 +21,7 @@ import net.snowflake.ingest.utils.Logging;
  */
 class TelemetryService {
   private enum TelemetryType {
-    STREAMING_INGEST_BLOB_SIZE("streaming_ingest_blob_size");
+    STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_sec");
 
     private final String name;
 
@@ -44,7 +45,6 @@ class TelemetryService {
   private static final String MIN = "min";
   private static final String MEDIAN = "median";
   private static final String MEAN = "mean";
-  private static final String PERCENTILE75TH = "75thPercentile";
   private static final String PERCENTILE99TH = "99thPercentile";
 
   private final Telemetry telemetry;
@@ -62,19 +62,22 @@ class TelemetryService {
     this.telemetry = TelemetryClient.createSessionlessTelemetry(httpClient, url);
   }
 
-  /** Report the blob size histogram */
-  void reportBlobSize(Histogram blobSizeHistogram) {
+  /** Report the SDK latency metrics */
+  void reportLatencyInSec(
+      Timer buildLatency, Timer uploadLatency, Timer registerLatency, Timer flushLatency) {
     ObjectNode msg = MAPPER.createObjectNode();
-    Snapshot snapshot = blobSizeHistogram.getSnapshot();
-    msg.put(COUNT, blobSizeHistogram.getCount());
-    msg.put(MAX, snapshot.getMax());
-    msg.put(MIN, snapshot.getMin());
-    msg.put(MEDIAN, snapshot.getMedian());
-    msg.put(MEAN, snapshot.getMean());
-    msg.put(PERCENTILE75TH, snapshot.get75thPercentile());
-    msg.put(PERCENTILE99TH, snapshot.get99thPercentile());
 
-    send(TelemetryType.STREAMING_INGEST_BLOB_SIZE, msg);
+    ObjectNode buildMsg = MAPPER.createObjectNode();
+    Snapshot buildSnapshot = buildLatency.getSnapshot();
+    buildMsg.put(COUNT, buildLatency.getCount());
+    buildMsg.put(MAX, buildSnapshot.getMax());
+    buildMsg.put(MIN, buildSnapshot.getMin());
+    buildMsg.put(MEDIAN, buildSnapshot.getMedian());
+    buildMsg.put(MEAN, buildSnapshot.getMean());
+    buildMsg.put(PERCENTILE99TH, buildSnapshot.get99thPercentile());
+    // msg.set("build_latency", buildMsg(buildLatency));
+
+    send(TelemetryType.STREAMING_INGEST_LATENCY_IN_SEC, msg);
   }
 
   /** Send log to Snowflake asynchronously through JDBC client telemetry */
@@ -86,7 +89,19 @@ class TelemetryService {
       telemetry.addLogToBatch(TelemetryUtil.buildJobData(msg));
       telemetry.sendBatchAsync();
     } catch (Exception e) {
-      logger.logError("Failed to send telemetry data, error: {}", e.getMessage());
+      logger.logWarn("Failed to send telemetry data, error: {}", e.getMessage());
     }
+  }
+
+  private ObjectNode buildMsg(Histogram histogram) {
+    ObjectNode msg = MAPPER.createObjectNode();
+    Snapshot buildSnapshot = histogram.getSnapshot();
+    msg.put(COUNT, histogram.getCount());
+    msg.put(MAX, buildSnapshot.getMax());
+    msg.put(MIN, buildSnapshot.getMin());
+    msg.put(MEDIAN, buildSnapshot.getMedian());
+    msg.put(MEAN, buildSnapshot.getMean());
+    msg.put(PERCENTILE99TH, buildSnapshot.get99thPercentile());
+    return msg;
   }
 }

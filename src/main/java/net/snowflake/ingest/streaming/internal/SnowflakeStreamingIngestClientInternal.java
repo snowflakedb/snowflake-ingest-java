@@ -461,7 +461,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
       this.flushService.shutdown();
-      Utils.closeAllocator(this.allocator);
+      Utils.closeAllocator(this.allocator, true);
     }
   }
 

@@ -266,18 +266,22 @@ public class Utils {
     };
   }
 
-  /** Utility function to check whether a streing is null or empty */
+  /** Utility function to check whether a string is null or empty */
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.isEmpty();
   }
 
   /** Release any outstanding memory and then close the buffer allocator */
-  public static void closeAllocator(BufferAllocator alloc) {
+  public static void closeAllocator(BufferAllocator alloc, boolean releaseBytes) {
     for (BufferAllocator childAlloc : alloc.getChildAllocators()) {
-      childAlloc.releaseBytes(childAlloc.getAllocatedMemory());
+      if (releaseBytes) {
+        childAlloc.releaseBytes(childAlloc.getAllocatedMemory());
+      }
       childAlloc.close();
     }
-    alloc.releaseBytes(alloc.getAllocatedMemory());
+    if (releaseBytes) {
+      alloc.releaseBytes(alloc.getAllocatedMemory());
+    }
     alloc.close();
   }
 }

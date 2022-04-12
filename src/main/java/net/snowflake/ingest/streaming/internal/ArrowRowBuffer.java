@@ -226,7 +226,9 @@ class ArrowRowBuffer {
       this.tempVectorsRoot.close();
     }
     this.fields.clear();
-    Utils.closeAllocator(this.allocator);
+    // Only release the bytes first if the channel is not valid, since it may have leftover data in
+    // the buffer
+    Utils.closeAllocator(this.allocator, !this.owningChannel.isValid());
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */
