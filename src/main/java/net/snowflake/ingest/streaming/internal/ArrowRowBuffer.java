@@ -286,6 +286,9 @@ class ArrowRowBuffer {
                     row, new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()), rowIndex));
           }
           rowIndex++;
+          if (this.rowCount == Integer.MAX_VALUE) {
+            throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+          }
         }
       } else {
         // If the on_error option is ABORT, simply throw the first exception
@@ -308,6 +311,9 @@ class ArrowRowBuffer {
           }
         }
         rowSize = tempRowSize;
+        if ((long) this.rowCount + tempRowCount > Integer.MAX_VALUE) {
+          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+        }
         this.rowCount += tempRowCount;
         this.bufferSize += rowSize;
         this.statsMap.forEach(
