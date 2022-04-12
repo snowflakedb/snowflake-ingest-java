@@ -799,7 +799,7 @@ public class StreamingIngestIT {
   }
 
   @Test
-  public void testChannelClose() {
+  public void testChannelClose() throws Exception {
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(TEST_DB)
@@ -816,48 +816,8 @@ public class StreamingIngestIT {
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
 
-    for (int i = 1; i < 15; i++) {
-      if (channel1.getLatestCommittedOffsetToken() != null
-          && channel1.getLatestCommittedOffsetToken().equals("999")) {
-        ResultSet result =
-            jdbcConnection
-                .createStatement()
-                .executeQuery(
-                    String.format(
-                        "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
-        result.next();
-        Assert.assertEquals(1000, result.getLong(1));
-
-        ResultSet result2 =
-            jdbcConnection
-                .createStatement()
-                .executeQuery(
-                    String.format(
-                        "select * from %s.%s.%s order by c1 limit 2",
-                        TEST_DB, TEST_SCHEMA, TEST_TABLE));
-        result2.next();
-        Assert.assertEquals("0", result2.getString(1));
-        result2.next();
-        Assert.assertEquals("1", result2.getString(1));
-
-        // Verify perf metrics
-        if (client.getParameterProvider().hasEnabledSnowpipeStreamingMetrics()) {
-          Assert.assertEquals(1, client.blobSizeHistogram.getCount());
-          if (BLOB_NO_HEADER && COMPRESS_BLOB_TWICE) {
-            Assert.assertEquals(3445, client.blobSizeHistogram.getSnapshot().getMax());
-          } else if (BLOB_NO_HEADER) {
-            Assert.assertEquals(3600, client.blobSizeHistogram.getSnapshot().getMax());
-          } else if (COMPRESS_BLOB_TWICE) {
-            Assert.assertEquals(3981, client.blobSizeHistogram.getSnapshot().getMax());
-          } else {
-            Assert.assertEquals(4115, client.blobSizeHistogram.getSnapshot().getMax());
-          }
-        }
-        return;
-      }
-      Thread.sleep(500);
-    }
-    Assert.fail("Row sequencer not updated before timeout");
+    // Close the channel to make sure everything is committed
+    channel1.close().get();
   }
 
   /** Verify the insert validation response and throw the exception if needed */

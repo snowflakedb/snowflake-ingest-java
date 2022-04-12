@@ -266,7 +266,7 @@ public class Utils {
     };
   }
 
-  /** Utility function to check whether a streing is null or empty */
+  /** Utility function to check whether a string is null or empty */
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.isEmpty();
   }

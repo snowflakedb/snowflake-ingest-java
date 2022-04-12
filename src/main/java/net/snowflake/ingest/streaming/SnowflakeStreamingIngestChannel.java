@@ -67,7 +67,8 @@ public interface SnowflakeStreamingIngestChannel {
   boolean isClosed();
 
   /**
-   * Close the channel, this will make sure all the data in this channel is committed before closing
+   * Close the channel, please use this function to make sure all the data in this channel is
+   * committed
    *
    * @return a completable future which will be completed when the channel is closed
    */
