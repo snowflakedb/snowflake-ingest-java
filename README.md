@@ -95,9 +95,9 @@ you would need to remove the following scope limits in pom.xml
     -   Here is the link for documentation [Key Pair
             Generator](https://docs.snowflake.net/manuals/user-guide/python-connector-example.html#using-key-pair-authentication)
 
-# Google Java Format
+# Code style
 
-- Download the formatter jar file from https://github.com/google/google-java-format, then run it with 
-```
-java -jar ~/path-to/google-java-format-1.10.0-all-deps.jar  -i $(find . -type f -name "*.java" | grep ".*/src/.*java")
-```
+We use [Google Java format](https://github.com/google/google-java-format) to format the code. To format all files, run:
+```bash
+./format.sh
+````
