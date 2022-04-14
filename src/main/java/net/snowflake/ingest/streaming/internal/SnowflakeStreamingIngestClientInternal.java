@@ -44,7 +44,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -62,6 +61,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -479,14 +479,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     will have that statusCode.  Here we collect all channels with RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL and use
     them to pull out the chunks to retry from blobs
      */
-    Set<ChannelKey> queueFullKeys =
+    Set<Pair<String, Long>> queueFullKeys =
         queueFullChunks.stream()
             .flatMap(
                 chunkRegisterStatus -> {
                   return chunkRegisterStatus.getChannelsStatus().stream()
                       .map(
                           channelStatus ->
-                              new ChannelKey(
+                              new Pair<String, Long>(
                                   channelStatus.getChannelName(),
                                   channelStatus.getChannelSequencer()));
                 })
@@ -501,7 +501,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                           chunkMetadata.getChannels().stream()
                               .map(
                                   channelMetadata ->
-                                      new ChannelKey(
+                                      new Pair(
                                           channelMetadata.getChannelName(),
                                           channelMetadata.getClientSequencer()))
                               .anyMatch(channelKey -> queueFullKeys.contains(channelKey)))
@@ -513,37 +513,6 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         });
 
     return retryBlobs;
-  }
-
-  private static class ChannelKey {
-    private String channelName;
-    private Long clientSequencer;
-
-    public ChannelKey(String channelName, Long clientSequencer) {
-      this.channelName = channelName;
-      this.clientSequencer = clientSequencer;
-    }
-
-    String getChannelName() {
-      return this.channelName;
-    }
-
-    Long getClientSequencer() {
-      return this.clientSequencer;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      ChannelKey that = (ChannelKey) o;
-      return channelName.equals(that.channelName) && clientSequencer.equals(that.clientSequencer);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(channelName, clientSequencer);
-    }
   }
 
   /** Close the client, which will flush first and then release all the resources */
