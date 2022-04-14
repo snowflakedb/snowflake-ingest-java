@@ -1,6 +1,12 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_PASSWORD;
+import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_USER;
+import static net.snowflake.ingest.utils.HttpUtil.PROXY_HOST;
+import static net.snowflake.ingest.utils.HttpUtil.PROXY_PORT;
+import static net.snowflake.ingest.utils.HttpUtil.USE_PROXY;
+import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
 import static org.mockito.Mockito.times;
 
 import java.io.ByteArrayInputStream;
@@ -12,12 +18,14 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
@@ -364,5 +372,50 @@ public class StreamingIngestStageTest {
     workers.awaitTermination(150, TimeUnit.MILLISECONDS);
 
     Mockito.verify(mockClient).execute(Mockito.any());
+  }
+
+  @Test
+  public void testGenerateProxyPropertiesForJDBC() {
+    String oldUseProxy = System.getProperty(USE_PROXY);
+    String oldProxyHost = System.getProperty(PROXY_HOST);
+    String oldProxyPort = System.getProperty(PROXY_PORT);
+    String oldUser = System.getProperty(HTTP_PROXY_USER);
+    String oldPassword = System.getProperty(HTTP_PROXY_PASSWORD);
+
+    String proxyHost = "localhost";
+    String proxyPort = "8080";
+    String user = "admin";
+    String password = "test";
+
+    try {
+      // Test empty properties when USE_PROXY is NOT set;
+      Properties props = generateProxyPropertiesForJDBC();
+      Assert.assertTrue(props.isEmpty());
+
+      System.setProperty(USE_PROXY, "true");
+      System.setProperty(PROXY_HOST, proxyHost);
+      System.setProperty(PROXY_PORT, proxyPort);
+      System.setProperty(HTTP_PROXY_USER, user);
+      System.setProperty(HTTP_PROXY_PASSWORD, password);
+
+      // Verify that properties are set
+      props = generateProxyPropertiesForJDBC();
+      Assert.assertEquals("true", props.get(SFSessionProperty.USE_PROXY.getPropertyKey()));
+      Assert.assertEquals(proxyHost, props.get(SFSessionProperty.PROXY_HOST.getPropertyKey()));
+      Assert.assertEquals(proxyPort, props.get(SFSessionProperty.PROXY_PORT.getPropertyKey()));
+      Assert.assertEquals(user, props.get(SFSessionProperty.PROXY_USER.getPropertyKey()));
+      Assert.assertEquals(password, props.get(SFSessionProperty.PROXY_PASSWORD.getPropertyKey()));
+    } finally {
+      // Cleanup
+      if (oldUseProxy != null) {
+        System.setProperty(USE_PROXY, oldUseProxy);
+        System.setProperty(PROXY_HOST, oldProxyHost);
+        System.setProperty(PROXY_PORT, oldProxyPort);
+      }
+      if (oldUser != null) {
+        System.setProperty(HTTP_PROXY_USER, oldUser);
+        System.setProperty(HTTP_PROXY_PASSWORD, oldPassword);
+      }
+    }
   }
 }

@@ -8,6 +8,7 @@ import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPI
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -17,6 +18,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
@@ -43,7 +45,6 @@ class StreamingIngestStage {
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
   static final int MAX_RETRY_COUNT = 1;
-  private String clientPrefix;
 
   /**
    * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
@@ -79,6 +80,10 @@ class StreamingIngestStage {
   private final RequestBuilder requestBuilder;
   private final String role;
   private final String clientName;
+  private String clientPrefix;
+
+  // Proxy parameters that we set while calling the Snowflake JDBC to upload the streams
+  private final Properties proxyProperties;
 
   StreamingIngestStage(
       boolean isTestMode,
@@ -91,6 +96,7 @@ class StreamingIngestStage {
     this.role = role;
     this.requestBuilder = requestBuilder;
     this.clientName = clientName;
+    this.proxyProperties = generateProxyPropertiesForJDBC();
 
     if (!isTestMode) {
       refreshSnowflakeMetadata();
@@ -113,14 +119,12 @@ class StreamingIngestStage {
       HttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName,
-      SnowflakeFileTransferMetadataWithAge testMetadata) {
+      SnowflakeFileTransferMetadataWithAge testMetadata)
+      throws SnowflakeSQLException, IOException {
+    this(isTestMode, role, httpClient, requestBuilder, clientName);
     if (!isTestMode) {
       throw new SFException(ErrorCode.INTERNAL_ERROR);
     }
-    this.httpClient = httpClient;
-    this.role = role;
-    this.requestBuilder = requestBuilder;
-    this.clientName = clientName;
     this.fileTransferMetadataWithAge = testMetadata;
   }
 
@@ -177,6 +181,7 @@ class StreamingIngestStage {
               .setOcspMode(OCSPMode.FAIL_OPEN)
               .setStreamingIngestClientKey(this.clientPrefix)
               .setStreamingIngestClientName(this.clientName)
+              .setProxyProperties(this.proxyProperties)
               .build());
     } catch (SnowflakeSQLException e) {
       if (e.getErrorCode() != CLOUD_STORAGE_CREDENTIALS_EXPIRED || retryCount >= MAX_RETRY_COUNT) {
@@ -310,7 +315,7 @@ class StreamingIngestStage {
       }
       return response;
     } catch (IngestResponseException e) {
-      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE);
+      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
   }
 
