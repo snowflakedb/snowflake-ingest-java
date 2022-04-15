@@ -1,6 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.MAX_API_RETRY;
+import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,6 +12,7 @@ import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.http.client.HttpClient;
 
@@ -28,7 +29,17 @@ public class StreamingIngestUtils {
 
   private static final DefaultStatusGetter defaultStatusGetter = new DefaultStatusGetter();
 
+  private static final Logging LOGGER = new Logging(StreamingIngestUtils.class);
+
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  static void sleepForRetry(int executionCount) {
+    try {
+      Thread.sleep((1 << (executionCount + 1)) * 1000);
+    } catch (InterruptedException e) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
+    }
+  }
 
   static <T extends StreamingIngestResponse> T executeWithRetries(
       Class<T> targetClass,
@@ -80,35 +91,28 @@ public class StreamingIngestUtils {
       RequestBuilder requestBuilder,
       Function<T, Long> statusGetter)
       throws IOException, IngestResponseException {
-    T response =
-        ServiceResponseHandler.unmarshallStreamingIngestResponse(
-            httpClient.execute(
-                requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message)),
-            targetClass,
-            apiName);
+    int retries = 0;
+    T response;
+    do {
+      response =
+          ServiceResponseHandler.unmarshallStreamingIngestResponse(
+              httpClient.execute(
+                  requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message)),
+              targetClass,
+              apiName);
 
-    // Check for Snowflake specific response code
-    if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
-      int retries = 0;
-      while (retries < MAX_API_RETRY) {
-        response =
-            ServiceResponseHandler.unmarshallStreamingIngestResponse(
-                httpClient.execute(
-                    requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message)),
-                targetClass,
-                apiName);
-        if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
-          retries++;
-          try {
-            Thread.sleep((1 << retries) * 1000);
-          } catch (InterruptedException e) {
-            throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
-          }
-        } else {
-          break;
-        }
+      if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
+        LOGGER.logDebug(
+            "Retrying request for streaming ingest, endpoint={}, retryCount={}, responseCode={}",
+            endpoint,
+            retries,
+            statusGetter.apply(response));
+        retries++;
+        sleepForRetry(retries);
+      } else {
+        return response;
       }
-    }
+    } while (retries <= MAX_STREAMING_INGEST_API_CHANNEL_RETRY);
     return response;
   }
 }

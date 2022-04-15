@@ -75,6 +75,7 @@ class ChannelsStatusResponse extends StreamingIngestResponse {
   }
 
   @JsonProperty("status_code")
+  @Override
   Long getStatusCode() {
     return this.statusCode;
   }

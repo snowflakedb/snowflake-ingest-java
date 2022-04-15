@@ -290,7 +290,7 @@ class StreamingIngestStage {
       try {
         return ((Integer) ((Map<String, Object>) input).get("status_code")).longValue();
       } catch (Exception e) {
-        return null;
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "failed to get status_code from response");
       }
     }
   }

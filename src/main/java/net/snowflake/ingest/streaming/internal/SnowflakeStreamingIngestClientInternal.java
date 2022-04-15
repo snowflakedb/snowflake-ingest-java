@@ -8,14 +8,16 @@ import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STR
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
+import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.sleepForRetry;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.MAX_API_RETRY;
+import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
@@ -364,6 +366,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   void registerBlobs(List<BlobMetadata> blobs) {
     this.registerBlobs(blobs, 0);
   }
+
   /**
    * Register the uploaded blobs to a Snowflake table
    *
@@ -372,9 +375,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   void registerBlobs(List<BlobMetadata> blobs, final int executionCount) {
     logger.logDebug(
-        "Register blob request start for blob={}, client={}",
+        "Register blob request start for blob={}, client={}, executionCount={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
-        this.name);
+        this.name,
+        executionCount);
 
     RegisterBlobResponse response = null;
     try {
@@ -397,10 +401,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
         logger.logDebug(
-            "Register blob request failed for blob={}, client={}, message={}",
+            "Register blob request failed for blob={}, client={}, message={}, executionCount={}",
             blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
             this.name,
-            response.getMessage());
+            response.getMessage(),
+            executionCount);
         throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.getMessage());
       }
     } catch (IOException | IngestResponseException e) {
@@ -408,9 +413,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     logger.logDebug(
-        "Register blob request succeeded for blob={}, client={}",
+        "Register blob request succeeded for blob={}, client={}, executionCount={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
-        this.name);
+        this.name,
+        executionCount);
 
     // We will retry any blob chunks that were rejected becuase internal Snowflake queues are full
     Set<ChunkRegisterStatus> queueFullChunks = new HashSet<>();
@@ -428,18 +434,22 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
                                         // If the chunk queue is full, we wait and retry the chunks
-                                        if (channelStatus.getStatusCode()
-                                                == RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL
-                                            && executionCount < MAX_API_RETRY) {
+                                        if ((channelStatus.getStatusCode()
+                                                    == RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL
+                                                || channelStatus.getStatusCode()
+                                                    == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST)
+                                            && executionCount
+                                                < MAX_STREAMING_INGEST_API_CHANNEL_RETRY) {
                                           queueFullChunks.add(chunkStatus);
                                         } else {
                                           logger.logWarn(
                                               "Channel has been invalidated because of failure"
                                                   + " response, name={}, channel sequencer={},"
-                                                  + " status code={}",
+                                                  + " status code={}, executionCount={}",
                                               channelStatus.getChannelName(),
                                               channelStatus.getChannelSequencer(),
-                                              channelStatus.getStatusCode());
+                                              channelStatus.getStatusCode(),
+                                              executionCount);
                                           channelCache.invalidateChannelIfSequencersMatch(
                                               chunkStatus.getDBName(),
                                               chunkStatus.getSchemaName(),
@@ -451,15 +461,16 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                     })));
 
     if (!queueFullChunks.isEmpty()) {
+      logger.logDebug(
+          "Retrying registerBlobs request, blobs={}, retried_chunks={}, executionCount={}",
+          blobs,
+          queueFullChunks,
+          executionCount);
       List<BlobMetadata> retryBlobs = this.getRetryBlobs(queueFullChunks, blobs);
       if (retryBlobs.isEmpty()) {
         throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to retry queue full chunks");
       }
-      try {
-        Thread.sleep((1 << (executionCount + 1)) * 1000);
-      } catch (InterruptedException e) {
-        throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
-      }
+      sleepForRetry(executionCount);
       this.registerBlobs(retryBlobs, executionCount + 1);
     }
   }

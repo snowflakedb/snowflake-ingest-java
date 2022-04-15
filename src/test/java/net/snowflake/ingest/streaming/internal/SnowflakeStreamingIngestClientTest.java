@@ -3,7 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.MAX_API_RETRY;
+import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
@@ -835,7 +835,7 @@ public class SnowflakeStreamingIngestClientTest {
     client.getChannelCache().addChannel(channel3);
     client.getChannelCache().addChannel(channel4);
     client.registerBlobs(blobs);
-    Mockito.verify(requestBuilder, Mockito.times(MAX_API_RETRY + 1))
+    Mockito.verify(requestBuilder, Mockito.times(MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1))
         .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
     Assert.assertFalse(channel1.isValid());
     Assert.assertFalse(channel2.isValid());

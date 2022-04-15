@@ -50,7 +50,7 @@ public class Constants {
       26; // Don't change, should match server side
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
-  public static final int MAX_API_RETRY = 3;
+  public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
