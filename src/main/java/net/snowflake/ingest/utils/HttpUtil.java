@@ -6,6 +6,7 @@ package net.snowflake.ingest.utils;
 
 import com.google.common.base.Strings;
 import java.security.Security;
+import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -23,8 +24,8 @@ import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
@@ -41,6 +42,11 @@ public class HttpUtil {
 
   private static String PROXY_SCHEME = "http";
   private static int MAX_RETRIES = 3;
+
+  private static final int DEFAULT_MAX_CONNECTIONS_PER_ROUTE = 100;
+  private static final int DEFAULT_MAX_CONNECTIONS = 100;
+
+  private static final long MONITOR_THREAD_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
 
   private static HttpClient httpClient;
 
@@ -64,12 +70,17 @@ public class HttpUtil {
         new SSLConnectionSocketFactory(
             sslContext, new String[] {"TLSv1.2"}, null, new DefaultHostnameVerifier());
 
+    PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+    connectionManager.setDefaultMaxPerRoute(DEFAULT_MAX_CONNECTIONS_PER_ROUTE);
+    connectionManager.setMaxTotal(DEFAULT_MAX_CONNECTIONS);
+
     /**
      * Use a anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
      * retry time is 3. The interval time is backoff.
      */
     HttpClientBuilder clientBuilder =
-        HttpClients.custom()
+        HttpClientBuilder.create()
+            .setConnectionManager(connectionManager)
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
             .setRetryHandler(getHttpRequestRetryHandler());
@@ -103,6 +114,12 @@ public class HttpUtil {
     }
 
     httpClient = clientBuilder.build();
+
+    // Monitors in a separate thread where it closes any idle connections
+    // https://hc.apache.org/httpcomponents-client-4.5.x/current/tutorial/html/connmgmt.html
+    IdleConnectionMonitorThread idleConnectionMonitorThread =
+        new IdleConnectionMonitorThread(connectionManager);
+    idleConnectionMonitorThread.start();
   }
 
   private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
@@ -173,5 +190,45 @@ public class HttpUtil {
     HttpClientContext clientContext = HttpClientContext.adapt(httpContext);
     HttpRequest httpRequest = clientContext.getRequest();
     return httpRequest.getRequestLine().getUri();
+  }
+
+  /** Thread to monitor expired and idle connection, if found clear it and return it back to pool */
+  private static class IdleConnectionMonitorThread extends Thread {
+
+    private final PoolingHttpClientConnectionManager connectionManager;
+    private volatile boolean shutdown;
+
+    public IdleConnectionMonitorThread(PoolingHttpClientConnectionManager connectionManager) {
+      super();
+      this.connectionManager = connectionManager;
+    }
+
+    @Override
+    public void run() {
+      try {
+        LOGGER.debug("Starting Idle Connection Monitor Thread ");
+        synchronized (this) {
+          while (!shutdown) {
+            wait(MONITOR_THREAD_INTERVAL_MS);
+
+            // Close expired connections
+            connectionManager.closeExpiredConnections();
+            // Optionally, close connections
+            // that have been idle longer than 120 sec
+            connectionManager.closeIdleConnections(120, TimeUnit.SECONDS);
+          }
+        }
+      } catch (InterruptedException ex) {
+        LOGGER.debug("Terminating Idle Connection Monitor Thread ");
+      }
+    }
+
+    public void shutdown() {
+      LOGGER.debug("Shutdown Idle Connection Monitor Thread ");
+      shutdown = true;
+      synchronized (this) {
+        notifyAll();
+      }
+    }
   }
 }
