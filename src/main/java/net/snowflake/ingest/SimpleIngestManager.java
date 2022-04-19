@@ -31,10 +31,10 @@ import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.BackOffException;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.StagedFileWrapper;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -196,7 +196,7 @@ public class SimpleIngestManager implements AutoCloseable {
   // logger object for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(SimpleIngestManager.class);
   // HTTP Client that we use for sending requests to the service
-  private HttpClient httpClient;
+  private CloseableHttpClient httpClient;
 
   // the account in which the user lives
   private String account;
@@ -557,10 +557,10 @@ public class SimpleIngestManager implements AutoCloseable {
         builder.generateInsertRequest(request, pipe, files, showSkippedFiles);
 
     // send the request and get a response....
-    HttpResponse response = httpClient.execute(httpPostForIngestFile);
-
-    LOGGER.info("Attempting to unmarshall insert response - {}", response);
-    return ServiceResponseHandler.unmarshallIngestResponse(response);
+    try (CloseableHttpResponse response = httpClient.execute(httpPostForIngestFile)) {
+      LOGGER.info("Attempting to unmarshall insert response - {}", response);
+      return ServiceResponseHandler.unmarshallIngestResponse(response);
+    }
   }
 
   /**
@@ -587,10 +587,10 @@ public class SimpleIngestManager implements AutoCloseable {
         builder.generateHistoryRequest(requestId, pipe, recentSeconds, beginMark);
 
     // send the request and get a response...
-    HttpResponse response = httpClient.execute(httpGetHistory);
-
-    LOGGER.info("Attempting to unmarshall history response - {}", response);
-    return ServiceResponseHandler.unmarshallHistoryResponse(response);
+    try (CloseableHttpResponse response = httpClient.execute(httpGetHistory)) {
+      LOGGER.info("Attempting to unmarshall history response - {}", response);
+      return ServiceResponseHandler.unmarshallHistoryResponse(response);
+    }
   }
 
   /**
@@ -616,13 +616,14 @@ public class SimpleIngestManager implements AutoCloseable {
       requestId = UUID.randomUUID();
     }
 
-    HttpResponse response =
+    try (CloseableHttpResponse response =
         httpClient.execute(
             builder.generateHistoryRangeRequest(
-                requestId, pipe, startTimeInclusive, endTimeExclusive));
+                requestId, pipe, startTimeInclusive, endTimeExclusive))) {
 
-    LOGGER.info("Attempting to unmarshall history range response - {}", response);
-    return ServiceResponseHandler.unmarshallHistoryRangeResponse(response);
+      LOGGER.info("Attempting to unmarshall history range response - {}", response);
+      return ServiceResponseHandler.unmarshallHistoryRangeResponse(response);
+    }
   }
 
   /**
