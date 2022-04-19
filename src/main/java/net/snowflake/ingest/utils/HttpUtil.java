@@ -15,13 +15,13 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
@@ -42,9 +42,9 @@ public class HttpUtil {
   private static String PROXY_SCHEME = "http";
   private static int MAX_RETRIES = 3;
 
-  private static HttpClient httpClient;
+  private static CloseableHttpClient httpClient;
 
-  public static HttpClient getHttpClient() {
+  public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
       initHttpClient();
     }
