@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.utils;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import java.security.Security;
 import java.util.concurrent.TimeUnit;
@@ -16,13 +17,13 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -48,14 +49,25 @@ public class HttpUtil {
 
   private static final long MONITOR_THREAD_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
 
-  private static HttpClient httpClient;
+  private static CloseableHttpClient httpClient;
 
-  public static HttpClient getHttpClient() {
+  private static PoolingHttpClientConnectionManager connectionManager;
+
+  public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
       initHttpClient();
     }
 
     return httpClient;
+  }
+
+  /**
+   * Get the connection manager used for the HttpClient
+   * @return PoolingHttpClientConnectionManager instance
+   */
+  @VisibleForTesting
+  public static PoolingHttpClientConnectionManager getConnectionManager() {
+    return connectionManager;
   }
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
@@ -70,7 +82,7 @@ public class HttpUtil {
         new SSLConnectionSocketFactory(
             sslContext, new String[] {"TLSv1.2"}, null, new DefaultHostnameVerifier());
 
-    PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+    connectionManager = new PoolingHttpClientConnectionManager(120, TimeUnit.SECONDS);
     connectionManager.setDefaultMaxPerRoute(DEFAULT_MAX_CONNECTIONS_PER_ROUTE);
     connectionManager.setMaxTotal(DEFAULT_MAX_CONNECTIONS);
 
@@ -81,6 +93,7 @@ public class HttpUtil {
     HttpClientBuilder clientBuilder =
         HttpClientBuilder.create()
             .setConnectionManager(connectionManager)
+            .setConnectionTimeToLive(120, TimeUnit.SECONDS)
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
             .setRetryHandler(getHttpRequestRetryHandler());
@@ -214,8 +227,8 @@ public class HttpUtil {
             // Close expired connections
             connectionManager.closeExpiredConnections();
             // Optionally, close connections
-            // that have been idle longer than 120 sec
-            connectionManager.closeIdleConnections(120, TimeUnit.SECONDS);
+            // that have been idle longer than 30 sec
+            connectionManager.closeIdleConnections(30, TimeUnit.SECONDS);
           }
         }
       } catch (InterruptedException ex) {
