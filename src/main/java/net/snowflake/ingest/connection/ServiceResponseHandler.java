@@ -76,13 +76,7 @@ public final class ServiceResponseHandler {
       return null;
     }
 
-    // grab the response entity
-    HttpEntity responseEntity = response.getEntity();
-    String blob = EntityUtils.toString(responseEntity);
-
-    // consume entity as recommended in
-    // https://hc.apache.org/httpcomponents-client-4.5.x/quickstart.html
-    EntityUtils.consume(responseEntity);
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
     // Read out the blob entity into a class
     return mapper.readValue(blob, IngestResponse.class);
@@ -118,13 +112,7 @@ public final class ServiceResponseHandler {
       return null;
     }
 
-    // grab the string version of the response entity
-    HttpEntity responseEntity = response.getEntity();
-    String blob = EntityUtils.toString(responseEntity);
-
-    // consume entity as recommended in
-    // https://hc.apache.org/httpcomponents-client-4.5.x/quickstart.html
-    EntityUtils.consume(responseEntity);
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
     // read out our blob into a pojo
     return mapper.readValue(blob, HistoryResponse.class);
@@ -152,14 +140,7 @@ public final class ServiceResponseHandler {
       return null;
     }
 
-    // grab the string version of the response entity
-    HttpEntity responseEntity = response.getEntity();
-    String blob = EntityUtils.toString(responseEntity);
-
-    // consume entity as recommended in
-    // https://hc.apache.org/httpcomponents-client-4.5.x/quickstart.html
-    EntityUtils.consume(responseEntity);
-
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
     // read out our blob into a pojo
     return mapper.readValue(blob, HistoryRangeResponse.class);
   }
@@ -183,10 +164,31 @@ public final class ServiceResponseHandler {
         // We don't know how to respond now...
       default:
         LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
-        String blob = EntityUtils.toString(response.getEntity());
+        String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
         throw new IngestResponseException(
             statusLine.getStatusCode(),
             IngestResponseException.IngestExceptionBody.parseBody(blob));
     }
+  }
+
+  /**
+   * Consumes the HttpEntity as mentioned in <a
+   * href="https://hc.apache.org/httpcomponents-client-4.5.x/quickstart.html">HttpClient Docs</a>
+   *
+   * <p>Also returns the string version of this entity.
+   *
+   * @param httpResponseEntity the response entity obtained after successfully calling associated
+   *     Rest APIs
+   * @return String version of this http response which will be later used to deserialize into
+   *     respective Response Object
+   * @throws IOException if parsing error
+   */
+  private static String consumeAndReturnResponseEntityAsString(HttpEntity httpResponseEntity)
+      throws IOException {
+    // grab the string version of the response entity
+    String responseEntityAsString = EntityUtils.toString(httpResponseEntity);
+
+    EntityUtils.consumeQuietly(httpResponseEntity);
+    return responseEntityAsString;
   }
 }
