@@ -7,6 +7,7 @@ package net.snowflake.ingest.connection;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.UUID;
 import net.snowflake.ingest.utils.BackOffException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -24,6 +25,31 @@ public final class ServiceResponseHandler {
   // Create a logger for this class
   private static final Logger LOGGER = LoggerFactory.getLogger(ServiceResponseHandler.class);
 
+  /**
+   * Enums for Snowpipe REST API:
+   * https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-apis.html Used in
+   * handleExceptionalStatus for logging purpose
+   */
+  public enum ApiName {
+    INSERT_FILES("POST"),
+    INSERT_REPORT("GET"),
+    LOAD_HISTORY_SCAN("GET"),
+    CLIENT_CONFIGURE("POST"),
+    CLIENT_STATUS("GET"),
+    STREAMING_OPEN_CHANNEL("POST"),
+    STREAMING_CHANNEL_STATUS("POST"),
+    STREAMING_REGISTER_BLOB("POST"),
+    STREAMING_CLIENT_CONFIGURE("POST");
+    private final String httpMethod;
+
+    private ApiName(String httpMethod) {
+      this.httpMethod = httpMethod;
+    }
+
+    public String getHttpMethod() {
+      return httpMethod;
+    }
+  }
   // the object mapper we use for deserialization
   static ObjectMapper mapper = new ObjectMapper();
 
@@ -35,7 +61,7 @@ public final class ServiceResponseHandler {
   /**
    * isStatusOK - Checks if we have a status in the 2xx range
    *
-   * @param statusLine - the status line containing the code
+   * @param statusLine the status line containing the code
    * @return whether the status x is in the range [200, 300)
    */
   private static boolean isStatusOK(StatusLine statusLine) {
@@ -49,32 +75,22 @@ public final class ServiceResponseHandler {
    * IngestResponse object
    *
    * @param response the HTTPResponse we want to distill into an IngestResponse
+   * @param requestId
    * @return An IngestResponse with all of the parsed out information
-   * @throws IOException - if our entity is somehow corrupt or we can't get it
-   * @throws BackOffException if we have a 503 response
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
    */
-  public static IngestResponse unmarshallIngestResponse(HttpResponse response)
-      throws IOException, IngestResponseException {
+  public static IngestResponse unmarshallIngestResponse(HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
     // we can't unmarshall a null response
     if (response == null) {
       LOGGER.warn("Null argument passed to unmarshallIngestResponse");
       throw new IllegalArgumentException();
     }
 
-    // Grab the status line from the response
-    StatusLine statusLine = response.getStatusLine();
-
-    // If we didn't get a good status code, handle it
-    if (!isStatusOK(statusLine)) {
-
-      // Exception status
-      LOGGER.warn(
-          "Exceptional Status Code found in unmarshallInsert Response  - {}",
-          statusLine.getStatusCode());
-
-      handleExceptionalStatus(statusLine, response);
-      return null;
-    }
+    // handle the exceptional status code
+    handleExceptionalStatus(response, requestId, ApiName.INSERT_FILES);
 
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
@@ -87,30 +103,22 @@ public final class ServiceResponseHandler {
    * HistoryResponse object
    *
    * @param response the HttpResponse object we are trying to deserialize
+   * @param requestId
    * @return a HistoryResponse with all the parsed out information
-   * @throws IOException - if we have an uncategorized network issue
-   * @throws BackOffException - if have a 503 issue
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
    */
-  public static HistoryResponse unmarshallHistoryResponse(HttpResponse response)
-      throws IOException, IngestResponseException {
+  public static HistoryResponse unmarshallHistoryResponse(HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
     // we can't unmarshall a null response
     if (response == null) {
       LOGGER.warn("Null response passed to unmarshallHistoryResponse");
       throw new IllegalArgumentException();
     }
 
-    // Grab the status line
-    StatusLine line = response.getStatusLine();
-
-    if (!isStatusOK(line)) {
-      // A network issue occurred!
-      LOGGER.warn(
-          "Exceptional Status Code found in unmarshallHistoryResponse - {}", line.getStatusCode());
-
-      // handle the exceptional status code
-      handleExceptionalStatus(line, response);
-      return null;
-    }
+    // handle the exceptional status code
+    handleExceptionalStatus(response, requestId, ApiName.INSERT_REPORT);
 
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
@@ -118,8 +126,19 @@ public final class ServiceResponseHandler {
     return mapper.readValue(blob, HistoryResponse.class);
   }
 
-  public static HistoryRangeResponse unmarshallHistoryRangeResponse(HttpResponse response)
-      throws IOException, IngestResponseException {
+  /**
+   * Given an HttpResponse object - attempts to deserialize it into a HistoryRangeResponse
+   *
+   * @param response the HttpResponse object we are trying to deserialize
+   * @param requestId
+   * @return HistoryRangeResponse
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
+   */
+  public static HistoryRangeResponse unmarshallHistoryRangeResponse(
+      HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
 
     // we can't unmarshall a null response
     if (response == null) {
@@ -127,18 +146,8 @@ public final class ServiceResponseHandler {
       throw new IllegalArgumentException();
     }
 
-    // Grab the status line
-    StatusLine line = response.getStatusLine();
-    if (!isStatusOK(line)) {
-      // A network issue occurred!
-      LOGGER.warn(
-          "Exceptional Status Code found in " + "unmarshallHistoryRangeResponse - {}",
-          line.getStatusCode());
-
-      // handle the exceptional status code
-      handleExceptionalStatus(line, response);
-      return null;
-    }
+    // handle the exceptional status code
+    handleExceptionalStatus(response, requestId, ApiName.LOAD_HISTORY_SCAN);
 
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
     // read out our blob into a pojo
@@ -146,28 +155,127 @@ public final class ServiceResponseHandler {
   }
 
   /**
-   * handleExceptionStatusCode - throws the correct error for a status
+   * unmarshallConfigureClientResponse - Given an HttpResponse object, attempts to deserialize it
+   * into a ConfigureClientResponse
    *
-   * @param statusLine the status line we want to check
-   * @throws BackOffException -- if we have a 503 exception
-   * @throws IOException - if we don't know what it is
+   * @param response HttpResponse
+   * @param requestId
+   * @return ConfigureClientResponse
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
    */
-  private static void handleExceptionalStatus(StatusLine statusLine, HttpResponse response)
-      throws IOException, IngestResponseException {
-    // if we have a 503 exception throw a backoff
-    switch (statusLine.getStatusCode()) {
-        // If we have a 503, BACKOFF
-      case HttpStatus.SC_SERVICE_UNAVAILABLE:
-        LOGGER.warn("503 Status hit, backoff");
-        throw new BackOffException();
+  public static ConfigureClientResponse unmarshallConfigureClientResponse(
+      HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
+    if (response == null) {
+      LOGGER.warn("Null response passed to unmarshallConfigureClientResponse");
+      throw new IllegalArgumentException();
+    }
 
-        // We don't know how to respond now...
-      default:
-        LOGGER.error("Status code {} found in response from service", statusLine.getStatusCode());
-        String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
-        throw new IngestResponseException(
-            statusLine.getStatusCode(),
-            IngestResponseException.IngestExceptionBody.parseBody(blob));
+    // handle the exceptional status code
+    handleExceptionalStatus(response, requestId, ApiName.CLIENT_CONFIGURE);
+
+    // grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    // read out our blob into a pojo
+    return mapper.readValue(blob, ConfigureClientResponse.class);
+  }
+
+  /**
+   * unmarshallGetClientStatus - Given an HttpResponse object, attempts to deserialize it into a
+   * ClientStatusResponse
+   *
+   * @param response HttpResponse
+   * @param requestId
+   * @return ClientStatusResponse
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - if we have an uncategorized network issue
+   * @throws BackOffException - if we have a 503 issue
+   */
+  public static ClientStatusResponse unmarshallGetClientStatus(
+      HttpResponse response, UUID requestId)
+      throws IOException, IngestResponseException, BackOffException {
+    if (response == null) {
+      LOGGER.warn("Null response passed to unmarshallClientStatusResponse");
+      throw new IllegalArgumentException();
+    }
+
+    // handle the exceptional status code
+    handleExceptionalStatus(response, requestId, ApiName.CLIENT_STATUS);
+
+    // grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    // read out our blob into a pojo
+    return mapper.readValue(blob, ClientStatusResponse.class);
+  }
+
+  /**
+   * unmarshallStreamingIngestResponse Given an HttpResponse object - attempts to deserialize it
+   * into an Object based on input type
+   *
+   * @param response http response from server
+   * @param valueType the class type
+   * @param apiName enum to represent the corresponding api name
+   * @return the corresponding response object based on input class type
+   * @throws IOException if a low-level I/O problem
+   * @throws IngestResponseException if received an exceptional status code
+   */
+  public static <T> T unmarshallStreamingIngestResponse(
+      HttpResponse response, Class<T> valueType, ApiName apiName)
+      throws IOException, IngestResponseException {
+    // We can't unmarshall a null response
+    if (response == null) {
+      LOGGER.warn("Null response passed to {}", valueType.getName());
+      throw new IllegalArgumentException();
+    }
+
+    // Handle the exceptional status code
+    handleExceptionalStatus(response, null, apiName);
+
+    // Grab the string version of the response entity
+    String blob = EntityUtils.toString(response.getEntity());
+
+    // Read out our blob into a pojo
+    return mapper.readValue(blob, valueType);
+  }
+
+  /**
+   * handleExceptionStatusCode - throws the correct error when response status is not OK
+   *
+   * @param response HttpResponse
+   * @param requestId
+   * @throws IOException if our entity is somehow corrupt or we can't get it
+   * @throws IngestResponseException - for all other non OK status
+   * @throws BackOffException - if we have a 503 issue
+   */
+  private static void handleExceptionalStatus(
+      HttpResponse response, UUID requestId, ApiName apiName)
+      throws IOException, IngestResponseException, BackOffException {
+    StatusLine statusLine = response.getStatusLine();
+    if (!isStatusOK(statusLine)) {
+      // if we have a 503 exception throw a backoff
+      switch (statusLine.getStatusCode()) {
+          // If we have a 503, BACKOFF
+        case HttpStatus.SC_SERVICE_UNAVAILABLE:
+          LOGGER.warn(
+              "503 Status hit from {}, backoff, requestId:{}",
+              apiName,
+              requestId == null ? "" : requestId.toString());
+          throw new BackOffException();
+        default:
+          LOGGER.error(
+              "Exceptional Status Code from {}: {}, requestId:{}",
+              apiName,
+              statusLine.getStatusCode(),
+              requestId == null ? "" : requestId.toString());
+          String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
+          throw new IngestResponseException(
+              statusLine.getStatusCode(),
+              IngestResponseException.IngestExceptionBody.parseBody(blob));
+      }
     }
   }
 

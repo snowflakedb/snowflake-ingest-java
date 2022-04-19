@@ -43,7 +43,7 @@ public class HistoryResponse {
     result.append("\nHistory Result:\n");
     result.append("Pipe: ").append(pipe).append("\n");
     String sep = "";
-    for (HistoryResponse.FileEntry file : files) {
+    for (FileEntry file : files) {
       result.append(sep).append("{\n");
       result.append(file.toString());
       result.append("}");
