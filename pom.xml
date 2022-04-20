@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>0.10.4-beta</version>
+    <version>0.10.4-beta.2</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
