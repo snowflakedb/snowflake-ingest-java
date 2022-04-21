@@ -38,7 +38,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
-import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
@@ -77,7 +77,7 @@ class StreamingIngestStage {
   }
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final HttpClient httpClient;
+  private final CloseableHttpClient httpClient;
   private final RequestBuilder requestBuilder;
   private final String role;
   private final String clientName;
@@ -89,7 +89,7 @@ class StreamingIngestStage {
   StreamingIngestStage(
       boolean isTestMode,
       String role,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName)
       throws SnowflakeSQLException, IOException {
@@ -117,7 +117,7 @@ class StreamingIngestStage {
   StreamingIngestStage(
       boolean isTestMode,
       String role,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata)

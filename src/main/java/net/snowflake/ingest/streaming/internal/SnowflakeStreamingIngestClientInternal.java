@@ -70,7 +70,7 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
-import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -98,7 +98,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   private String role;
 
   // Http client to send HTTP request to Snowflake
-  private final HttpClient httpClient;
+  private final CloseableHttpClient httpClient;
 
   // Reference to the channel cache
   private final ChannelCache channelCache;
@@ -148,7 +148,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       String name,
       SnowflakeURL accountURL,
       Properties prop,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
@@ -596,7 +596,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /** Get the http client */
-  HttpClient getHttpClient() {
+  CloseableHttpClient getHttpClient() {
     return this.httpClient;
   }
 
