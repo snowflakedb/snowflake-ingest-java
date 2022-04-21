@@ -14,7 +14,8 @@ import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 public class StreamingIngestUtils {
 
@@ -47,7 +48,7 @@ public class StreamingIngestUtils {
       Map<Object, Object> payload,
       String message,
       ServiceResponseHandler.ApiName apiName,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       RequestBuilder requestBuilder)
       throws IOException, IngestResponseException {
     String payloadInString;
@@ -66,7 +67,7 @@ public class StreamingIngestUtils {
       String payload,
       String message,
       ServiceResponseHandler.ApiName apiName,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       RequestBuilder requestBuilder)
       throws IOException, IngestResponseException {
     return (T)
@@ -87,19 +88,20 @@ public class StreamingIngestUtils {
       String payload,
       String message,
       ServiceResponseHandler.ApiName apiName,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
       Function<T, Long> statusGetter)
       throws IOException, IngestResponseException {
     int retries = 0;
     T response;
     do {
-      response =
-          ServiceResponseHandler.unmarshallStreamingIngestResponse(
-              httpClient.execute(
-                  requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message)),
-              targetClass,
-              apiName);
+      try (CloseableHttpResponse httpResponse =
+          httpClient.execute(
+              requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message))) {
+        response =
+            ServiceResponseHandler.unmarshallStreamingIngestResponse(
+                httpResponse, targetClass, apiName);
+      }
 
       if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
         LOGGER.logDebug(

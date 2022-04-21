@@ -30,10 +30,10 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -272,8 +272,8 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testOpenChannelErrorResponse() throws Exception {
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(500);
@@ -343,8 +343,8 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  } ]\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -423,8 +423,8 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  \"encryption_key\" : \"3/l6q2xeDurO4ljfde4DXA==\"\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);

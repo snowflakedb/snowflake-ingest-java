@@ -52,10 +52,10 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
-import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -307,8 +307,8 @@ public class SnowflakeStreamingIngestClientTest {
     response.setChannels(new ArrayList<>());
     String responseString = objectMapper.writeValueAsString(response);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -365,8 +365,8 @@ public class SnowflakeStreamingIngestClientTest {
     response.setChannels(new ArrayList<>());
     String responseString = objectMapper.writeValueAsString(response);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(500);
@@ -587,7 +587,7 @@ public class SnowflakeStreamingIngestClientTest {
 
   @Test
   public void testGetRetryBlobs() throws Exception {
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
     RequestBuilder requestBuilder =
         new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
 
@@ -618,8 +618,8 @@ public class SnowflakeStreamingIngestClientTest {
 
   @Test
   public void testRegisterBlobErrorResponse() throws Exception {
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(500);
@@ -667,8 +667,8 @@ public class SnowflakeStreamingIngestClientTest {
             + "  } ]\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -724,8 +724,8 @@ public class SnowflakeStreamingIngestClientTest {
             + "  } ]\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -802,8 +802,8 @@ public class SnowflakeStreamingIngestClientTest {
     String responseString = objectMapper.writeValueAsString(initialResponse);
     String retryResponseString = objectMapper.writeValueAsString(retryResponse);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -920,8 +920,8 @@ public class SnowflakeStreamingIngestClientTest {
     String responseString = objectMapper.writeValueAsString(initialResponse);
     String retryResponseString = objectMapper.writeValueAsString(retryResponse);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -997,8 +997,8 @@ public class SnowflakeStreamingIngestClientTest {
             channel2Name,
             channel2Sequencer);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
