@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.UUID;
 import net.snowflake.ingest.utils.BackOffException;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
@@ -91,8 +92,7 @@ public final class ServiceResponseHandler {
     // handle the exceptional status code
     handleExceptionalStatus(response, requestId, ApiName.INSERT_FILES);
 
-    // grab the response entity
-    String blob = EntityUtils.toString(response.getEntity());
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
     // Read out the blob entity into a class
     return mapper.readValue(blob, IngestResponse.class);
@@ -120,8 +120,7 @@ public final class ServiceResponseHandler {
     // handle the exceptional status code
     handleExceptionalStatus(response, requestId, ApiName.INSERT_REPORT);
 
-    // grab the string version of the response entity
-    String blob = EntityUtils.toString(response.getEntity());
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
     // read out our blob into a pojo
     return mapper.readValue(blob, HistoryResponse.class);
@@ -150,9 +149,7 @@ public final class ServiceResponseHandler {
     // handle the exceptional status code
     handleExceptionalStatus(response, requestId, ApiName.LOAD_HISTORY_SCAN);
 
-    // grab the string version of the response entity
-    String blob = EntityUtils.toString(response.getEntity());
-
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
     // read out our blob into a pojo
     return mapper.readValue(blob, HistoryRangeResponse.class);
   }
@@ -180,7 +177,7 @@ public final class ServiceResponseHandler {
     handleExceptionalStatus(response, requestId, ApiName.CLIENT_CONFIGURE);
 
     // grab the string version of the response entity
-    String blob = EntityUtils.toString(response.getEntity());
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
     // read out our blob into a pojo
     return mapper.readValue(blob, ConfigureClientResponse.class);
@@ -209,7 +206,7 @@ public final class ServiceResponseHandler {
     handleExceptionalStatus(response, requestId, ApiName.CLIENT_STATUS);
 
     // grab the string version of the response entity
-    String blob = EntityUtils.toString(response.getEntity());
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
     // read out our blob into a pojo
     return mapper.readValue(blob, ClientStatusResponse.class);
@@ -239,7 +236,7 @@ public final class ServiceResponseHandler {
     handleExceptionalStatus(response, null, apiName);
 
     // Grab the string version of the response entity
-    String blob = EntityUtils.toString(response.getEntity());
+    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
     // Read out our blob into a pojo
     return mapper.readValue(blob, valueType);
@@ -274,11 +271,32 @@ public final class ServiceResponseHandler {
               apiName,
               statusLine.getStatusCode(),
               requestId == null ? "" : requestId.toString());
-          String blob = EntityUtils.toString(response.getEntity());
+          String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
           throw new IngestResponseException(
               statusLine.getStatusCode(),
               IngestResponseException.IngestExceptionBody.parseBody(blob));
       }
     }
+  }
+
+  /**
+   * Consumes the HttpEntity as mentioned in <a
+   * href="https://hc.apache.org/httpcomponents-client-4.5.x/quickstart.html">HttpClient Docs</a>
+   *
+   * <p>Also returns the string version of this entity.
+   *
+   * @param httpResponseEntity the response entity obtained after successfully calling associated
+   *     Rest APIs
+   * @return String version of this http response which will be later used to deserialize into
+   *     respective Response Object
+   * @throws IOException if parsing error
+   */
+  private static String consumeAndReturnResponseEntityAsString(HttpEntity httpResponseEntity)
+      throws IOException {
+    // grab the string version of the response entity
+    String responseEntityAsString = EntityUtils.toString(httpResponseEntity);
+
+    EntityUtils.consumeQuietly(httpResponseEntity);
+    return responseEntityAsString;
   }
 }
