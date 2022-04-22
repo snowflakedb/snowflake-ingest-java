@@ -170,19 +170,23 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
         throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
       }
+    }
 
+    this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
+
+    if (!isTestMode) {
       // Set up the telemetry service if needed
       if (ENABLE_TELEMETRY_TO_SF) {
         this.telemetryService =
             new TelemetryService(
-                ((CloseableHttpClient) this.httpClient), this.name, accountURL.getFullUrl());
+                ((CloseableHttpClient) this.httpClient),
+                String.format("%s_%s", this.name, this.flushService.getClientPrefix()),
+                accountURL.getFullUrl());
       }
 
       // Publish client telemetries if needed
       this.registerMetricsForClient();
     }
-
-    this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
 
     logger.logDebug(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
@@ -448,10 +452,13 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       this.flush(true).get();
 
       // Unregister jmx metrics
-      if (this.metrics != null) {
+      if (metrics != null) {
+        Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
         removeMetricsFromRegistry();
+      }
 
-        // LOG jvm memory and thread metrics at the end
+      // LOG jvm memory and thread metrics at the end
+      if (jvmMemoryAndThreadMetrics != null) {
         Slf4jReporter.forRegistry(jvmMemoryAndThreadMetrics)
             .outputTo(logger.getLogger())
             .build()
@@ -461,7 +468,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
       this.flushService.shutdown();
-      Utils.closeAllocator(this.allocator, true);
+      Utils.closeAllocator(this.allocator);
     }
   }
 
@@ -604,19 +611,15 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return parameterProvider;
   }
 
-  /***
+  /*
    * Registers the performance metrics along with JVM memory and Threads.
    *
    * Latency and throughput metrics are emitted to JMX, jvm memory and thread metrics are logged to Slf4JLogger
    */
   private void registerMetricsForClient() {
-    if (this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
-      metrics = new MetricRegistry();
-      // Blob histogram metrics
-      blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
-      blobRowCountHistogram =
-          metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
+    metrics = new MetricRegistry();
 
+    if (ENABLE_TELEMETRY_TO_SF || this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
       // CPU usage metric
       cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
 
@@ -629,7 +632,13 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       // Throughput metrics
       uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
       inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
-      SharedMetricRegistries.add(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY, metrics);
+    }
+
+    if (this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
+      // Blob histogram metrics
+      blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
+      blobRowCountHistogram =
+          metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
 
       JmxReporter jmxReporter =
           JmxReporter.forRegistry(this.metrics)
@@ -650,6 +659,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
       SharedMetricRegistries.add(
           SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY, jvmMemoryAndThreadMetrics);
+    }
+
+    if (metrics.getMetrics().size() != 0) {
+      SharedMetricRegistries.add(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY, metrics);
     }
   }
 

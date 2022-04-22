@@ -22,7 +22,7 @@ public class ParameterProvider {
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
   public static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
-  public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = true;
+  public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();

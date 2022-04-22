@@ -75,7 +75,7 @@ class RegisterService {
    * the ordering is maintained across independent blobs in the same channel.
    *
    * @param latencyTimerContextMap the map that stores the latency timer for each blob
-   * @return a list of blob names that has errors during registration
+   * @return a list of blob names that have errors during registration
    */
   List<FlushService.BlobData> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap) {
     List<FlushService.BlobData> errorBlobs = new ArrayList<>();
@@ -127,14 +127,21 @@ class RegisterService {
                 retry++;
                 break;
               }
+              StringBuilder stackTrace = new StringBuilder();
+              if (e.getCause() != null) {
+                for (StackTraceElement element : e.getCause().getStackTrace()) {
+                  stackTrace.append(System.lineSeparator()).append(element.toString());
+                }
+              }
               logger.logError(
                   "Building or uploading blob failed={}, exception={}, detail={}, cause={},"
-                      + " detail={}, all channels in the blob will be invalidated",
+                      + " detail={}, trace={} all channels in the blob will be invalidated",
                   futureBlob.getKey().getFilePath(),
                   e,
                   e.getMessage(),
                   e.getCause(),
-                  e.getCause() == null ? null : e.getCause().getMessage());
+                  e.getCause() == null ? null : e.getCause().getMessage(),
+                  stackTrace.toString());
               this.owningClient
                   .getFlushService()
                   .invalidateAllChannelsInBlob(futureBlob.getKey().getData());
@@ -148,7 +155,7 @@ class RegisterService {
             Timer.Context registerContext =
                 Utils.createTimerContext(this.owningClient.registerLatency);
 
-            // Register the blobs, and invalidate any channels that returns a failure status code
+            // Register the blobs, and invalidate any channels that return a failure status code
             this.owningClient.registerBlobs(blobs);
 
             if (registerContext != null) {

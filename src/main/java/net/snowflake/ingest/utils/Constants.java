@@ -58,7 +58,7 @@ public class Constants {
   }
 
   // Parameters
-  public static final boolean DISABLE_BACKGROUND_FLUSH = true;
+  public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;
   public static final boolean BLOB_NO_HEADER = true;
   public static final boolean ENABLE_TELEMETRY_TO_SF = true;

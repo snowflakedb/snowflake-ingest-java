@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
@@ -21,7 +22,10 @@ import net.snowflake.ingest.utils.Logging;
  */
 class TelemetryService {
   private enum TelemetryType {
-    STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_sec");
+    STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_sec"),
+    STREAMING_INGEST_CLIENT_FAILURE("streaming_ingest_client_failure"),
+    STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC("streaming_ingest_throughput_bytes_per_sec"),
+    STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage");
 
     private final String name;
 
@@ -46,7 +50,6 @@ class TelemetryService {
   private static final String MEDIAN = "median";
   private static final String MEAN = "mean";
   private static final String PERCENTILE99TH = "99thPercentile";
-
   private final Telemetry telemetry;
   private final String clientName;
 
@@ -66,18 +69,40 @@ class TelemetryService {
   void reportLatencyInSec(
       Timer buildLatency, Timer uploadLatency, Timer registerLatency, Timer flushLatency) {
     ObjectNode msg = MAPPER.createObjectNode();
-
-    ObjectNode buildMsg = MAPPER.createObjectNode();
-    Snapshot buildSnapshot = buildLatency.getSnapshot();
-    buildMsg.put(COUNT, buildLatency.getCount());
-    buildMsg.put(MAX, buildSnapshot.getMax());
-    buildMsg.put(MIN, buildSnapshot.getMin());
-    buildMsg.put(MEDIAN, buildSnapshot.getMedian());
-    buildMsg.put(MEAN, buildSnapshot.getMean());
-    buildMsg.put(PERCENTILE99TH, buildSnapshot.get99thPercentile());
-    // msg.set("build_latency", buildMsg(buildLatency));
-
+    msg.set("build_latency_sec", buildMsgFromTimer(buildLatency));
+    msg.set("upload_latency_sec", buildMsgFromTimer(uploadLatency));
+    msg.set("register_latency_sec", buildMsgFromTimer(registerLatency));
+    msg.set("flush_latency_sec", buildMsgFromTimer(flushLatency));
     send(TelemetryType.STREAMING_INGEST_LATENCY_IN_SEC, msg);
+  }
+
+  /** Report the SDK latency metrics */
+  void reportClientFailure(String fileName, String exception) {
+    ObjectNode msg = MAPPER.createObjectNode();
+    msg.put("file_name", fileName);
+    msg.put("exception", exception);
+    send(TelemetryType.STREAMING_INGEST_CLIENT_FAILURE, msg);
+  }
+
+  /** Report the SDK latency metrics */
+  void reportThroughputBytesPerSecond(Meter inputThroughput, Meter uploadThrough) {
+    ObjectNode msg = MAPPER.createObjectNode();
+    msg.put("input_mean_rate_bytes_per_sec", inputThroughput.getMeanRate());
+    msg.put("upload_mean_rate_bytes_per_sec", uploadThrough.getMeanRate());
+    send(TelemetryType.STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC, msg);
+  }
+
+  /** Report the SDK latency metrics */
+  void reportCpuMemoryUsage(Histogram cpuUsage) {
+    ObjectNode msg = MAPPER.createObjectNode();
+    Snapshot cpuSnapshot = cpuUsage.getSnapshot();
+    Runtime runTime = Runtime.getRuntime();
+    msg.put("cpu_max", cpuSnapshot.getMax());
+    msg.put("cpu_mean", cpuSnapshot.getMean());
+    msg.put("max_memory", runTime.maxMemory());
+    msg.put("total_memory", runTime.totalMemory());
+    msg.put("free_memory", runTime.freeMemory());
+    send(TelemetryType.STREAMING_INGEST_CPU_MEMORY_USAGE, msg);
   }
 
   /** Send log to Snowflake asynchronously through JDBC client telemetry */
@@ -87,20 +112,20 @@ class TelemetryService {
       msg.put(CLIENT_NAME, clientName);
 
       telemetry.addLogToBatch(TelemetryUtil.buildJobData(msg));
-      telemetry.sendBatchAsync();
+      // telemetry.sendBatchAsync(); // TODO: REMOVE
     } catch (Exception e) {
       logger.logWarn("Failed to send telemetry data, error: {}", e.getMessage());
     }
   }
 
-  private ObjectNode buildMsg(Histogram histogram) {
+  private ObjectNode buildMsgFromTimer(Timer timer) {
     ObjectNode msg = MAPPER.createObjectNode();
-    Snapshot buildSnapshot = histogram.getSnapshot();
-    msg.put(COUNT, histogram.getCount());
+    Snapshot buildSnapshot = timer.getSnapshot();
+    msg.put(COUNT, timer.getCount());
     msg.put(MAX, buildSnapshot.getMax());
     msg.put(MIN, buildSnapshot.getMin());
-    msg.put(MEDIAN, buildSnapshot.getMedian());
     msg.put(MEAN, buildSnapshot.getMean());
+    msg.put(MEDIAN, buildSnapshot.getMedian());
     msg.put(PERCENTILE99TH, buildSnapshot.get99thPercentile());
     return msg;
   }
