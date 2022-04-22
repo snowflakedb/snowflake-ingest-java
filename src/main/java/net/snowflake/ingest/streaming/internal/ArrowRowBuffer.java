@@ -221,18 +221,17 @@ class ArrowRowBuffer {
    * synchronization
    */
   void close() {
-    // If the channel is invalid, cleanup all the leftover data; otherwise, simply close the
-    // allocator which will verify that everything should be cleaned up already
-    this.fields.clear();
-    if (!this.owningChannel.isValid()) {
-      if (this.vectorsRoot != null) {
-        this.vectorsRoot.close();
-        this.tempVectorsRoot.close();
-      }
-      Utils.closeAllocator(this.allocator);
-    } else {
-      this.allocator.close();
+    // If the channel is valid but still has leftover data, log it
+    long allocated = this.allocator.getAllocatedMemory();
+    if (allocated > 0 && this.owningChannel.isValid()) {
+      logger.logWarn(" Memory leaked={} by allocator={}", allocated, this.allocator.toString());
     }
+    if (this.vectorsRoot != null) {
+      this.vectorsRoot.close();
+      this.tempVectorsRoot.close();
+    }
+    this.fields.clear();
+    Utils.closeAllocator(this.allocator);
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */
