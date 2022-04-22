@@ -133,15 +133,23 @@ class RegisterService {
                   stackTrace.append(System.lineSeparator()).append(element.toString());
                 }
               }
-              logger.logError(
-                  "Building or uploading blob failed={}, exception={}, detail={}, cause={},"
-                      + " detail={}, trace={} all channels in the blob will be invalidated",
-                  futureBlob.getKey().getFilePath(),
-                  e,
-                  e.getMessage(),
-                  e.getCause(),
-                  e.getCause() == null ? null : e.getCause().getMessage(),
-                  stackTrace.toString());
+              String errorMessage =
+                  String.format(
+                      "Building or uploading blob failed=%s, exception=%s, detail=%s, cause=%s,"
+                          + " detail=%s trace=%s all channels in the blob will be invalidated",
+                      futureBlob.getKey().getFilePath(),
+                      e.toString(),
+                      e.getMessage(),
+                      e.getCause(),
+                      e.getCause() == null ? null : e.getCause().getMessage(),
+                      stackTrace.toString());
+              logger.logError(errorMessage);
+              if (this.owningClient.getTelemetryService() != null) {
+                this.owningClient
+                    .getTelemetryService()
+                    .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+              }
+
               this.owningClient
                   .getFlushService()
                   .invalidateAllChannelsInBlob(futureBlob.getKey().getData());

@@ -356,12 +356,17 @@ class FlushService {
                             "buildUploadWorkers stats={}", this.buildUploadWorkers.toString());
                         return buildAndUpload(filePath, blobData);
                       } catch (IOException e) {
-                        logger.logError(
-                            "Building blob failed={}, exception={}, detail={}, all channels in the"
-                                + " blob will be invalidated",
-                            filePath,
-                            e,
-                            e.getMessage());
+                        String errorMessage =
+                            String.format(
+                                "Building blob failed=%s, exception=%s, detail=%s, all channels in"
+                                    + " the blob will be invalidated",
+                                filePath, e.toString(), e.getMessage());
+                        logger.logError(errorMessage);
+                        if (this.owningClient.getTelemetryService() != null) {
+                          this.owningClient
+                              .getTelemetryService()
+                              .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+                        }
                         invalidateAllChannelsInBlob(blobData);
                         return null;
                       } catch (NoSuchAlgorithmException e) {

@@ -11,7 +11,6 @@ import com.codahale.metrics.Timer;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
-import net.snowflake.client.jdbc.telemetry.Telemetry;
 import net.snowflake.client.jdbc.telemetry.TelemetryClient;
 import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
 import net.snowflake.ingest.utils.Logging;
@@ -50,7 +49,7 @@ class TelemetryService {
   private static final String MEDIAN = "median";
   private static final String MEAN = "mean";
   private static final String PERCENTILE99TH = "99thPercentile";
-  private final Telemetry telemetry;
+  private final TelemetryClient telemetry;
   private final String clientName;
 
   /**
@@ -62,7 +61,7 @@ class TelemetryService {
    */
   TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
     this.clientName = clientName;
-    this.telemetry = TelemetryClient.createSessionlessTelemetry(httpClient, url);
+    this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
   }
 
   /** Report the SDK latency metrics */
@@ -76,15 +75,15 @@ class TelemetryService {
     send(TelemetryType.STREAMING_INGEST_LATENCY_IN_SEC, msg);
   }
 
-  /** Report the SDK latency metrics */
-  void reportClientFailure(String fileName, String exception) {
+  /** Report the SDK failure metrics */
+  void reportClientFailure(String summary, String exception) {
     ObjectNode msg = MAPPER.createObjectNode();
-    msg.put("file_name", fileName);
+    msg.put("summary", summary);
     msg.put("exception", exception);
     send(TelemetryType.STREAMING_INGEST_CLIENT_FAILURE, msg);
   }
 
-  /** Report the SDK latency metrics */
+  /** Report the SDK throughput metrics */
   void reportThroughputBytesPerSecond(Meter inputThroughput, Meter uploadThrough) {
     ObjectNode msg = MAPPER.createObjectNode();
     msg.put("input_mean_rate_bytes_per_sec", inputThroughput.getMeanRate());
@@ -92,7 +91,7 @@ class TelemetryService {
     send(TelemetryType.STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC, msg);
   }
 
-  /** Report the SDK latency metrics */
+  /** Report the SDK CUP/memory usage metrics */
   void reportCpuMemoryUsage(Histogram cpuUsage) {
     ObjectNode msg = MAPPER.createObjectNode();
     Snapshot cpuSnapshot = cpuUsage.getSnapshot();
@@ -112,12 +111,13 @@ class TelemetryService {
       msg.put(CLIENT_NAME, clientName);
 
       telemetry.addLogToBatch(TelemetryUtil.buildJobData(msg));
-      // telemetry.sendBatchAsync(); // TODO: REMOVE
+      telemetry.sendBatchAsync(); // TODO: REMOVE
     } catch (Exception e) {
       logger.logWarn("Failed to send telemetry data, error: {}", e.getMessage());
     }
   }
 
+  /** Build message from a Timer metric */
   private ObjectNode buildMsgFromTimer(Timer timer) {
     ObjectNode msg = MAPPER.createObjectNode();
     Snapshot buildSnapshot = timer.getSnapshot();
@@ -128,5 +128,9 @@ class TelemetryService {
     msg.put(MEDIAN, buildSnapshot.getMedian());
     msg.put(PERCENTILE99TH, buildSnapshot.get99thPercentile());
     return msg;
+  }
+
+  void refreshJWTToken(String token) {
+    telemetry.refreshToken(token);
   }
 }

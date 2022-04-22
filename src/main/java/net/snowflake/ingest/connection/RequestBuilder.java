@@ -823,4 +823,8 @@ public class RequestBuilder {
   public void closeResources() {
     securityManager.close();
   }
+
+  public SecurityManager getSecurityManager() {
+    return securityManager;
+  }
 }

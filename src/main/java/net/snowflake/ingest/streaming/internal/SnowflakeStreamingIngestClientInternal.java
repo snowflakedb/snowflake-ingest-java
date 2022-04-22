@@ -24,6 +24,7 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY;
+import static net.snowflake.ingest.utils.Constants.TELEMETRY_SERVICE_REPORT_INTERVAL_IN_SEC;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Histogram;
@@ -51,6 +52,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -98,7 +101,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // Snowflake role for the client to use
   private String role;
 
-  // Http client to send HTTP request to Snowflake
+  // Http client to send HTTP requests to Snowflake
   private final CloseableHttpClient httpClient;
 
   // Reference to the channel cache
@@ -136,6 +139,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
 
   // Reference to the telemetry service
   private TelemetryService telemetryService;
+
+  private ScheduledExecutorService telemetryWorker;
 
   /**
    * Constructor
@@ -185,9 +190,17 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       if (ENABLE_TELEMETRY_TO_SF) {
         this.telemetryService =
             new TelemetryService(
-                ((CloseableHttpClient) this.httpClient),
+                this.httpClient,
                 String.format("%s_%s", this.name, this.flushService.getClientPrefix()),
                 accountURL.getFullUrl());
+        this.telemetryService.refreshJWTToken(this.requestBuilder.getSecurityManager());
+
+        this.telemetryWorker = Executors.newSingleThreadScheduledExecutor();
+        this.telemetryWorker.scheduleWithFixedDelay(
+            this::reportTelemetryToSF,
+            10,
+            TELEMETRY_SERVICE_REPORT_INTERVAL_IN_SEC,
+            TimeUnit.SECONDS);
       }
 
       // Publish client telemetries if needed
@@ -570,6 +583,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
+      this.telemetryWorker.shutdown();
       this.flushService.shutdown();
       Utils.closeAllocator(this.allocator);
     }
@@ -778,7 +792,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param metricName metric name used while registering the metric.
    * @return Object Name constructed from above three args
    */
-  static ObjectName getObjectName(String clientName, String jmxDomain, String metricName) {
+  private static ObjectName getObjectName(String clientName, String jmxDomain, String metricName) {
     try {
       StringBuilder sb = new StringBuilder(jmxDomain).append(":clientName=").append(clientName);
 
@@ -797,6 +811,25 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       logger.logDebug("Unregistering all metrics for client={}", this.getName());
       metrics.removeMatching(MetricFilter.startsWith(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX));
       SharedMetricRegistries.remove(SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY);
+    }
+  }
+
+  /**
+   * Get Telemetry Service for a given client
+   *
+   * @return TelemetryService used by the client
+   */
+  TelemetryService getTelemetryService() {
+    return this.telemetryService;
+  }
+
+  void reportTelemetryToSF() {
+    if (this.telemetryService != null) {
+      this.telemetryService.reportLatencyInSec(
+          this.buildLatency, this.uploadLatency, this.registerLatency, this.flushLatency);
+      this.telemetryService.reportThroughputBytesPerSecond(
+          this.inputThroughput, this.uploadThroughput);
+      this.telemetryService.reportCpuMemoryUsage(this.cpuHistogram);
     }
   }
 }
