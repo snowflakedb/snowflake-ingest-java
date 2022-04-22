@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Class used to serialize a response for the channels status endpoint */
-class ChannelsStatusResponse {
+class ChannelsStatusResponse extends StreamingIngestResponse {
 
   static class ChannelStatusResponseDTO {
 
@@ -75,6 +75,7 @@ class ChannelsStatusResponse {
   }
 
   @JsonProperty("status_code")
+  @Override
   Long getStatusCode() {
     return this.statusCode;
   }

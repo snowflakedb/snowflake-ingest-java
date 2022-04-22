@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Response to the RegisterBlobRequest */
-class RegisterBlobResponse {
+class RegisterBlobResponse extends StreamingIngestResponse {
   private Long statusCode;
   private String message;
   private List<BlobRegisterStatus> blobsStatus;

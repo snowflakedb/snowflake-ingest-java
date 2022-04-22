@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Response to the OpenChannelRequest */
-class OpenChannelResponse {
+class OpenChannelResponse extends StreamingIngestResponse {
   private Long statusCode;
   private String message;
   private String dbName;
@@ -27,6 +27,7 @@ class OpenChannelResponse {
     this.statusCode = statusCode;
   }
 
+  @Override
   Long getStatusCode() {
     return this.statusCode;
   }

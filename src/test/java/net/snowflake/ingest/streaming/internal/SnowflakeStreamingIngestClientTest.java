@@ -3,12 +3,17 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -18,17 +23,21 @@ import java.security.Security;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
-import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.StatusLine;
-import net.snowflake.client.jdbc.internal.apache.http.client.HttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMWriter;
@@ -42,17 +51,86 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 public class SnowflakeStreamingIngestClientTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  SnowflakeStreamingIngestChannelInternal channel1;
+  SnowflakeStreamingIngestChannelInternal channel2;
+  SnowflakeStreamingIngestChannelInternal channel3;
+  SnowflakeStreamingIngestChannelInternal channel4;
+
+  @Before
+  public void setup() {
+    objectMapper.setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.ANY);
+    objectMapper.setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.ANY);
+    channel1 =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel1",
+            "db",
+            "schemaName",
+            "tableName",
+            "0",
+            0L,
+            0L,
+            null,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+    channel2 =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel2",
+            "db",
+            "schemaName",
+            "tableName",
+            "0",
+            2L,
+            0L,
+            null,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+    channel3 =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel3",
+            "db",
+            "schemaName",
+            "tableName3",
+            "0",
+            3L,
+            0L,
+            null,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+    channel4 =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel4",
+            "db",
+            "schemaName",
+            "tableName4",
+            "0",
+            3L,
+            0L,
+            null,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+  }
 
   @Test
   @Ignore // Until able to test in PROD
@@ -229,8 +307,8 @@ public class SnowflakeStreamingIngestClientTest {
     response.setChannels(new ArrayList<>());
     String responseString = objectMapper.writeValueAsString(response);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -287,8 +365,8 @@ public class SnowflakeStreamingIngestClientTest {
     response.setChannels(new ArrayList<>());
     String responseString = objectMapper.writeValueAsString(response);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(500);
@@ -409,10 +487,139 @@ public class SnowflakeStreamingIngestClientTest {
         request.getFirstHeader(RequestBuilder.SF_HEADER_AUTHORIZATION_TOKEN_TYPE).getValue());
   }
 
+  private Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> getRetryBlobMetadata() {
+    Map<String, RowBufferStats> columnEps = new HashMap<>();
+    columnEps.put("column", new RowBufferStats());
+    EpInfo epInfo = ArrowRowBuffer.buildEpInfoFromStats(1, columnEps);
+
+    ChannelMetadata channelMetadata1 =
+        ChannelMetadata.builder()
+            .setOwningChannel(channel1)
+            .setRowSequencer(channel1.incrementAndGetRowSequencer())
+            .setOffsetToken(channel1.getOffsetToken())
+            .build();
+    ChannelMetadata channelMetadata2 =
+        ChannelMetadata.builder()
+            .setOwningChannel(channel2)
+            .setRowSequencer(channel2.incrementAndGetRowSequencer())
+            .setOffsetToken(channel2.getOffsetToken())
+            .build();
+    ChannelMetadata channelMetadata3 =
+        ChannelMetadata.builder()
+            .setOwningChannel(channel3)
+            .setRowSequencer(channel3.incrementAndGetRowSequencer())
+            .setOffsetToken(channel3.getOffsetToken())
+            .build();
+    ChannelMetadata channelMetadata4 =
+        ChannelMetadata.builder()
+            .setOwningChannel(channel4)
+            .setRowSequencer(channel4.incrementAndGetRowSequencer())
+            .setOffsetToken(channel4.getOffsetToken())
+            .build();
+
+    List<BlobMetadata> blobs = new ArrayList<>();
+    List<ChunkMetadata> chunks1 = new ArrayList<>();
+    List<ChunkMetadata> chunks2 = new ArrayList<>();
+
+    List<ChannelMetadata> channels1 = new ArrayList<>();
+    channels1.add(channelMetadata1);
+    channels1.add(channelMetadata2);
+    ChunkMetadata chunkMetadata1 =
+        ChunkMetadata.builder()
+            .setOwningTable(channel1)
+            .setChunkStartOffset(0L)
+            .setChunkLength(100)
+            .setChannelList(channels1)
+            .setChunkMD5("md51")
+            .setEncryptionKeyId(1234L)
+            .setEpInfo(epInfo)
+            .build();
+    ChunkMetadata chunkMetadata2 =
+        ChunkMetadata.builder()
+            .setOwningTable(channel2)
+            .setChunkStartOffset(0L)
+            .setChunkLength(100)
+            .setChannelList(Collections.singletonList(channelMetadata3))
+            .setChunkMD5("md52")
+            .setEncryptionKeyId(1234L)
+            .setEpInfo(epInfo)
+            .build();
+    ChunkMetadata chunkMetadata3 =
+        ChunkMetadata.builder()
+            .setOwningTable(channel3)
+            .setChunkStartOffset(0L)
+            .setChunkLength(100)
+            .setChannelList(Collections.singletonList(channelMetadata4))
+            .setChunkMD5("md53")
+            .setEncryptionKeyId(1234L)
+            .setEpInfo(epInfo)
+            .build();
+
+    chunks1.add(chunkMetadata1);
+    chunks1.add(chunkMetadata2);
+    chunks2.add(chunkMetadata3);
+    blobs.add(new BlobMetadata("path1", "md51", chunks1));
+    blobs.add(new BlobMetadata("path2", "md52", chunks2));
+
+    List<ChannelRegisterStatus> channelRegisterStatuses = new ArrayList<>();
+    ChannelRegisterStatus status1 = new ChannelRegisterStatus();
+    status1.setStatusCode(RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL);
+    status1.setChannelName(channelMetadata1.getChannelName());
+    status1.setChannelSequencer(channelMetadata1.getClientSequencer());
+
+    ChannelRegisterStatus status2 = new ChannelRegisterStatus();
+    status2.setStatusCode(RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL);
+    status2.setChannelName(channelMetadata2.getChannelName());
+    status2.setChannelSequencer(channelMetadata2.getClientSequencer());
+
+    channelRegisterStatuses.add(status1);
+    channelRegisterStatuses.add(status2);
+
+    Set<ChunkRegisterStatus> badChunks = new HashSet<>();
+    ChunkRegisterStatus badChunkRegisterStatus = new ChunkRegisterStatus();
+    badChunkRegisterStatus.setDBName(chunkMetadata1.getDBName());
+    badChunkRegisterStatus.setSchemaName(chunkMetadata1.getSchemaName());
+    badChunkRegisterStatus.setTableName(chunkMetadata1.getTableName());
+    badChunkRegisterStatus.setChannelsStatus(channelRegisterStatuses);
+    badChunks.add(badChunkRegisterStatus);
+    return new Pair(blobs, badChunks);
+  }
+
+  @Test
+  public void testGetRetryBlobs() throws Exception {
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
+    Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> testData = getRetryBlobMetadata();
+    List<BlobMetadata> blobs = testData.getFirst();
+    Set<ChunkRegisterStatus> badChunks = testData.getSecond();
+    List<BlobMetadata> result = client.getRetryBlobs(badChunks, blobs);
+    Assert.assertEquals(1, result.size());
+    Assert.assertEquals("path1", result.get(0).getPath());
+    Assert.assertEquals("md51", result.get(0).getMD5());
+    Assert.assertEquals(1, result.get(0).getChunks().size());
+    Assert.assertEquals(2, result.get(0).getChunks().get(0).getChannels().size());
+    Assert.assertEquals(
+        Sets.newHashSet("channel1", "channel2"),
+        result.get(0).getChunks().get(0).getChannels().stream()
+            .map(c -> c.getChannelName())
+            .collect(Collectors.toSet()));
+  }
+
   @Test
   public void testRegisterBlobErrorResponse() throws Exception {
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(500);
@@ -460,8 +667,8 @@ public class SnowflakeStreamingIngestClientTest {
             + "  } ]\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -517,8 +724,8 @@ public class SnowflakeStreamingIngestClientTest {
             + "  } ]\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -542,6 +749,212 @@ public class SnowflakeStreamingIngestClientTest {
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>()));
     client.registerBlobs(blobs);
+  }
+
+  @Test
+  public void testRegisterBlobsRetries() throws Exception {
+    Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> testData = getRetryBlobMetadata();
+    List<BlobMetadata> blobs = testData.getFirst();
+    Set<ChunkRegisterStatus> badChunks = testData.getSecond();
+
+    ChunkRegisterStatus goodChunkRegisterStatus = new ChunkRegisterStatus();
+    goodChunkRegisterStatus.setDBName(blobs.get(0).getChunks().get(0).getDBName());
+    goodChunkRegisterStatus.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
+    goodChunkRegisterStatus.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    ChannelRegisterStatus goodStatus1 = new ChannelRegisterStatus();
+    goodStatus1.setStatusCode(RESPONSE_SUCCESS);
+    goodStatus1.setChannelName("channel3");
+    goodStatus1.setChannelSequencer(3L);
+    goodChunkRegisterStatus.setChannelsStatus(Collections.singletonList(goodStatus1));
+
+    ChunkRegisterStatus goodChunkRegisterStatus2 = new ChunkRegisterStatus();
+    goodChunkRegisterStatus2.setDBName(blobs.get(0).getChunks().get(0).getDBName());
+    goodChunkRegisterStatus2.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
+    goodChunkRegisterStatus2.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    ChannelRegisterStatus goodStatus2 = new ChannelRegisterStatus();
+    goodStatus2.setStatusCode(RESPONSE_SUCCESS);
+    goodStatus2.setChannelName("channel4");
+    goodStatus2.setChannelSequencer(3L);
+    goodChunkRegisterStatus2.setChannelsStatus(Collections.singletonList(goodStatus2));
+
+    RegisterBlobResponse initialResponse = new RegisterBlobResponse();
+    initialResponse.setMessage("successish");
+    initialResponse.setStatusCode(RESPONSE_SUCCESS);
+
+    RegisterBlobResponse retryResponse = new RegisterBlobResponse();
+    retryResponse.setMessage("successish");
+    retryResponse.setStatusCode(RESPONSE_SUCCESS);
+
+    List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
+    BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
+    blobRegisterStatus1.setChunksStatus(badChunks.stream().collect(Collectors.toList()));
+    blobRegisterStatuses.add(blobRegisterStatus1);
+    BlobRegisterStatus blobRegisterStatus2 = new BlobRegisterStatus();
+    blobRegisterStatus2.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus));
+    blobRegisterStatuses.add(blobRegisterStatus2);
+    BlobRegisterStatus blobRegisterStatus3 = new BlobRegisterStatus();
+    blobRegisterStatus3.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus2));
+    blobRegisterStatuses.add(blobRegisterStatus3);
+    initialResponse.setBlobsStatus(blobRegisterStatuses);
+
+    retryResponse.setBlobsStatus(Collections.singletonList(blobRegisterStatus1));
+
+    String responseString = objectMapper.writeValueAsString(initialResponse);
+    String retryResponseString = objectMapper.writeValueAsString(retryResponse);
+
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent())
+        .thenReturn(
+            IOUtils.toInputStream(responseString),
+            IOUtils.toInputStream(retryResponseString),
+            IOUtils.toInputStream(retryResponseString),
+            IOUtils.toInputStream(retryResponseString));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
+
+    client.getChannelCache().addChannel(channel1);
+    client.getChannelCache().addChannel(channel2);
+    client.getChannelCache().addChannel(channel3);
+    client.getChannelCache().addChannel(channel4);
+    client.registerBlobs(blobs);
+    Mockito.verify(requestBuilder, Mockito.times(MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1))
+        .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
+    Assert.assertFalse(channel1.isValid());
+    Assert.assertFalse(channel2.isValid());
+  }
+
+  @Test
+  public void testRegisterBlobsRetriesSucceeds() throws Exception {
+    Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> testData = getRetryBlobMetadata();
+    List<BlobMetadata> blobs = testData.getFirst();
+    Set<ChunkRegisterStatus> badChunks = testData.getSecond();
+
+    ChunkRegisterStatus goodChunkRegisterStatus = new ChunkRegisterStatus();
+    goodChunkRegisterStatus.setDBName(blobs.get(0).getChunks().get(0).getDBName());
+    goodChunkRegisterStatus.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
+    goodChunkRegisterStatus.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    ChannelRegisterStatus goodStatus1 = new ChannelRegisterStatus();
+    goodStatus1.setStatusCode(RESPONSE_SUCCESS);
+    goodStatus1.setChannelName("channel3");
+    goodStatus1.setChannelSequencer(3L);
+    goodChunkRegisterStatus.setChannelsStatus(Collections.singletonList(goodStatus1));
+
+    ChunkRegisterStatus goodChunkRegisterStatus2 = new ChunkRegisterStatus();
+    goodChunkRegisterStatus2.setDBName(blobs.get(0).getChunks().get(0).getDBName());
+    goodChunkRegisterStatus2.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
+    goodChunkRegisterStatus2.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    ChannelRegisterStatus goodStatus2 = new ChannelRegisterStatus();
+    goodStatus2.setStatusCode(RESPONSE_SUCCESS);
+    goodStatus2.setChannelName("channel4");
+    goodStatus2.setChannelSequencer(3L);
+    goodChunkRegisterStatus2.setChannelsStatus(Collections.singletonList(goodStatus2));
+
+    List<ChunkRegisterStatus> goodChunkRegisterRetryStatus =
+        badChunks.stream()
+            .map(
+                chunkRegisterStatus -> {
+                  ChunkRegisterStatus newStatus = new ChunkRegisterStatus();
+                  newStatus.setTableName(chunkRegisterStatus.getTableName());
+                  newStatus.setDBName(chunkRegisterStatus.getDBName());
+                  newStatus.setSchemaName(chunkRegisterStatus.getSchemaName());
+                  newStatus.setChannelsStatus(
+                      chunkRegisterStatus.getChannelsStatus().stream()
+                          .map(
+                              channelRegisterStatus -> {
+                                ChannelRegisterStatus newChannelStatus =
+                                    new ChannelRegisterStatus();
+                                newChannelStatus.setStatusCode(RESPONSE_SUCCESS);
+                                newChannelStatus.setChannelSequencer(
+                                    channelRegisterStatus.getChannelSequencer());
+                                newChannelStatus.setChannelName(
+                                    channelRegisterStatus.getChannelName());
+                                return newChannelStatus;
+                              })
+                          .collect(Collectors.toList()));
+                  return newStatus;
+                })
+            .collect(Collectors.toList());
+
+    RegisterBlobResponse initialResponse = new RegisterBlobResponse();
+    initialResponse.setMessage("successish");
+    initialResponse.setStatusCode(RESPONSE_SUCCESS);
+
+    RegisterBlobResponse retryResponse = new RegisterBlobResponse();
+    retryResponse.setMessage("successish");
+    retryResponse.setStatusCode(RESPONSE_SUCCESS);
+
+    List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
+    BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
+    blobRegisterStatus1.setChunksStatus(badChunks.stream().collect(Collectors.toList()));
+    blobRegisterStatuses.add(blobRegisterStatus1);
+    BlobRegisterStatus blobRegisterStatus2 = new BlobRegisterStatus();
+    blobRegisterStatus2.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus));
+    blobRegisterStatuses.add(blobRegisterStatus2);
+    BlobRegisterStatus blobRegisterStatus3 = new BlobRegisterStatus();
+    blobRegisterStatus3.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus2));
+    blobRegisterStatuses.add(blobRegisterStatus3);
+    initialResponse.setBlobsStatus(blobRegisterStatuses);
+
+    BlobRegisterStatus retryBlobRegisterStatus = new BlobRegisterStatus();
+    retryBlobRegisterStatus.setChunksStatus(goodChunkRegisterRetryStatus);
+    retryResponse.setBlobsStatus(Collections.singletonList(retryBlobRegisterStatus));
+
+    String responseString = objectMapper.writeValueAsString(initialResponse);
+    String retryResponseString = objectMapper.writeValueAsString(retryResponse);
+
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent())
+        .thenReturn(
+            IOUtils.toInputStream(responseString), IOUtils.toInputStream(retryResponseString));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+    SnowflakeStreamingIngestClientInternal client =
+        new SnowflakeStreamingIngestClientInternal(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
+
+    client.getChannelCache().addChannel(channel1);
+    client.getChannelCache().addChannel(channel2);
+    client.getChannelCache().addChannel(channel3);
+    client.getChannelCache().addChannel(channel4);
+
+    client.registerBlobs(blobs);
+    Mockito.verify(requestBuilder, Mockito.times(2))
+        .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
+    Assert.assertTrue(channel1.isValid());
+    Assert.assertTrue(channel2.isValid());
   }
 
   @Test
@@ -584,8 +997,8 @@ public class SnowflakeStreamingIngestClientTest {
             channel2Name,
             channel2Sequencer);
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);

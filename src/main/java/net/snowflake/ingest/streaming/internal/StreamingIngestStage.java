@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
+import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
@@ -27,13 +29,12 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
-import net.snowflake.client.jdbc.internal.apache.http.client.HttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
@@ -55,7 +56,7 @@ class StreamingIngestStage {
     private final boolean isLocalFS;
     private final String localLocation;
 
-    /* Do do not always know the age of the metadata, so we use the empty
+    /* Do not always know the age of the metadata, so we use the empty
     state to record unknown age.
      */
     Optional<Long> timestamp;
@@ -76,7 +77,7 @@ class StreamingIngestStage {
   }
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final HttpClient httpClient;
+  private final CloseableHttpClient httpClient;
   private final RequestBuilder requestBuilder;
   private final String role;
   private final String clientName;
@@ -88,7 +89,7 @@ class StreamingIngestStage {
   StreamingIngestStage(
       boolean isTestMode,
       String role,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName)
       throws SnowflakeSQLException, IOException {
@@ -116,7 +117,7 @@ class StreamingIngestStage {
   StreamingIngestStage(
       boolean isTestMode,
       String role,
-      HttpClient httpClient,
+      CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata)
@@ -282,6 +283,20 @@ class StreamingIngestStage {
     return metadata;
   }
 
+  private static class MapStatusGetter<T> implements Function<T, Long> {
+    public MapStatusGetter() {}
+
+    public Long apply(T input) {
+      try {
+        return ((Integer) ((Map<String, Object>) input).get("status_code")).longValue();
+      } catch (Exception e) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "failed to get status_code from response");
+      }
+    }
+  }
+
+  private static final MapStatusGetter statusGetter = new MapStatusGetter();
+
   private JsonNode parseClientConfigureResponse(Map<String, Object> response) {
     JsonNode responseNode = mapper.valueToTree(response);
 
@@ -300,13 +315,17 @@ class StreamingIngestStage {
   private Map<String, Object> makeClientConfigureCall(Map<Object, Object> payload)
       throws IOException {
     try {
+
       Map<String, Object> response =
-          ServiceResponseHandler.unmarshallStreamingIngestResponse(
-              httpClient.execute(
-                  requestBuilder.generateStreamingIngestPostRequest(
-                      payload, CLIENT_CONFIGURE_ENDPOINT, "client configure")),
+          executeWithRetries(
               Map.class,
-              STREAMING_CLIENT_CONFIGURE);
+              CLIENT_CONFIGURE_ENDPOINT,
+              mapper.writeValueAsString(payload),
+              "client configure",
+              STREAMING_CLIENT_CONFIGURE,
+              httpClient,
+              requestBuilder,
+              statusGetter);
 
       // Check for Snowflake specific response code
       if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {

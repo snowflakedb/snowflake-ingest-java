@@ -19,7 +19,6 @@ import net.snowflake.client.jdbc.internal.apache.http.auth.AuthScope;
 import net.snowflake.client.jdbc.internal.apache.http.auth.Credentials;
 import net.snowflake.client.jdbc.internal.apache.http.auth.UsernamePasswordCredentials;
 import net.snowflake.client.jdbc.internal.apache.http.client.CredentialsProvider;
-import net.snowflake.client.jdbc.internal.apache.http.client.HttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.client.HttpRequestRetryHandler;
 import net.snowflake.client.jdbc.internal.apache.http.client.ServiceUnavailableRetryStrategy;
 import net.snowflake.client.jdbc.internal.apache.http.client.config.RequestConfig;
@@ -27,6 +26,7 @@ import net.snowflake.client.jdbc.internal.apache.http.client.protocol.HttpClient
 import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.DefaultHostnameVerifier;
 import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.BasicCredentialsProvider;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClientBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClients;
 import net.snowflake.client.jdbc.internal.apache.http.impl.conn.DefaultProxyRoutePlanner;
@@ -48,9 +48,9 @@ public class HttpUtil {
   private static final int MAX_RETRIES = 3;
   static final int DEFAULT_CONNECTION_TIMEOUT = 1; // minute
   static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT = 5; // minutes
-  private static HttpClient httpClient;
+  private static CloseableHttpClient httpClient;
 
-  public static HttpClient getHttpClient() {
+  public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
       initHttpClient();
     }

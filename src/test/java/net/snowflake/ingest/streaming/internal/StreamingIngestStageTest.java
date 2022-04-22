@@ -16,7 +16,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -32,10 +31,10 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.amazonaws.util.IOUtils;
-import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.StatusLine;
-import net.snowflake.client.jdbc.internal.apache.http.client.HttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.entity.BasicHttpEntity;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -247,8 +246,8 @@ public class StreamingIngestStageTest {
   @Test
   public void testRefreshSnowflakeMetadataRemote() throws Exception {
     RequestBuilder mockBuilder = Mockito.mock(RequestBuilder.class);
-    HttpClient mockClient = Mockito.mock(HttpClient.class);
-    HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient mockClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse mockResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -268,10 +267,10 @@ public class StreamingIngestStageTest {
         stage.refreshSnowflakeMetadata(true);
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
-    final ArgumentCaptor<Map<Object, Object>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+    final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
-            mapCaptor.capture(), endpointCaptor.capture(), Mockito.any());
+            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
     Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
     Assert.assertTrue(metadataWithAge.timestamp.isPresent());
     Assert.assertEquals(
@@ -285,8 +284,8 @@ public class StreamingIngestStageTest {
   @Test
   public void testFetchSignedURL() throws Exception {
     RequestBuilder mockBuilder = Mockito.mock(RequestBuilder.class);
-    HttpClient mockClient = Mockito.mock(HttpClient.class);
-    HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient mockClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse mockResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -304,10 +303,10 @@ public class StreamingIngestStageTest {
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
-    final ArgumentCaptor<Map<Object, Object>> mapCaptor = ArgumentCaptor.forClass(Map.class);
+    final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
-            mapCaptor.capture(), endpointCaptor.capture(), Mockito.any());
+            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
     Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
     Assert.assertEquals(StageInfo.StageType.S3, metadata.getStageInfo().getStageType());
     Assert.assertEquals("foo/streaming_ingest/", metadata.getStageInfo().getLocation());
@@ -323,8 +322,8 @@ public class StreamingIngestStageTest {
             SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);
 
     RequestBuilder mockBuilder = Mockito.mock(RequestBuilder.class);
-    HttpClient mockClient = Mockito.mock(HttpClient.class);
-    HttpResponse mockResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient mockClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse mockResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 

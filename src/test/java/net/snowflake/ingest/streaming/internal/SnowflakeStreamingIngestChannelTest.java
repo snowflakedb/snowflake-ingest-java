@@ -19,10 +19,10 @@ import java.util.concurrent.TimeoutException;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
-import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.StatusLine;
-import net.snowflake.client.jdbc.internal.apache.http.client.HttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
@@ -272,8 +272,8 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testOpenChannelErrorResponse() throws Exception {
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(500);
@@ -343,8 +343,8 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  } ]\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
@@ -423,8 +423,8 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  \"encryption_key\" : \"3/l6q2xeDurO4ljfde4DXA==\"\n"
             + "}";
 
-    HttpClient httpClient = Mockito.mock(HttpClient.class);
-    HttpResponse httpResponse = Mockito.mock(HttpResponse.class);
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
     Mockito.when(statusLine.getStatusCode()).thenReturn(200);
