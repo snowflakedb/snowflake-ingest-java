@@ -108,6 +108,9 @@ public class StreamingIngestIT {
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
 
+    // Close the channel after insertion
+    channel1.close().get();
+
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("999")) {
@@ -183,6 +186,9 @@ public class StreamingIngestIT {
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
 
+    // Close the channel after insertion
+    channel1.close().get();
+
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("9")) {
@@ -249,6 +255,9 @@ public class StreamingIngestIT {
     row.put("noncol", "a");
     verifyInsertValidationResponse(channel1.insertRow(row, "2"));
 
+    // Close the channel after insertion
+    channel1.close().get();
+
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("2")) {
@@ -295,6 +304,9 @@ public class StreamingIngestIT {
     verifyInsertValidationResponse(channel1.insertRow(row, null));
     row.put("tinyfloat", BigInteger.valueOf(10).pow(35));
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
+
+    // Close the channel after insertion
+    channel1.close().get();
 
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
@@ -371,6 +383,9 @@ public class StreamingIngestIT {
     row.put("tntzsmall", "1809462800.123");
     row.put("tntzbig", "2031-01-01 09:00:00.12345678");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
+
+    // Close the channel after insertion
+    channel1.close().get();
 
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
@@ -459,6 +474,9 @@ public class StreamingIngestIT {
     row.put("d", "1967-06-23 01:01:01");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
+    // Close the channel after insertion
+    channel1.close().get();
+
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("1")) {
@@ -530,6 +548,10 @@ public class StreamingIngestIT {
     verifyInsertValidationResponse(channel1.insertRow(row3, "3"));
 
     verifyInsertValidationResponse(channel2.insertRow(row3, "1"));
+
+    // Close the channel after insertion
+    channel1.close().get();
+    channel2.close().get();
 
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
@@ -604,6 +626,11 @@ public class StreamingIngestIT {
     }
     CompletableFuture joined = CompletableFuture.allOf(futures);
     joined.get();
+
+    // Close the channel after insertion
+    for (SnowflakeStreamingIngestChannel channel : channelList) {
+      channel.close().get();
+    }
 
     for (int i = 1; i < 15; i++) {
       if (channelList.stream()
@@ -704,6 +731,9 @@ public class StreamingIngestIT {
     row.put("c1", "8");
     verifyInsertValidationResponse(channelA2.insertRow(row, "8"));
 
+    // Close the channel after insertion
+    channelA2.close().get();
+
     for (int i = 1; i < 15; i++) {
       if (channelA2.getLatestCommittedOffsetToken() != null
           && channelA2.getLatestCommittedOffsetToken().equals("8")) {
@@ -776,6 +806,9 @@ public class StreamingIngestIT {
     Map<String, Object> row7 = new HashMap<>();
     row7.put("c1", 7);
     channel.insertRow(row7, "7");
+
+    // Close the channel after insertion
+    channel.close().get();
 
     for (int i = 1; i < 15; i++) {
       if (channel.getLatestCommittedOffsetToken() != null

@@ -234,7 +234,9 @@ class ArrowRowBuffer {
     if (allocated > 0 && this.owningChannel.isValid()) {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR,
-          String.format("Memory leaked=%d by allocator=%s", allocated, this.allocator.toString()));
+          String.format(
+              "Memory leaked=%d by allocator=%s, channel=%s",
+              allocated, this.allocator.toString(), this.owningChannel.getFullyQualifiedName()));
     }
   }
 
@@ -314,7 +316,7 @@ class ArrowRowBuffer {
           }
         }
         rowSize = tempRowSize;
-        if ((long) this.rowCount + tempRowCount > Integer.MAX_VALUE) {
+        if ((long) this.rowCount + tempRowCount >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
         }
         this.rowCount += tempRowCount;
