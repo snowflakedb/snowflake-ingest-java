@@ -281,7 +281,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     // Skip this check for closing because we need to set the channel to closed first and then flush
     // in case there is any leftover rows
     if (isClosed() && !closing) {
-      throw new SFException(ErrorCode.CLOSED_CHANNEL);
+      throw new SFException(ErrorCode.CLOSED_CHANNEL, getFullyQualifiedName());
     }
 
     // Simply return if there is no data in the channel, this might not work if we support public
@@ -307,7 +307,6 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     }
 
     markClosed();
-    this.owningClient.removeChannelIfSequencersMatch(this);
     return flush(true)
         .thenRunAsync(
             () -> {
@@ -316,6 +315,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                       Collections.singletonList(this));
 
               this.arrowBuffer.close();
+              this.owningClient.removeChannelIfSequencersMatch(this);
 
               // Throw an exception if the channel has any uncommitted rows
               if (!uncommittedChannels.isEmpty()) {
@@ -388,7 +388,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     checkValidation();
 
     if (isClosed()) {
-      throw new SFException(ErrorCode.CLOSED_CHANNEL);
+      throw new SFException(ErrorCode.CLOSED_CHANNEL, getFullyQualifiedName());
     }
 
     InsertValidationResponse response = this.arrowBuffer.insertRows(rows, offsetToken);
@@ -470,7 +470,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     if (!isValid()) {
       this.owningClient.removeChannelIfSequencersMatch(this);
       this.arrowBuffer.close();
-      throw new SFException(ErrorCode.INVALID_CHANNEL);
+      throw new SFException(ErrorCode.INVALID_CHANNEL, getFullyQualifiedName());
     }
   }
 
