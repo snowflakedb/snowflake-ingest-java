@@ -6,6 +6,8 @@ package net.snowflake.ingest.utils;
 
 import com.google.common.base.Strings;
 import java.security.Security;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -17,7 +19,9 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -25,6 +29,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.pool.PoolStats;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
@@ -43,10 +48,18 @@ public class HttpUtil {
   private static int MAX_RETRIES = 3;
 
   private static CloseableHttpClient httpClient;
+
+  private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
+  private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
+
   private static final int DEFAULT_MAX_CONNECTIONS_PER_ROUTE = 100;
   private static final int DEFAULT_MAX_CONNECTIONS = 100;
 
+  private static final int DEFAULT_TTL_CONNECTION = 120;
+
   private static final long MONITOR_THREAD_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
+
+  private static final int DEFAULT_IDLE_CONNECTION_TIMEOUT_SECONDS = 30;
 
   public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
@@ -75,16 +88,21 @@ public class HttpUtil {
     RequestConfig requestConfig =
         RequestConfig.custom()
             .setConnectTimeout(
-                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+                (int)
+                    TimeUnit.MILLISECONDS.convert(
+                        DEFAULT_CONNECTION_TIMEOUT_MINUTES, TimeUnit.MINUTES))
             .setConnectionRequestTimeout(
-                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+                (int)
+                    TimeUnit.MILLISECONDS.convert(
+                        DEFAULT_CONNECTION_TIMEOUT_MINUTES, TimeUnit.MINUTES))
             .setSocketTimeout(
                 (int)
                     TimeUnit.MILLISECONDS.convert(
-                        DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT, TimeUnit.MINUTES))
+                        DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES, TimeUnit.MINUTES))
             .build();
 
-    PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+    PoolingHttpClientConnectionManager connectionManager =
+        new PoolingHttpClientConnectionManager(DEFAULT_TTL_CONNECTION, TimeUnit.SECONDS);
     connectionManager.setDefaultMaxPerRoute(DEFAULT_MAX_CONNECTIONS_PER_ROUTE);
     connectionManager.setMaxTotal(DEFAULT_MAX_CONNECTIONS);
 
@@ -97,7 +115,8 @@ public class HttpUtil {
             .setConnectionManager(connectionManager)
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
-            .setRetryHandler(getHttpRequestRetryHandler());
+            .setRetryHandler(getHttpRequestRetryHandler())
+            .setDefaultRequestConfig(requestConfig);
 
     // proxy settings
     if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY))) {
@@ -225,11 +244,26 @@ public class HttpUtil {
           while (!shutdown) {
             wait(MONITOR_THREAD_INTERVAL_MS);
 
+            StringBuilder sb = new StringBuilder();
+
+            sb.append(
+                createPoolStatsInfo("Total Pool Stats = ", connectionManager.getTotalStats()));
+            Set<HttpRoute> routes = connectionManager.getRoutes();
+
+            if (routes != null) {
+              for (HttpRoute route : routes) {
+                sb.append(createRouteInfo(connectionManager, route));
+              }
+            }
+
+            LOGGER.debug("[IdleConnectionMonitorThread] Pool Stats:\n" + sb);
+
             // Close expired connections
             connectionManager.closeExpiredConnections();
             // Optionally, close connections
-            // that have been idle longer than 120 sec
-            connectionManager.closeIdleConnections(120, TimeUnit.SECONDS);
+            // that have been idle longer than 30 sec
+            connectionManager.closeIdleConnections(
+                DEFAULT_IDLE_CONNECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
           }
         }
       } catch (InterruptedException ex) {
@@ -244,5 +278,26 @@ public class HttpUtil {
         notifyAll();
       }
     }
+  }
+
+  private static String createRouteInfo(
+      PoolingHttpClientConnectionManager connectionManager, HttpRoute route) {
+    PoolStats routeStats = connectionManager.getStats(route);
+    return createPoolStatsInfo(
+        String.format("Pool Stats for route %s = ", route.getTargetHost().toURI()), routeStats);
+  }
+
+  private static String createPoolStatsInfo(String title, PoolStats poolStats) {
+    StringBuilder sb = new StringBuilder();
+
+    sb.append(title);
+
+    if (poolStats != null) {
+      sb.append(poolStats);
+    }
+
+    sb.append("\n");
+
+    return sb.toString();
   }
 }
