@@ -55,7 +55,7 @@ public class HttpUtil {
   private static final int DEFAULT_MAX_CONNECTIONS_PER_ROUTE = 100;
   private static final int DEFAULT_MAX_CONNECTIONS = 100;
 
-  private static final int DEFAULT_TTL_CONNECTION = 120;
+  private static final int DEFAULT_TTL_CONNECTION_MINUTES = 2;
 
   private static final long MONITOR_THREAD_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
 
@@ -102,7 +102,7 @@ public class HttpUtil {
             .build();
 
     PoolingHttpClientConnectionManager connectionManager =
-        new PoolingHttpClientConnectionManager(DEFAULT_TTL_CONNECTION, TimeUnit.SECONDS);
+        new PoolingHttpClientConnectionManager(DEFAULT_TTL_CONNECTION_MINUTES, TimeUnit.MINUTES);
     connectionManager.setDefaultMaxPerRoute(DEFAULT_MAX_CONNECTIONS_PER_ROUTE);
     connectionManager.setMaxTotal(DEFAULT_MAX_CONNECTIONS);
 
@@ -252,7 +252,7 @@ public class HttpUtil {
 
             if (routes != null) {
               for (HttpRoute route : routes) {
-                sb.append(createRouteInfo(connectionManager, route));
+                sb.append(createPoolStatsForRoute(connectionManager, route));
               }
             }
 
@@ -280,13 +280,15 @@ public class HttpUtil {
     }
   }
 
-  private static String createRouteInfo(
+  /** Create Pool stats for a route */
+  private static String createPoolStatsForRoute(
       PoolingHttpClientConnectionManager connectionManager, HttpRoute route) {
     PoolStats routeStats = connectionManager.getStats(route);
     return createPoolStatsInfo(
         String.format("Pool Stats for route %s = ", route.getTargetHost().toURI()), routeStats);
   }
 
+  /** Returns a string with a title and pool stats. */
   private static String createPoolStatsInfo(String title, PoolStats poolStats) {
     StringBuilder sb = new StringBuilder();
 
