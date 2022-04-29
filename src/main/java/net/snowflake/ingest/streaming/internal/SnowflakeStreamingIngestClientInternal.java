@@ -193,7 +193,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                 this.httpClient,
                 String.format("%s_%s", this.name, this.flushService.getClientPrefix()),
                 accountURL.getFullUrl());
-        this.telemetryService.refreshJWTToken(this.requestBuilder.getSecurityManager());
+        // this.telemetryService.refreshJWTToken();
 
         this.telemetryWorker = Executors.newSingleThreadScheduledExecutor();
         this.telemetryWorker.scheduleWithFixedDelay(
@@ -583,7 +583,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
-      this.telemetryWorker.shutdown();
+      if (this.telemetryWorker != null) {
+        this.telemetryWorker.shutdown();
+      }
       this.flushService.shutdown();
       Utils.closeAllocator(this.allocator);
     }

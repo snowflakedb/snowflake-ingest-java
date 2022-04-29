@@ -221,12 +221,23 @@ class ArrowRowBuffer {
    * synchronization
    */
   void close() {
+    long allocated = this.allocator.getAllocatedMemory();
     if (this.vectorsRoot != null) {
       this.vectorsRoot.close();
       this.tempVectorsRoot.close();
     }
     this.fields.clear();
     Utils.closeAllocator(this.allocator);
+
+    // If the channel is valid but still has leftover data, throw an exception because it should be
+    // cleaned up already before calling close
+    if (allocated > 0 && this.owningChannel.isValid()) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "Memory leaked=%d by allocator=%s, channel=%s",
+              allocated, this.allocator.toString(), this.owningChannel.getFullyQualifiedName()));
+    }
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */
@@ -280,6 +291,9 @@ class ArrowRowBuffer {
                     row, new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()), rowIndex));
           }
           rowIndex++;
+          if (this.rowCount == Integer.MAX_VALUE) {
+            throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+          }
         }
       } else {
         // If the on_error option is ABORT, simply throw the first exception
@@ -302,6 +316,9 @@ class ArrowRowBuffer {
           }
         }
         rowSize = tempRowSize;
+        if ((long) this.rowCount + tempRowCount >= Integer.MAX_VALUE) {
+          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+        }
         this.rowCount += tempRowCount;
         this.bufferSize += rowSize;
         this.statsMap.forEach(

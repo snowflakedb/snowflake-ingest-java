@@ -44,7 +44,7 @@ public class Constants {
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final int CPU_IO_TIME_RATIO = 1;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
-  public static final int COMMIT_MAX_RETRY_COUNT = 10;
+  public static final int COMMIT_MAX_RETRY_COUNT = 20;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 500;
   public static final int RESPONSE_ROW_SEQUENCER_IS_COMMITTED =
       26; // Don't change, should match server side
