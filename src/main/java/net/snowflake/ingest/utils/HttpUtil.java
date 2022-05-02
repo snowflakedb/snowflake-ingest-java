@@ -152,6 +152,7 @@ public class HttpUtil {
     // https://hc.apache.org/httpcomponents-client-4.5.x/current/tutorial/html/connmgmt.html
     IdleConnectionMonitorThread idleConnectionMonitorThread =
         new IdleConnectionMonitorThread(connectionManager);
+    idleConnectionMonitorThread.setDaemon(true);
     idleConnectionMonitorThread.start();
   }
 
