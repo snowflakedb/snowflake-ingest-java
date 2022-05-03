@@ -67,6 +67,13 @@ public class StreamingIngestIT {
         .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
     jdbcConnection
         .createStatement()
+        .execute(
+            String.format(
+                "create warehouse if not exists %s with warehouse_size=XSMALL max_cluster_count=1"
+                    + " min_cluster_count=1 auto_suspend=60 auto_resume=true;",
+                TestUtils.getWarehouse()));
+    jdbcConnection
+        .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
     prop = TestUtils.getProperties();
