@@ -49,22 +49,32 @@ public class HttpUtil {
 
   private static CloseableHttpClient httpClient;
 
+  private static PoolingHttpClientConnectionManager connectionManager;
+
+  private static IdleConnectionMonitorThread idleConnectionMonitorThread;
+
   private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
   private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
 
+  // Default is 2, but scaling it up to 100 to match with default_max_connections
   private static final int DEFAULT_MAX_CONNECTIONS_PER_ROUTE = 100;
+
+  // 100 is close to max partition number we have seen for a kafka topic ingesting into snowflake.
   private static final int DEFAULT_MAX_CONNECTIONS = 100;
 
-  private static final int DEFAULT_TTL_CONNECTION_MINUTES = 2;
+  // Interval in which we check if there are connections which needs to be closed.
+  private static final long IDLE_HTTP_CONNECTION_MONITOR_THREAD_INTERVAL_MS =
+      TimeUnit.SECONDS.toMillis(5);
 
-  private static final long MONITOR_THREAD_INTERVAL_MS = TimeUnit.SECONDS.toMillis(5);
-
+  // Only connections that are currently owned, not checked out, are subject to idle timeouts.
   private static final int DEFAULT_IDLE_CONNECTION_TIMEOUT_SECONDS = 30;
 
   public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
       initHttpClient();
     }
+
+    initIdleConnectionMonitoringThread();
 
     return httpClient;
   }
@@ -101,8 +111,9 @@ public class HttpUtil {
                         DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES, TimeUnit.MINUTES))
             .build();
 
-    PoolingHttpClientConnectionManager connectionManager =
-        new PoolingHttpClientConnectionManager(DEFAULT_TTL_CONNECTION_MINUTES, TimeUnit.MINUTES);
+    // Below pooling client connection manager uses time_to_live value as -1 which means it will not
+    // refresh a persisted connection
+    connectionManager = new PoolingHttpClientConnectionManager();
     connectionManager.setDefaultMaxPerRoute(DEFAULT_MAX_CONNECTIONS_PER_ROUTE);
     connectionManager.setMaxTotal(DEFAULT_MAX_CONNECTIONS);
 
@@ -147,13 +158,20 @@ public class HttpUtil {
     }
 
     httpClient = clientBuilder.build();
+  }
 
-    // Monitors in a separate thread where it closes any idle connections
-    // https://hc.apache.org/httpcomponents-client-4.5.x/current/tutorial/html/connmgmt.html
-    IdleConnectionMonitorThread idleConnectionMonitorThread =
-        new IdleConnectionMonitorThread(connectionManager);
-    idleConnectionMonitorThread.setDaemon(true);
-    idleConnectionMonitorThread.start();
+  /** Starts a daemon thread to monitor idle connections in http connection manager. */
+  private static void initIdleConnectionMonitoringThread() {
+    // Start a new thread only if connectionManager was init before and
+    // daemon thread was not started before or was closed because of SimpleIngestManager close
+    if (connectionManager != null
+        && (idleConnectionMonitorThread == null || idleConnectionMonitorThread.isShutdown())) {
+      // Monitors in a separate thread where it closes any idle connections
+      // https://hc.apache.org/httpcomponents-client-4.5.x/current/tutorial/html/connmgmt.html
+      idleConnectionMonitorThread = new IdleConnectionMonitorThread(connectionManager);
+      idleConnectionMonitorThread.setDaemon(true);
+      idleConnectionMonitorThread.start();
+    }
   }
 
   private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
@@ -243,7 +261,7 @@ public class HttpUtil {
         LOGGER.debug("Starting Idle Connection Monitor Thread ");
         synchronized (this) {
           while (!shutdown) {
-            wait(MONITOR_THREAD_INTERVAL_MS);
+            wait(IDLE_HTTP_CONNECTION_MONITOR_THREAD_INTERVAL_MS);
 
             StringBuilder sb = new StringBuilder();
 
@@ -272,13 +290,24 @@ public class HttpUtil {
       }
     }
 
-    public void shutdown() {
-      LOGGER.debug("Shutdown Idle Connection Monitor Thread ");
-      shutdown = true;
-      synchronized (this) {
-        notifyAll();
+    private void shutdown() {
+      if (!shutdown) {
+        LOGGER.debug("Shutdown Idle Connection Monitor Thread ");
+        shutdown = true;
+        synchronized (this) {
+          notifyAll();
+        }
       }
     }
+
+    private boolean isShutdown() {
+      return this.shutdown;
+    }
+  }
+
+  /** Shuts down the daemon thread. */
+  public static void shutdownHttpConnectionManagerDaemonThread() {
+    idleConnectionMonitorThread.shutdown();
   }
 
   /** Create Pool stats for a route */
@@ -291,16 +320,9 @@ public class HttpUtil {
 
   /** Returns a string with a title and pool stats. */
   private static String createPoolStatsInfo(String title, PoolStats poolStats) {
-    StringBuilder sb = new StringBuilder();
-
-    sb.append(title);
-
     if (poolStats != null) {
-      sb.append(poolStats);
+      return title + poolStats + "\n";
     }
-
-    sb.append("\n");
-
-    return sb.toString();
+    return title;
   }
 }
