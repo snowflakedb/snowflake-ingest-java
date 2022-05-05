@@ -36,6 +36,8 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.Object
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestUtils {
   // profile path, follow readme for the format
@@ -79,6 +81,8 @@ public class TestUtils {
   private static int dummyPort = 443;
   private static String dummyHost = "snowflake.qa1.int.snowflakecomputing.com";
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(TestUtils.class.getName());
+
   /**
    * load all login info from profile
    *
@@ -101,6 +105,13 @@ public class TestUtils {
       host = profile.get(HOST).asText();
       scheme = profile.get(SCHEME).asText();
       role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
+
+      LOGGER.info(
+          "Initialized test connection, role={}, database={}, schema={}, warehouse={}",
+          role,
+          database,
+          schema,
+          warehouse);
       privateKeyPem = profile.get(PRIVATE_KEY).asText();
 
       java.security.Security.addProvider(new BouncyCastleProvider());
@@ -111,6 +122,7 @@ public class TestUtils {
       PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(encoded);
       privateKey = kf.generatePrivate(keySpec);
       keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
+
     } else {
       user = dummyUser;
       port = dummyPort;
