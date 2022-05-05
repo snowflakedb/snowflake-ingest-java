@@ -338,11 +338,6 @@ public class StreamingIngestIT {
                     + " TIMESTAMP_TZ(3), tbig TIME(9), tntzbig TIMESTAMP_NTZ(9), ttzbig"
                     + " TIMESTAMP_TZ(9) );",
                 timeTableName));
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", timeTableName));
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_TIME")
             .setDBName(TEST_DB)
