@@ -586,7 +586,7 @@ public class StreamingIngestIT {
         .execute(
             String.format("create or replace table %s (numcol NUMBER(10,2));", multiThreadTable));
     int numThreads = 20;
-    int numRows = 1000000;
+    int numRows = 10000;
     ExecutorService testThreadPool = Executors.newFixedThreadPool(numThreads);
     CompletableFuture[] futures = new CompletableFuture[numThreads];
     List<SnowflakeStreamingIngestChannel> channelList = new ArrayList<>();
