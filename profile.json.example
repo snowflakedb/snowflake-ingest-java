@@ -7,9 +7,9 @@
   "host": "account_name.snowflakecomputing.com",
   "schema": "schema",
   "scheme": "https",
-  "database": "database name",
+  "database": "database_name",
   "connect_string": "jdbc:snowflake://account_name.snowflakecomputing.com:443",
   "ssl": "on",
-  "warehouse": "warehouse name"
-  "role": "accountadmin"
+  "warehouse": "warehouse_name"
+  "role": "role_name"
 }

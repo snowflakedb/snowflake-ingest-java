@@ -5,5 +5,5 @@
   "port": 443,
   "host": "account_name.snowflakecomputing.com",
   "scheme": "https",
-  "role": "accountadmin"
+  "role": "role_name"
 }

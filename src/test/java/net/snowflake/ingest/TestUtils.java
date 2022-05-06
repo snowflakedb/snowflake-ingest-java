@@ -10,6 +10,7 @@ import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.SCHEMA;
 import static net.snowflake.ingest.utils.Constants.SCHEME;
+import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 
@@ -90,6 +91,7 @@ public class TestUtils {
       user = profile.get(USER).asText();
       account = profile.get(ACCOUNT).asText();
       port = profile.get(PORT).asInt();
+      ssl = profile.get(SSL).asText();
       database = profile.get(DATABASE).asText();
       connectString = profile.get(CONNECT_STRING).asText();
       schema = profile.get(SCHEMA).asText();
@@ -178,6 +180,7 @@ public class TestUtils {
 
     props.put(USER, user);
     props.put(ACCOUNT, account);
+    props.put(SSL, ssl);
     props.put(DATABASE, database);
     props.put(SCHEMA, schema);
     props.put(WAREHOUSE, warehouse);
@@ -204,6 +207,7 @@ public class TestUtils {
     Properties props = new Properties();
     props.put("user", user);
     props.put("account", account);
+    props.put("ssl", ssl);
     props.put("db", database);
     props.put("schema", schema);
     props.put("warehouse", warehouse);
