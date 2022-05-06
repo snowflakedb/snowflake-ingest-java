@@ -5,12 +5,9 @@
 package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.ROLE;
-import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Timer;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.StringReader;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -23,7 +20,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -70,10 +66,9 @@ public class Utils {
    * Create a Properties for snowflake connection
    *
    * @param inputProp input property map
-   * @param sslEnabled if ssl is enabled
    * @return a Properties instance
    */
-  public static Properties createProperties(Properties inputProp, boolean sslEnabled) {
+  public static Properties createProperties(Properties inputProp) {
     Properties properties = new Properties();
 
     // decrypt rsa key
@@ -91,14 +86,8 @@ public class Utils {
         case Constants.PRIVATE_KEY_PASSPHRASE:
           privateKeyPassphrase = val;
           break;
-        case Constants.USER:
-          properties.put(USER, val);
-          break;
-        case Constants.ROLE:
-          properties.put(ROLE, val);
-          break;
         default:
-          properties.put(key, val);
+          properties.put(key.toLowerCase(), val);
       }
     }
 
@@ -106,13 +95,6 @@ public class Utils {
       properties.put(JDBC_PRIVATE_KEY, parseEncryptedPrivateKey(privateKey, privateKeyPassphrase));
     } else if (!privateKey.isEmpty()) {
       properties.put(JDBC_PRIVATE_KEY, parsePrivateKey(privateKey));
-    }
-
-    // set ssl
-    if (sslEnabled) {
-      properties.put(SSL, "on");
-    } else {
-      properties.put(SSL, "off");
     }
 
     if (!properties.containsKey(JDBC_PRIVATE_KEY)) {
@@ -123,35 +105,35 @@ public class Utils {
       throw new SFException(ErrorCode.MISSING_CONFIG, "user");
     }
 
+    if (!properties.containsKey(Constants.ACCOUNT_URL)) {
+      if (!properties.containsKey(Constants.HOST)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, "host");
+      }
+      if (!properties.containsKey(Constants.SCHEME)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, "scheme");
+      }
+      if (!properties.containsKey(Constants.PORT)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, "port");
+      }
+
+      properties.put(
+          Constants.ACCOUNT_URL,
+          Utils.constructAccountUrl(
+              properties.get(Constants.SCHEME).toString(),
+              properties.get(Constants.HOST).toString(),
+              Integer.parseInt(properties.get(Constants.PORT).toString())));
+    }
+
+    if (!properties.containsKey(Constants.ROLE)) {
+      throw new SFException(ErrorCode.MISSING_CONFIG, "role");
+    }
+
     return properties;
   }
 
   /** Construct account url from input schema, host and port */
   public static String constructAccountUrl(String scheme, String host, int port) {
     return String.format("%s://%s:%d", scheme, host, port);
-  }
-
-  /** Get the properties out from a json node */
-  public static Properties getPropertiesFromJson(ObjectNode json) {
-    Properties props = new Properties();
-    Optional.ofNullable(json.get(Constants.USER))
-        .ifPresent(u -> props.put(Constants.USER, u.asText()));
-    Optional.ofNullable(json.get(Constants.PRIVATE_KEY))
-        .ifPresent(u -> props.put(Constants.PRIVATE_KEY, u.asText()));
-    Optional.ofNullable(json.get(Constants.ROLE)).ifPresent(u -> props.put(ROLE, u.asText()));
-    Optional.ofNullable(json.get(Constants.PRIVATE_KEY_PASSPHRASE))
-        .ifPresent(u -> props.put(Constants.PRIVATE_KEY_PASSPHRASE, u.asText()));
-
-    Optional.ofNullable(json.get(Constants.SCHEME))
-        .ifPresent(u -> props.put(Constants.SCHEME, u.asText()));
-    Optional.ofNullable(json.get(Constants.HOST))
-        .ifPresent(u -> props.put(Constants.HOST, u.asText()));
-    Optional.ofNullable(json.get(Constants.PORT))
-        .ifPresent(u -> props.put(Constants.PORT, u.asInt()));
-    Optional.ofNullable(json.get(Constants.ACCOUNT_URL))
-        .ifPresent(u -> props.put(Constants.ACCOUNT_URL, u.asText()));
-
-    return props;
   }
 
   /**

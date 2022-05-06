@@ -1,6 +1,6 @@
 {
   "user": "user name",
-  "url": "https://account_name.snowflakecomputing.com:443"
+  "url": "https://account_name.snowflakecomputing.com:443",
   "account": "account_name",
   "private_key": "PEM Private Key",
   "port": 443,

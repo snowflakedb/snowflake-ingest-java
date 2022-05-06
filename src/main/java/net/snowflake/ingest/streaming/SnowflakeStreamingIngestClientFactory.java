@@ -8,8 +8,6 @@ import java.util.Map;
 import java.util.Properties;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 
@@ -48,33 +46,11 @@ public class SnowflakeStreamingIngestClientFactory {
       Utils.assertStringNotNullOrEmpty("client name", this.name);
       Utils.assertNotNull("connection properties", this.prop);
 
-      if (!this.prop.containsKey(Constants.ACCOUNT_URL)) {
-        if (!this.prop.containsKey(Constants.HOST)) {
-          throw new SFException(ErrorCode.MISSING_CONFIG, "host");
-        }
-        if (!this.prop.containsKey(Constants.SCHEME)) {
-          throw new SFException(ErrorCode.MISSING_CONFIG, "scheme");
-        }
-        if (!this.prop.containsKey(Constants.PORT)) {
-          throw new SFException(ErrorCode.MISSING_CONFIG, "port");
-        }
+      Properties prop = Utils.createProperties(this.prop);
+      SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
-        this.prop.put(
-            Constants.ACCOUNT_URL,
-            Utils.constructAccountUrl(
-                this.prop.get(Constants.SCHEME).toString(),
-                this.prop.get(Constants.HOST).toString(),
-                Integer.parseInt(prop.get(Constants.PORT).toString())));
-      }
-
-      if (!this.prop.containsKey(Constants.ROLE)) {
-        throw new SFException(ErrorCode.MISSING_CONFIG, "role");
-      }
-
-      SnowflakeURL accountURL = new SnowflakeURL(this.prop.getProperty(Constants.ACCOUNT_URL));
-      Properties prop = Utils.createProperties(this.prop, accountURL.sslEnabled());
       return new SnowflakeStreamingIngestClientInternal(
-          this.name, accountURL, prop, parameterOverrides);
+          this.name, accountURL, prop, this.parameterOverrides);
     }
   }
 }

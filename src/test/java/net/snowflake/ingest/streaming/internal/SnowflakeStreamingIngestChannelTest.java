@@ -1,9 +1,11 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ROW_SEQUENCER_IS_COMMITTED;
+import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import java.security.KeyPair;
@@ -237,7 +239,9 @@ public class SnowflakeStreamingIngestChannelTest {
     Properties prop = new Properties();
     prop.put(USER, TestUtils.getUser());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
-    prop = Utils.createProperties(prop, false);
+    prop.put(ACCOUNT_URL, TestUtils.getAccountURL());
+    prop.put(ROLE, TestUtils.getRole());
+    prop = Utils.createProperties(prop);
 
     String urlStr = "https://sfctest0.snowflakecomputing.com:80";
     SnowflakeURL url = new SnowflakeURL(urlStr);

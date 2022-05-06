@@ -4,11 +4,12 @@
 
 package net.snowflake.ingest.streaming.example;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
@@ -16,7 +17,6 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
-import net.snowflake.ingest.utils.Utils;
 
 /** Examples on how to use the Streaming Ingest client APIs */
 public class SnowflakeStreamingIngestExample {
@@ -24,13 +24,17 @@ public class SnowflakeStreamingIngestExample {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   public static void main(String[] args) throws Exception {
-    ObjectNode profile =
-        (ObjectNode) mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH))));
-    Properties prop = Utils.getPropertiesFromJson(profile);
+    Properties props = new Properties();
+    Iterator<Map.Entry<String, JsonNode>> propIt =
+        mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH)))).fields();
+    while (propIt.hasNext()) {
+      Map.Entry<String, JsonNode> prop = propIt.next();
+      props.put(prop.getKey(), prop.getValue().asText());
+    }
 
     // Create a streaming ingest client
     try (SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("CLIENT").setProperties(prop).build()) {
+        SnowflakeStreamingIngestClientFactory.builder("CLIENT").setProperties(props).build()) {
       // Create an open channel request on table T_STREAMINGINGEST
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("CHANNEL")
