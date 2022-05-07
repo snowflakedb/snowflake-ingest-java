@@ -28,7 +28,7 @@ Documentation Page](docs.snowflake.net).
 ## Maven (Developers only)
 
 This SDK is developed as a [Maven](maven.apache.org) project. As a
-result, you\'ll need to install maven to build the projects and, run
+result, you'll need to install maven to build the projects and, run
 tests.
 
 # Adding as a Dependency
@@ -101,3 +101,16 @@ We use [Google Java format](https://github.com/google/google-java-format) to for
 ```bash
 ./format.sh
 ````
+
+# Snowpipe Streaming Example (Still in Preview)
+
+Run File `SnowflakeStreamingIngestExample.java` which performs following operations.
+1. Reads a JSON file which contains details regarding Snowflake Account, DB, Schema etc. Take a look at `profile_streaming.json.example` for more details.
+2. Creates a `SnowflakeStreamingIngestClient` which can be used to open one or more Streaming Channels against a table.
+3. Creates a `SnowflakeStreamingIngestChannel` against a DB, schema and table name.
+   1. Please note: A Table is expected to be present before opening a Channel. Use following SQL query and place this table name in `profile_streaming.json` file
+```sql
+create or replace table MY_TABLE(c1 number);
+```
+4. Inserts few rows(1000) into a channel created in 3rd step using insertRows API on the Channel object
+5. Calls `getLatestCommittedOffsetToken` on the channel until appropriate offset is found in Snowflake.

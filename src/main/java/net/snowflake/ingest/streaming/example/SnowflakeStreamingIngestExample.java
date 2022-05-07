@@ -18,7 +18,11 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 
-/** Examples on how to use the Streaming Ingest client APIs */
+/**
+ * Example on how to use the Streaming Ingest client APIs.
+ *
+ * <p>Please read README.md file for detailed steps
+ */
 public class SnowflakeStreamingIngestExample {
   private static String PROFILE_PATH = "profile.json";
   private static final ObjectMapper mapper = new ObjectMapper();
@@ -47,16 +51,51 @@ public class SnowflakeStreamingIngestExample {
       // Open a streaming ingest channel from the given client
       SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
+      final int totalRowsInTable = 1000;
+
       // Insert a few rows into the channel,
-      for (int val = 0; val < 1000; val++) {
+      for (int val = 0; val < totalRowsInTable; val++) {
         Map<String, Object> row = new HashMap<>();
+
+        // c1 corresponds to the column name in table
         row.put("c1", val);
-        InsertValidationResponse response = channel1.insertRow(row, null);
+
+        // Along with row, we are also passing in offset Token which corresponds to the row number
+        // for simplicity
+        InsertValidationResponse response = channel1.insertRow(row, String.valueOf(val));
         if (response.hasErrors()) {
           // Simply throw if there is an exception
           throw response.getInsertErrors().get(0).getException();
         }
       }
+      final int expectedOffsetTokenInSnowflake = 999; // because it goes from 0 to 999
+      String offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
+
+      // Note: This is just an upper bound used as an example. Please don't use this for
+      // benchmarking.
+      final int maxRetries = 10;
+      int retryCount = 0;
+      while (offsetTokenFromSnowflake == null
+          || !offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {
+
+        // Sleeping for 1 second to Commit all rows in the table.
+        Thread.sleep(1_000);
+        // Used as a polling
+        offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
+        retryCount++;
+        System.out.println(
+            String.format(
+                "OffsetToken found in Snowflake:%s with retryCount:%s",
+                offsetTokenFromSnowflake, retryCount));
+        if (retryCount >= maxRetries) {
+          System.out.println(
+              String.format(
+                  "Failed to look for required OffsetToken in Snowflake:%s after MaxRetryCounts:%s",
+                  expectedOffsetTokenInSnowflake, maxRetries));
+          System.exit(1);
+        }
+      }
+      System.out.println("SUCCESSFULLY inserted " + totalRowsInTable + " rows");
     }
   }
 }
