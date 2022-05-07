@@ -80,6 +80,8 @@ public class SimpleIngestIT {
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + num;
 
+    TestUtils.executeQuery("use database " + TestUtils.getDatabase());
+
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
     TestUtils.executeQuery("create or replace stage " + stageName);

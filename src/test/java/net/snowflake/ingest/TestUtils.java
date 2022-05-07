@@ -121,6 +121,13 @@ public class TestUtils {
     }
   }
 
+  public static String getDatabase() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return database;
+  }
+
   public static String getUser() throws Exception {
     if (profile == null) {
       init();
