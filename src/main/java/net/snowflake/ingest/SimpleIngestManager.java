@@ -634,7 +634,6 @@ public class SimpleIngestManager implements AutoCloseable {
   @Override
   public void close() {
     builder.closeResources();
-    HttpUtil.shutdownHttpConnectionManagerDaemonThread();
   }
 
   /* Used for testing */
