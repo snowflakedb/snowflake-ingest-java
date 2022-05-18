@@ -136,6 +136,14 @@ public class TestUtils {
     return Utils.constructAccountUrl(scheme, host, port);
   }
 
+  public static String getRole() throws Exception {
+    if (profile == null) {
+      init();
+    }
+
+    return role;
+  }
+
   public static String getWarehouse() throws Exception {
     if (profile == null) {
       init();
