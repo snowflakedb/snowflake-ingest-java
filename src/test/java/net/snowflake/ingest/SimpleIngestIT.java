@@ -248,7 +248,7 @@ public class SimpleIngestIT {
     final String userAgentSuffix = "kafka-provider/NONE";
 
     // create ingest manager
-    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, null);
 
     // create a file wrapper
     StagedFileWrapper myFile = new StagedFileWrapper(TEST_FILE_NAME, null);
@@ -273,7 +273,8 @@ public class SimpleIngestIT {
 
     // Passing null and empty string would also work
     // create ingest manager
-    SimpleIngestManager nullUserAgentSuffixIngestManager = TestUtils.getManager(pipeName, null);
+    SimpleIngestManager nullUserAgentSuffixIngestManager =
+        TestUtils.getManager(pipeName, null, null);
 
     HttpPost nullAdditionalUserAgent =
         nullUserAgentSuffixIngestManager
@@ -282,7 +283,8 @@ public class SimpleIngestIT {
                 UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
     verifyDefaultUserAgent(nullAdditionalUserAgent.getAllHeaders(), false, null);
 
-    SimpleIngestManager emptyUserAgentSuffixIngestManager = TestUtils.getManager(pipeName, null);
+    SimpleIngestManager emptyUserAgentSuffixIngestManager =
+        TestUtils.getManager(pipeName, null, null);
     HttpPost emptyAdditionalUserAgent =
         emptyUserAgentSuffixIngestManager
             .getRequestBuilder()
@@ -329,9 +331,18 @@ public class SimpleIngestIT {
   }
 
   @Test
-  public void testConfigureClientHappyCase() throws Exception {
+  public void testConfigureClientHappyCaseNullRole() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
-    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, null);
+    ConfigureClientResponse configureClientResponse = manager.configureClient(null);
+    assertEquals(0L, configureClientResponse.getClientSequencer().longValue());
+  }
+
+  @Ignore
+  @Test
+  public void testConfigureClientHappyCaseExplicitRole() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, TestUtils.getRole());
     ConfigureClientResponse configureClientResponse = manager.configureClient(null);
     assertEquals(0L, configureClientResponse.getClientSequencer().longValue());
   }
@@ -339,7 +350,7 @@ public class SimpleIngestIT {
   @Test
   public void testConfigureClientNoPipeFound() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
-    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix, null);
     try {
       manager.configureClient(null);
     } catch (IngestResponseException exception) {
@@ -351,9 +362,25 @@ public class SimpleIngestIT {
   }
 
   @Test
+  public void testConfigureClientNoRoleFound() throws Exception {
+    final String userAgentSuffix = "kafka-provider/NONE";
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, "INVALID-ROLE");
+    try {
+      manager.configureClient(null);
+    } catch (IngestResponseException exception) {
+      assertEquals(404, exception.getErrorCode());
+      assertEquals(
+          "Requested role 'INVALID-ROLE' does not exist or is not assigned to you.  Login using"
+              + " connect string specifying another role (e.g. PUBLIC).",
+          exception.getErrorBody().getMessage());
+    }
+  }
+
+  @Ignore
+  @Test
   public void testGetClientStatusHappyCase() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
-    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, null);
     manager.configureClient(null);
     ClientStatusResponse clientStatusResponse = manager.getClientStatus(null);
     assertEquals(0L, clientStatusResponse.getClientSequencer().longValue());
@@ -363,7 +390,7 @@ public class SimpleIngestIT {
   @Test
   public void testGetClientStatusNoPipeFound() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
-    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix, null);
     try {
       manager.getClientStatus(null);
     } catch (IngestResponseException exception) {
@@ -379,7 +406,7 @@ public class SimpleIngestIT {
 
     // first lets call configure client API
     final String userAgentSuffix = "kafka-provider/NONE";
-    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, null);
     ConfigureClientResponse configureClientResponse = manager.configureClient(null);
     assertEquals(0L, configureClientResponse.getClientSequencer().longValue());
 
@@ -414,7 +441,7 @@ public class SimpleIngestIT {
 
     // first lets call configure client API
     final String userAgentSuffix = "kafka-provider/NONE";
-    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, null);
     ConfigureClientResponse configureClientResponse = manager.configureClient(null);
     assertEquals(0L, configureClientResponse.getClientSequencer().longValue());
     final long oldClientSequencer = configureClientResponse.getClientSequencer();
@@ -474,7 +501,7 @@ public class SimpleIngestIT {
   public void testIngestFilesWithClientInfoWithNoClientSequencer() throws Exception {
     // first lets call configure client API
     final String userAgentSuffix = "kafka-provider/NONE";
-    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
+    SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix, null);
 
     // put
     TestUtils.executeQuery("put file://" + testFilePath + " @" + stageName);

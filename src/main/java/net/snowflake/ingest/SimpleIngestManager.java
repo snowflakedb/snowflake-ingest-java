@@ -73,7 +73,8 @@ public class SimpleIngestManager implements AutoCloseable {
     // Hostname to connect to, default will be RequestBuilder#DEFAULT_HOST
     private String hostName;
 
-    private PrivateKey privateKey;
+    // the role name we want to use to authenticate
+    private String role;
 
     /**
      * getAccount - returns the name of the account this builder will inject into the IngestManager
@@ -164,6 +165,27 @@ public class SimpleIngestManager implements AutoCloseable {
       return userAgentSuffix;
     }
 
+    /**
+     * Sets the name of the role that will be used for authorization. If not set, the default role
+     * assigned to the user will be used.
+     *
+     * @param role the role name we'll be using for auth
+     * @return the current builder with the role name set
+     */
+    public Builder setRole(String role) {
+      this.role = role;
+      return this;
+    }
+
+    /**
+     * Get the set role name.
+     *
+     * <p>It can be null or empty.
+     */
+    public String getRole() {
+      return role;
+    }
+
     /* Sets the user agent suffix as part of this SimpleIngestManager Instance */
     public Builder setUserAgentSuffix(String userAgentSuffix) {
       this.userAgentSuffix = userAgentSuffix;
@@ -188,9 +210,9 @@ public class SimpleIngestManager implements AutoCloseable {
     public SimpleIngestManager build() {
       if (isNullOrEmpty(hostName)) {
         return new SimpleIngestManager(
-            account, user, pipe, DEFAULT_HOST_SUFFIX, keypair, userAgentSuffix);
+            account, user, pipe, DEFAULT_HOST_SUFFIX, keypair, userAgentSuffix, role);
       }
-      return new SimpleIngestManager(account, user, pipe, hostName, keypair, userAgentSuffix);
+      return new SimpleIngestManager(account, user, pipe, hostName, keypair, userAgentSuffix, role);
     }
   }
 
@@ -335,6 +357,36 @@ public class SimpleIngestManager implements AutoCloseable {
   }
 
   /**
+   * Using this constructor for Builder pattern. KeyPair can be passed in now since we have
+   * made @see {@link Utils#createKeyPairFromPrivateKey(PrivateKey)} public
+   *
+   * @param account The account into which we're loading Note: account should not include region or
+   *     cloud provider info. e.g. if host is testaccount.us-east-1.azure .snowflakecomputing.com,
+   *     account should be testaccount. If this is the case, you should use the constructor that
+   *     accepts hostname as argument
+   * @param user the user performing this load
+   * @param pipe the fully qualified name of the pipe
+   * @param hostName the hostname
+   * @param keyPair keyPair associated with the private key used for authentication. See @see {@link
+   *     Utils#createKeyPairFromPrivateKey} to generate KP from p8Key
+   * @param userAgentSuffix user agent suffix we want to add.
+   */
+  public SimpleIngestManager(
+      String account,
+      String user,
+      String pipe,
+      String hostName,
+      KeyPair keyPair,
+      String userAgentSuffix,
+      String role) {
+    // call our initializer method
+    init(account, user, pipe, keyPair);
+
+    // create the request builder
+    this.builder = new RequestBuilder(account, user, hostName, keyPair, userAgentSuffix, role);
+  }
+
+  /**
    * Constructs a SimpleIngestManager for a given user in a specific account In addition, this also
    * takes takes the target table and source stage Finally, it also requires a valid private key
    * registered with Snowflake DB
@@ -386,6 +438,28 @@ public class SimpleIngestManager implements AutoCloseable {
     // make the request builder we'll use to build messages to the service
     builder =
         new RequestBuilder(account, user, keyPair, schemeName, hostName, port, userAgentSuffix);
+  }
+
+  /* Another flavor of constructor which supports userAgentSuffix and role */
+  public SimpleIngestManager(
+      String account,
+      String user,
+      String pipe,
+      PrivateKey privateKey,
+      String schemeName,
+      String hostName,
+      int port,
+      String userAgentSuffix,
+      String role)
+      throws NoSuchAlgorithmException, InvalidKeySpecException {
+    KeyPair keyPair = Utils.createKeyPairFromPrivateKey(privateKey);
+    // call our initializer method
+    init(account, user, pipe, keyPair);
+
+    // make the request builder we'll use to build messages to the service
+    builder =
+        new RequestBuilder(
+            account, user, keyPair, schemeName, hostName, port, userAgentSuffix, role);
   }
 
   // ========= Constructors End =========
