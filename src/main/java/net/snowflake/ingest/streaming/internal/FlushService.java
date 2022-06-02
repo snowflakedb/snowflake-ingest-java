@@ -4,12 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.CPU_IO_TIME_RATIO;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import com.codahale.metrics.Timer;
 import java.io.ByteArrayOutputStream;
@@ -20,20 +15,8 @@ import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.CRC32;
 import javax.crypto.BadPaddingException;
@@ -41,13 +24,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.Cryptor;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
+import net.snowflake.ingest.utils.*;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -300,7 +277,7 @@ class FlushService {
     this.buildUploadWorkers =
         Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
 
-    logger.logInfo(
+    logger.logDebug(
         "Create {} threads for build/upload blobs for client={}, total available processors={}",
         buildUploadThreadCount,
         this.owningClient.getName(),
@@ -525,7 +502,7 @@ class FlushService {
         curDataSize += encryptedCompressedChunkDataSize;
         crc.update(encryptedCompressedChunkData, 0, encryptedCompressedChunkDataSize);
 
-        logger.logDebug(
+        logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, uncompressedSize={},"
                 + " compressedChunkLength={}, encryptedCompressedSize={}",
             filePath,
@@ -558,7 +535,7 @@ class FlushService {
    */
   BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata)
       throws NoSuchAlgorithmException {
-    logger.logDebug("Start uploading file={}, size={}", filePath, blob.length);
+    logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
 
@@ -572,7 +549,7 @@ class FlushService {
           metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
     }
 
-    logger.logDebug("Finish uploading file={}", filePath);
+    logger.logInfo("Finish uploading file={}", filePath);
 
     return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), metadata);
   }

@@ -75,7 +75,7 @@ class RegisterService {
    * the ordering is maintained across independent blobs in the same channel.
    *
    * @param latencyTimerContextMap the map that stores the latency timer for each blob
-   * @return a list of blob names that has errors during registration
+   * @return a list of blob names that have errors during registration
    */
   List<FlushService.BlobData> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap) {
     List<FlushService.BlobData> errorBlobs = new ArrayList<>();
@@ -124,6 +124,7 @@ class RegisterService {
 
               // Retry logic for timeout exception only
               if (e instanceof TimeoutException && retry < BLOB_UPLOAD_MAX_RETRY_COUNT) {
+                logger.logInfo("Retrying on uploading blob={}", futureBlob.getKey().getFilePath());
                 retry++;
                 break;
               }
@@ -148,7 +149,7 @@ class RegisterService {
             Timer.Context registerContext =
                 Utils.createTimerContext(this.owningClient.registerLatency);
 
-            // Register the blobs, and invalidate any channels that returns a failure status code
+            // Register the blobs, and invalidate any channels that return a failure status code
             this.owningClient.registerBlobs(blobs);
 
             if (registerContext != null) {

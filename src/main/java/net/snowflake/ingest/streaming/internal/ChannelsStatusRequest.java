@@ -29,16 +29,12 @@ class ChannelsStatusRequest {
     // Client Sequencer
     private final Long clientSequencer;
 
-    // Optional Row Sequencer
-    private final Long rowSequencer;
-
     ChannelStatusRequestDTO(SnowflakeStreamingIngestChannelInternal channel) {
       this.channelName = channel.getName();
       this.databaseName = channel.getDBName();
       this.schemaName = channel.getSchemaName();
       this.tableName = channel.getTableName();
       this.clientSequencer = channel.getChannelSequencer();
-      this.rowSequencer = channel.getRowSequencer();
     }
 
     @JsonProperty("table")
@@ -64,12 +60,6 @@ class ChannelsStatusRequest {
     @JsonProperty("client_sequencer")
     Long getClientSequencer() {
       return clientSequencer;
-    }
-
-    @JsonInclude(Include.NON_EMPTY)
-    @JsonProperty("row_sequencer")
-    Long getRowSequencer() {
-      return rowSequencer;
     }
   }
 
