@@ -4,7 +4,9 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
+import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import java.util.Collections;
 import java.util.List;
