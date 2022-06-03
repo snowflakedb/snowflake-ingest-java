@@ -559,6 +559,7 @@ class FlushService {
   BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata)
       throws NoSuchAlgorithmException {
     logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
+    long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
 
@@ -572,7 +573,11 @@ class FlushService {
           metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
     }
 
-    logger.logInfo("Finish uploading file={}", filePath);
+    logger.logInfo(
+        "Finish uploading file={}, size={}, timeInMillis={}",
+        filePath,
+        blob.length,
+        System.currentTimeMillis() - startTime);
 
     return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), metadata);
   }

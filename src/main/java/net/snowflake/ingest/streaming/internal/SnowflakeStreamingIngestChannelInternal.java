@@ -318,8 +318,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
               this.arrowBuffer.close();
               this.owningClient.removeChannelIfSequencersMatch(this);
 
-              // Throw an exception if the channel has any uncommitted rows
-              if (!uncommittedChannels.isEmpty()) {
+              // Throw an exception if the channel is invalid or has any uncommitted rows
+              if (!isValid() || !uncommittedChannels.isEmpty()) {
                 throw new SFException(
                     ErrorCode.CHANNELS_WITH_UNCOMMITTED_ROWS,
                     uncommittedChannels.stream()

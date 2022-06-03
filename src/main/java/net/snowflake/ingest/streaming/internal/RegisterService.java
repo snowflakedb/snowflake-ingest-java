@@ -124,7 +124,7 @@ class RegisterService {
 
               // Retry logic for timeout exception only
               if (e instanceof TimeoutException && retry < BLOB_UPLOAD_MAX_RETRY_COUNT) {
-                logger.logInfo("Retrying on uploading blob={}", futureBlob.getKey().getFilePath());
+                logger.logInfo("Retry on uploading blob={}", futureBlob.getKey().getFilePath());
                 retry++;
                 break;
               }
