@@ -300,7 +300,7 @@ class FlushService {
     this.buildUploadWorkers =
         Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
 
-    logger.logDebug(
+    logger.logInfo(
         "Create {} threads for build/upload blobs for client={}, total available processors={}",
         buildUploadThreadCount,
         this.owningClient.getName(),

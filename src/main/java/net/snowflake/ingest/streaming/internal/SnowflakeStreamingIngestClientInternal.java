@@ -654,8 +654,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
           channelsWithError.add(channel);
         } else if (!channelStatus.getPersistedRowSequencer().equals(channel.getRowSequencer())) {
-          tempChannels.add(channels.get(idx));
-          tempChannelsStatus.add(channelsStatus.get(idx));
+          tempChannels.add(channel);
+          tempChannelsStatus.add(channelStatus);
         }
       }
 

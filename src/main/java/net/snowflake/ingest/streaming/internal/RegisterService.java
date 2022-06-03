@@ -94,7 +94,7 @@ class RegisterService {
         }
 
         // In order to guarantee fairness between the time spent on waiting blob uploading VS blob
-        // registering and make sure the :
+        // registering and make sure the delay on server side commit is relatively small:
         // 1. If no exception and total time is less than or equal to
         // BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC, we will wait for all blobs to be uploaded and then
         // register them
@@ -160,7 +160,7 @@ class RegisterService {
 
           if (blobs.size() > 0 && !isTestMode) {
             logger.logInfo(
-                "Start to uploading blobs in client={}, totalBlobListSize={},"
+                "Start to registering blobs in client={}, totalBlobListSize={},"
                     + " currentBlobListSize={}",
                 this.owningClient.getName(),
                 oldList.size(),

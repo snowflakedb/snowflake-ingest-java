@@ -45,7 +45,7 @@ public class Constants {
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final int CPU_IO_TIME_RATIO = 1;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
-  public static final int COMMIT_MAX_RETRY_COUNT = 20;
+  public static final int COMMIT_MAX_RETRY_COUNT = 60;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
