@@ -5,7 +5,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_PER_BLOB_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC;
 
 import com.codahale.metrics.Timer;
 import java.util.ArrayList;
@@ -92,15 +93,26 @@ class RegisterService {
           this.blobsListLock.unlock();
         }
 
-        // If no exception, we will register all blobs in the blob list
-        // If hitting non-timeout exception, we will log it and continue
-        // If hitting timeout exception, we will register all the previous blobs in the blob list
-        // and retry until the hitting BLOB_UPLOAD_MAX_RETRY_COUNT
+        // In order to guarantee fairness between the time spent on waiting blob uploading VS blob
+        // registering and make sure the :
+        // 1. If no exception and total time is less than or equal to
+        // BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC, we will wait for all blobs to be uploaded and then
+        // register them
+        // 2. If no exception and total time is bigger than BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC, we
+        // will break the waiting and register the processed blob first
+        // 3. If hitting non-timeout exception, we will skip the current blob and continue on
+        // processing next blob
+        // 4. If hitting timeout exception, we will break the waiting if we haven't reached
+        // BLOB_UPLOAD_PER_BLOB_TIMEOUT_IN_SEC * BLOB_UPLOAD_MAX_RETRY_COUNT and register the
+        // processed blob first. Otherwise, we will skip the current blob and continue on processing
+        // next blob if time out has been reached.
         int idx = 0;
         int retry = 0;
         while (idx < oldList.size()) {
           List<BlobMetadata> blobs = new ArrayList<>();
-          while (idx < oldList.size()) {
+          long startTime = System.currentTimeMillis();
+          while (idx < oldList.size()
+              && System.currentTimeMillis() - startTime <= BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC) {
             Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> futureBlob =
                 oldList.get(idx);
             try {
@@ -108,7 +120,7 @@ class RegisterService {
                   "Start waiting on uploading blob={}", futureBlob.getKey().getFilePath());
               // Wait for uploading to finish
               BlobMetadata blob =
-                  futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+                  futureBlob.getValue().get(BLOB_UPLOAD_PER_BLOB_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
               logger.logDebug(
                   "Finish waiting on uploading blob={}", futureBlob.getKey().getFilePath());
               if (blob != null) {
@@ -124,13 +136,14 @@ class RegisterService {
 
               // Retry logic for timeout exception only
               if (e instanceof TimeoutException && retry < BLOB_UPLOAD_MAX_RETRY_COUNT) {
-                logger.logInfo("Retry on uploading blob={}", futureBlob.getKey().getFilePath());
+                logger.logInfo(
+                    "Retry on waiting for uploading blob={}", futureBlob.getKey().getFilePath());
                 retry++;
                 break;
               }
               logger.logError(
-                  "Building or uploading blob failed={}, exception={}, detail={}, cause={},"
-                      + " detail={}, all channels in the blob will be invalidated",
+                  "Building or uploading blob={} failed or timed out, exception={}, detail={},"
+                      + " cause={}, detail={}, all channels in the blob will be invalidated",
                   futureBlob.getKey().getFilePath(),
                   e,
                   e.getMessage(),
@@ -146,6 +159,12 @@ class RegisterService {
           }
 
           if (blobs.size() > 0 && !isTestMode) {
+            logger.logInfo(
+                "Start to uploading blobs in client={}, totalBlobListSize={},"
+                    + " currentBlobListSize={}",
+                this.owningClient.getName(),
+                oldList.size(),
+                blobs.size());
             Timer.Context registerContext =
                 Utils.createTimerContext(this.owningClient.registerLatency);
 

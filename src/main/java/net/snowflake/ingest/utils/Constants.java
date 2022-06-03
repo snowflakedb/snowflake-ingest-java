@@ -28,8 +28,9 @@ public class Constants {
       10L; // Don't change, should match server side
   public static final long RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL =
       7L; // Don't change, should match server side
-  public static final long BLOB_UPLOAD_TIMEOUT_IN_SEC = 3L;
-  public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 20;
+  public static final int BLOB_UPLOAD_PER_BLOB_TIMEOUT_IN_SEC = 5;
+  public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 12;
+  public static final int BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC = 10;
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 512000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 32000000L;
@@ -44,7 +45,7 @@ public class Constants {
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final int CPU_IO_TIME_RATIO = 1;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
-  public static final int COMMIT_MAX_RETRY_COUNT = 60;
+  public static final int COMMIT_MAX_RETRY_COUNT = 20;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
