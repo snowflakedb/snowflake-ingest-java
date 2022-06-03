@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -466,7 +467,7 @@ public class StreamingIngestIT {
 
     // Open a streaming ingest channel from the given client
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
-    long timestamp = System.currentTimeMillis();
+    long timestamp = Instant.now().toEpochMilli();
     timestamp = timestamp / 1000;
     Map<String, Object> row = new HashMap<>();
     row.put("s", "honk");
