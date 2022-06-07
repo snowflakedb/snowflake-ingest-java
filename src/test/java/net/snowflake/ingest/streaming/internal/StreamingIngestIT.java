@@ -9,10 +9,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,6 +76,8 @@ public class StreamingIngestIT {
             String.format(
                 "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_TABLE));
     jdbcConnection.createStatement().execute("alter session set ENABLE_UNIFIED_TABLE_SCAN=true;");
+    // Set timezone to UTC
+    jdbcConnection.createStatement().execute("alter session set timezone = 'UTC';");
     jdbcConnection
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
@@ -387,6 +391,8 @@ public class StreamingIngestIT {
     // Close the channel after insertion
     channel1.close().get();
 
+    Calendar cal = Calendar.getInstance();
+    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("1")) {
@@ -404,9 +410,9 @@ public class StreamingIngestIT {
         Assert.assertEquals(3600123, result.getTimestamp("TSMALL").getTime());
         Assert.assertEquals(32400123, result.getTimestamp("TBIG").getTime());
         Assert.assertEquals(123456780, result.getTimestamp("TBIG").getNanos());
-        Assert.assertEquals(1609462800123L, result.getTimestamp("TNTZSMALL").getTime());
-        Assert.assertEquals(1609462800123L, result.getTimestamp("TNTZBIG").getTime());
-        Assert.assertEquals(123450000, result.getTimestamp("TNTZBIG").getNanos());
+        Assert.assertEquals(1609462800123L, result.getTimestamp("TNTZSMALL", cal).getTime());
+        Assert.assertEquals(1609462800123L, result.getTimestamp("TNTZBIG", cal).getTime());
+        Assert.assertEquals(123450000, result.getTimestamp("TNTZBIG", cal).getNanos());
 
         result =
             jdbcConnection
@@ -430,9 +436,9 @@ public class StreamingIngestIT {
         Assert.assertEquals(10800123, result.getTimestamp("MTSMALL").getTime());
         Assert.assertEquals(39600123, result.getTimestamp("MTBIG").getTime());
         Assert.assertEquals(123456780, result.getTimestamp("MTBIG").getNanos());
-        Assert.assertEquals(1809462800123L, result.getTimestamp("MTNTZSMALL").getTime());
-        Assert.assertEquals(1925024400123L, result.getTimestamp("MTNTZBIG").getTime());
-        Assert.assertEquals(123456780, result.getTimestamp("MTNTZBIG").getNanos());
+        Assert.assertEquals(1809462800123L, result.getTimestamp("MTNTZSMALL", cal).getTime());
+        Assert.assertEquals(1925024400123L, result.getTimestamp("MTNTZBIG", cal).getTime());
+        Assert.assertEquals(123456780, result.getTimestamp("MTNTZBIG", cal).getNanos());
 
         return;
       } else {
@@ -471,12 +477,14 @@ public class StreamingIngestIT {
     row.put("tinyfloat", 1.1);
     row.put("var", "{\"e\":2.7}");
     row.put("t", timestamp);
-    row.put("d", "1967-06-23 01:01:01");
+    row.put("d", "1969-12-31 00:00:00");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     // Close the channel after insertion
     channel1.close().get();
 
+    Calendar cal = Calendar.getInstance();
+    cal.setTimeZone(TimeZone.getTimeZone("UTC"));
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
           && channel1.getLatestCommittedOffsetToken().equals("1")) {
@@ -493,8 +501,8 @@ public class StreamingIngestIT {
         Assert.assertEquals(3.14, result.getFloat("F"), 0.0001);
         Assert.assertEquals(1.1, result.getFloat("TINYFLOAT"), 0.001);
         Assert.assertEquals("{\n" + "  \"e\": 2.7\n" + "}", result.getString("VAR"));
-        Assert.assertEquals(timestamp * 1000, result.getTimestamp("T").getTime());
-        Assert.assertEquals(-923, TimeUnit.MILLISECONDS.toDays(result.getDate("D").getTime()));
+        Assert.assertEquals(timestamp * 1000, result.getTimestamp("T", cal).getTime());
+        Assert.assertEquals(-1, TimeUnit.MILLISECONDS.toDays(result.getDate("D", cal).getTime()));
         return;
       } else {
         Thread.sleep(2000);
