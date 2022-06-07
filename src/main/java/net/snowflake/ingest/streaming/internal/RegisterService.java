@@ -5,8 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_PER_BLOB_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
 import com.codahale.metrics.Timer;
 import java.util.ArrayList;
@@ -96,14 +95,14 @@ class RegisterService {
         // In order to guarantee fairness between the time spent on waiting blob uploading VS blob
         // registering and make sure the delay on server side commit is relatively small:
         // 1. If no exception and total time is less than or equal to
-        // BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC, we will wait for all blobs to be uploaded and then
+        // BLOB_UPLOAD_TIMEOUT_IN_SEC * 2, we will wait for all blobs to be uploaded and then
         // register them
-        // 2. If no exception and total time is bigger than BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC, we
+        // 2. If no exception and total time is bigger than BLOB_UPLOAD_TIMEOUT_IN_SEC * 2, we
         // will break the waiting and register the processed blob first
         // 3. If hitting non-timeout exception, we will skip the current blob and continue on
         // processing next blob
         // 4. If hitting timeout exception, we will break the waiting if we haven't reached
-        // BLOB_UPLOAD_PER_BLOB_TIMEOUT_IN_SEC * BLOB_UPLOAD_MAX_RETRY_COUNT and register the
+        // BLOB_UPLOAD_TIMEOUT_IN_SEC * BLOB_UPLOAD_MAX_RETRY_COUNT and register the
         // processed blob first. Otherwise, we will skip the current blob and continue on processing
         // next blob if time out has been reached.
         int idx = 0;
@@ -112,7 +111,7 @@ class RegisterService {
           List<BlobMetadata> blobs = new ArrayList<>();
           long startTime = System.currentTimeMillis();
           while (idx < oldList.size()
-              && System.currentTimeMillis() - startTime <= BLOB_UPLOAD_TOTAL_TIMEOUT_IN_SEC) {
+              && System.currentTimeMillis() - startTime <= BLOB_UPLOAD_TIMEOUT_IN_SEC * 2) {
             Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> futureBlob =
                 oldList.get(idx);
             try {
@@ -120,7 +119,7 @@ class RegisterService {
                   "Start waiting on uploading blob={}", futureBlob.getKey().getFilePath());
               // Wait for uploading to finish
               BlobMetadata blob =
-                  futureBlob.getValue().get(BLOB_UPLOAD_PER_BLOB_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+                  futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
               logger.logDebug(
                   "Finish waiting on uploading blob={}", futureBlob.getKey().getFilePath());
               if (blob != null) {
