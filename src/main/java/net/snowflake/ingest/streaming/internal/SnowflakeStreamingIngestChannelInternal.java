@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import java.util.Collections;
 import java.util.List;
@@ -112,7 +113,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     this.encryptionKey = encryptionKey;
     this.encryptionKeyId = encryptionKeyId;
     this.onErrorOption = onErrorOption;
-    logger.logDebug("Channel={} created for table={}", this.channelName, this.tableName);
+    logger.logInfo("Channel={} created for table={}", this.channelName, this.tableName);
   }
 
   /**
@@ -264,8 +265,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   /** Mark the channel as closed */
   void markClosed() {
     this.isClosed = true;
-    logger.logDebug(
-        "Channel is closed, name={}, channel sequencer={}, row sequencer={}",
+    logger.logInfo(
+        "Channel is marked as closed, name={}, channel sequencer={}, row sequencer={}",
         getFullyQualifiedName(),
         channelSequencer,
         rowSequencer);
@@ -317,10 +318,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
               this.arrowBuffer.close();
               this.owningClient.removeChannelIfSequencersMatch(this);
 
-              // Throw an exception if the channel has any uncommitted rows
-              if (!uncommittedChannels.isEmpty()) {
+              // Throw an exception if the channel is invalid or has any uncommitted rows
+              if (!isValid() || !uncommittedChannels.isEmpty()) {
                 throw new SFException(
-                    ErrorCode.CHANNEL_WITH_UNCOMMITTED_ROWS,
+                    ErrorCode.CHANNELS_WITH_UNCOMMITTED_ROWS,
                     uncommittedChannels.stream()
                         .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
                         .collect(Collectors.toList()));
@@ -419,11 +420,14 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   public String getLatestCommittedOffsetToken() {
     checkValidation();
 
-    return this.owningClient
-        .getChannelsStatus(Collections.singletonList(this))
-        .getChannels()
-        .get(0)
-        .getPersistedOffsetToken();
+    ChannelsStatusResponse.ChannelStatusResponseDTO response =
+        this.owningClient.getChannelsStatus(Collections.singletonList(this)).getChannels().get(0);
+
+    if (response.getStatusCode() != RESPONSE_SUCCESS) {
+      throw new SFException(ErrorCode.CHANNEL_STATUS_INVALID, getName(), response.getStatusCode());
+    }
+
+    return response.getPersistedOffsetToken();
   }
 
   /**
