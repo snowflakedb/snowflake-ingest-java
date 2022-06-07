@@ -7,7 +7,6 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -77,6 +76,8 @@ public class StreamingIngestIT {
             String.format(
                 "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_TABLE));
     jdbcConnection.createStatement().execute("alter session set ENABLE_UNIFIED_TABLE_SCAN=true;");
+    // Set timezone to UTC
+    jdbcConnection.createStatement().execute("alter session set timezone = 'UTC';");
     jdbcConnection
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
@@ -467,7 +468,7 @@ public class StreamingIngestIT {
 
     // Open a streaming ingest channel from the given client
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
-    long timestamp = Instant.now().toEpochMilli();
+    long timestamp = System.currentTimeMillis();
     timestamp = timestamp / 1000;
     Map<String, Object> row = new HashMap<>();
     row.put("s", "honk");
@@ -476,7 +477,7 @@ public class StreamingIngestIT {
     row.put("tinyfloat", 1.1);
     row.put("var", "{\"e\":2.7}");
     row.put("t", timestamp);
-    row.put("d", "1967-06-23 01:01:01");
+    row.put("d", "1969-12-31 00:00:00");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     // Close the channel after insertion
@@ -501,7 +502,7 @@ public class StreamingIngestIT {
         Assert.assertEquals(1.1, result.getFloat("TINYFLOAT"), 0.001);
         Assert.assertEquals("{\n" + "  \"e\": 2.7\n" + "}", result.getString("VAR"));
         Assert.assertEquals(timestamp * 1000, result.getTimestamp("T", cal).getTime());
-        Assert.assertEquals(-923, TimeUnit.MILLISECONDS.toDays(result.getDate("D").getTime()));
+        Assert.assertEquals(-1, TimeUnit.MILLISECONDS.toDays(result.getDate("D", cal).getTime()));
         return;
       } else {
         Thread.sleep(2000);
