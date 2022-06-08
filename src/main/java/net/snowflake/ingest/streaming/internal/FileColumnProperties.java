@@ -51,8 +51,8 @@ class FileColumnProperties {
     this.setMinRealValue(stats.getCurrentMinRealValue());
     this.setMaxRealValue(stats.getCurrentMaxRealValue());
     this.setMaxLength(stats.getCurrentMaxLength());
-    this.setMaxStrNonCollated(stats.getCurrentMaxStrValue());
-    this.setMinStrNonCollated(stats.getCurrentMinStrValue());
+    this.setMaxStrNonCollated(stats.getCurrentMaxColStrValue());
+    this.setMinStrNonCollated(stats.getCurrentMinColStrValue());
     this.setMaxStrValue(stats.getCurrentMaxColStrValue());
     this.setMinStrValue(stats.getCurrentMinColStrValue());
     this.setNullCount(stats.getCurrentNullCount());

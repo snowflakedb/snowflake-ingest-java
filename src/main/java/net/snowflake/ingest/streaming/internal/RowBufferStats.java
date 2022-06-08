@@ -296,8 +296,6 @@ class RowBufferStats {
     }
   }
 
-  private String currentMinStrValue;
-  private String currentMaxStrValue;
   private String currentMinColStrValue;
   private String currentMaxColStrValue;
   private byte[] currentMinColStrValueInBytes;
@@ -328,8 +326,6 @@ class RowBufferStats {
   }
 
   void reset() {
-    this.currentMaxStrValue = null;
-    this.currentMinStrValue = null;
     this.currentMaxColStrValue = null;
     this.currentMinColStrValue = null;
     this.currentMaxColStrValueInBytes = null;
@@ -371,16 +367,12 @@ class RowBufferStats {
       combined.addIntValue(right.currentMaxIntValue);
     }
 
-    if (left.currentMinStrValue != null) {
-      combined.addStrValue(left.currentMinStrValue);
-      combined.addStrValue(left.currentMaxStrValue);
+    if (left.currentMinColStrValue != null) {
       combined.addStrValue(left.currentMinColStrValue);
       combined.addStrValue(left.currentMaxColStrValue);
     }
 
-    if (right.currentMinStrValue != null) {
-      combined.addStrValue(right.currentMinStrValue);
-      combined.addStrValue(right.currentMaxStrValue);
+    if (right.currentMinColStrValue != null) {
       combined.addStrValue(right.currentMinColStrValue);
       combined.addStrValue(right.currentMaxColStrValue);
     }
@@ -410,8 +402,7 @@ class RowBufferStats {
     byte[] collatedValueBytes = value != null ? getCollatedBytes(value) : null;
 
     // Check if new min/max string
-    if (this.currentMinStrValue == null) {
-      this.currentMinStrValue = value;
+    if (this.currentMinColStrValue == null) {
       this.currentMinColStrValue = value;
       this.currentMinColStrValueInBytes = collatedValueBytes;
 
@@ -426,11 +417,9 @@ class RowBufferStats {
         incrementedValueBytes[MAX_LOB_LEN - 1]++;
         incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
         String incrementedValue = new String(incrementedValueBytes);
-        this.currentMaxStrValue = incrementedValue;
         this.currentMaxColStrValue = incrementedValue;
         this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
       } else {
-        this.currentMaxStrValue = value;
         this.currentMaxColStrValue = value;
         this.currentMaxColStrValueInBytes = collatedValueBytes;
       }
@@ -438,7 +427,6 @@ class RowBufferStats {
       // Collated comparison
       if (compare(currentMinColStrValueInBytes, collatedValueBytes) > 0) {
         this.currentMinColStrValue = value;
-        this.currentMinStrValue = value;
         this.currentMinColStrValueInBytes = collatedValueBytes;
       } else if (compare(currentMaxColStrValueInBytes, collatedValueBytes) < 0) {
         /*
@@ -453,23 +441,13 @@ class RowBufferStats {
           incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
           String incrementedValue = new String(incrementedValueBytes);
           this.currentMaxColStrValue = incrementedValue;
-          this.currentMaxStrValue = incrementedValue;
           this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
         } else {
           this.currentMaxColStrValue = value;
-          this.currentMaxStrValue = value;
           this.currentMaxColStrValueInBytes = collatedValueBytes;
         }
       }
     }
-  }
-
-  String getCurrentMinStrValue() {
-    return currentMinStrValue;
-  }
-
-  String getCurrentMaxStrValue() {
-    return currentMaxStrValue;
   }
 
   String getCurrentMinColStrValue() {
