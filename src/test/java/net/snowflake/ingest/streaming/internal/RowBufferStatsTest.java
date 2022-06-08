@@ -153,7 +153,7 @@ public class RowBufferStatsTest {
     Assert.assertEquals(-1, stats.getDistinctValues());
 
     stats.addStrValue("Bob");
-    Assert.assertEquals("Bob", stats.getCurrentMinStrValue());
+    Assert.assertEquals("bob", stats.getCurrentMinStrValue());
     Assert.assertEquals("bob", stats.getCurrentMaxStrValue());
     Assert.assertEquals("bob", stats.getCurrentMinColStrValue());
     Assert.assertEquals("bob", stats.getCurrentMaxColStrValue());
@@ -359,7 +359,7 @@ public class RowBufferStatsTest {
     two.incCurrentNullCount();
 
     result = RowBufferStats.getCombinedStats(one, two);
-    Assert.assertEquals("Alpha", result.getCurrentMinStrValue());
+    Assert.assertEquals("a", result.getCurrentMinStrValue());
     Assert.assertEquals("g", result.getCurrentMaxStrValue());
     Assert.assertEquals("a", result.getCurrentMinColStrValue());
     Assert.assertEquals("g", result.getCurrentMaxColStrValue());

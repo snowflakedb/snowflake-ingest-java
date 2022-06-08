@@ -302,8 +302,6 @@ class RowBufferStats {
   private String currentMaxColStrValue;
   private byte[] currentMinColStrValueInBytes;
   private byte[] currentMaxColStrValueInBytes;
-  //  private byte[] currentMinStrValueInBytes;
-  //  private byte[] currentMaxStrValueInBytes;
   private BigInteger currentMinIntValue;
   private BigInteger currentMaxIntValue;
   private Double currentMinRealValue;
