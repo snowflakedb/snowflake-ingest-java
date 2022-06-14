@@ -51,8 +51,11 @@ class FileColumnProperties {
     this.setMinRealValue(stats.getCurrentMinRealValue());
     this.setMaxRealValue(stats.getCurrentMaxRealValue());
     this.setMaxLength(stats.getCurrentMaxLength());
+
+    //Collated and non-collated strings are intentionally equal here as required by Snowflake
     this.setMaxStrNonCollated(stats.getCurrentMaxColStrValue());
     this.setMinStrNonCollated(stats.getCurrentMinColStrValue());
+
     this.setMaxStrValue(stats.getCurrentMaxColStrValue());
     this.setMinStrValue(stats.getCurrentMinColStrValue());
     this.setNullCount(stats.getCurrentNullCount());
