@@ -8,8 +8,8 @@ Snowflake Ingest Service Java SDK
 The Snowflake Ingest Service SDK allows users to ingest files into their
 Snowflake data warehouse in a programmatic fashion via key-pair
 authentication. Currently, we support ingestion through the following APIs:
-1. [Snowpipe] (https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-gs.html#client-requirement-java-or-python-sdk)
-2. [Snowpipe Streaming] (https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html) - Under Private Preview
+1. [Snowpipe](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-gs.html#client-requirement-java-or-python-sdk)
+2. [Snowpipe Streaming](https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html) - Under Private Preview
 
 # Prerequisites
 
@@ -105,9 +105,13 @@ We use [Google Java format](https://github.com/google/google-java-format) to for
 
 # Example
 
+## Snowpipe
+
+Check out `SnowflakeIngestBasicExample.java`
+
 ## Snowpipe Streaming
 
-Run File `SnowflakeStreamingIngestExample.java` which performs following operations.
+Run file `SnowflakeStreamingIngestExample.java` which performs following operations.
 1. Reads a JSON file which contains details regarding Snowflake Account, User, Role and Private Key. Take a look at `profile_streaming.json.example` for more details.
    1. [Here](https://docs.snowflake.com/en/user-guide/key-pair-auth.html#configuring-key-pair-authentication) are the steps required to generate a private key.
 2. Creates a `SnowflakeStreamingIngestClient` which can be used to open one or more Streaming Channels against a table.
@@ -121,4 +125,4 @@ create or replace table MY_TABLE(c1 number);
 4. Inserts a few rows (1000) into the channel created in 3rd step using the `insertRows` API on the Channel object
    1. `insertRows` API also takes in an optional `offsetToken` String which can be associated to this batch of rows. 
 5. Calls `getLatestCommittedOffsetToken` on the channel until the appropriate offset is found in Snowflake.
-6. Close the channel when the ingestion is done.
+6. Close the channel when the ingestion is done to make sure everything is committed.
