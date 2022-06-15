@@ -10,14 +10,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.util.List;
 import java.util.Map;
@@ -25,10 +20,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import net.snowflake.ingest.SimpleIngestManager;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.StagedFileWrapper;
+import net.snowflake.ingest.utils.*;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -127,7 +119,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "1.0.2-beta";
+  public static final String DEFAULT_VERSION = "1.0.2-beta.1";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -257,28 +249,18 @@ public class RequestBuilder {
     Properties properties = new Properties();
     properties.put("version", DEFAULT_VERSION);
 
-    try {
-      URL res = SimpleIngestManager.class.getClassLoader().getResource(RESOURCES_FILE);
-      if (res == null) {
-        throw new UncheckedIOException(new FileNotFoundException(RESOURCES_FILE));
+    try (InputStream is =
+        SimpleIngestManager.class.getClassLoader().getResourceAsStream(RESOURCES_FILE)) {
+      if (is == null) {
+        throw new FileNotFoundException(RESOURCES_FILE);
       }
-
-      URI uri;
-      try {
-        uri = res.toURI();
-      } catch (URISyntaxException ex) {
-        throw new IllegalArgumentException(ex);
-      }
-
-      try (InputStream is = Files.newInputStream(Paths.get(uri))) {
-        properties.load(is);
-      } catch (IOException ex) {
-        throw new UncheckedIOException("Failed to load resource", ex);
-      }
+      properties.load(is);
     } catch (Exception e) {
-      LOGGER.warn("Could not read version info: " + e.toString());
+      LOGGER.warn("Could not read version info, use default version " + DEFAULT_VERSION, e);
+      return properties;
     }
 
+    LOGGER.debug("Loaded project version " + properties.getProperty("version"));
     return properties;
   }
 

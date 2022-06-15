@@ -1,0 +1,9 @@
+{
+  "user": "user name",
+  "url": "https://account_name.snowflakecomputing.com:443", // This is required, or it can be constructed from host, scheme and port
+  "private_key": "PEM Private Key",
+  "port": 443,
+  "host": "account_name.snowflakecomputing.com",
+  "scheme": "https",
+  "role": "role_name"
+}

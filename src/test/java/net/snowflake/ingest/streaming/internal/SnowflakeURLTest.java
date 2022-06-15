@@ -37,6 +37,18 @@ public class SnowflakeURLTest {
     Assert.assertEquals(8082, url.getPort());
     Assert.assertEquals("http", url.getScheme());
     Assert.assertEquals("snowflake.dev.local:8082", url.getFullUrl());
+
+    url = new SnowflakeURL("https://pm-connectors.snowflakecomputing.com:443");
+    Assert.assertEquals(443, url.getPort());
+    Assert.assertEquals("https", url.getScheme());
+    Assert.assertEquals("pm-connectors.snowflakecomputing.com:443", url.getFullUrl());
+    Assert.assertEquals("pm-connectors", url.getAccount());
+
+    url = new SnowflakeURL("https://pm_connectors.snowflakecomputing.com:443");
+    Assert.assertEquals(443, url.getPort());
+    Assert.assertEquals("https", url.getScheme());
+    Assert.assertEquals("pm_connectors.snowflakecomputing.com:443", url.getFullUrl());
+    Assert.assertEquals("pm_connectors", url.getAccount());
   }
 
   @Test

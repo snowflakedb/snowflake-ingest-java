@@ -75,7 +75,7 @@ class RegisterService {
    * the ordering is maintained across independent blobs in the same channel.
    *
    * @param latencyTimerContextMap the map that stores the latency timer for each blob
-   * @return a list of blob names that has errors during registration
+   * @return a list of blob names that have errors during registration
    */
   List<FlushService.BlobData> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap) {
     List<FlushService.BlobData> errorBlobs = new ArrayList<>();
@@ -92,15 +92,26 @@ class RegisterService {
           this.blobsListLock.unlock();
         }
 
-        // If no exception, we will register all blobs in the blob list
-        // If hitting non-timeout exception, we will log it and continue
-        // If hitting timeout exception, we will register all the previous blobs in the blob list
-        // and retry until the hitting BLOB_UPLOAD_MAX_RETRY_COUNT
+        // In order to guarantee fairness between the time spent on waiting blob uploading VS blob
+        // registering and make sure the delay on server side commit is relatively small:
+        // 1. If no exception and total time is less than or equal to
+        // BLOB_UPLOAD_TIMEOUT_IN_SEC * 2, we will wait for all blobs to be uploaded and then
+        // register them
+        // 2. If no exception and total time is bigger than BLOB_UPLOAD_TIMEOUT_IN_SEC * 2, we
+        // will break the waiting and register the processed blob first
+        // 3. If hitting non-timeout exception, we will skip the current blob and continue on
+        // processing next blob
+        // 4. If hitting timeout exception, we will break the waiting if we haven't reached
+        // BLOB_UPLOAD_TIMEOUT_IN_SEC * BLOB_UPLOAD_MAX_RETRY_COUNT and register the
+        // processed blob first. Otherwise, we will skip the current blob and continue on processing
+        // next blob if time out has been reached.
         int idx = 0;
         int retry = 0;
         while (idx < oldList.size()) {
           List<BlobMetadata> blobs = new ArrayList<>();
-          while (idx < oldList.size()) {
+          long startTime = System.currentTimeMillis();
+          while (idx < oldList.size()
+              && System.currentTimeMillis() - startTime <= BLOB_UPLOAD_TIMEOUT_IN_SEC * 2) {
             Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> futureBlob =
                 oldList.get(idx);
             try {
@@ -124,12 +135,14 @@ class RegisterService {
 
               // Retry logic for timeout exception only
               if (e instanceof TimeoutException && retry < BLOB_UPLOAD_MAX_RETRY_COUNT) {
+                logger.logInfo(
+                    "Retry on waiting for uploading blob={}", futureBlob.getKey().getFilePath());
                 retry++;
                 break;
               }
               logger.logError(
-                  "Building or uploading blob failed={}, exception={}, detail={}, cause={},"
-                      + " detail={}, all channels in the blob will be invalidated",
+                  "Building or uploading blob={} failed or timed out, exception={}, detail={},"
+                      + " cause={}, detail={}, all channels in the blob will be invalidated",
                   futureBlob.getKey().getFilePath(),
                   e,
                   e.getMessage(),
@@ -145,10 +158,16 @@ class RegisterService {
           }
 
           if (blobs.size() > 0 && !isTestMode) {
+            logger.logInfo(
+                "Start to registering blobs in client={}, totalBlobListSize={},"
+                    + " currentBlobListSize={}",
+                this.owningClient.getName(),
+                oldList.size(),
+                blobs.size());
             Timer.Context registerContext =
                 Utils.createTimerContext(this.owningClient.registerLatency);
 
-            // Register the blobs, and invalidate any channels that returns a failure status code
+            // Register the blobs, and invalidate any channels that return a failure status code
             this.owningClient.registerBlobs(blobs);
 
             if (registerContext != null) {

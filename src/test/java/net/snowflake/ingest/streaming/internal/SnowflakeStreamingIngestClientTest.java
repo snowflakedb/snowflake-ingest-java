@@ -415,8 +415,9 @@ public class SnowflakeStreamingIngestClientTest {
     Properties prop = new Properties();
     prop.put(USER, TestUtils.getUser());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
-    prop.put(ROLE, "role");
-    prop = Utils.createProperties(prop, false);
+    prop.put(ACCOUNT_URL, TestUtils.getAccountURL());
+    prop.put(ROLE, TestUtils.getRole());
+    prop = Utils.createProperties(prop);
 
     String urlStr = "https://sfctest0.snowflakecomputing.com:80";
     SnowflakeURL url = new SnowflakeURL(urlStr);

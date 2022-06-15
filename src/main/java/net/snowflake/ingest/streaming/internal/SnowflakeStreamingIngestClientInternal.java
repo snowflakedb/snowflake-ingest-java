@@ -18,7 +18,6 @@ import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_ROW_SEQUENCER_IS_COMMITTED;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY;
@@ -180,7 +179,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       this.registerMetricsForClient();
     }
 
-    logger.logDebug(
+    logger.logInfo(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
         name,
         accountURL == null ? "" : accountURL.getAccount(),
@@ -374,8 +373,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param executionCount Number of times this call has been attempted, used to track retries
    */
   void registerBlobs(List<BlobMetadata> blobs, final int executionCount) {
-    logger.logDebug(
-        "Register blob request start for blob={}, client={}, executionCount={}",
+    logger.logInfo(
+        "Register blob request preparing for blob={}, client={}, executionCount={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name,
         executionCount);
@@ -412,13 +411,13 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
     }
 
-    logger.logDebug(
-        "Register blob request succeeded for blob={}, client={}, executionCount={}",
+    logger.logInfo(
+        "Register blob request returned for blob={}, client={}, executionCount={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name,
         executionCount);
 
-    // We will retry any blob chunks that were rejected becuase internal Snowflake queues are full
+    // We will retry any blob chunks that were rejected because internal Snowflake queues are full
     Set<ChunkRegisterStatus> queueFullChunks = new HashSet<>();
     response
         .getBlobsStatus()
@@ -461,7 +460,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                     })));
 
     if (!queueFullChunks.isEmpty()) {
-      logger.logDebug(
+      logger.logInfo(
           "Retrying registerBlobs request, blobs={}, retried_chunks={}, executionCount={}",
           blobs,
           queueFullChunks,
@@ -512,10 +511,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                           chunkMetadata.getChannels().stream()
                               .map(
                                   channelMetadata ->
-                                      new Pair(
+                                      new Pair<>(
                                           channelMetadata.getChannelName(),
                                           channelMetadata.getClientSequencer()))
-                              .anyMatch(channelKey -> queueFullKeys.contains(channelKey)))
+                              .anyMatch(queueFullKeys::contains))
                   .collect(Collectors.toList());
           if (!relevantChunks.isEmpty()) {
             retryBlobs.add(
@@ -536,20 +535,21 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     isClosed = true;
     this.channelCache.closeAllChannels();
 
-    // unregister jmx metrics
-    if (this.metrics != null) {
-      removeMetricsFromRegistry();
-
-      // LOG jvm memory and thread metrics at the end
-      Slf4jReporter.forRegistry(jvmMemoryAndThreadMetrics)
-          .outputTo(logger.getLogger())
-          .build()
-          .report();
-    }
-
     // Flush any remaining rows and cleanup all the resources
     try {
       this.flush(true).get();
+
+      // unregister jmx metrics
+      if (this.metrics != null) {
+        Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
+        removeMetricsFromRegistry();
+
+        // LOG jvm memory and thread metrics at the end
+        Slf4jReporter.forRegistry(jvmMemoryAndThreadMetrics)
+            .outputTo(logger.getLogger())
+            .build()
+            .report();
+      }
     } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
@@ -631,6 +631,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     int retry = 0;
     boolean isTimeout = true;
     List<ChannelsStatusResponse.ChannelStatusResponseDTO> oldChannelsStatus = new ArrayList<>();
+    List<SnowflakeStreamingIngestChannelInternal> channelsWithError = new ArrayList<>();
     do {
       List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
           getChannelsStatus(channels).getChannels();
@@ -638,9 +639,23 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       List<ChannelsStatusResponse.ChannelStatusResponseDTO> tempChannelsStatus = new ArrayList<>();
 
       for (int idx = 0; idx < channelsStatus.size(); idx++) {
-        if (channelsStatus.get(idx).getStatusCode() != RESPONSE_ROW_SEQUENCER_IS_COMMITTED) {
-          tempChannels.add(channels.get(idx));
-          tempChannelsStatus.add(channelsStatus.get(idx));
+        ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus = channelsStatus.get(idx);
+        SnowflakeStreamingIngestChannelInternal channel = channels.get(idx);
+        logger.logInfo(
+            "Get channel status name={}, status={}, clientSequencer={}, rowSequencer={},"
+                + " offsetToken={}, persistedRowSequencer={}, persistedOffsetToken={}",
+            channel.getName(),
+            channelStatus.getStatusCode(),
+            channel.getChannelSequencer(),
+            channel.getRowSequencer(),
+            channel.getOffsetToken(),
+            channelStatus.getPersistedRowSequencer(),
+            channelStatus.getPersistedOffsetToken());
+        if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
+          channelsWithError.add(channel);
+        } else if (!channelStatus.getPersistedRowSequencer().equals(channel.getRowSequencer())) {
+          tempChannels.add(channel);
+          tempChannelsStatus.add(channelStatus);
         }
       }
 
@@ -685,6 +700,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
           this.name);
     }
 
+    channels.addAll(channelsWithError);
     return channels;
   }
 
@@ -753,11 +769,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    */
   static ObjectName getObjectName(String clientName, String jmxDomain, String metricName) {
     try {
-      StringBuilder sb = new StringBuilder(jmxDomain).append(":clientName=").append(clientName);
+      String sb = jmxDomain + ":clientName=" + clientName + ",name=" + metricName;
 
-      sb.append(",name=").append(metricName);
-
-      return new ObjectName(sb.toString());
+      return new ObjectName(sb);
     } catch (MalformedObjectNameException e) {
       logger.logWarn("Could not create Object name for MetricName={}", metricName);
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Invalid metric name");

@@ -64,7 +64,7 @@ public class SnowflakeURL {
    */
   public SnowflakeURL(String urlStr) {
     Pattern pattern =
-        Pattern.compile("^(https?://)?((([\\w\\d]+)(\\" + ".[\\w\\d-]+){2,})(:(\\d+))?)/?$");
+        Pattern.compile("^(https?://)?((([\\w\\d-]+)(\\.[\\w\\d-]+){2,})(:(\\d+))?)/?$");
 
     Matcher matcher = pattern.matcher(urlStr.trim().toLowerCase());
 

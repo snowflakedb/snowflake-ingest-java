@@ -220,23 +220,31 @@ class ArrowRowBuffer {
    * Close the row buffer and release resources. Note that the caller needs to handle
    * synchronization
    */
-  void close() {
-    long allocated = this.allocator.getAllocatedMemory();
+  void close(String name) {
+    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
     if (this.vectorsRoot != null) {
       this.vectorsRoot.close();
       this.tempVectorsRoot.close();
     }
     this.fields.clear();
+    long allocatedAfterRelease = this.allocator.getAllocatedMemory();
+    logger.logInfo(
+        "Trying to close arrow buffer for channel={} from function={}, allocatedBeforeRelease={},"
+            + " allocatedAfterRelease={}",
+        this.owningChannel.getName(),
+        name,
+        allocatedBeforeRelease,
+        allocatedAfterRelease);
     Utils.closeAllocator(this.allocator);
 
     // If the channel is valid but still has leftover data, throw an exception because it should be
     // cleaned up already before calling close
-    if (allocated > 0 && this.owningChannel.isValid()) {
+    if (allocatedBeforeRelease > 0 && this.owningChannel.isValid()) {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR,
           String.format(
               "Memory leaked=%d by allocator=%s, channel=%s",
-              allocated, this.allocator.toString(), this.owningChannel.getFullyQualifiedName()));
+              allocatedBeforeRelease, this.allocator, this.owningChannel.getFullyQualifiedName()));
     }
   }
 
