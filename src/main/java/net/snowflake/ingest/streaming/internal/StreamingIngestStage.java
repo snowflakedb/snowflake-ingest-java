@@ -375,7 +375,6 @@ class StreamingIngestStage {
     InputStream input = new ByteArrayInputStream(data);
     try {
       String stageLocation = this.fileTransferMetadataWithAge.localLocation;
-      Paths.get(stageLocation, fullFilePath);
       File destFile = Paths.get(stageLocation, fullFilePath).toFile();
       FileUtils.copyInputStreamToFile(input, destFile);
     } catch (Exception ex) {
