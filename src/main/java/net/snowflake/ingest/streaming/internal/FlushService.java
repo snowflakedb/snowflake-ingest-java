@@ -15,8 +15,6 @@ import com.codahale.metrics.Timer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -647,15 +645,7 @@ class FlushService {
             + this.counter.getAndIncrement()
             + "."
             + BLOB_EXTENSION_TYPE;
-    Path filePath =
-        Paths.get(
-            Integer.toString(year),
-            Integer.toString(month),
-            Integer.toString(day),
-            Integer.toString(hour),
-            Integer.toString(minute),
-            fileName);
-    return filePath.toString();
+    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileName;
   }
 
   /**
