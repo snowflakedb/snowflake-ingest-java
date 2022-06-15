@@ -417,7 +417,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         this.name,
         executionCount);
 
-    // We will retry any blob chunks that were rejected becuase internal Snowflake queues are full
+    // We will retry any blob chunks that were rejected because internal Snowflake queues are full
     Set<ChunkRegisterStatus> queueFullChunks = new HashSet<>();
     response
         .getBlobsStatus()
