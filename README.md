@@ -53,6 +53,30 @@ dependencies {
 }
 ```
 
+# Example
+
+## Snowpipe
+
+Check out `SnowflakeIngestBasicExample.java`
+
+## Snowpipe Streaming
+
+Run file `SnowflakeStreamingIngestExample.java` which performs following operations.
+1. Reads a JSON file which contains details regarding Snowflake Account, User, Role and Private Key. Take a look at `profile_streaming.json.example` for more details.
+    1. [Here](https://docs.snowflake.com/en/user-guide/key-pair-auth.html#configuring-key-pair-authentication) are the steps required to generate a private key.
+2. Creates a `SnowflakeStreamingIngestClient` which can be used to open one or more Streaming Channels against a table.
+3. Creates a `SnowflakeStreamingIngestChannel` against a Database, Schema and Table name.
+    1. Please note: The database, schema and table is expected to be presented before opening the Channel. Use following SQL queries to create them
+```sql
+create or replace database MY_DATABASE;
+create or replace schema MY_SCHEMA;
+create or replace table MY_TABLE(c1 number);
+```
+4. Inserts a few rows (1000) into the channel created in 3rd step using the `insertRows` API on the Channel object
+    1. `insertRows` API also takes in an optional `offsetToken` String which can be associated to this batch of rows.
+5. Calls `getLatestCommittedOffsetToken` on the channel until the appropriate offset is found in Snowflake.
+6. Close the channel when the ingestion is done to make sure everything is committed.
+
 # Building From Source
 
 If you would like to build this project from source you can run the
@@ -102,27 +126,3 @@ We use [Google Java format](https://github.com/google/google-java-format) to for
 ```bash
 ./format.sh
 ````
-
-# Example
-
-## Snowpipe
-
-Check out `SnowflakeIngestBasicExample.java`
-
-## Snowpipe Streaming
-
-Run file `SnowflakeStreamingIngestExample.java` which performs following operations.
-1. Reads a JSON file which contains details regarding Snowflake Account, User, Role and Private Key. Take a look at `profile_streaming.json.example` for more details.
-   1. [Here](https://docs.snowflake.com/en/user-guide/key-pair-auth.html#configuring-key-pair-authentication) are the steps required to generate a private key.
-2. Creates a `SnowflakeStreamingIngestClient` which can be used to open one or more Streaming Channels against a table.
-3. Creates a `SnowflakeStreamingIngestChannel` against a Database, Schema and Table name.
-   1. Please note: The database, schema and table is expected to be presented before opening the Channel. Use following SQL queries to create them
-```sql
-create or replace database MY_DATABASE;
-create or replace schema MY_SCHEMA;
-create or replace table MY_TABLE(c1 number);
-```
-4. Inserts a few rows (1000) into the channel created in 3rd step using the `insertRows` API on the Channel object
-   1. `insertRows` API also takes in an optional `offsetToken` String which can be associated to this batch of rows. 
-5. Calls `getLatestCommittedOffsetToken` on the channel until the appropriate offset is found in Snowflake.
-6. Close the channel when the ingestion is done to make sure everything is committed.
