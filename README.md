@@ -61,12 +61,12 @@ Check out `SnowflakeIngestBasicExample.java`
 
 ## Snowpipe Streaming
 
-Run file `SnowflakeStreamingIngestExample.java` which performs following operations.
+Check out `SnowflakeStreamingIngestExample.java`, which performs following operations:
 1. Reads a JSON file which contains details regarding Snowflake Account, User, Role and Private Key. Take a look at `profile_streaming.json.example` for more details.
     1. [Here](https://docs.snowflake.com/en/user-guide/key-pair-auth.html#configuring-key-pair-authentication) are the steps required to generate a private key.
 2. Creates a `SnowflakeStreamingIngestClient` which can be used to open one or more Streaming Channels against a table.
-3. Creates a `SnowflakeStreamingIngestChannel` against a Database, Schema and Table name.
-    1. Please note: The database, schema and table is expected to be presented before opening the Channel. Use following SQL queries to create them
+3. Creates a `SnowflakeStreamingIngestChannel` against a Database, Schema and Table.
+    1. Please note: The database, schema and table is expected to be presented before opening the Channel. Example SQL queries to create them
 ```sql
 create or replace database MY_DATABASE;
 create or replace schema MY_SCHEMA;

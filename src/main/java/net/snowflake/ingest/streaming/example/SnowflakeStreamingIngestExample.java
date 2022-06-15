@@ -25,7 +25,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
  */
 public class SnowflakeStreamingIngestExample {
   // Please follow the example in profile_streaming.json.example to see the required properties, or
-  // if you have already set up profile.json with Snowpipe before, all you need to add is the "role"
+  // if you have already set up profile.json with Snowpipe before, all you need is to add the "role"
   // property.
   private static String PROFILE_PATH = "profile.json";
   private static final ObjectMapper mapper = new ObjectMapper();
@@ -45,7 +45,7 @@ public class SnowflakeStreamingIngestExample {
 
       // Create an open channel request on table MY_TABLE, note that the corresponding
       // db/schema/table needs to be presented
-      // create or replace table MY_TABLE(c1 number);
+      // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
               .setDBName("MY_DATABASE")
@@ -91,8 +91,8 @@ public class SnowflakeStreamingIngestExample {
         retryCount++;
       } while (retryCount < maxRetries);
 
-      // Close the channel, which will also make sure everything is committed internally, or throw
-      // an exception if not
+      // Close the channel, the function internally will make sure everything is committed (or throw
+      // an exception if there is any issue)
       channel1.close().get();
     }
   }
