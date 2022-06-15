@@ -108,7 +108,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
             ? new RootAllocator()
             : this.owningClient
                 .getAllocator()
-                .newChildAllocator(name, 0, this.owningClient.getAllocator().getLimit());
+                .newChildAllocator(
+                    String.format("%s_%s", name, channelSequencer),
+                    0,
+                    this.owningClient.getAllocator().getLimit());
     this.arrowBuffer = new ArrowRowBuffer(this);
     this.encryptionKey = encryptionKey;
     this.encryptionKeyId = encryptionKeyId;
@@ -248,7 +251,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   /** Mark the channel as invalid, and release resources */
   void invalidate() {
     this.isValid = false;
-    this.arrowBuffer.close();
+    this.arrowBuffer.close("invalidate");
     logger.logWarn(
         "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}",
         getFullyQualifiedName(),
@@ -315,7 +318,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                   this.owningClient.verifyChannelsAreFullyCommitted(
                       Collections.singletonList(this));
 
-              this.arrowBuffer.close();
+              this.arrowBuffer.close("close");
               this.owningClient.removeChannelIfSequencersMatch(this);
 
               // Throw an exception if the channel is invalid or has any uncommitted rows
@@ -473,7 +476,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   private void checkValidation() {
     if (!isValid()) {
       this.owningClient.removeChannelIfSequencersMatch(this);
-      this.arrowBuffer.close();
+      this.arrowBuffer.close("checkValidation");
       throw new SFException(ErrorCode.INVALID_CHANNEL, getFullyQualifiedName());
     }
   }

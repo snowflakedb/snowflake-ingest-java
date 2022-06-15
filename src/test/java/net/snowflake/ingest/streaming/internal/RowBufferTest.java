@@ -718,7 +718,7 @@ public class RowBufferTest {
 
   @Test
   public void testClose() {
-    this.rowBufferOnErrorContinue.close();
+    this.rowBufferOnErrorContinue.close("testClose");
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
     row.put("colSmallInt", (short) 2);

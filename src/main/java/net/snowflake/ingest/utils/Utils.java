@@ -256,10 +256,8 @@ public class Utils {
   /** Release any outstanding memory and then close the buffer allocator */
   public static void closeAllocator(BufferAllocator alloc) {
     for (BufferAllocator childAlloc : alloc.getChildAllocators()) {
-      childAlloc.releaseBytes(childAlloc.getAllocatedMemory());
       childAlloc.close();
     }
-    alloc.releaseBytes(alloc.getAllocatedMemory());
     alloc.close();
   }
 }
