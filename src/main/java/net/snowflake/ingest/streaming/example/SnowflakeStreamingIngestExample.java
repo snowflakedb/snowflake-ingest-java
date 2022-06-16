@@ -44,7 +44,7 @@ public class SnowflakeStreamingIngestExample {
         SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build()) {
 
       // Create an open channel request on table MY_TABLE, note that the corresponding
-      // db/schema/table needs to be presented
+      // db/schema/table needs to be present
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
@@ -58,7 +58,7 @@ public class SnowflakeStreamingIngestExample {
       // Open a streaming ingest channel from the given client
       SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
-      // Insert few rows into the channel (Using insertRows API)
+      // Insert rows into the channel (Using insertRows API)
       final int totalRowsInTable = 1000;
       for (int val = 0; val < totalRowsInTable; val++) {
         Map<String, Object> row = new HashMap<>();
