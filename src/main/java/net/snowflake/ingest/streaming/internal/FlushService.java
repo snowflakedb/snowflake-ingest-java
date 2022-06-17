@@ -15,8 +15,6 @@ import com.codahale.metrics.Timer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -530,7 +528,7 @@ class FlushService {
         curDataSize += encryptedCompressedChunkDataSize;
         crc.update(encryptedCompressedChunkData, 0, encryptedCompressedChunkDataSize);
 
-        logger.logDebug(
+        logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, uncompressedSize={},"
                 + " compressedChunkLength={}, encryptedCompressedSize={}",
             filePath,
@@ -563,7 +561,8 @@ class FlushService {
    */
   BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata)
       throws NoSuchAlgorithmException {
-    logger.logDebug("Start uploading file={}, size={}", filePath, blob.length);
+    logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
+    long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
 
@@ -577,7 +576,11 @@ class FlushService {
           metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
     }
 
-    logger.logDebug("Finish uploading file={}", filePath);
+    logger.logInfo(
+        "Finish uploading file={}, size={}, timeInMillis={}",
+        filePath,
+        blob.length,
+        System.currentTimeMillis() - startTime);
 
     return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), metadata);
   }
@@ -647,15 +650,7 @@ class FlushService {
             + this.counter.getAndIncrement()
             + "."
             + BLOB_EXTENSION_TYPE;
-    Path filePath =
-        Paths.get(
-            Integer.toString(year),
-            Integer.toString(month),
-            Integer.toString(day),
-            Integer.toString(hour),
-            Integer.toString(minute),
-            fileName);
-    return filePath.toString();
+    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileName;
   }
 
   /**

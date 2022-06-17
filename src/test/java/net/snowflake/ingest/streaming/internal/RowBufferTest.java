@@ -718,7 +718,7 @@ public class RowBufferTest {
 
   @Test
   public void testClose() {
-    this.rowBufferOnErrorContinue.close();
+    this.rowBufferOnErrorContinue.close("testClose");
     Map<String, Object> row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
     row.put("colSmallInt", (short) 2);
@@ -1179,8 +1179,8 @@ public class RowBufferTest {
     Assert.assertEquals(0, columnEpStats.get("COLBIGINT").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLBIGINT").getDistinctValues());
 
-    Assert.assertEquals("alice", columnEpStats.get("COLCHAR").getCurrentMaxStrValue());
-    Assert.assertEquals("2", columnEpStats.get("COLCHAR").getCurrentMinStrValue());
+    Assert.assertEquals("alice", columnEpStats.get("COLCHAR").getCurrentMaxColStrValue());
+    Assert.assertEquals("2", columnEpStats.get("COLCHAR").getCurrentMinColStrValue());
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
@@ -1572,9 +1572,9 @@ public class RowBufferTest {
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
     Assert.assertEquals(
-        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinStrValue());
+        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinColStrValue());
     Assert.assertEquals(
-        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxStrValue());
+        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxColStrValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLBINARY").getCurrentNullCount());
   }
 
