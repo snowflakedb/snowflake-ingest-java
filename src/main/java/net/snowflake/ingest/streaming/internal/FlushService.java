@@ -446,7 +446,7 @@ class FlushService {
                     : new ArrowFileWriterWithCompression(
                         root,
                         Channels.newChannel(chunkData),
-                        new CustomCompressionCodec(CompressionUtil.CodecType.ZSTD));
+                        new CustomCompressionCodec(CompressionUtil.CodecType.NO_COMPRESSION));
             loader = new VectorLoader(root);
             firstChannel = data.getChannel();
             arrowWriter.start();
@@ -568,7 +568,10 @@ class FlushService {
     if (getArrowBatchWriteMode() == Constants.ArrowBatchWriteMode.STREAM) {
       // Stream write mode does not support column level compression.
       // Compress the chunk data and pad it for encryption.
-      return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
+      long startTime = System.nanoTime();
+      Pair<byte[], Integer> res = BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
+      CompressionTime.compressionTimeNano += (System.nanoTime() - startTime);
+      return res;
     } else {
       int actualSize = chunkData.size();
       int paddingSize = blockSizeToAlignTo - actualSize % blockSizeToAlignTo;

@@ -57,6 +57,7 @@ public class CustomCompressionCodec implements CompressionCodec {
 
   @Override
   public ArrowBuf compress(BufferAllocator allocator, ArrowBuf uncompressedBuffer) {
+    long startTime = System.nanoTime();
     if (uncompressedBuffer.writerIndex() == 0L) {
       // shortcut for empty buffer
       ArrowBuf compressedBuffer = allocator.buffer(CompressionUtil.SIZE_OF_UNCOMPRESSED_LENGTH);
@@ -74,6 +75,8 @@ public class CustomCompressionCodec implements CompressionCodec {
     // decompression that happens to expect only compressed buffers for version 8.0.0.
     long uncompressedLength = uncompressedBuffer.writerIndex();
     writeUncompressedLength(compressedBuffer, uncompressedLength);
+
+    CompressionTime.compressionTimeNano += (System.nanoTime() - startTime);
 
     // Here we again simplify the original AbstractCompressionCodec#compress
     // and do not release the uncompressedBuffer because it is part of the root vector to write.

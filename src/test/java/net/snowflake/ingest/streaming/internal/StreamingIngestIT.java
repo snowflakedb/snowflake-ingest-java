@@ -1039,6 +1039,8 @@ public class StreamingIngestIT {
       verifyInsertValidationResponse(channel.insertRow(getRandomRow(r), Integer.toString(val)));
     }
     waitChannelFlushed(channel, 10000);
+
+    System.out.println("Compression time: " + CompressionTime.compressionTimeNano);
   }
 
   private static Map<String, Object> getRandomRow(Random r) {
