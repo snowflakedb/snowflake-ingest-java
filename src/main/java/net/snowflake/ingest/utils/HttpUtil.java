@@ -10,6 +10,7 @@ import java.security.Security;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import javax.net.ssl.SSLContext;
 import net.snowflake.client.core.SFSessionProperty;
 import org.apache.http.HttpHost;
@@ -56,6 +57,12 @@ public class HttpUtil {
   private static PoolingHttpClientConnectionManager connectionManager;
 
   private static IdleConnectionMonitorThread idleConnectionMonitorThread;
+
+  /**
+   * This lock is to synchronize on idleConnectionMonitorThread to avoid setting starting a thread
+   * which was already started. (To avoid {@link IllegalThreadStateException})
+   */
+  private static ReentrantLock idleConnectionMonitorThreadLock = new ReentrantLock(true);
 
   private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
   private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
@@ -165,15 +172,22 @@ public class HttpUtil {
 
   /** Starts a daemon thread to monitor idle connections in http connection manager. */
   private static void initIdleConnectionMonitoringThread() {
-    // Start a new thread only if connectionManager was init before and
-    // daemon thread was not started before or was closed because of SimpleIngestManager close
-    if (connectionManager != null
-        && (idleConnectionMonitorThread == null || idleConnectionMonitorThread.isShutdown())) {
-      // Monitors in a separate thread where it closes any idle connections
-      // https://hc.apache.org/httpcomponents-client-4.5.x/current/tutorial/html/connmgmt.html
-      idleConnectionMonitorThread = new IdleConnectionMonitorThread(connectionManager);
-      idleConnectionMonitorThread.setDaemon(true);
-      idleConnectionMonitorThread.start();
+    idleConnectionMonitorThreadLock.lock();
+    try {
+      // Start a new thread only if connectionManager was init before and
+      // daemon thread was not started before or was closed because of SimpleIngestManager close
+      if (connectionManager != null
+          && (idleConnectionMonitorThread == null || idleConnectionMonitorThread.isShutdown())) {
+        // Monitors in a separate thread where it closes any idle connections
+        // https://hc.apache.org/httpcomponents-client-4.5.x/current/tutorial/html/connmgmt.html
+        idleConnectionMonitorThread = new IdleConnectionMonitorThread(connectionManager);
+        idleConnectionMonitorThread.setDaemon(true);
+        idleConnectionMonitorThread.start();
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Unable to start Daemon thread for Http Idle Connection Monitoring", e);
+    } finally {
+      idleConnectionMonitorThreadLock.unlock();
     }
   }
 
