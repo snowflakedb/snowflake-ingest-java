@@ -38,8 +38,8 @@ class FileColumnProperties {
   // Default value to use for min/max int when all data in the given column is NULL
   public static final BigInteger DEFAULT_MIN_MAX_INT_VAL_FOR_EP = BigInteger.valueOf(0);
 
-  // Default value to use for min/max int when all data in the given column is NULL
-  public static final Double DEFAULT_MIN_MAX_REAL_VAL_FOR_EP = 0d;
+  // Default value to use for min/max real when all data in the given column is NULL
+  public static final Double DEFAULT_MIN_MAX_REAL_VAL_FOR_EP = null;
 
   FileColumnProperties(RowBufferStats stats) {
     this.setCollation(stats.getCollationDefinitionString());

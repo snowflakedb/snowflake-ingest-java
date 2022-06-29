@@ -351,6 +351,19 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         throw new SFException(ErrorCode.CHANNEL_STATUS_FAILURE, response.getMessage());
       }
 
+      for (int idx = 0; idx < channels.size(); idx++) {
+        SnowflakeStreamingIngestChannelInternal channel = channels.get(idx);
+        ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
+            response.getChannels().get(idx);
+        if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
+          logger.logWarn(
+              "Channel has failure status_code, name={}, channel_sequencer={}," + " status_code={}",
+              channel.getFullyQualifiedName(),
+              channel.getChannelSequencer(),
+              channelStatus.getStatusCode());
+        }
+      }
+
       return response;
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.CHANNEL_STATUS_FAILURE, e.getMessage());
@@ -443,8 +456,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                                         } else {
                                           logger.logWarn(
                                               "Channel has been invalidated because of failure"
-                                                  + " response, name={}, channel sequencer={},"
-                                                  + " status code={}, executionCount={}",
+                                                  + " response, name={}, channel_sequencer={},"
+                                                  + " status_code={}, executionCount={}",
                                               channelStatus.getChannelName(),
                                               channelStatus.getChannelSequencer(),
                                               channelStatus.getStatusCode(),
