@@ -11,6 +11,7 @@ import com.ibm.icu.util.ULocale;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Objects;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
@@ -252,11 +253,7 @@ class RowBufferStats {
 
       if (icuCollationString == null) {
         // No need for ICU key generation, convert (modified) input to UTF-8 bytes
-        try {
-          return input.getBytes("UTF-8");
-        } catch (java.io.UnsupportedEncodingException e) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed encoding string to UTF-8");
-        }
+        return input.getBytes(StandardCharsets.UTF_8);
       }
 
       // ICU collation is needed
@@ -347,7 +344,7 @@ class RowBufferStats {
 
   // TODO performance test this vs in place update
   static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
-    if (left.getCollationDefinitionString() != right.collationDefinitionString) {
+    if (!Objects.equals(left.getCollationDefinitionString(), right.collationDefinitionString)) {
       throw new SFException(
           ErrorCode.INVALID_COLLATION_STRING,
           "Tried to combine stats for different collations",
@@ -398,8 +395,8 @@ class RowBufferStats {
     String value =
         inputValue.length() > MAX_LOB_LEN ? inputValue.substring(0, MAX_LOB_LEN) : inputValue;
 
-    byte[] valueBytes = value != null ? value.getBytes(StandardCharsets.UTF_8) : null;
-    byte[] collatedValueBytes = value != null ? getCollatedBytes(value) : null;
+    byte[] valueBytes = value.getBytes(StandardCharsets.UTF_8);
+    byte[] collatedValueBytes = getCollatedBytes(value);
 
     // Check if new min/max string
     if (this.currentMinColStrValue == null) {
@@ -416,8 +413,7 @@ class RowBufferStats {
         byte[] incrementedCollatedValueBytes = collatedValueBytes.clone();
         incrementedValueBytes[MAX_LOB_LEN - 1]++;
         incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
-        String incrementedValue = new String(incrementedValueBytes);
-        this.currentMaxColStrValue = incrementedValue;
+        this.currentMaxColStrValue = new String(incrementedValueBytes);
         this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
       } else {
         this.currentMaxColStrValue = value;
@@ -439,8 +435,7 @@ class RowBufferStats {
           byte[] incrementedCollatedValueBytes = collatedValueBytes.clone();
           incrementedValueBytes[MAX_LOB_LEN - 1]++;
           incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
-          String incrementedValue = new String(incrementedValueBytes);
-          this.currentMaxColStrValue = incrementedValue;
+          this.currentMaxColStrValue = new String(incrementedValueBytes);
           this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
         } else {
           this.currentMaxColStrValue = value;

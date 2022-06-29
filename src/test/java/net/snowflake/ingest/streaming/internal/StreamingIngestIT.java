@@ -861,6 +861,38 @@ public class StreamingIngestIT {
     channel1.close().get();
   }
 
+  @Test
+  public void testNullValuesOnMultiDataTypes() throws Exception {
+    String nullValuesOnMultiDataTypesTable = "test_null_values_on_multi_data_types";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (c0 int, c1 number, c2 decimal, c3 bigint, c4 float,"
+                    + " c5 real, c6 varchar, c7 char, c8 string, c9 text, c10 binary, c11 boolean,"
+                    + " c12 date, c13 time, c14 timestamp, c15 variant, c16 object, c17 array);",
+                nullValuesOnMultiDataTypesTable));
+
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(nullValuesOnMultiDataTypesTable)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request);
+    for (int val = 0; val < 1000; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("c0", val);
+      verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
+    }
+
+    // Close the channel to make sure everything is committed
+    channel1.close().get();
+  }
+
   /** Verify the insert validation response and throw the exception if needed */
   private void verifyInsertValidationResponse(InsertValidationResponse response) {
     if (response.hasErrors()) {
