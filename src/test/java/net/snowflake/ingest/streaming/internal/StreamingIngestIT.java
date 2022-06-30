@@ -889,8 +889,32 @@ public class StreamingIngestIT {
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
 
+    // Sleep for a few seconds to make sure a flush
+    Thread.sleep(5000);
+
+    // Insert one row with all NULLs to make sure it works
+    Map<String, Object> row = new HashMap<>();
+    for (int idx = 0; idx < 18; idx++) {
+      row.put("c" + idx, null);
+    }
+    verifyInsertValidationResponse(channel1.insertRow(row, "0"));
+
     // Close the channel to make sure everything is committed
     channel1.close().get();
+
+    // Query the table in the end to make sure everything is readable
+    ResultSet result =
+        jdbcConnection
+            .createStatement()
+            .executeQuery(
+                String.format(
+                    "select top 1 c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14,"
+                        + " c15, c16, c17 from %s.%s.%s",
+                    TEST_DB, TEST_SCHEMA, nullValuesOnMultiDataTypesTable));
+    result.next();
+    for (int idx = 1; idx < 18; idx++) {
+      Assert.assertNull(result.getObject(idx));
+    }
   }
 
   /** Verify the insert validation response and throw the exception if needed */
