@@ -670,6 +670,7 @@ class ArrowRowBuffer {
     // Verify all the input columns are valid
     Set<String> inputColumnNames = verifyInputColumns(row);
 
+    // Insert values to the corresponding arrow buffers
     float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
@@ -956,6 +957,7 @@ class ArrowRowBuffer {
 
     // Insert nulls to the columns that doesn't show up in the input
     for (String columnName : Sets.difference(this.fields.keySet(), inputColumnNames)) {
+      rowBufferSize += 0.125; // 1/8 for null value bitmap
       insertNull(
           sourceVectors.getVector(this.fields.get(columnName)),
           statsMap.get(columnName),
