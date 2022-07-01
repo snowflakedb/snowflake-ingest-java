@@ -889,7 +889,7 @@ public class StreamingIngestIT {
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
 
-    // Sleep for a few seconds to make sure a flush
+    // Sleep for a few seconds to make sure a flush has finished
     Thread.sleep(5000);
 
     // Insert one row with all NULLs to make sure it works
