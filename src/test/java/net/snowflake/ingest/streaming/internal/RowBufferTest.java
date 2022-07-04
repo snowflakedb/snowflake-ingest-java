@@ -16,6 +16,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -766,7 +767,7 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
     float bufferSize = rowBuffer.getSize();
 
-    ChannelData data = rowBuffer.flush();
+    ChannelData<VectorSchemaRoot> data = rowBuffer.flush();
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(7, data.getVectors().getFieldVectors().size());
@@ -1240,7 +1241,7 @@ public class RowBufferTest {
     InsertValidationResponse response =
         innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1307,7 +1308,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLDATE").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1369,7 +1370,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLTIMESB8").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1512,7 +1513,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLBOOLEAN").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1567,7 +1568,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLBINARY").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
@@ -1615,7 +1616,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLREAL").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(
@@ -1697,7 +1698,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
     ChannelData data = innerBuffer.flush();
-    Assert.assertEquals(3, data.getVectors().getRowCount());
+    Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals(0, innerBuffer.rowCount);
   }
 }

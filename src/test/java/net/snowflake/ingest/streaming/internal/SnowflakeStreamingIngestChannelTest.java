@@ -30,6 +30,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.StatusLine;
@@ -498,7 +499,7 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData data = channel.getData();
+    ChannelData<VectorSchemaRoot> data = channel.getData();
     Assert.assertNull(data);
 
     InsertValidationResponse response = channel.insertRow(row, "1");

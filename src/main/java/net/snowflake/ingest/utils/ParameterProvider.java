@@ -28,7 +28,7 @@ public class ParameterProvider {
 
   public static final int BLOB_FORMAT_VERSION_DEFAULT = 1;
   public static final int BLOB_FORMAT_START_SUPPORTED_VERSION = 1;
-  public static final int BLOB_FORMAT_END_SUPPORTED_VERSION = 2;
+  public static final int BLOB_FORMAT_END_SUPPORTED_VERSION = 3;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();

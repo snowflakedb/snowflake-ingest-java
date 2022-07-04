@@ -64,7 +64,7 @@ public class StreamingIngestIT {
         .execute(String.format("create or replace schema %s;", TEST_SCHEMA));
     jdbcConnection
         .createStatement()
-        .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
+        .execute(String.format("create or replace table %s (c1 variant);", TEST_TABLE));
     jdbcConnection
         .createStatement()
         .execute("alter session set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;");
@@ -94,7 +94,7 @@ public class StreamingIngestIT {
   @After
   public void afterAll() throws Exception {
     client.close();
-    jdbcConnection.createStatement().execute(String.format("drop database %s", TEST_DB));
+    //jdbcConnection.createStatement().execute(String.format("drop database %s", TEST_DB));
   }
 
   @Test
@@ -111,7 +111,7 @@ public class StreamingIngestIT {
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
     for (int val = 0; val < 1000; val++) {
       Map<String, Object> row = new HashMap<>();
-      row.put("c1", Integer.toString(val));
+      row.put("c1", "{ \"val\": " + val + " }");
       verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
     }
 
@@ -138,9 +138,9 @@ public class StreamingIngestIT {
                         "select * from %s.%s.%s order by c1 limit 2",
                         TEST_DB, TEST_SCHEMA, TEST_TABLE));
         result2.next();
-        Assert.assertEquals("0", result2.getString(1));
+        Assert.assertEquals("{ \"val\": 0 }", result2.getString(1));
         result2.next();
-        Assert.assertEquals("1", result2.getString(1));
+        Assert.assertEquals("{ \"val\": 1 }", result2.getString(1));
 
         // Verify perf metrics
         if (client.getParameterProvider().hasEnabledSnowpipeStreamingMetrics()) {
@@ -910,7 +910,7 @@ public class StreamingIngestIT {
           .createStatement()
           .execute(
               String.format(
-                  "create or replace table %s (num NUMBER(38,0 ), str VARCHAR);", tableName));
+                  "create or replace table %s (num NUMBER(9,0), str VARCHAR);", tableName));
     } catch (SQLException e) {
       throw new RuntimeException("Cannot create table " + tableName, e);
     }

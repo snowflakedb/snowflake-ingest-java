@@ -15,7 +15,6 @@ import com.codahale.metrics.Timer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.nio.channels.Channels;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -45,17 +44,10 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.VectorUnloader;
-import org.apache.arrow.vector.compression.CompressionUtil;
-import org.apache.arrow.vector.ipc.ArrowStreamWriter;
-import org.apache.arrow.vector.ipc.ArrowWriter;
-import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -409,86 +401,13 @@ class FlushService {
 
     // TODO: channels with different schema can't be combined even if they belongs to same table
     for (List<ChannelData> channelsDataPerTable : blobData) {
-      List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
-      long rowCount = 0L;
-      VectorSchemaRoot root = null;
-      ArrowWriter arrowWriter = null;
-      VectorLoader loader = null;
-      SnowflakeStreamingIngestChannelInternal firstChannel = null;
       ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
-      Map<String, RowBufferStats> columnEpStatsMapCombined = null;
+      SnowflakeStreamingIngestChannelInternal firstChannel = channelsDataPerTable.get(0).getChannel();
 
-      try {
-        for (ChannelData data : channelsDataPerTable) {
-          // Create channel metadata
-          ChannelMetadata channelMetadata =
-              ChannelMetadata.builder()
-                  .setOwningChannel(data.getChannel())
-                  .setRowSequencer(data.getRowSequencer())
-                  .setOffsetToken(data.getOffsetToken())
-                  .build();
-          // Add channel metadata to the metadata list
-          channelsMetadataList.add(channelMetadata);
+      Flusher flusher = bdecVersion == 3 ? new ParquetFlusher(((ParquetRowBuffer)firstChannel.getRowBuffer()).getSchema()) : new ArrowFlusher(bdecVersion);
+      Flusher.SerializationResult result = flusher.serialize(channelsDataPerTable, chunkData, filePath);
 
-          logger.logDebug(
-              "Start building channel={}, rowCount={}, bufferSize={} in blob={}",
-              data.getChannel().getFullyQualifiedName(),
-              data.getRowCount(),
-              data.getBufferSize(),
-              filePath);
-
-          if (root == null) {
-            columnEpStatsMapCombined = data.getColumnEps();
-            root = data.getVectors();
-            arrowWriter =
-                getArrowBatchWriteMode() == Constants.ArrowBatchWriteMode.STREAM
-                    ? new ArrowStreamWriter(root, null, chunkData)
-                    : new ArrowFileWriterWithCompression(
-                        root,
-                        Channels.newChannel(chunkData),
-                        new CustomCompressionCodec(CompressionUtil.CodecType.ZSTD));
-            loader = new VectorLoader(root);
-            firstChannel = data.getChannel();
-            arrowWriter.start();
-          } else {
-            // This method assumes that channelsDataPerTable is grouped by table. We double check
-            // here and throw an error if the assumption is violated
-            if (!data.getChannel()
-                .getFullyQualifiedTableName()
-                .equals(firstChannel.getFullyQualifiedTableName())) {
-              throw new SFException(ErrorCode.INVALID_DATA_IN_CHUNK);
-            }
-
-            columnEpStatsMapCombined =
-                ChannelData.getCombinedColumnStatsMap(
-                    columnEpStatsMapCombined, data.getColumnEps());
-
-            VectorUnloader unloader = new VectorUnloader(data.getVectors());
-            ArrowRecordBatch recordBatch = unloader.getRecordBatch();
-            loader.load(recordBatch);
-            recordBatch.close();
-            data.getVectors().close();
-          }
-
-          // Write channel data using the stream writer
-          arrowWriter.writeBatch();
-          rowCount += data.getRowCount();
-
-          logger.logDebug(
-              "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
-              data.getChannel().getFullyQualifiedName(),
-              data.getRowCount(),
-              data.getBufferSize(),
-              filePath);
-        }
-      } finally {
-        if (arrowWriter != null) {
-          arrowWriter.close();
-          root.close();
-        }
-      }
-
-      if (!channelsMetadataList.isEmpty()) {
+      if (!result.channelsMetadataList.isEmpty()) {
         Pair<byte[], Integer> compressionResult = compressIfNeededAndPadChunk(filePath, chunkData);
         byte[] compressedAndPaddedChunkData = compressionResult.getFirst();
         int compressedChunkLength = compressionResult.getSecond();
@@ -498,10 +417,11 @@ class FlushService {
         // We need to maintain IV as a block counter for the whole file, even interleaved,
         // to align with decryption on the Snowflake query path.
         // TODO: address alignment for the header SNOW-557866
+        // TODO: encryption is not yet supported by server side for Parquet
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
-        byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(
-                compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
+        byte[] encryptedCompressedChunkData = bdecVersion == 3 ?  compressedAndPaddedChunkData :
+                Cryptor.encrypt(
+                        compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
@@ -518,10 +438,10 @@ class FlushService {
                 // The compressedChunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
                 .setChunkLength(compressedChunkLength)
-                .setChannelList(channelsMetadataList)
+                .setChannelList(result.channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(firstChannel.getEncryptionKeyId())
-                .setEpInfo(ArrowRowBuffer.buildEpInfoFromStats(rowCount, columnEpStatsMapCombined))
+                .setEncryptionKeyId(bdecVersion == 3 ? 0 : firstChannel.getEncryptionKeyId())
+                .setEpInfo(ArrowRowBuffer.buildEpInfoFromStats(result.rowCount, result.columnEpStatsMapCombined))
                 .build();
 
         // Add chunk metadata and data to the list
@@ -533,15 +453,15 @@ class FlushService {
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
                 + " uncompressedSize={}, compressedChunkLength={}, encryptedCompressedSize={},"
-                + " arrowBatchWriteMode={}",
+                + " bdecVersion={}",
             filePath,
             firstChannel.getFullyQualifiedTableName(),
-            rowCount,
+            result.rowCount,
             startOffset,
             chunkData.size(),
             compressedChunkLength,
             encryptedCompressedChunkDataSize,
-            getArrowBatchWriteMode());
+            bdecVersion);
       }
     }
 
@@ -565,7 +485,7 @@ class FlushService {
     // Hence, the actual chunk size is smaller by the padding size.
     // The compression on the Snowflake query path needs the correct size of the compressed
     // data.
-    if (getArrowBatchWriteMode() == Constants.ArrowBatchWriteMode.STREAM) {
+    if (bdecVersion == 1) {
       // Stream write mode does not support column level compression.
       // Compress the chunk data and pad it for encryption.
       return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
@@ -574,23 +494,6 @@ class FlushService {
       int paddingSize = blockSizeToAlignTo - actualSize % blockSizeToAlignTo;
       chunkData.write(new byte[paddingSize]);
       return new Pair<>(chunkData.toByteArray(), actualSize);
-    }
-  }
-
-  private Constants.ArrowBatchWriteMode getArrowBatchWriteMode() {
-    switch (bdecVersion) {
-      case 1:
-        return Constants.ArrowBatchWriteMode.STREAM;
-      case 2:
-        return Constants.ArrowBatchWriteMode.FILE;
-      default:
-        throw new IllegalArgumentException(
-            String.format(
-                "Unsupported BLOB_FORMAT_VERSION = '%d', allowed values are in range [%d, %d]"
-                    + " inclusively",
-                bdecVersion,
-                ParameterProvider.BLOB_FORMAT_START_SUPPORTED_VERSION,
-                ParameterProvider.BLOB_FORMAT_END_SUPPORTED_VERSION));
     }
   }
 
@@ -706,7 +609,9 @@ class FlushService {
         chunkData ->
             chunkData.forEach(
                 channelData -> {
-                  channelData.getVectors().close();
+                  if (channelData.getVectors() instanceof VectorSchemaRoot) {
+                    ((VectorSchemaRoot)channelData.getVectors()).close();
+                  }
                   this.owningClient
                       .getChannelCache()
                       .invalidateChannelIfSequencersMatch(

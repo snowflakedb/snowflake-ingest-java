@@ -43,6 +43,7 @@
         <jacoco.skip.instrument>true</jacoco.skip.instrument>
         <jacoco.version>0.8.5</jacoco.version>
         <arrow.version>8.0.0</arrow.version>
+        <hadoop.version>2.10.1</hadoop.version>
     </properties>
 
     <build>
@@ -332,6 +333,27 @@
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-compression</artifactId>
             <version>${arrow.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop</artifactId>
+            <version>1.11.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-mapreduce-client-core</artifactId>
+            <version>${hadoop.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>${hadoop.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop.version}</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-core -->

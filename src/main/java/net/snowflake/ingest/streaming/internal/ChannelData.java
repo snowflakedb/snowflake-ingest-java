@@ -14,11 +14,12 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  * Contains the data and metadata returned for each channel flush, which will be used to build the
  * blob and register blob request
  */
-class ChannelData {
+class ChannelData<T> {
   private Long rowSequencer;
   private String offsetToken;
-  private VectorSchemaRoot vectors;
+  private T vectors;
   private float bufferSize;
+  private int rowCount;
   private SnowflakeStreamingIngestChannelInternal channel;
   private Map<String, RowBufferStats> columnEps;
 
@@ -78,16 +79,20 @@ class ChannelData {
     this.offsetToken = offsetToken;
   }
 
-  VectorSchemaRoot getVectors() {
+  T getVectors() {
     return this.vectors;
   }
 
-  void setVectors(VectorSchemaRoot vectors) {
+  void setVectors(T vectors) {
     this.vectors = vectors;
   }
 
   int getRowCount() {
-    return this.vectors.getRowCount();
+    return this.rowCount;
+  }
+
+  void setRowCount(int rowCount) {
+    this.rowCount = rowCount;
   }
 
   float getBufferSize() {

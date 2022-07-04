@@ -40,7 +40,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   private final Long channelSequencer;
 
   // Reference to the row buffer
-  private final ArrowRowBuffer arrowBuffer;
+  private final RowBuffer rowBuffer;
 
   // Indicates whether the channel is still valid
   private volatile boolean isValid;
@@ -112,7 +112,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                     String.format("%s_%s", name, channelSequencer),
                     0,
                     this.owningClient.getAllocator().getLimit());
-    this.arrowBuffer = new ArrowRowBuffer(this);
+    this.rowBuffer = client.getParameterProvider().getBlobFormatVersion() == 3 ? new ParquetRowBuffer(this) : new ArrowRowBuffer(this);
     this.encryptionKey = encryptionKey;
     this.encryptionKeyId = encryptionKeyId;
     this.onErrorOption = onErrorOption;
@@ -239,7 +239,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    * @return a ChannelData object
    */
   ChannelData getData() {
-    return this.arrowBuffer.flush();
+    return this.rowBuffer.flush();
   }
 
   /** @return a boolean to indicate whether the channel is valid or not */
@@ -251,7 +251,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   /** Mark the channel as invalid, and release resources */
   void invalidate() {
     this.isValid = false;
-    this.arrowBuffer.close("invalidate");
+    this.rowBuffer.close("invalidate");
     logger.logWarn(
         "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}",
         getFullyQualifiedName(),
@@ -290,7 +290,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
 
     // Simply return if there is no data in the channel, this might not work if we support public
     // flush API since there could a concurrent insert at the same time
-    if (this.arrowBuffer.getSize() == 0) {
+    if (this.rowBuffer.getSize() == 0) {
       return CompletableFuture.completedFuture(null);
     }
 
@@ -318,7 +318,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
                   this.owningClient.verifyChannelsAreFullyCommitted(
                       Collections.singletonList(this));
 
-              this.arrowBuffer.close("close");
+              this.rowBuffer.close("close");
               this.owningClient.removeChannelIfSequencersMatch(this);
 
               // Throw an exception if the channel is invalid or has any uncommitted rows
@@ -349,7 +349,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   // TODO: need to verify with the table schema when supporting sub-columns
   void setupSchema(List<ColumnMetadata> columns) {
     logger.logDebug("Setup schema for channel={}, schema={}", getFullyQualifiedName(), columns);
-    this.arrowBuffer.setupSchema(columns);
+    this.rowBuffer.setupSchema(columns);
   }
 
   /**
@@ -395,12 +395,12 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
       throw new SFException(ErrorCode.CLOSED_CHANNEL, getFullyQualifiedName());
     }
 
-    InsertValidationResponse response = this.arrowBuffer.insertRows(rows, offsetToken);
+    InsertValidationResponse response = this.rowBuffer.insertRows(rows, offsetToken);
 
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
-    if (this.arrowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
+    if (this.rowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
       this.owningClient.setNeedFlush();
     }
 
@@ -476,7 +476,7 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   private void checkValidation() {
     if (!isValid()) {
       this.owningClient.removeChannelIfSequencersMatch(this);
-      this.arrowBuffer.close("checkValidation");
+      this.rowBuffer.close("checkValidation");
       throw new SFException(ErrorCode.INVALID_CHANNEL, getFullyQualifiedName());
     }
   }
@@ -484,4 +484,6 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   OpenChannelRequest.OnErrorOption getOnErrorOption() {
     return this.onErrorOption;
   }
+
+  RowBuffer getRowBuffer() { return rowBuffer; }
 }

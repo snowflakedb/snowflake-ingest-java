@@ -53,7 +53,7 @@ import org.apache.arrow.vector.util.TransferPair;
  * The buffer in the Streaming Ingest channel that holds the un-flushed rows, these rows will be
  * converted to Arrow format for faster processing
  */
-class ArrowRowBuffer {
+class ArrowRowBuffer implements RowBuffer<VectorSchemaRoot> {
 
   // Snowflake table column logical type
   private static enum ColumnLogicalType {
@@ -191,7 +191,8 @@ class ArrowRowBuffer {
    *
    * @param columns list of column metadata
    */
-  void setupSchema(List<ColumnMetadata> columns) {
+  @Override
+  public void setupSchema(List<ColumnMetadata> columns) {
     List<FieldVector> vectors = new ArrayList<>();
     List<FieldVector> tempVectors = new ArrayList<>();
 
@@ -220,7 +221,8 @@ class ArrowRowBuffer {
    * Close the row buffer and release resources. Note that the caller needs to handle
    * synchronization
    */
-  void close(String name) {
+  @Override
+  public void close(String name) {
     long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
     if (this.vectorsRoot != null) {
       this.vectorsRoot.close();
@@ -262,7 +264,8 @@ class ArrowRowBuffer {
    *
    * @return the current buffer size
    */
-  float getSize() {
+  @Override
+  public float getSize() {
     return this.bufferSize;
   }
 
@@ -273,7 +276,8 @@ class ArrowRowBuffer {
    * @param offsetToken offset token of the latest row in the batch
    * @return insert response that possibly contains errors because of insertion failures
    */
-  InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
+  @Override
+  public InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
     float rowSize = 0F;
     if (this.fields.isEmpty()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
@@ -353,7 +357,8 @@ class ArrowRowBuffer {
    *
    * @return A ChannelData object that contains the info needed by the flush service to build a blob
    */
-  ChannelData flush() {
+  @Override
+  public ChannelData<VectorSchemaRoot> flush() {
     logger.logDebug("Start get data for channel={}", this.owningChannel.getFullyQualifiedName());
     if (this.rowCount > 0) {
       List<FieldVector> oldVectors = new ArrayList<>();
@@ -419,10 +424,11 @@ class ArrowRowBuffer {
           bufferSize);
 
       if (!oldVectors.isEmpty()) {
-        ChannelData data = new ChannelData();
+        ChannelData<VectorSchemaRoot> data = new ChannelData<>();
         VectorSchemaRoot vectors = new VectorSchemaRoot(oldVectors);
         vectors.setRowCount(oldRowCount);
         data.setVectors(vectors);
+        data.setRowCount(vectors.getRowCount());
         data.setBufferSize(oldBufferSize);
         data.setChannel(this.owningChannel);
         data.setRowSequencer(oldRowSequencer);
