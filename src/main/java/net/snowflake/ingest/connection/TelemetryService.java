@@ -2,7 +2,7 @@
  * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
  */
 
-package net.snowflake.ingest.streaming.internal;
+package net.snowflake.ingest.connection;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
@@ -19,7 +19,7 @@ import net.snowflake.ingest.utils.Logging;
  * Telemetry service to collect logs in the SDK and send them to Snowflake through JDBC client
  * telemetry
  */
-class TelemetryService {
+public class TelemetryService {
   private enum TelemetryType {
     STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_sec"),
     STREAMING_INGEST_CLIENT_FAILURE("streaming_ingest_client_failure"),
@@ -38,7 +38,7 @@ class TelemetryService {
     }
   }
 
-  private static final Logging logger = new Logging(FlushService.class);
+  private static final Logging logger = new Logging(TelemetryService.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final String TYPE = "type";
@@ -64,8 +64,8 @@ class TelemetryService {
     this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
   }
 
-  /** Report the SDK latency metrics */
-  void reportLatencyInSec(
+  /** Report the Streaming Ingest latency metrics */
+  public void reportLatencyInSec(
       Timer buildLatency, Timer uploadLatency, Timer registerLatency, Timer flushLatency) {
     ObjectNode msg = MAPPER.createObjectNode();
     msg.set("build_latency_sec", buildMsgFromTimer(buildLatency));
@@ -75,24 +75,24 @@ class TelemetryService {
     send(TelemetryType.STREAMING_INGEST_LATENCY_IN_SEC, msg);
   }
 
-  /** Report the SDK failure metrics */
-  void reportClientFailure(String summary, String exception) {
+  /** Report the Streaming Ingest failure metrics */
+  public void reportClientFailure(String summary, String exception) {
     ObjectNode msg = MAPPER.createObjectNode();
     msg.put("summary", summary);
     msg.put("exception", exception);
     send(TelemetryType.STREAMING_INGEST_CLIENT_FAILURE, msg);
   }
 
-  /** Report the SDK throughput metrics */
-  void reportThroughputBytesPerSecond(Meter inputThroughput, Meter uploadThrough) {
+  /** Report the Streaming Ingest throughput metrics */
+  public void reportThroughputBytesPerSecond(Meter inputThroughput, Meter uploadThrough) {
     ObjectNode msg = MAPPER.createObjectNode();
     msg.put("input_mean_rate_bytes_per_sec", inputThroughput.getMeanRate());
     msg.put("upload_mean_rate_bytes_per_sec", uploadThrough.getMeanRate());
     send(TelemetryType.STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC, msg);
   }
 
-  /** Report the SDK CUP/memory usage metrics */
-  void reportCpuMemoryUsage(Histogram cpuUsage) {
+  /** Report the Streaming Ingest CUP/memory usage metrics */
+  public void reportCpuMemoryUsage(Histogram cpuUsage) {
     ObjectNode msg = MAPPER.createObjectNode();
     Snapshot cpuSnapshot = cpuUsage.getSnapshot();
     Runtime runTime = Runtime.getRuntime();
@@ -130,7 +130,8 @@ class TelemetryService {
     return msg;
   }
 
-  void refreshJWTToken(String token) {
+  /** Refresh JWT token */
+  public void refreshJWTToken(String token) {
     telemetry.refreshToken(token);
   }
 }

@@ -151,11 +151,11 @@ class RegisterService {
                       "Building or uploading blob failed=%s, exception=%s, detail=%s, cause=%s,"
                           + " detail=%s trace=%s all channels in the blob will be invalidated",
                       futureBlob.getKey().getFilePath(),
-                      e.toString(),
+                      e,
                       e.getMessage(),
                       e.getCause(),
                       e.getCause() == null ? null : e.getCause().getMessage(),
-                      stackTrace.toString());
+                      stackTrace);
               logger.logError(errorMessage);
               if (this.owningClient.getTelemetryService() != null) {
                 this.owningClient

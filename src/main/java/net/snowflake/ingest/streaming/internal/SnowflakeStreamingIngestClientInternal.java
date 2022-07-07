@@ -61,6 +61,7 @@ import javax.management.ObjectName;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Constants;
@@ -136,9 +137,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   // The request builder who handles building the HttpRequests we send
   private RequestBuilder requestBuilder;
 
-  // Reference to the telemetry service
-  private TelemetryService telemetryService;
-
+  // Background thread that uploads telemetry data periodically
   private ScheduledExecutorService telemetryWorker;
 
   /**
@@ -176,35 +175,22 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       try {
         KeyPair keyPair =
             Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
-        this.requestBuilder = new RequestBuilder(accountURL, prop.get(USER).toString(), keyPair);
+        this.requestBuilder =
+            new RequestBuilder(
+                accountURL,
+                prop.get(USER).toString(),
+                keyPair,
+                this.httpClient,
+                String.format("%s_%s", this.name, System.currentTimeMillis()));
       } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
         throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
       }
+
+      // Publish client telemetries if needed
+      this.setupMetricsForClient();
     }
 
     this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
-
-    if (!isTestMode) {
-      // Set up the telemetry service if needed
-      if (ENABLE_TELEMETRY_TO_SF) {
-        this.telemetryService =
-            new TelemetryService(
-                this.httpClient,
-                String.format("%s_%s", this.name, this.flushService.getClientPrefix()),
-                accountURL.getFullUrl());
-        // this.telemetryService.refreshJWTToken();
-
-        this.telemetryWorker = Executors.newSingleThreadScheduledExecutor();
-        this.telemetryWorker.scheduleWithFixedDelay(
-            this::reportTelemetryToSF,
-            10,
-            TELEMETRY_SERVICE_REPORT_INTERVAL_IN_SEC,
-            TimeUnit.SECONDS);
-      }
-
-      // Publish client telemetries if needed
-      this.registerMetricsForClient();
-    }
 
     logger.logInfo(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
@@ -750,7 +736,18 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    *
    * Latency and throughput metrics are emitted to JMX, jvm memory and thread metrics are logged to Slf4JLogger
    */
-  private void registerMetricsForClient() {
+  private void setupMetricsForClient() {
+    // Start the telemetry background worker if needed
+    if (ENABLE_TELEMETRY_TO_SF) {
+      this.telemetryWorker = Executors.newSingleThreadScheduledExecutor();
+      this.telemetryWorker.scheduleWithFixedDelay(
+          this::reportStreamingIngestTelemetryToSF,
+          10,
+          TELEMETRY_SERVICE_REPORT_INTERVAL_IN_SEC,
+          TimeUnit.SECONDS);
+    }
+
+    // Register metrics if needed
     metrics = new MetricRegistry();
 
     if (ENABLE_TELEMETRY_TO_SF || this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
@@ -830,21 +827,21 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /**
-   * Get Telemetry Service for a given client
+   * Get the Telemetry Service for a given client
    *
    * @return TelemetryService used by the client
    */
   TelemetryService getTelemetryService() {
-    return this.telemetryService;
+    return this.requestBuilder == null ? null : requestBuilder.getTelemetryService();
   }
 
-  void reportTelemetryToSF() {
-    if (this.telemetryService != null) {
-      this.telemetryService.reportLatencyInSec(
+  private void reportStreamingIngestTelemetryToSF() {
+    TelemetryService telemetryService = this.requestBuilder.getTelemetryService();
+    if (telemetryService != null) {
+      telemetryService.reportLatencyInSec(
           this.buildLatency, this.uploadLatency, this.registerLatency, this.flushLatency);
-      this.telemetryService.reportThroughputBytesPerSecond(
-          this.inputThroughput, this.uploadThroughput);
-      this.telemetryService.reportCpuMemoryUsage(this.cpuHistogram);
+      telemetryService.reportThroughputBytesPerSecond(this.inputThroughput, this.uploadThroughput);
+      telemetryService.reportCpuMemoryUsage(this.cpuHistogram);
     }
   }
 }

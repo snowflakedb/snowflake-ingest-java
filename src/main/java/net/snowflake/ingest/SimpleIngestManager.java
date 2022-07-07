@@ -385,7 +385,8 @@ public class SimpleIngestManager implements AutoCloseable {
 
     // make the request builder we'll use to build messages to the service
     builder =
-        new RequestBuilder(account, user, keyPair, schemeName, hostName, port, userAgentSuffix);
+        new RequestBuilder(
+            account, user, keyPair, schemeName, hostName, port, userAgentSuffix, null, null);
   }
 
   // ========= Constructors End =========

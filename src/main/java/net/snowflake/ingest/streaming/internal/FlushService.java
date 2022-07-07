@@ -358,7 +358,7 @@ class FlushService {
                             String.format(
                                 "Building blob failed=%s, exception=%s, detail=%s, all channels in"
                                     + " the blob will be invalidated",
-                                filePath, e.toString(), e.getMessage());
+                                filePath, e, e.getMessage());
                         logger.logError(errorMessage);
                         if (this.owningClient.getTelemetryService() != null) {
                           this.owningClient
@@ -571,6 +571,9 @@ class FlushService {
     if (uploadContext != null) {
       uploadContext.stop();
       this.owningClient.uploadThroughput.mark(blob.length);
+    }
+
+    if (this.owningClient.blobSizeHistogram != null) {
       this.owningClient.blobSizeHistogram.update(blob.length);
       this.owningClient.blobRowCountHistogram.update(
           metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());

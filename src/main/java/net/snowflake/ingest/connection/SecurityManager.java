@@ -41,22 +41,22 @@ final class SecurityManager implements AutoCloseable {
   private static final int RENEWAL_INTERVAL = 54;
 
   // The public - private key pair we're using to connect to the service
-  private transient KeyPair keyPair;
+  private final transient KeyPair keyPair;
 
   // the name of the account on behalf of which we're connecting
-  private String account;
+  private final String account;
 
   // Fingerprint of public key sent from client in jwt payload
   private String publicKeyFingerPrint;
 
   // the name of the user who will be loading the files
-  private String user;
+  private final String user;
 
   // the token itself
-  private AtomicReference<String> token;
+  private final AtomicReference<String> token;
 
   // Did we fail to regenerate our token at some point?
-  private AtomicBoolean regenFailed;
+  private final AtomicBoolean regenFailed;
 
   // Thread factory for daemon threads so that application can shutdown
   final ThreadFactory tf = ThreadFactoryUtil.poolThreadFactory(getClass().getSimpleName(), true);
@@ -64,23 +64,31 @@ final class SecurityManager implements AutoCloseable {
   // the thread we use for renewing all tokens
   private final ScheduledExecutorService keyRenewer = Executors.newScheduledThreadPool(1, tf);
 
+  // Reference to the Telemetry Service in the client
+  private final TelemetryService telemetryService;
+
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair with a specified time to
    * renew the token
    *
-   * @param accountname - the snowflake account name of this user
+   * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param keyPair - the public/private key pair we're using to connect
    * @param timeTillRenewal - the time measure until we renew the token
    * @param unit the unit by which timeTillRenewal is measured
    */
   SecurityManager(
-      String accountname, String username, KeyPair keyPair, int timeTillRenewal, TimeUnit unit) {
+      String accountName,
+      String username,
+      KeyPair keyPair,
+      int timeTillRenewal,
+      TimeUnit unit,
+      TelemetryService telemetryService) {
     // if any of our arguments are null, throw an exception
-    if (accountname == null || username == null || keyPair == null) {
+    if (accountName == null || username == null || keyPair == null) {
       throw new IllegalArgumentException();
     }
-    account = parseAccount(accountname);
+    account = parseAccount(accountName);
     user = username.toUpperCase();
 
     // create our automatic reference to a string (our token)
@@ -91,6 +99,8 @@ final class SecurityManager implements AutoCloseable {
 
     // we have to keep around the keys
     this.keyPair = keyPair;
+
+    this.telemetryService = telemetryService;
 
     // generate our first token
     regenerateToken();
@@ -103,18 +113,19 @@ final class SecurityManager implements AutoCloseable {
    * Creates a SecurityManager entity for a given account, user and KeyPair with the default time to
    * renew (54 minutes)
    *
-   * @param accountname - the snowflake account name of this user
+   * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param keyPair - the public/private key pair we're using to connect
    */
-  SecurityManager(String accountname, String username, KeyPair keyPair) {
-    this(accountname, username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES);
+  SecurityManager(
+      String accountName, String username, KeyPair keyPair, TelemetryService telemetryService) {
+    this(accountName, username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES, telemetryService);
   }
 
   /**
    * Trims an account name if it contains a <b>"."</b>
    *
-   * <p>Snowflake's python connector trims an accountname if it contains a "."
+   * <p>Snowflake's python connector trims an accountName if it contains a "."
    *
    * @param accountName given accountName in SimpleIngestManager's constructor
    * @return initial part of account name if originally it contained a ".", otherwise return the
@@ -177,6 +188,11 @@ final class SecurityManager implements AutoCloseable {
     // atomically update the string
     LOGGER.info("Created new JWT");
     token.set(newToken);
+
+    // Refresh the token in the telemetry service as well
+    if (telemetryService != null) {
+      telemetryService.refreshJWTToken(newToken);
+    }
   }
 
   /**

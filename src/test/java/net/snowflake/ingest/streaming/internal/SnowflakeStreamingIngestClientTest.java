@@ -423,7 +423,8 @@ public class SnowflakeStreamingIngestClientTest {
     SnowflakeURL url = new SnowflakeURL(urlStr);
 
     KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
-    RequestBuilder requestBuilder = new RequestBuilder(url, prop.get(USER).toString(), keyPair);
+    RequestBuilder requestBuilder =
+        new RequestBuilder(url, prop.get(USER).toString(), keyPair, null, null);
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
