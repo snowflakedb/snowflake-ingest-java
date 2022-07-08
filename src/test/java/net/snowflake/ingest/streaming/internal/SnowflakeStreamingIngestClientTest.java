@@ -301,10 +301,13 @@ public class SnowflakeStreamingIngestClientTest {
 
   @Test
   public void testGetChannelsStatusWithRequest() throws Exception {
+    ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
+        new ChannelsStatusResponse.ChannelStatusResponseDTO();
+    channelStatus.setStatusCode((long) RESPONSE_SUCCESS);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("honk");
-    response.setChannels(new ArrayList<>());
+    response.setChannels(Collections.singletonList(channelStatus));
     String responseString = objectMapper.writeValueAsString(response);
 
     CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
