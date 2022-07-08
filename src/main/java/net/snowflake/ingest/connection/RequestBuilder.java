@@ -166,6 +166,7 @@ public class RequestBuilder {
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
    * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
   public RequestBuilder(
       String accountName,
@@ -216,6 +217,8 @@ public class RequestBuilder {
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param httpClient - reference to the http client
+   * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
       String accountName,
@@ -235,7 +238,8 @@ public class RequestBuilder {
     // Set up the telemetry service if needed
     this.telemetryService =
         ENABLE_TELEMETRY_TO_SF
-            ? new TelemetryService(httpClient, clientName, hostName + ":" + portNum)
+            ? new TelemetryService(
+                httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
             : null;
 
     // create our security/token manager
@@ -268,6 +272,8 @@ public class RequestBuilder {
    * @param url - the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
    * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param httpClient - reference to the http client
+   * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
       SnowflakeURL url,
@@ -848,10 +854,7 @@ public class RequestBuilder {
     securityManager.close();
   }
 
-  public SecurityManager getSecurityManager() {
-    return securityManager;
-  }
-
+  /** Get the telemetry service */
   public TelemetryService getTelemetryService() {
     return telemetryService;
   }

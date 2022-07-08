@@ -76,6 +76,7 @@ final class SecurityManager implements AutoCloseable {
    * @param keyPair - the public/private key pair we're using to connect
    * @param timeTillRenewal - the time measure until we renew the token
    * @param unit the unit by which timeTillRenewal is measured
+   * @param telemetryService reference to the telemetry service
    */
   SecurityManager(
       String accountName,
@@ -111,11 +112,12 @@ final class SecurityManager implements AutoCloseable {
 
   /**
    * Creates a SecurityManager entity for a given account, user and KeyPair with the default time to
-   * renew (54 minutes)
+   * renew (RENEWAL_INTERVAL minutes)
    *
    * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param keyPair - the public/private key pair we're using to connect
+   * @param telemetryService reference to the telemetry service
    */
   SecurityManager(
       String accountName, String username, KeyPair keyPair, TelemetryService telemetryService) {
@@ -189,7 +191,7 @@ final class SecurityManager implements AutoCloseable {
     LOGGER.info("Created new JWT");
     token.set(newToken);
 
-    // Refresh the token in the telemetry service as well
+    // Refresh the token used in the telemetry service as well
     if (telemetryService != null) {
       telemetryService.refreshJWTToken(newToken);
     }

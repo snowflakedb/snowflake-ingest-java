@@ -16,11 +16,12 @@ import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
 import net.snowflake.ingest.utils.Logging;
 
 /**
- * Telemetry service to collect logs in the SDK and send them to Snowflake through JDBC client
- * telemetry
+ * Telemetry service to collect logs in the SDK and send them to Snowflake through the JDBC client
+ * telemetry API
  */
 public class TelemetryService {
-  private enum TelemetryType {
+  // Enum for different client telemetries
+  enum TelemetryType {
     STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_sec"),
     STREAMING_INGEST_CLIENT_FAILURE("streaming_ingest_client_failure"),
     STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC("streaming_ingest_throughput_bytes_per_sec"),
@@ -105,7 +106,7 @@ public class TelemetryService {
   }
 
   /** Send log to Snowflake asynchronously through JDBC client telemetry */
-  private void send(TelemetryType type, ObjectNode msg) {
+  void send(TelemetryType type, ObjectNode msg) {
     try {
       msg.put(TYPE, type.toString());
       msg.put(CLIENT_NAME, clientName);
@@ -130,7 +131,7 @@ public class TelemetryService {
     return msg;
   }
 
-  /** Refresh JWT token */
+  /** Refresh JWT token stored in the telemetry client */
   public void refreshJWTToken(String token) {
     telemetry.refreshToken(token);
   }

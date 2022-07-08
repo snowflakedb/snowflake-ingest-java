@@ -23,7 +23,7 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JMX_METRIC_PREFIX;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JVM_MEMORY_AND_THREAD_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY;
-import static net.snowflake.ingest.utils.Constants.TELEMETRY_SERVICE_REPORT_INTERVAL_IN_SEC;
+import static net.snowflake.ingest.utils.Constants.STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Histogram;
@@ -186,7 +186,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
       }
 
-      // Publish client telemetries if needed
+      // Setup client telemetries if needed
       this.setupMetricsForClient();
     }
 
@@ -552,14 +552,17 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     try {
       this.flush(true).get();
 
+      // Report telemetry if needed
+      reportStreamingIngestTelemetryToSF();
+
       // Unregister jmx metrics
-      if (metrics != null) {
+      if (this.metrics != null) {
         Slf4jReporter.forRegistry(metrics).outputTo(logger.getLogger()).build().report();
         removeMetricsFromRegistry();
       }
 
       // LOG jvm memory and thread metrics at the end
-      if (jvmMemoryAndThreadMetrics != null) {
+      if (this.jvmMemoryAndThreadMetrics != null) {
         Slf4jReporter.forRegistry(jvmMemoryAndThreadMetrics)
             .outputTo(logger.getLogger())
             .build()
@@ -742,8 +745,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       this.telemetryWorker = Executors.newSingleThreadScheduledExecutor();
       this.telemetryWorker.scheduleWithFixedDelay(
           this::reportStreamingIngestTelemetryToSF,
-          10,
-          TELEMETRY_SERVICE_REPORT_INTERVAL_IN_SEC,
+          STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC,
+          STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC,
           TimeUnit.SECONDS);
     }
 
@@ -763,14 +766,14 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       // Throughput metrics
       uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
       inputThroughput = metrics.meter(MetricRegistry.name("throughput", "input"));
-    }
 
-    if (this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
       // Blob histogram metrics
       blobSizeHistogram = metrics.histogram(MetricRegistry.name("blob", "size", "histogram"));
       blobRowCountHistogram =
           metrics.histogram(MetricRegistry.name("blob", "row", "count", "histogram"));
+    }
 
+    if (this.parameterProvider.hasEnabledSnowpipeStreamingMetrics()) {
       JmxReporter jmxReporter =
           JmxReporter.forRegistry(this.metrics)
               .inDomain(SNOWPIPE_STREAMING_JMX_METRIC_PREFIX)
@@ -835,8 +838,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return this.requestBuilder == null ? null : requestBuilder.getTelemetryService();
   }
 
+  /** Report streaming ingest related telemetries to Snowflake */
   private void reportStreamingIngestTelemetryToSF() {
-    TelemetryService telemetryService = this.requestBuilder.getTelemetryService();
+    TelemetryService telemetryService = getTelemetryService();
     if (telemetryService != null) {
       telemetryService.reportLatencyInSec(
           this.buildLatency, this.uploadLatency, this.registerLatency, this.flushLatency);

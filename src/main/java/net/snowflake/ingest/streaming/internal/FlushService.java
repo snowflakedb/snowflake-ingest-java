@@ -571,9 +571,6 @@ class FlushService {
     if (uploadContext != null) {
       uploadContext.stop();
       this.owningClient.uploadThroughput.mark(blob.length);
-    }
-
-    if (this.owningClient.blobSizeHistogram != null) {
       this.owningClient.blobSizeHistogram.update(blob.length);
       this.owningClient.blobRowCountHistogram.update(
           metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
