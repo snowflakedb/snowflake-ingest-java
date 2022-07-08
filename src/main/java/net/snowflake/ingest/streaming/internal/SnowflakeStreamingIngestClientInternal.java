@@ -734,10 +734,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     return parameterProvider;
   }
 
-  /*
+  /**
    * Registers the performance metrics along with JVM memory and Threads.
    *
-   * Latency and throughput metrics are emitted to JMX, jvm memory and thread metrics are logged to Slf4JLogger
+   * <p>Latency and throughput metrics are emitted to JMX, jvm memory and thread metrics are logged
+   * to Slf4JLogger
    */
   private void setupMetricsForClient() {
     // Start the telemetry background worker if needed
