@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,7 +44,7 @@ class DataValidationUtil {
       output = input.toString();
     } catch (Exception e) {
       throw new SFException(
-          e, ErrorCode.INVALID_ROW, input.toString(), "Input column can't be convert to String.");
+          e, ErrorCode.INVALID_ROW, input, "Input column can't be convert to String.");
     }
 
     if (output.length() > MAX_STRING_LENGTH) {
@@ -51,6 +53,52 @@ class DataValidationUtil {
           input.toString(),
           String.format(
               "Variant too long. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+    }
+    return output;
+  }
+
+  /**
+   * Expects an Array or List object
+   *
+   * @param input the input data, must be able to convert to String
+   */
+  static String validateAndParseArray(Object input) {
+    if (!input.getClass().isArray() && !(input instanceof List)) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW, input, "Input column must be an Array or List object.");
+    }
+
+    String output;
+
+    try {
+      if (input.getClass().isArray()) {
+        if (input instanceof int[]) {
+          output = Arrays.toString((int[]) input);
+        } else if (input instanceof long[]) {
+          output = Arrays.toString((long[]) input);
+        } else if (input instanceof short[]) {
+          output = Arrays.toString((short[]) input);
+        } else if (input instanceof double[]) {
+          output = Arrays.toString((double[]) input);
+        } else if (input instanceof float[]) {
+          output = Arrays.toString((float[]) input);
+        } else if (input instanceof byte[]) {
+          output = Arrays.toString((byte[]) input);
+        } else if (input instanceof char[]) {
+          output = Arrays.toString((char[]) input);
+        } else if (input instanceof boolean[]) {
+          output = Arrays.toString((boolean[]) input);
+        } else if (input instanceof Object[]) {
+          output = Arrays.deepToString((Object[]) input);
+        } else {
+          throw new SFException(ErrorCode.INVALID_ROW, input, "Input array type is not supported.");
+        }
+      } else {
+        output = input.toString();
+      }
+    } catch (Exception e) {
+      throw new SFException(
+          e, ErrorCode.INVALID_ROW, input, "Input column can't be convert to String.");
     }
     return output;
   }
