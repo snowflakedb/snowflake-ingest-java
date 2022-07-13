@@ -50,8 +50,6 @@ public class HttpUtil {
 
   private static final String PROXY_SCHEME = "http";
   private static final int MAX_RETRIES = 3;
-  static final int DEFAULT_CONNECTION_TIMEOUT = 1; // minute
-  static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT = 5; // minutes
   private static CloseableHttpClient httpClient;
 
   private static PoolingHttpClientConnectionManager connectionManager;
@@ -343,7 +341,7 @@ public class HttpUtil {
           }
         }
       } catch (InterruptedException ex) {
-        LOGGER.debug("Terminating Idle Connection Monitor Thread ");
+        LOGGER.warn("Terminating Idle Connection Monitor Thread ");
       }
     }
 
