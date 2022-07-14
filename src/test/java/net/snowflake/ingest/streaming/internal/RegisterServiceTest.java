@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import net.snowflake.ingest.utils.Pair;
 import org.junit.Assert;
@@ -27,6 +28,15 @@ public class RegisterServiceTest {
     Assert.assertEquals(0, errorBlobs.size());
   }
 
+  /**
+   * Note that this exception will not perform retries since the completeExceptionally throws the
+   * exception by wrapping inside ExecutionException. Check method {@link
+   * CompletableFuture#get(long, TimeUnit)} javadocs
+   *
+   * <p>The check for retries checks the original exception instead of the exception.getCause()
+   *
+   * @throws Exception
+   */
   @Test
   public void testRegisterServiceTimeoutException() throws Exception {
     SnowflakeStreamingIngestClientInternal client =
