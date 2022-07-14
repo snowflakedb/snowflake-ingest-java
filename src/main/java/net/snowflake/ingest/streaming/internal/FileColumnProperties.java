@@ -38,6 +38,9 @@ class FileColumnProperties {
   // Default value to use for min/max int when all data in the given column is NULL
   public static final BigInteger DEFAULT_MIN_MAX_INT_VAL_FOR_EP = BigInteger.valueOf(0);
 
+  // Default value to use for min/max real when all data in the given column is NULL
+  public static final Double DEFAULT_MIN_MAX_REAL_VAL_FOR_EP = 0d;
+
   FileColumnProperties(RowBufferStats stats) {
     this.setCollation(stats.getCollationDefinitionString());
     this.setMaxIntValue(
@@ -48,11 +51,20 @@ class FileColumnProperties {
         stats.getCurrentMinIntValue() == null
             ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
             : stats.getCurrentMinIntValue());
-    this.setMinRealValue(stats.getCurrentMinRealValue());
-    this.setMaxRealValue(stats.getCurrentMaxRealValue());
+    this.setMinRealValue(
+        stats.getCurrentMinRealValue() == null
+            ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+            : stats.getCurrentMinRealValue());
+    this.setMaxRealValue(
+        stats.getCurrentMaxRealValue() == null
+            ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+            : stats.getCurrentMaxRealValue());
     this.setMaxLength(stats.getCurrentMaxLength());
-    this.setMaxStrNonCollated(stats.getCurrentMaxStrValue());
-    this.setMinStrNonCollated(stats.getCurrentMinStrValue());
+
+    // Collated and non-collated strings are intentionally equal here as required by Snowflake
+    this.setMaxStrNonCollated(stats.getCurrentMaxColStrValue());
+    this.setMinStrNonCollated(stats.getCurrentMinColStrValue());
+
     this.setMaxStrValue(stats.getCurrentMaxColStrValue());
     this.setMinStrValue(stats.getCurrentMinColStrValue());
     this.setNullCount(stats.getCurrentNullCount());

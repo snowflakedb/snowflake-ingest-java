@@ -837,19 +837,21 @@ public class RowBufferTest {
 
   @Test
   public void testBuildEpInfoFromNullColumnStats() {
-    final String colName = "intCol";
+    final String intColName = "intCol";
+    final String realColName = "realCol";
     Map<String, RowBufferStats> colStats = new HashMap<>();
 
     RowBufferStats stats = new RowBufferStats();
     stats.incCurrentNullCount();
 
-    colStats.put(colName, stats);
+    colStats.put(intColName, stats);
+    colStats.put(realColName, stats);
 
     EpInfo result = ArrowRowBuffer.buildEpInfoFromStats(2, colStats);
     Map<String, FileColumnProperties> columnResults = result.getColumnEps();
-    Assert.assertEquals(1, columnResults.keySet().size());
+    Assert.assertEquals(2, columnResults.keySet().size());
 
-    FileColumnProperties intColumnResult = columnResults.get(colName);
+    FileColumnProperties intColumnResult = columnResults.get(intColName);
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
     Assert.assertEquals(
         FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMinIntValue());
@@ -857,6 +859,15 @@ public class RowBufferTest {
         FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMaxIntValue());
     Assert.assertEquals(1, intColumnResult.getNullCount());
     Assert.assertEquals(0, intColumnResult.getMaxLength());
+
+    FileColumnProperties realColumnResult = columnResults.get(realColName);
+    Assert.assertEquals(-1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(
+        FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMinRealValue());
+    Assert.assertEquals(
+        FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMaxRealValue());
+    Assert.assertEquals(1, realColumnResult.getNullCount());
+    Assert.assertEquals(0, realColumnResult.getMaxLength());
   }
 
   @Test
@@ -1179,8 +1190,8 @@ public class RowBufferTest {
     Assert.assertEquals(0, columnEpStats.get("COLBIGINT").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLBIGINT").getDistinctValues());
 
-    Assert.assertEquals("alice", columnEpStats.get("COLCHAR").getCurrentMaxStrValue());
-    Assert.assertEquals("2", columnEpStats.get("COLCHAR").getCurrentMinStrValue());
+    Assert.assertEquals("alice", columnEpStats.get("COLCHAR").getCurrentMaxColStrValue());
+    Assert.assertEquals("2", columnEpStats.get("COLCHAR").getCurrentMinColStrValue());
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
@@ -1572,9 +1583,9 @@ public class RowBufferTest {
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
     Assert.assertEquals(
-        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinStrValue());
+        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinColStrValue());
     Assert.assertEquals(
-        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxStrValue());
+        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxColStrValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLBINARY").getCurrentNullCount());
   }
 
