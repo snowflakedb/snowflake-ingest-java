@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -261,6 +262,40 @@ public class DataValidationUtilTest {
     } catch (SFException err) {
       Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
     }
+  }
+
+  @Test
+  public void testValidateAndParseArray() throws Exception {
+    int invalidArray = 1;
+    try {
+      DataValidationUtil.validateAndParseArray(invalidArray);
+      Assert.fail("Expected INVALID_ROW error");
+    } catch (SFException err) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
+    }
+
+    int[] intArray = new int[] {1, 2, 3};
+    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(intArray));
+
+    Object[] objectArray = new Object[] {1, 2, 3};
+    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(objectArray));
+
+    Object[] ObjectArrayWithNull = new Object[] {1, null, 3};
+    Assert.assertEquals(
+        "[1, null, 3]", DataValidationUtil.validateAndParseArray(ObjectArrayWithNull));
+
+    Object[][] nestedArray = new Object[][] {{1, 2, 3}, null, {4, 5, 6}};
+    Assert.assertEquals(
+        "[[1, 2, 3], null, [4, 5, 6]]", DataValidationUtil.validateAndParseArray(nestedArray));
+
+    List<Integer> intList = Arrays.asList(1, 2, 3);
+    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(intList));
+
+    List<Object> objectList = Arrays.asList(1, 2, 3);
+    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(objectList));
+
+    List<Object> nestedList = Arrays.asList(Arrays.asList(1, 2, 3), 2, 3);
+    Assert.assertEquals("[[1, 2, 3], 2, 3]", DataValidationUtil.validateAndParseArray(nestedList));
   }
 
   @Test

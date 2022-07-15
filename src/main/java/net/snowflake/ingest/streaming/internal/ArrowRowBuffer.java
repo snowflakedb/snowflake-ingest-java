@@ -767,6 +767,13 @@ class ArrowRowBuffer {
               break;
             }
           case ARRAY:
+            {
+              String str = DataValidationUtil.validateAndParseArray(value);
+              Text text = new Text(str);
+              ((VarCharVector) vector).setSafe(curRowIndex, text);
+              rowBufferSize += text.getBytes().length;
+              break;
+            }
           case VARIANT:
             {
               String str = DataValidationUtil.validateAndParseVariant(value);
