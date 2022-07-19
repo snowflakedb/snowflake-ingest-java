@@ -8,7 +8,9 @@ import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.security.Security;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import javax.net.ssl.SSLContext;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHost;
@@ -23,13 +25,15 @@ import net.snowflake.client.jdbc.internal.apache.http.client.HttpRequestRetryHan
 import net.snowflake.client.jdbc.internal.apache.http.client.ServiceUnavailableRetryStrategy;
 import net.snowflake.client.jdbc.internal.apache.http.client.config.RequestConfig;
 import net.snowflake.client.jdbc.internal.apache.http.client.protocol.HttpClientContext;
+import net.snowflake.client.jdbc.internal.apache.http.conn.routing.HttpRoute;
 import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.DefaultHostnameVerifier;
 import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.BasicCredentialsProvider;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClientBuilder;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClients;
 import net.snowflake.client.jdbc.internal.apache.http.impl.conn.DefaultProxyRoutePlanner;
+import net.snowflake.client.jdbc.internal.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import net.snowflake.client.jdbc.internal.apache.http.pool.PoolStats;
 import net.snowflake.client.jdbc.internal.apache.http.protocol.HttpContext;
 import net.snowflake.client.jdbc.internal.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
@@ -46,14 +50,40 @@ public class HttpUtil {
 
   private static final String PROXY_SCHEME = "http";
   private static final int MAX_RETRIES = 3;
-  static final int DEFAULT_CONNECTION_TIMEOUT = 1; // minute
-  static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT = 5; // minutes
   private static CloseableHttpClient httpClient;
+
+  private static PoolingHttpClientConnectionManager connectionManager;
+
+  private static IdleConnectionMonitorThread idleConnectionMonitorThread;
+
+  /**
+   * This lock is to synchronize on idleConnectionMonitorThread to avoid setting starting a thread
+   * which was already started. (To avoid {@link IllegalThreadStateException})
+   */
+  private static final ReentrantLock idleConnectionMonitorThreadLock = new ReentrantLock(true);
+
+  private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
+  private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
+
+  // Default is 2, but scaling it up to 100 to match with default_max_connections
+  private static final int DEFAULT_MAX_CONNECTIONS_PER_ROUTE = 100;
+
+  // 100 is close to max partition number we have seen for a kafka topic ingesting into snowflake.
+  private static final int DEFAULT_MAX_CONNECTIONS = 100;
+
+  // Interval in which we check if there are connections which needs to be closed.
+  private static final long IDLE_HTTP_CONNECTION_MONITOR_THREAD_INTERVAL_MS =
+      TimeUnit.SECONDS.toMillis(5);
+
+  // Only connections that are currently owned, not checked out, are subject to idle timeouts.
+  private static final int DEFAULT_IDLE_CONNECTION_TIMEOUT_SECONDS = 30;
 
   public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
       initHttpClient();
     }
+
+    initIdleConnectionMonitoringThread();
 
     return httpClient;
   }
@@ -76,20 +106,30 @@ public class HttpUtil {
     RequestConfig requestConfig =
         RequestConfig.custom()
             .setConnectTimeout(
-                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+                (int)
+                    TimeUnit.MILLISECONDS.convert(
+                        DEFAULT_CONNECTION_TIMEOUT_MINUTES, TimeUnit.MINUTES))
             .setConnectionRequestTimeout(
-                (int) TimeUnit.MILLISECONDS.convert(DEFAULT_CONNECTION_TIMEOUT, TimeUnit.MINUTES))
+                (int)
+                    TimeUnit.MILLISECONDS.convert(
+                        DEFAULT_CONNECTION_TIMEOUT_MINUTES, TimeUnit.MINUTES))
             .setSocketTimeout(
                 (int)
                     TimeUnit.MILLISECONDS.convert(
-                        DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT, TimeUnit.MINUTES))
+                        DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES, TimeUnit.MINUTES))
             .build();
-    /**
-     * Use a anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
-     * retry time is 3. The interval time is backoff.
-     */
+
+    // Below pooling client connection manager uses time_to_live value as -1 which means it will not
+    // refresh a persisted connection
+    connectionManager = new PoolingHttpClientConnectionManager();
+    connectionManager.setDefaultMaxPerRoute(DEFAULT_MAX_CONNECTIONS_PER_ROUTE);
+    connectionManager.setMaxTotal(DEFAULT_MAX_CONNECTIONS);
+
+    // Use an anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
+    // retry time is 3. The interval time is backoff.
     HttpClientBuilder clientBuilder =
-        HttpClients.custom()
+        HttpClientBuilder.create()
+            .setConnectionManager(connectionManager)
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
             .setRetryHandler(getHttpRequestRetryHandler())
@@ -124,6 +164,27 @@ public class HttpUtil {
     }
 
     httpClient = clientBuilder.build();
+  }
+
+  /** Starts a daemon thread to monitor idle connections in http connection manager. */
+  private static void initIdleConnectionMonitoringThread() {
+    idleConnectionMonitorThreadLock.lock();
+    try {
+      // Start a new thread only if connectionManager was init before and
+      // daemon thread was not started before or was closed because of SimpleIngestManager close
+      if (connectionManager != null
+          && (idleConnectionMonitorThread == null || idleConnectionMonitorThread.isShutdown())) {
+        // Monitors in a separate thread where it closes any idle connections
+        // https://hc.apache.org/httpcomponents-client-4.5.x/current/tutorial/html/connmgmt.html
+        idleConnectionMonitorThread = new IdleConnectionMonitorThread(connectionManager);
+        idleConnectionMonitorThread.setDaemon(true);
+        idleConnectionMonitorThread.start();
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Unable to start Daemon thread for Http Idle Connection Monitoring", e);
+    } finally {
+      idleConnectionMonitorThreadLock.unlock();
+    }
   }
 
   private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
@@ -234,5 +295,87 @@ public class HttpUtil {
       }
     }
     return proxyProperties;
+  }
+
+  /** Thread to monitor expired and idle connection, if found clear it and return it back to pool */
+  private static class IdleConnectionMonitorThread extends Thread {
+
+    private final PoolingHttpClientConnectionManager connectionManager;
+    private volatile boolean shutdown;
+
+    public IdleConnectionMonitorThread(PoolingHttpClientConnectionManager connectionManager) {
+      super();
+      this.connectionManager = connectionManager;
+    }
+
+    @Override
+    public void run() {
+      try {
+        LOGGER.debug("Starting Idle Connection Monitor Thread ");
+        synchronized (this) {
+          while (!shutdown) {
+            wait(IDLE_HTTP_CONNECTION_MONITOR_THREAD_INTERVAL_MS);
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.append(
+                createPoolStatsInfo("Total Pool Stats = ", connectionManager.getTotalStats()));
+            Set<HttpRoute> routes = connectionManager.getRoutes();
+
+            if (routes != null) {
+              for (HttpRoute route : routes) {
+                sb.append(createPoolStatsForRoute(connectionManager, route));
+              }
+            }
+
+            LOGGER.debug("[IdleConnectionMonitorThread] Pool Stats:\n" + sb);
+
+            // Close expired connections
+            connectionManager.closeExpiredConnections();
+            // Optionally, close connections
+            // that have been idle longer than 30 sec
+            connectionManager.closeIdleConnections(
+                DEFAULT_IDLE_CONNECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+          }
+        }
+      } catch (InterruptedException ex) {
+        LOGGER.warn("Terminating Idle Connection Monitor Thread ");
+      }
+    }
+
+    private void shutdown() {
+      if (!shutdown) {
+        LOGGER.debug("Shutdown Idle Connection Monitor Thread ");
+        shutdown = true;
+        synchronized (this) {
+          notifyAll();
+        }
+      }
+    }
+
+    private boolean isShutdown() {
+      return this.shutdown;
+    }
+  }
+
+  /** Shuts down the daemon thread. */
+  public static void shutdownHttpConnectionManagerDaemonThread() {
+    idleConnectionMonitorThread.shutdown();
+  }
+
+  /** Create Pool stats for a route */
+  private static String createPoolStatsForRoute(
+      PoolingHttpClientConnectionManager connectionManager, HttpRoute route) {
+    PoolStats routeStats = connectionManager.getStats(route);
+    return createPoolStatsInfo(
+        String.format("Pool Stats for route %s = ", route.getTargetHost().toURI()), routeStats);
+  }
+
+  /** Returns a string with a title and pool stats. */
+  private static String createPoolStatsInfo(String title, PoolStats poolStats) {
+    if (poolStats != null) {
+      return title + poolStats + "\n";
+    }
+    return title;
   }
 }

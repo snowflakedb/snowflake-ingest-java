@@ -111,7 +111,8 @@ class RegisterService {
           List<BlobMetadata> blobs = new ArrayList<>();
           long startTime = System.currentTimeMillis();
           while (idx < oldList.size()
-              && System.currentTimeMillis() - startTime <= BLOB_UPLOAD_TIMEOUT_IN_SEC * 2) {
+              && System.currentTimeMillis() - startTime
+                  <= TimeUnit.SECONDS.toMillis(BLOB_UPLOAD_TIMEOUT_IN_SEC * 2)) {
             Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> futureBlob =
                 oldList.get(idx);
             try {

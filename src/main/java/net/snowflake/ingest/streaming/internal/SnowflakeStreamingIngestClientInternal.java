@@ -544,7 +544,11 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                   .collect(Collectors.toList());
           if (!relevantChunks.isEmpty()) {
             retryBlobs.add(
-                new BlobMetadata(blobMetadata.getPath(), blobMetadata.getMD5(), relevantChunks));
+                new BlobMetadata(
+                    blobMetadata.getPath(),
+                    blobMetadata.getMD5(),
+                    blobMetadata.getVersion(),
+                    relevantChunks));
           }
         });
 

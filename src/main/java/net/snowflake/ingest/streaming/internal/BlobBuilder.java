@@ -8,7 +8,6 @@ import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_FORMAT_VERSION;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
@@ -24,6 +23,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
 import javax.xml.bind.DatatypeConverter;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 
@@ -96,12 +96,49 @@ class BlobBuilder {
   }
 
   /**
+   * Gzip compress the given chunk data if required by the given write mode and pads the compressed
+   * data for encryption.
+   *
+   * @param filePath blob file full path
+   * @param chunkData uncompressed chunk data
+   * @param blockSizeToAlignTo block size to align to for encryption
+   * @param arrowBatchWriteMode Arrow format write mode
+   * @return padded compressed chunk data, aligned to blockSizeToAlignTo, and actual length of
+   *     compressed data before padding at the end
+   * @throws IOException
+   */
+  static Pair<byte[], Integer> compressIfNeededAndPadChunk(
+      String filePath,
+      ByteArrayOutputStream chunkData,
+      int blockSizeToAlignTo,
+      Constants.ArrowBatchWriteMode arrowBatchWriteMode)
+      throws IOException {
+    // Encryption needs padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
+    // to align with decryption on the Snowflake query path starting from this chunk offset.
+    // The padding does not have arrow data and not compressed.
+    // Hence, the actual chunk size is smaller by the padding size.
+    // The compression on the Snowflake query path needs the correct size of the compressed
+    // data.
+    if (arrowBatchWriteMode == Constants.ArrowBatchWriteMode.STREAM) {
+      // Stream write mode does not support column level compression.
+      // Compress the chunk data and pad it for encryption.
+      return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
+    } else {
+      int actualSize = chunkData.size();
+      int paddingSize = blockSizeToAlignTo - actualSize % blockSizeToAlignTo;
+      chunkData.write(new byte[paddingSize]);
+      return new Pair<>(chunkData.toByteArray(), actualSize);
+    }
+  }
+
+  /**
    * Build the blob file
    *
    * @param chunksMetadataList List of chunk metadata
    * @param chunksDataList List of chunk data
    * @param chunksChecksum Checksum for the chunk data portion
    * @param chunksDataSize Total size for the chunk data portion after compression
+   * @param bdecVersion BDEC file version
    * @return The blob file as a byte array
    * @throws JsonProcessingException
    */
@@ -109,7 +146,8 @@ class BlobBuilder {
       List<ChunkMetadata> chunksMetadataList,
       List<byte[]> chunksDataList,
       long chunksChecksum,
-      long chunksDataSize)
+      long chunksDataSize,
+      Constants.BdecVerion bdecVersion)
       throws IOException {
     byte[] chunkMetadataListInBytes = MAPPER.writeValueAsBytes(chunksMetadataList);
 
@@ -127,7 +165,7 @@ class BlobBuilder {
     ByteArrayOutputStream blob = new ByteArrayOutputStream();
     if (!BLOB_NO_HEADER) {
       blob.write(BLOB_EXTENSION_TYPE.getBytes());
-      blob.write(BLOB_FORMAT_VERSION);
+      blob.write(bdecVersion.toByte());
       blob.write(toByteArray(metadataSize + chunksDataSize));
       blob.write(toByteArray(chunksChecksum));
       blob.write(toByteArray(chunkMetadataListInBytes.length));

@@ -108,7 +108,7 @@ public class Logging {
    * @return log message wrapped by snowflake tag
    */
   private static String logMessage(String msg) {
-    return "\n".concat(msg).replaceAll("\n", "\n" + SF_LOG_TAG + " ");
+    return SF_LOG_TAG + " " + msg;
   }
 
   /**

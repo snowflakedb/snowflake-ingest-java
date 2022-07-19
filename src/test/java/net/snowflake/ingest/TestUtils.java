@@ -13,6 +13,8 @@ import static net.snowflake.ingest.utils.Constants.SCHEME;
 import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
+import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -187,7 +189,14 @@ public class TestUtils {
     props.put(PRIVATE_KEY, privateKeyPem);
     props.put(ROLE, role);
     props.put(ACCOUNT_URL, getAccountURL());
+    props.put(BLOB_FORMAT_VERSION, getBlobFormatVersion());
     return props;
+  }
+
+  private static byte getBlobFormatVersion() {
+    return profile.has(BLOB_FORMAT_VERSION)
+        ? (byte) profile.get(BLOB_FORMAT_VERSION).asInt()
+        : BLOB_FORMAT_VERSION_DEFAULT.toByte();
   }
 
   /**
