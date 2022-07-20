@@ -148,16 +148,7 @@ public class RequestBuilder {
    * @param keyPair - the Public/Private key pair we'll use to authenticate
    */
   public RequestBuilder(String accountName, String userName, KeyPair keyPair) {
-    this(
-        accountName,
-        userName,
-        keyPair,
-        DEFAULT_SCHEME,
-        DEFAULT_HOST_SUFFIX,
-        DEFAULT_PORT,
-        null,
-        null,
-        null);
+    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
   }
 
   /**
@@ -174,16 +165,7 @@ public class RequestBuilder {
       String hostName,
       KeyPair keyPair,
       String userAgentSuffix) {
-    this(
-        accountName,
-        userName,
-        keyPair,
-        DEFAULT_SCHEME,
-        hostName,
-        DEFAULT_PORT,
-        userAgentSuffix,
-        null,
-        null);
+    this(accountName, userName, keyPair, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
   }
 
   /**
@@ -204,7 +186,57 @@ public class RequestBuilder {
       String schemeName,
       String hostName,
       int portNum) {
-    this(accountName, userName, keyPair, schemeName, hostName, portNum, null, null, null);
+    this(accountName, userName, keyPair, schemeName, hostName, portNum, null);
+  }
+
+  /**
+   * RequestBuilder - this constructor is for testing purposes only
+   *
+   * @param accountName - the account name to which we're connecting
+   * @param userName - for whom are we connecting?
+   * @param keyPair - our auth credentials
+   * @param schemeName - are we HTTP or HTTPS?
+   * @param hostName - the host for this snowflake instance
+   * @param portNum - the port number
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      KeyPair keyPair,
+      String schemeName,
+      String hostName,
+      int portNum,
+      String userAgentSuffix) {
+    this(
+        accountName, userName, keyPair, schemeName, hostName, portNum, userAgentSuffix, null, null);
+  }
+
+  /**
+   * RequestBuilder - constructor used by streaming ingest
+   *
+   * @param url - the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param httpClient - reference to the http client
+   * @param clientName - name of the client, used to uniquely identify a client if used
+   */
+  public RequestBuilder(
+      SnowflakeURL url,
+      String userName,
+      KeyPair keyPair,
+      CloseableHttpClient httpClient,
+      String clientName) {
+    this(
+        url.getAccount(),
+        userName,
+        keyPair,
+        url.getScheme(),
+        url.getUrlWithoutPort(),
+        url.getPort(),
+        null,
+        httpClient,
+        clientName);
   }
 
   /**
@@ -264,33 +296,6 @@ public class RequestBuilder {
         this.host,
         this.port,
         this.userAgentSuffix);
-  }
-
-  /**
-   * RequestBuilder - constructor used by streaming ingest
-   *
-   * @param url - the Snowflake account to which we're connecting
-   * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
-   * @param httpClient - reference to the http client
-   * @param clientName - name of the client, used to uniquely identify a client if used
-   */
-  public RequestBuilder(
-      SnowflakeURL url,
-      String userName,
-      KeyPair keyPair,
-      CloseableHttpClient httpClient,
-      String clientName) {
-    this(
-        url.getAccount(),
-        userName,
-        keyPair,
-        url.getScheme(),
-        url.getUrlWithoutPort(),
-        url.getPort(),
-        null,
-        httpClient,
-        clientName);
   }
 
   private static Properties loadProperties() {

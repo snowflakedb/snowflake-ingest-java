@@ -117,6 +117,18 @@ final class SecurityManager implements AutoCloseable {
    * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param keyPair - the public/private key pair we're using to connect
+   */
+  SecurityManager(String accountName, String username, KeyPair keyPair) {
+    this(accountName, username, keyPair, null);
+  }
+
+  /**
+   * Creates a SecurityManager entity for a given account, user and KeyPair with the default time to
+   * renew (RENEWAL_INTERVAL minutes)
+   *
+   * @param accountName - the snowflake account name of this user
+   * @param username - the snowflake username of the current user
+   * @param keyPair - the public/private key pair we're using to connect
    * @param telemetryService reference to the telemetry service
    */
   SecurityManager(
