@@ -16,17 +16,19 @@ class BlobMetadata {
   private final String md5;
   private final Constants.BdecVerion bdecVersion;
   private final List<ChunkMetadata> chunks;
+  private final long uploadDurationMs;
 
-  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks) {
-    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks);
+  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, long uploadDurationMs) {
+    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, uploadDurationMs);
   }
 
   BlobMetadata(
-      String path, String md5, Constants.BdecVerion bdecVersion, List<ChunkMetadata> chunks) {
+      String path, String md5, Constants.BdecVerion bdecVersion, List<ChunkMetadata> chunks, long uploadDurationMs) {
     this.path = path;
     this.md5 = md5;
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
+    this.uploadDurationMs = uploadDurationMs;
   }
 
   @JsonIgnore
@@ -47,6 +49,11 @@ class BlobMetadata {
   @JsonProperty("chunks")
   List<ChunkMetadata> getChunks() {
     return this.chunks;
+  }
+
+  @JsonProperty("upload_duration")
+  long getUploadDurationMs() {
+    return this.uploadDurationMs;
   }
 
   @JsonProperty("bdec_version")

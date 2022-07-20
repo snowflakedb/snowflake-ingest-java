@@ -596,13 +596,14 @@ class FlushService {
           metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
     }
 
+    long uploadDurationMs = System.currentTimeMillis() - startTime;
     logger.logInfo(
         "Finish uploading file={}, size={}, timeInMillis={}",
         filePath,
         blob.length,
-        System.currentTimeMillis() - startTime);
+        uploadDurationMs);
 
-    return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
+    return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, uploadDurationMs);
   }
 
   /**

@@ -535,7 +535,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
                     blobMetadata.getPath(),
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),
-                    relevantChunks));
+                    relevantChunks, blobMetadata.getUploadDurationMs()));
           }
         });
 

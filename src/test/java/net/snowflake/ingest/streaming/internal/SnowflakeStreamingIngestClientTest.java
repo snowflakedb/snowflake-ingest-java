@@ -467,7 +467,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobMetadata> blobs =
         Collections.singletonList(
-            new BlobMetadata("path", "md5", Collections.singletonList(chunkMetadata)));
+            new BlobMetadata("path", "md5", Collections.singletonList(chunkMetadata), 0));
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("request_id", null);
@@ -562,8 +562,8 @@ public class SnowflakeStreamingIngestClientTest {
     chunks1.add(chunkMetadata1);
     chunks1.add(chunkMetadata2);
     chunks2.add(chunkMetadata3);
-    blobs.add(new BlobMetadata("path1", "md51", chunks1));
-    blobs.add(new BlobMetadata("path2", "md52", chunks2));
+    blobs.add(new BlobMetadata("path1", "md51", chunks1, 0));
+    blobs.add(new BlobMetadata("path2", "md52", chunks2, 0));
 
     List<ChannelRegisterStatus> channelRegisterStatuses = new ArrayList<>();
     ChannelRegisterStatus status1 = new ChannelRegisterStatus();
@@ -649,7 +649,7 @@ public class SnowflakeStreamingIngestClientTest {
     try {
       List<BlobMetadata> blobs =
           Collections.singletonList(
-              new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>()));
+              new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>(), 0));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on 404 error");
     } catch (SFException e) {
@@ -697,7 +697,7 @@ public class SnowflakeStreamingIngestClientTest {
     try {
       List<BlobMetadata> blobs =
           Collections.singletonList(
-              new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>()));
+              new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>(), 0));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on SF internal error");
     } catch (SFException e) {
@@ -752,7 +752,7 @@ public class SnowflakeStreamingIngestClientTest {
             null);
 
     List<BlobMetadata> blobs =
-        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>()));
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>(), 0));
     client.registerBlobs(blobs);
   }
 
@@ -1059,7 +1059,7 @@ public class SnowflakeStreamingIngestClientTest {
     Assert.assertTrue(channel2.isValid());
 
     List<BlobMetadata> blobs =
-        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>()));
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<ChunkMetadata>(), 0));
     client.registerBlobs(blobs);
 
     // Channel2 should be invalidated now

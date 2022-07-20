@@ -23,7 +23,7 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> blobFuture =
         new Pair<>(
             new FlushService.BlobData("test", null),
-            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
+            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, 0)));
     rs.addBlobs(Collections.singletonList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
     List<FlushService.BlobData> errorBlobs = rs.registerBlobs(null);
@@ -49,7 +49,7 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>(
             new FlushService.BlobData("success", new ArrayList<>()),
-            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
+            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, 0)));
     CompletableFuture future = new CompletableFuture();
     future.completeExceptionally(new TimeoutException());
     Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> blobFuture2 =
@@ -77,7 +77,7 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>(
             new FlushService.BlobData("success", new ArrayList<>()),
-            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
+            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, 0)));
     CompletableFuture future = new CompletableFuture();
     future.thenRunAsync(
         () -> {
