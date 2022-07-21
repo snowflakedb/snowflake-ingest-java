@@ -78,7 +78,7 @@ public class Constants {
     FILE,
   }
 
-  /** Thw write mode to generate Arrow BDEC file. */
+  /** The write mode to generate Arrow BDEC file. */
   public enum BdecVerion {
     /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#STREAM}. */
     ONE(1),

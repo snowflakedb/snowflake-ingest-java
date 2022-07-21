@@ -263,9 +263,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     }
 
     logger.logDebug(
-        "Open channel request start, channel={}, table={}",
+        "Open channel request start, channel={}, table={}, client={}",
         request.getChannelName(),
-        request.getFullyQualifiedTableName());
+        request.getFullyQualifiedTableName(),
+        getName());
 
     try {
       Map<Object, Object> payload = new HashMap<>();
@@ -291,17 +292,19 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
         logger.logDebug(
-            "Open channel request failed, channel={}, table={}, message={}",
+            "Open channel request failed, channel={}, table={}, client={}, message={}",
             request.getChannelName(),
             request.getFullyQualifiedTableName(),
+            getName(),
             response.getMessage());
         throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
       }
 
-      logger.logDebug(
-          "Open channel request succeeded, channel={}, table={}",
+      logger.logInfo(
+          "Open channel request succeeded, channel={}, table={}, client={}",
           request.getChannelName(),
-          request.getFullyQualifiedTableName());
+          request.getFullyQualifiedTableName(),
+          getName());
 
       // Channel is now registered, add it to the in-memory channel pool
       SnowflakeStreamingIngestChannelInternal channel =
@@ -592,6 +595,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         this.telemetryWorker.shutdown();
       }
       this.flushService.shutdown();
+      this.requestBuilder.closeResources();
       Utils.closeAllocator(this.allocator);
     }
   }

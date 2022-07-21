@@ -857,6 +857,7 @@ public class RequestBuilder {
    */
   public void closeResources() {
     securityManager.close();
+    telemetryService.close();
   }
 
   /** Get the telemetry service */

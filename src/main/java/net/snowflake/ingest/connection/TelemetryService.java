@@ -8,6 +8,7 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -22,7 +23,7 @@ import net.snowflake.ingest.utils.Logging;
 public class TelemetryService {
   // Enum for different client telemetries
   enum TelemetryType {
-    STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_sec"),
+    STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_ms"),
     STREAMING_INGEST_CLIENT_FAILURE("streaming_ingest_client_failure"),
     STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC("streaming_ingest_throughput_bytes_per_sec"),
     STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage");
@@ -63,6 +64,11 @@ public class TelemetryService {
   TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
     this.clientName = clientName;
     this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
+  }
+
+  /** Flush the telemetry buffer and close the telemetry service */
+  public void close() {
+    this.telemetry.close();
   }
 
   /** Report the Streaming Ingest latency metrics */
@@ -110,9 +116,7 @@ public class TelemetryService {
     try {
       msg.put(TYPE, type.toString());
       msg.put(CLIENT_NAME, clientName);
-
       telemetry.addLogToBatch(TelemetryUtil.buildJobData(msg));
-      telemetry.sendBatchAsync(); // TODO: REMOVE
     } catch (Exception e) {
       logger.logWarn("Failed to send telemetry data, error: {}", e.getMessage());
     }
@@ -123,11 +127,12 @@ public class TelemetryService {
     ObjectNode msg = MAPPER.createObjectNode();
     Snapshot buildSnapshot = timer.getSnapshot();
     msg.put(COUNT, timer.getCount());
-    msg.put(MAX, buildSnapshot.getMax());
-    msg.put(MIN, buildSnapshot.getMin());
-    msg.put(MEAN, buildSnapshot.getMean());
-    msg.put(MEDIAN, buildSnapshot.getMedian());
-    msg.put(PERCENTILE99TH, buildSnapshot.get99thPercentile());
+    msg.put(MAX, TimeUnit.NANOSECONDS.toMillis(buildSnapshot.getMax()));
+    msg.put(MIN, TimeUnit.NANOSECONDS.toMillis(buildSnapshot.getMin()));
+    msg.put(MEAN, TimeUnit.NANOSECONDS.toMillis((long) buildSnapshot.getMean()));
+    msg.put(MEDIAN, TimeUnit.NANOSECONDS.toMillis((long) buildSnapshot.getMedian()));
+    msg.put(
+        PERCENTILE99TH, TimeUnit.NANOSECONDS.toMillis((long) buildSnapshot.get99thPercentile()));
     return msg;
   }
 
