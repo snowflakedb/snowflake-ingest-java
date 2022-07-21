@@ -50,6 +50,7 @@ public class Constants {
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
+  public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
@@ -77,7 +78,7 @@ public class Constants {
     FILE,
   }
 
-  /** Thw write mode to generate Arrow BDEC file. */
+  /** The write mode to generate Arrow BDEC file. */
   public enum BdecVerion {
     /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#STREAM}. */
     ONE(1),
@@ -119,6 +120,7 @@ public class Constants {
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;
   public static final boolean BLOB_NO_HEADER = true;
+  public static final boolean ENABLE_TELEMETRY_TO_SF = true;
 
   // Metrics
   public static final String SNOWPIPE_STREAMING_JMX_METRIC_PREFIX = "snowflake.ingest.sdk";
