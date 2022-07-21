@@ -595,7 +595,9 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
         this.telemetryWorker.shutdown();
       }
       this.flushService.shutdown();
-      this.requestBuilder.closeResources();
+      if (this.requestBuilder != null) {
+        this.requestBuilder.closeResources();
+      }
       Utils.closeAllocator(this.allocator);
     }
   }

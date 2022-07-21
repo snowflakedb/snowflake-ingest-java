@@ -149,8 +149,10 @@ class RegisterService {
               }
               String errorMessage =
                   String.format(
-                      "Building or uploading blob failed=%s, exception=%s, detail=%s, cause=%s,"
-                          + " detail=%s trace=%s all channels in the blob will be invalidated",
+                      "Building or uploading blob failed, client=%s, file=%s, exception=%s,"
+                          + " detail=%s, cause=%s, detail=%s trace=%s all channels in the blob"
+                          + " will be invalidated",
+                      this.owningClient.getName(),
                       futureBlob.getKey().getFilePath(),
                       e,
                       e.getMessage(),
