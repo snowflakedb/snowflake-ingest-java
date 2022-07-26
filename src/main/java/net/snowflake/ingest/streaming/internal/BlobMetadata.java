@@ -49,8 +49,9 @@ class BlobMetadata {
     return this.chunks;
   }
 
-  @JsonProperty("bdec_version")
-  byte getVersionByte() {
-    return bdecVersion.toByte();
-  }
+  // TODO: send the bdec_version once server side supports this in production
+  //  @JsonProperty("bdec_version")
+  //  byte getVersionByte() {
+  //    return bdecVersion.toByte();
+  //  }
 }
