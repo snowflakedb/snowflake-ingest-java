@@ -8,18 +8,20 @@ import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Contains the data and metadata returned for each channel flush, which will be used to build the
  * blob and register blob request
+ *
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot}
  */
-class ChannelData {
+class ChannelData<T> {
   private Long rowSequencer;
   private String offsetToken;
-  private VectorSchemaRoot vectors;
+  private T vectors;
   private float bufferSize;
-  private SnowflakeStreamingIngestChannelInternal channel;
+  private int rowCount;
+  private SnowflakeStreamingIngestChannelInternal<T> channel;
   private Map<String, RowBufferStats> columnEps;
 
   // TODO performance test this vs in place update
@@ -78,16 +80,20 @@ class ChannelData {
     this.offsetToken = offsetToken;
   }
 
-  VectorSchemaRoot getVectors() {
+  T getVectors() {
     return this.vectors;
   }
 
-  void setVectors(VectorSchemaRoot vectors) {
+  void setVectors(T vectors) {
     this.vectors = vectors;
   }
 
   int getRowCount() {
-    return this.vectors.getRowCount();
+    return this.rowCount;
+  }
+
+  void setRowCount(int rowCount) {
+    this.rowCount = rowCount;
   }
 
   float getBufferSize() {
@@ -98,11 +104,11 @@ class ChannelData {
     this.bufferSize = bufferSize;
   }
 
-  SnowflakeStreamingIngestChannelInternal getChannel() {
+  SnowflakeStreamingIngestChannelInternal<T> getChannel() {
     return this.channel;
   }
 
-  void setChannel(SnowflakeStreamingIngestChannelInternal channel) {
+  void setChannel(SnowflakeStreamingIngestChannelInternal<T> channel) {
     this.channel = channel;
   }
 

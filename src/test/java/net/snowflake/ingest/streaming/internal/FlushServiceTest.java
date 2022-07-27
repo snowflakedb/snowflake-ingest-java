@@ -53,12 +53,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 public class FlushServiceTest {
-  private SnowflakeStreamingIngestClientInternal client;
-  private ChannelCache channelCache;
+  private SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client;
+  private ChannelCache<VectorSchemaRoot> channelCache;
   private SnowflakeConnectionV1 conn;
-  private SnowflakeStreamingIngestChannelInternal channel1;
-  private SnowflakeStreamingIngestChannelInternal channel2;
-  private SnowflakeStreamingIngestChannelInternal channel3;
+  private SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel1;
+  private SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel2;
+  private SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel3;
   private StreamingIngestStage stage;
 
   private final BufferAllocator allocator = new RootAllocator();
@@ -72,11 +72,11 @@ public class FlushServiceTest {
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
     stage = Mockito.mock(StreamingIngestStage.class);
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
-    channelCache = new ChannelCache();
+    channelCache = new ChannelCache<>();
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     conn = Mockito.mock(SnowflakeConnectionV1.class);
     channel1 =
-        new SnowflakeStreamingIngestChannelInternal(
+        new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
             "db1",
             "schema1",
@@ -91,7 +91,7 @@ public class FlushServiceTest {
             true);
 
     channel2 =
-        new SnowflakeStreamingIngestChannelInternal(
+        new SnowflakeStreamingIngestChannelInternal<>(
             "channel2",
             "db1",
             "schema1",
@@ -106,7 +106,7 @@ public class FlushServiceTest {
             true);
 
     channel3 =
-        new SnowflakeStreamingIngestChannelInternal(
+        new SnowflakeStreamingIngestChannelInternal<>(
             "channel3",
             "db2",
             "schema1",
@@ -126,7 +126,8 @@ public class FlushServiceTest {
 
   @Test
   public void testGetFilePath() {
-    FlushService flushService = new FlushService(client, channelCache, stage, false);
+    FlushService<VectorSchemaRoot> flushService =
+        new FlushService<>(client, channelCache, stage, false);
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
     String outputString = flushService.getFilePath(calendar, clientPrefix);
@@ -159,7 +160,8 @@ public class FlushServiceTest {
 
   @Test
   public void testFlush() throws Exception {
-    FlushService flushService = Mockito.spy(new FlushService(client, channelCache, stage, false));
+    FlushService<VectorSchemaRoot> flushService =
+        Mockito.spy(new FlushService<>(client, channelCache, stage, false));
 
     // Nothing to flush
     flushService.flush(false).get();
@@ -185,14 +187,15 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildAndUpload() throws Exception {
-    FlushService flushService = Mockito.spy(new FlushService(client, channelCache, stage, true));
+    FlushService<VectorSchemaRoot> flushService =
+        Mockito.spy(new FlushService<>(client, channelCache, stage, true));
 
-    List<List<ChannelData>> blobData = new ArrayList<>();
-    List<ChannelData> chunkData = new ArrayList<>();
+    List<List<ChannelData<VectorSchemaRoot>>> blobData = new ArrayList<>();
+    List<ChannelData<VectorSchemaRoot>> chunkData = new ArrayList<>();
 
     // Construct fields
-    ChannelData channel1Data = new ChannelData();
-    ChannelData channel2Data = new ChannelData();
+    ChannelData<VectorSchemaRoot> channel1Data = new ChannelData<>();
+    ChannelData<VectorSchemaRoot> channel2Data = new ChannelData<>();
 
     FieldVector vector1 = new VarCharVector("vector1", allocator);
     FieldVector vector2 = new IntVector("vector2", allocator);
@@ -253,16 +256,19 @@ public class FlushServiceTest {
     channel1Data.setOffsetToken("offset1");
     channel1Data.setBufferSize(100);
     channel1Data.setChannel(channel1);
+    channel1Data.setRowCount(2);
 
     channel2Data.setRowSequencer(10L);
     channel2Data.setOffsetToken("offset2");
     channel2Data.setBufferSize(100);
     channel2Data.setChannel(channel2);
+    channel2Data.setRowCount(1);
 
     BlobMetadata blobMetadata = flushService.buildAndUpload("file_name", blobData);
 
     EpInfo expectedChunkEpInfo =
-        ArrowRowBuffer.buildEpInfoFromStats(3, ChannelData.getCombinedColumnStatsMap(eps1, eps2));
+        AbstractRowBuffer.buildEpInfoFromStats(
+            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2));
 
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
@@ -344,14 +350,15 @@ public class FlushServiceTest {
   @Test
   public void testBuildErrors() throws Exception {
     // build should error if we try to group channels for different tables together
-    FlushService flushService = Mockito.spy(new FlushService(client, channelCache, stage, true));
+    FlushService<VectorSchemaRoot> flushService =
+        Mockito.spy(new FlushService<>(client, channelCache, stage, true));
 
-    List<List<ChannelData>> channelData = new ArrayList<>();
-    List<ChannelData> channelData1 = new ArrayList<>();
+    List<List<ChannelData<VectorSchemaRoot>>> channelData = new ArrayList<>();
+    List<ChannelData<VectorSchemaRoot>> channelData1 = new ArrayList<>();
 
     // Construct fields
-    ChannelData data1 = new ChannelData();
-    ChannelData data2 = new ChannelData();
+    ChannelData<VectorSchemaRoot> data1 = new ChannelData<>();
+    ChannelData<VectorSchemaRoot> data2 = new ChannelData<>();
 
     FieldVector vector1 = new VarCharVector("vector1", allocator);
     FieldVector vector3 = new IntVector("vector3", allocator);
@@ -402,14 +409,14 @@ public class FlushServiceTest {
   @Test
   public void testInvalidateChannels() throws Exception {
     // Create a new Client in order to not interfere with other tests
-    SnowflakeStreamingIngestClientInternal client =
+    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
         Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
     ParameterProvider parameterProvider = new ParameterProvider();
-    ChannelCache channelCache = new ChannelCache();
+    ChannelCache<VectorSchemaRoot> channelCache = new ChannelCache<>();
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
-    SnowflakeStreamingIngestChannelInternal channel1 =
-        new SnowflakeStreamingIngestChannelInternal(
+    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel1 =
+        new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
             "db1",
             "schema1",
@@ -423,8 +430,8 @@ public class FlushServiceTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             true);
 
-    SnowflakeStreamingIngestChannelInternal channel2 =
-        new SnowflakeStreamingIngestChannelInternal(
+    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel2 =
+        new SnowflakeStreamingIngestChannelInternal<>(
             "channel2",
             "db1",
             "schema1",
@@ -441,12 +448,12 @@ public class FlushServiceTest {
     channelCache.addChannel(channel1);
     channelCache.addChannel(channel2);
 
-    List<List<ChannelData>> blobData = new ArrayList<>();
-    List<ChannelData> innerData = new ArrayList<>();
+    List<List<ChannelData<VectorSchemaRoot>>> blobData = new ArrayList<>();
+    List<ChannelData<VectorSchemaRoot>> innerData = new ArrayList<>();
     blobData.add(innerData);
 
-    ChannelData channel1Data = new ChannelData();
-    ChannelData channel2Data = new ChannelData();
+    ChannelData<VectorSchemaRoot> channel1Data = new ChannelData<>();
+    ChannelData<VectorSchemaRoot> channel2Data = new ChannelData<>();
     channel1Data.setChannel(channel1);
     channel2Data.setChannel(channel1);
 
@@ -469,7 +476,8 @@ public class FlushServiceTest {
     innerData.add(channel1Data);
     innerData.add(channel2Data);
 
-    FlushService flushService = new FlushService(client, channelCache, stage, false);
+    FlushService<VectorSchemaRoot> flushService =
+        new FlushService<>(client, channelCache, stage, false);
     flushService.invalidateAllChannelsInBlob(blobData);
 
     Assert.assertFalse(channel1.isValid());
@@ -495,7 +503,7 @@ public class FlushServiceTest {
 
     stats1.addIntValue(new BigInteger("10"));
     stats1.addIntValue(new BigInteger("15"));
-    EpInfo epInfo = ArrowRowBuffer.buildEpInfoFromStats(2, eps1);
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
@@ -516,7 +524,7 @@ public class FlushServiceTest {
 
     chunksMetadataList.add(chunkMetadata);
 
-    final Constants.BdecVerion bdecVersion = ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
+    final Constants.BdecVersion bdecVersion = ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
     byte[] blob =
         BlobBuilder.build(chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
 
@@ -570,7 +578,8 @@ public class FlushServiceTest {
 
   @Test
   public void testShutDown() throws Exception {
-    FlushService flushService = new FlushService(client, channelCache, stage, false);
+    FlushService<VectorSchemaRoot> flushService =
+        new FlushService<>(client, channelCache, stage, false);
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());
     Assert.assertFalse(flushService.registerWorker.isShutdown());

@@ -79,7 +79,7 @@ public class Constants {
   }
 
   /** The write mode to generate Arrow BDEC file. */
-  public enum BdecVerion {
+  public enum BdecVersion {
     /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#STREAM}. */
     ONE(1),
 
@@ -88,7 +88,7 @@ public class Constants {
 
     private final byte version;
 
-    BdecVerion(int version) {
+    BdecVersion(int version) {
       if (version > Byte.MAX_VALUE || version < Byte.MIN_VALUE) {
         throw new IllegalArgumentException("Version does not fit into the byte data type");
       }
@@ -99,12 +99,12 @@ public class Constants {
       return version;
     }
 
-    public static BdecVerion fromInt(int val) {
+    public static BdecVersion fromInt(int val) {
       if (val > Byte.MAX_VALUE || val < Byte.MIN_VALUE) {
         throw new IllegalArgumentException("Version does not fit into the byte data type");
       }
       byte version = (byte) val;
-      for (BdecVerion eversion : BdecVerion.values()) {
+      for (BdecVersion eversion : BdecVersion.values()) {
         if (eversion.version == version) {
           return eversion;
         }
@@ -112,7 +112,7 @@ public class Constants {
       throw new IllegalArgumentException(
           String.format(
               "Unsupported BLOB_FORMAT_VERSION = '%d', allowed values are %s",
-              version, Arrays.asList(BdecVerion.values())));
+              version, Arrays.asList(BdecVersion.values())));
     }
   }
 
