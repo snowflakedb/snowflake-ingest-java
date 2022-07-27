@@ -26,7 +26,11 @@ import org.junit.runners.Parameterized;
 public class RowBufferTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
-    return Arrays.asList(new Object[][] {{"Arrow", Constants.BdecVersion.ONE}});
+    return Arrays.asList(
+        new Object[][] {
+          {"Arrow", Constants.BdecVersion.ONE},
+          {"Parquet", Constants.BdecVersion.THREE}
+        });
   }
 
   private final Constants.BdecVersion bdecVersion;
@@ -798,13 +802,13 @@ public class RowBufferTest {
     colTimeSB8.setPhysicalType("SB8");
     colTimeSB8.setNullable(true);
     colTimeSB8.setLogicalType("TIME");
-    colTimeSB8.setScale(3);
+    colTimeSB8.setScale(6); // scale 3 (millis) is invalid for Parquet
 
     innerBuffer.setupSchema(Arrays.asList(colTimeSB4, colTimeSB8));
 
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLTIMESB4", "43200");
-    row1.put("COLTIMESB8", "44200.123");
+    row1.put("COLTIMESB8", "44200.123456");
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLTIMESB4", "43260");
@@ -823,8 +827,8 @@ public class RowBufferTest {
     Assert.assertEquals(43260, innerBuffer.getVectorValueAt("COLTIMESB4", 1));
     Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB4", 2));
 
-    Assert.assertEquals(44200123L, innerBuffer.getVectorValueAt("COLTIMESB8", 0));
-    Assert.assertEquals(44201000L, innerBuffer.getVectorValueAt("COLTIMESB8", 1));
+    Assert.assertEquals(44200123456L, innerBuffer.getVectorValueAt("COLTIMESB8", 0));
+    Assert.assertEquals(44201000000L, innerBuffer.getVectorValueAt("COLTIMESB8", 1));
     Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB8", 2));
 
     // Check stats generation
@@ -838,10 +842,10 @@ public class RowBufferTest {
     Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB4").getCurrentNullCount());
 
     Assert.assertEquals(
-        BigInteger.valueOf(44200123),
+        BigInteger.valueOf(44200123456L),
         result.getColumnEps().get("COLTIMESB8").getCurrentMinIntValue());
     Assert.assertEquals(
-        BigInteger.valueOf(44201000),
+        BigInteger.valueOf(44201000000L),
         result.getColumnEps().get("COLTIMESB8").getCurrentMaxIntValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB8").getCurrentNullCount());
   }
@@ -1021,6 +1025,7 @@ public class RowBufferTest {
     colBinary.setPhysicalType("LOB");
     colBinary.setNullable(true);
     colBinary.setLogicalType("BINARY");
+    colBinary.setLength(32);
     colBinary.setScale(0);
 
     innerBuffer.setupSchema(Collections.singletonList(colBinary));
