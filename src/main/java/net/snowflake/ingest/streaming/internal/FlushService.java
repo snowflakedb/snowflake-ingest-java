@@ -58,9 +58,11 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  * <li>upload the blob to stage
  * <li>register the blob to the targeted Snowflake table
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
+ *     ParquetChunkData})
  */
 class FlushService<T> {
+  private static final long NO_ENCRYPTION_KEY_ID = 0L;
 
   // Static class to save the list of channels that are used to build a blob, which is mainly used
   // to invalidate all the channels when there is a failure
@@ -470,8 +472,10 @@ class FlushService<T> {
         // TODO: encryption is not yet supported by server side for Parquet
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(
-                compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
+            bdecVersion == Constants.BdecVersion.THREE
+                ? compressedAndPaddedChunkData
+                : Cryptor.encrypt(
+                    compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
@@ -490,7 +494,10 @@ class FlushService<T> {
                 .setChunkLength(compressedChunkLength)
                 .setChannelList(result.channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(firstChannel.getEncryptionKeyId())
+                .setEncryptionKeyId(
+                    bdecVersion == Constants.BdecVersion.THREE
+                        ? NO_ENCRYPTION_KEY_ID
+                        : firstChannel.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
                         result.rowCount, result.columnEpStatsMapCombined))
@@ -559,7 +566,8 @@ class FlushService<T> {
         blob.length,
         System.currentTimeMillis() - startTime);
 
-    return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
+    return BlobMetadata.createBlobMetadata(
+        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
   }
 
   /**
