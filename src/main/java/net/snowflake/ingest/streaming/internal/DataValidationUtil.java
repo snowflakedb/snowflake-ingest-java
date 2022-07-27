@@ -126,8 +126,21 @@ class DataValidationUtil {
    */
   static TimestampWrapper validateAndParseTimestampNtzSb16(
       Object input, Map<String, String> metadata) {
+    int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
+    return validateAndParseTimestampNtzSb16(input, scale);
+  }
+
+  /**
+   * Validates and parses input for TIMESTAMP_NTZ Snowflake type
+   *
+   * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
+   *     with precision up to the column's scale
+   * @param scale decimal scale of timestamp 16 byte integer
+   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
+   *     scale
+   */
+  static TimestampWrapper validateAndParseTimestampNtzSb16(Object input, int scale) {
     try {
-      int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
       String valueString = getStringValue(input);
 
       long epoch;
@@ -194,10 +207,22 @@ class DataValidationUtil {
    *     scale
    */
   static TimestampWrapper validateAndParseTimestampTz(Object input, Map<String, String> metadata) {
+    int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
+    return validateAndParseTimestampTz(input, scale);
+  }
+
+  /**
+   * Validates and parses input for TIMESTAMP_TZ Snowflake type
+   *
+   * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
+   * @param scale decimal scale of timestamp 16 byte integer
+   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
+   *     scale
+   */
+  static TimestampWrapper validateAndParseTimestampTz(Object input, int scale) {
     try {
       if (input instanceof String) {
         String stringInput = (String) input;
-        int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
         SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(stringInput);
         if (timestamp == null) {
           throw new SFException(
