@@ -14,7 +14,6 @@ import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
-import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,6 +33,7 @@ import java.util.Properties;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
 
@@ -178,7 +178,7 @@ public class TestUtils {
     return keyPair;
   }
 
-  public static Properties getProperties() throws Exception {
+  public static Properties getProperties(Constants.BdecVersion bdecVersion) throws Exception {
     if (profile == null) {
       init();
     }
@@ -193,14 +193,8 @@ public class TestUtils {
     props.put(PRIVATE_KEY, privateKeyPem);
     props.put(ROLE, role);
     props.put(ACCOUNT_URL, getAccountURL());
-    props.put(BLOB_FORMAT_VERSION, getBlobFormatVersion());
+    props.put(BLOB_FORMAT_VERSION, bdecVersion.toByte());
     return props;
-  }
-
-  private static byte getBlobFormatVersion() {
-    return profile.has(BLOB_FORMAT_VERSION)
-        ? (byte) profile.get(BLOB_FORMAT_VERSION).asInt()
-        : BLOB_FORMAT_VERSION_DEFAULT.toByte();
   }
 
   /**

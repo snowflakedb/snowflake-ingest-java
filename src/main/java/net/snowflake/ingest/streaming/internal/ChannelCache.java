@@ -14,7 +14,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * during flush. The key is a fully qualified table name and the value is a set of channels that
  * belongs to this table
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
+ *     ParquetChunkData})
  */
 class ChannelCache<T> {
   // Cache to hold all the valid channels, the key for the outer map is FullyQualifiedTableName and

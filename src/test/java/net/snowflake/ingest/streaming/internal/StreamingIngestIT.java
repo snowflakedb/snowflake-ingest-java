@@ -12,6 +12,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
@@ -38,9 +40,21 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 /** Example streaming ingest sdk integration test */
+@RunWith(Parameterized.class)
 public class StreamingIngestIT {
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<Object[]> bdecVersion() {
+    return Arrays.asList(
+        new Object[][] {
+          {"Arrow", Constants.BdecVersion.ONE},
+          {"Parquet", Constants.BdecVersion.THREE}
+        });
+  }
+
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
@@ -54,6 +68,13 @@ public class StreamingIngestIT {
   private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
+
+  private final Constants.BdecVersion bdecVersion;
+
+  public StreamingIngestIT(
+      @SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
+    this.bdecVersion = bdecVersion;
+  }
 
   @Before
   public void beforeAll() throws Exception {
@@ -78,7 +99,7 @@ public class StreamingIngestIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties();
+    prop = TestUtils.getProperties(bdecVersion);
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }
