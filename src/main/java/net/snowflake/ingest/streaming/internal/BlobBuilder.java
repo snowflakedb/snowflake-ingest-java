@@ -102,16 +102,13 @@ class BlobBuilder {
    * @param filePath blob file full path
    * @param chunkData uncompressed chunk data
    * @param blockSizeToAlignTo block size to align to for encryption
-   * @param arrowBatchWriteMode Arrow format write mode
+   * @param compress whether to compress the chunk
    * @return padded compressed chunk data, aligned to blockSizeToAlignTo, and actual length of
    *     compressed data before padding at the end
    * @throws IOException
    */
   static Pair<byte[], Integer> compressIfNeededAndPadChunk(
-      String filePath,
-      ByteArrayOutputStream chunkData,
-      int blockSizeToAlignTo,
-      Constants.ArrowBatchWriteMode arrowBatchWriteMode)
+      String filePath, ByteArrayOutputStream chunkData, int blockSizeToAlignTo, boolean compress)
       throws IOException {
     // Encryption needs padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
     // to align with decryption on the Snowflake query path starting from this chunk offset.
@@ -119,7 +116,7 @@ class BlobBuilder {
     // Hence, the actual chunk size is smaller by the padding size.
     // The compression on the Snowflake query path needs the correct size of the compressed
     // data.
-    if (arrowBatchWriteMode == Constants.ArrowBatchWriteMode.STREAM) {
+    if (compress) {
       // Stream write mode does not support column level compression.
       // Compress the chunk data and pad it for encryption.
       return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
@@ -147,7 +144,7 @@ class BlobBuilder {
       List<byte[]> chunksDataList,
       long chunksChecksum,
       long chunksDataSize,
-      Constants.BdecVerion bdecVersion)
+      Constants.BdecVersion bdecVersion)
       throws IOException {
     byte[] chunkMetadataListInBytes = MAPPER.writeValueAsBytes(chunksMetadataList);
 

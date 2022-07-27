@@ -51,7 +51,7 @@ public class StreamingIngestIT {
 
   private Properties prop;
 
-  private SnowflakeStreamingIngestClientInternal client;
+  private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
 
@@ -83,7 +83,7 @@ public class StreamingIngestIT {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }
     client =
-        (SnowflakeStreamingIngestClientInternal)
+        (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
   }
 
@@ -167,7 +167,7 @@ public class StreamingIngestIT {
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, 1L);
     parameterMap.put(ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, true);
     client =
-        (SnowflakeStreamingIngestClientInternal)
+        (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("testParameterOverridesClient")
                 .setProperties(prop)
                 .setParameterOverrides(parameterMap)
@@ -699,11 +699,11 @@ public class StreamingIngestIT {
    */
   @Test
   public void testTwoClientsOneChannel() throws Exception {
-    SnowflakeStreamingIngestClientInternal clientA =
-        (SnowflakeStreamingIngestClientInternal)
+    SnowflakeStreamingIngestClientInternal<?> clientA =
+        (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("clientA").setProperties(prop).build();
-    SnowflakeStreamingIngestClientInternal clientB =
-        (SnowflakeStreamingIngestClientInternal)
+    SnowflakeStreamingIngestClientInternal<?> clientB =
+        (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("clientB").setProperties(prop).build();
 
     OpenChannelRequest requestA =
@@ -956,7 +956,7 @@ public class StreamingIngestIT {
           .createStatement()
           .execute(
               String.format(
-                  "create or replace table %s (num NUMBER(38,0 ), str VARCHAR);", tableName));
+                  "create or replace table %s (num NUMBER(38,0), str VARCHAR);", tableName));
     } catch (SQLException e) {
       throw new RuntimeException("Cannot create table " + tableName, e);
     }

@@ -49,7 +49,7 @@ public class SnowflakeStreamingIngestClientFactory {
       Properties prop = Utils.createProperties(this.prop);
       SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
-      return new SnowflakeStreamingIngestClientInternal(
+      return new SnowflakeStreamingIngestClientInternal<>(
           this.name, accountURL, prop, this.parameterOverrides);
     }
   }

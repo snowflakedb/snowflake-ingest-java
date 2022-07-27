@@ -36,6 +36,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -50,8 +51,8 @@ public class SnowflakeStreamingIngestChannelTest {
     String tableName = "TABLE";
     Long channelSequencer = 0L;
     Long rowSequencer = 0L;
-    SnowflakeStreamingIngestClientInternal client =
-        new SnowflakeStreamingIngestClientInternal("client");
+    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
+        new SnowflakeStreamingIngestClientInternal<>("client");
 
     Object[] fields =
         new Object[] {name, dbName, schemaName, tableName, channelSequencer, rowSequencer, client};
@@ -499,7 +500,7 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData data = channel.getData();
+    ChannelData<VectorSchemaRoot> data = channel.getData();
     Assert.assertNull(data);
 
     InsertValidationResponse response = channel.insertRow(row, "1");

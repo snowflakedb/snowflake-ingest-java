@@ -16,6 +16,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -28,18 +29,18 @@ public class RowBufferTest {
   private static final Logging logger = new Logging(RegisterService.class);
 
   private ArrowRowBuffer rowBufferOnErrorContinue;
-  private SnowflakeStreamingIngestChannelInternal channelOnErrorContinue;
+  private SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channelOnErrorContinue;
 
   private ArrowRowBuffer rowBufferOnErrorAbort;
-  private SnowflakeStreamingIngestChannelInternal channelOnErrorAbort;
+  private SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channelOnErrorAbort;
 
   @Before
   public void setupRowBuffer() {
     // Create row buffer
-    SnowflakeStreamingIngestClientInternal client =
-        new SnowflakeStreamingIngestClientInternal("client");
+    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
+        new SnowflakeStreamingIngestClientInternal<>("client");
     this.channelOnErrorContinue =
-        new SnowflakeStreamingIngestChannelInternal(
+        new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
             "db",
             "schema",
@@ -55,7 +56,7 @@ public class RowBufferTest {
     this.rowBufferOnErrorContinue = new ArrowRowBuffer(this.channelOnErrorContinue);
 
     this.channelOnErrorAbort =
-        new SnowflakeStreamingIngestChannelInternal(
+        new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
             "db",
             "schema",
@@ -766,7 +767,7 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
     float bufferSize = rowBuffer.getSize();
 
-    ChannelData data = rowBuffer.flush();
+    ChannelData<VectorSchemaRoot> data = rowBuffer.flush();
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(7, data.getVectors().getFieldVectors().size());
@@ -780,7 +781,8 @@ public class RowBufferTest {
     testDoubleQuotesColumnNameHelper(this.channelOnErrorContinue);
   }
 
-  private void testDoubleQuotesColumnNameHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testDoubleQuotesColumnNameHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colDoubleQuotes = new ColumnMetadata();
@@ -818,7 +820,7 @@ public class RowBufferTest {
     colStats.put("intColumn", stats1);
     colStats.put("strColumn", stats2);
 
-    EpInfo result = ArrowRowBuffer.buildEpInfoFromStats(2, colStats);
+    EpInfo result = AbstractRowBuffer.buildEpInfoFromStats(2, colStats);
     Map<String, FileColumnProperties> columnResults = result.getColumnEps();
     Assert.assertEquals(2, columnResults.keySet().size());
 
@@ -847,7 +849,7 @@ public class RowBufferTest {
     colStats.put(intColName, stats);
     colStats.put(realColName, stats);
 
-    EpInfo result = ArrowRowBuffer.buildEpInfoFromStats(2, colStats);
+    EpInfo result = AbstractRowBuffer.buildEpInfoFromStats(2, colStats);
     Map<String, FileColumnProperties> columnResults = result.getColumnEps();
     Assert.assertEquals(2, columnResults.keySet().size());
 
@@ -905,7 +907,8 @@ public class RowBufferTest {
     testArrowE2ETimestampLTZHelper(this.channelOnErrorAbort);
   }
 
-  private void testArrowE2ETimestampLTZHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testArrowE2ETimestampLTZHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimestampLtzSB8 = new ColumnMetadata();
@@ -973,7 +976,8 @@ public class RowBufferTest {
     testArrowE2ETimestampTZHelper(this.channelOnErrorAbort);
   }
 
-  private void testArrowE2ETimestampTZHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testArrowE2ETimestampTZHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimestampTzSB8 = new ColumnMetadata();
@@ -1094,7 +1098,8 @@ public class RowBufferTest {
     testArrowE2ETimestampErrorsHelper(this.channelOnErrorContinue);
   }
 
-  private void testArrowE2ETimestampErrorsHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testArrowE2ETimestampErrorsHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimestampLtzSB16 = new ColumnMetadata();
@@ -1154,7 +1159,7 @@ public class RowBufferTest {
 
     InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData result = rowBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = rowBuffer.flush();
     Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
 
     Assert.assertEquals(
@@ -1196,7 +1201,7 @@ public class RowBufferTest {
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
     // Confirm we reset
-    ChannelData resetResults = rowBuffer.flush();
+    ChannelData<VectorSchemaRoot> resetResults = rowBuffer.flush();
     Assert.assertNull(resetResults);
   }
 
@@ -1206,7 +1211,8 @@ public class RowBufferTest {
     testStatsE2ETimestampHelper(this.channelOnErrorContinue);
   }
 
-  private void testStatsE2ETimestampHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testStatsE2ETimestampHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimestampLtzSB8 = new ColumnMetadata();
@@ -1251,7 +1257,7 @@ public class RowBufferTest {
     InsertValidationResponse response =
         innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1287,7 +1293,8 @@ public class RowBufferTest {
     testE2EDateHelper(this.channelOnErrorAbort);
   }
 
-  private void testE2EDateHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testE2EDateHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colDate = new ColumnMetadata();
@@ -1318,7 +1325,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLDATE").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1335,7 +1342,8 @@ public class RowBufferTest {
     testE2ETimeHelper(this.channelOnErrorContinue);
   }
 
-  private void testE2ETimeHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testE2ETimeHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colTimeSB4 = new ColumnMetadata();
@@ -1380,7 +1388,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLTIMESB8").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1404,7 +1412,8 @@ public class RowBufferTest {
     testNullableCheckHelper(this.channelOnErrorAbort);
   }
 
-  private void testNullableCheckHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testNullableCheckHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
@@ -1444,7 +1453,8 @@ public class RowBufferTest {
     testMissingColumnCheckHelper(this.channelOnErrorAbort);
   }
 
-  private void testMissingColumnCheckHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testMissingColumnCheckHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
@@ -1518,7 +1528,8 @@ public class RowBufferTest {
     testE2EBooleanHelper(this.channelOnErrorAbort);
   }
 
-  private void testE2EBooleanHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testE2EBooleanHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
@@ -1550,7 +1561,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLBOOLEAN").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1566,7 +1577,8 @@ public class RowBufferTest {
     testE2EBinaryHelper(this.channelOnErrorContinue);
   }
 
-  private void testE2EBinaryHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testE2EBinaryHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colBinary = new ColumnMetadata();
@@ -1605,7 +1617,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLBINARY").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
@@ -1622,7 +1634,8 @@ public class RowBufferTest {
     testE2ERealHelper(this.channelOnErrorAbort);
   }
 
-  private void testE2ERealHelper(SnowflakeStreamingIngestChannelInternal channel) {
+  private void testE2ERealHelper(
+      SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colReal = new ColumnMetadata();
@@ -1653,7 +1666,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.vectorsRoot.getVector("COLREAL").getObject(2));
 
     // Check stats generation
-    ChannelData result = innerBuffer.flush();
+    ChannelData<VectorSchemaRoot> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(
@@ -1734,8 +1747,8 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
-    ChannelData data = innerBuffer.flush();
-    Assert.assertEquals(3, data.getVectors().getRowCount());
+    ChannelData<VectorSchemaRoot> data = innerBuffer.flush();
+    Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals(0, innerBuffer.rowCount);
   }
 }
