@@ -663,7 +663,7 @@ class FlushService {
     int day = calendar.get(Calendar.DAY_OF_MONTH);
     int hour = calendar.get(Calendar.HOUR_OF_DAY);
     int minute = calendar.get(Calendar.MINUTE);
-    long time = calendar.getTimeInMillis() / 1000;
+    long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
     long threadId = Thread.currentThread().getId();
     String fileName =
         Long.toString(time, 36)
