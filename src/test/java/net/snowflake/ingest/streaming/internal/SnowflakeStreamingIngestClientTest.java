@@ -31,6 +31,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
+import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
+import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
+import net.snowflake.client.jdbc.internal.apache.http.StatusLine;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -50,12 +56,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -301,10 +301,13 @@ public class SnowflakeStreamingIngestClientTest {
 
   @Test
   public void testGetChannelsStatusWithRequest() throws Exception {
+    ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
+        new ChannelsStatusResponse.ChannelStatusResponseDTO();
+    channelStatus.setStatusCode((long) RESPONSE_SUCCESS);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("honk");
-    response.setChannels(new ArrayList<>());
+    response.setChannels(Collections.singletonList(channelStatus));
     String responseString = objectMapper.writeValueAsString(response);
 
     CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
@@ -423,7 +426,8 @@ public class SnowflakeStreamingIngestClientTest {
     SnowflakeURL url = new SnowflakeURL(urlStr);
 
     KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
-    RequestBuilder requestBuilder = new RequestBuilder(url, prop.get(USER).toString(), keyPair);
+    RequestBuilder requestBuilder =
+        new RequestBuilder(url, prop.get(USER).toString(), keyPair, null, null);
 
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal(
@@ -615,6 +619,7 @@ public class SnowflakeStreamingIngestClientTest {
         result.get(0).getChunks().get(0).getChannels().stream()
             .map(c -> c.getChannelName())
             .collect(Collectors.toSet()));
+    Assert.assertEquals(ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, result.get(0).getVersion());
   }
 
   @Test

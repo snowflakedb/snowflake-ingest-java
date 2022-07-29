@@ -19,6 +19,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.ClientStatusResponse;
 import net.snowflake.ingest.connection.ConfigureClientResponse;
 import net.snowflake.ingest.connection.HistoryRangeResponse;
@@ -32,10 +36,6 @@ import net.snowflake.ingest.utils.BackOffException;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -689,6 +689,7 @@ public class SimpleIngestManager implements AutoCloseable {
   @Override
   public void close() {
     builder.closeResources();
+    HttpUtil.shutdownHttpConnectionManagerDaemonThread();
   }
 
   /* Used for testing */

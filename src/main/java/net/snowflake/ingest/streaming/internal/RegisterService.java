@@ -111,7 +111,8 @@ class RegisterService {
           List<BlobMetadata> blobs = new ArrayList<>();
           long startTime = System.currentTimeMillis();
           while (idx < oldList.size()
-              && System.currentTimeMillis() - startTime <= BLOB_UPLOAD_TIMEOUT_IN_SEC * 2) {
+              && System.currentTimeMillis() - startTime
+                  <= TimeUnit.SECONDS.toMillis(BLOB_UPLOAD_TIMEOUT_IN_SEC * 2)) {
             Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> futureBlob =
                 oldList.get(idx);
             try {
@@ -140,14 +141,30 @@ class RegisterService {
                 retry++;
                 break;
               }
-              logger.logError(
-                  "Building or uploading blob={} failed or timed out, exception={}, detail={},"
-                      + " cause={}, detail={}, all channels in the blob will be invalidated",
-                  futureBlob.getKey().getFilePath(),
-                  e,
-                  e.getMessage(),
-                  e.getCause(),
-                  e.getCause() == null ? null : e.getCause().getMessage());
+              StringBuilder stackTrace = new StringBuilder();
+              if (e.getCause() != null) {
+                for (StackTraceElement element : e.getCause().getStackTrace()) {
+                  stackTrace.append(System.lineSeparator()).append(element.toString());
+                }
+              }
+              String errorMessage =
+                  String.format(
+                      "Building or uploading blob failed, client=%s, file=%s, exception=%s,"
+                          + " detail=%s, cause=%s, detail=%s trace=%s all channels in the blob"
+                          + " will be invalidated",
+                      this.owningClient.getName(),
+                      futureBlob.getKey().getFilePath(),
+                      e,
+                      e.getMessage(),
+                      e.getCause(),
+                      e.getCause() == null ? null : e.getCause().getMessage(),
+                      stackTrace);
+              logger.logError(errorMessage);
+              if (this.owningClient.getTelemetryService() != null) {
+                this.owningClient
+                    .getTelemetryService()
+                    .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+              }
               this.owningClient
                   .getFlushService()
                   .invalidateAllChannelsInBlob(futureBlob.getKey().getData());

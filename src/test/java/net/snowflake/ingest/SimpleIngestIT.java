@@ -20,6 +20,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import net.snowflake.client.jdbc.internal.apache.http.Header;
+import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.ingest.connection.ClientStatusResponse;
 import net.snowflake.ingest.connection.ConfigureClientResponse;
 import net.snowflake.ingest.connection.HistoryResponse;
@@ -27,9 +30,6 @@ import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.InsertFilesClientInfo;
 import net.snowflake.ingest.utils.StagedFileWrapper;
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.HttpPost;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,6 +39,7 @@ import org.junit.Test;
 public class SimpleIngestIT {
   private final String TEST_FILE_NAME = "test1.csv";
   private final String TEST_FILE_NAME_2 = "test2.csv";
+  private final String PIPE_NAME_PREFIX = "ingest_sdk_test_pipe_";
 
   private String testFilePath = null;
   private String testFilePath_2 = null;
@@ -54,6 +55,10 @@ public class SimpleIngestIT {
   // the object mapper we use for deserialization
   static ObjectMapper mapper = new ObjectMapper();
 
+  private final Random RAND = new Random();
+
+  private final Long RAND_NUM = Math.abs(RAND.nextLong());
+
   /** Create test table and pipe */
   @Before
   public void beforeAll() throws Exception {
@@ -66,19 +71,16 @@ public class SimpleIngestIT {
     testFilePath_2 = resource.getFile();
 
     // create stage, pipe, and table
-    Random rand = new Random();
 
-    Long num = Math.abs(rand.nextLong());
+    tableName = "ingest_sdk_test_table_" + RAND_NUM;
 
-    tableName = "ingest_sdk_test_table_" + num;
+    pipeName = PIPE_NAME_PREFIX + RAND_NUM;
 
-    pipeName = "ingest_sdk_test_pipe_" + num;
+    pipeWithPatternName = "ingest_sdk_test_pipe_pattern_" + RAND_NUM;
 
-    pipeWithPatternName = "ingest_sdk_test_pipe_pattern_" + num;
+    stageName = "ingest_sdk_test_stage_" + RAND_NUM;
 
-    stageName = "ingest_sdk_test_stage_" + num;
-
-    stageWithPatternName = "ingest_sdk_test_stage_pattern" + num;
+    stageWithPatternName = "ingest_sdk_test_stage_pattern" + RAND_NUM;
 
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
@@ -86,13 +88,7 @@ public class SimpleIngestIT {
 
     TestUtils.executeQuery("create or replace stage " + stageWithPatternName);
 
-    TestUtils.executeQuery(
-        "create or replace pipe "
-            + pipeName
-            + " as copy into "
-            + tableName
-            + " from @"
-            + stageName);
+    createPipe(tableName, stageName, pipeName);
 
     TestUtils.executeQuery(
         "create or replace pipe "
@@ -127,23 +123,7 @@ public class SimpleIngestIT {
     // create ingest manager
     SimpleIngestManager manager = TestUtils.getManager(pipeName);
 
-    // create a file wrapper
-    StagedFileWrapper myFile = new StagedFileWrapper(TEST_FILE_NAME, null);
-
-    // get an insert response after we submit
-    IngestResponse insertResponse = manager.ingestFile(myFile, null);
-
-    assertEquals("SUCCESS", insertResponse.getResponseCode());
-
-    // Get history and ensure that the expected file has been ingested
-    getHistoryAndAssertLoad(manager, TEST_FILE_NAME);
-
-    IngestResponse insertResponseSkippedFiles = manager.ingestFile(myFile, null, true);
-
-    assertEquals("SUCCESS", insertResponseSkippedFiles.getResponseCode());
-    assertEquals(1, insertResponseSkippedFiles.getSkippedFiles().size());
-    assertEquals(
-        TEST_FILE_NAME, insertResponseSkippedFiles.getSkippedFiles().stream().findFirst().get());
+    testAndVerifySimpleIngestionForOnePipe(manager);
   }
 
   /** ingest test example ingest a simple file and check load history. */
@@ -299,6 +279,69 @@ public class SimpleIngestIT {
             .generateInsertRequest(
                 UUID.randomUUID(), pipeName, Collections.singletonList(myFile), false);
     verifyDefaultUserAgent(noUserAgentUsed.getAllHeaders(), false, null);
+  }
+
+  /**
+   * Creates multiple pipes with same stage and table to verify behavior of HttpUtil and BG thread
+   * for ConnectionPoolingManager
+   *
+   * <p>Creates the thread only two times since the manager was closed only once.
+   */
+  @Test
+  public void testMultipleSimpleIngestManagers() throws Exception {
+    // put
+    TestUtils.executeQuery("put file://" + testFilePath + " @" + stageName);
+
+    // create ingest manager
+    SimpleIngestManager manager = TestUtils.getManager(pipeName);
+
+    manager.close();
+
+    final String pipeName2 = PIPE_NAME_PREFIX + "" + (RAND_NUM + 1);
+    createPipe(tableName, stageName, pipeName2);
+
+    SimpleIngestManager manager2 = TestUtils.getManager(pipeName2);
+
+    testAndVerifySimpleIngestionForOnePipe(manager2);
+
+    final String pipeName3 = PIPE_NAME_PREFIX + "" + (RAND_NUM + 2);
+    createPipe(tableName, stageName, pipeName3);
+
+    // creating one more SimpleIngestManager
+    SimpleIngestManager manager3 = TestUtils.getManager(pipeName3);
+    testAndVerifySimpleIngestionForOnePipe(manager3);
+  }
+
+  private static void createPipe(
+      final String tableName, final String stageName, final String pipeName) throws Exception {
+    TestUtils.executeQuery(
+        "create or replace pipe "
+            + pipeName
+            + " as copy into "
+            + tableName
+            + " from @"
+            + stageName);
+  }
+
+  private void testAndVerifySimpleIngestionForOnePipe(final SimpleIngestManager simpleIngestManager)
+      throws Exception {
+    // create a file wrapper
+    StagedFileWrapper myFile = new StagedFileWrapper(TEST_FILE_NAME, null);
+
+    // get an insert response after we submit
+    IngestResponse insertResponse = simpleIngestManager.ingestFile(myFile, null);
+
+    assertEquals("SUCCESS", insertResponse.getResponseCode());
+
+    // Get history and ensure that the expected file has been ingested
+    getHistoryAndAssertLoad(simpleIngestManager, TEST_FILE_NAME);
+
+    IngestResponse insertResponseSkippedFiles = simpleIngestManager.ingestFile(myFile, null, true);
+
+    assertEquals("SUCCESS", insertResponseSkippedFiles.getResponseCode());
+    assertEquals(1, insertResponseSkippedFiles.getSkippedFiles().size());
+    assertEquals(
+        TEST_FILE_NAME, insertResponseSkippedFiles.getSkippedFiles().stream().findFirst().get());
   }
 
   private void verifyDefaultUserAgent(
