@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
+import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -19,15 +20,19 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
+import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
+import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
+import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
+import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.SimpleIngestManager;
-import net.snowflake.ingest.utils.*;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
+import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +49,7 @@ public class RequestBuilder {
   /* Member variables Begin */
 
   // the security manager which will handle token generation
-  private SecurityManager securityManager;
+  private final SecurityManager securityManager;
 
   // whatever the actual scheme is
   private String scheme;
@@ -56,6 +61,9 @@ public class RequestBuilder {
   private final String host;
 
   private final String userAgentSuffix;
+
+  // Reference to the telemetry service
+  private final TelemetryService telemetryService;
 
   /* Member variables End */
 
@@ -119,7 +127,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "1.0.2-beta.2";
+  public static final String DEFAULT_VERSION = "1.0.2-beta.3";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -149,6 +157,7 @@ public class RequestBuilder {
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
    * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
   public RequestBuilder(
       String accountName,
@@ -199,13 +208,74 @@ public class RequestBuilder {
       String hostName,
       int portNum,
       String userAgentSuffix) {
+    this(
+        accountName, userName, keyPair, schemeName, hostName, portNum, userAgentSuffix, null, null);
+  }
+
+  /**
+   * RequestBuilder - constructor used by streaming ingest
+   *
+   * @param url - the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param httpClient - reference to the http client
+   * @param clientName - name of the client, used to uniquely identify a client if used
+   */
+  public RequestBuilder(
+      SnowflakeURL url,
+      String userName,
+      KeyPair keyPair,
+      CloseableHttpClient httpClient,
+      String clientName) {
+    this(
+        url.getAccount(),
+        userName,
+        keyPair,
+        url.getScheme(),
+        url.getUrlWithoutPort(),
+        url.getPort(),
+        null,
+        httpClient,
+        clientName);
+  }
+
+  /**
+   * RequestBuilder - this constructor is for testing purposes only
+   *
+   * @param accountName - the account name to which we're connecting
+   * @param userName - for whom are we connecting?
+   * @param keyPair - our auth credentials
+   * @param schemeName - are we HTTP or HTTPS?
+   * @param hostName - the host for this snowflake instance
+   * @param portNum - the port number
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param httpClient - reference to the http client
+   * @param clientName - name of the client, used to uniquely identify a client if used
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      KeyPair keyPair,
+      String schemeName,
+      String hostName,
+      int portNum,
+      String userAgentSuffix,
+      CloseableHttpClient httpClient,
+      String clientName) {
     // none of these arguments should be null
     if (accountName == null || userName == null || keyPair == null) {
       throw new IllegalArgumentException();
     }
 
+    // Set up the telemetry service if needed
+    this.telemetryService =
+        ENABLE_TELEMETRY_TO_SF
+            ? new TelemetryService(
+                httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
+            : null;
+
     // create our security/token manager
-    securityManager = new SecurityManager(accountName, userName, keyPair);
+    securityManager = new SecurityManager(accountName, userName, keyPair, telemetryService);
 
     // stash references to the account and user name as well
     String account = accountName.toUpperCase();
@@ -226,23 +296,6 @@ public class RequestBuilder {
         this.host,
         this.port,
         this.userAgentSuffix);
-  }
-
-  /**
-   * RequestBuilder - constructor used by streaming ingest
-   *
-   * @param url - the Snowflake account to which we're connecting
-   * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
-   */
-  public RequestBuilder(SnowflakeURL url, String userName, KeyPair keyPair) {
-    this(
-        url.getAccount(),
-        userName,
-        keyPair,
-        url.getScheme(),
-        url.getUrlWithoutPort(),
-        url.getPort());
   }
 
   private static Properties loadProperties() {
@@ -804,5 +857,11 @@ public class RequestBuilder {
    */
   public void closeResources() {
     securityManager.close();
+    telemetryService.close();
+  }
+
+  /** Get the telemetry service */
+  public TelemetryService getTelemetryService() {
+    return telemetryService;
   }
 }
