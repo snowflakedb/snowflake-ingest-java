@@ -473,21 +473,33 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseBinary() throws Exception {
-    Assert.assertTrue(
-        Arrays.equals(
-            "honk".getBytes(StandardCharsets.UTF_8),
-            DataValidationUtil.validateAndParseBinary("honk".getBytes(StandardCharsets.UTF_8))));
-    Assert.assertTrue(
-        Arrays.equals(
-            DatatypeConverter.parseHexBinary("12"),
-            DataValidationUtil.validateAndParseBinary("12")));
+  public void testValidateAndParseBinary() {
+    Assert.assertArrayEquals(
+        "honk".getBytes(StandardCharsets.UTF_8),
+        DataValidationUtil.validateAndParseBinary(
+            "honk".getBytes(StandardCharsets.UTF_8), Optional.empty()));
 
-    Assert.assertTrue(
-        Arrays.equals(
-            DatatypeConverter.parseHexBinary("12"), DataValidationUtil.validateAndParseBinary(12)));
+    Assert.assertArrayEquals(
+        DatatypeConverter.parseHexBinary("12"),
+        DataValidationUtil.validateAndParseBinary("12", Optional.empty()));
 
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBinary, 123);
+    Assert.assertArrayEquals(
+        DatatypeConverter.parseHexBinary("12"),
+        DataValidationUtil.validateAndParseBinary(12, Optional.empty()));
+
+    try {
+      DataValidationUtil.validateAndParseBinary("1212", Optional.of(1));
+      Assert.fail("Expected error for Binary too long");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    try {
+      DataValidationUtil.validateAndParseBinary(123, Optional.empty());
+      Assert.fail("Expected error for invalid Binary format");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
   }
 
   @Test
