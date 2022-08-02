@@ -56,7 +56,7 @@ public class StreamingIngestIT {
   @Before
   public void beforeAll() throws Exception {
     // Create a streaming ingest client
-    jdbcConnection = TestUtils.getConnection();
+    jdbcConnection = TestUtils.getConnection(true);
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace database %s;", TEST_DB));
