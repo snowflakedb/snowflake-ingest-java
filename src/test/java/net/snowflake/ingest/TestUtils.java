@@ -73,6 +73,8 @@ public class TestUtils {
 
   private static int port = 0;
 
+  // Keep separate test connections for snowpipe and snowpipe streaming so that session state is
+  // isolated
   private static Connection snowpipeConn = null;
 
   private static Connection streamingConn = null;
