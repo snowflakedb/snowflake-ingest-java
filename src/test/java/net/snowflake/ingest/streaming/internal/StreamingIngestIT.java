@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
+import static net.snowflake.ingest.utils.Constants.ROLE;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -55,7 +56,7 @@ public class StreamingIngestIT {
   @Before
   public void beforeAll() throws Exception {
     // Create a streaming ingest client
-    jdbcConnection = TestUtils.getConnection();
+    jdbcConnection = TestUtils.getConnection(true);
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace database %s;", TEST_DB));
@@ -65,20 +66,6 @@ public class StreamingIngestIT {
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
-    jdbcConnection
-        .createStatement()
-        .execute("alter session set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;");
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "alter database %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_DB));
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", TEST_TABLE));
-    jdbcConnection.createStatement().execute("alter session set ENABLE_UNIFIED_TABLE_SCAN=true;");
     // Set timezone to UTC
     jdbcConnection.createStatement().execute("alter session set timezone = 'UTC';");
     jdbcConnection
@@ -86,6 +73,9 @@ public class StreamingIngestIT {
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
     prop = TestUtils.getProperties();
+    if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
+      prop.setProperty(ROLE, "ACCOUNTADMIN");
+    }
     client =
         (SnowflakeStreamingIngestClientInternal)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
@@ -385,11 +375,6 @@ public class StreamingIngestIT {
                     + " TIMESTAMP_TZ(3), tbig TIME(9), tntzbig TIMESTAMP_NTZ(9), ttzbig"
                     + " TIMESTAMP_TZ(9) );",
                 timeTableName));
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "alter table %s set ENABLE_PR_37692_MULTI_FORMAT_SCANSET=true;", timeTableName));
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_TIME")
             .setDBName(TEST_DB)
@@ -642,7 +627,7 @@ public class StreamingIngestIT {
         .execute(
             String.format("create or replace table %s (numcol NUMBER(10,2));", multiThreadTable));
     int numThreads = 20;
-    int numRows = 1000000;
+    int numRows = 10000;
     ExecutorService testThreadPool = Executors.newFixedThreadPool(numThreads);
     CompletableFuture[] futures = new CompletableFuture[numThreads];
     List<SnowflakeStreamingIngestChannel> channelList = new ArrayList<>();
