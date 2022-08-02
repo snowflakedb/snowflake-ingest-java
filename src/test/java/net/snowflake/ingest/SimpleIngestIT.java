@@ -82,9 +82,13 @@ public class SimpleIngestIT {
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + RAND_NUM;
     TestUtils.executeQuery("select current_role()");
+    TestUtils.executeQuery("select current_database()");
+    TestUtils.executeQuery("select current_schema()");
 
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
-
+    TestUtils.executeQuery("select current_role()");
+    TestUtils.executeQuery("select current_database()");
+    TestUtils.executeQuery("select current_schema()");
     TestUtils.executeQuery("create or replace stage " + stageName);
 
     TestUtils.executeQuery("create or replace stage " + stageWithPatternName);
