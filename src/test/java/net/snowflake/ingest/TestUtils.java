@@ -104,7 +104,7 @@ public class TestUtils {
       warehouse = profile.get(WAREHOUSE).asText();
       host = profile.get(HOST).asText();
       scheme = profile.get(SCHEME).asText();
-      role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
+      role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("ACCOUNTADMIN");
 
       LOGGER.info(
           "Initialized test connection, role={}, database={}, schema={}, warehouse={}",
