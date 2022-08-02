@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
+import static net.snowflake.ingest.utils.Constants.ROLE;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -72,6 +73,9 @@ public class StreamingIngestIT {
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
     prop = TestUtils.getProperties();
+    if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
+      prop.setProperty(ROLE, "ACCOUNTADMIN");
+    }
     client =
         (SnowflakeStreamingIngestClientInternal)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();

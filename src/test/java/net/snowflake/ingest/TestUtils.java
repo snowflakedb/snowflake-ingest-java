@@ -100,7 +100,7 @@ public class TestUtils {
       warehouse = profile.get(WAREHOUSE).asText();
       host = profile.get(HOST).asText();
       scheme = profile.get(SCHEME).asText();
-      role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("ACCOUNTADMIN");
+      role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
       privateKeyPem = profile.get(PRIVATE_KEY).asText();
 
       java.security.Security.addProvider(new BouncyCastleProvider());
