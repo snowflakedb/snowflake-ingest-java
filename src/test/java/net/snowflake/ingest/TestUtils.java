@@ -214,7 +214,8 @@ public class TestUtils {
   /**
    * Create snowflake jdbc connection
    *
-   * @param isStreamingConnection: is true will return a separate connection for streaming ingest tests
+   * @param isStreamingConnection: is true will return a separate connection for streaming ingest
+   *     tests
    * @return jdbc connection
    * @throws Exception
    */
