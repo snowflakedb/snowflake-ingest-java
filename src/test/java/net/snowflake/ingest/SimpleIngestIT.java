@@ -81,6 +81,7 @@ public class SimpleIngestIT {
     stageName = "ingest_sdk_test_stage_" + RAND_NUM;
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + RAND_NUM;
+    TestUtils.executeQuery("select current_role()");
 
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
