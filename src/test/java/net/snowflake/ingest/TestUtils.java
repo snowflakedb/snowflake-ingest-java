@@ -13,6 +13,8 @@ import static net.snowflake.ingest.utils.Constants.SCHEME;
 import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
+import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -71,7 +73,11 @@ public class TestUtils {
 
   private static int port = 0;
 
-  private static Connection conn = null;
+  // Keep separate test connections for snowpipe and snowpipe streaming so that session state is
+  // isolated
+  private static Connection snowpipeConn = null;
+
+  private static Connection streamingConn = null;
 
   private static String dummyUser = "user";
   private static int dummyPort = 443;
@@ -187,7 +193,14 @@ public class TestUtils {
     props.put(PRIVATE_KEY, privateKeyPem);
     props.put(ROLE, role);
     props.put(ACCOUNT_URL, getAccountURL());
+    props.put(BLOB_FORMAT_VERSION, getBlobFormatVersion());
     return props;
+  }
+
+  private static byte getBlobFormatVersion() {
+    return profile.has(BLOB_FORMAT_VERSION)
+        ? (byte) profile.get(BLOB_FORMAT_VERSION).asInt()
+        : BLOB_FORMAT_VERSION_DEFAULT.toByte();
   }
 
   /**
@@ -197,7 +210,20 @@ public class TestUtils {
    * @throws Exception
    */
   public static Connection getConnection() throws Exception {
-    if (conn != null) return conn;
+    return getConnection(false);
+  }
+
+  /**
+   * Create snowflake jdbc connection
+   *
+   * @param isStreamingConnection: is true will return a separate connection for streaming ingest
+   *     tests
+   * @return jdbc connection
+   * @throws Exception
+   */
+  public static Connection getConnection(boolean isStreamingConnection) throws Exception {
+    if (!isStreamingConnection && snowpipeConn != null) return snowpipeConn;
+    if (isStreamingConnection && streamingConn != null) return streamingConn;
 
     if (profile == null) init();
     // check first to see if we have the Snowflake JDBC
@@ -214,10 +240,14 @@ public class TestUtils {
     props.put("client_session_keep_alive", "true");
     props.put("privateKey", privateKey);
 
-    conn = DriverManager.getConnection(connectString, props);
-
+    if (isStreamingConnection) {
+      streamingConn = DriverManager.getConnection(connectString, props);
+      // fire off the connection
+      return streamingConn;
+    }
+    snowpipeConn = DriverManager.getConnection(connectString, props);
     // fire off the connection
-    return conn;
+    return snowpipeConn;
   }
 
   /**

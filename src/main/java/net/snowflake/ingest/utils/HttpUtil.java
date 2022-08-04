@@ -13,29 +13,29 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import javax.net.ssl.SSLContext;
 import net.snowflake.client.core.SFSessionProperty;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpResponse;
-import org.apache.http.NoHttpResponseException;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.Credentials;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.HttpRequestRetryHandler;
-import org.apache.http.client.ServiceUnavailableRetryStrategy;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.conn.routing.HttpRoute;
-import org.apache.http.conn.ssl.DefaultHostnameVerifier;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.pool.PoolStats;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.ssl.SSLContexts;
+import net.snowflake.client.jdbc.internal.apache.http.HttpHost;
+import net.snowflake.client.jdbc.internal.apache.http.HttpRequest;
+import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;
+import net.snowflake.client.jdbc.internal.apache.http.NoHttpResponseException;
+import net.snowflake.client.jdbc.internal.apache.http.auth.AuthScope;
+import net.snowflake.client.jdbc.internal.apache.http.auth.Credentials;
+import net.snowflake.client.jdbc.internal.apache.http.auth.UsernamePasswordCredentials;
+import net.snowflake.client.jdbc.internal.apache.http.client.CredentialsProvider;
+import net.snowflake.client.jdbc.internal.apache.http.client.HttpRequestRetryHandler;
+import net.snowflake.client.jdbc.internal.apache.http.client.ServiceUnavailableRetryStrategy;
+import net.snowflake.client.jdbc.internal.apache.http.client.config.RequestConfig;
+import net.snowflake.client.jdbc.internal.apache.http.client.protocol.HttpClientContext;
+import net.snowflake.client.jdbc.internal.apache.http.conn.routing.HttpRoute;
+import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.DefaultHostnameVerifier;
+import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.BasicCredentialsProvider;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClientBuilder;
+import net.snowflake.client.jdbc.internal.apache.http.impl.conn.DefaultProxyRoutePlanner;
+import net.snowflake.client.jdbc.internal.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import net.snowflake.client.jdbc.internal.apache.http.pool.PoolStats;
+import net.snowflake.client.jdbc.internal.apache.http.protocol.HttpContext;
+import net.snowflake.client.jdbc.internal.apache.http.ssl.SSLContexts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +60,7 @@ public class HttpUtil {
    * This lock is to synchronize on idleConnectionMonitorThread to avoid setting starting a thread
    * which was already started. (To avoid {@link IllegalThreadStateException})
    */
-  private static ReentrantLock idleConnectionMonitorThreadLock = new ReentrantLock(true);
+  private static final ReentrantLock idleConnectionMonitorThreadLock = new ReentrantLock(true);
 
   private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
   private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
@@ -125,10 +125,8 @@ public class HttpUtil {
     connectionManager.setDefaultMaxPerRoute(DEFAULT_MAX_CONNECTIONS_PER_ROUTE);
     connectionManager.setMaxTotal(DEFAULT_MAX_CONNECTIONS);
 
-    /**
-     * Use a anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
-     * retry time is 3. The interval time is backoff.
-     */
+    // Use an anonymous class to implement the interface ServiceUnavailableRetryStrategy() The max
+    // retry time is 3. The interval time is backoff.
     HttpClientBuilder clientBuilder =
         HttpClientBuilder.create()
             .setConnectionManager(connectionManager)
