@@ -6,6 +6,8 @@ package net.snowflake.ingest.streaming.internal;
 
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
 
 /** Builds a Streaming Ingest channel for a specific Streaming Ingest client */
 class SnowflakeStreamingIngestChannelFactory {
@@ -94,6 +96,7 @@ class SnowflakeStreamingIngestChannelFactory {
       Utils.assertStringNotNullOrEmpty("encryption key", this.encryptionKey);
       Utils.assertNotNull("encryption key_id", this.encryptionKeyId);
       Utils.assertNotNull("on_error option", this.onErrorOption);
+      BufferAllocator allocator = createBufferAllocator();
       return new SnowflakeStreamingIngestChannelInternal<>(
           this.name,
           this.dbName,
@@ -105,7 +108,20 @@ class SnowflakeStreamingIngestChannelFactory {
           this.owningClient,
           this.encryptionKey,
           this.encryptionKeyId,
-          this.onErrorOption);
+          this.onErrorOption,
+          this.owningClient.getParameterProvider().getBlobFormatVersion(),
+          allocator);
+    }
+
+    private BufferAllocator createBufferAllocator() {
+      return owningClient.isTestMode()
+          ? new RootAllocator()
+          : owningClient
+              .getAllocator()
+              .newChildAllocator(
+                  String.format("%s_%s", name, channelSequencer),
+                  0,
+                  owningClient.getAllocator().getLimit());
     }
   }
 }

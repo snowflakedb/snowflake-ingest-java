@@ -601,7 +601,7 @@ class FlushService<T> {
    *
    * @param blobData list of channels that belongs to the blob
    */
-  void invalidateAllChannelsInBlob(List<List<ChannelData<T>>> blobData) {
+  <CD> void invalidateAllChannelsInBlob(List<List<ChannelData<CD>>> blobData) {
     blobData.forEach(
         chunkData ->
             chunkData.forEach(

@@ -27,7 +27,7 @@ import org.apache.arrow.util.VisibleForTesting;
  * un-flushed rows, these rows will be converted to the underlying format implementation for faster
  * processing
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot}
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
 abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   private static final Logging logger = new Logging(AbstractRowBuffer.class);
@@ -430,6 +430,12 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   /** Get buffered data snapshot for later flushing. */
   abstract Optional<T> getSnapshot();
+
+  @VisibleForTesting
+  abstract Object getVectorValueAt(String column, int index);
+
+  @VisibleForTesting
+  abstract int getTempRowCount();
 
   /** Normalize the column name, given with the inserted row, to send to server side. */
   static String formatColumnName(String columnName) {

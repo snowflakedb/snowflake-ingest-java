@@ -4,17 +4,16 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 public class ChannelCacheTest {
-  ChannelCache<VectorSchemaRoot> cache;
-  SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client;
-  SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel1;
-  SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel2;
-  SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel3;
+  ChannelCache<StubChunkData> cache;
+  SnowflakeStreamingIngestClientInternal<StubChunkData> client;
+  SnowflakeStreamingIngestChannelInternal<StubChunkData> channel1;
+  SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2;
+  SnowflakeStreamingIngestChannelInternal<StubChunkData> channel3;
   String dbName = "db";
   String schemaName = "schema";
   String table1Name = "table1";
@@ -36,8 +35,7 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE,
-            true);
+            OpenChannelRequest.OnErrorOption.CONTINUE);
     channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel2",
@@ -50,8 +48,7 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE,
-            true);
+            OpenChannelRequest.OnErrorOption.CONTINUE);
     channel3 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel3",
@@ -64,8 +61,7 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE,
-            true);
+            OpenChannelRequest.OnErrorOption.CONTINUE);
     cache.addChannel(channel1);
     cache.addChannel(channel2);
     cache.addChannel(channel3);
@@ -76,9 +72,9 @@ public class ChannelCacheTest {
     String channelName = "channel";
     String tableName = "table";
 
-    ChannelCache<VectorSchemaRoot> cache = new ChannelCache<>();
+    ChannelCache<StubChunkData> cache = new ChannelCache<>();
     Assert.assertEquals(0, cache.getSize());
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel =
+    SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             channelName,
             dbName,
@@ -90,13 +86,12 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE,
-            true);
+            OpenChannelRequest.OnErrorOption.CONTINUE);
     cache.addChannel(channel);
     Assert.assertEquals(1, cache.getSize());
     Assert.assertTrue(channel == cache.iterator().next().getValue().get(channelName));
 
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channelDup =
+    SnowflakeStreamingIngestChannelInternal<StubChunkData> channelDup =
         new SnowflakeStreamingIngestChannelInternal<>(
             channelName,
             dbName,
@@ -108,14 +103,13 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE,
-            true);
+            OpenChannelRequest.OnErrorOption.CONTINUE);
     cache.addChannel(channelDup);
     // The old channel should be invalid now
     Assert.assertTrue(!channel.isValid());
     Assert.assertTrue(channelDup.isValid());
     Assert.assertEquals(1, cache.getSize());
-    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>> channels =
+    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>> channels =
         cache.iterator().next().getValue();
     Assert.assertEquals(1, channels.size());
     Assert.assertTrue(channelDup == channels.get(channelName));
@@ -128,16 +122,15 @@ public class ChannelCacheTest {
     Iterator<
             Map.Entry<
                 String,
-                ConcurrentHashMap<
-                    String, SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>>>>
+                ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>>
         iter = cache.iterator();
     Map.Entry<
             String,
-            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>>>
+            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>
         firstTable = iter.next();
     Map.Entry<
             String,
-            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>>>
+            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>
         secondTable = iter.next();
     Assert.assertFalse(iter.hasNext());
     if (firstTable.getKey().equals(channel1.getFullyQualifiedTableName())) {
@@ -159,8 +152,7 @@ public class ChannelCacheTest {
     Iterator<
             Map.Entry<
                 String,
-                ConcurrentHashMap<
-                    String, SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>>>>
+                ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>>
         iter = cache.iterator();
     while (iter.hasNext()) {
       for (SnowflakeStreamingIngestChannelInternal<?> channel : iter.next().getValue().values()) {
@@ -179,7 +171,7 @@ public class ChannelCacheTest {
     cache.removeChannelIfSequencersMatch(channel2);
     Assert.assertEquals(1, cache.getSize());
 
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel3Dup =
+    SnowflakeStreamingIngestChannelInternal<StubChunkData> channel3Dup =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel3",
             dbName,
@@ -191,8 +183,7 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE,
-            true);
+            OpenChannelRequest.OnErrorOption.CONTINUE);
     cache.removeChannelIfSequencersMatch(channel3Dup);
     // Verify that remove the same channel with a different channel sequencer is a no op
     Assert.assertEquals(1, cache.getSize());
