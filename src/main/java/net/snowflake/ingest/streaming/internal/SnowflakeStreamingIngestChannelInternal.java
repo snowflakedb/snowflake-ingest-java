@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -65,76 +66,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // Data encryption key id
   private final Long encryptionKeyId;
 
-  // Indicates whether we're using it as of the any tests
-  private boolean isTestMode;
-
   // ON_ERROR option for this channel
   private final OpenChannelRequest.OnErrorOption onErrorOption;
 
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
-   *
-   * @param name
-   * @param dbName
-   * @param schemaName
-   * @param tableName
-   * @param offsetToken
-   * @param channelSequencer
-   * @param rowSequencer
-   * @param client
-   * @param isTestMode
-   */
-  SnowflakeStreamingIngestChannelInternal(
-      String name,
-      String dbName,
-      String schemaName,
-      String tableName,
-      String offsetToken,
-      Long channelSequencer,
-      Long rowSequencer,
-      SnowflakeStreamingIngestClientInternal<T> client,
-      String encryptionKey,
-      Long encryptionKeyId,
-      OpenChannelRequest.OnErrorOption onErrorOption,
-      boolean isTestMode) {
-    this.channelName = name;
-    this.dbName = dbName;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
-    this.offsetToken = offsetToken;
-    this.channelSequencer = channelSequencer;
-    this.rowSequencer = new AtomicLong(rowSequencer);
-    this.isValid = true;
-    this.isClosed = false;
-    this.owningClient = client;
-    this.isTestMode = isTestMode;
-    this.allocator =
-        isTestMode || owningClient.isTestMode()
-            ? new RootAllocator()
-            : this.owningClient
-                .getAllocator()
-                .newChildAllocator(
-                    String.format("%s_%s", name, channelSequencer),
-                    0,
-                    this.owningClient.getAllocator().getLimit());
-    this.rowBuffer = createRowBuffer(client);
-    this.encryptionKey = encryptionKey;
-    this.encryptionKeyId = encryptionKeyId;
-    this.onErrorOption = onErrorOption;
-    logger.logInfo("Channel={} created for table={}", this.channelName, this.tableName);
-  }
-
-  private RowBuffer<T> createRowBuffer(SnowflakeStreamingIngestClientInternal<T> client) {
-    // TODO: The circular dependency SnowflakeStreamingIngestChannelInternal <-> RowBuffer
-    // (SNOW-657667)
-    // can be probably reconsidered
-    //noinspection unchecked
-    return (RowBuffer<T>)
-        new ArrowRowBuffer((SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>) this);
-  }
-
-  /**
-   * Default Constructor
    *
    * @param name
    * @param dbName
@@ -169,7 +105,50 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKey,
         encryptionKeyId,
         onErrorOption,
-        false);
+        client.getParameterProvider().getBlobFormatVersion(),
+        new RootAllocator());
+  }
+
+  /** Default constructor */
+  SnowflakeStreamingIngestChannelInternal(
+      String name,
+      String dbName,
+      String schemaName,
+      String tableName,
+      String offsetToken,
+      Long channelSequencer,
+      Long rowSequencer,
+      SnowflakeStreamingIngestClientInternal<T> client,
+      String encryptionKey,
+      Long encryptionKeyId,
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      Constants.BdecVersion bdecVersion,
+      BufferAllocator allocator) {
+    this.channelName = name;
+    this.dbName = dbName;
+    this.schemaName = schemaName;
+    this.tableName = tableName;
+    this.offsetToken = offsetToken;
+    this.channelSequencer = channelSequencer;
+    this.rowSequencer = new AtomicLong(rowSequencer);
+    this.isValid = true;
+    this.isClosed = false;
+    this.owningClient = client;
+    this.allocator = allocator;
+    this.rowBuffer = createRowBuffer(bdecVersion);
+    this.encryptionKey = encryptionKey;
+    this.encryptionKeyId = encryptionKeyId;
+    this.onErrorOption = onErrorOption;
+    logger.logInfo("Channel={} created for table={}", this.channelName, this.tableName);
+  }
+
+  private RowBuffer<T> createRowBuffer(Constants.BdecVersion bdecVersion) {
+    // TODO: The circular dependency SnowflakeStreamingIngestChannelInternal <-> RowBuffer
+    // (SNOW-657667)
+    // can be probably reconsidered
+    //noinspection unchecked
+    return (RowBuffer<T>)
+        new ArrowRowBuffer((SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>) this);
   }
 
   /**
