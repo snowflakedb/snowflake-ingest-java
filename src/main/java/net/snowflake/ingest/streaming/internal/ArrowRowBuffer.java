@@ -772,4 +772,16 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   public Flusher<VectorSchemaRoot> createFlusher(Constants.BdecVersion bdecVersion) {
     return new ArrowFlusher(bdecVersion);
   }
+
+  @VisibleForTesting
+  @Override
+  Object getVectorValueAt(String column, int index) {
+    Object value = vectorsRoot.getVector(column).getObject(index);
+    return (value instanceof Text) ? new String(((Text) value).getBytes()) : value;
+  }
+
+  @VisibleForTesting
+  int getTempRowCount() {
+    return tempVectorsRoot.getRowCount();
+  }
 }

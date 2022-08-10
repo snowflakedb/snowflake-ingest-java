@@ -10,7 +10,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import net.snowflake.ingest.utils.Pair;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -18,16 +17,16 @@ import org.junit.Test;
 public class RegisterServiceTest {
 
   @Test
-  public void testRegisterService() throws Exception {
-    RegisterService<VectorSchemaRoot> rs = new RegisterService<>(null, true);
+  public void testRegisterService() {
+    RegisterService<StubChunkData> rs = new RegisterService<>(null, true);
 
-    Pair<FlushService.BlobData<VectorSchemaRoot>, CompletableFuture<BlobMetadata>> blobFuture =
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
         new Pair<>(
             new FlushService.BlobData<>("test", null),
             CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
     rs.addBlobs(Collections.singletonList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
-    List<FlushService.BlobData<VectorSchemaRoot>> errorBlobs = rs.registerBlobs(null);
+    List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
     Assert.assertEquals(0, rs.getBlobsList().size());
     Assert.assertEquals(0, errorBlobs.size());
   }
@@ -43,22 +42,22 @@ public class RegisterServiceTest {
    */
   @Test
   public void testRegisterServiceTimeoutException() throws Exception {
-    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
+    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
-    RegisterService<VectorSchemaRoot> rs = new RegisterService<>(client, true);
+    RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
-    Pair<FlushService.BlobData<VectorSchemaRoot>, CompletableFuture<BlobMetadata>> blobFuture1 =
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>(
             new FlushService.BlobData<>("success", new ArrayList<>()),
             CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
     CompletableFuture future = new CompletableFuture();
     future.completeExceptionally(new TimeoutException());
-    Pair<FlushService.BlobData<VectorSchemaRoot>, CompletableFuture<BlobMetadata>> blobFuture2 =
-        new Pair<>(new FlushService.BlobData<VectorSchemaRoot>("fail", new ArrayList<>()), future);
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture2 =
+        new Pair<>(new FlushService.BlobData<StubChunkData>("fail", new ArrayList<>()), future);
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));
     Assert.assertEquals(2, rs.getBlobsList().size());
     try {
-      List<FlushService.BlobData<VectorSchemaRoot>> errorBlobs = rs.registerBlobs(null);
+      List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
@@ -71,11 +70,11 @@ public class RegisterServiceTest {
   @Ignore
   @Test
   public void testRegisterServiceTimeoutException_testRetries() throws Exception {
-    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
+    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
-    RegisterService<VectorSchemaRoot> rs = new RegisterService<>(client, true);
+    RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
-    Pair<FlushService.BlobData<VectorSchemaRoot>, CompletableFuture<BlobMetadata>> blobFuture1 =
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>(
             new FlushService.BlobData<>("success", new ArrayList<>()),
             CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
@@ -89,12 +88,12 @@ public class RegisterServiceTest {
           }
           return;
         });
-    Pair<FlushService.BlobData<VectorSchemaRoot>, CompletableFuture<BlobMetadata>> blobFuture2 =
-        new Pair<>(new FlushService.BlobData<VectorSchemaRoot>("fail", new ArrayList<>()), future);
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture2 =
+        new Pair<>(new FlushService.BlobData<StubChunkData>("fail", new ArrayList<>()), future);
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));
     Assert.assertEquals(2, rs.getBlobsList().size());
     try {
-      List<FlushService.BlobData<VectorSchemaRoot>> errorBlobs = rs.registerBlobs(null);
+      List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
@@ -105,18 +104,18 @@ public class RegisterServiceTest {
 
   @Test
   public void testRegisterServiceNonTimeoutException() {
-    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
+    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
-    RegisterService<VectorSchemaRoot> rs = new RegisterService<>(client, true);
+    RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
-    CompletableFuture future = new CompletableFuture();
+    CompletableFuture<BlobMetadata> future = new CompletableFuture<>();
     future.completeExceptionally(new IndexOutOfBoundsException());
-    Pair<FlushService.BlobData<VectorSchemaRoot>, CompletableFuture<BlobMetadata>> blobFuture =
-        new Pair<>(new FlushService.BlobData<VectorSchemaRoot>("fail", new ArrayList<>()), future);
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
+        new Pair<>(new FlushService.BlobData<>("fail", new ArrayList<>()), future);
     rs.addBlobs(Collections.singletonList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
     try {
-      List<FlushService.BlobData<VectorSchemaRoot>> errorBlobs = rs.registerBlobs(null);
+      List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
