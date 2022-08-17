@@ -162,6 +162,9 @@ class ArrowRowBuffer {
       FileColumnProperties dto = new FileColumnProperties(stat);
 
       String colName = colStat.getKey();
+      if (colName.charAt(0) == '"' && colName.charAt(colName.length() - 1) == '"') {
+        colName = colName.substring(1, colName.length() - 1);
+      }
       epInfo.getColumnEps().put(colName, dto);
     }
     return epInfo;
@@ -617,7 +620,7 @@ class ArrowRowBuffer {
   private String formatColumnName(String columnName) {
     Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
     return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
-        ? columnName.substring(1, columnName.length() - 1)
+        ? columnName
         : columnName.toUpperCase();
   }
 
