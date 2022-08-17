@@ -162,9 +162,6 @@ class ArrowRowBuffer {
       FileColumnProperties dto = new FileColumnProperties(stat);
 
       String colName = colStat.getKey();
-      if (colName.charAt(0) == '"' && colName.charAt(colName.length() - 1) == '"') {
-        colName = colName.substring(1, colName.length() - 1);
-      }
       epInfo.getColumnEps().put(colName, dto);
     }
     return epInfo;
@@ -637,8 +634,7 @@ class ArrowRowBuffer {
     // Check for extra columns in the row
     List<String> extraCols = new ArrayList<>();
     for (String columnName : inputColNamesMap.keySet()) {
-      Field field = this.fields.get(columnName);
-      if (field == null) {
+      if (!this.fields.containsKey(columnName)) {
         extraCols.add(inputColNamesMap.get(columnName));
       }
     }

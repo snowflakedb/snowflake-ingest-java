@@ -1486,7 +1486,7 @@ public class RowBufferTest {
   }
 
   @Test
-  public void testExtraColumnCheck() {
+  public void testExtraColumnsCheck() {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(this.channelOnErrorContinue);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
@@ -1504,6 +1504,9 @@ public class RowBufferTest {
 
     InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertTrue(response.hasErrors());
+    Assert.assertEquals(
+        ErrorCode.INVALID_ROW.getMessageCode(),
+        response.getInsertErrors().get(0).getException().getVendorCode());
   }
 
   @Test
