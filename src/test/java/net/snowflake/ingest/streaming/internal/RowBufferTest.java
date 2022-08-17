@@ -1486,6 +1486,27 @@ public class RowBufferTest {
   }
 
   @Test
+  public void testExtraColumnCheck() {
+    ArrowRowBuffer innerBuffer = new ArrowRowBuffer(this.channelOnErrorContinue);
+
+    ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setName("COLBOOLEAN1");
+    colBoolean.setPhysicalType("SB1");
+    colBoolean.setNullable(false);
+    colBoolean.setLogicalType("BOOLEAN");
+    colBoolean.setScale(0);
+
+    innerBuffer.setupSchema(Collections.singletonList(colBoolean));
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLBOOLEAN1", true);
+    row.put("COLBOOLEAN2", true);
+    row.put("COLBOOLEAN3", true);
+
+    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    Assert.assertTrue(response.hasErrors());
+  }
+
+  @Test
   public void testE2EBoolean() {
     testE2EBooleanHelper(this.channelOnErrorContinue);
     testE2EBooleanHelper(this.channelOnErrorAbort);
