@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,6 +45,7 @@ import org.apache.arrow.vector.VarBinaryVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.StructVector;
+import org.apache.arrow.vector.complex.reader.FieldReader;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -150,6 +152,15 @@ class ArrowRowBuffer {
   // Names of non-nullable columns
   private final Set<String> nonNullableFieldNames;
 
+  private Map<String, Integer> mergeTableKeys = new HashMap<>();
+
+  // Set of buffer indices for outdated merge table rows
+  private final Set<Integer> mergeTableTombstones = new HashSet<>();
+
+  private boolean isMergeTable = false;
+
+  private ConstraintMetadata mergeTablePrimaryKey;
+
   /**
    * Given a set of col names to stats, build the right ep info
    *
@@ -212,6 +223,10 @@ class ArrowRowBuffer {
         tempVectors.add(tempVector);
         this.tempStatsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
       }
+
+      if (column.getName().equals(MERGE_TABLE_ROW_ACTION_COLUMN)) {
+        this.isMergeTable = true;
+      }
     }
 
     this.vectorsRoot = new VectorSchemaRoot(vectors);
@@ -257,6 +272,8 @@ class ArrowRowBuffer {
     this.bufferSize = 0F;
     this.statsMap.replaceAll(
         (key, value) -> new RowBufferStats(value.getCollationDefinitionString()));
+    this.mergeTableKeys.clear();
+    this.mergeTableTombstones.clear();
   }
 
   /**
@@ -289,7 +306,12 @@ class ArrowRowBuffer {
         long rowIndex = 0;
         for (Map<String, Object> row : rows) {
           try {
-            rowSize += convertRowToArrow(row, this.vectorsRoot, this.rowCount, this.statsMap);
+            ConvertRowToArrowResponse result =
+                convertRowToArrow(
+                    row, this.vectorsRoot, this.rowCount, this.statsMap, this.mergeTableKeys);
+            rowSize += result.getBufferSize();
+            result.getMergeTableTombstone().ifPresent(t -> this.mergeTableTombstones.add(t));
+            this.mergeTableKeys.put(result.getMergeTableKey(), this.rowCount);
             this.rowCount++;
             this.bufferSize += rowSize;
           } catch (SFException e) {
@@ -309,11 +331,20 @@ class ArrowRowBuffer {
         // If the on_error option is ABORT, simply throw the first exception
         float tempRowSize = 0F;
         int tempRowCount = 0;
+        Set<Integer> tempMergeTableTombstones = new HashSet<>();
+        Map<String, Integer> tempMergeTableKeys = new HashMap<>(this.mergeTableKeys);
         for (Map<String, Object> row : rows) {
-          tempRowSize +=
-              convertRowToArrow(row, this.tempVectorsRoot, tempRowCount, this.tempStatsMap);
+          ConvertRowToArrowResponse result =
+              convertRowToArrow(
+                  row, this.tempVectorsRoot, tempRowCount, this.tempStatsMap, tempMergeTableKeys);
+          tempRowSize += result.getBufferSize();
+          result.getMergeTableTombstone().ifPresent(t -> tempMergeTableTombstones.add(t));
+          tempMergeTableKeys.put(result.getMergeTableKey(), tempRowCount + this.rowCount);
           tempRowCount++;
         }
+
+        this.mergeTableTombstones.addAll(tempMergeTableTombstones);
+        this.mergeTableKeys = tempMergeTableKeys;
 
         // If all the rows are inserted successfully, transfer the rows from temp vectors to
         // the final vectors and update the row size and row count
@@ -373,9 +404,45 @@ class ArrowRowBuffer {
       try {
         if (this.rowCount > 0) {
           // Transfer the ownership of the vectors
+          Map<String, RowBufferStats> mergeStatsMap = new HashMap<>();
           for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
             vector.setValueCount(this.rowCount);
-            if (vector instanceof DecimalVector) {
+            if (this.isMergeTable) {
+              // TODO Get the field type here so we know what stats to add it to
+              RowBufferStats stats =
+                  new RowBufferStats(
+                      this.statsMap.get(vector.getName()).getCollationDefinitionString());
+              FieldVector to = vector.getField().createVector(this.allocator);
+              FieldReader reader = vector.getReader();
+              int newIdx = 0;
+              for (int idx = 0; idx < this.rowCount; idx++) {
+                if (!this.mergeTableTombstones.contains(idx)) {
+                  reader.setPosition(idx);
+                  switch (vector.getField().getFieldType().getType().getTypeID()) {
+                    case FloatingPoint:
+                      stats.addRealValue(reader.readDouble());
+                    case Bool:
+                    case Decimal:
+                    case Int:
+                    case Struct: // timestamps
+                      stats.addIntValue(reader.readBigDecimal().toBigInteger());
+                      break;
+                    case Binary:
+                    case LargeBinary:
+                    case FixedSizeBinary:
+                      break;
+                    case Utf8:
+                    case LargeUtf8:
+                    default:
+                      stats.addStrValue(reader.readText().toString());
+                  }
+                  to.copyFromSafe(idx, newIdx, vector);
+                  newIdx++;
+                }
+              }
+              oldVectors.add(to);
+              this.statsMap.put(vector.getName(), stats);
+            } else if (vector instanceof DecimalVector) {
               // DecimalVectors do not transfer FieldType metadata when using
               // vector.getTransferPair. We need to explicitly create the new vector to transfer to
               // in order to keep the metadata.
@@ -402,7 +469,11 @@ class ArrowRowBuffer {
             }
           }
 
-          oldRowCount = this.rowCount;
+          if (isMergeTable) {
+            oldRowCount = this.rowCount - this.mergeTableTombstones.size();
+          } else {
+            oldRowCount = this.rowCount;
+          }
           oldBufferSize = this.bufferSize;
           oldRowSequencer = this.owningChannel.incrementAndGetRowSequencer();
           oldOffsetToken = this.owningChannel.getOffsetToken();
@@ -693,6 +764,57 @@ class ArrowRowBuffer {
     return inputColumnNameMap.keySet();
   }
 
+  private String concatMergeTableKey(Map<String, Object> row) {
+    if (this.mergeTablePrimaryKey == null) {
+      this.mergeTablePrimaryKey =
+          this.owningChannel.getConstraints().stream()
+              .filter(c -> c.getKind().equals(PRIMARY_KEY_CONSTRAINT))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new SFException(
+                          ErrorCode.INVALID_ROW, "Missing primary key constraint for merge table"));
+    }
+
+    Map<String, String> inputColumnNameMap =
+        row.keySet().stream().collect(Collectors.toMap(this::formatColumnName, c -> c));
+
+    List<String> keyValues =
+        Arrays.stream(this.mergeTablePrimaryKey.getColumns())
+            .map(c -> DataValidationUtil.getStringValue(row.get(inputColumnNameMap.get(c))))
+            .collect(Collectors.toList());
+    return String.join("::", keyValues);
+  }
+
+  private static class ConvertRowToArrowResponse {
+    private Optional<Integer> mergeTableTombstone;
+    private String mergeTableKey;
+    private float bufferSize;
+
+    public ConvertRowToArrowResponse(float bufferSize) {
+      this.bufferSize = bufferSize;
+    }
+
+    public ConvertRowToArrowResponse(
+        float bufferSize, Optional<Integer> mergeTableTombstone, String mergeTableKey) {
+      this.bufferSize = bufferSize;
+      this.mergeTableTombstone = mergeTableTombstone;
+      this.mergeTableKey = mergeTableKey;
+    }
+
+    public Optional<Integer> getMergeTableTombstone() {
+      return mergeTableTombstone;
+    }
+
+    public String getMergeTableKey() {
+      return mergeTableKey;
+    }
+
+    public float getBufferSize() {
+      return bufferSize;
+    }
+  }
+
   /**
    * Convert the input row to the correct Arrow format
    *
@@ -702,11 +824,12 @@ class ArrowRowBuffer {
    * @param statsMap column stats map
    * @return row size
    */
-  private float convertRowToArrow(
+  private ConvertRowToArrowResponse convertRowToArrow(
       Map<String, Object> row,
       VectorSchemaRoot sourceVectors,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap) {
+      Map<String, RowBufferStats> statsMap,
+      Map<String, Integer> mergeTableKeys) {
     // Verify all the input columns are valid
     Set<String> inputColumnNames = verifyInputColumns(row);
 
@@ -1011,7 +1134,18 @@ class ArrowRowBuffer {
           curRowIndex);
     }
 
-    return rowBufferSize;
+    if (this.isMergeTable) {
+      String concatKey = this.concatMergeTableKey(row);
+      Optional<Integer> tombstone = Optional.empty();
+      if (mergeTableKeys.keySet().contains(concatKey)) {
+        tombstone = Optional.of(mergeTableKeys.get(concatKey));
+        //        this.mergeTableTombstones.add(this.mergeTableKeys.get(concatKey));
+      }
+      //      this.mergeTableKeys.put(concatKey, curRowIndex);
+      return new ConvertRowToArrowResponse(rowBufferSize, tombstone, concatKey);
+    }
+
+    return new ConvertRowToArrowResponse(rowBufferSize);
   }
 
   /** Helper function to insert null value to a field vector */
