@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -70,36 +69,22 @@ class DataValidationUtil {
     }
 
     String output;
-
     try {
-      if (input.getClass().isArray()) {
-        if (input instanceof int[]) {
-          output = Arrays.toString((int[]) input);
-        } else if (input instanceof long[]) {
-          output = Arrays.toString((long[]) input);
-        } else if (input instanceof short[]) {
-          output = Arrays.toString((short[]) input);
-        } else if (input instanceof double[]) {
-          output = Arrays.toString((double[]) input);
-        } else if (input instanceof float[]) {
-          output = Arrays.toString((float[]) input);
-        } else if (input instanceof byte[]) {
-          output = Arrays.toString((byte[]) input);
-        } else if (input instanceof char[]) {
-          output = Arrays.toString((char[]) input);
-        } else if (input instanceof boolean[]) {
-          output = Arrays.toString((boolean[]) input);
-        } else if (input instanceof Object[]) {
-          output = Arrays.deepToString((Object[]) input);
-        } else {
-          throw new SFException(ErrorCode.INVALID_ROW, input, "Input array type is not supported.");
-        }
-      } else {
-        output = input.toString();
-      }
+      output = objectMapper.writeValueAsString(input);
     } catch (Exception e) {
       throw new SFException(
-          e, ErrorCode.INVALID_ROW, input, "Input column can't be convert to String.");
+          e,
+          ErrorCode.INVALID_ROW,
+          input.toString(),
+          "Input column can't be convert to Json string");
+    }
+
+    if (output.length() > MAX_STRING_LENGTH) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          input.toString(),
+          String.format(
+              "Array too large. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
     }
     return output;
   }

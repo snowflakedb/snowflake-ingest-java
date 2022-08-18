@@ -275,27 +275,31 @@ public class DataValidationUtilTest {
     }
 
     int[] intArray = new int[] {1, 2, 3};
-    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(intArray));
+    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(intArray));
+
+    String[] stringArray = new String[] {"a", "b", "c"};
+    Assert.assertEquals(
+        "[\"a\", \"b\", \"c\"]", DataValidationUtil.validateAndParseArray(stringArray));
 
     Object[] objectArray = new Object[] {1, 2, 3};
-    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(objectArray));
+    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(objectArray));
 
     Object[] ObjectArrayWithNull = new Object[] {1, null, 3};
     Assert.assertEquals(
-        "[1, null, 3]", DataValidationUtil.validateAndParseArray(ObjectArrayWithNull));
+        "[1,null,3]", DataValidationUtil.validateAndParseArray(ObjectArrayWithNull));
 
     Object[][] nestedArray = new Object[][] {{1, 2, 3}, null, {4, 5, 6}};
     Assert.assertEquals(
-        "[[1, 2, 3], null, [4, 5, 6]]", DataValidationUtil.validateAndParseArray(nestedArray));
+        "[[1,2,3],null,[4,5,6]]", DataValidationUtil.validateAndParseArray(nestedArray));
 
     List<Integer> intList = Arrays.asList(1, 2, 3);
-    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(intList));
+    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(intList));
 
     List<Object> objectList = Arrays.asList(1, 2, 3);
-    Assert.assertEquals("[1, 2, 3]", DataValidationUtil.validateAndParseArray(objectList));
+    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(objectList));
 
     List<Object> nestedList = Arrays.asList(Arrays.asList(1, 2, 3), 2, 3);
-    Assert.assertEquals("[[1, 2, 3], 2, 3]", DataValidationUtil.validateAndParseArray(nestedList));
+    Assert.assertEquals("[[1,2,3],2,3]", DataValidationUtil.validateAndParseArray(nestedList));
   }
 
   @Test
