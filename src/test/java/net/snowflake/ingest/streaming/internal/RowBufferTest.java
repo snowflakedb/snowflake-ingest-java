@@ -71,7 +71,7 @@ public class RowBufferTest {
     this.rowBufferOnErrorAbort = new ArrowRowBuffer(this.channelOnErrorAbort);
 
     ColumnMetadata colTinyIntCase = new ColumnMetadata();
-    colTinyIntCase.setName("colTinyInt");
+    colTinyIntCase.setName("\"colTinyInt\"");
     colTinyIntCase.setPhysicalType("SB1");
     colTinyIntCase.setNullable(true);
     colTinyIntCase.setLogicalType("FIXED");
@@ -784,7 +784,7 @@ public class RowBufferTest {
     ArrowRowBuffer innerBuffer = new ArrowRowBuffer(channel);
 
     ColumnMetadata colDoubleQuotes = new ColumnMetadata();
-    colDoubleQuotes.setName("colDoubleQuotes");
+    colDoubleQuotes.setName("\"colDoubleQuotes\"");
     colDoubleQuotes.setPhysicalType("SB16");
     colDoubleQuotes.setNullable(true);
     colDoubleQuotes.setLogicalType("FIXED");
@@ -889,7 +889,7 @@ public class RowBufferTest {
     InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row1), null);
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals((byte) 10, rowBuffer.vectorsRoot.getVector("colTinyInt").getObject(0));
+    Assert.assertEquals((byte) 10, rowBuffer.vectorsRoot.getVector("\"colTinyInt\"").getObject(0));
     Assert.assertEquals((byte) 1, rowBuffer.vectorsRoot.getVector("COLTINYINT").getObject(0));
     Assert.assertEquals((short) 2, rowBuffer.vectorsRoot.getVector("COLSMALLINT").getObject(0));
     Assert.assertEquals(3, rowBuffer.vectorsRoot.getVector("COLINT").getObject(0));
@@ -1158,11 +1158,11 @@ public class RowBufferTest {
     Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
 
     Assert.assertEquals(
-        BigInteger.valueOf(11), columnEpStats.get("colTinyInt").getCurrentMaxIntValue());
+        BigInteger.valueOf(11), columnEpStats.get("\"colTinyInt\"").getCurrentMaxIntValue());
     Assert.assertEquals(
-        BigInteger.valueOf(10), columnEpStats.get("colTinyInt").getCurrentMinIntValue());
-    Assert.assertEquals(0, columnEpStats.get("colTinyInt").getCurrentNullCount());
-    Assert.assertEquals(-1, columnEpStats.get("colTinyInt").getDistinctValues());
+        BigInteger.valueOf(10), columnEpStats.get("\"colTinyInt\"").getCurrentMinIntValue());
+    Assert.assertEquals(0, columnEpStats.get("\"colTinyInt\"").getCurrentNullCount());
+    Assert.assertEquals(-1, columnEpStats.get("\"colTinyInt\"").getDistinctValues());
 
     Assert.assertEquals(
         BigInteger.valueOf(1), columnEpStats.get("COLTINYINT").getCurrentMaxIntValue());
@@ -1483,6 +1483,30 @@ public class RowBufferTest {
         Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
       }
     }
+  }
+
+  @Test
+  public void testExtraColumnsCheck() {
+    ArrowRowBuffer innerBuffer = new ArrowRowBuffer(this.channelOnErrorContinue);
+
+    ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setName("COLBOOLEAN1");
+    colBoolean.setPhysicalType("SB1");
+    colBoolean.setNullable(false);
+    colBoolean.setLogicalType("BOOLEAN");
+    colBoolean.setScale(0);
+
+    innerBuffer.setupSchema(Collections.singletonList(colBoolean));
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLBOOLEAN1", true);
+    row.put("COLBOOLEAN2", true);
+    row.put("COLBOOLEAN3", true);
+
+    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    Assert.assertTrue(response.hasErrors());
+    Assert.assertEquals(
+        ErrorCode.INVALID_ROW.getMessageCode(),
+        response.getInsertErrors().get(0).getException().getVendorCode());
   }
 
   @Test
