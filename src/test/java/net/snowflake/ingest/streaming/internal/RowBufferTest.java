@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.ArrowRowBuffer.DECIMAL_BIT_WIDTH;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -33,11 +34,13 @@ public class RowBufferTest {
   private ArrowRowBuffer rowBufferOnErrorAbort;
   private SnowflakeStreamingIngestChannelInternal channelOnErrorAbort;
 
+  private SnowflakeStreamingIngestClientInternal client =
+      new SnowflakeStreamingIngestClientInternal("client");
+
   @Before
   public void setupRowBuffer() {
     // Create row buffer
-    SnowflakeStreamingIngestClientInternal client =
-        new SnowflakeStreamingIngestClientInternal("client");
+
     this.channelOnErrorContinue =
         new SnowflakeStreamingIngestChannelInternal(
             "channel",
@@ -47,7 +50,7 @@ public class RowBufferTest {
             "0",
             0L,
             0L,
-            client,
+            this.client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -63,7 +66,7 @@ public class RowBufferTest {
             "0",
             0L,
             0L,
-            client,
+            this.client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.ABORT,
@@ -130,6 +133,183 @@ public class RowBufferTest {
     this.rowBufferOnErrorAbort.setupSchema(
         Arrays.asList(
             colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar));
+  }
+
+  @Test
+  public void testVerifyInputColumns() {
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            this.client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+    ArrowRowBuffer buffer = new ArrowRowBuffer(channel);
+
+    ColumnMetadata nonNull = new ColumnMetadata();
+    nonNull.setName("COLCHAR");
+    nonNull.setPhysicalType("LOB");
+    nonNull.setNullable(false);
+    nonNull.setLogicalType("TEXT");
+    nonNull.setByteLength(14);
+    nonNull.setLength(11);
+    nonNull.setScale(0);
+    nonNull.setCollation("en-ci");
+
+    // Setup channel with empty constraints
+    channel.setupSchema(new ArrayList<>(), new ArrayList<>());
+    buffer.setupSchema(Arrays.asList(nonNull));
+    // Test nullable fields check
+    try {
+      buffer.verifyInputColumns(new HashMap<>());
+      Assert.fail("Expected error on null check");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+    try {
+      Map<String, Object> row = new HashMap<>();
+      row.put("COLCHAR", null);
+      buffer.verifyInputColumns(row);
+      Assert.fail("Expected error on null check");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLCHAR", "foo");
+    buffer.verifyInputColumns(row);
+
+    // check for extra column
+    try {
+      row = new HashMap<>();
+      row.put("FOO", null);
+      buffer.verifyInputColumns(row);
+      Assert.fail("Expected error on extra column check");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    // Check primary key constraints
+    channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            this.client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+    buffer = new ArrowRowBuffer(channel);
+
+    ColumnMetadata pkey = new ColumnMetadata();
+    pkey.setName("PKEY_COLUMN");
+    pkey.setPhysicalType("LOB");
+    pkey.setNullable(true); // This isn't really true, but allows us to check the pkey
+    pkey.setLogicalType("TEXT");
+    pkey.setByteLength(14);
+    pkey.setLength(11);
+    pkey.setScale(0);
+
+    ConstraintMetadata constraint = new ConstraintMetadata();
+    constraint.setName("PKEY");
+    String[] columns = new String[1];
+    columns[0] = "PKEY_COLUMN";
+    constraint.setColumns(columns);
+    constraint.setKind(PRIMARY_KEY_CONSTRAINT);
+
+    // Setup channel with primary key constraints
+    channel.setupSchema(Arrays.asList(pkey), Arrays.asList(constraint));
+    buffer.setupSchema(Arrays.asList(pkey));
+    // check missing pkey
+    try {
+      buffer.verifyInputColumns(new HashMap<>());
+      Assert.fail("Expected error on missing pkey");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    try {
+      row = new HashMap<>();
+      row.put("PKEY_COLUMN", null);
+      buffer.verifyInputColumns(row);
+      Assert.fail("Expected error on null pkey");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+    row = new HashMap<>();
+    row.put("PKEY_COLUMN", "foo");
+    buffer.verifyInputColumns(row);
+
+    // Check merge table action column
+    channel =
+        new SnowflakeStreamingIngestChannelInternal(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            this.client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            true);
+    buffer = new ArrowRowBuffer(channel);
+
+    ColumnMetadata action = new ColumnMetadata();
+    action.setName(MERGE_TABLE_ROW_ACTION_COLUMN);
+    action.setPhysicalType("LOB");
+    action.setNullable(true); // This isn't really true, but allows us to check the pkey
+    action.setLogicalType("TEXT");
+    action.setByteLength(14);
+    action.setLength(11);
+    action.setScale(0);
+    channel.setupSchema(Arrays.asList(action), Arrays.asList());
+    buffer.setupSchema(Arrays.asList(action));
+
+    // check missing column
+    try {
+      buffer.verifyInputColumns(new HashMap<>());
+      Assert.fail("Expected error on missing action");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    // check null value
+    try {
+      row = new HashMap<>();
+      row.put(MERGE_TABLE_ROW_ACTION_COLUMN, null);
+      buffer.verifyInputColumns(row);
+      Assert.fail("Expected error on null action");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    // check invalid value
+    try {
+      row = new HashMap<>();
+      row.put(MERGE_TABLE_ROW_ACTION_COLUMN, "UPDATE");
+      buffer.verifyInputColumns(row);
+      Assert.fail("Expected error on invalid action");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    row = new HashMap<>();
+    row.put(MERGE_TABLE_ROW_ACTION_COLUMN, MERGE_TABLE_UPSERT);
+    buffer.verifyInputColumns(row);
   }
 
   @Test

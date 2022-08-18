@@ -51,6 +51,16 @@ public class Constants {
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
+  public static final String MERGE_TABLE_ROW_ACTION_COLUMN = "METADATA$MERGE_TABLE_ROW_ACTION";
+
+  public static final String MERGE_TABLE_UPSERT = "UPSERT";
+
+  public static final String MERGE_TABLE_DELETE = "DELETE";
+
+  public static final String MERGE_TABLE_ROW_ACTION_DEFAULT = MERGE_TABLE_UPSERT;
+
+  // Constraints
+  public static final String PRIMARY_KEY_CONSTRAINT = "PRIMARY_KEY";
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";

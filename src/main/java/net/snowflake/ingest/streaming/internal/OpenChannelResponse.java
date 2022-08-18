@@ -22,6 +22,8 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private String encryptionKey;
   private Long encryptionKeyId;
 
+  private List<ConstraintMetadata> constraints;
+
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
     this.statusCode = statusCode;
@@ -129,5 +131,14 @@ class OpenChannelResponse extends StreamingIngestResponse {
 
   Long getEncryptionKeyId() {
     return this.encryptionKeyId;
+  }
+
+  @JsonProperty("constraints")
+  void setConstraints(List<ConstraintMetadata> constraints) {
+    this.constraints = constraints;
+  }
+
+  List<ConstraintMetadata> getConstraints() {
+    return this.constraints;
   }
 }

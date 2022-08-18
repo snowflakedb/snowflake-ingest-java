@@ -66,6 +66,8 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
   // ON_ERROR option for this channel
   private final OpenChannelRequest.OnErrorOption onErrorOption;
 
+  private List<ConstraintMetadata> constraints;
+
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
    *
@@ -242,6 +244,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     return this.arrowBuffer.flush();
   }
 
+  public List<ConstraintMetadata> getConstraints() {
+    return this.constraints;
+  }
+
   /** @return a boolean to indicate whether the channel is valid or not */
   @Override
   public boolean isValid() {
@@ -347,9 +353,10 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    * @param columns
    */
   // TODO: need to verify with the table schema when supporting sub-columns
-  void setupSchema(List<ColumnMetadata> columns) {
+  void setupSchema(List<ColumnMetadata> columns, List<ConstraintMetadata> constraints) {
     logger.logDebug("Setup schema for channel={}, schema={}", getFullyQualifiedName(), columns);
     this.arrowBuffer.setupSchema(columns);
+    this.constraints = constraints;
   }
 
   /**

@@ -493,7 +493,7 @@ public class SnowflakeStreamingIngestChannelTest {
     col.setScale(0);
 
     // Setup column fields and vectors
-    channel.setupSchema(Collections.singletonList(col));
+    channel.setupSchema(Collections.singletonList(col), new ArrayList<>());
 
     Map<String, Object> row = new HashMap<>();
     row.put("col", 1);

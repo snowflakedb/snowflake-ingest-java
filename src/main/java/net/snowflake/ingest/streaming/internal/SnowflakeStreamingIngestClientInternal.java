@@ -322,7 +322,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
               .build();
 
       // Setup the row buffer schema
-      channel.setupSchema(response.getTableColumns());
+      channel.setupSchema(response.getTableColumns(), response.getConstraints());
 
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);

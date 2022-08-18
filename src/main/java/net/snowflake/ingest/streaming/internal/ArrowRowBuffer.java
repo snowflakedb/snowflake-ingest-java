@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.*;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -450,7 +452,12 @@ class ArrowRowBuffer {
     Map<String, String> metadata = new HashMap<>();
     metadata.put(COLUMN_LOGICAL_TYPE, column.getLogicalType());
     metadata.put(COLUMN_PHYSICAL_TYPE, column.getPhysicalType());
-    metadata.put(COLUMN_NULLABLE, String.valueOf(column.getNullable()));
+
+    if (column.getName().equals(MERGE_TABLE_ROW_ACTION_COLUMN)) {
+      metadata.put(COLUMN_NULLABLE, String.valueOf(false));
+    } else {
+      metadata.put(COLUMN_NULLABLE, String.valueOf(column.getNullable()));
+    }
 
     ColumnPhysicalType physicalType;
     ColumnLogicalType logicalType;
@@ -627,12 +634,13 @@ class ArrowRowBuffer {
    * @param row the input row
    * @return the set of input column names
    */
-  private Set<String> verifyInputColumns(Map<String, Object> row) {
-    Set<String> inputColumns =
-        row.keySet().stream().map(this::formatColumnName).collect(Collectors.toSet());
+  Set<String> verifyInputColumns(Map<String, Object> row) {
+    Map<String, String> inputColumnNameMap =
+        row.keySet().stream().collect(Collectors.toMap(this::formatColumnName, c -> c));
 
     for (String columnName : this.nonNullableFieldNames) {
-      if (!inputColumns.contains(columnName)) {
+      if (!inputColumnNameMap.keySet().contains(columnName)
+          || row.get(inputColumnNameMap.get(columnName)) == null) {
         throw new SFException(
             ErrorCode.INVALID_ROW,
             "Missing column: " + columnName,
@@ -640,7 +648,7 @@ class ArrowRowBuffer {
       }
     }
 
-    for (String columnName : inputColumns) {
+    for (String columnName : inputColumnNameMap.keySet()) {
       Field field = this.fields.get(columnName);
       if (field == null) {
         throw new SFException(
@@ -650,7 +658,39 @@ class ArrowRowBuffer {
       }
     }
 
-    return inputColumns;
+    List<ConstraintMetadata> constraints = this.owningChannel.getConstraints();
+    for (ConstraintMetadata constraint : constraints) {
+      switch (constraint.getKind()) {
+        case PRIMARY_KEY_CONSTRAINT:
+          for (String columnName : constraint.getColumns()) {
+            if (row.get(inputColumnNameMap.get(columnName)) == null) {
+              throw new SFException(ErrorCode.INVALID_ROW, "Row violates PRIMARY KEY constraint");
+            }
+          }
+          break;
+      }
+    }
+
+    if (this.fields.keySet().contains(MERGE_TABLE_ROW_ACTION_COLUMN)) {
+      if (row.get(MERGE_TABLE_ROW_ACTION_COLUMN) == null) {
+        throw new SFException(
+            ErrorCode.INVALID_ROW,
+            "Column " + MERGE_TABLE_ROW_ACTION_COLUMN + " must be specified for merge table");
+      }
+
+      if (!row.get(MERGE_TABLE_ROW_ACTION_COLUMN).equals(MERGE_TABLE_UPSERT)
+          && !row.get(MERGE_TABLE_ROW_ACTION_COLUMN).equals(MERGE_TABLE_DELETE)) {
+        throw new SFException(
+            ErrorCode.INVALID_ROW,
+            "Column "
+                + MERGE_TABLE_ROW_ACTION_COLUMN
+                + " has invalid value "
+                + row.get(MERGE_TABLE_ROW_ACTION_COLUMN),
+            "Valid options are " + MERGE_TABLE_UPSERT + ", " + MERGE_TABLE_DELETE);
+      }
+    }
+
+    return inputColumnNameMap.keySet();
   }
 
   /**
