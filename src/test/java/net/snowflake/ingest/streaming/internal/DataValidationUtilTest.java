@@ -279,7 +279,7 @@ public class DataValidationUtilTest {
 
     String[] stringArray = new String[] {"a", "b", "c"};
     Assert.assertEquals(
-        "[\"a\", \"b\", \"c\"]", DataValidationUtil.validateAndParseArray(stringArray));
+        "[\"a\",\"b\",\"c\"]", DataValidationUtil.validateAndParseArray(stringArray));
 
     Object[] objectArray = new Object[] {1, 2, 3};
     Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(objectArray));

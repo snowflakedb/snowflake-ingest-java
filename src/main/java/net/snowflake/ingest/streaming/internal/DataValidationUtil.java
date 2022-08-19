@@ -76,7 +76,7 @@ class DataValidationUtil {
           e,
           ErrorCode.INVALID_ROW,
           input.toString(),
-          "Input column can't be convert to Json string");
+          "Input column can't be convert to a valid string");
     }
 
     if (output.length() > MAX_STRING_LENGTH) {
