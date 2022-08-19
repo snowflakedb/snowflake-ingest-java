@@ -24,8 +24,8 @@ import net.snowflake.ingest.utils.SFException;
 
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
-  static final int MAX_STRING_LENGTH = 16777216;
-  static final int MAX_BINARY_LENGTH = MAX_STRING_LENGTH / 2;
+  static final int MAX_STRING_LENGTH = 16 * 1024 * 1024;
+  static final int MAX_BINARY_LENGTH = 8 * 1024 * 1024;
   static final BigInteger MAX_BIGINTEGER = BigInteger.valueOf(10).pow(38);
   static final BigInteger MIN_BIGINTEGER =
       BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38));

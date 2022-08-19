@@ -617,7 +617,7 @@ class ArrowRowBuffer {
   private String formatColumnName(String columnName) {
     Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
     return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
-        ? columnName.substring(1, columnName.length() - 1)
+        ? columnName
         : columnName.toUpperCase();
   }
 
@@ -628,29 +628,40 @@ class ArrowRowBuffer {
    * @return the set of input column names
    */
   private Set<String> verifyInputColumns(Map<String, Object> row) {
-    Set<String> inputColumns =
-        row.keySet().stream().map(this::formatColumnName).collect(Collectors.toSet());
+    Map<String, String> inputColNamesMap =
+        row.keySet().stream().collect(Collectors.toMap(this::formatColumnName, value -> value));
 
+    // Check for extra columns in the row
+    List<String> extraCols = new ArrayList<>();
+    for (String columnName : inputColNamesMap.keySet()) {
+      if (!this.fields.containsKey(columnName)) {
+        extraCols.add(inputColNamesMap.get(columnName));
+      }
+    }
+
+    if (!extraCols.isEmpty()) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          "Extra columns: " + extraCols,
+          "Columns not present in the table shouldn't be specified.");
+    }
+
+    // Check for missing columns in the row
+    List<String> missingCols = new ArrayList<>();
     for (String columnName : this.nonNullableFieldNames) {
-      if (!inputColumns.contains(columnName)) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            "Missing column: " + columnName,
-            "Values for all non-nullable columns must be specified.");
+      if (!inputColNamesMap.containsKey(columnName)) {
+        missingCols.add(columnName);
       }
     }
 
-    for (String columnName : inputColumns) {
-      Field field = this.fields.get(columnName);
-      if (field == null) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            "Extra column: " + columnName,
-            "Columns not present in the table shouldn't be specified.");
-      }
+    if (!missingCols.isEmpty()) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          "Missing columns: " + missingCols,
+          "Values for all non-nullable columns must be specified.");
     }
 
-    return inputColumns;
+    return inputColNamesMap.keySet();
   }
 
   /**
