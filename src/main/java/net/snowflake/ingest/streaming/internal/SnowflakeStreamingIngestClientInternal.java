@@ -598,6 +598,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       if (this.requestBuilder != null) {
         this.requestBuilder.closeResources();
       }
+      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
       Utils.closeAllocator(this.allocator);
     }
   }
