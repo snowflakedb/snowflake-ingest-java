@@ -956,7 +956,12 @@ class ArrowRowBuffer {
               break;
             }
           case BINARY:
-            byte[] bytes = DataValidationUtil.validateAndParseBinary(value);
+            String maxLengthString = field.getMetadata().get(COLUMN_BYTE_LENGTH);
+            byte[] bytes =
+                DataValidationUtil.validateAndParseBinary(
+                    value,
+                    Optional.ofNullable(maxLengthString)
+                        .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             stats.addStrValue(new String(bytes, StandardCharsets.UTF_8));
             rowBufferSize += bytes.length;
