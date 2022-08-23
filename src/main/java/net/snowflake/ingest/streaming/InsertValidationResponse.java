@@ -75,6 +75,11 @@ public class InsertValidationResponse {
       return this.exception.getMessage();
     }
 
+    /**
+     * Set the insert exception
+     *
+     * @param exception exception encountered during the insert
+     */
     public void setException(SFException exception) {
       this.exception = exception;
     }
@@ -92,18 +97,25 @@ public class InsertValidationResponse {
       return rowIndex;
     }
 
+    /** Set the extra column names in the input row compared with the table schema */
     public void setExtraColNames(List<String> extraColNames) {
       this.extraColNames = extraColNames;
     }
 
+    /** Get the list of extra column names in the input row compared with the table schema */
     public List<String> getExtraColNames() {
       return extraColNames;
     }
 
+    /** Set the missing non-nullable column names in the input row compared with the table schema */
     public void setMissingNotNullColNames(List<String> missingNotNullColNames) {
       this.missingNotNullColNames = missingNotNullColNames;
     }
 
+    /**
+     * Get the list of missing non-nullable column names in the input row compared with the table
+     * schema
+     */
     public List<String> getMissingNotNullColNames() {
       return missingNotNullColNames;
     }
