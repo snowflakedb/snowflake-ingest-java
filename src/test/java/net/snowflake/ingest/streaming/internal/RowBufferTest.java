@@ -1473,9 +1473,11 @@ public class RowBufferTest {
     if (channel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
       response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
       Assert.assertTrue(response.hasErrors());
+      InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(),
-          response.getInsertErrors().get(0).getException().getVendorCode());
+          ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
+      Assert.assertEquals(
+          Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row2), "2");
@@ -1504,9 +1506,10 @@ public class RowBufferTest {
 
     InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertTrue(response.hasErrors());
+    InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(),
-        response.getInsertErrors().get(0).getException().getVendorCode());
+        ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
+    Assert.assertEquals(Arrays.asList("COLBOOLEAN3", "COLBOOLEAN2"), error.getExtraColNames());
   }
 
   @Test

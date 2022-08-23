@@ -47,16 +47,21 @@ public class InsertValidationResponse {
   /** Wraps the row content and exception when there is a failure */
   public static class InsertError {
     private final Object rowContent;
-    private final SFException exception;
+    private SFException exception;
 
     // Used to map this error row with original row in the insertRows Iterable.
     // i.e the rowIndex can be index 9 in the list of 10 rows.
     // index is 0 based so as to match with incoming Iterable
     private final long rowIndex;
 
-    public InsertError(Object row, SFException exception, long rowIndex) {
+    // List of extra column names in the input row compared with the table schema
+    private List<String> extraColNames;
+
+    // List of missing non-nullable column names in the input row compared with the table schema
+    private List<String> missingNotNullColNames;
+
+    public InsertError(Object row, long rowIndex) {
       this.rowContent = row;
-      this.exception = exception;
       this.rowIndex = rowIndex;
     }
 
@@ -70,6 +75,10 @@ public class InsertValidationResponse {
       return this.exception.getMessage();
     }
 
+    public void setException(SFException exception) {
+      this.exception = exception;
+    }
+
     /** Get the exception */
     public SFException getException() {
       return this.exception;
@@ -81,6 +90,22 @@ public class InsertValidationResponse {
      */
     public long getRowIndex() {
       return rowIndex;
+    }
+
+    public void setExtraColNames(List<String> extraColNames) {
+      this.extraColNames = extraColNames;
+    }
+
+    public List<String> getExtraColNames() {
+      return extraColNames;
+    }
+
+    public void setMissingNotNullColNames(List<String> missingNotNullColNames) {
+      this.missingNotNullColNames = missingNotNullColNames;
+    }
+
+    public List<String> getMissingNotNullColNames() {
+      return missingNotNullColNames;
     }
   }
 }
