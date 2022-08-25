@@ -509,7 +509,7 @@ public class SimpleIngestIT {
       assertEquals(offsetToken, clientStatusResponse.getOffsetToken());
     } catch (IngestResponseException ex) {
       Assert.fail(
-          "The insertFiles API should be successful second time after updaing clientSequencer");
+          "The insertFiles API should be successful second time after updating clientSequencer");
     }
   }
 
