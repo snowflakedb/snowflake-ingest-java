@@ -79,6 +79,7 @@ class DataValidationUtil {
           "Input column can't be convert to a valid string");
     }
 
+    // Throw an exception if the size is too large
     if (output.length() > MAX_STRING_LENGTH) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
