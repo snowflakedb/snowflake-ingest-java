@@ -286,17 +286,22 @@ class ArrowRowBuffer {
         // Used to map incoming row(nth row) to InsertError(for nth row) in response
         long rowIndex = 0;
         for (Map<String, Object> row : rows) {
+          InsertValidationResponse.InsertError error =
+              new InsertValidationResponse.InsertError(row, rowIndex);
           try {
-            rowSize += convertRowToArrow(row, this.vectorsRoot, this.rowCount, this.statsMap);
+            Set<String> inputColumnNames = verifyInputColumns(row, error);
+            rowSize +=
+                convertRowToArrow(
+                    row, this.vectorsRoot, this.rowCount, this.statsMap, inputColumnNames);
             this.rowCount++;
             this.bufferSize += rowSize;
           } catch (SFException e) {
-            response.addError(new InsertValidationResponse.InsertError(row, e, rowIndex));
+            error.setException(e);
+            response.addError(error);
           } catch (Throwable e) {
             logger.logWarn("Unexpected error happens during insertRows: {}", e.getMessage());
-            response.addError(
-                new InsertValidationResponse.InsertError(
-                    row, new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()), rowIndex));
+            error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
+            response.addError(error);
           }
           rowIndex++;
           if (this.rowCount == Integer.MAX_VALUE) {
@@ -308,8 +313,10 @@ class ArrowRowBuffer {
         float tempRowSize = 0F;
         int tempRowCount = 0;
         for (Map<String, Object> row : rows) {
+          Set<String> inputColumnNames = verifyInputColumns(row, null);
           tempRowSize +=
-              convertRowToArrow(row, this.tempVectorsRoot, tempRowCount, this.tempStatsMap);
+              convertRowToArrow(
+                  row, this.tempVectorsRoot, tempRowCount, this.tempStatsMap, inputColumnNames);
           tempRowCount++;
         }
 
@@ -617,7 +624,7 @@ class ArrowRowBuffer {
   private String formatColumnName(String columnName) {
     Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
     return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
-        ? columnName.substring(1, columnName.length() - 1)
+        ? columnName
         : columnName.toUpperCase();
   }
 
@@ -625,32 +632,51 @@ class ArrowRowBuffer {
    * Verify that the input row columns are all valid
    *
    * @param row the input row
+   * @param error the insert error that we return to the customer
    * @return the set of input column names
    */
-  private Set<String> verifyInputColumns(Map<String, Object> row) {
-    Set<String> inputColumns =
-        row.keySet().stream().map(this::formatColumnName).collect(Collectors.toSet());
+  private Set<String> verifyInputColumns(
+      Map<String, Object> row, InsertValidationResponse.InsertError error) {
+    Map<String, String> inputColNamesMap =
+        row.keySet().stream().collect(Collectors.toMap(this::formatColumnName, value -> value));
 
+    // Check for extra columns in the row
+    List<String> extraCols = new ArrayList<>();
+    for (String columnName : inputColNamesMap.keySet()) {
+      if (!this.fields.containsKey(columnName)) {
+        extraCols.add(inputColNamesMap.get(columnName));
+      }
+    }
+
+    if (!extraCols.isEmpty()) {
+      if (error != null) {
+        error.setExtraColNames(extraCols);
+      }
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          "Extra columns: " + extraCols,
+          "Columns not present in the table shouldn't be specified.");
+    }
+
+    // Check for missing columns in the row
+    List<String> missingCols = new ArrayList<>();
     for (String columnName : this.nonNullableFieldNames) {
-      if (!inputColumns.contains(columnName)) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            "Missing column: " + columnName,
-            "Values for all non-nullable columns must be specified.");
+      if (!inputColNamesMap.containsKey(columnName)) {
+        missingCols.add(columnName);
       }
     }
 
-    for (String columnName : inputColumns) {
-      Field field = this.fields.get(columnName);
-      if (field == null) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            "Extra column: " + columnName,
-            "Columns not present in the table shouldn't be specified.");
+    if (!missingCols.isEmpty()) {
+      if (error != null) {
+        error.setMissingNotNullColNames(missingCols);
       }
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          "Missing columns: " + missingCols,
+          "Values for all non-nullable columns must be specified.");
     }
 
-    return inputColumns;
+    return inputColNamesMap.keySet();
   }
 
   /**
@@ -660,16 +686,15 @@ class ArrowRowBuffer {
    * @param sourceVectors vectors (buffers) that hold the row
    * @param curRowIndex current row index to use
    * @param statsMap column stats map
+   * @param inputColumnNames list of input column names after formatting
    * @return row size
    */
   private float convertRowToArrow(
       Map<String, Object> row,
       VectorSchemaRoot sourceVectors,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap) {
-    // Verify all the input columns are valid
-    Set<String> inputColumnNames = verifyInputColumns(row);
-
+      Map<String, RowBufferStats> statsMap,
+      Set<String> inputColumnNames) {
     // Insert values to the corresponding arrow buffers
     float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
@@ -945,7 +970,12 @@ class ArrowRowBuffer {
               break;
             }
           case BINARY:
-            byte[] bytes = DataValidationUtil.validateAndParseBinary(value);
+            String maxLengthString = field.getMetadata().get(COLUMN_BYTE_LENGTH);
+            byte[] bytes =
+                DataValidationUtil.validateAndParseBinary(
+                    value,
+                    Optional.ofNullable(maxLengthString)
+                        .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             stats.addStrValue(new String(bytes, StandardCharsets.UTF_8));
             rowBufferSize += bytes.length;
