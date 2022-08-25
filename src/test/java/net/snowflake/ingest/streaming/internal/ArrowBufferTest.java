@@ -66,7 +66,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.TINYINT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB1");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -87,7 +87,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.SMALLINT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB2");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -108,7 +108,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.INT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB4");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -128,7 +128,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIGINT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB8");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -151,7 +151,7 @@ public class ArrowBufferTest {
     ArrowType expectedType =
         new ArrowType.Decimal(testCol.getPrecision(), testCol.getScale(), DECIMAL_BIT_WIDTH);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), expectedType);
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB16");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -171,7 +171,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.VARCHAR.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "LOB");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -191,7 +191,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIGINT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB8");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -211,7 +211,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB16");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -235,7 +235,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB8");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -259,7 +259,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.STRUCT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB16");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -285,7 +285,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.DATEDAY.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB8");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -305,7 +305,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.INT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB4");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -325,7 +325,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIGINT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB8");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -345,7 +345,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.BIT.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "BINARY");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");
@@ -365,7 +365,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    Assert.assertEquals("testCol", result.getName());
+    Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), Types.MinorType.FLOAT8.getType());
     Assert.assertEquals(result.getFieldType().getMetadata().get("physicalType"), "SB16");
     Assert.assertEquals(result.getFieldType().getMetadata().get("scale"), "0");

@@ -538,7 +538,7 @@ public class RowBufferTest {
     InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row1), null);
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals((byte) 10, rowBuffer.getVectorValueAt("\"colTinyInt\"", 0));
+    Assert.assertEquals((byte) 10, rowBuffer.getVectorValueAt("colTinyInt", 0));
     Assert.assertEquals((byte) 1, rowBuffer.getVectorValueAt("COLTINYINT", 0));
     Assert.assertEquals((short) 2, rowBuffer.getVectorValueAt("COLSMALLINT", 0));
     Assert.assertEquals(3, rowBuffer.getVectorValueAt("COLINT", 0));

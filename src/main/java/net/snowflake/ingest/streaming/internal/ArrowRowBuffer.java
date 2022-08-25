@@ -338,7 +338,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // Create the corresponding column field base on the column data type
     fieldType = new FieldType(column.getNullable(), arrowType, null, metadata);
-    return new Field(column.getName(), fieldType, children);
+    String columnName = LiteralQuoteUtils.unquoteColumnName(column.getName());
+    return new Field(columnName, fieldType, children);
   }
 
   @Override
@@ -442,7 +443,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
-      String columnName = formatColumnName(entry.getKey());
+      String columnName = LiteralQuoteUtils.formatColumnName(entry.getKey());
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
