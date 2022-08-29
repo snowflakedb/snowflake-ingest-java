@@ -421,15 +421,30 @@ class ArrowRowBuffer {
                   switch (vector.getField().getFieldType().getType().getTypeID()) {
                     case FloatingPoint:
                       stats.addRealValue(reader.readDouble());
+                      break;
                     case Bool:
+                      stats.addIntValue(
+                          BigInteger.valueOf(
+                              DataValidationUtil.validateAndParseBoolean(reader.readBoolean())));
+                      break;
                     case Decimal:
-                    case Int:
-                    case Struct: // timestamps
                       stats.addIntValue(reader.readBigDecimal().toBigInteger());
                       break;
+                    case Int:
+                      if (vector instanceof BigIntVector) {
+                        stats.addIntValue(BigInteger.valueOf(reader.readLong()));
+                      } else {
+                        stats.addIntValue(BigInteger.valueOf(reader.readInteger()));
+                      }
+                      break;
+                    case Struct: // timestamps
+                      // TODO support timestamps
+                      throw new SFException(
+                          ErrorCode.INTERNAL_ERROR, "Timestamps not supported for merge tables");
                     case Binary:
                     case LargeBinary:
                     case FixedSizeBinary:
+                      stats.addIntValue(reader.readBigDecimal().toBigInteger());
                       break;
                     case Utf8:
                     case LargeUtf8:

@@ -1,8 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
-import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
-import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -76,15 +74,83 @@ public class StreamingIngestIT {
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }
+    Map<String, Object> parameterOverrides = new HashMap<>();
+    parameterOverrides.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 1000000);
     client =
         (SnowflakeStreamingIngestClientInternal)
-            SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
+            SnowflakeStreamingIngestClientFactory.builder("client1")
+                .setProperties(prop)
+                .setParameterOverrides(parameterOverrides)
+                .build();
   }
 
   @After
   public void afterAll() throws Exception {
     client.close();
     jdbcConnection.createStatement().execute(String.format("drop database %s", TEST_DB));
+  }
+
+  @Test
+  public void testMergeTableIngest() throws Exception {
+    String mergeTable = "merge_table";
+    jdbcConnection
+        .createStatement()
+        .execute(String.format("create or replace table %s (k1 int, v1 int);", mergeTable));
+
+    jdbcConnection
+        .createStatement()
+        .execute(String.format("select system$set_merge_table('%s', 'K1', true);", mergeTable));
+
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(TEST_DB)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(mergeTable)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+    for (int val = 0; val < 10; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("k1", val % 3);
+      row.put("v1", val);
+      row.put(MERGE_TABLE_ROW_ACTION_COLUMN, MERGE_TABLE_UPSERT);
+      verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(1)));
+    }
+
+    // Close the channel after insertion
+    channel1.close().get();
+
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("9")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, mergeTable));
+        result.next();
+        Assert.assertEquals(10, result.getLong(1));
+
+        ResultSet result2 =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select * from %s.%s.%s order by k1 limit 2",
+                        TEST_DB, TEST_SCHEMA, mergeTable));
+        result2.next();
+        Assert.assertEquals("0", result2.getString(1));
+        result2.next();
+        Assert.assertEquals("1", result2.getString(1));
+
+        return;
+      }
+      Thread.sleep(500);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
   }
 
   @Test
@@ -375,6 +441,11 @@ public class StreamingIngestIT {
                     + " TIMESTAMP_TZ(3), tbig TIME(9), tntzbig TIMESTAMP_NTZ(9), ttzbig"
                     + " TIMESTAMP_TZ(9) );",
                 timeTableName));
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format("select system$set_merge_table('%s', 'TSMALL', true);", timeTableName));
+
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_TIME")
             .setDBName(TEST_DB)
@@ -393,6 +464,8 @@ public class StreamingIngestIT {
     row.put("tbig", "09:00:00.12345678");
     row.put("tntzsmall", "1609462800.123");
     row.put("tntzbig", "1609462800.12345");
+    row.put(MERGE_TABLE_ROW_ACTION_COLUMN, MERGE_TABLE_UPSERT);
+
     verifyInsertValidationResponse(channel1.insertRow(row, null));
     row.put("ttzsmall", "2021-01-01 10:00:00.123 +0700");
     row.put("ttzbig", "2021-01-01 19:00:00.12345678 -0300");
@@ -400,6 +473,8 @@ public class StreamingIngestIT {
     row.put("tbig", "10:00:00.12345678");
     row.put("tntzsmall", "1709462800.123");
     row.put("tntzbig", "1709462800.12345");
+    row.put(MERGE_TABLE_ROW_ACTION_COLUMN, MERGE_TABLE_UPSERT);
+
     verifyInsertValidationResponse(channel1.insertRow(row, null));
     row.put("ttzsmall", "2021-01-01 05:00:00 +0100");
     row.put("ttzbig", "2021-01-01 23:00:00.12345678 -0300");
@@ -407,6 +482,8 @@ public class StreamingIngestIT {
     row.put("tbig", "11:00:00.12345678");
     row.put("tntzsmall", "1809462800.123");
     row.put("tntzbig", "2031-01-01 09:00:00.12345678");
+    row.put(MERGE_TABLE_ROW_ACTION_COLUMN, MERGE_TABLE_UPSERT);
+
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     // Close the channel after insertion
