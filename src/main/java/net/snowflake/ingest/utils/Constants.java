@@ -32,7 +32,7 @@ public class Constants {
       7L; // Don't change, should match server side
   public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC = 5;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 12;
-  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
+  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 60;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 512000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 32000000L;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;

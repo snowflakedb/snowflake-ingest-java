@@ -122,7 +122,8 @@ class BlobBuilder {
     if (arrowBatchWriteMode == Constants.ArrowBatchWriteMode.STREAM) {
       // Stream write mode does not support column level compression.
       // Compress the chunk data and pad it for encryption.
-      return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
+      // return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
+      return new Pair<>(chunkData.toByteArray(), chunkData.size());
     } else {
       int actualSize = chunkData.size();
       int paddingSize = blockSizeToAlignTo - actualSize % blockSizeToAlignTo;

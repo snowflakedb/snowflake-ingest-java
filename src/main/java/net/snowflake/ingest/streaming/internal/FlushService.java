@@ -32,6 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.CRC32;
@@ -302,7 +303,7 @@ class FlushService {
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
     int buildUploadThreadCount =
         Math.min(
-            Runtime.getRuntime().availableProcessors() * (1 + CPU_IO_TIME_RATIO), MAX_THREAD_COUNT);
+            Runtime.getRuntime().availableProcessors() * (2 + CPU_IO_TIME_RATIO), MAX_THREAD_COUNT);
     this.buildUploadWorkers =
         Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
 
@@ -386,6 +387,20 @@ class FlushService {
                       }
                     },
                     this.buildUploadWorkers)));
+        logger.logInfo(
+            "buildUpload task added for client={}, blob={}", this.owningClient.getName(), filePath);
+        System.out.println(
+            "11111111111111active count "
+                + ((ThreadPoolExecutor) this.buildUploadWorkers).getActiveCount());
+        System.out.println(
+            "11111111111111task count "
+                + ((ThreadPoolExecutor) this.buildUploadWorkers).getTaskCount());
+        System.out.println(
+            "11111111111111queue size "
+                + ((ThreadPoolExecutor) this.buildUploadWorkers).getQueue().size());
+        System.out.println(
+            "11111111111111pool size "
+                + ((ThreadPoolExecutor) this.buildUploadWorkers).getPoolSize());
       }
     }
 
@@ -703,5 +718,11 @@ class FlushService {
   /** Get the server generated unique prefix for this client */
   String getClientPrefix() {
     return this.targetStage.getClientPrefix();
+  }
+
+  boolean throttleDueToLongQueueSize() {
+    ThreadPoolExecutor buildAndUpload = (ThreadPoolExecutor) this.buildUploadWorkers;
+    int poolSize = buildAndUpload.getPoolSize();
+    return true;
   }
 }

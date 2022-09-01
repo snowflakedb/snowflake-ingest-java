@@ -8,6 +8,9 @@ import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COU
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
+import io.netty.util.internal.PlatformDependent;
+import java.lang.management.BufferPoolMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +23,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 
@@ -438,38 +442,50 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
    * <li>system free_memory/total_memory < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE
    */
   void throttleInsertIfNeeded(Runtime runtime) {
+    int retry = 0;
+    long insertThrottleIntervalInMs =
+        this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
+    while ((hasLowRuntimeMemory(runtime) || hasLowDirectMemory())
+        && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
+      try {
+        logger.logWarn(
+            "InsertRows is throttled due to memory pressure, client={}, channel={}.",
+            this.owningClient.getName(),
+            getFullyQualifiedName());
+        Utils.showMemory();
+        // Tell GC that we need help
+        runtime.gc();
+        Thread.sleep(insertThrottleIntervalInMs);
+        retry++;
+      } catch (InterruptedException e) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
+      }
+    }
+  }
+
+  /** Check whether we need to throttle the insert API under low runtime memory */
+  private boolean hasLowRuntimeMemory(Runtime runtime) {
     int insertThrottleThresholdInPercentage =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
-    if (runtime.freeMemory() * 100 / runtime.totalMemory() < insertThrottleThresholdInPercentage) {
-      long oldTotalMem = runtime.totalMemory();
-      long oldFreeMem = runtime.freeMemory();
-      int retry = 0;
+    return runtime.freeMemory() * 100 / runtime.totalMemory() < insertThrottleThresholdInPercentage;
+  }
 
-      long insertThrottleIntervalInMs =
-          this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
-      while (runtime.freeMemory() * 100 / runtime.totalMemory()
-              < insertThrottleThresholdInPercentage
-          && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
-        try {
-          Thread.sleep(insertThrottleIntervalInMs);
-          retry++;
-        } catch (InterruptedException e) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
-        }
-      }
-
-      logger.logWarn(
-          "InsertRows throttled due to JVM memory pressure, channel={}, timeInMs={}, max memory={},"
-              + " old total memory={}, old free memory={}, new total memory={}, new free"
-              + " memory={}.",
-          getFullyQualifiedName(),
-          retry * insertThrottleIntervalInMs,
-          runtime.maxMemory(),
-          oldTotalMem,
-          oldFreeMem,
-          runtime.totalMemory(),
-          runtime.freeMemory());
-    }
+  /** Check whether we need to throttle the insert API under low direct memory */
+  private boolean hasLowDirectMemory() {
+    int insertThrottleThresholdInPercentage =
+        this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
+    long maxDirectMem = PlatformDependent.maxDirectMemory();
+    long usedDirectMem =
+        ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class).stream()
+            .filter(b -> b.getName().equals("direct"))
+            .map(BufferPoolMXBean::getMemoryUsed)
+            .findAny()
+            .orElseThrow(
+                () ->
+                    new SFException(
+                        ErrorCode.INTERNAL_ERROR, "Cannot read direct buffer pool memory info"));
+    return (maxDirectMem - usedDirectMem) * 100 / maxDirectMem
+        < insertThrottleThresholdInPercentage;
   }
 
   /** Check whether the channel is still valid, cleanup and throw an error if not */

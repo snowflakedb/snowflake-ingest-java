@@ -8,15 +8,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.utils.Utils;
 
 /**
  * Example on how to use the Streaming Ingest client APIs.
@@ -31,6 +34,8 @@ public class SnowflakeStreamingIngestExample {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   public static void main(String[] args) throws Exception {
+    String a = "ж";
+    System.out.println(a.length());
     Properties props = new Properties();
     Iterator<Map.Entry<String, JsonNode>> propIt =
         mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH)))).fields();
@@ -48,9 +53,9 @@ public class SnowflakeStreamingIngestExample {
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE")
-              .setSchemaName("MY_SCHEMA")
-              .setTableName("MY_TABLE")
+              .setDBName("DB_SSTREAMINGINGEST")
+              .setSchemaName("PUBLIC")
+              .setTableName("t_streamingingest")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
               .build();
@@ -59,14 +64,19 @@ public class SnowflakeStreamingIngestExample {
       SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
       // Insert rows into the channel (Using insertRows API)
-      final int totalRowsInTable = 1000;
+      final int totalRowsInTable = 2000;
       for (int val = 0; val < totalRowsInTable; val++) {
         Map<String, Object> row = new HashMap<>();
 
         // c1 corresponds to the column name in table
-        row.put("c1", val);
+        // Map<Object, Object> map = new HashMap<>();
+        String randomUUID = UUID.randomUUID().toString();
+        String s = String.join("", Collections.nCopies(144443, randomUUID)) + val;
+        row.put("c1", s + 1);
+        System.out.println("insertRows on " + val);
 
         // Insert the row with the current offset_token
+        Utils.showMemory();
         InsertValidationResponse response = channel1.insertRow(row, String.valueOf(val));
         if (response.hasErrors()) {
           // Simply throw if there is an exception, or you can do whatever you want with the
@@ -94,6 +104,8 @@ public class SnowflakeStreamingIngestExample {
       // Close the channel, the function internally will make sure everything is committed (or throw
       // an exception if there is any issue)
       channel1.close().get();
+
+      Utils.showMemory();
     }
   }
 }

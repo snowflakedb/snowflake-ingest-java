@@ -8,7 +8,11 @@ import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Timer;
+import io.netty.util.internal.PlatformDependent;
 import java.io.StringReader;
+import java.lang.management.BufferPoolMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryUsage;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -19,6 +23,7 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -259,5 +264,32 @@ public class Utils {
       childAlloc.close();
     }
     alloc.close();
+  }
+
+  public static void showMemory() {
+    List<BufferPoolMXBean> pools = ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class);
+    for (BufferPoolMXBean pool : pools) {
+      logger.logInfo(
+          "Pool name: {}, Pool count: {}, Memory used: {}, Total capacity: {}",
+          pool.getName(),
+          pool.getCount(),
+          pool.getMemoryUsed(),
+          pool.getTotalCapacity());
+    }
+
+    MemoryUsage memUsage = ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage();
+    System.out.println("non-heap max " + memUsage.getMax());
+    System.out.println("non-heap USED " + memUsage.getUsed());
+    System.out.println("non-heap COMMITTED " + memUsage.getCommitted());
+
+    memUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+    System.out.println("heap max " + memUsage.getMax());
+    System.out.println("heap USED " + memUsage.getUsed());
+    System.out.println("heap COMMITTED " + memUsage.getCommitted());
+
+    System.out.println("max direct memory " + PlatformDependent.maxDirectMemory());
+    System.out.println("max runtime memory " + Runtime.getRuntime().maxMemory());
+    System.out.println("total runtime memory " + Runtime.getRuntime().totalMemory());
+    System.out.println("free runtime memory " + Runtime.getRuntime().freeMemory());
   }
 }
