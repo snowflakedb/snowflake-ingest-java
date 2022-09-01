@@ -149,9 +149,13 @@ public class ParameterProvider {
 
   /** @return true if jmx metrics are enabled for a client */
   public boolean hasEnabledSnowpipeStreamingMetrics() {
-    return (Boolean)
+    Object val =
         this.parameterMap.getOrDefault(
             ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, SNOWPIPE_STREAMING_METRICS_DEFAULT);
+    if (val instanceof String) {
+      return Boolean.parseBoolean(val.toString());
+    }
+    return (boolean) val;
   }
 
   /** @return Blob format version: 1 (arrow stream write mode), 2 (arrow file write mode) etc */
