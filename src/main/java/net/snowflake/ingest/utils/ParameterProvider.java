@@ -23,7 +23,7 @@ public class ParameterProvider {
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
-  public static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
+  public static final int INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
   public static final Constants.BdecVerion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVerion.ONE;
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 3;
@@ -103,33 +103,48 @@ public class ParameterProvider {
 
   /** @return Longest interval in milliseconds between buffer flushes */
   public long getBufferFlushIntervalInMs() {
-    return (long)
+    Object val =
         this.parameterMap.getOrDefault(
             BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT);
+    if (val instanceof String) {
+      return Long.parseLong(val.toString());
+    }
+    return (long) val;
   }
 
   /** @return Time in milliseconds between checks to see if the buffer should be flushed */
   public long getBufferFlushCheckIntervalInMs() {
-    return (long)
+    Object val =
         this.parameterMap.getOrDefault(
             BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY,
             BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT);
+    if (val instanceof String) {
+      return Long.parseLong(val.toString());
+    }
+    return (long) val;
   }
 
   /** @return Duration in milliseconds to delay data insertion to the buffer when throttled */
   public long getInsertThrottleIntervalInMs() {
-    return (long)
+    Object val =
         this.parameterMap.getOrDefault(
             INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT);
+    if (val instanceof String) {
+      return Long.parseLong(val.toString());
+    }
+    return (long) val;
   }
 
   /** @return Percent of free total memory at which we throttle row inserts */
   public int getInsertThrottleThresholdInPercentage() {
-    return ((Long)
-            this.parameterMap.getOrDefault(
-                INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY,
-                INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT))
-        .intValue();
+    Object val =
+        this.parameterMap.getOrDefault(
+            INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY,
+            INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT);
+    if (val instanceof String) {
+      return Integer.parseInt(val.toString());
+    }
+    return (int) val;
   }
 
   /** @return true if jmx metrics are enabled for a client */
@@ -160,8 +175,7 @@ public class ParameterProvider {
   public int getIOTimeCpuRatio() {
     Object val = this.parameterMap.getOrDefault(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT);
     if (val instanceof String) {
-      return Integer.parseInt(
-          this.parameterMap.getOrDefault(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT).toString());
+      return Integer.parseInt(val.toString());
     }
     return (int) val;
   }

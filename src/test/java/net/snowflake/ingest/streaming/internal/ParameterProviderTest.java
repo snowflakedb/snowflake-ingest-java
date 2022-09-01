@@ -15,14 +15,16 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = new HashMap<>();
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4L);
-    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6L);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, 7L);
+    parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 10);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
     Assert.assertEquals(7, parameterProvider.getInsertThrottleIntervalInMs());
+    Assert.assertEquals(10, parameterProvider.getIOTimeCpuRatio());
   }
 
   @Test
@@ -30,7 +32,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = new HashMap<>();
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4L);
-    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6L);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, null);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
@@ -46,7 +48,7 @@ public class ParameterProviderTest {
     Properties props = new Properties();
     props.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3L);
     props.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4L);
-    props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6L);
+    props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6);
     ParameterProvider parameterProvider = new ParameterProvider(null, props);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
@@ -91,5 +93,7 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getInsertThrottleIntervalInMs());
+    Assert.assertEquals(
+        ParameterProvider.IO_TIME_CPU_RATIO_DEFAULT, parameterProvider.getIOTimeCpuRatio());
   }
 }

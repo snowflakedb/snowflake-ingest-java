@@ -724,8 +724,8 @@ class FlushService {
   }
 
   /**
-   * Check whether we need to throttle if the number of queued buildAndUpload tasks is bigger than
-   * the total number of available processors
+   * Throttle if the number of queued buildAndUpload tasks is bigger than the total number of
+   * available processors
    */
   boolean throttleDueToQueuedFlushTasks() {
     ThreadPoolExecutor buildAndUpload = (ThreadPoolExecutor) this.buildUploadWorkers;
