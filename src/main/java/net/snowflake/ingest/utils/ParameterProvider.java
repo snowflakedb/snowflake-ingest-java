@@ -16,17 +16,17 @@ public class ParameterProvider {
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE".toLowerCase();
   public static final String ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY =
       "ENABLE_SNOWPIPE_STREAMING_JMX_METRICS".toLowerCase();
-
   public static final String BLOB_FORMAT_VERSION = "BLOB_FORMAT_VERSION".toLowerCase();
+  public static final String IO_TIME_CPU_RATIO = "IO_TIME_CPU_RATIO".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
-  public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 500;
+  public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
-
   public static final Constants.BdecVerion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVerion.ONE;
+  public static final int IO_TIME_CPU_RATIO_DEFAULT = 3;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -97,6 +97,8 @@ public class ParameterProvider {
 
     this.updateValue(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT, parameterOverrides, props);
     getBlobFormatVersion(); // to verify parsing the configured value
+
+    this.updateValue(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT, parameterOverrides, props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -152,6 +154,16 @@ public class ParameterProvider {
       }
     }
     return Constants.BdecVerion.fromInt((int) val);
+  }
+
+  /** @return Duration in milliseconds to delay data insertion to the buffer when throttled */
+  public int getIOTimeCpuRatio() {
+    Object val = this.parameterMap.getOrDefault(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT);
+    if (val instanceof String) {
+      return Integer.parseInt(
+          this.parameterMap.getOrDefault(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT).toString());
+    }
+    return (int) val;
   }
 
   @Override

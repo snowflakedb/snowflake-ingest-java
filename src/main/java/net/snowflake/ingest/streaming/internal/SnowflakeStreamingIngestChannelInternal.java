@@ -20,6 +20,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 
@@ -433,43 +434,37 @@ class SnowflakeStreamingIngestChannelInternal implements SnowflakeStreamingInges
     return response.getPersistedOffsetToken();
   }
 
-  /**
-   * Check whether we need to throttle the insert API under the following low memory condition:
-   * <li>system free_memory/total_memory < INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE
-   */
+  /** Check whether we need to throttle the insertRows API */
   void throttleInsertIfNeeded(Runtime runtime) {
+    int retry = 0;
+    long insertThrottleIntervalInMs =
+        this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
+    while ((hasLowRuntimeMemory(runtime)
+            || this.owningClient.getFlushService().throttleDueToQueuedFlushTasks())
+        && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
+      try {
+        Thread.sleep(insertThrottleIntervalInMs);
+        retry++;
+      } catch (InterruptedException e) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
+      }
+    }
+  }
+
+  /** Check whether we have a low runtime memory condition */
+  private boolean hasLowRuntimeMemory(Runtime runtime) {
     int insertThrottleThresholdInPercentage =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
-    if (runtime.freeMemory() * 100 / runtime.totalMemory() < insertThrottleThresholdInPercentage) {
-      long oldTotalMem = runtime.totalMemory();
-      long oldFreeMem = runtime.freeMemory();
-      int retry = 0;
-
-      long insertThrottleIntervalInMs =
-          this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
-      while (runtime.freeMemory() * 100 / runtime.totalMemory()
-              < insertThrottleThresholdInPercentage
-          && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
-        try {
-          Thread.sleep(insertThrottleIntervalInMs);
-          retry++;
-        } catch (InterruptedException e) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
-        }
-      }
-
+    boolean hasLowRuntimeMemory =
+        runtime.freeMemory() * 100 / runtime.totalMemory() < insertThrottleThresholdInPercentage;
+    if (hasLowRuntimeMemory) {
       logger.logWarn(
-          "InsertRows throttled due to JVM memory pressure, channel={}, timeInMs={}, max memory={},"
-              + " old total memory={}, old free memory={}, new total memory={}, new free"
-              + " memory={}.",
-          getFullyQualifiedName(),
-          retry * insertThrottleIntervalInMs,
-          runtime.maxMemory(),
-          oldTotalMem,
-          oldFreeMem,
-          runtime.totalMemory(),
-          runtime.freeMemory());
+          "Throttled due to memory pressure, client={}, channel={}.",
+          this.owningClient.getName(),
+          getFullyQualifiedName());
+      Utils.showMemory();
     }
+    return hasLowRuntimeMemory;
   }
 
   /** Check whether the channel is still valid, cleanup and throw an error if not */
