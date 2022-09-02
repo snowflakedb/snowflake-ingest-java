@@ -175,7 +175,10 @@ public class ParameterProvider {
     return Constants.BdecVerion.fromInt((int) val);
   }
 
-  /** @return Duration in milliseconds to delay data insertion to the buffer when throttled */
+  /**
+   * @return the IO_TIME/CPU ratio that we will use to determine the number of buildAndUpload
+   *     threads
+   */
   public int getIOTimeCpuRatio() {
     Object val = this.parameterMap.getOrDefault(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT);
     if (val instanceof String) {
