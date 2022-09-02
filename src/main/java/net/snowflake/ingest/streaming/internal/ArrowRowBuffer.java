@@ -422,8 +422,8 @@ class ArrowRowBuffer {
       logger.logDebug(
           "Arrow buffer flush released lock on channel={}, rowCount={}, bufferSize={}",
           this.owningChannel.getFullyQualifiedName(),
-          rowCount,
-          bufferSize);
+          oldRowCount,
+          oldBufferSize);
 
       if (!oldVectors.isEmpty()) {
         ChannelData data = new ChannelData();

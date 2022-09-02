@@ -26,7 +26,7 @@ public class ParameterProvider {
   public static final int INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
   public static final Constants.BdecVerion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVerion.ONE;
-  public static final int IO_TIME_CPU_RATIO_DEFAULT = 3;
+  public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
