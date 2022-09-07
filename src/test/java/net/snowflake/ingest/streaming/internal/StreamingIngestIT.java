@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,7 +42,7 @@ import org.junit.Test;
 /** Example streaming ingest sdk integration test */
 public class StreamingIngestIT {
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
-  private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
+  private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
   private static final String INTERLEAVED_TABLE_PREFIX = "t_interleaved_test_";
@@ -52,20 +53,25 @@ public class StreamingIngestIT {
 
   private SnowflakeStreamingIngestClientInternal client;
   private Connection jdbcConnection;
+  private String testDb;
 
   @Before
   public void beforeAll() throws Exception {
+    testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
     // Create a streaming ingest client
     jdbcConnection = TestUtils.getConnection(true);
     jdbcConnection
         .createStatement()
-        .execute(String.format("create or replace database %s;", TEST_DB));
+        .execute(String.format("create or replace database %s;", testDb));
     jdbcConnection
         .createStatement()
-        .execute(String.format("create or replace schema %s;", TEST_SCHEMA));
+        .execute(String.format("create or replace schema %s.%s;", testDb, TEST_SCHEMA));
     jdbcConnection
         .createStatement()
-        .execute(String.format("create or replace table %s (c1 char(10));", TEST_TABLE));
+        .execute(
+            String.format(
+                "create or replace table %s.%s.%s (c1 char(10));",
+                testDb, TEST_SCHEMA, TEST_TABLE));
     // Set timezone to UTC
     jdbcConnection.createStatement().execute("alter session set timezone = 'UTC';");
     jdbcConnection
@@ -84,14 +90,14 @@ public class StreamingIngestIT {
   @After
   public void afterAll() throws Exception {
     client.close();
-    jdbcConnection.createStatement().execute(String.format("drop database %s", TEST_DB));
+    jdbcConnection.createStatement().execute(String.format("drop database %s", testDb));
   }
 
   @Test
   public void testSimpleIngest() throws Exception {
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(TEST_TABLE)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -116,7 +122,7 @@ public class StreamingIngestIT {
                 .createStatement()
                 .executeQuery(
                     String.format(
-                        "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
+                        "select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, TEST_TABLE));
         result.next();
         Assert.assertEquals(1000, result.getLong(1));
 
@@ -126,7 +132,7 @@ public class StreamingIngestIT {
                 .executeQuery(
                     String.format(
                         "select * from %s.%s.%s order by c1 limit 2",
-                        TEST_DB, TEST_SCHEMA, TEST_TABLE));
+                        testDb, TEST_SCHEMA, TEST_TABLE));
         result2.next();
         Assert.assertEquals("0", result2.getString(1));
         result2.next();
@@ -169,7 +175,7 @@ public class StreamingIngestIT {
 
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(TEST_TABLE)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -194,7 +200,7 @@ public class StreamingIngestIT {
                 .createStatement()
                 .executeQuery(
                     String.format(
-                        "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
+                        "select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, TEST_TABLE));
         result.next();
         Assert.assertEquals(10, result.getLong(1));
         return;
@@ -269,7 +275,7 @@ public class StreamingIngestIT {
 
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(collationTable)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -297,7 +303,7 @@ public class StreamingIngestIT {
                 .executeQuery(
                     String.format(
                         "select min(col), min(noncol) from %s.%s.%s",
-                        TEST_DB, TEST_SCHEMA, collationTable));
+                        testDb, TEST_SCHEMA, collationTable));
         result.next();
         Assert.assertEquals("a", result.getString(1));
         Assert.assertEquals("AA", result.getString(2));
@@ -318,7 +324,7 @@ public class StreamingIngestIT {
                 "create or replace table %s (tinyfloat NUMBER(38,2));", decimalTableName));
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_DECI")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(decimalTableName)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -346,8 +352,7 @@ public class StreamingIngestIT {
             jdbcConnection
                 .createStatement()
                 .executeQuery(
-                    String.format(
-                        "select * from %s.%s.%s", TEST_DB, TEST_SCHEMA, decimalTableName));
+                    String.format("select * from %s.%s.%s", testDb, TEST_SCHEMA, decimalTableName));
 
         result.next();
         Assert.assertEquals(-1.1, result.getFloat("TINYFLOAT"), 0.001);
@@ -377,7 +382,7 @@ public class StreamingIngestIT {
                 timeTableName));
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_TIME")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(timeTableName)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -422,7 +427,7 @@ public class StreamingIngestIT {
             jdbcConnection
                 .createStatement()
                 .executeQuery(
-                    String.format("select * from %s.%s.%s", TEST_DB, TEST_SCHEMA, timeTableName));
+                    String.format("select * from %s.%s.%s", testDb, TEST_SCHEMA, timeTableName));
 
         result.next();
         Assert.assertEquals(1609473600123l, result.getTimestamp("TTZSMALL").getTime());
@@ -448,7 +453,7 @@ public class StreamingIngestIT {
                             + "max(tntzsmall) as mtntzsmall,"
                             + "max(tntzbig) as mtntzbig"
                             + " from %s.%s.%s",
-                        TEST_DB, TEST_SCHEMA, timeTableName));
+                        testDb, TEST_SCHEMA, timeTableName));
 
         result.next();
         Assert.assertEquals(1609473600123L, result.getTimestamp("MTTZSMALL").getTime());
@@ -481,7 +486,7 @@ public class StreamingIngestIT {
                 multiTableName));
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_MULTI")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(multiTableName)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -514,7 +519,7 @@ public class StreamingIngestIT {
             jdbcConnection
                 .createStatement()
                 .executeQuery(
-                    String.format("select * from %s.%s.%s", TEST_DB, TEST_SCHEMA, multiTableName));
+                    String.format("select * from %s.%s.%s", testDb, TEST_SCHEMA, multiTableName));
 
         result.next();
         Assert.assertEquals("honk", result.getString("S"));
@@ -542,7 +547,7 @@ public class StreamingIngestIT {
                 "create or replace table %s (s text, notnull text NOT NULL);", multiTableName));
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL_MULTI1")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(multiTableName)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -553,7 +558,7 @@ public class StreamingIngestIT {
 
     OpenChannelRequest request2 =
         OpenChannelRequest.builder("CHANNEL_MULTI2")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(multiTableName)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -594,7 +599,7 @@ public class StreamingIngestIT {
                 .executeQuery(
                     String.format(
                         "select * from %s.%s.%s order by notnull",
-                        TEST_DB, TEST_SCHEMA, multiTableName));
+                        testDb, TEST_SCHEMA, multiTableName));
 
         result.next();
         Assert.assertEquals("honk", result.getString("S"));
@@ -638,7 +643,7 @@ public class StreamingIngestIT {
               () -> {
                 OpenChannelRequest request =
                     OpenChannelRequest.builder(channelName)
-                        .setDBName(TEST_DB)
+                        .setDBName(testDb)
                         .setSchemaName(TEST_SCHEMA)
                         .setTableName(multiThreadTable)
                         .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -673,7 +678,7 @@ public class StreamingIngestIT {
                 .executeQuery(
                     String.format(
                         "select count(*), max(numcol), min(numcol) from %s.%s.%s",
-                        TEST_DB, TEST_SCHEMA, multiThreadTable));
+                        testDb, TEST_SCHEMA, multiThreadTable));
 
         result.next();
         Assert.assertEquals(numRows * numThreads, result.getInt(1));
@@ -703,7 +708,7 @@ public class StreamingIngestIT {
 
     OpenChannelRequest requestA =
         OpenChannelRequest.builder("CHANNEL")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(TEST_TABLE)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -771,7 +776,7 @@ public class StreamingIngestIT {
                 .createStatement()
                 .executeQuery(
                     String.format(
-                        "select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, TEST_TABLE));
+                        "select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, TEST_TABLE));
         result.next();
         Assert.assertEquals(4, result.getLong(1));
 
@@ -780,7 +785,7 @@ public class StreamingIngestIT {
                 .createStatement()
                 .executeQuery(
                     String.format(
-                        "select * from %s.%s.%s order by c1", TEST_DB, TEST_SCHEMA, TEST_TABLE));
+                        "select * from %s.%s.%s order by c1", testDb, TEST_SCHEMA, TEST_TABLE));
         result2.next();
         Assert.assertEquals("1", result2.getString(1));
         result2.next();
@@ -804,7 +809,7 @@ public class StreamingIngestIT {
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(onErrorOptionTable)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
@@ -848,7 +853,7 @@ public class StreamingIngestIT {
                 .executeQuery(
                     String.format(
                         "select count(c1), min(c1), max(c1) from %s.%s.%s",
-                        TEST_DB, TEST_SCHEMA, onErrorOptionTable));
+                        testDb, TEST_SCHEMA, onErrorOptionTable));
         result.next();
         Assert.assertEquals("3", result.getString(1));
         Assert.assertEquals("1", result.getString(2));
@@ -864,7 +869,7 @@ public class StreamingIngestIT {
   public void testChannelClose() throws Exception {
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(TEST_TABLE)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -896,7 +901,7 @@ public class StreamingIngestIT {
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("CHANNEL")
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(nullValuesOnMultiDataTypesTable)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -931,7 +936,7 @@ public class StreamingIngestIT {
                 String.format(
                     "select top 1 c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14,"
                         + " c15, c16, c17 from %s.%s.%s",
-                    TEST_DB, TEST_SCHEMA, nullValuesOnMultiDataTypesTable));
+                    testDb, TEST_SCHEMA, nullValuesOnMultiDataTypesTable));
     result.next();
     for (int idx = 1; idx < 18; idx++) {
       Assert.assertNull(result.getObject(idx));
@@ -960,7 +965,7 @@ public class StreamingIngestIT {
   private SnowflakeStreamingIngestChannel openChannel(String tableName, String channelName) {
     OpenChannelRequest request =
         OpenChannelRequest.builder(channelName)
-            .setDBName(TEST_DB)
+            .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(tableName)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -1009,7 +1014,7 @@ public class StreamingIngestIT {
               .executeQuery(
                   String.format(
                       "select * from %s.%s.%s where str ilike '%s%%' order by num",
-                      TEST_DB, TEST_SCHEMA, tableName, strPrefix));
+                      testDb, TEST_SCHEMA, tableName, strPrefix));
       for (int val = 0; val < rowNumber; val++) {
         result.next();
         Assert.assertEquals(val, result.getLong("NUM"));
@@ -1026,7 +1031,7 @@ public class StreamingIngestIT {
           jdbcConnection
               .createStatement()
               .executeQuery(
-                  String.format("select count(*) from %s.%s.%s", TEST_DB, TEST_SCHEMA, tableName));
+                  String.format("select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, tableName));
       resultCount.next();
       Assert.assertEquals(rowNumber, resultCount.getLong(1));
     } catch (SQLException e) {
