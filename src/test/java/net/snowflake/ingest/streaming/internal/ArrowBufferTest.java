@@ -23,7 +23,7 @@ public class ArrowBufferTest {
   @Before
   public void setupRowBuffer() {
     this.rowBufferOnErrorContinue = createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
-    this.rowBufferOnErrorContinue.setupSchema(RowBufferTest.createSchema());
+    this.rowBufferOnErrorContinue.setupSchema(RowBufferTest.generateCols());
   }
 
   ArrowRowBuffer createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -58,15 +58,7 @@ public class ArrowBufferTest {
   @Test
   public void buildFieldFixedSB1() {
     // FIXED, SB1
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB1");
-    testCol.setNullable(true);
-    testCol.setLogicalType("FIXED");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB1", "FIXED", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -81,15 +73,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldFixedSB2() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB2");
-    testCol.setNullable(false);
-    testCol.setLogicalType("FIXED");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB2", "FIXED", false);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -104,15 +88,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldFixedSB4() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB4");
-    testCol.setNullable(true);
-    testCol.setLogicalType("FIXED");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB4", "FIXED", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -126,15 +102,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldFixedSB8() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB8");
-    testCol.setNullable(true);
-    testCol.setLogicalType("FIXED");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB8", "FIXED", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -148,15 +116,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldFixedSB16() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB16");
-    testCol.setNullable(true);
-    testCol.setLogicalType("FIXED");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB16", "FIXED", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     ArrowType expectedType =
@@ -173,15 +133,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldLobVariant() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("LOB");
-    testCol.setNullable(true);
-    testCol.setLogicalType("VARIANT");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("LOB", "VARIANT", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -195,15 +147,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldTimestampNtzSB8() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB8");
-    testCol.setNullable(true);
-    testCol.setLogicalType("TIMESTAMP_NTZ");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB8", "TIMESTAMP_NTZ", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -217,15 +161,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldTimestampNtzSB16() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB16");
-    testCol.setNullable(true);
-    testCol.setLogicalType("TIMESTAMP_NTZ");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB16", "TIMESTAMP_NTZ", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -243,15 +179,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldTimestampTzSB8() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB8");
-    testCol.setNullable(true);
-    testCol.setLogicalType("TIMESTAMP_TZ");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB8", "TIMESTAMP_TZ", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -269,15 +197,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldTimestampTzSB16() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB16");
-    testCol.setNullable(true);
-    testCol.setLogicalType("TIMESTAMP_TZ");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB16", "TIMESTAMP_TZ", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -296,16 +216,8 @@ public class ArrowBufferTest {
   }
 
   @Test
-  public void buildFieldDate() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB8");
-    testCol.setNullable(true);
-    testCol.setLogicalType("DATE");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+  public void buildFieldTimestampDate() {
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB8", "DATE", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -319,15 +231,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldTimeSB4() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB4");
-    testCol.setNullable(true);
-    testCol.setLogicalType("TIME");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB4", "TIME", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -341,15 +245,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldTimeSB8() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB8");
-    testCol.setNullable(true);
-    testCol.setLogicalType("TIME");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB8", "TIME", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -363,15 +259,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldBoolean() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("BINARY");
-    testCol.setNullable(true);
-    testCol.setLogicalType("BOOLEAN");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("BINARY", "BOOLEAN", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());
@@ -385,15 +273,7 @@ public class ArrowBufferTest {
 
   @Test
   public void buildFieldRealSB16() {
-    ColumnMetadata testCol = new ColumnMetadata();
-    testCol.setName("testCol");
-    testCol.setPhysicalType("SB16");
-    testCol.setNullable(true);
-    testCol.setLogicalType("REAL");
-    testCol.setByteLength(14);
-    testCol.setLength(11);
-    testCol.setScale(0);
-    testCol.setPrecision(4);
+    ColumnMetadata testCol = RowBufferTest.generateCol("SB16", "REAL", true);
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
     Assert.assertEquals("testCol", result.getName());

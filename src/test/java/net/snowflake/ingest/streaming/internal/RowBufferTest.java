@@ -45,12 +45,7 @@ public class RowBufferTest {
   public void setupRowBuffer() {
     this.rowBufferOnErrorContinue = createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
     this.rowBufferOnErrorAbort = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
-    List<ColumnMetadata> schema = createSchema();
-    this.rowBufferOnErrorContinue.setupSchema(schema);
-    this.rowBufferOnErrorAbort.setupSchema(schema);
-  }
 
-  static List<ColumnMetadata> createSchema() {
     ColumnMetadata colTinyIntCase = new ColumnMetadata();
     colTinyIntCase.setName("\"colTinyInt\"");
     colTinyIntCase.setPhysicalType("SB1");
@@ -104,8 +99,13 @@ public class RowBufferTest {
     colChar.setScale(0);
     colChar.setCollation("en-ci");
 
-    return Arrays.asList(
-        colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
+    // Setup column fields and vectors
+    this.rowBufferOnErrorContinue.setupSchema(
+        Arrays.asList(
+            colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar));
+    this.rowBufferOnErrorAbort.setupSchema(
+        Arrays.asList(
+            colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar));
   }
 
   private AbstractRowBuffer<?> createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -414,6 +414,7 @@ public class RowBufferTest {
     ChannelData<?> data = rowBuffer.flush();
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
+    // Assert.assertEquals(7, data.getVectors().getFieldVectors().size());
     Assert.assertEquals(offsetToken, data.getOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
   }
@@ -1185,5 +1186,76 @@ public class RowBufferTest {
     ChannelData<?> data = innerBuffer.flush();
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals(0, innerBuffer.rowCount);
+  }
+
+  protected static ColumnMetadata generateCol(
+      String physicalType, String logicalType, boolean nullable) {
+    ColumnMetadata testCol = new ColumnMetadata();
+    testCol.setName("testCol");
+    testCol.setPhysicalType(physicalType);
+    testCol.setNullable(nullable);
+    testCol.setLogicalType(logicalType);
+    testCol.setByteLength(14);
+    testCol.setLength(11);
+    testCol.setScale(0);
+    testCol.setPrecision(4);
+    return testCol;
+  }
+
+  protected static List<ColumnMetadata> generateCols() {
+    ColumnMetadata colTinyIntCase = new ColumnMetadata();
+    colTinyIntCase.setName("colTinyInt");
+    colTinyIntCase.setPhysicalType("SB1");
+    colTinyIntCase.setNullable(true);
+    colTinyIntCase.setLogicalType("FIXED");
+    colTinyIntCase.setScale(0);
+
+    ColumnMetadata colTinyInt = new ColumnMetadata();
+    colTinyInt.setName("COLTINYINT");
+    colTinyInt.setPhysicalType("SB1");
+    colTinyInt.setNullable(true);
+    colTinyInt.setLogicalType("FIXED");
+    colTinyInt.setScale(0);
+
+    ColumnMetadata colSmallInt = new ColumnMetadata();
+    colSmallInt.setName("COLSMALLINT");
+    colSmallInt.setPhysicalType("SB2");
+    colSmallInt.setNullable(true);
+    colSmallInt.setLogicalType("FIXED");
+    colSmallInt.setScale(0);
+
+    ColumnMetadata colInt = new ColumnMetadata();
+    colInt.setName("COLINT");
+    colInt.setPhysicalType("SB4");
+    colInt.setNullable(true);
+    colInt.setLogicalType("FIXED");
+    colInt.setScale(0);
+
+    ColumnMetadata colBigInt = new ColumnMetadata();
+    colBigInt.setName("COLBIGINT");
+    colBigInt.setPhysicalType("SB8");
+    colBigInt.setNullable(true);
+    colBigInt.setLogicalType("FIXED");
+    colBigInt.setScale(0);
+
+    ColumnMetadata colDecimal = new ColumnMetadata();
+    colDecimal.setName("COLDECIMAL");
+    colDecimal.setPhysicalType("SB16");
+    colDecimal.setNullable(true);
+    colDecimal.setLogicalType("FIXED");
+    colDecimal.setPrecision(38);
+    colDecimal.setScale(2);
+
+    ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setName("COLCHAR");
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14);
+    colChar.setLength(11);
+    colChar.setScale(0);
+    colChar.setCollation("en-ci");
+    return Arrays.asList(
+        colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
   }
 }

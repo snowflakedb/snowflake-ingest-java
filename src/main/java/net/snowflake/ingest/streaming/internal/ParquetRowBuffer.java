@@ -100,7 +100,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
    * @param column column metadata
    * @return column parquet type
    */
-  private Type getColumnParquetType(ColumnMetadata column, int id) {
+  protected Type getColumnParquetType(ColumnMetadata column, int id) {
     Type parquetType;
     String name = column.getName();
 
