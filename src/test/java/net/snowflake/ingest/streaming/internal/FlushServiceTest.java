@@ -183,11 +183,6 @@ public class FlushServiceTest {
         return this;
       }
 
-      ChannelBuilder setOnErrorOption(OpenChannelRequest.OnErrorOption onErrorOption) {
-        this.onErrorOption = onErrorOption;
-        return this;
-      }
-
       SnowflakeStreamingIngestChannelInternal<T> buildAndAdd() {
         SnowflakeStreamingIngestChannelInternal<T> channel =
             createChannel(
