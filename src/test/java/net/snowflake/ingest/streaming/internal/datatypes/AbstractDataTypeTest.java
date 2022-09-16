@@ -67,8 +67,12 @@ public abstract class AbstractDataTypeTest {
   @After
   public void after() throws Exception {
     conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
-    client.close();
-    conn.close();
+    if (client != null) {
+      client.close();
+    }
+    if (conn != null) {
+      conn.close();
+    }
   }
 
   protected String createTable(String dataType) throws SQLException {
