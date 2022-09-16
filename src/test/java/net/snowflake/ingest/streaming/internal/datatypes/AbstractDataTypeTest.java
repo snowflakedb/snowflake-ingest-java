@@ -195,7 +195,8 @@ public abstract class AbstractDataTypeTest {
   }
 
   /**
-   * Ingests values with streaming ingest and JDBC driver, SELECTs them back with WHERE condition and asserts they exist.
+   * Ingests values with streaming ingest and JDBC driver, SELECTs them back with WHERE condition
+   * and asserts they exist.
    *
    * @param dataType Snowflake data type
    * @param streamingIngestWriteValue Value ingested by streaming ingest
