@@ -52,6 +52,7 @@ public class RowBufferTest {
     colTinyIntCase.setPhysicalType("SB1");
     colTinyIntCase.setNullable(true);
     colTinyIntCase.setLogicalType("FIXED");
+    colTinyIntCase.setPrecision(2);
     colTinyIntCase.setScale(0);
 
     ColumnMetadata colTinyInt = new ColumnMetadata();
@@ -59,6 +60,7 @@ public class RowBufferTest {
     colTinyInt.setPhysicalType("SB1");
     colTinyInt.setNullable(true);
     colTinyInt.setLogicalType("FIXED");
+    colTinyInt.setPrecision(1);
     colTinyInt.setScale(0);
 
     ColumnMetadata colSmallInt = new ColumnMetadata();
@@ -66,6 +68,7 @@ public class RowBufferTest {
     colSmallInt.setPhysicalType("SB2");
     colSmallInt.setNullable(true);
     colSmallInt.setLogicalType("FIXED");
+    colSmallInt.setPrecision(2);
     colSmallInt.setScale(0);
 
     ColumnMetadata colInt = new ColumnMetadata();
@@ -73,6 +76,7 @@ public class RowBufferTest {
     colInt.setPhysicalType("SB4");
     colInt.setNullable(true);
     colInt.setLogicalType("FIXED");
+    colInt.setPrecision(2);
     colInt.setScale(0);
 
     ColumnMetadata colBigInt = new ColumnMetadata();
@@ -80,6 +84,7 @@ public class RowBufferTest {
     colBigInt.setPhysicalType("SB8");
     colBigInt.setNullable(true);
     colBigInt.setLogicalType("FIXED");
+    colBigInt.setPrecision(2);
     colBigInt.setScale(0);
 
     ColumnMetadata colDecimal = new ColumnMetadata();
@@ -683,13 +688,13 @@ public class RowBufferTest {
 
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLTIMESTAMPLTZ_SB8", "1621899220");
-    row1.put("COLTIMESTAMPLTZ_SB16", "1621899220.123456789");
-    row1.put("COLTIMESTAMPLTZ_SB16_SCALE6", "1621899220.123456");
+    row1.put("COLTIMESTAMPLTZ_SB16", "1621899220123456789");
+    row1.put("COLTIMESTAMPLTZ_SB16_SCALE6", "1621899220123456");
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLTIMESTAMPLTZ_SB8", "1621899221");
-    row2.put("COLTIMESTAMPLTZ_SB16", "1621899220.12345679");
-    row2.put("COLTIMESTAMPLTZ_SB16_SCALE6", "1621899220.123457");
+    row2.put("COLTIMESTAMPLTZ_SB16", "1621899220223456789");
+    row2.put("COLTIMESTAMPLTZ_SB16_SCALE6", "1621899220123457");
 
     Map<String, Object> row3 = new HashMap<>();
     row3.put("COLTIMESTAMPLTZ_SB8", null);
@@ -713,7 +718,7 @@ public class RowBufferTest {
         new BigInteger("1621899220123456789"),
         result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMinIntValue());
     Assert.assertEquals(
-        new BigInteger("1621899220123456790"),
+        new BigInteger("1621899220223456789"),
         result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMaxIntValue());
 
     Assert.assertEquals(
@@ -748,10 +753,10 @@ public class RowBufferTest {
     innerBuffer.setupSchema(Collections.singletonList(colDate));
 
     Map<String, Object> row1 = new HashMap<>();
-    row1.put("COLDATE", "18772");
+    row1.put("COLDATE", String.valueOf(18772 * 24 * 60 * 60 * 1000L + 1));
 
     Map<String, Object> row2 = new HashMap<>();
-    row2.put("COLDATE", "18773");
+    row2.put("COLDATE", String.valueOf(18773 * 24 * 60 * 60 * 1000L + 1));
 
     Map<String, Object> row3 = new HashMap<>();
     row3.put("COLDATE", null);
@@ -803,12 +808,12 @@ public class RowBufferTest {
     innerBuffer.setupSchema(Arrays.asList(colTimeSB4, colTimeSB8));
 
     Map<String, Object> row1 = new HashMap<>();
-    row1.put("COLTIMESB4", "43200");
-    row1.put("COLTIMESB8", "44200.123");
+    row1.put("COLTIMESB4", "10:00:00");
+    row1.put("COLTIMESB8", "10:00:00.123");
 
     Map<String, Object> row2 = new HashMap<>();
-    row2.put("COLTIMESB4", "43260");
-    row2.put("COLTIMESB8", "44201");
+    row2.put("COLTIMESB4", "11:15:00.000");
+    row2.put("COLTIMESB8", "11:15:00.456");
 
     Map<String, Object> row3 = new HashMap<>();
     row3.put("COLTIMESB4", null);
@@ -819,12 +824,13 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
-    Assert.assertEquals(43200, innerBuffer.getVectorValueAt("COLTIMESB4", 0));
-    Assert.assertEquals(43260, innerBuffer.getVectorValueAt("COLTIMESB4", 1));
+    Assert.assertEquals(10 * 60 * 60, innerBuffer.getVectorValueAt("COLTIMESB4", 0));
+    Assert.assertEquals(11 * 60 * 60 + 15 * 60, innerBuffer.getVectorValueAt("COLTIMESB4", 1));
     Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB4", 2));
 
-    Assert.assertEquals(44200123L, innerBuffer.getVectorValueAt("COLTIMESB8", 0));
-    Assert.assertEquals(44201000L, innerBuffer.getVectorValueAt("COLTIMESB8", 1));
+    Assert.assertEquals(10 * 60 * 60 * 1000L + 123, innerBuffer.getVectorValueAt("COLTIMESB8", 0));
+    Assert.assertEquals(
+        11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456, innerBuffer.getVectorValueAt("COLTIMESB8", 1));
     Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB8", 2));
 
     // Check stats generation
@@ -832,16 +838,18 @@ public class RowBufferTest {
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
-        BigInteger.valueOf(43200), result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
+        BigInteger.valueOf(10 * 60 * 60),
+        result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
     Assert.assertEquals(
-        BigInteger.valueOf(43260), result.getColumnEps().get("COLTIMESB4").getCurrentMaxIntValue());
+        BigInteger.valueOf(11 * 60 * 60 + 15 * 60),
+        result.getColumnEps().get("COLTIMESB4").getCurrentMaxIntValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB4").getCurrentNullCount());
 
     Assert.assertEquals(
-        BigInteger.valueOf(44200123),
+        BigInteger.valueOf(10 * 60 * 60 * 1000L + 123),
         result.getColumnEps().get("COLTIMESB8").getCurrentMinIntValue());
     Assert.assertEquals(
-        BigInteger.valueOf(44201000),
+        BigInteger.valueOf(11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456),
         result.getColumnEps().get("COLTIMESB8").getCurrentMaxIntValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB8").getCurrentNullCount());
   }
