@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import static net.snowflake.ingest.utils.Constants.ROLE;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -64,6 +66,9 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
     Properties props = TestUtils.getProperties();
+    if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
+      props.setProperty(ROLE, "ACCOUNTADMIN");
+    }
     client = SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(props).build();
   }
 
