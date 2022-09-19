@@ -1,6 +1,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.MAX_BIGINTEGER;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
+import static org.junit.Assert.assertEquals;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,17 +27,16 @@ public class DataValidationUtilTest {
   private static final Object[] goodIntegersValue10 =
       new Object[] {10D, 10F, 10L, new BigInteger("10"), 10, "10", "1e1", "1.0e1"};
 
-  private static final Object[] trueBooleanInput =
-      new Object[] {true, "true", "True", "TruE", "t", "yes", "YeS", "y", "on", "1", 1.1};
-  private static final Object[] falseBooleanInput =
-      new Object[] {false, "false", "False", "FalsE", "f", "no", "NO", "n", "off", "0", 0};
+  private void expectError(ErrorCode expectedErrorCode, Function func, Object args) {
+    expectError(expectedErrorCode, () -> func.apply(args));
+  }
 
-  private void expectError(ErrorCode expectedError, Function func, Object args) {
+  private void expectError(ErrorCode expectedErrorCode, Runnable action) {
     try {
-      func.apply(args);
+      action.run();
       Assert.fail("Expected Exception");
     } catch (SFException e) {
-      Assert.assertEquals(expectedError.getMessageCode(), e.getVendorCode());
+      assertEquals(expectedErrorCode.getMessageCode(), e.getVendorCode());
     } catch (Exception e) {
       Assert.fail("Invalid error through");
     }
@@ -529,44 +530,25 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseBoolean() throws Exception {
-    for (Object input : trueBooleanInput) {
-      Assert.assertEquals(1, DataValidationUtil.validateAndParseBoolean(input));
-    }
-    for (Object input : falseBooleanInput) {
-      Assert.assertEquals(0, DataValidationUtil.validateAndParseBoolean(input));
+  public void testValidateAndParseBoolean() {
+
+    for (Object input :
+        Arrays.asList(
+            true, "true", "True", "TruE", "t", "yes", "YeS", "y", "on", "1", 1.1, -1.1, -10, 10)) {
+      assertEquals(1, validateAndParseBoolean(input));
     }
 
-    // Error states
-    try {
-      DataValidationUtil.validateAndParseBoolean("honk");
-      Assert.fail("Expected invalid row error");
-    } catch (SFException err) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
-    }
-  }
-
-  @Test
-  public void testConvertStringToBoolean() throws Exception {
-    for (Object input : trueBooleanInput) {
-      if (input instanceof String) {
-        Assert.assertEquals(true, DataValidationUtil.convertStringToBoolean((String) input));
-      }
+    for (Object input :
+        Arrays.asList(false, "false", "False", "FalsE", "f", "no", "NO", "n", "off", "0", 0)) {
+      assertEquals(0, validateAndParseBoolean(input));
     }
 
-    for (Object input : falseBooleanInput) {
-      if (input instanceof String) {
-        Assert.assertEquals(false, DataValidationUtil.convertStringToBoolean((String) input));
-      }
-    }
-
-    try {
-      DataValidationUtil.convertStringToBoolean("honk");
-      Assert.fail("Expected error");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
-    } catch (Exception e) {
-      Assert.fail();
-    }
+    // Test forbidden values
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, new Object());
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, 't');
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, 'f');
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, new int[] {});
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, "foobar");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, "");
   }
 }

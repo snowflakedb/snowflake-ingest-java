@@ -34,8 +34,10 @@ import java.util.Properties;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
+import org.junit.Assert;
 
 public class TestUtils {
   // profile path, follow readme for the format
@@ -222,8 +224,12 @@ public class TestUtils {
    * @throws Exception
    */
   public static Connection getConnection(boolean isStreamingConnection) throws Exception {
-    if (!isStreamingConnection && snowpipeConn != null) return snowpipeConn;
-    if (isStreamingConnection && streamingConn != null) return streamingConn;
+    if (!isStreamingConnection && snowpipeConn != null && !streamingConn.isClosed()) {
+      return snowpipeConn;
+    }
+    if (isStreamingConnection && streamingConn != null && !streamingConn.isClosed()) {
+      return streamingConn;
+    }
 
     if (profile == null) init();
     // check first to see if we have the Snowflake JDBC
@@ -316,5 +322,28 @@ public class TestUtils {
         .setKeypair(keyPair)
         .setUserAgentSuffix(userAgentSuffix)
         .build();
+  }
+
+  /**
+   * Given a channel and expected offset, this method waits up to 60 seconds until the last
+   * committed offset is equal to the passed offset
+   */
+  public static void waitForOffset(SnowflakeStreamingIngestChannel channel, String expectedOffset)
+      throws InterruptedException {
+    int counter = 0;
+    String lastCommittedOffset = null;
+    while (counter < 600) {
+      String currentOffset = channel.getLatestCommittedOffsetToken();
+      if (expectedOffset.equals(currentOffset)) {
+        return;
+      }
+      lastCommittedOffset = currentOffset;
+      counter++;
+      Thread.sleep(100);
+    }
+    Assert.fail(
+        String.format(
+            "Timeout exceeded while waiting for offset %s. Last committed offset: %s",
+            expectedOffset, lastCommittedOffset));
   }
 }

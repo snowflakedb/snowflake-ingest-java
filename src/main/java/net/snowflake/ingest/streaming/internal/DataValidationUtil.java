@@ -26,6 +26,7 @@ import net.snowflake.ingest.utils.SFException;
 class DataValidationUtil {
   static final int MAX_STRING_LENGTH = 16 * 1024 * 1024;
   static final int MAX_BINARY_LENGTH = 8 * 1024 * 1024;
+
   static final BigInteger MAX_BIGINTEGER = BigInteger.valueOf(10).pow(38);
   static final BigInteger MIN_BIGINTEGER =
       BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38));
@@ -665,24 +666,24 @@ class DataValidationUtil {
    * @return 1 or 0 where 1=true, 0=false
    */
   static int validateAndParseBoolean(Object input) {
-    int output = 0;
     if (input instanceof Boolean) {
-      output = (boolean) input ? 1 : 0;
+      return (boolean) input ? 1 : 0;
     } else if (input instanceof Number) {
-      output = ((Number) input).doubleValue() > 0 ? 1 : 0;
-    } else {
-      output = convertStringToBoolean((String) input) ? 1 : 0;
+      return new BigDecimal(input.toString()).compareTo(BigDecimal.ZERO) == 0 ? 0 : 1;
+    } else if (input instanceof String) {
+      return convertStringToBoolean((String) input) ? 1 : 0;
     }
-    return output;
+
+    throw cannotConvertException(input, "boolean");
   }
 
   static Set<String> allowedBooleanStringsLowerCased =
       Sets.newHashSet("1", "0", "yes", "no", "y", "n", "t", "f", "true", "false", "on", "off");
 
-  static boolean convertStringToBoolean(String value) {
+  private static boolean convertStringToBoolean(String value) {
     String lowerCasedValue = value.toLowerCase();
     if (!allowedBooleanStringsLowerCased.contains(lowerCasedValue)) {
-      throw new SFException(ErrorCode.INVALID_ROW, value);
+      throw cannotConvertException(value, "boolean");
     }
     return "1".equals(lowerCasedValue)
         || "yes".equals(lowerCasedValue)
@@ -690,5 +691,30 @@ class DataValidationUtil {
         || "t".equals(lowerCasedValue)
         || "true".equals(lowerCasedValue)
         || "on".equals(lowerCasedValue);
+  }
+
+  /**
+   * Create exception when value cannot be ingested into column of a specific type.
+   *
+   * @param value Invalid value causing the exception
+   * @param type Snowflake column type
+   */
+  private static SFException cannotConvertException(Object value, String type) {
+    return new SFException(
+        ErrorCode.INVALID_ROW,
+        sanitizeValueForExceptionMessage(value),
+        String.format("Value cannot be converted to %s", type));
+  }
+
+  /**
+   * Before passing a value to an exception string, we should limit how many characters are
+   * displayed. Important especially for "value exceeds max column size" exceptions.
+   *
+   * @param value Value to adapt for exception message
+   */
+  private static String sanitizeValueForExceptionMessage(Object value) {
+    int maxSize = 20;
+    String valueString = value.toString();
+    return valueString.length() <= maxSize ? valueString : valueString.substring(0, 20) + "...";
   }
 }
