@@ -29,7 +29,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
@@ -225,10 +224,12 @@ public class TestUtils {
    * @throws Exception
    */
   public static Connection getConnection(boolean isStreamingConnection) throws Exception {
-    if (!isStreamingConnection && snowpipeConn != null && !streamingConn.isClosed())
+    if (!isStreamingConnection && snowpipeConn != null && !streamingConn.isClosed()) {
       return snowpipeConn;
-    if (isStreamingConnection && streamingConn != null && !streamingConn.isClosed())
+    }
+    if (isStreamingConnection && streamingConn != null && !streamingConn.isClosed()) {
       return streamingConn;
+    }
 
     if (profile == null) init();
     // check first to see if we have the Snowflake JDBC
@@ -324,8 +325,8 @@ public class TestUtils {
   }
 
   /**
-   * Given a channel and expected offset, this method waits until the last committed offset is equal
-   * to the passed offset
+   * Given a channel and expected offset, this method waits up to 60 seconds until the last
+   * committed offset is equal to the passed offset
    */
   public static void waitForOffset(SnowflakeStreamingIngestChannel channel, String expectedOffset)
       throws InterruptedException {
@@ -333,7 +334,7 @@ public class TestUtils {
     String lastCommittedOffset = null;
     while (counter < 600) {
       String currentOffset = channel.getLatestCommittedOffsetToken();
-      if (Objects.equals(expectedOffset, currentOffset)) {
+      if (expectedOffset.equals(currentOffset)) {
         return;
       }
       lastCommittedOffset = currentOffset;
