@@ -138,13 +138,16 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_NTZ or TIMESTAMP_LTZ Snowflake type Allowed Java
-   * types: * String * Snowflake date format
-   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats * Snowflake
-   * timestamp format
-   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats *
-   * numeric string * java.time.LocalDate * java.time.LocalDateTime * java.time.OffsetDateTime *
-   * java.time.ZonedDateTime
+   * Validates and parses input for TIMESTAMP_NTZ or TIMESTAMP_LTZ Snowflake type. Allowed Java
+   * types:
+   *
+   * <ul>
+   *   <li>String
+   *   <li>LocalDate
+   *   <li>LocalDateTime
+   *   <li>OffsetDateTime
+   *   <li>ZonedDateTime
+   * </ul>
    *
    * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
    *     with precision up to the column's scale
@@ -207,13 +210,15 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_TZ Snowflake type Allowed Java types: * String *
-   * Snowflake date format
-   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats * Snowflake
-   * timestamp format
-   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats *
-   * numeric string * java.time.LocalDate * java.time.LocalDateTime * java.time.OffsetDateTime *
-   * java.time.ZonedDateTime
+   * Validates and parses input for TIMESTAMP_TZ Snowflake type. Allowed Java types:
+   *
+   * <ul>
+   *   <li>String
+   *   <li>LocalDate
+   *   <li>LocalDateTime
+   *   <li>OffsetDateTime
+   *   <li>ZonedDateTime
+   * </ul>
    *
    * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
    * @param scale decimal scale of timestamp 16 byte integer
@@ -533,13 +538,15 @@ class DataValidationUtil {
   }
 
   /**
-   * Returns the number of days between the epoch and the passed date. Allowed Java types: * String
-   * * Snowflake date format
-   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats * Snowflake
-   * timestamp format
-   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats *
-   * numeric string * java.time.LocalDate * java.time.LocalDateTime * java.time.OffsetDateTime *
-   * java.time.ZonedDateTime
+   * Returns the number of days between the epoch and the passed date. Allowed Java types:
+   *
+   * <ul>
+   *   <li>String
+   *   <li>LocalDate
+   *   <li>LocalDateTime
+   *   <li>OffsetDateTime
+   *   <li>ZonedDateTime
+   * </ul>
    */
   static int validateAndParseDate(Object input) {
     String inputString;
@@ -591,9 +598,13 @@ class DataValidationUtil {
 
   /**
    * Returns the number of units since 00:00, depending on the scale (scale=0: seconds, scale=3:
-   * milliseconds, scale=9: nanoseconds. Allowed Java types: * String * Snowflake time format
-   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#time-formats * numeric
-   * string * java.time.LocalTime * java.time.OffsetTime
+   * milliseconds, scale=9: nanoseconds. Allowed Java types:
+   *
+   * <ul>
+   *   <li>String
+   *   <li>LocalTime
+   *   <li>OffsetTime
+   * </ul>
    */
   static BigInteger validateAndParseTime(Object input, int scale) {
     String stringInput;
@@ -662,7 +673,13 @@ class DataValidationUtil {
   /**
    * Validate and parse input to integer output, 1=true, 0=false. String values converted to boolean
    * according to https://docs.snowflake.com/en/sql-reference/functions/to_boolean.html#usage-notes
-   * Allowed types: * boolean * String * java.lang.Number
+   * Allowed Java types:
+   *
+   * <ul>
+   *   <li>boolean
+   *   <li>String
+   *   <li>java.lang.Number
+   * </ul>
    *
    * @param input Input to be converted
    * @return 1 or 0 where 1=true, 0=false
