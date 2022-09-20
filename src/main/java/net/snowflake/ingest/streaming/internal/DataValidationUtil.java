@@ -138,16 +138,14 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_NTZ or TIMESTAMP_LTZ Snowflake type
-   * Allowed Java types:
-   *  * String
-   *    * Snowflake date format https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats
-   *    * Snowflake timestamp format https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats
-   *    * numeric string
-   *  * java.time.LocalDate
-   *  * java.time.LocalDateTime
-   *  * java.time.OffsetDateTime
-   *  * java.time.ZonedDateTime
+   * Validates and parses input for TIMESTAMP_NTZ or TIMESTAMP_LTZ Snowflake type Allowed Java
+   * types: * String * Snowflake date format
+   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats * Snowflake
+   * timestamp format
+   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats *
+   * numeric string * java.time.LocalDate * java.time.LocalDateTime * java.time.OffsetDateTime *
+   * java.time.ZonedDateTime
+   *
    * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
    *     with precision up to the column's scale
    * @param scale decimal scale of timestamp 16 byte integer
@@ -172,7 +170,10 @@ class DataValidationUtil {
               ? ((OffsetDateTime) input).toLocalDateTime().toString()
               : DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
     else
-      throw typeNotAllowedException(input.getClass(), "TIMESTAMP", new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
+      throw typeNotAllowedException(
+          input.getClass(),
+          "TIMESTAMP",
+          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
 
     SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
     TimeZone effectiveTimeZone = ignoreTimezone ? GMT : DEFAULT_TIMEZONE;
@@ -195,6 +196,7 @@ class DataValidationUtil {
   /**
    * Given a SFTimestamp, get the number of nanoseconds since the last whole second. This
    * corresponds to the fraction component for Timestamp types
+   *
    * @param input SFTimestamp
    * @return Timestamp fraction value, the number of nanoseconds since the last whole second
    */
@@ -205,16 +207,14 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_TZ Snowflake type
-   * Allowed Java types:
-   *  * String
-   *    * Snowflake date format https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats
-   *    * Snowflake timestamp format https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats
-   *    * numeric string
-   *  * java.time.LocalDate
-   *  * java.time.LocalDateTime
-   *  * java.time.OffsetDateTime
-   *  * java.time.ZonedDateTime
+   * Validates and parses input for TIMESTAMP_TZ Snowflake type Allowed Java types: * String *
+   * Snowflake date format
+   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats * Snowflake
+   * timestamp format
+   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats *
+   * numeric string * java.time.LocalDate * java.time.LocalDateTime * java.time.OffsetDateTime *
+   * java.time.ZonedDateTime
+   *
    * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
    * @param scale decimal scale of timestamp 16 byte integer
    * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
@@ -232,7 +232,10 @@ class DataValidationUtil {
     else if (input instanceof OffsetDateTime)
       stringInput = DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
     else
-      throw typeNotAllowedException(input.getClass(), "TIMESTAMP", new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
+      throw typeNotAllowedException(
+          input.getClass(),
+          "TIMESTAMP",
+          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
 
     SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
 
@@ -530,17 +533,14 @@ class DataValidationUtil {
   }
 
   /**
-   * Returns the number of days between the epoch and the passed date.
-   * Allowed Java types:
-   *  * String
-   *    * Snowflake date format https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats
-   *    * Snowflake timestamp format https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats
-   *    * numeric string
-   *  * java.time.LocalDate
-   *  * java.time.LocalDateTime
-   *  * java.time.OffsetDateTime
-   *  * java.time.ZonedDateTime
-   * */
+   * Returns the number of days between the epoch and the passed date. Allowed Java types: * String
+   * * Snowflake date format
+   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats * Snowflake
+   * timestamp format
+   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats *
+   * numeric string * java.time.LocalDate * java.time.LocalDateTime * java.time.OffsetDateTime *
+   * java.time.ZonedDateTime
+   */
   static int validateAndParseDate(Object input) {
     String inputString;
     if (input instanceof String) {
@@ -554,13 +554,15 @@ class DataValidationUtil {
     } else if (input instanceof OffsetDateTime) {
       inputString = ((OffsetDateTime) input).toLocalDate().toString();
     } else {
-      throw typeNotAllowedException(input.getClass(), "DATE", new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
+      throw typeNotAllowedException(
+          input.getClass(),
+          "DATE",
+          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
     }
 
     SFTimestamp timestamp =
         createDateTimeFormatter().parse(inputString, GMT, 0, DATE | TIMESTAMP, true, null);
-    if (timestamp == null)
-      throw valueFormatNotAllowedException(input, "DATE");
+    if (timestamp == null) throw valueFormatNotAllowedException(input, "DATE");
 
     return (int) TimeUnit.MILLISECONDS.toDays(SFDate.fromTimestamp(timestamp).getTime());
   }
@@ -589,13 +591,9 @@ class DataValidationUtil {
 
   /**
    * Returns the number of units since 00:00, depending on the scale (scale=0: seconds, scale=3:
-   * milliseconds, scale=9: nanoseconds.
-   * Allowed Java types:
-   *  * String
-   *    * Snowflake time format https://docs.snowflake.com/en/user-guide/date-time-input-output.html#time-formats
-   *    * numeric string
-   *  * java.time.LocalTime
-   *  * java.time.OffsetTime
+   * milliseconds, scale=9: nanoseconds. Allowed Java types: * String * Snowflake time format
+   * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#time-formats * numeric
+   * string * java.time.LocalTime * java.time.OffsetTime
    */
   static BigInteger validateAndParseTime(Object input, int scale) {
     String stringInput;
@@ -606,7 +604,8 @@ class DataValidationUtil {
     } else if (input instanceof OffsetTime) {
       stringInput = ((OffsetTime) input).toLocalTime().toString();
     } else {
-      throw typeNotAllowedException(input.getClass(), "TIME", new String[] {"String", "LocalTime", "OffsetTime"});
+      throw typeNotAllowedException(
+          input.getClass(), "TIME", new String[] {"String", "LocalTime", "OffsetTime"});
     }
 
     SFTimestamp timestamp =
@@ -663,10 +662,8 @@ class DataValidationUtil {
   /**
    * Validate and parse input to integer output, 1=true, 0=false. String values converted to boolean
    * according to https://docs.snowflake.com/en/sql-reference/functions/to_boolean.html#usage-notes
-   * Allowed types:
-   *  * boolean
-   *  * String
-   *  * java.lang.Number
+   * Allowed types: * boolean * String * java.lang.Number
+   *
    * @param input Input to be converted
    * @return 1 or 0 where 1=true, 0=false
    */
@@ -679,7 +676,8 @@ class DataValidationUtil {
       return convertStringToBoolean((String) input) ? 1 : 0;
     }
 
-    throw typeNotAllowedException(input.getClass(), "BOOLEAN", new String[]  { "boolean", "Number", "String"});
+    throw typeNotAllowedException(
+        input.getClass(), "BOOLEAN", new String[] {"boolean", "Number", "String"});
   }
 
   static Set<String> allowedBooleanStringsLowerCased =
@@ -705,26 +703,29 @@ class DataValidationUtil {
    * @param snowflakeType Target Snowflake column type
    * @param allowedJavaTypes Java types supported for the Java type
    */
-  private static SFException typeNotAllowedException(Class<?> javaType, String snowflakeType, String[] allowedJavaTypes) {
+  private static SFException typeNotAllowedException(
+      Class<?> javaType, String snowflakeType, String[] allowedJavaTypes) {
     return new SFException(
-            ErrorCode.INVALID_ROW,
-            String.format("Object of type %s cannot be ingested into Snowflake column of type %s", javaType.getName(), snowflakeType),
-            String.format(String.format("Allowed Java types: %s", String.join(", ", allowedJavaTypes)))
-    );
+        ErrorCode.INVALID_ROW,
+        String.format(
+            "Object of type %s cannot be ingested into Snowflake column of type %s",
+            javaType.getName(), snowflakeType),
+        String.format(
+            String.format("Allowed Java types: %s", String.join(", ", allowedJavaTypes))));
   }
 
   /**
-   * Create exception when the Java type is correct, but the value is invalid (e.g. boolean cannot be parsed from a string)
+   * Create exception when the Java type is correct, but the value is invalid (e.g. boolean cannot
+   * be parsed from a string)
    *
    * @param value Invalid value causing the exception
    * @param snowflakeType Snowflake column type
    */
   private static SFException valueFormatNotAllowedException(Object value, String snowflakeType) {
     return new SFException(
-            ErrorCode.INVALID_ROW,
-            sanitizeValueForExceptionMessage(value),
-            String.format("Value cannot be ingested into Snowflake column %s", snowflakeType)
-    );
+        ErrorCode.INVALID_ROW,
+        sanitizeValueForExceptionMessage(value),
+        String.format("Value cannot be ingested into Snowflake column %s", snowflakeType));
   }
 
   /**
