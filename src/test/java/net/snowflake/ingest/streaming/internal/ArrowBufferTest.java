@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.ArrowRowBuffer.DECIMAL_BIT_WIDTH;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -432,7 +431,7 @@ public class ArrowBufferTest {
 
     Map<String, Object> row = new HashMap<>();
     row.put("COLTIMESTAMPLTZ_SB8", "1621899220");
-    row.put("COLTIMESTAMPLTZ_SB16", new BigDecimal("1621899220.123456789"));
+    row.put("COLTIMESTAMPLTZ_SB16", "1621899220123456789");
 
     InsertValidationResponse response =
         innerBuffer.insertRows(Collections.singletonList(row), null);

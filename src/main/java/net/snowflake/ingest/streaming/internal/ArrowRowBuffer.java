@@ -553,14 +553,17 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             }
           case TIMESTAMP_LTZ:
           case TIMESTAMP_NTZ:
+            boolean ignoreTimezone = logicalType == ColumnLogicalType.TIMESTAMP_NTZ;
+
             switch (physicalType) {
               case SB8:
                 {
                   BigIntVector bigIntVector = (BigIntVector) vector;
-                  BigInteger timeInScale =
-                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
-                  bigIntVector.setSafe(curRowIndex, timeInScale.longValue());
-                  stats.addIntValue(timeInScale);
+                  TimestampWrapper timestampWrapper =
+                      DataValidationUtil.validateAndParseTimestampNtzSb16(
+                          value, getColumnScale(field.getMetadata()), ignoreTimezone);
+                  bigIntVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
+                  stats.addIntValue(timestampWrapper.getTimeInScale());
                   rowBufferSize += 8;
                   break;
                 }
@@ -576,7 +579,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampNtzSb16(
-                          value, field.getMetadata());
+                          value, getColumnScale(field.getMetadata()), ignoreTimezone);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   rowBufferSize += 12;
@@ -600,7 +603,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTimestampTz(
+                          value, getColumnScale(field.getMetadata()));
                   epochVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
                   timezoneVector.setSafe(
                       curRowIndex,
@@ -639,7 +643,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTimestampTz(
+                          value, getColumnScale(field.getMetadata()));
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   timezoneVector.setSafe(
@@ -685,7 +690,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               case SB4:
                 {
                   BigInteger timeInScale =
-                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTime(
+                          value, getColumnScale(field.getMetadata()));
                   stats.addIntValue(timeInScale);
                   ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
                   stats.addIntValue(timeInScale);
@@ -695,7 +701,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               case SB8:
                 {
                   BigInteger timeInScale =
-                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTime(
+                          value, getColumnScale(field.getMetadata()));
                   ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
                   stats.addIntValue(timeInScale);
                   rowBufferSize += 8;
@@ -766,6 +773,10 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Unexpected FieldType");
     }
     stats.incCurrentNullCount();
+  }
+
+  private int getColumnScale(Map<String, String> metadata) {
+    return Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
   }
 
   @Override

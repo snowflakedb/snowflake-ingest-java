@@ -4,14 +4,24 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat.DATE;
+import static net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat.TIMESTAMP;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import javax.xml.bind.DatatypeConverter;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
@@ -30,9 +40,20 @@ class DataValidationUtil {
   static final BigInteger MAX_BIGINTEGER = BigInteger.valueOf(10).pow(38);
   static final BigInteger MIN_BIGINTEGER =
       BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38));
+
+  private static final TimeZone DEFAULT_TIMEZONE =
+      TimeZone.getTimeZone("America/Los_Angeles"); // default value of TIMEZONE system parameter
+  private static final TimeZone GMT = TimeZone.getTimeZone("GMT");
+
   private static final ObjectMapper objectMapper = new ObjectMapper();
-  private static final SnowflakeDateTimeFormat snowflakeDateTimeFormatter =
-      SnowflakeDateTimeFormat.fromSqlFormat("auto");
+
+  /**
+   * Creates a new SnowflakeDateTimeFormat. In order to avoid SnowflakeDateTimeFormat's
+   * synchronization blocks, we create a new instance when needed instead of sharing one instance.
+   */
+  private static SnowflakeDateTimeFormat createDateTimeFormatter() {
+    return SnowflakeDateTimeFormat.fromSqlFormat("auto");
+  }
 
   /**
    * Expects string JSON
@@ -117,72 +138,61 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_NTZ Snowflake type
+   * Validates and parses input for TIMESTAMP_NTZ or TIMESTAMP_LTZ Snowflake type. Allowed Java
+   * types:
    *
-   * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
-   *     with precision up to the column's scale
-   * @param metadata
-   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
-   *     scale
-   */
-  static TimestampWrapper validateAndParseTimestampNtzSb16(
-      Object input, Map<String, String> metadata) {
-    int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
-    return validateAndParseTimestampNtzSb16(input, scale);
-  }
-
-  /**
-   * Validates and parses input for TIMESTAMP_NTZ Snowflake type
+   * <ul>
+   *   <li>String
+   *   <li>LocalDate
+   *   <li>LocalDateTime
+   *   <li>OffsetDateTime
+   *   <li>ZonedDateTime
+   * </ul>
    *
    * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
    *     with precision up to the column's scale
    * @param scale decimal scale of timestamp 16 byte integer
+   * @param ignoreTimezone Must be true for TIMESTAMP_NTZ
    * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
    *     scale
    */
-  static TimestampWrapper validateAndParseTimestampNtzSb16(Object input, int scale) {
-    try {
-      String valueString = getStringValue(input);
+  static TimestampWrapper validateAndParseTimestampNtzSb16(
+      Object input, int scale, boolean ignoreTimezone) {
+    String valueString;
+    if (input instanceof String) valueString = (String) input;
+    else if (input instanceof LocalDate) valueString = input.toString();
+    else if (input instanceof LocalDateTime) valueString = input.toString();
+    else if (input instanceof ZonedDateTime)
+      valueString =
+          ignoreTimezone
+              ? ((ZonedDateTime) input).toLocalDateTime().toString()
+              : DateTimeFormatter.ISO_DATE_TIME.format(((ZonedDateTime) input).toOffsetDateTime());
+    else if (input instanceof OffsetDateTime)
+      valueString =
+          ignoreTimezone
+              ? ((OffsetDateTime) input).toLocalDateTime().toString()
+              : DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
+    else
+      throw typeNotAllowedException(
+          input.getClass(),
+          "TIMESTAMP",
+          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
 
-      long epoch;
-      int fraction;
-
-      SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(valueString);
-      // The formatter will not correctly parse numbers with decimal values
-      if (timestamp != null) {
-        epoch = timestamp.getSeconds().longValue();
-        fraction = getFractionFromTimestamp(timestamp);
-      } else {
-        /*
-         * Assume the data is of the form "<epoch_seconds>.<fraction of second>". For example "10.5"
-         * is interpreted as meaning 10.5 seconds past the epoch. The following logic breaks out and
-         * stores the epoch seconds and fractional seconds values separately
-         */
-        String[] items = valueString.split("\\.");
-        if (items.length != 2) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW,
-              input.toString(),
-              String.format("Unable to parse timestamp from value.  value=%s", valueString));
-        }
-        epoch = Long.parseLong(items[0]);
-        int l = items.length > 1 ? items[1].length() : 0;
-        /* Fraction is in nanoseconds, but Snowflake will error if the fraction gives
-         * accuracy greater than the scale
-         * */
-        fraction = l == 0 ? 0 : Integer.parseInt(items[1]) * (l < 9 ? Power10.intTable[9 - l] : 1);
-      }
-      if (fraction % Power10.intTable[9 - scale] != 0) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            input.toString(),
-            String.format(
-                "Row specifies accuracy greater than column scale.  fraction=%d, scale=%d",
-                fraction, scale));
-      }
-      return new TimestampWrapper(epoch, fraction, getTimeInScale(valueString, scale));
-    } catch (NumberFormatException e) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
+    SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
+    TimeZone effectiveTimeZone = ignoreTimezone ? GMT : DEFAULT_TIMEZONE;
+    SFTimestamp timestamp =
+        snowflakeDateTimeFormatter.parse(
+            valueString, effectiveTimeZone, 0, DATE | TIMESTAMP, ignoreTimezone, null);
+    if (timestamp != null) {
+      long epoch = timestamp.getSeconds().longValue();
+      int fraction = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
+      BigInteger timeInScale =
+          BigInteger.valueOf(epoch)
+              .multiply(Power10.sb16Table[scale])
+              .add(BigInteger.valueOf(fraction));
+      return new TimestampWrapper(epoch, fraction, timeInScale);
+    } else {
+      throw valueFormatNotAllowedException(input.toString(), "TIMESTAMP");
     }
   }
 
@@ -200,20 +210,15 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_TZ Snowflake type
+   * Validates and parses input for TIMESTAMP_TZ Snowflake type. Allowed Java types:
    *
-   * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
-   * @param metadata Column metadata containing scale
-   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
-   *     scale
-   */
-  static TimestampWrapper validateAndParseTimestampTz(Object input, Map<String, String> metadata) {
-    int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
-    return validateAndParseTimestampTz(input, scale);
-  }
-
-  /**
-   * Validates and parses input for TIMESTAMP_TZ Snowflake type
+   * <ul>
+   *   <li>String
+   *   <li>LocalDate
+   *   <li>LocalDateTime
+   *   <li>OffsetDateTime
+   *   <li>ZonedDateTime
+   * </ul>
    *
    * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
    * @param scale decimal scale of timestamp 16 byte integer
@@ -221,40 +226,37 @@ class DataValidationUtil {
    *     scale
    */
   static TimestampWrapper validateAndParseTimestampTz(Object input, int scale) {
-    try {
-      if (input instanceof String) {
-        String stringInput = (String) input;
-        SFTimestamp timestamp = snowflakeDateTimeFormatter.parse(stringInput);
-        if (timestamp == null) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input, "Cannot be converted to a timestamp_tz value");
-        }
 
-        int fraction = getFractionFromTimestamp(timestamp);
+    String stringInput;
+    if (input instanceof String) stringInput = (String) input;
+    else if (input instanceof LocalDate) stringInput = input.toString();
+    else if (input instanceof LocalDateTime) stringInput = input.toString();
+    else if (input instanceof ZonedDateTime)
+      stringInput =
+          DateTimeFormatter.ISO_DATE_TIME.format(((ZonedDateTime) input).toOffsetDateTime());
+    else if (input instanceof OffsetDateTime)
+      stringInput = DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
+    else
+      throw typeNotAllowedException(
+          input.getClass(),
+          "TIMESTAMP",
+          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
 
-        BigDecimal epochTimeAtSecondsScale =
-            timestamp.getNanosSinceEpoch().divide(BigDecimal.valueOf(Power10.intTable[9]));
-        if (fraction % Power10.intTable[9 - scale] != 0) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW,
-              input.toString(),
-              String.format(
-                  "Row specifies accuracy greater than column scale.  fraction=%d, scale=%d",
-                  fraction, scale));
-        }
-        TimestampWrapper wrapper =
-            new TimestampWrapper(
-                timestamp.getSeconds().longValue(),
-                fraction,
-                getTimeInScale(getStringValue(epochTimeAtSecondsScale), scale),
-                timestamp);
-        return wrapper;
-      } else {
-        throw new SFException(
-            ErrorCode.INVALID_ROW, input, "Cannot be converted to a timestamp_tz value");
-      }
-    } catch (NumberFormatException e) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
+    SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
+
+    SFTimestamp timestamp =
+        snowflakeDateTimeFormatter.parse(
+            stringInput, DEFAULT_TIMEZONE, 0, DATE | TIMESTAMP, false, null);
+    if (timestamp != null) {
+      long epoch = timestamp.getSeconds().longValue();
+      int fraction = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
+      return new TimestampWrapper(
+          epoch,
+          fraction,
+          BigInteger.valueOf(epoch * Power10.intTable[scale] + fraction),
+          timestamp);
+    } else {
+      throw valueFormatNotAllowedException(input.toString(), "TIMESTAMP");
     }
   }
 
@@ -536,28 +538,40 @@ class DataValidationUtil {
   }
 
   /**
-   * Expects input in epoch days or "YYYY-MM-DD" format. Uses @see {@link
-   * #validateAndParseInteger(Object)} to validate and parse input as integer
+   * Returns the number of days between the epoch and the passed date. Allowed Java types:
    *
-   * @param input epoch days or "YYYY-MM-DD" date format
+   * <ul>
+   *   <li>String
+   *   <li>LocalDate
+   *   <li>LocalDateTime
+   *   <li>OffsetDateTime
+   *   <li>ZonedDateTime
+   * </ul>
    */
   static int validateAndParseDate(Object input) {
-    try {
-      return validateAndParseInteger(input);
-    } catch (SFException e) {
-      // Try parsing the time from a String
-      Optional<SFTimestamp> timestamp =
-          Optional.ofNullable(snowflakeDateTimeFormatter.parse(input.toString()));
-      return timestamp
-          .map(
-              t ->
-                  // Adjust nanoseconds past the epoch to match the column scale value
-                  (int) TimeUnit.MILLISECONDS.toDays(SFDate.fromTimestamp(t).getTime()))
-          .orElseThrow(
-              () ->
-                  new SFException(
-                      ErrorCode.INVALID_ROW, input, "Cannot be converted to a Date value"));
+    String inputString;
+    if (input instanceof String) {
+      inputString = (String) input;
+    } else if (input instanceof LocalDate) {
+      inputString = input.toString();
+    } else if (input instanceof LocalDateTime) {
+      inputString = ((LocalDateTime) input).toLocalDate().toString();
+    } else if (input instanceof ZonedDateTime) {
+      inputString = ((ZonedDateTime) input).toLocalDate().toString();
+    } else if (input instanceof OffsetDateTime) {
+      inputString = ((OffsetDateTime) input).toLocalDate().toString();
+    } else {
+      throw typeNotAllowedException(
+          input.getClass(),
+          "DATE",
+          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
     }
+
+    SFTimestamp timestamp =
+        createDateTimeFormatter().parse(inputString, GMT, 0, DATE | TIMESTAMP, true, null);
+    if (timestamp == null) throw valueFormatNotAllowedException(input, "DATE");
+
+    return (int) TimeUnit.MILLISECONDS.toDays(SFDate.fromTimestamp(timestamp).getTime());
   }
 
   static byte[] validateAndParseBinary(Object input, Optional<Integer> maxLengthOptional) {
@@ -583,41 +597,39 @@ class DataValidationUtil {
   }
 
   /**
-   * @param input Seconds past the epoch. or String Time representation
-   * @param metadata
-   */
-  static BigInteger validateAndParseTime(Object input, Map<String, String> metadata) {
-    int scale = Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
-    return getTimeInScale(getStringValue(input), scale);
-  }
-
-  /**
-   * Returns the time past the epoch in the given scale.
+   * Returns the number of units since 00:00, depending on the scale (scale=0: seconds, scale=3:
+   * milliseconds, scale=9: nanoseconds. Allowed Java types:
    *
-   * @param value
-   * @param scale Value between 0 and 9. For seconds scale = 0, for milliseconds scale = 3, for
-   *     nanoseconds scale = 9
+   * <ul>
+   *   <li>String
+   *   <li>LocalTime
+   *   <li>OffsetTime
+   * </ul>
    */
-  static BigInteger getTimeInScale(String value, int scale) {
-    try {
-      BigDecimal decVal = new BigDecimal(value);
-      BigDecimal epochScale = decVal.multiply(BigDecimal.valueOf(Power10.intTable[scale]));
-      return epochScale.toBigInteger();
-    } catch (NumberFormatException e) {
-      // Try parsing the time from a String
-      Optional<SFTimestamp> timestamp =
-          Optional.ofNullable(snowflakeDateTimeFormatter.parse(value));
+  static BigInteger validateAndParseTime(Object input, int scale) {
+    String stringInput;
+    if (input instanceof String) {
+      stringInput = (String) input;
+    } else if (input instanceof LocalTime) {
+      stringInput = input.toString();
+    } else if (input instanceof OffsetTime) {
+      stringInput = ((OffsetTime) input).toLocalTime().toString();
+    } else {
+      throw typeNotAllowedException(
+          input.getClass(), "TIME", new String[] {"String", "LocalTime", "OffsetTime"});
+    }
+
+    SFTimestamp timestamp =
+        createDateTimeFormatter()
+            .parse(stringInput, GMT, 0, SnowflakeDateTimeFormat.TIME, true, null);
+    if (timestamp == null) {
+      throw valueFormatNotAllowedException(input, "TIME");
+    } else {
       return timestamp
-          .map(
-              t ->
-                  // Adjust nanoseconds past the epoch to match the column scale value
-                  t.getNanosSinceEpoch()
-                      .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
-                      .toBigInteger())
-          .orElseThrow(
-              () ->
-                  new SFException(
-                      ErrorCode.INVALID_ROW, value, "Cannot be converted to a time value"));
+          .getNanosSinceEpoch()
+          .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
+          .toBigInteger()
+          .mod(BigInteger.valueOf(24L * 60 * 60 * Power10.intTable[scale]));
     }
   }
 
@@ -661,8 +673,15 @@ class DataValidationUtil {
   /**
    * Validate and parse input to integer output, 1=true, 0=false. String values converted to boolean
    * according to https://docs.snowflake.com/en/sql-reference/functions/to_boolean.html#usage-notes
+   * Allowed Java types:
    *
-   * @param input
+   * <ul>
+   *   <li>boolean
+   *   <li>String
+   *   <li>java.lang.Number
+   * </ul>
+   *
+   * @param input Input to be converted
    * @return 1 or 0 where 1=true, 0=false
    */
   static int validateAndParseBoolean(Object input) {
@@ -674,7 +693,8 @@ class DataValidationUtil {
       return convertStringToBoolean((String) input) ? 1 : 0;
     }
 
-    throw cannotConvertException(input, "boolean");
+    throw typeNotAllowedException(
+        input.getClass(), "BOOLEAN", new String[] {"boolean", "Number", "String"});
   }
 
   static Set<String> allowedBooleanStringsLowerCased =
@@ -683,7 +703,7 @@ class DataValidationUtil {
   private static boolean convertStringToBoolean(String value) {
     String lowerCasedValue = value.toLowerCase();
     if (!allowedBooleanStringsLowerCased.contains(lowerCasedValue)) {
-      throw cannotConvertException(value, "boolean");
+      throw valueFormatNotAllowedException(value, "BOOLEAN");
     }
     return "1".equals(lowerCasedValue)
         || "yes".equals(lowerCasedValue)
@@ -694,16 +714,35 @@ class DataValidationUtil {
   }
 
   /**
-   * Create exception when value cannot be ingested into column of a specific type.
+   * Create exception that a Java type cannot be ingested into a specific Snowflake column type
+   *
+   * @param javaType Java type failing the validation
+   * @param snowflakeType Target Snowflake column type
+   * @param allowedJavaTypes Java types supported for the Java type
+   */
+  private static SFException typeNotAllowedException(
+      Class<?> javaType, String snowflakeType, String[] allowedJavaTypes) {
+    return new SFException(
+        ErrorCode.INVALID_ROW,
+        String.format(
+            "Object of type %s cannot be ingested into Snowflake column of type %s",
+            javaType.getName(), snowflakeType),
+        String.format(
+            String.format("Allowed Java types: %s", String.join(", ", allowedJavaTypes))));
+  }
+
+  /**
+   * Create exception when the Java type is correct, but the value is invalid (e.g. boolean cannot
+   * be parsed from a string)
    *
    * @param value Invalid value causing the exception
-   * @param type Snowflake column type
+   * @param snowflakeType Snowflake column type
    */
-  private static SFException cannotConvertException(Object value, String type) {
+  private static SFException valueFormatNotAllowedException(Object value, String snowflakeType) {
     return new SFException(
         ErrorCode.INVALID_ROW,
         sanitizeValueForExceptionMessage(value),
-        String.format("Value cannot be converted to %s", type));
+        String.format("Value cannot be ingested into Snowflake column %s", snowflakeType));
   }
 
   /**

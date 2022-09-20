@@ -396,22 +396,22 @@ public class StreamingIngestIT {
     row.put("ttzbig", "2021-01-01 09:00:00.12345678 -0300");
     row.put("tsmall", "01:00:00.123");
     row.put("tbig", "09:00:00.12345678");
-    row.put("tntzsmall", "1609462800.123");
-    row.put("tntzbig", "1609462800.12345");
+    row.put("tntzsmall", "1609462800123");
+    row.put("tntzbig", "1609462800123450000");
     verifyInsertValidationResponse(channel1.insertRow(row, null));
     row.put("ttzsmall", "2021-01-01 10:00:00.123 +0700");
     row.put("ttzbig", "2021-01-01 19:00:00.12345678 -0300");
     row.put("tsmall", "02:00:00.123");
     row.put("tbig", "10:00:00.12345678");
-    row.put("tntzsmall", "1709462800.123");
-    row.put("tntzbig", "1709462800.12345");
+    row.put("tntzsmall", "1709462800123");
+    row.put("tntzbig", "170946280212345000");
     verifyInsertValidationResponse(channel1.insertRow(row, null));
     row.put("ttzsmall", "2021-01-01 05:00:00 +0100");
     row.put("ttzbig", "2021-01-01 23:00:00.12345678 -0300");
     row.put("tsmall", "03:00:00.123");
     row.put("tbig", "11:00:00.12345678");
-    row.put("tntzsmall", "1809462800.123");
-    row.put("tntzbig", "2031-01-01 09:00:00.12345678");
+    row.put("tntzsmall", "1809462800123");
+    row.put("tntzbig", "2031-01-01 09:00:00.123456780");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     // Close the channel after insertion
@@ -502,7 +502,7 @@ public class StreamingIngestIT {
     row.put("f", 3.14);
     row.put("tinyfloat", 1.1);
     row.put("var", "{\"e\":2.7}");
-    row.put("t", timestamp);
+    row.put("t", String.valueOf(timestamp));
     row.put("d", "1969-12-31 00:00:00");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
@@ -1103,23 +1103,31 @@ public class StreamingIngestIT {
     row.put("var", nextJson(r));
     row.put("obj", nextJson(r));
     row.put("arr", Arrays.asList(r.nextInt(100), r.nextInt(100), r.nextInt(100)));
-    row.put("epochdays", Math.abs(r.nextInt()) % 18963); // DATE, 02.12.2021
+    row.put(
+        "epochdays",
+        String.valueOf(Math.abs(r.nextInt()) % (18963 * 24 * 60 * 60))); // DATE, 02.12.2021
     row.put(
         "timesec",
-        (r.nextInt(11) * 60 * 60 + r.nextInt(59) * 60 + r.nextInt(59)) * 10000
-            + r.nextInt(9999)); // TIME(4), 05:12:43.4536
+        String.valueOf(
+            (r.nextInt(11) * 60 * 60 + r.nextInt(59) * 60 + r.nextInt(59)) * 10000
+                + r.nextInt(9999))); // TIME(4), 05:12:43.4536
     row.put(
         "timenano",
-        (14 * 60 * 60 + 26 * 60 + 34) * 1000000000L + 437582643); // TIME(9), 14:26:34.437582643
+        String.valueOf(
+            (14 * 60 * 60 + 26 * 60 + 34) * 1000000000L
+                + 437582643)); // TIME(9), 14:26:34.437582643
     row.put(
-        "epochsec", Math.abs(r.nextLong()) % 1638459438); // TIMESTAMP_LTZ(0), 02.12.2021 15:37:18
+        "epochsec",
+        String.valueOf(
+            Math.abs(r.nextLong()) % 1638459438)); // TIMESTAMP_LTZ(0), 02.12.2021 15:37:18
     row.put(
         "epochnano",
-        new BigDecimal(
-            (Math.abs(r.nextInt()) % 1999999999)
-                + "."
+        String.format(
+            "%d%d",
+            Math.abs(r.nextInt()) % 1999999999,
+            100000000
                 + Math.abs(
-                    r.nextInt(999999999)))); // TIMESTAMP_LTZ(9), 18.05.2033 03:33:19.999999999
+                    r.nextInt(899999999)))); // TIMESTAMP_LTZ(9), 18.05.2033 03:33:19.999999999
     return row;
   }
 
