@@ -336,6 +336,7 @@ public class FlushServiceTest {
     colInt.setPhysicalType("SB4");
     colInt.setNullable(true);
     colInt.setLogicalType("FIXED");
+    colInt.setPrecision(2);
     colInt.setScale(0);
     return colInt;
   }
