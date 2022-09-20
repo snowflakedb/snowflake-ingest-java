@@ -42,15 +42,20 @@ public class DataValidationUtilTest {
     expectError(expectedErrorCode, () -> func.apply(args));
   }
 
-  private void expectError(ErrorCode expectedErrorCode, Runnable action) {
+  private void expectErrorCodeAndMessage(ErrorCode expectedErrorCode, String expectedExceptionMessage, Runnable action) {
     try {
       action.run();
       Assert.fail("Expected Exception");
     } catch (SFException e) {
       assertEquals(expectedErrorCode.getMessageCode(), e.getVendorCode());
+      if (expectedExceptionMessage != null)
+        Assert.assertEquals(expectedExceptionMessage, e.getMessage());
     } catch (Exception e) {
       Assert.fail("Invalid error through");
     }
+  }
+  private void expectError(ErrorCode expectedErrorCode, Runnable action) {
+    expectErrorCodeAndMessage(expectedErrorCode, null, action);
   }
 
   @Test
@@ -691,5 +696,36 @@ public class DataValidationUtilTest {
     expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, new int[] {});
     expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, "foobar");
     expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBoolean, "");
+  }
+
+  /**
+   * Tests that exception message are constructed correctly when ingesting forbidden Java type, as well a value of an allowed type, but in invalid format
+   */
+  @Test
+  public void testExceptionMessages() {
+    // BOOLEAN
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot be ingested into Snowflake column of type BOOLEAN. Allowed Java types: boolean, Number, String", () -> validateAndParseBoolean(new Object()));
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into Snowflake column BOOLEAN", () -> validateAndParseBoolean("abc"));
+
+    // TIME
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot be ingested into Snowflake column of type TIME. Allowed Java types: String, LocalTime, OffsetTime", () -> validateAndParseTime(new Object(), 10));
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into Snowflake column TIME", () -> validateAndParseTime("abc", 10));
+
+    // DATE
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot be ingested into Snowflake column of type DATE. Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime", () -> validateAndParseDate(new Object()));
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into Snowflake column DATE", () -> validateAndParseDate("abc"));
+
+    // TIMESTAMP_NTZ
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot be ingested into Snowflake column of type TIMESTAMP. Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime", () -> validateAndParseTimestampNtzSb16(new Object(), 3, true));
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into Snowflake column TIMESTAMP", () -> validateAndParseTimestampNtzSb16("abc", 3, true));
+
+    // TIMESTAMP_LTZ
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot be ingested into Snowflake column of type TIMESTAMP. Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime", () -> validateAndParseTimestampNtzSb16(new Object(), 3, false));
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into Snowflake column TIMESTAMP", () -> validateAndParseTimestampNtzSb16("abc", 3, false));
+
+    // TIMESTAMP_TZ
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot be ingested into Snowflake column of type TIMESTAMP. Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime", () -> validateAndParseTimestampTz(new Object(), 3));
+    expectErrorCodeAndMessage(ErrorCode.INVALID_ROW, "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into Snowflake column TIMESTAMP", () -> validateAndParseTimestampTz("abc", 3));
+
   }
 }
