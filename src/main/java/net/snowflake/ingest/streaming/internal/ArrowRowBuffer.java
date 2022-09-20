@@ -553,11 +553,11 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             }
           case TIMESTAMP_LTZ:
           case TIMESTAMP_NTZ:
+            boolean ignoreTimezone = logicalType == ColumnLogicalType.TIMESTAMP_NTZ;
+
             switch (physicalType) {
               case SB8:
                 {
-                  boolean ignoreTimezone = logicalType == ColumnLogicalType.TIMESTAMP_NTZ;
-
                   BigIntVector bigIntVector = (BigIntVector) vector;
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampNtzSb16(
@@ -569,8 +569,6 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                 }
               case SB16:
                 {
-                  boolean ignoreTimezone = logicalType == ColumnLogicalType.TIMESTAMP_NTZ;
-
                   StructVector structVector = (StructVector) vector;
                   BigIntVector epochVector =
                       (BigIntVector) structVector.getChild(FIELD_EPOCH_IN_SECONDS);
