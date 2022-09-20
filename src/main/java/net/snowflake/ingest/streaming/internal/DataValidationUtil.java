@@ -282,34 +282,38 @@ class DataValidationUtil {
 
   /**
    * Returns a BigDecimal representation of the input. Strings of the form "1.23E4" will be treated
-   * as being written in * scientific notation (e.g. 1.23 * 10^4)
-   *
-   * @param input
+   * as being written in * scientific notation (e.g. 1.23 * 10^4). Does not perform any size
+   * validation. Allowed Java types:
+   * <li>byte, short, int, long
+   * <li>float, double
+   * <li>BigInteger, BigDecimal
+   * <li>String
    */
   static BigDecimal validateAndParseBigDecimal(Object input) {
-    BigDecimal output;
-    try {
-      if (input instanceof BigDecimal) {
-        output = (BigDecimal) input;
-      } else if (input instanceof BigInteger) {
-        output = new BigDecimal((BigInteger) input);
-      } else if (input instanceof String) {
-        output = stringToBigDecimal((String) input);
-      } else {
-        output = stringToBigDecimal((input.toString()));
+    if (input instanceof BigDecimal) {
+      return (BigDecimal) input;
+    } else if (input instanceof BigInteger) {
+      return new BigDecimal((BigInteger) input);
+    } else if (input instanceof Byte
+        || input instanceof Short
+        || input instanceof Integer
+        || input instanceof Long) {
+      return BigDecimal.valueOf(((Number) input).longValue());
+    } else if (input instanceof Float || input instanceof Double) {
+      return BigDecimal.valueOf(((Number) input).doubleValue());
+    } else if (input instanceof String) {
+      try {
+        return new BigDecimal((String) input);
+      } catch (NumberFormatException e) {
+        throw valueFormatNotAllowedException(input, "NUMBER");
       }
-      if (output.toBigInteger().compareTo(MAX_BIGINTEGER) >= 0
-          || output.toBigInteger().compareTo(MIN_BIGINTEGER) <= 0) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            input.toString(),
-            String.format(
-                "Number out of representable range, Max=%s, Min=%s",
-                MIN_BIGINTEGER, MAX_BIGINTEGER));
-      }
-      return output;
-    } catch (NumberFormatException e) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
+    } else {
+      throw typeNotAllowedException(
+          input.getClass(),
+          "NUMBER",
+          new String[] {
+            "int", "long", "byte", "short", "float", "double", "BigDecimal", "BigInteger", "String"
+          });
     }
   }
 
@@ -323,57 +327,6 @@ class DataValidationUtil {
         .multiply(BigDecimal.valueOf(10).pow(Integer.parseInt(splitInput[1])));
   }
 
-  static BigDecimal stringToBigDecimal(String input) {
-    try {
-      return new BigDecimal(input);
-    } catch (NumberFormatException e) {
-      return handleScientificNotationError(input, e);
-    }
-  }
-
-  /**
-   * Validates the input represents a valid NUMBER(38,0) and returns a BigInteger. Accepts Java
-   * number types and strings. Strings of the form "1.23E4" will be treated as being written in
-   * scientific notation (e.g. 1.23 * 10^4)
-   *
-   * @param input
-   */
-  static BigInteger validateAndParseBigInteger(Object input) {
-    try {
-      if (input instanceof Double) {
-        checkInteger((double) input);
-        return new BigDecimal(input.toString()).toBigInteger();
-      } else if (input instanceof Float) {
-        checkInteger((float) input);
-        return new BigDecimal(input.toString()).toBigInteger();
-      }
-      BigInteger output;
-      if (input instanceof BigInteger) {
-        output = (BigInteger) input;
-      } else if (input instanceof String) {
-        BigDecimal bigDecimal = stringToBigDecimal((String) input);
-        if (bigDecimal.stripTrailingZeros().scale() <= 0) {
-          return bigDecimal.toBigInteger();
-        } else {
-          throw new SFException(ErrorCode.INVALID_ROW, input.toString(), "Invalid integer");
-        }
-      } else {
-        output = new BigInteger(input.toString());
-      }
-      if (output.compareTo(MAX_BIGINTEGER) >= 0 || output.compareTo(MIN_BIGINTEGER) <= 0) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            input.toString(),
-            String.format(
-                "Number out of representable range, Max=%s, Min=%s",
-                MIN_BIGINTEGER, MAX_BIGINTEGER));
-      }
-      return output;
-    } catch (NumberFormatException e) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), e.getMessage());
-    }
-  }
-
   static void checkInteger(float input) {
     if (Math.floor(input) != input) {
       throw new SFException(ErrorCode.INVALID_ROW, input, "Value must be integer");
@@ -384,42 +337,6 @@ class DataValidationUtil {
     if (Math.floor(input) != input) {
       throw new SFException(ErrorCode.INVALID_ROW, input, "Value must be integer");
     }
-  }
-
-  /**
-   * Validates input is an integer @see {@link #validateAndParseInteger(Object)} and that it does
-   * not exceed the MIN/MAX Short value
-   *
-   * @param input
-   */
-  static short validateAndParseShort(Object input) {
-    Integer intValue = validateAndParseInteger(input);
-    if (intValue > Short.MAX_VALUE || intValue < Short.MIN_VALUE) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          String.format(
-              "Value exceeds min/max short.  min=%s, max%s", Short.MIN_VALUE, Short.MAX_VALUE));
-    }
-    return intValue.shortValue();
-  }
-
-  /**
-   * Validates input is an integer @see {@link #validateAndParseInteger(Object)} and that it does
-   * not exceed the MIN/MAX Byte value
-   *
-   * @param input
-   */
-  static byte validateAndParseByte(Object input) {
-    Integer intValue = validateAndParseInteger(input);
-    if (intValue > Byte.MAX_VALUE || intValue < Byte.MIN_VALUE) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          String.format(
-              "Value exceeds min/max byte.  min=%s, max%s", Byte.MIN_VALUE, Byte.MAX_VALUE));
-    }
-    return intValue.byteValue();
   }
 
   /**
@@ -471,62 +388,6 @@ class DataValidationUtil {
           Double doubleValue = handleScientificNotationError(input.toString(), e).doubleValue();
           if (Math.floor(doubleValue) == doubleValue) {
             return doubleValue.intValue();
-          } else {
-            throw new SFException(ErrorCode.INVALID_ROW, input.toString(), "Value must be integer");
-          }
-        }
-      }
-    } catch (NumberFormatException err) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), err.getMessage());
-    }
-  }
-
-  /**
-   * Validates the input can be represented as an integer with value between Long.MIN_VALUE and
-   * Long.MAX_VALUE
-   *
-   * @param input
-   */
-  static long validateAndParseLong(Object input) {
-    try {
-      if (input instanceof Integer) {
-        return Long.valueOf((int) input);
-      } else if (input instanceof Long) {
-        return (long) input;
-      } else if (input instanceof Double) {
-        // Number must be integer
-        checkInteger((double) input);
-        BigInteger bigInt = validateAndParseBigInteger(input);
-        if (bigInt.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0
-            || bigInt.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input.toString(), "Value greater than max long");
-        }
-        return ((Number) input).longValue();
-      } else if (input instanceof Float) {
-        // Number must be integer
-        checkInteger((float) input);
-        BigInteger bigInt = validateAndParseBigInteger(input);
-        if (bigInt.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0
-            || bigInt.compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input.toString(), "Value greater than max long");
-        }
-        return ((Number) input).longValue();
-      } else if (input instanceof BigInteger) {
-        if (((BigInteger) input).compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0
-            || ((BigInteger) input).compareTo(BigInteger.valueOf(Long.MIN_VALUE)) < 0) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input.toString(), "Value greater than max long");
-        }
-        return ((BigInteger) input).longValue();
-      } else {
-        try {
-          return Long.parseLong(input.toString());
-        } catch (NumberFormatException e) {
-          Double doubleValue = handleScientificNotationError(input.toString(), e).doubleValue();
-          if (Math.floor(doubleValue) == doubleValue) {
-            return doubleValue.longValue();
           } else {
             throw new SFException(ErrorCode.INVALID_ROW, input.toString(), "Value must be integer");
           }
@@ -647,27 +508,29 @@ class DataValidationUtil {
   }
 
   /**
-   * Converts input to double value.
+   * Converts input to double value. Allowed Java types:
+   *
+   * <ul>
+   *   <li>Number
+   *   <li>String
+   * </ul>
    *
    * @param input
    */
   static double validateAndParseReal(Object input) {
-    double doubleValue;
-    try {
-      if (input instanceof Double) {
-        doubleValue = (double) input;
-      } else if (input instanceof Float) {
-        doubleValue = Double.parseDouble(input.toString());
-      } else if (input instanceof BigDecimal) {
-        doubleValue = ((BigDecimal) input).doubleValue();
-      } else {
-        doubleValue = Double.parseDouble((String) input);
+    if (input instanceof Float) {
+      return Double.parseDouble(input.toString());
+    } else if (input instanceof Number) {
+      return ((Number) input).doubleValue();
+    } else if (input instanceof String) {
+      try {
+        return Double.parseDouble((String) input);
+      } catch (NumberFormatException err) {
+        throw valueFormatNotAllowedException(input, "REAL");
       }
-    } catch (NumberFormatException err) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString());
     }
 
-    return doubleValue;
+    throw typeNotAllowedException(input.getClass(), "REAL", new String[] {"Number", "String"});
   }
 
   /**

@@ -1,8 +1,9 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.DataValidationUtil.MAX_BIGINTEGER;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBigDecimal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseDate;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseReal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTime;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampNtzSb16;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampTz;
@@ -58,20 +59,6 @@ public class DataValidationUtilTest {
 
   private void expectError(ErrorCode expectedErrorCode, Runnable action) {
     expectErrorCodeAndMessage(expectedErrorCode, null, action);
-  }
-
-  @Test
-  public void testValidateAndParseShort() {
-    short e = 12;
-    Assert.assertEquals(e, DataValidationUtil.validateAndParseShort("12"));
-    Assert.assertEquals(e, DataValidationUtil.validateAndParseShort(e));
-    Assert.assertEquals(Short.MAX_VALUE, DataValidationUtil.validateAndParseShort(Short.MAX_VALUE));
-    Assert.assertEquals(Short.MIN_VALUE, DataValidationUtil.validateAndParseShort(Short.MIN_VALUE));
-
-    // Expect errors
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseShort, "howdy");
-    expectError(
-        ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseShort, Short.MAX_VALUE + 1);
   }
 
   @Test
@@ -278,73 +265,50 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseBigInteger() {
-    for (Object input : goodIntegersValue10) {
-      Assert.assertEquals(
-          new BigInteger("10"), DataValidationUtil.validateAndParseBigInteger(input));
-    }
-    Assert.assertEquals(
-        new BigInteger("-1000"), DataValidationUtil.validateAndParseBigInteger("-1e3"));
-
-    Assert.assertEquals(
-        BigInteger.valueOf(10).pow(37),
-        DataValidationUtil.validateAndParseBigInteger(BigInteger.valueOf(10).pow(37)));
-    Assert.assertEquals(
-        BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(37)),
-        DataValidationUtil.validateAndParseBigInteger(
-            BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(37))));
-
-    // Expect errors
-    // Too big
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseBigInteger,
-        BigInteger.valueOf(10).pow(38));
-    // Too small
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseBigInteger,
-        BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38)));
-    // Decimal
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigInteger, 1.1D);
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigInteger, 1.1F);
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigInteger, "1.1");
-  }
-
-  @Test
   public void testValidateAndParseBigDecimal() {
-    Assert.assertEquals(new BigDecimal("1"), DataValidationUtil.validateAndParseBigDecimal("1"));
-    Assert.assertEquals(
-        new BigDecimal("1000").toBigInteger(),
-        DataValidationUtil.validateAndParseBigDecimal("1e3").toBigInteger());
-    Assert.assertEquals(
-        new BigDecimal("-1000").toBigInteger(),
-        DataValidationUtil.validateAndParseBigDecimal("-1e3").toBigInteger());
-    Assert.assertEquals(
-        new BigDecimal("1").toBigInteger(),
-        DataValidationUtil.validateAndParseBigDecimal("1e0").toBigInteger());
-    Assert.assertEquals(
-        new BigDecimal("-1").toBigInteger(),
-        DataValidationUtil.validateAndParseBigDecimal("-1e0").toBigInteger());
-    Assert.assertEquals(
-        new BigDecimal("123").toBigInteger(),
-        DataValidationUtil.validateAndParseBigDecimal("1.23e2").toBigInteger());
-    Assert.assertEquals(new BigDecimal("1"), DataValidationUtil.validateAndParseBigDecimal(1));
-    Assert.assertEquals(new BigDecimal("1.0"), DataValidationUtil.validateAndParseBigDecimal(1D));
-    Assert.assertEquals(new BigDecimal("1"), DataValidationUtil.validateAndParseBigDecimal(1L));
-    Assert.assertEquals(new BigDecimal("1.0"), DataValidationUtil.validateAndParseBigDecimal(1F));
-    Assert.assertEquals(
-        BigDecimal.valueOf(10).pow(37),
-        DataValidationUtil.validateAndParseBigDecimal(BigDecimal.valueOf(10).pow(37)));
-    Assert.assertEquals(
+    assertEquals(new BigDecimal("1"), validateAndParseBigDecimal("1"));
+    assertEquals(
+        new BigDecimal("1000").toBigInteger(), validateAndParseBigDecimal("1e3").toBigInteger());
+    assertEquals(
+        new BigDecimal("-1000").toBigInteger(), validateAndParseBigDecimal("-1e3").toBigInteger());
+    assertEquals(
+        new BigDecimal("1").toBigInteger(), validateAndParseBigDecimal("1e0").toBigInteger());
+    assertEquals(
+        new BigDecimal("-1").toBigInteger(), validateAndParseBigDecimal("-1e0").toBigInteger());
+    assertEquals(
+        new BigDecimal("123").toBigInteger(), validateAndParseBigDecimal("1.23e2").toBigInteger());
+    assertEquals(
+        new BigDecimal("123.4").toBigInteger(),
+        validateAndParseBigDecimal("1.234e2").toBigInteger());
+    assertEquals(
+        new BigDecimal("0.1234").toBigInteger(),
+        validateAndParseBigDecimal("1.234e-1").toBigInteger());
+    assertEquals(
+        new BigDecimal("0.1234").toBigInteger(),
+        validateAndParseBigDecimal("1234e-5").toBigInteger());
+    assertEquals(
+        new BigDecimal("0.1234").toBigInteger(),
+        validateAndParseBigDecimal("1234E-5").toBigInteger());
+    assertEquals(new BigDecimal("1"), validateAndParseBigDecimal(1));
+    assertEquals(new BigDecimal("1.0"), validateAndParseBigDecimal(1D));
+    assertEquals(new BigDecimal("1"), validateAndParseBigDecimal(1L));
+    assertEquals(new BigDecimal("1.0"), validateAndParseBigDecimal(1F));
+    assertEquals(
+        BigDecimal.valueOf(10).pow(37), validateAndParseBigDecimal(BigDecimal.valueOf(10).pow(37)));
+    assertEquals(
         BigDecimal.valueOf(-1).multiply(BigDecimal.valueOf(10).pow(37)),
-        DataValidationUtil.validateAndParseBigDecimal(
+        validateAndParseBigDecimal(
             BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(37))));
 
-    // Expect errors
+    // Test forbidden values
     expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, "honk");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, "0x22");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, true);
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, false);
     expectError(
-        ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, MAX_BIGINTEGER);
+        ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, new Object());
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, 'a');
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseBigDecimal, new byte[4]);
   }
 
   @Test
@@ -524,60 +488,6 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseLong() {
-    for (Object input : goodIntegersValue10) {
-      Assert.assertEquals(10, DataValidationUtil.validateAndParseLong(input));
-    }
-
-    // Bad inputs
-    // Double
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseLong, 10.1D);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        Double.valueOf(Long.MAX_VALUE) * 2);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        Double.valueOf(Long.MIN_VALUE) * 2);
-
-    // Float
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseLong, 10.1F);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        Float.valueOf(Long.MAX_VALUE) * 2);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        Float.valueOf(Long.MIN_VALUE) * 2);
-
-    // BigInteger
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        BigInteger.valueOf(Long.MAX_VALUE).add(new BigInteger("1")));
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        BigInteger.valueOf(Long.MIN_VALUE).add(new BigInteger("-1")));
-
-    // String
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        "Honk goes the noble goose");
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        BigInteger.valueOf(Long.MAX_VALUE).add(new BigInteger("1")).toString());
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseLong,
-        BigInteger.valueOf(Long.MIN_VALUE).add(new BigInteger("-1")).toString());
-  }
-
-  @Test
   public void testValidateAndParseDate() {
     assertEquals(-923, validateAndParseDate("1967-06-23"));
     assertEquals(-923, validateAndParseDate("1967-06-23 01:01:01"));
@@ -658,23 +568,22 @@ public class DataValidationUtilTest {
   @Test
   public void testValidateAndParseReal() throws Exception {
     // From number types
-    Assert.assertEquals(1.23d, DataValidationUtil.validateAndParseReal(1.23f), 0);
-    Assert.assertEquals(1.23d, DataValidationUtil.validateAndParseReal(1.23), 0);
-    Assert.assertEquals(1.23d, DataValidationUtil.validateAndParseReal(1.23d), 0);
-    Assert.assertEquals(1.23d, DataValidationUtil.validateAndParseReal(new BigDecimal("1.23")), 0);
+    assertEquals(1.23d, validateAndParseReal(1.23f), 0);
+    assertEquals(1.23d, validateAndParseReal(1.23), 0);
+    assertEquals(1.23d, validateAndParseReal(1.23d), 0);
+    assertEquals(1.23d, validateAndParseReal(new BigDecimal("1.23")), 0);
 
     // From string
-    Assert.assertEquals(1.23d, DataValidationUtil.validateAndParseReal("1.23"), 0);
-    Assert.assertEquals(123d, DataValidationUtil.validateAndParseReal("1.23E2"), 0);
-    Assert.assertEquals(123d, DataValidationUtil.validateAndParseReal("1.23e2"), 0);
+    assertEquals(1.23d, validateAndParseReal("1.23"), 0);
+    assertEquals(123d, validateAndParseReal("1.23E2"), 0);
+    assertEquals(123d, validateAndParseReal("1.23e2"), 0);
 
-    // Error states
-    try {
-      DataValidationUtil.validateAndParseReal("honk");
-      Assert.fail("Expected invalid row error");
-    } catch (SFException err) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
-    }
+    // Test forbidden values
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseReal, "foo");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseReal, 'c');
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseReal, new Object());
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseReal, false);
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseReal, true);
   }
 
   @Test
@@ -783,5 +692,30 @@ public class DataValidationUtilTest {
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column TIMESTAMP",
         () -> validateAndParseTimestampTz("abc", 3));
+
+    // NUMBER
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
+            + " be ingested into Snowflake column of type NUMBER. Allowed Java types: int, long,"
+            + " byte, short, float, double, BigDecimal, BigInteger, String",
+        () -> validateAndParseBigDecimal(new Object()));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
+            + " Snowflake column NUMBER",
+        () -> validateAndParseBigDecimal("abc"));
+
+    // REAL
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
+            + " be ingested into Snowflake column of type REAL. Allowed Java types: Number, String",
+        () -> validateAndParseReal(new Object()));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
+            + " Snowflake column REAL",
+        () -> validateAndParseReal("abc"));
   }
 }
