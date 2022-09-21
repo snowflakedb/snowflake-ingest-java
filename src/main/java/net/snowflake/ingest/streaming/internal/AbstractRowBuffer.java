@@ -22,6 +22,9 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
 
+import static net.snowflake.ingest.utils.Constants.METADATA_CHANNEL_SEQUENCER_COLUMN;
+import static net.snowflake.ingest.utils.Constants.METADATA_ROW_SEQUENCER_COLUMN;
+
 /**
  * The abstract implementation of the buffer in the Streaming Ingest channel that holds the
  * un-flushed rows, these rows will be converted to the underlying format implementation for faster
@@ -263,6 +266,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           InsertValidationResponse.InsertError error =
               new InsertValidationResponse.InsertError(row, rowIndex);
           try {
+            row.put(METADATA_CHANNEL_SEQUENCER_COLUMN, this.owningChannel.getChannelSequencer());
+            row.put(METADATA_ROW_SEQUENCER_COLUMN, this.owningChannel.getRowSequencer());
             Set<String> inputColumnNames = verifyInputColumns(row, error);
             rowSize += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
             this.rowCount++;

@@ -25,6 +25,11 @@ public class Constants {
   public static final String PRIVATE_KEY = "private_key";
   public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
   public static final String JDBC_PRIVATE_KEY = "privateKey";
+
+  public static final String METADATA_CHANNEL_SEQUENCER_COLUMN = "METADATA$MIXED_TABLE_CLIENT_SEQUENCER";
+
+  public static final String METADATA_ROW_SEQUENCER_COLUMN = "METADATA$MIXED_TABLE_CHANNEL_SEQUENCER";
+
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
   public static final long RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST =
       10L; // Don't change, should match server side
