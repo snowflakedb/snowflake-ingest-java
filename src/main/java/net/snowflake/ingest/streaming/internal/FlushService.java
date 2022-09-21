@@ -469,13 +469,10 @@ class FlushService<T> {
         // We need to maintain IV as a block counter for the whole file, even interleaved,
         // to align with decryption on the Snowflake query path.
         // TODO: address alignment for the header SNOW-557866
-        // TODO: encryption is not yet supported by server side for Parquet
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            bdecVersion == Constants.BdecVersion.THREE
-                ? compressedAndPaddedChunkData
-                : Cryptor.encrypt(
-                    compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
+            Cryptor.encrypt(
+                compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
@@ -494,10 +491,7 @@ class FlushService<T> {
                 .setChunkLength(compressedChunkLength)
                 .setChannelList(result.channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(
-                    bdecVersion == Constants.BdecVersion.THREE
-                        ? NO_ENCRYPTION_KEY_ID
-                        : firstChannel.getEncryptionKeyId())
+                .setEncryptionKeyId(firstChannel.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
                         result.rowCount, result.columnEpStatsMapCombined))

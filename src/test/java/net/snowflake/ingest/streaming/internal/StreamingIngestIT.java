@@ -81,6 +81,11 @@ public class StreamingIngestIT {
     testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
     // Create a streaming ingest client
     jdbcConnection = TestUtils.getConnection(true);
+    if (bdecVersion == Constants.BdecVersion.THREE) {
+      // TODO: encryption and interleaved mode are not yet supported by server side's Parquet
+      // scanner if local file cache is enabled (SNOW-656500)
+      jdbcConnection.createStatement().execute("alter session set disable_parquet_cache=true;");
+    }
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace database %s;", testDb));
