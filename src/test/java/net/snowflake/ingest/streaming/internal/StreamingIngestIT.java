@@ -1318,56 +1318,6 @@ public class StreamingIngestIT {
     Assert.assertEquals(row.get("bl"), result.getBoolean("BL"));
   }
 
-  private static Map<String, Object> getRandomRow(Random r) {
-    Map<String, Object> row = new HashMap<>();
-    row.put("num", r.nextInt());
-    row.put("num_10_5", nextFloat(r));
-    row.put(
-        "num_38_0",
-        new BigDecimal("" + nextLongOfPrecision(r, 18) + Math.abs(nextLongOfPrecision(r, 18))));
-    row.put("num_2_0", r.nextInt(100));
-    row.put("num_4_0", r.nextInt(10000));
-    row.put("num_9_0", r.nextInt(1000000000));
-    row.put("num_18_0", nextLongOfPrecision(r, 18));
-    row.put("num_float", nextFloat(r));
-    row.put("str_varchar", nextString(r));
-    row.put("bin", nextBytes(r));
-    row.put("bl", r.nextBoolean());
-    row.put("var", nextJson(r));
-    row.put("obj", nextJson(r));
-    row.put("arr", Arrays.asList(r.nextInt(100), r.nextInt(100), r.nextInt(100)));
-    row.put(
-        "epochdays",
-        String.valueOf(Math.abs(r.nextInt()) % (18963 * 24 * 60 * 60))); // DATE, 02.12.2021
-    row.put(
-        "timesec",
-        String.valueOf(
-            (r.nextInt(11) * 60 * 60 + r.nextInt(59) * 60 + r.nextInt(59)) * 10000
-                + r.nextInt(9999))); // TIME(4), 05:12:43.4536
-    row.put(
-        "timenano",
-        String.valueOf(
-            (14 * 60 * 60 + 26 * 60 + 34) * 1000000000L
-                + 437582643)); // TIME(9), 14:26:34.437582643
-    row.put(
-        "epochsec",
-        String.valueOf(
-            Math.abs(r.nextLong()) % 1638459438)); // TIMESTAMP_LTZ(0), 02.12.2021 15:37:18
-    row.put(
-        "epochnano",
-        String.format(
-            "%d%d",
-            Math.abs(r.nextInt()) % 1999999999,
-            100000000
-                + Math.abs(
-                    r.nextInt(899999999)))); // TIMESTAMP_LTZ(9), 18.05.2033 03:33:19.999999999
-    return row;
-  }
-
-  private static long nextLongOfPrecision(Random r, int precision) {
-    return r.nextLong() % Math.round(Math.pow(10, precision));
-  }
-
   private static String nextString(Random r) {
     return new String(nextBytes(r));
   }
@@ -1379,26 +1329,5 @@ public class StreamingIngestIT {
       bin[i] = (byte) (Math.abs(bin[i]) % 25 + 97); // ascii letters
     }
     return bin;
-  }
-
-  private static double nextFloat(Random r) {
-    return (r.nextLong() % Math.round(Math.pow(10, 10))) / 100000d;
-  }
-
-  private static String nextJson(Random r) {
-    return String.format(
-        "{ \"%s\": %d, \"%s\": \"%s\", \"%s\": null, \"%s\": { \"%s\": %f, \"%s\": \"%s\", \"%s\":"
-            + " null } }",
-        nextString(r),
-        r.nextInt(),
-        nextString(r),
-        nextString(r),
-        nextString(r),
-        nextString(r),
-        nextString(r),
-        r.nextFloat(),
-        nextString(r),
-        nextString(r),
-        nextString(r));
   }
 }
