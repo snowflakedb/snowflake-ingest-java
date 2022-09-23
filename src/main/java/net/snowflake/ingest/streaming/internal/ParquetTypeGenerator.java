@@ -1,6 +1,14 @@
+/*
+ * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -75,8 +83,8 @@ public class ParquetTypeGenerator {
 
     // Parquet Type.Repetition in general supports repeated values for the same row column, like a
     // list of values.
-    // This generator uses only
-    // either 0 or 1 value for nullable data type (OPTIONAL: 0 or none value if it is null)
+    // This generator uses only either 0 or 1 value for nullable data type (OPTIONAL: 0 or none
+    // value if it is null)
     // or exactly 1 value for non-nullable data type (REQUIRED)
     Type.Repetition repetition =
         column.getNullable() ? Type.Repetition.OPTIONAL : Type.Repetition.REQUIRED;
