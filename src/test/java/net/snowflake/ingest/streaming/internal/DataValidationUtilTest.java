@@ -488,7 +488,8 @@ public class DataValidationUtilTest {
     assertArrayEquals(
         DatatypeConverter.parseHexBinary("12"), validateAndParseBinary("12", Optional.empty()));
     assertArrayEquals(
-        DatatypeConverter.parseHexBinary("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
+        DatatypeConverter.parseHexBinary(
+            "1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "1234567890abcdef", Optional.empty())); // pragma: allowlist secret NOT A SECRET
 
