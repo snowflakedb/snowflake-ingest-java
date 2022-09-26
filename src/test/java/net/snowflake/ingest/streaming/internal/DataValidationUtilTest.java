@@ -486,7 +486,7 @@ public class DataValidationUtilTest {
         validateAndParseBinary("honk".getBytes(StandardCharsets.UTF_8), Optional.empty()));
 
     assertArrayEquals(
-        DatatypeConverter.parseHexBinary("12"), validateAndParseBinary("12", Optional.empty()));
+        new byte[] {-1, 0, 1}, validateAndParseBinary(new byte[] {-1, 0, 1}, Optional.empty()));
     assertArrayEquals(
         DatatypeConverter.parseHexBinary(
             "1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
@@ -501,11 +501,11 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         () -> validateAndParseBinary(new byte[8 * 1024 * 1024 + 1], Optional.empty()));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(new byte[8], Optional.of(7)));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("111", Optional.of(1)));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("aabb", Optional.of(1)));
 
     // unsupported data types should fail
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("111", Optional.empty()));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("foo", Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("000", Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("abcg", Optional.empty()));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("c", Optional.empty()));
     expectError(
         ErrorCode.INVALID_ROW,
