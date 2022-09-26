@@ -52,6 +52,7 @@ public class RowBufferTest {
     colTinyIntCase.setPhysicalType("SB1");
     colTinyIntCase.setNullable(true);
     colTinyIntCase.setLogicalType("FIXED");
+    colTinyIntCase.setPrecision(2);
     colTinyIntCase.setScale(0);
 
     ColumnMetadata colTinyInt = new ColumnMetadata();
@@ -59,6 +60,7 @@ public class RowBufferTest {
     colTinyInt.setPhysicalType("SB1");
     colTinyInt.setNullable(true);
     colTinyInt.setLogicalType("FIXED");
+    colTinyInt.setPrecision(1);
     colTinyInt.setScale(0);
 
     ColumnMetadata colSmallInt = new ColumnMetadata();
@@ -66,6 +68,7 @@ public class RowBufferTest {
     colSmallInt.setPhysicalType("SB2");
     colSmallInt.setNullable(true);
     colSmallInt.setLogicalType("FIXED");
+    colSmallInt.setPrecision(2);
     colSmallInt.setScale(0);
 
     ColumnMetadata colInt = new ColumnMetadata();
@@ -73,6 +76,7 @@ public class RowBufferTest {
     colInt.setPhysicalType("SB4");
     colInt.setNullable(true);
     colInt.setLogicalType("FIXED");
+    colInt.setPrecision(2);
     colInt.setScale(0);
 
     ColumnMetadata colBigInt = new ColumnMetadata();
@@ -80,6 +84,7 @@ public class RowBufferTest {
     colBigInt.setPhysicalType("SB8");
     colBigInt.setNullable(true);
     colBigInt.setLogicalType("FIXED");
+    colBigInt.setPrecision(2);
     colBigInt.setScale(0);
 
     ColumnMetadata colDecimal = new ColumnMetadata();

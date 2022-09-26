@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +15,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
-import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -465,45 +465,47 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       } else {
         switch (logicalType) {
           case FIXED:
-            if (!field.getMetadata().get(COLUMN_SCALE).equals("0")
-                || physicalType == ColumnPhysicalType.SB16) {
-              int scale =
-                  DataValidationUtil.validateAndParseInteger(field.getMetadata().get(COLUMN_SCALE));
-              BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
+            int columnPrecision = Integer.parseInt(field.getMetadata().get(COLUMN_PRECISION));
+            int columnScale = getColumnScale(field.getMetadata());
+            BigDecimal inputAsBigDecimal = DataValidationUtil.validateAndParseBigDecimal(value);
+            // vector.setSafe requires the BigDecimal input scale explicitly match its scale
+            inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
-              // vector.setSafe requires the BigDecimal input scale explicitly match its scale
-              bigDecimalValue = bigDecimalValue.setScale(scale);
-              ((DecimalVector) vector).setSafe(curRowIndex, bigDecimalValue);
-              BigInteger intRep =
-                  bigDecimalValue
-                      .multiply(BigDecimal.valueOf(Power10.intTable[scale]))
-                      .toBigInteger();
-              stats.addIntValue(intRep);
+            if (inputAsBigDecimal.abs().compareTo(BigDecimal.TEN.pow(columnPrecision - columnScale))
+                >= 0) {
+              throw new SFException(
+                  ErrorCode.INVALID_ROW,
+                  inputAsBigDecimal,
+                  String.format(
+                      "Number out of representable exclusive range of (-1e%s..1e%s)",
+                      columnPrecision - columnScale, columnPrecision - columnScale));
+            }
+
+            if (columnScale != 0 || physicalType == ColumnPhysicalType.SB16) {
+              ((DecimalVector) vector).setSafe(curRowIndex, inputAsBigDecimal);
+              stats.addIntValue(inputAsBigDecimal.unscaledValue());
               rowBufferSize += 16;
             } else {
               switch (physicalType) {
                 case SB1:
-                  byte byteValue = DataValidationUtil.validateAndParseByte(value);
-                  ((TinyIntVector) vector).setSafe(curRowIndex, byteValue);
-                  stats.addIntValue(BigInteger.valueOf(byteValue));
+                  ((TinyIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.byteValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 1;
                   break;
                 case SB2:
-                  short shortValue = DataValidationUtil.validateAndParseShort(value);
-                  ((SmallIntVector) vector).setSafe(curRowIndex, shortValue);
-                  stats.addIntValue(BigInteger.valueOf(shortValue));
+                  ((SmallIntVector) vector)
+                      .setSafe(curRowIndex, inputAsBigDecimal.shortValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 2;
                   break;
                 case SB4:
-                  int intVal = DataValidationUtil.validateAndParseInteger(value);
-                  ((IntVector) vector).setSafe(curRowIndex, intVal);
-                  stats.addIntValue(BigInteger.valueOf(intVal));
+                  ((IntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.intValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 4;
                   break;
                 case SB8:
-                  long longValue = DataValidationUtil.validateAndParseLong(value);
-                  ((BigIntVector) vector).setSafe(curRowIndex, longValue);
-                  stats.addIntValue(BigInteger.valueOf(longValue));
+                  ((BigIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.longValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 8;
                   break;
                 default:
