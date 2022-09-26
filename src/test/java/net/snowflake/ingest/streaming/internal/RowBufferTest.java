@@ -913,6 +913,13 @@ public class RowBufferTest {
     colBoolean.setLogicalType("BOOLEAN");
     colBoolean.setScale(0);
 
+    ColumnMetadata colBooleanLowCase = new ColumnMetadata();
+    colBooleanLowCase.setName("\"colboolean\"");
+    colBooleanLowCase.setPhysicalType("SB1");
+    colBooleanLowCase.setNullable(false);
+    colBooleanLowCase.setLogicalType("BOOLEAN");
+    colBooleanLowCase.setScale(0);
+
     ColumnMetadata colBoolean2 = new ColumnMetadata();
     colBoolean2.setName("COLBOOLEAN2");
     colBoolean2.setPhysicalType("SB1");
@@ -920,9 +927,10 @@ public class RowBufferTest {
     colBoolean2.setLogicalType("BOOLEAN");
     colBoolean2.setScale(0);
 
-    innerBuffer.setupSchema(Arrays.asList(colBoolean, colBoolean2));
+    innerBuffer.setupSchema(Arrays.asList(colBoolean, colBooleanLowCase, colBoolean2));
     Map<String, Object> row = new HashMap<>();
     row.put("COLBOOLEAN", true);
+    row.put("\"colboolean\"", true);
 
     InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertFalse(response.hasErrors());
@@ -935,8 +943,12 @@ public class RowBufferTest {
       InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
       Assert.assertEquals(
           ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
-      Assert.assertEquals(
-          Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
+      List<String> missingCols = error.getMissingNotNullColNames();
+      List<String> expected = Arrays.asList("COLBOOLEAN", "\"colboolean\"");
+      Assert.assertTrue(
+          missingCols.size() == expected.size()
+              && missingCols.containsAll(expected)
+              && expected.containsAll(missingCols));
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row2), "2");
@@ -957,9 +969,17 @@ public class RowBufferTest {
     colBoolean.setLogicalType("BOOLEAN");
     colBoolean.setScale(0);
 
-    innerBuffer.setupSchema(Collections.singletonList(colBoolean));
+    ColumnMetadata colBooleanLowCase = new ColumnMetadata();
+    colBooleanLowCase.setName("\"colboolean1\"");
+    colBooleanLowCase.setPhysicalType("SB1");
+    colBooleanLowCase.setNullable(false);
+    colBooleanLowCase.setLogicalType("BOOLEAN");
+    colBooleanLowCase.setScale(0);
+
+    innerBuffer.setupSchema(Arrays.asList(colBoolean, colBooleanLowCase));
     Map<String, Object> row = new HashMap<>();
     row.put("COLBOOLEAN1", true);
+    row.put("\"colboolean1\"", true);
     row.put("COLBOOLEAN2", true);
     row.put("COLBOOLEAN3", true);
 
@@ -968,7 +988,12 @@ public class RowBufferTest {
     InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
         ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
-    Assert.assertEquals(Arrays.asList("COLBOOLEAN3", "COLBOOLEAN2"), error.getExtraColNames());
+    List<String> extraCols = error.getExtraColNames();
+    List<String> expected = Arrays.asList("COLBOOLEAN3", "COLBOOLEAN2");
+    Assert.assertTrue(
+        extraCols.size() == expected.size()
+            && extraCols.containsAll(expected)
+            && expected.containsAll(extraCols));
   }
 
   @Test

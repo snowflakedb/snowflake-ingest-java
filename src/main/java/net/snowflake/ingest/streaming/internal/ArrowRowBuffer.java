@@ -105,7 +105,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       Field field = buildField(column);
       FieldVector vector = field.createVector(this.allocator);
       if (!field.isNullable()) {
-        addNonNullableFieldName(field.getName());
+        addNonNullableFieldName(column.getName());
       }
       this.fields.put(column.getName(), field);
       vectors.add(vector);
