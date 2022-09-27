@@ -6,8 +6,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 public class StringsIT extends AbstractDataTypeTest {
-  private static final int MAX_STRING_SIZE = 16 * 1024 * 1024;
-
   @Test
   public void testStrings() throws Exception {
     testJdbcTypeCompatibility("VARCHAR", "", new StringProvider());

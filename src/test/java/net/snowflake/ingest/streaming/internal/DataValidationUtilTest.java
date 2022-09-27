@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_16_MB;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBigDecimal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBinary;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
@@ -38,9 +40,6 @@ import org.junit.Test;
 
 public class DataValidationUtilTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
-
-  private static final Object[] goodIntegersValue10 =
-      new Object[] {10D, 10F, 10L, new BigInteger("10"), 10, "10", "1e1", "1.0e1"};
 
   private void expectError(ErrorCode expectedErrorCode, Function func, Object args) {
     expectError(expectedErrorCode, () -> func.apply(args));
@@ -320,16 +319,21 @@ public class DataValidationUtilTest {
 
     // Check max String length
     StringBuilder longBuilder = new StringBuilder();
-    for (int i = 0; i < 16 * 1024 * 1024; i++) {
+    for (int i = 0; i < BYTES_16_MB; i++) {
       longBuilder.append("č"); // max string length is measured in chars, not bytes
     }
     String maxString = longBuilder.toString();
     Assert.assertEquals(maxString, validateAndParseString(maxString, Optional.empty()));
 
+    // max length - 1 should also succeed
+    longBuilder.setLength(BYTES_16_MB - 1);
+    String maxStringMinusOne = longBuilder.toString();
+    Assert.assertEquals(maxStringMinusOne, validateAndParseString(maxStringMinusOne, Optional.empty()));
+
     // max length + 1 should fail
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseString(longBuilder.append('a').toString(), Optional.empty()));
+        () -> validateAndParseString(longBuilder.append("aa").toString(), Optional.empty()));
 
     // Test max length validation
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString("12345", Optional.of(4)));
@@ -479,7 +483,8 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseBinary() {
-    byte[] maxAllowedArray = new byte[8 * 1024 * 1024];
+    byte[] maxAllowedArray = new byte[BYTES_8_MB];
+    byte[] maxAllowedArrayMinusOne = new byte[BYTES_8_MB -1];
 
     assertArrayEquals(
         "honk".getBytes(StandardCharsets.UTF_8),
@@ -494,12 +499,13 @@ public class DataValidationUtilTest {
             "1234567890abcdef", Optional.empty())); // pragma: allowlist secret NOT A SECRET
 
     assertArrayEquals(maxAllowedArray, validateAndParseBinary(maxAllowedArray, Optional.empty()));
+    assertArrayEquals(maxAllowedArrayMinusOne, validateAndParseBinary(maxAllowedArrayMinusOne, Optional.empty()));
 
     // Too large arrays should be rejected
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(new byte[1], Optional.of(0)));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseBinary(new byte[8 * 1024 * 1024 + 1], Optional.empty()));
+        () -> validateAndParseBinary(new byte[BYTES_8_MB + 1], Optional.empty()));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(new byte[8], Optional.of(7)));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("aabb", Optional.of(1)));
 

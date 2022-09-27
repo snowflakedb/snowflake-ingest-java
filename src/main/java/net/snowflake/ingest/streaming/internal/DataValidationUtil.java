@@ -34,10 +34,8 @@ import net.snowflake.ingest.utils.SFException;
 
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
-  static final int MAX_STRING_LENGTH = 16 * 1024 * 1024;
-
-  private static final int BYTES_16_MB = 16 * 1024 * 1024;
-  private static final int BYTES_8_MB = 8 * 1024 * 1024;
+  public static final int BYTES_8_MB = 8 * 1024 * 1024;
+  public static final int BYTES_16_MB = 2 * BYTES_8_MB;
 
   private static final TimeZone DEFAULT_TIMEZONE =
       TimeZone.getTimeZone("America/Los_Angeles"); // default value of TIMEZONE system parameter
@@ -67,12 +65,12 @@ class DataValidationUtil {
           e, ErrorCode.INVALID_ROW, input, "Input column can't be convert to String.");
     }
 
-    if (output.length() > MAX_STRING_LENGTH) {
+    if (output.length() > BYTES_16_MB) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
           String.format(
-              "Variant too long: length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+              "Variant too long: length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
@@ -100,12 +98,12 @@ class DataValidationUtil {
     }
 
     // Throw an exception if the size is too large
-    if (output.length() > MAX_STRING_LENGTH) {
+    if (output.length() > BYTES_16_MB) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
           String.format(
-              "Array too large. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+              "Array too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
@@ -125,12 +123,12 @@ class DataValidationUtil {
           e, ErrorCode.INVALID_ROW, input.toString(), "Input column can't be convert to Json");
     }
 
-    if (output.length() > MAX_STRING_LENGTH) {
+    if (output.length() > BYTES_16_MB) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
           String.format(
-              "Object too large. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+              "Object too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
