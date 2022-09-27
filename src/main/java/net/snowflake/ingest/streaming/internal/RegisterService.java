@@ -23,18 +23,20 @@ import net.snowflake.ingest.utils.Utils;
 /**
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
  * thread in order to maintain ordering per channel
+ *
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
-class RegisterService {
+class RegisterService<T> {
 
   private static final Logging logger = new Logging(RegisterService.class);
 
   // Reference to the client that owns this register service
-  private final SnowflakeStreamingIngestClientInternal owningClient;
+  private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
   // Contains one or more blob metadata that will be registered to Snowflake
   // The key is the BlobData object, and the value is the BlobMetadata future that will complete
   // when the blob is uploaded successfully
-  private final List<Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>>> blobsList;
+  private final List<Pair<FlushService.BlobData<T>, CompletableFuture<BlobMetadata>>> blobsList;
 
   // Lock to protect the read/write access of m_blobsList
   private final Lock blobsListLock;
@@ -59,7 +61,7 @@ class RegisterService {
    *
    * @param blobs
    */
-  void addBlobs(List<Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>>> blobs) {
+  void addBlobs(List<Pair<FlushService.BlobData<T>, CompletableFuture<BlobMetadata>>> blobs) {
     if (!blobs.isEmpty()) {
       this.blobsListLock.lock();
       try {
@@ -77,12 +79,12 @@ class RegisterService {
    * @param latencyTimerContextMap the map that stores the latency timer for each blob
    * @return a list of blob names that have errors during registration
    */
-  List<FlushService.BlobData> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap) {
-    List<FlushService.BlobData> errorBlobs = new ArrayList<>();
+  List<FlushService.BlobData<T>> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap) {
+    List<FlushService.BlobData<T>> errorBlobs = new ArrayList<>();
     if (!this.blobsList.isEmpty()) {
       // Will skip and try again later if someone else is holding the lock
       if (this.blobsListLock.tryLock()) {
-        List<Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>>> oldList = null;
+        List<Pair<FlushService.BlobData<T>, CompletableFuture<BlobMetadata>>> oldList = null;
         try {
           // Create a copy of the list when we have the lock, and then release the lock to unblock
           // other writers while we work on the old list
@@ -113,7 +115,7 @@ class RegisterService {
           while (idx < oldList.size()
               && System.currentTimeMillis() - startTime
                   <= TimeUnit.SECONDS.toMillis(BLOB_UPLOAD_TIMEOUT_IN_SEC * 2)) {
-            Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>> futureBlob =
+            Pair<FlushService.BlobData<T>, CompletableFuture<BlobMetadata>> futureBlob =
                 oldList.get(idx);
             try {
               logger.logDebug(
@@ -210,7 +212,7 @@ class RegisterService {
    *
    * @return the blobsList
    */
-  List<Pair<FlushService.BlobData, CompletableFuture<BlobMetadata>>> getBlobsList() {
+  List<Pair<FlushService.BlobData<T>, CompletableFuture<BlobMetadata>>> getBlobsList() {
     return this.blobsList;
   }
 }

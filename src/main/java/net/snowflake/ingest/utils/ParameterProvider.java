@@ -25,7 +25,7 @@ public class ParameterProvider {
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final int INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
-  public static final Constants.BdecVerion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVerion.ONE;
+  public static final Constants.BdecVersion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVersion.ONE;
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
@@ -159,10 +159,10 @@ public class ParameterProvider {
   }
 
   /** @return Blob format version: 1 (arrow stream write mode), 2 (arrow file write mode) etc */
-  public Constants.BdecVerion getBlobFormatVersion() {
+  public Constants.BdecVersion getBlobFormatVersion() {
     Object val = this.parameterMap.getOrDefault(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT);
-    if (val instanceof Constants.BdecVerion) {
-      return (Constants.BdecVerion) val;
+    if (val instanceof Constants.BdecVersion) {
+      return (Constants.BdecVersion) val;
     }
     if (val instanceof String) {
       try {
@@ -172,7 +172,7 @@ public class ParameterProvider {
             String.format("Failed to parse BLOB_FORMAT_VERSION = '%s'", val), t);
       }
     }
-    return Constants.BdecVerion.fromInt((int) val);
+    return Constants.BdecVersion.fromInt((int) val);
   }
 
   /**

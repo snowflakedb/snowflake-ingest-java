@@ -42,7 +42,7 @@
         <shadeBase>net.snowflake.ingest.internal</shadeBase>
         <jacoco.skip.instrument>true</jacoco.skip.instrument>
         <jacoco.version>0.8.5</jacoco.version>
-        <arrow.version>8.0.0</arrow.version>
+        <arrow.version>9.0.0</arrow.version>
     </properties>
 
     <build>
@@ -397,7 +397,7 @@
                                 </filter>
                             </filters>
                             <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                 </transformer>
                             </transformers>
