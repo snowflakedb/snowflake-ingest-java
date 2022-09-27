@@ -69,8 +69,7 @@ class DataValidationUtil {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
-          String.format(
-              "Variant too long: length=%d maxLength=%d", output.length(), BYTES_16_MB));
+          String.format("Variant too long: length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
@@ -102,8 +101,7 @@ class DataValidationUtil {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
-          String.format(
-              "Array too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
+          String.format("Array too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
@@ -127,8 +125,7 @@ class DataValidationUtil {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
-          String.format(
-              "Object too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
+          String.format("Object too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }

@@ -328,7 +328,8 @@ public class DataValidationUtilTest {
     // max length - 1 should also succeed
     longBuilder.setLength(BYTES_16_MB - 1);
     String maxStringMinusOne = longBuilder.toString();
-    Assert.assertEquals(maxStringMinusOne, validateAndParseString(maxStringMinusOne, Optional.empty()));
+    Assert.assertEquals(
+        maxStringMinusOne, validateAndParseString(maxStringMinusOne, Optional.empty()));
 
     // max length + 1 should fail
     expectError(
@@ -484,7 +485,7 @@ public class DataValidationUtilTest {
   @Test
   public void testValidateAndParseBinary() {
     byte[] maxAllowedArray = new byte[BYTES_8_MB];
-    byte[] maxAllowedArrayMinusOne = new byte[BYTES_8_MB -1];
+    byte[] maxAllowedArrayMinusOne = new byte[BYTES_8_MB - 1];
 
     assertArrayEquals(
         "honk".getBytes(StandardCharsets.UTF_8),
@@ -499,7 +500,8 @@ public class DataValidationUtilTest {
             "1234567890abcdef", Optional.empty())); // pragma: allowlist secret NOT A SECRET
 
     assertArrayEquals(maxAllowedArray, validateAndParseBinary(maxAllowedArray, Optional.empty()));
-    assertArrayEquals(maxAllowedArrayMinusOne, validateAndParseBinary(maxAllowedArrayMinusOne, Optional.empty()));
+    assertArrayEquals(
+        maxAllowedArrayMinusOne, validateAndParseBinary(maxAllowedArrayMinusOne, Optional.empty()));
 
     // Too large arrays should be rejected
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(new byte[1], Optional.of(0)));
