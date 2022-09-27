@@ -358,34 +358,38 @@ class FlushService<T> {
                         logger.logDebug(
                             "buildUploadWorkers stats={}", this.buildUploadWorkers.toString());
                         return buildAndUpload(filePath, blobData);
-                      } catch (IOException e) {
+                      } catch (IOException
+                          | InvalidAlgorithmParameterException
+                          | NoSuchPaddingException
+                          | IllegalBlockSizeException
+                          | BadPaddingException
+                          | InvalidKeyException
+                          | NoSuchAlgorithmException e) {
+                        StringBuilder stackTrace = new StringBuilder();
+                        for (StackTraceElement element : e.getStackTrace()) {
+                          stackTrace.append(System.lineSeparator()).append(element.toString());
+                        }
                         String errorMessage =
                             String.format(
                                 "Building blob failed, client=%s, file=%s, exception=%s,"
-                                    + " detail=%s, all channels in the blob will be invalidated",
-                                this.owningClient.getName(), filePath, e, e.getMessage());
+                                    + " detail=%s, trace=%s, all channels in the blob will be"
+                                    + " invalidated",
+                                this.owningClient.getName(), e, e.getMessage(), stackTrace);
                         logger.logError(errorMessage);
                         if (this.owningClient.getTelemetryService() != null) {
                           this.owningClient
                               .getTelemetryService()
                               .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
                         }
-                        invalidateAllChannelsInBlob(blobData);
-                        return null;
-                      } catch (NoSuchAlgorithmException e) {
-                        throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
-                      } catch (InvalidAlgorithmParameterException
-                          | NoSuchPaddingException
-                          | IllegalBlockSizeException
-                          | BadPaddingException
-                          | InvalidKeyException e) {
-                        String errorMessage =
-                            String.format(
-                                "Building blob failed, client=%s, file=%s, exception=%s,"
-                                    + " detail=%s, all channels in the blob will be invalidated",
-                                this.owningClient.getName(), filePath, e, e.getMessage());
-                        logger.logError(errorMessage);
-                        throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+
+                        if (e instanceof IOException) {
+                          invalidateAllChannelsInBlob(blobData);
+                          return null;
+                        } else if (e instanceof NoSuchAlgorithmException) {
+                          throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
+                        } else {
+                          throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+                        }
                       }
                     },
                     this.buildUploadWorkers)));

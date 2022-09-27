@@ -89,7 +89,7 @@ class ChannelCache<T> {
     if (channelsMapPerTable != null) {
       SnowflakeStreamingIngestChannelInternal<T> channel = channelsMapPerTable.get(channelName);
       if (channel != null && channel.getChannelSequencer().equals(channelSequencer)) {
-        channel.invalidate("error from server");
+        channel.invalidate("invalidate with matched sequencer");
       }
     }
   }
