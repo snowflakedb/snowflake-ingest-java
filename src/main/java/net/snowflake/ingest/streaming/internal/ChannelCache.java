@@ -37,7 +37,7 @@ class ChannelCache<T> {
         channels.put(channel.getName(), channel);
     // Invalidate old channel if it exits to block new inserts and return error to users earlier
     if (oldChannel != null) {
-      oldChannel.invalidate();
+      oldChannel.invalidate("removed from cache");
     }
   }
 
@@ -89,7 +89,7 @@ class ChannelCache<T> {
     if (channelsMapPerTable != null) {
       SnowflakeStreamingIngestChannelInternal<T> channel = channelsMapPerTable.get(channelName);
       if (channel != null && channel.getChannelSequencer().equals(channelSequencer)) {
-        channel.invalidate();
+        channel.invalidate("error from server");
       }
     }
   }

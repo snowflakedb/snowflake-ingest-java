@@ -9,6 +9,7 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.Random;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
@@ -102,6 +103,11 @@ public class Cryptor {
           InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
     // Generate the derived key
     SecretKey derivedKey = deriveKey(encryptionKey, diversifier);
+
+    Random rand = new Random();
+    if (rand.nextInt(1) == 0) {
+      throw new NoSuchPaddingException();
+    }
 
     // Encrypt with zero IV
     Cipher cipher = Cipher.getInstance(ENCRYPTION_ALGORITHM);

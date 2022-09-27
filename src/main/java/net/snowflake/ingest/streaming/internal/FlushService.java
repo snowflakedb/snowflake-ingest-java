@@ -379,6 +379,12 @@ class FlushService<T> {
                           | IllegalBlockSizeException
                           | BadPaddingException
                           | InvalidKeyException e) {
+                        String errorMessage =
+                            String.format(
+                                "Building blob failed, client=%s, file=%s, exception=%s,"
+                                    + " detail=%s, all channels in the blob will be invalidated",
+                                this.owningClient.getName(), filePath, e, e.getMessage());
+                        logger.logError(errorMessage);
                         throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
                       }
                     },
