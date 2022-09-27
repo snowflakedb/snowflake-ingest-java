@@ -434,7 +434,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     long insertThrottleIntervalInMs =
         this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
     while ((hasLowRuntimeMemory(runtime)
-            || this.owningClient.getFlushService().throttleDueToQueuedFlushTasks())
+            || (this.owningClient.getFlushService() != null
+                && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
         && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
       try {
         Thread.sleep(insertThrottleIntervalInMs);
