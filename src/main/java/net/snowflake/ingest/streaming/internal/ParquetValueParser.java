@@ -1,13 +1,11 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static java.math.RoundingMode.UNNECESSARY;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import javax.annotation.Nullable;
-import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
@@ -48,7 +46,7 @@ class ParquetValueParser {
       ColumnMetadata columnMetadata,
       PrimitiveType.PrimitiveTypeName typeName,
       RowBufferStats stats) {
-    Utils.assertNotNull("Arrow column stats", stats);
+    Utils.assertNotNull("Parquet column stats", stats);
     float size = 0F;
     if (value != null) {
       AbstractRowBuffer.ColumnLogicalType logicalType =
@@ -63,13 +61,25 @@ class ParquetValueParser {
           size = 1;
           break;
         case INT32:
-          int intVal = getInt32Value(value, columnMetadata.getScale(), logicalType);
+          int intVal =
+              getInt32Value(
+                  value,
+                  columnMetadata.getScale(),
+                  columnMetadata.getPrecision(),
+                  logicalType,
+                  physicalType);
           value = intVal;
           stats.addIntValue(BigInteger.valueOf(intVal));
           size = 4;
           break;
         case INT64:
-          long longValue = getInt64Value(value, columnMetadata.getScale(), logicalType);
+          long longValue =
+              getInt64Value(
+                  value,
+                  columnMetadata.getScale(),
+                  columnMetadata.getPrecision(),
+                  logicalType,
+                  physicalType);
           value = longValue;
           stats.addIntValue(BigInteger.valueOf(longValue));
           size = 8;
@@ -86,7 +96,13 @@ class ParquetValueParser {
           size = str.getBytes().length;
           break;
         case FIXED_LEN_BYTE_ARRAY:
-          BigInteger intRep = getSb16Value(value, columnMetadata.getScale(), logicalType);
+          BigInteger intRep =
+              getSb16Value(
+                  value,
+                  columnMetadata.getScale(),
+                  columnMetadata.getPrecision(),
+                  logicalType,
+                  physicalType);
           stats.addIntValue(intRep);
           value = getSb16Bytes(intRep);
           size += 16;
@@ -109,11 +125,17 @@ class ParquetValueParser {
    *
    * @param value column value provided by user in a row
    * @param scale data type scale
+   * @param precision data type precision
    * @param logicalType Snowflake logical type
+   * @param physicalType Snowflake physical type
    * @return parsed int32 value
    */
   private static int getInt32Value(
-      Object value, @Nullable Integer scale, AbstractRowBuffer.ColumnLogicalType logicalType) {
+      Object value,
+      @Nullable Integer scale,
+      Integer precision,
+      AbstractRowBuffer.ColumnLogicalType logicalType,
+      AbstractRowBuffer.ColumnPhysicalType physicalType) {
     int intVal;
     switch (logicalType) {
       case DATE:
@@ -121,13 +143,16 @@ class ParquetValueParser {
         break;
       case TIME:
         Utils.assertNotNull("Unexpected null scale for TIME data type", scale);
-        intVal =
-            DataValidationUtil.getTimeInScale(DataValidationUtil.getStringValue(value), scale)
-                .intValue();
+        intVal = DataValidationUtil.validateAndParseTime(value, scale).intValue();
+        break;
+      case FIXED:
+        BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
+        bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
+        checkValueInRange(bigDecimalValue, scale, precision);
+        intVal = bigDecimalValue.intValue();
         break;
       default:
-        intVal = DataValidationUtil.validateAndParseInteger(value);
-        break;
+        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
     }
     return intVal;
   }
@@ -137,18 +162,29 @@ class ParquetValueParser {
    *
    * @param value column value provided by user in a row
    * @param scale data type scale
+   * @param precision data type precision
    * @param logicalType Snowflake logical type
+   * @param physicalType Snowflake physical type
    * @return parsed int64 value
    */
   private static long getInt64Value(
-      Object value, int scale, AbstractRowBuffer.ColumnLogicalType logicalType) {
+      Object value,
+      int scale,
+      int precision,
+      AbstractRowBuffer.ColumnLogicalType logicalType,
+      AbstractRowBuffer.ColumnPhysicalType physicalType) {
     long longValue;
     switch (logicalType) {
       case TIME:
+        Utils.assertNotNull("Unexpected null scale for TIME data type", scale);
+        longValue = DataValidationUtil.validateAndParseTime(value, scale).longValue();
+        break;
       case TIMESTAMP_LTZ:
       case TIMESTAMP_NTZ:
+        boolean ignoreTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
         longValue =
-            DataValidationUtil.getTimeInScale(DataValidationUtil.getStringValue(value), scale)
+            DataValidationUtil.validateAndParseTimestampNtzSb16(value, scale, ignoreTimezone)
+                .getTimeInScale()
                 .longValue();
         break;
       case TIMESTAMP_TZ:
@@ -164,9 +200,14 @@ class ParquetValueParser {
                 .toBinary(scale, true)
                 .longValue();
         break;
-      default:
-        longValue = DataValidationUtil.validateAndParseLong(value);
+      case FIXED:
+        BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
+        bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
+        checkValueInRange(bigDecimalValue, scale, precision);
+        longValue = bigDecimalValue.longValue();
         break;
+      default:
+        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
     }
     return longValue;
   }
@@ -176,11 +217,17 @@ class ParquetValueParser {
    *
    * @param value column value provided by user in a row
    * @param scale data type scale
+   * @param precision data type precision
    * @param logicalType Snowflake logical type
+   * @param physicalType Snowflake physical type
    * @return parsed int64 value
    */
   private static BigInteger getSb16Value(
-      Object value, int scale, AbstractRowBuffer.ColumnLogicalType logicalType) {
+      Object value,
+      int scale,
+      int precision,
+      AbstractRowBuffer.ColumnLogicalType logicalType,
+      AbstractRowBuffer.ColumnPhysicalType physicalType) {
     switch (logicalType) {
       case TIMESTAMP_TZ:
         return DataValidationUtil.validateAndParseTimestampTz(value, scale)
@@ -194,12 +241,28 @@ class ParquetValueParser {
             .toBinary(scale, true);
       case TIMESTAMP_LTZ:
       case TIMESTAMP_NTZ:
-        return DataValidationUtil.validateAndParseTimestampNtzSb16(value, scale).getTimeInScale();
-      default:
+        boolean ignoreTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
+        return DataValidationUtil.validateAndParseTimestampNtzSb16(value, scale, ignoreTimezone)
+            .getTimeInScale();
+      case FIXED:
         BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
         // explicitly match the BigDecimal input scale with the Snowflake data type scale
-        bigDecimalValue = bigDecimalValue.setScale(scale, UNNECESSARY);
-        return bigDecimalValue.multiply(BigDecimal.valueOf(Power10.intTable[scale])).toBigInteger();
+        bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
+        checkValueInRange(bigDecimalValue, scale, precision);
+        return bigDecimalValue.unscaledValue();
+      default:
+        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+    }
+  }
+
+  private static void checkValueInRange(BigDecimal bigDecimalValue, int scale, int precision) {
+    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
+      throw new SFException(
+          ErrorCode.INVALID_ROW,
+          bigDecimalValue,
+          String.format(
+              "Number out of representable exclusive range of (-1e%s..1e%s)",
+              precision - scale, precision - scale));
     }
   }
 
@@ -242,18 +305,14 @@ class ParquetValueParser {
       String maxLengthString = columnMetadata.getLength().toString();
       byte[] bytes =
           DataValidationUtil.validateAndParseBinary(
-              value,
-              Optional.of(maxLengthString)
-                  .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
+              value, Optional.of(maxLengthString).map(Integer::parseInt));
       str = new String(bytes, StandardCharsets.UTF_8);
       stats.addStrValue(str);
     } else {
       String maxLengthString = columnMetadata.getLength().toString();
       str =
           DataValidationUtil.validateAndParseString(
-              value,
-              Optional.of(maxLengthString)
-                  .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
+              value, Optional.of(maxLengthString).map(Integer::parseInt));
       stats.addStrValue(str);
     }
     return str;

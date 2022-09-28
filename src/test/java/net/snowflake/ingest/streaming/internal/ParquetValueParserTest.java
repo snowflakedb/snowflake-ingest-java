@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
@@ -297,7 +298,7 @@ public class ParquetValueParserTest {
   }
 
   @Test
-  public void parseValueTimestampNtzSB4ToINT64() {
+  public void parseValueTimestampNtzSB4Error() {
     ColumnMetadata testCol =
         ColumnMetadataBuilder.newBuilder()
             .logicalType("TIMESTAMP_NTZ")
@@ -308,17 +309,17 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats();
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
-            "1663531507", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
-
-    ParquetValueParserAssertionBuilder.newBuilder()
-        .parquetBufferValue(pv)
-        .rowBufferStats(rowBufferStats)
-        .expectedValueClass(Integer.class)
-        .expectedSize(4.0f)
-        .expectedMinMax(BigInteger.valueOf(1663531507L))
-        .assertMatches();
+    SFException exception =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                ParquetValueParser.parseColumnValueToParquet(
+                    "2013-04-28 20:57:00",
+                    testCol,
+                    PrimitiveType.PrimitiveTypeName.INT32,
+                    rowBufferStats));
+    Assert.assertEquals(
+        "Unknown data type for logical: TIMESTAMP_NTZ, physical: SB4.", exception.getMessage());
   }
 
   @Test
@@ -335,14 +336,17 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats();
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "1663531507000", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats);
+            "2013-04-28 20:57:01.000",
+            testCol,
+            PrimitiveType.PrimitiveTypeName.INT64,
+            rowBufferStats);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Long.class)
         .expectedSize(8.0f)
-        .expectedMinMax(BigInteger.valueOf(1663531507000000L))
+        .expectedMinMax(BigInteger.valueOf(1367182621000L))
         .assertMatches();
   }
 
@@ -359,7 +363,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats();
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "1663531507.801809412",
+            "2022-09-18 22:05:07.123456789",
             testCol,
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
             rowBufferStats);
@@ -369,7 +373,7 @@ public class ParquetValueParserTest {
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(byte[].class)
         .expectedSize(16.0f)
-        .expectedMinMax(BigInteger.valueOf(1663531507801809412L))
+        .expectedMinMax(BigInteger.valueOf(1663538707123456789L))
         .assertMatches();
   }
 
@@ -446,7 +450,7 @@ public class ParquetValueParserTest {
   }
 
   @Test
-  public void parseValueTimeSB16ToByteArray() {
+  public void parseValueTimeSB16Error() {
     ColumnMetadata testCol =
         ColumnMetadataBuilder.newBuilder()
             .logicalType("TIME")
@@ -456,20 +460,17 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats();
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
-            "36000.12345678",
-            testCol,
-            PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
-            rowBufferStats); // todo specifying string "11:00:00.12345678" doesn't work
-
-    ParquetValueParserAssertionBuilder.newBuilder()
-        .parquetBufferValue(pv)
-        .rowBufferStats(rowBufferStats)
-        .expectedValueClass(byte[].class)
-        .expectedSize(16.0f)
-        .expectedMinMax(BigInteger.valueOf(36000123456780L))
-        .assertMatches();
+    SFException exception =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                ParquetValueParser.parseColumnValueToParquet(
+                    "11:00:00.12345678",
+                    testCol,
+                    PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
+                    rowBufferStats));
+    Assert.assertEquals(
+        "Unknown data type for logical: TIME, physical: SB16.", exception.getMessage());
   }
 
   /** Builder that helps to assert parsing of values to parquet types */

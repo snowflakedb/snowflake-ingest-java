@@ -289,22 +289,4 @@ public class ParquetTypeGenerator {
     }
     return type;
   }
-
-  /**
-   * Get the parquet time unit for column of a Snowflake time logical type.
-   *
-   * @param scale Snowflake column scale
-   * @return column parquet time unit
-   */
-  private static LogicalTypeAnnotation.TimeUnit getTimeUnitFromScale(int scale) {
-    LogicalTypeAnnotation.TimeUnit timeUnit;
-    if (scale <= 3) {
-      timeUnit = LogicalTypeAnnotation.TimeUnit.MILLIS;
-    } else if (scale <= 6) {
-      timeUnit = LogicalTypeAnnotation.TimeUnit.MICROS;
-    } else {
-      timeUnit = LogicalTypeAnnotation.TimeUnit.NANOS;
-    }
-    return timeUnit;
-  }
 }

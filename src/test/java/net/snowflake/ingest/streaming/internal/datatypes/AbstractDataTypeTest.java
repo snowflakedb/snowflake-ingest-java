@@ -9,6 +9,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -19,12 +21,25 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+@RunWith(Parameterized.class)
 public abstract class AbstractDataTypeTest {
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<Object[]> bdecVersion() {
+    return Arrays.asList(
+        new Object[][] {
+          {"Arrow", Constants.BdecVersion.ONE},
+          {"Parquet", Constants.BdecVersion.THREE}
+        });
+  }
+
   private static final String SOURCE_COLUMN_NAME = "source";
   private static final String VALUE_COLUMN_NAME = "value";
 
@@ -52,6 +67,13 @@ public abstract class AbstractDataTypeTest {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
+  private final Constants.BdecVersion bdecVersion;
+
+  public AbstractDataTypeTest(
+      @SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
+    this.bdecVersion = bdecVersion;
+  }
+
   @Before
   public void before() throws Exception {
     databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", randomString());
@@ -65,7 +87,13 @@ public abstract class AbstractDataTypeTest {
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
-    Properties props = TestUtils.getProperties();
+    if (bdecVersion == Constants.BdecVersion.THREE) {
+      // TODO: encryption and interleaved mode are not yet supported by server side's Parquet
+      // scanner if local file cache is enabled (SNOW-656500)
+      conn.createStatement().execute("alter session set disable_parquet_cache=true;");
+    }
+
+    Properties props = TestUtils.getProperties(bdecVersion);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }

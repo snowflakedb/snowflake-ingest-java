@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -1152,11 +1151,11 @@ public class StreamingIngestIT {
     negRow.put("var", "{}");
     negRow.put("obj", "{}");
     negRow.put("arr", Arrays.asList());
-    negRow.put("epochdays", 0);
-    negRow.put("epochsec", 0);
-    negRow.put("epochnano", new BigDecimal("0"));
-    negRow.put("timesec", 0);
-    negRow.put("timenano", 0);
+    negRow.put("epochdays", "0");
+    negRow.put("epochsec", "0");
+    negRow.put("epochnano", "0");
+    negRow.put("timesec", "0");
+    negRow.put("timenano", "0");
 
     return negRow;
   }
@@ -1208,14 +1207,11 @@ public class StreamingIngestIT {
         "{ \"a\": 1, \"b\": \"qwerty\", \"c\": null, \"d\": { \"e\": 2, \"f\": \"asdf\", \"g\":"
             + " null } }");
     posRow.put("arr", Arrays.asList("{ \"a\": 1}", "{ \"b\": 2 }", "{ \"c\": 3 }"));
-    posRow.put("epochdays", 738781); // DATE, 18.09.2022
-    posRow.put("epochsec", 1663531507); // TIMESTAMP_NTZ(0), 18.09.2022 20:05:07 GMT
-    posRow.put(
-        "epochnano",
-        new BigDecimal(
-            "1663531507.801809412")); // TIMESTAMP_NTZ(9) 18.09.2022 20:05:07.801809412 GMT
-    posRow.put("timesec", 79507); // TIME(0), 20:05:07 GMT
-    posRow.put("timenano", 79507.671940142); // TIME(9), 20:05:07.671940142 GMT
+    posRow.put("epochdays", "2022-09-18 20:05:07"); // DATE, 18.09.2022
+    posRow.put("epochsec", "2022-09-18 20:05:07"); // TIMESTAMP_NTZ(0)
+    posRow.put("epochnano", "2022-09-18 20:05:07.999999999"); // TIMESTAMP_NTZ(9)
+    posRow.put("timesec", "01:00:01.999999999"); // TIME(0)
+    posRow.put("timenano", "01:00:01.999999999"); // TIME(9)
 
     return posRow;
   }
@@ -1291,15 +1287,15 @@ public class StreamingIngestIT {
             : formattedArrayForArrow),
         actualResult.getString("ARR"));
     Assert.assertEquals(
-        63830678400000l, actualResult.getDate("EPOCHDAYS").getTime()); // in ms, 18.09.2022 00:00:00
+        1663459200000l, actualResult.getDate("EPOCHDAYS").getTime()); // in ms, 18.09.2022 00:00:00
     Assert.assertEquals(1663531507000L, actualResult.getTimestamp("EPOCHSEC").getTime());
-    Assert.assertEquals(801809412L, actualResult.getTimestamp("EPOCHNANO").getNanos());
-    // 1663531507000 ms + 801 ms (from ns)
-    Assert.assertEquals(1663531507801L, actualResult.getTimestamp("EPOCHNANO").getTime());
-    Assert.assertEquals(79507000, actualResult.getTimestamp("TIMESEC").getTime());
-    Assert.assertEquals(671940142, actualResult.getTimestamp("TIMENANO").getNanos());
-    // 79507000 ms + 671 ms (from ns)
-    Assert.assertEquals(79507671, actualResult.getTimestamp("TIMENANO").getTime());
+    Assert.assertEquals(999999999L, actualResult.getTimestamp("EPOCHNANO").getNanos());
+    // 1663531507000 ms + 999 ms (from ns)
+    Assert.assertEquals(1663531507999L, actualResult.getTimestamp("EPOCHNANO").getTime());
+    Assert.assertEquals(3601000, actualResult.getTimestamp("TIMESEC").getTime()); // 1h + 1s in ms
+    Assert.assertEquals(999999999, actualResult.getTimestamp("TIMENANO").getNanos());
+    // 1h + 1s + 999 ms (from ns)
+    Assert.assertEquals(3601999, actualResult.getTimestamp("TIMENANO").getTime());
   }
 
   private void assertNonTimeAndVarFields(Map<String, Object> row, ResultSet result)
@@ -1316,18 +1312,5 @@ public class StreamingIngestIT {
     Assert.assertEquals(row.get("str_varchar"), result.getString("STR_VARCHAR"));
     Assert.assertArrayEquals((byte[]) row.get("bin"), result.getBytes("BIN"));
     Assert.assertEquals(row.get("bl"), result.getBoolean("BL"));
-  }
-
-  private static String nextString(Random r) {
-    return new String(nextBytes(r));
-  }
-
-  private static byte[] nextBytes(Random r) {
-    byte[] bin = new byte[128];
-    r.nextBytes(bin);
-    for (int i = 0; i < bin.length; i++) {
-      bin[i] = (byte) (Math.abs(bin[i]) % 25 + 97); // ascii letters
-    }
-    return bin;
   }
 }
