@@ -389,6 +389,46 @@
                                     <pattern>org.apache</pattern>
                                     <shadedPattern>${shadeBase}.apache</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>com.ctc.wstx</pattern>
+                                    <shadedPattern>${shadeBase}.com.ctc.wstx</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>edu.umd.cs.findbugs.annotations</pattern>
+                                    <shadedPattern>${shadeBase}.edu.umd.cs.findbugs.annotations</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.jcraft.jsch</pattern>
+                                    <shadedPattern>${shadeBase}.com.jcraft.jsch</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.microsoft.sqlserver.jdbc</pattern>
+                                    <shadedPattern>${shadeBase}.com.microsoft.sqlserver.jdbc</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>contribs.mx</pattern>
+                                    <shadedPattern>${shadeBase}.contribs.mx</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.zaxxer.hikari</pattern>
+                                    <shadedPattern>${shadeBase}.com.zaxxer.hikari</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.squareup.okhttp</pattern>
+                                    <shadedPattern>${shadeBase}.com.squareup.okhttp</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.thoughtworks.paranamer</pattern>
+                                    <shadedPattern>${shadeBase}.com.thoughtworks.paranamer</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.jamesmurty.utils</pattern>
+                                    <shadedPattern>${shadeBase}.com.jamesmurty.utils</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>net.iharder.base64</pattern>
+                                    <shadedPattern>${shadeBase}.net.iharder.base64</shadedPattern>
+                                </relocation>
                             </relocations>
                             <filters>
                                 <filter>
