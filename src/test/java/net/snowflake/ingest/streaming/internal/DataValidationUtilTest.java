@@ -2,19 +2,22 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_16_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.isAllowedVariantType;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseArray;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBigDecimal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBinary;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseDate;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseObject;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseReal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseString;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTime;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampNtzSb16;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampTz;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariant;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -24,8 +27,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -352,72 +357,106 @@ public class DataValidationUtilTest {
   @Test
   public void testValidateAndParseVariant() throws Exception {
     String stringVariant = "{\"key\":1}";
-    Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(stringVariant));
-    JsonNode nodeVariant = objectMapper.readTree(stringVariant);
-    Assert.assertEquals(stringVariant, DataValidationUtil.validateAndParseVariant(nodeVariant));
+    assertEquals(stringVariant, validateAndParseVariant(stringVariant));
 
-    char[] data = new char[20000000];
-    Arrays.fill(data, 'a');
-    String stringVal = new String(data);
-    try {
-      DataValidationUtil.validateAndParseVariant(stringVal);
-      Assert.fail("Expected INVALID_ROW error");
-    } catch (SFException err) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
-    }
+    // Test custom serializers
+    assertEquals(
+        "[-128,0,127]", validateAndParseVariant(new byte[] {Byte.MIN_VALUE, 0, Byte.MAX_VALUE}));
+    assertEquals(
+        "\"2022-09-28T03:04:12.123456789-07:00\"",
+        validateAndParseVariant(
+            ZonedDateTime.of(2022, 9, 28, 3, 4, 12, 123456789, ZoneId.of("America/Los_Angeles"))));
+
+    // Test forbidden values
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseVariant,
+        objectMapper.readTree("{}"));
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseVariant, new Object());
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseVariant, "foo");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseVariant, new Date());
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseVariant,
+        Collections.singletonList(new Object()));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseVariant,
+        Collections.singletonList(Collections.singletonMap("foo", new Object())));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseVariant,
+        Collections.singletonMap(new Object(), "foo"));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseVariant,
+        Collections.singletonMap("foo", new Object()));
   }
 
   @Test
   public void testValidateAndParseArray() throws Exception {
-    int invalidArray = 1;
-    try {
-      DataValidationUtil.validateAndParseArray(invalidArray);
-      Assert.fail("Expected INVALID_ROW error");
-    } catch (SFException err) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
-    }
-
     int[] intArray = new int[] {1, 2, 3};
-    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(intArray));
+    assertEquals("[1,2,3]", validateAndParseArray(intArray));
 
     String[] stringArray = new String[] {"a", "b", "c"};
-    Assert.assertEquals(
-        "[\"a\",\"b\",\"c\"]", DataValidationUtil.validateAndParseArray(stringArray));
+    assertEquals("[\"a\",\"b\",\"c\"]", validateAndParseArray(stringArray));
 
     Object[] objectArray = new Object[] {1, 2, 3};
-    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(objectArray));
+    assertEquals("[1,2,3]", validateAndParseArray(objectArray));
 
     Object[] ObjectArrayWithNull = new Object[] {1, null, 3};
-    Assert.assertEquals(
-        "[1,null,3]", DataValidationUtil.validateAndParseArray(ObjectArrayWithNull));
+    assertEquals("[1,null,3]", validateAndParseArray(ObjectArrayWithNull));
 
     Object[][] nestedArray = new Object[][] {{1, 2, 3}, null, {4, 5, 6}};
-    Assert.assertEquals(
-        "[[1,2,3],null,[4,5,6]]", DataValidationUtil.validateAndParseArray(nestedArray));
+    assertEquals("[[1,2,3],null,[4,5,6]]", validateAndParseArray(nestedArray));
 
     List<Integer> intList = Arrays.asList(1, 2, 3);
-    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(intList));
+    assertEquals("[1,2,3]", validateAndParseArray(intList));
 
     List<Object> objectList = Arrays.asList(1, 2, 3);
-    Assert.assertEquals("[1,2,3]", DataValidationUtil.validateAndParseArray(objectList));
+    assertEquals("[1,2,3]", validateAndParseArray(objectList));
 
     List<Object> nestedList = Arrays.asList(Arrays.asList(1, 2, 3), 2, 3);
-    Assert.assertEquals("[[1,2,3],2,3]", DataValidationUtil.validateAndParseArray(nestedList));
+    assertEquals("[[1,2,3],2,3]", validateAndParseArray(nestedList));
+
+    // Test forbidden values
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseArray,
+        objectMapper.readTree("[]"));
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseArray, new Object());
+    expectError(
+        ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseArray, "foo"); // invalid JSON
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseArray, new Date());
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseArray,
+        Collections.singletonList(new Object()));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseArray,
+        Collections.singletonList(Collections.singletonMap("foo", new Object())));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseArray,
+        Collections.singletonMap(new Object(), "foo"));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseArray,
+        Collections.singletonMap("foo", new Object()));
   }
 
   @Test
   public void testValidateAndParseObject() throws Exception {
     String stringObject = "{\"key\":1}";
-    Assert.assertEquals(stringObject, DataValidationUtil.validateAndParseObject(stringObject));
-    JsonNode nodeObject = objectMapper.readTree(stringObject);
-    Assert.assertEquals(stringObject, DataValidationUtil.validateAndParseObject(nodeObject));
+    assertEquals(stringObject, validateAndParseObject(stringObject));
 
     String badObject = "foo";
     try {
-      DataValidationUtil.validateAndParseObject(badObject);
+      validateAndParseObject(badObject);
       Assert.fail("Expected INVALID_ROW error");
     } catch (SFException err) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
+      assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
     }
 
     char[] data = new char[20000000];
@@ -427,11 +466,267 @@ public class DataValidationUtilTest {
     mapVal.put("key", stringVal);
     String tooLargeObject = objectMapper.writeValueAsString(mapVal);
     try {
-      DataValidationUtil.validateAndParseObject(tooLargeObject);
+      validateAndParseObject(tooLargeObject);
       Assert.fail("Expected INVALID_ROW error");
     } catch (SFException err) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
+      assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
     }
+
+    // Test forbidden values
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseObject,
+        objectMapper.readTree("{}"));
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, "[]");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, "1");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, 1);
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, 1.5);
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, false);
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, new Object());
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, "foo");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, new Date());
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseObject,
+        Collections.singletonList(new Object()));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseObject,
+        Collections.singletonList(Collections.singletonMap("foo", new Object())));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseObject,
+        Collections.singletonMap(new Object(), "foo"));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        DataValidationUtil::validateAndParseObject,
+        Collections.singletonMap("foo", new Object()));
+  }
+
+  @Test
+  public void testTooLargeVariant() {
+    char[] stringContent = new char[16 * 1024 * 1024 - 16]; // {"a":"11","b":""}
+    Arrays.fill(stringContent, 'c');
+
+    // {"a":"11","b":""}
+    Map<String, Object> m = new HashMap<>();
+    m.put("a", "11");
+    m.put("b", new String(stringContent));
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseVariant, m);
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseArray, m);
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, m);
+  }
+
+  @Test
+  public void testTooLargeVariantWithNonAsciiChars() {
+    // Length is measured in bytes, not in chars
+    char[] stringContent = new char[9 * 1024 * 1024];
+    Arrays.fill(stringContent, 'č');
+
+    Map<String, Object> m = new HashMap<>();
+    m.put("a", "11");
+    m.put("b", new String(stringContent));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: {a=11, b=ččččččččččč.... Value cannot"
+            + " be ingested into Snowflake column VARIANT: Variant too long: length=18874385"
+            + " maxLength=16776192",
+        () -> validateAndParseVariant(m));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: [{\"a\":\"11\",\"b\":\"čččč.... Value"
+            + " cannot be ingested into Snowflake column ARRAY: Array too large. length=18874387"
+            + " maxLength=16776192",
+        () -> validateAndParseArray(m));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: {\"a\":\"11\",\"b\":\"ččččč.... Value"
+            + " cannot be ingested into Snowflake column OBJECT: Object too large. length=18874385"
+            + " maxLength=16776192",
+        () -> validateAndParseObject(m));
+  }
+
+  @Test
+  public void testTooLargeMultiByteSemiStructuredValues() {
+    // Variant max size is not in characters, but in bytes
+    char[] stringContent = new char[9 * 1024 * 1024]; // 8MB < value < 16MB
+    Arrays.fill(stringContent, 'Č');
+
+    Map<String, Object> m = new HashMap<>();
+    m.put("a", new String(stringContent));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: {a=ČČČČČČČČČČČČČČČČČ.... Value cannot"
+            + " be ingested into Snowflake column VARIANT: Variant too long: length=18874376"
+            + " maxLength=16776192",
+        () -> validateAndParseVariant(m));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: [{\"a\":\"ČČČČČČČČČČČČČ.... Value"
+            + " cannot be ingested into Snowflake column ARRAY: Array too large. length=18874378"
+            + " maxLength=16776192",
+        () -> validateAndParseArray(m));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: {\"a\":\"ČČČČČČČČČČČČČČ.... Value"
+            + " cannot be ingested into Snowflake column OBJECT: Object too large. length=18874376"
+            + " maxLength=16776192",
+        () -> validateAndParseObject(m));
+  }
+
+  @Test
+  public void testValidVariantType() {
+    // Test primitive types
+    Assert.assertTrue(isAllowedVariantType((byte) 1));
+    Assert.assertTrue(isAllowedVariantType((short) 1));
+    Assert.assertTrue(isAllowedVariantType(1));
+    Assert.assertTrue(isAllowedVariantType(1L));
+    Assert.assertTrue(isAllowedVariantType(1.25f));
+    Assert.assertTrue(isAllowedVariantType(1.25d));
+    Assert.assertTrue(isAllowedVariantType(false));
+    Assert.assertTrue(isAllowedVariantType('c'));
+
+    // Test boxed primitive types
+    Assert.assertTrue(isAllowedVariantType(Byte.valueOf((byte) 1)));
+    Assert.assertTrue(isAllowedVariantType(Short.valueOf((short) 1)));
+    Assert.assertTrue(isAllowedVariantType(Integer.valueOf(1)));
+    Assert.assertTrue(isAllowedVariantType(Long.valueOf(1L)));
+    Assert.assertTrue(isAllowedVariantType(Float.valueOf(1.25f)));
+    Assert.assertTrue(isAllowedVariantType(Double.valueOf(1.25d)));
+    Assert.assertTrue(isAllowedVariantType(Boolean.valueOf(false)));
+    Assert.assertTrue(isAllowedVariantType(Character.valueOf('c')));
+
+    // Test primitive arrays
+    Assert.assertTrue(isAllowedVariantType(new byte[] {1}));
+    Assert.assertTrue(isAllowedVariantType(new short[] {1}));
+    Assert.assertTrue(isAllowedVariantType(new int[] {1}));
+    Assert.assertTrue(isAllowedVariantType(new long[] {1L}));
+    Assert.assertTrue(isAllowedVariantType(new float[] {1.25f}));
+    Assert.assertTrue(isAllowedVariantType(new double[] {1.25d}));
+    Assert.assertTrue(isAllowedVariantType(new boolean[] {false}));
+    Assert.assertTrue(isAllowedVariantType(new char[] {'c'}));
+
+    // Test primitive lists
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList((byte) 1)));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList((short) 1)));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1)));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1L)));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1.25f)));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1.25d)));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(false)));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList('c')));
+
+    // Test additional numeric types and their collections
+    Assert.assertTrue(isAllowedVariantType(new BigInteger("1")));
+    Assert.assertTrue(isAllowedVariantType(new BigInteger[] {new BigInteger("1")}));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(new BigInteger("1"))));
+    Assert.assertTrue(isAllowedVariantType(new BigDecimal("1.25")));
+    Assert.assertTrue(isAllowedVariantType(new BigDecimal[] {new BigDecimal("1.25")}));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(new BigDecimal("1.25"))));
+
+    // Test strings
+    Assert.assertTrue(isAllowedVariantType("foo"));
+    Assert.assertTrue(isAllowedVariantType(new String[] {"foo"}));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList("foo")));
+
+    // Test date/time objects and their collections
+    Assert.assertTrue(isAllowedVariantType(LocalTime.now()));
+    Assert.assertTrue(isAllowedVariantType(OffsetTime.now()));
+    Assert.assertTrue(isAllowedVariantType(LocalDate.now()));
+    Assert.assertTrue(isAllowedVariantType(LocalDateTime.now()));
+    Assert.assertTrue(isAllowedVariantType(ZonedDateTime.now()));
+    Assert.assertTrue(isAllowedVariantType(OffsetDateTime.now()));
+    Assert.assertTrue(isAllowedVariantType(new LocalTime[] {LocalTime.now()}));
+    Assert.assertTrue(isAllowedVariantType(new OffsetTime[] {OffsetTime.now()}));
+    Assert.assertTrue(isAllowedVariantType(new LocalDate[] {LocalDate.now()}));
+    Assert.assertTrue(isAllowedVariantType(new LocalDateTime[] {LocalDateTime.now()}));
+    Assert.assertTrue(isAllowedVariantType(new ZonedDateTime[] {ZonedDateTime.now()}));
+    Assert.assertTrue(isAllowedVariantType(new OffsetDateTime[] {OffsetDateTime.now()}));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(LocalTime.now())));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(OffsetTime.now())));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(LocalDate.now())));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(LocalDateTime.now())));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(ZonedDateTime.now())));
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(OffsetDateTime.now())));
+
+    // Test mixed collections
+    Assert.assertTrue(
+        isAllowedVariantType(
+            new Object[] {
+              1,
+              false,
+              new BigInteger("1"),
+              LocalDateTime.now(),
+              new Object[] {new Object[] {new Object[] {LocalDateTime.now(), false}}}
+            }));
+    Assert.assertFalse(
+        isAllowedVariantType(
+            new Object[] {
+              1,
+              false,
+              new BigInteger("1"),
+              LocalDateTime.now(),
+              new Object[] {new Object[] {new Object[] {new Object(), false}}}
+            }));
+    Assert.assertTrue(
+        isAllowedVariantType(
+            Arrays.asList(
+                new BigInteger("1"),
+                "foo",
+                false,
+                Arrays.asList(13, Arrays.asList(Arrays.asList(false, 'c'))))));
+    Assert.assertFalse(
+        isAllowedVariantType(
+            Arrays.asList(
+                new BigInteger("1"),
+                "foo",
+                false,
+                Arrays.asList(13, Arrays.asList(Arrays.asList(new Object(), 'c'))))));
+
+    // Test maps
+    Assert.assertTrue(isAllowedVariantType(Collections.singletonMap("foo", "bar")));
+    Assert.assertFalse(isAllowedVariantType(Collections.singletonMap(new Object(), "foo")));
+    Assert.assertFalse(isAllowedVariantType(Collections.singletonMap("foo", new Object())));
+    Assert.assertTrue(
+        isAllowedVariantType(
+            Collections.singletonMap(
+                "foo",
+                new Object[] {
+                  1,
+                  false,
+                  new BigInteger("1"),
+                  LocalDateTime.now(),
+                  new Object[] {new Object[] {new Object[] {LocalDateTime.now(), false}}}
+                })));
+    Assert.assertFalse(
+        isAllowedVariantType(
+            Collections.singletonMap(
+                "foo",
+                new Object[] {
+                  1,
+                  false,
+                  new BigInteger("1"),
+                  LocalDateTime.now(),
+                  new Object[] {new Object[] {new Object[] {new Object(), false}}}
+                })));
+    Assert.assertTrue(
+        isAllowedVariantType(
+            Collections.singletonMap(
+                "foo",
+                Arrays.asList(
+                    new BigInteger("1"),
+                    "foo",
+                    false,
+                    Arrays.asList(13, Arrays.asList(Arrays.asList(false, 'c')))))));
+    Assert.assertFalse(
+        isAllowedVariantType(
+            Collections.singletonMap(
+                "foo",
+                Arrays.asList(
+                    new BigInteger("1"),
+                    "foo",
+                    false,
+                    Arrays.asList(13, Arrays.asList(Arrays.asList(new Object(), 'c')))))));
   }
 
   @Test
@@ -469,17 +764,6 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseDate, BigInteger.valueOf(1));
     expectError(
         ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseDate, BigDecimal.valueOf(1.25));
-  }
-
-  @Test
-  public void testGetStringValue() throws Exception {
-    Assert.assertEquals("123", DataValidationUtil.getStringValue("123"));
-    Assert.assertEquals("123", DataValidationUtil.getStringValue(123));
-    Assert.assertEquals("123", DataValidationUtil.getStringValue(new BigDecimal("123")));
-    Assert.assertEquals("123", DataValidationUtil.getStringValue(new BigInteger("123")));
-    Assert.assertEquals("123.0", DataValidationUtil.getStringValue(123f));
-    Assert.assertEquals("123.0", DataValidationUtil.getStringValue(123d));
-    Assert.assertEquals("123", DataValidationUtil.getStringValue(123l));
   }
 
   @Test
@@ -724,5 +1008,44 @@ public class DataValidationUtilTest {
         "The given row cannot be converted to Arrow format: ghi. Value cannot be ingested into"
             + " Snowflake column BINARY: Not a valid hex string",
         () -> validateAndParseBinary("ghi", Optional.empty()));
+
+    // VARIANT
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
+            + " be ingested into Snowflake column of type VARIANT. Allowed Java types: String,"
+            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>",
+        () -> validateAndParseVariant(new Object()));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: ][. Value cannot be ingested into"
+            + " Snowflake column VARIANT: Not a valid JSON",
+        () -> validateAndParseVariant("]["));
+
+    // ARRAY
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
+            + " be ingested into Snowflake column of type ARRAY. Allowed Java types: String,"
+            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>",
+        () -> validateAndParseArray(new Object()));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: ][. Value cannot be ingested into"
+            + " Snowflake column ARRAY: Not a valid JSON",
+        () -> validateAndParseArray("]["));
+
+    // OBJECT
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
+            + " be ingested into Snowflake column of type OBJECT. Allowed Java types: String,"
+            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>",
+        () -> validateAndParseObject(new Object()));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: }{. Value cannot be ingested into"
+            + " Snowflake column OBJECT: Not a valid JSON",
+        () -> validateAndParseObject("}{"));
   }
 }

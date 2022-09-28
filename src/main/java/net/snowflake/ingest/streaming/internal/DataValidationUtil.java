@@ -7,10 +7,14 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat.DATE;
 import static net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat.TIMESTAMP;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -18,7 +22,9 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
@@ -29,6 +35,8 @@ import net.snowflake.client.jdbc.internal.snowflake.common.core.SFDate;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
+import net.snowflake.ingest.streaming.internal.serialization.ByteArraySerializer;
+import net.snowflake.ingest.streaming.internal.serialization.ZonedDateTimeSerializer;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
@@ -37,11 +45,25 @@ class DataValidationUtil {
   public static final int BYTES_8_MB = 8 * 1024 * 1024;
   public static final int BYTES_16_MB = 2 * BYTES_8_MB;
 
+  static final int MAX_VARIANT_LENGTH = BYTES_16_MB - 1024; // SNOW-664249
+
   private static final TimeZone DEFAULT_TIMEZONE =
       TimeZone.getTimeZone("America/Los_Angeles"); // default value of TIMEZONE system parameter
   private static final TimeZone GMT = TimeZone.getTimeZone("GMT");
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  static {
+    SimpleModule module = new SimpleModule();
+    module.addSerializer(byte[].class, new ByteArraySerializer());
+    module.addSerializer(ZonedDateTime.class, new ZonedDateTimeSerializer());
+    module.addSerializer(LocalTime.class, new ToStringSerializer());
+    module.addSerializer(OffsetTime.class, new ToStringSerializer());
+    module.addSerializer(LocalDate.class, new ToStringSerializer());
+    module.addSerializer(LocalDateTime.class, new ToStringSerializer());
+    module.addSerializer(OffsetDateTime.class, new ToStringSerializer());
+    objectMapper.registerModule(module);
+  }
 
   /**
    * Creates a new SnowflakeDateTimeFormat. In order to avoid SnowflakeDateTimeFormat's
@@ -52,80 +74,169 @@ class DataValidationUtil {
   }
 
   /**
-   * Expects string JSON
+   * Validates and parses input as JSON. All types in the object tree must be valid variant types,
+   * see {@link DataValidationUtil#isAllowedVariantType}.
    *
-   * @param input the input data, must be able to convert to String
+   * @param input Object to validate
+   * @return JSON tree representing the input
+   */
+  private static JsonNode validateAndParseVariantAsJsonTree(Object input, String snowflakeType) {
+    if (input instanceof String) {
+      try {
+        return objectMapper.readTree((String) input);
+      } catch (JsonProcessingException e) {
+        throw valueFormatNotAllowedException(input, snowflakeType, "Not a valid JSON");
+      }
+    } else if (isAllowedVariantType(input)) {
+      return objectMapper.valueToTree(input);
+    }
+
+    throw typeNotAllowedException(
+        input.getClass(),
+        snowflakeType,
+        new String[] {
+          "String",
+          "Primitive data types and their arrays",
+          "java.time.*",
+          "List<T>",
+          "Map<String, T>"
+        });
+  }
+
+  /**
+   * Validates and parses input as JSON. All types in the object tree must be valid variant types,
+   * see {@link DataValidationUtil#isAllowedVariantType}.
+   *
+   * @param input Object to validate
+   * @return JSON string representing the input
    */
   static String validateAndParseVariant(Object input) {
-    String output;
-    try {
-      output = input.toString();
-    } catch (Exception e) {
-      throw new SFException(
-          e, ErrorCode.INVALID_ROW, input, "Input column can't be convert to String.");
-    }
-
-    if (output.length() > BYTES_16_MB) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          String.format("Variant too long: length=%d maxLength=%d", output.length(), BYTES_16_MB));
+    String output = validateAndParseVariantAsJsonTree(input, "VARIANT").toString();
+    int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
+    if (stringLength > MAX_VARIANT_LENGTH) {
+      throw valueFormatNotAllowedException(
+          input,
+          "VARIANT",
+          String.format(
+              "Variant too long: length=%d maxLength=%d", stringLength, MAX_VARIANT_LENGTH));
     }
     return output;
   }
 
   /**
-   * Expects an Array or List object
+   * Validates that passed object is allowed variant type. For non-trivial types like Maps, arrays
+   * or Lists, it recursively traverses the object tree and validates that all types in the tree are
+   * also allowed. Allowed Java types:
    *
-   * @param input the input data, must be able to convert to String
+   * <ul>
+   *   <li>primitive types (int, long, boolean, ...)
+   *   <li>String
+   *   <li>BigInteger
+   *   <li>BigDecimal
+   *   <li>LocalTime
+   *   <li>OffsetTime
+   *   <li>LocalDate
+   *   <li>LocalDateTime
+   *   <li>OffsetDateTime
+   *   <li>ZonedDateTime
+   *   <li>Map<String, T> where T is an allowed variant type
+   *   <li>List<T> where T is an allowed variant type
+   *   <li>primitive arrays (char[], int[], ...)
+   *   <li>T[] where T is an allowed variant type
+   * </ul>
+   *
+   * @param o Object to validate
+   * @return If the passed object is allowed for ingestion into a VARIANT column
+   */
+  static boolean isAllowedVariantType(Object o) {
+    if (o == null) return true;
+    if (o instanceof String || o instanceof Boolean || o instanceof Character) return true;
+    if (o instanceof Long
+        || o instanceof Integer
+        || o instanceof Short
+        || o instanceof Byte
+        || o instanceof BigInteger) return true;
+    if (o instanceof Float || o instanceof Double || o instanceof BigDecimal) return true;
+    if (o instanceof java.time.LocalTime || o instanceof OffsetTime) return true;
+    if (o instanceof LocalDate
+        || o instanceof LocalDateTime
+        || o instanceof ZonedDateTime
+        || o instanceof OffsetDateTime) return true;
+    if (o instanceof Map) {
+      boolean allKeysAreStrings =
+          ((Map<?, ?>) o).keySet().stream().allMatch(x -> x instanceof String);
+      if (!allKeysAreStrings) return false;
+      boolean allValuesAreAllowed =
+          ((Map<?, ?>) o).values().stream().allMatch(DataValidationUtil::isAllowedVariantType);
+      return allValuesAreAllowed;
+    }
+    if (o instanceof byte[]
+        || o instanceof short[]
+        || o instanceof int[]
+        || o instanceof long[]
+        || o instanceof float[]
+        || o instanceof double[]
+        || o instanceof boolean[]
+        || o instanceof char[]) return true;
+    if (o.getClass().isArray())
+      return Arrays.stream((Object[]) o).allMatch(DataValidationUtil::isAllowedVariantType);
+    if (o instanceof List)
+      return ((List<?>) o).stream().allMatch(DataValidationUtil::isAllowedVariantType);
+    return false;
+  }
+
+  /**
+   * Validates and parses JSON array. Non-array types are converted into single-element arrays. All
+   * types in the array tree must be valid variant types, see {@link
+   * DataValidationUtil#isAllowedVariantType}.
+   *
+   * @param input Object to validate
+   * @return JSON array representing the input
    */
   static String validateAndParseArray(Object input) {
-    if (!input.getClass().isArray() && !(input instanceof List)) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW, input, "Input column must be an Array or List object.");
+    JsonNode jsonNode = validateAndParseVariantAsJsonTree(input, "ARRAY");
+
+    // Non-array values are ingested as single-element arrays, mimicking the Worksheets behavior
+    if (!jsonNode.isArray()) {
+      jsonNode = objectMapper.createArrayNode().add(jsonNode);
     }
 
-    String output;
-    try {
-      output = objectMapper.writeValueAsString(input);
-    } catch (Exception e) {
-      throw new SFException(
-          e,
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          "Input column can't be convert to a valid string");
-    }
-
+    String output = jsonNode.toString();
     // Throw an exception if the size is too large
-    if (output.length() > BYTES_16_MB) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          String.format("Array too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
+    int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
+    if (stringLength > MAX_VARIANT_LENGTH) {
+      throw valueFormatNotAllowedException(
+          jsonNode.toString(),
+          "ARRAY",
+          String.format(
+              "Array too large. length=%d maxLength=%d", stringLength, MAX_VARIANT_LENGTH));
     }
     return output;
   }
 
   /**
-   * Expects string JSON or JsonNode
+   * Validates and parses JSON object. Input is rejected if the value does not represent JSON object
+   * (e.g. String '{}' or Map<String, T>). All types in the object tree must be valid variant types,
+   * see {@link DataValidationUtil#isAllowedVariantType}.
    *
-   * @param input Must be valid string JSON or JsonNode
+   * @param input Object to validate
+   * @return JSON object representing the input
    */
   static String validateAndParseObject(Object input) {
-    String output;
-    try {
-      JsonNode node = objectMapper.readTree(input.toString());
-      output = node.toString();
-    } catch (Exception e) {
-      throw new SFException(
-          e, ErrorCode.INVALID_ROW, input.toString(), "Input column can't be convert to Json");
+    JsonNode jsonNode = validateAndParseVariantAsJsonTree(input, "OBJECT");
+    if (!jsonNode.isObject()) {
+      throw valueFormatNotAllowedException(jsonNode, "OBJECT", "Not an object");
     }
 
-    if (output.length() > BYTES_16_MB) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
-          String.format("Object too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
+    String output = jsonNode.toString();
+    // Throw an exception if the size is too large
+    int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
+    if (stringLength > MAX_VARIANT_LENGTH) {
+      throw valueFormatNotAllowedException(
+          output,
+          "OBJECT",
+          String.format(
+              "Object too large. length=%d maxLength=%d", stringLength, MAX_VARIANT_LENGTH));
     }
     return output;
   }
@@ -420,7 +531,7 @@ class DataValidationUtil {
 
   /**
    * Returns the number of units since 00:00, depending on the scale (scale=0: seconds, scale=3:
-   * milliseconds, scale=9: nanoseconds. Allowed Java types:
+   * milliseconds, scale=9: nanoseconds). Allowed Java types:
    *
    * <ul>
    *   <li>String
@@ -458,19 +569,6 @@ class DataValidationUtil {
           .toBigInteger()
           .mod(BigInteger.valueOf(24L * 60 * 60 * Power10.intTable[scale]));
     }
-  }
-
-  static String getStringValue(Object value) {
-    String stringValue;
-
-    if (value instanceof String) {
-      stringValue = (String) value;
-    } else if (value instanceof BigDecimal) {
-      stringValue = ((BigDecimal) value).toPlainString();
-    } else {
-      stringValue = value.toString();
-    }
-    return stringValue;
   }
 
   /**
