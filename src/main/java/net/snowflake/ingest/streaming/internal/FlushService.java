@@ -279,21 +279,7 @@ class FlushService<T> {
     this.flushWorker = Executors.newSingleThreadScheduledExecutor(flushThreadFactory);
     this.flushWorker.scheduleWithFixedDelay(
         () -> {
-          try {
-            flush(false);
-          } catch (Throwable e) {
-            String errorMessage =
-                String.format(
-                    "Background flush task failed, client=%s, exception=%s, detail=%s.",
-                    this.owningClient.getName(), e, e.getMessage());
-            logger.logError(errorMessage);
-            if (this.owningClient.getTelemetryService() != null) {
-              this.owningClient
-                  .getTelemetryService()
-                  .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
-            }
-            throw e;
-          }
+          flush(false);
         },
         0,
         this.owningClient.getParameterProvider().getBufferFlushCheckIntervalInMs(),

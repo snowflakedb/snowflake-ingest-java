@@ -5,7 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.LOW_RUNTIME_MEMORY_THRESHOLD;
+import static net.snowflake.ingest.utils.Constants.LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
@@ -451,7 +451,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     int insertThrottleThresholdInPercentage =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
     boolean hasLowRuntimeMemory =
-        runtime.freeMemory() < LOW_RUNTIME_MEMORY_THRESHOLD
+        runtime.freeMemory() < LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES
             && runtime.freeMemory() * 100 / runtime.totalMemory()
                 < insertThrottleThresholdInPercentage;
     if (hasLowRuntimeMemory) {

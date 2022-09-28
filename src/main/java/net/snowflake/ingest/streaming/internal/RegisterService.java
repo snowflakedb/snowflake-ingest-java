@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.Utils;
@@ -108,9 +109,14 @@ class RegisterService<T> {
         // next blob if time out has been reached.
         int idx = 0;
         int retry = 0;
+        logger.logDebug(
+            "Start loop outer for uploading blobs={}",
+            oldList.stream().map(blob -> blob.getKey().getFilePath()).collect(Collectors.toList()));
         while (idx < oldList.size()) {
           List<BlobMetadata> blobs = new ArrayList<>();
           long startTime = System.currentTimeMillis();
+          logger.logDebug(
+              "Start loop inner for uploading blobs, size={}, idx={}", oldList.size(), idx);
           while (idx < oldList.size()
               && System.currentTimeMillis() - startTime
                   <= TimeUnit.SECONDS.toMillis(BLOB_UPLOAD_TIMEOUT_IN_SEC * 2)) {
@@ -118,12 +124,16 @@ class RegisterService<T> {
                 oldList.get(idx);
             try {
               logger.logDebug(
-                  "Start waiting on uploading blob={}", futureBlob.getKey().getFilePath());
+                  "Start waiting on uploading blob={}, idx={}",
+                  futureBlob.getKey().getFilePath(),
+                  idx);
               // Wait for uploading to finish
               BlobMetadata blob =
                   futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
               logger.logDebug(
-                  "Finish waiting on uploading blob={}", futureBlob.getKey().getFilePath());
+                  "Finish waiting on uploading blob={}, idx={}",
+                  futureBlob.getKey().getFilePath(),
+                  idx);
               if (blob != null) {
                 blobs.add(blob);
               }
@@ -140,7 +150,9 @@ class RegisterService<T> {
                   && retry
                       < this.owningClient.getParameterProvider().getBlobUploadMaxRetryCount()) {
                 logger.logInfo(
-                    "Retry on waiting for uploading blob={}", futureBlob.getKey().getFilePath());
+                    "Retry on waiting for uploading blob={}, idx={}",
+                    futureBlob.getKey().getFilePath(),
+                    idx);
                 retry++;
                 break;
               }
@@ -179,11 +191,12 @@ class RegisterService<T> {
 
           if (blobs.size() > 0 && !isTestMode) {
             logger.logInfo(
-                "Start to registering blobs in client={}, totalBlobListSize={},"
-                    + " currentBlobListSize={}",
+                "Start registering blobs in client={}, totalBlobListSize={},"
+                    + " currentBlobListSize={}, idx={}",
                 this.owningClient.getName(),
                 oldList.size(),
-                blobs.size());
+                blobs.size(),
+                idx);
             Timer.Context registerContext =
                 Utils.createTimerContext(this.owningClient.registerLatency);
 
