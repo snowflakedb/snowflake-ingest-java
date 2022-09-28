@@ -518,35 +518,6 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testTooLargeVariantWithNonAsciiChars() {
-    // Length is measured in bytes, not in chars
-    char[] stringContent = new char[9 * 1024 * 1024];
-    Arrays.fill(stringContent, 'č');
-
-    Map<String, Object> m = new HashMap<>();
-    m.put("a", "11");
-    m.put("b", new String(stringContent));
-    expectErrorCodeAndMessage(
-        ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: {a=11, b=ččččččččččč.... Value cannot"
-            + " be ingested into Snowflake column VARIANT: Variant too long: length=18874385"
-            + " maxLength=16776192",
-        () -> validateAndParseVariant(m));
-    expectErrorCodeAndMessage(
-        ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: [{\"a\":\"11\",\"b\":\"čččč.... Value"
-            + " cannot be ingested into Snowflake column ARRAY: Array too large. length=18874387"
-            + " maxLength=16776192",
-        () -> validateAndParseArray(m));
-    expectErrorCodeAndMessage(
-        ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: {\"a\":\"11\",\"b\":\"ččččč.... Value"
-            + " cannot be ingested into Snowflake column OBJECT: Object too large. length=18874385"
-            + " maxLength=16776192",
-        () -> validateAndParseObject(m));
-  }
-
-  @Test
   public void testTooLargeMultiByteSemiStructuredValues() {
     // Variant max size is not in characters, but in bytes
     char[] stringContent = new char[9 * 1024 * 1024]; // 8MB < value < 16MB
