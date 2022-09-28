@@ -10,7 +10,7 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CH
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
-import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY;
+import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -146,10 +146,10 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
     prop.put(ROLE, "role");
-    prop.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 123);
+    prop.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 123);
 
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 321);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 321);
 
     SnowflakeStreamingIngestClientInternal<?> client =
         (SnowflakeStreamingIngestClientInternal<?>)
@@ -181,7 +181,7 @@ public class SnowflakeStreamingIngestClientTest {
             SnowflakeStreamingIngestClientFactory.builder("client")
                 .setProperties(prop)
                 .setParameterOverrides(
-                    Collections.singletonMap(ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, true))
+                    Collections.singletonMap(ENABLE_SNOWPIPE_STREAMING_METRICS, true))
                 .build();
 
     Assert.assertEquals("client", client.getName());

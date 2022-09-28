@@ -8,7 +8,11 @@ import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Timer;
+import io.netty.util.internal.PlatformDependent;
 import java.io.StringReader;
+import java.lang.management.BufferPoolMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryUsage;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -19,6 +23,7 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -259,5 +264,41 @@ public class Utils {
       childAlloc.close();
     }
     alloc.close();
+  }
+
+  /** Util function to show memory usage info and debug memory issue in the SDK */
+  public static void showMemory() {
+    List<BufferPoolMXBean> pools = ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class);
+    for (BufferPoolMXBean pool : pools) {
+      logger.logInfo(
+          "Pool name={}, pool count={}, memory used={}, total capacity={}",
+          pool.getName(),
+          pool.getCount(),
+          pool.getMemoryUsed(),
+          pool.getTotalCapacity());
+    }
+
+    Runtime runtime = Runtime.getRuntime();
+    logger.logInfo(
+        "Max direct memory={}, max runtime memory={}, total runtime memory={}, free runtime"
+            + " memory={}",
+        PlatformDependent.maxDirectMemory(),
+        runtime.maxMemory(),
+        runtime.totalMemory(),
+        runtime.freeMemory());
+
+    MemoryUsage nonHeapMem = ManagementFactory.getMemoryMXBean().getNonHeapMemoryUsage();
+    logger.logInfo(
+        "Non-heap memory usage max={}, used={}, committed={}",
+        nonHeapMem.getMax(),
+        nonHeapMem.getUsed(),
+        nonHeapMem.getCommitted());
+
+    MemoryUsage heapMem = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+    logger.logInfo(
+        "Heap memory usage max={}, used={}, committed={}",
+        heapMem.getMax(),
+        heapMem.getUsed(),
+        heapMem.getCommitted());
   }
 }
