@@ -1014,7 +1014,7 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
             + " be ingested into Snowflake column of type VARIANT. Allowed Java types: String,"
-            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>",
+            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>, T[]",
         () -> validateAndParseVariant(new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
@@ -1027,7 +1027,7 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
             + " be ingested into Snowflake column of type ARRAY. Allowed Java types: String,"
-            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>",
+            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>, T[]",
         () -> validateAndParseArray(new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
@@ -1040,7 +1040,7 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
             + " be ingested into Snowflake column of type OBJECT. Allowed Java types: String,"
-            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>",
+            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>, T[]",
         () -> validateAndParseObject(new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
