@@ -520,9 +520,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               String maxLengthString = field.getMetadata().get(COLUMN_CHAR_LENGTH);
               String str =
                   DataValidationUtil.validateAndParseString(
-                      value,
-                      Optional.ofNullable(maxLengthString)
-                          .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
+                      value, Optional.ofNullable(maxLengthString).map(Integer::parseInt));
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               stats.addStrValue(str);
@@ -726,9 +724,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             String maxLengthString = field.getMetadata().get(COLUMN_BYTE_LENGTH);
             byte[] bytes =
                 DataValidationUtil.validateAndParseBinary(
-                    value,
-                    Optional.ofNullable(maxLengthString)
-                        .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
+                    value, Optional.ofNullable(maxLengthString).map(Integer::parseInt));
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             stats.addStrValue(new String(bytes, StandardCharsets.UTF_8));
             rowBufferSize += bytes.length;

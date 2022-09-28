@@ -34,12 +34,8 @@ import net.snowflake.ingest.utils.SFException;
 
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
-  static final int MAX_STRING_LENGTH = 16 * 1024 * 1024;
-  static final int MAX_BINARY_LENGTH = 8 * 1024 * 1024;
-
-  static final BigInteger MAX_BIGINTEGER = BigInteger.valueOf(10).pow(38);
-  static final BigInteger MIN_BIGINTEGER =
-      BigInteger.valueOf(-1).multiply(BigInteger.valueOf(10).pow(38));
+  public static final int BYTES_8_MB = 8 * 1024 * 1024;
+  public static final int BYTES_16_MB = 2 * BYTES_8_MB;
 
   private static final TimeZone DEFAULT_TIMEZONE =
       TimeZone.getTimeZone("America/Los_Angeles"); // default value of TIMEZONE system parameter
@@ -69,12 +65,11 @@ class DataValidationUtil {
           e, ErrorCode.INVALID_ROW, input, "Input column can't be convert to String.");
     }
 
-    if (output.length() > MAX_STRING_LENGTH) {
+    if (output.length() > BYTES_16_MB) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
-          String.format(
-              "Variant too long: length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+          String.format("Variant too long: length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
@@ -102,12 +97,11 @@ class DataValidationUtil {
     }
 
     // Throw an exception if the size is too large
-    if (output.length() > MAX_STRING_LENGTH) {
+    if (output.length() > BYTES_16_MB) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
-          String.format(
-              "Array too large. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+          String.format("Array too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
@@ -127,12 +121,11 @@ class DataValidationUtil {
           e, ErrorCode.INVALID_ROW, input.toString(), "Input column can't be convert to Json");
     }
 
-    if (output.length() > MAX_STRING_LENGTH) {
+    if (output.length() > BYTES_16_MB) {
       throw new SFException(
           ErrorCode.INVALID_ROW,
           input.toString(),
-          String.format(
-              "Object too large. length=%d maxLength=%d", output.length(), MAX_STRING_LENGTH));
+          String.format("Object too large. length=%d maxLength=%d", output.length(), BYTES_16_MB));
     }
     return output;
   }
@@ -192,7 +185,12 @@ class DataValidationUtil {
               .add(BigInteger.valueOf(fraction));
       return new TimestampWrapper(epoch, fraction, timeInScale);
     } else {
-      throw valueFormatNotAllowedException(input.toString(), "TIMESTAMP");
+      throw valueFormatNotAllowedException(
+          input.toString(),
+          "TIMESTAMP",
+          "Not a valid timestamp, see"
+              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
+              + " for the list of supported formats");
     }
   }
 
@@ -256,12 +254,25 @@ class DataValidationUtil {
           BigInteger.valueOf(epoch * Power10.intTable[scale] + fraction),
           timestamp);
     } else {
-      throw valueFormatNotAllowedException(input.toString(), "TIMESTAMP");
+      throw valueFormatNotAllowedException(
+          input.toString(),
+          "TIMESTAMP",
+          "Not a valid timestamp, see"
+              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
+              + " for the list of supported formats");
     }
   }
 
   /**
-   * Validates the input is less than the supposed maximum allowed string
+   * Converts input to string, validates that length is less than max allowed string size
+   * https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar. Allowed data types:
+   *
+   * <ul>
+   *   <li>String
+   *   <li>Number
+   *   <li>boolean
+   *   <li>char
+   * </ul>
    *
    * @param input Object to validate and parse to String
    * @param maxLengthOptional Maximum allowed length of the output String, if empty then uses
@@ -269,17 +280,27 @@ class DataValidationUtil {
    *     (https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar)
    */
   static String validateAndParseString(Object input, Optional<Integer> maxLengthOptional) {
-    int maxLength = maxLengthOptional.orElse(MAX_STRING_LENGTH);
-    String output = getStringValue(input);
+    String output;
+    if (input instanceof String) {
+      output = (String) input;
+    } else if (input instanceof Number) {
+      output = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString();
+    } else if (input instanceof Boolean || input instanceof Character) {
+      output = input.toString();
+    } else {
+      throw typeNotAllowedException(
+          input.getClass(), "STRING", new String[] {"String", "Number", "boolean", "char"});
+    }
+    int maxLength = maxLengthOptional.orElse(BYTES_16_MB);
+
     if (output.length() > maxLength) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
+      throw valueFormatNotAllowedException(
+          input,
+          "STRING",
           String.format("String too long: length=%d maxLength=%d", output.length(), maxLength));
     }
     return output;
   }
-
   /**
    * Returns a BigDecimal representation of the input. Strings of the form "1.23E4" will be treated
    * as being written in * scientific notation (e.g. 1.23 * 10^4). Does not perform any size
@@ -305,7 +326,7 @@ class DataValidationUtil {
       try {
         return new BigDecimal((String) input);
       } catch (NumberFormatException e) {
-        throw valueFormatNotAllowedException(input, "NUMBER");
+        throw valueFormatNotAllowedException(input, "NUMBER", "Not a valid number");
       }
     } else {
       throw typeNotAllowedException(
@@ -314,87 +335,6 @@ class DataValidationUtil {
           new String[] {
             "int", "long", "byte", "short", "float", "double", "BigDecimal", "BigInteger", "String"
           });
-    }
-  }
-
-  static BigDecimal handleScientificNotationError(String input, NumberFormatException e) {
-    // Support scientific notation on string input
-    String[] splitInput = input.toLowerCase().split("e");
-    if (splitInput.length != 2) {
-      throw e;
-    }
-    return (new BigDecimal(splitInput[0]))
-        .multiply(BigDecimal.valueOf(10).pow(Integer.parseInt(splitInput[1])));
-  }
-
-  static void checkInteger(float input) {
-    if (Math.floor(input) != input) {
-      throw new SFException(ErrorCode.INVALID_ROW, input, "Value must be integer");
-    }
-  }
-
-  static void checkInteger(double input) {
-    if (Math.floor(input) != input) {
-      throw new SFException(ErrorCode.INVALID_ROW, input, "Value must be integer");
-    }
-  }
-
-  /**
-   * Validates the input can be represented as an integer with value between Integer.MIN_VALUE and
-   * Integer.MAX_VALUE
-   *
-   * @param input
-   */
-  static int validateAndParseInteger(Object input) {
-    try {
-      if (input instanceof Integer) {
-        return (int) input;
-      } else if (input instanceof Long) {
-        if ((long) input > Integer.MAX_VALUE || (long) input < Integer.MIN_VALUE) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input.toString(), "Value greater than max integer");
-        }
-        return ((Long) input).intValue();
-      } else if (input instanceof Double) {
-        // Number must be integer
-        checkInteger((double) input);
-        if (((Number) input).longValue() > Integer.MAX_VALUE
-            || ((Number) input).longValue() < Integer.MIN_VALUE) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input.toString(), "Value greater than max integer");
-        }
-        return ((Number) input).intValue();
-      } else if (input instanceof Float) {
-        // Number must be integer
-        checkInteger((float) input);
-
-        if (((Number) input).longValue() > Integer.MAX_VALUE
-            || ((Number) input).longValue() < Integer.MIN_VALUE) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input.toString(), "Value greater than max integer");
-        }
-        return ((Number) input).intValue();
-      } else if (input instanceof BigInteger) {
-        if (((BigInteger) input).compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0
-            || ((BigInteger) input).compareTo(BigInteger.valueOf(Integer.MIN_VALUE)) < 0) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, input.toString(), "Value greater than max integer");
-        }
-        return ((BigInteger) input).intValue();
-      } else {
-        try {
-          return Integer.parseInt(input.toString());
-        } catch (NumberFormatException e) {
-          Double doubleValue = handleScientificNotationError(input.toString(), e).doubleValue();
-          if (Math.floor(doubleValue) == doubleValue) {
-            return doubleValue.intValue();
-          } else {
-            throw new SFException(ErrorCode.INVALID_ROW, input.toString(), "Value must be integer");
-          }
-        }
-      }
-    } catch (NumberFormatException err) {
-      throw new SFException(ErrorCode.INVALID_ROW, input.toString(), err.getMessage());
     }
   }
 
@@ -430,28 +370,49 @@ class DataValidationUtil {
 
     SFTimestamp timestamp =
         createDateTimeFormatter().parse(inputString, GMT, 0, DATE | TIMESTAMP, true, null);
-    if (timestamp == null) throw valueFormatNotAllowedException(input, "DATE");
+    if (timestamp == null)
+      throw valueFormatNotAllowedException(
+          input,
+          "DATE",
+          "Not a valid date, see"
+              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats"
+              + " for the list of supported formats");
 
     return (int) TimeUnit.MILLISECONDS.toDays(SFDate.fromTimestamp(timestamp).getTime());
   }
 
+  /**
+   * Validates input for data type BINARY. Allowed Java types:
+   *
+   * <ul>
+   *   <li>byte[]
+   *   <li>String (hex-encoded)
+   * </ul>
+   *
+   * @param input Array to validate
+   * @param maxLengthOptional Max array length, defaults to 8MB, which is the max allowed length for
+   *     BINARY column
+   * @return Validated array
+   */
   static byte[] validateAndParseBinary(Object input, Optional<Integer> maxLengthOptional) {
     byte[] output;
     if (input instanceof byte[]) {
       output = (byte[]) input;
-    } else {
+    } else if (input instanceof String) {
       try {
-        output = DatatypeConverter.parseHexBinary(input.toString());
+        output = DatatypeConverter.parseHexBinary((String) input);
       } catch (IllegalArgumentException e) {
-        throw new SFException(ErrorCode.INVALID_ROW, input, e.getMessage());
+        throw valueFormatNotAllowedException(input, "BINARY", "Not a valid hex string");
       }
+    } else {
+      throw typeNotAllowedException(input.getClass(), "BINARY", new String[] {"byte[]", "String"});
     }
 
-    int maxLength = maxLengthOptional.orElse(MAX_BINARY_LENGTH);
+    int maxLength = maxLengthOptional.orElse(BYTES_8_MB);
     if (output.length > maxLength) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          input.toString(),
+      throw valueFormatNotAllowedException(
+          String.format("byte[%d]", output.length),
+          "BINARY",
           String.format("Binary too long: length=%d maxLength=%d", output.length, maxLength));
     }
     return output;
@@ -484,7 +445,12 @@ class DataValidationUtil {
         createDateTimeFormatter()
             .parse(stringInput, GMT, 0, SnowflakeDateTimeFormat.TIME, true, null);
     if (timestamp == null) {
-      throw valueFormatNotAllowedException(input, "TIME");
+      throw valueFormatNotAllowedException(
+          input,
+          "TIME",
+          "Not a valid time, see"
+              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#time-formats"
+              + " for the list of supported formats");
     } else {
       return timestamp
           .getNanosSinceEpoch()
@@ -526,7 +492,7 @@ class DataValidationUtil {
       try {
         return Double.parseDouble((String) input);
       } catch (NumberFormatException err) {
-        throw valueFormatNotAllowedException(input, "REAL");
+        throw valueFormatNotAllowedException(input, "REAL", "Not a valid decimal number");
       }
     }
 
@@ -566,7 +532,12 @@ class DataValidationUtil {
   private static boolean convertStringToBoolean(String value) {
     String lowerCasedValue = value.toLowerCase();
     if (!allowedBooleanStringsLowerCased.contains(lowerCasedValue)) {
-      throw valueFormatNotAllowedException(value, "BOOLEAN");
+      throw valueFormatNotAllowedException(
+          value,
+          "BOOLEAN",
+          "Not a valid boolean, see"
+              + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
+              + " for the list of supported formats");
     }
     return "1".equals(lowerCasedValue)
         || "yes".equals(lowerCasedValue)
@@ -601,11 +572,13 @@ class DataValidationUtil {
    * @param value Invalid value causing the exception
    * @param snowflakeType Snowflake column type
    */
-  private static SFException valueFormatNotAllowedException(Object value, String snowflakeType) {
+  private static SFException valueFormatNotAllowedException(
+      Object value, String snowflakeType, String reason) {
     return new SFException(
         ErrorCode.INVALID_ROW,
         sanitizeValueForExceptionMessage(value),
-        String.format("Value cannot be ingested into Snowflake column %s", snowflakeType));
+        String.format(
+            "Value cannot be ingested into Snowflake column %s: %s", snowflakeType, reason));
   }
 
   /**

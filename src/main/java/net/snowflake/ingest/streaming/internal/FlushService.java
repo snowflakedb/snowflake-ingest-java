@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.CPU_IO_TIME_RATIO;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
 import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
@@ -31,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.CRC32;
@@ -291,13 +291,14 @@ class FlushService<T> {
     this.registerWorker = Executors.newSingleThreadExecutor(registerThreadFactory);
 
     // Create threads for building and uploading blobs
-    // Size: number of available processors * (1 + IO time/CPU time), currently the
-    // CPU_IO_TIME_RATIO is 1 under the assumption that build and upload will take similar time
+    // Size: number of available processors * (1 + IO time/CPU time)
     ThreadFactory buildUploadThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
     int buildUploadThreadCount =
         Math.min(
-            Runtime.getRuntime().availableProcessors() * (1 + CPU_IO_TIME_RATIO), MAX_THREAD_COUNT);
+            Runtime.getRuntime().availableProcessors()
+                * (1 + this.owningClient.getParameterProvider().getIOTimeCpuRatio()),
+            MAX_THREAD_COUNT);
     this.buildUploadWorkers =
         Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
 
@@ -355,8 +356,6 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        logger.logDebug(
-                            "buildUploadWorkers stats={}", this.buildUploadWorkers.toString());
                         return buildAndUpload(filePath, blobData);
                       } catch (IOException
                           | InvalidAlgorithmParameterException
@@ -393,6 +392,11 @@ class FlushService<T> {
                       }
                     },
                     this.buildUploadWorkers)));
+        logger.logInfo(
+            "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
+            this.owningClient.getName(),
+            filePath,
+            this.buildUploadWorkers.toString());
       }
     }
 
@@ -633,5 +637,23 @@ class FlushService<T> {
   /** Get the server generated unique prefix for this client */
   String getClientPrefix() {
     return this.targetStage.getClientPrefix();
+  }
+
+  /**
+   * Throttle if the number of queued buildAndUpload tasks is bigger than the total number of
+   * available processors
+   */
+  boolean throttleDueToQueuedFlushTasks() {
+    ThreadPoolExecutor buildAndUpload = (ThreadPoolExecutor) this.buildUploadWorkers;
+    boolean throttleOnQueuedTasks =
+        buildAndUpload.getQueue().size() > Runtime.getRuntime().availableProcessors();
+    if (throttleOnQueuedTasks) {
+      logger.logWarn(
+          "Throttled due too many queue flush tasks (probably because of slow uploading speed),"
+              + " client={}, buildUploadWorkers stats={}",
+          this.owningClient.getName(),
+          this.buildUploadWorkers.toString());
+    }
+    return throttleOnQueuedTasks;
   }
 }

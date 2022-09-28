@@ -161,11 +161,13 @@ public class StreamingIngestIT {
   @Test
   public void testParameterOverrides() throws Exception {
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 30L);
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 50L);
-    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 1L);
-    parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, 1L);
-    parameterMap.put(ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS_MAP_KEY, true);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 30L);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 50L);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 1);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS, 1L);
+    parameterMap.put(ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS, true);
+    parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 1);
+    parameterMap.put(ParameterProvider.BLOB_UPLOAD_MAX_RETRY_COUNT, 1);
     client =
         (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("testParameterOverridesClient")

@@ -1,12 +1,17 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_16_MB;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBigDecimal;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBinary;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseDate;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseReal;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseString;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTime;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampNtzSb16;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampTz;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,9 +40,6 @@ import org.junit.Test;
 
 public class DataValidationUtilTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
-
-  private static final Object[] goodIntegersValue10 =
-      new Object[] {10D, 10F, 10L, new BigInteger("10"), 10, "10", "1e1", "1.0e1"};
 
   private void expectError(ErrorCode expectedErrorCode, Function func, Object args) {
     expectError(expectedErrorCode, () -> func.apply(args));
@@ -313,29 +315,38 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseString() {
-    Assert.assertEquals(
-        "honk", DataValidationUtil.validateAndParseString("honk", Optional.empty()));
+    assertEquals("honk", validateAndParseString("honk", Optional.empty()));
 
     // Check max String length
     StringBuilder longBuilder = new StringBuilder();
-    for (int i = 0; i < DataValidationUtil.MAX_STRING_LENGTH + 1; i++) {
-      longBuilder.append("a");
+    for (int i = 0; i < BYTES_16_MB; i++) {
+      longBuilder.append("č"); // max string length is measured in chars, not bytes
     }
-    String tooLong = longBuilder.toString();
+    String maxString = longBuilder.toString();
+    Assert.assertEquals(maxString, validateAndParseString(maxString, Optional.empty()));
 
-    try {
-      DataValidationUtil.validateAndParseString(tooLong, Optional.empty());
-      Assert.fail("Expected error for String too long");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
-    }
+    // max length - 1 should also succeed
+    longBuilder.setLength(BYTES_16_MB - 1);
+    String maxStringMinusOne = longBuilder.toString();
+    Assert.assertEquals(
+        maxStringMinusOne, validateAndParseString(maxStringMinusOne, Optional.empty()));
 
-    try {
-      DataValidationUtil.validateAndParseString("123", Optional.of(2));
-      Assert.fail("Expected error for String too long");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
-    }
+    // max length + 1 should fail
+    expectError(
+        ErrorCode.INVALID_ROW,
+        () -> validateAndParseString(longBuilder.append("aa").toString(), Optional.empty()));
+
+    // Test max length validation
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString("12345", Optional.of(4)));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString(false, Optional.of(4)));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString(12345, Optional.of(4)));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString(1.2345, Optional.of(4)));
+
+    // Test unsupported values
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseString(new Object(), Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString(new byte[] {}, Optional.of(4)));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString(new char[] {}, Optional.of(4)));
   }
 
   @Test
@@ -424,70 +435,6 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseInteger() {
-    for (Object input : goodIntegersValue10) {
-      Assert.assertEquals(10, DataValidationUtil.validateAndParseInteger(input));
-    }
-
-    // Bad inputs
-    // Double
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseInteger, 10.1D);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        Double.valueOf(Integer.MAX_VALUE) + 1);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        Double.valueOf(Integer.MIN_VALUE) - 1);
-
-    // Float
-    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseInteger, 10.1F);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        Float.valueOf(Integer.MAX_VALUE) * 2);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        Float.valueOf(Integer.MIN_VALUE) * 2);
-
-    // Long
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        Long.valueOf(Integer.MAX_VALUE) + 1);
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        Long.valueOf(Integer.MIN_VALUE) - 1);
-
-    // BigInteger
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        BigInteger.valueOf(Integer.MAX_VALUE).add(new BigInteger("1")));
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        BigInteger.valueOf(Integer.MIN_VALUE).add(new BigInteger("-1")));
-
-    // String
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        "Honk goes the noble goose");
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        BigInteger.valueOf(Integer.MAX_VALUE).add(new BigInteger("1")).toString());
-    expectError(
-        ErrorCode.INVALID_ROW,
-        DataValidationUtil::validateAndParseInteger,
-        BigInteger.valueOf(Integer.MIN_VALUE).add(new BigInteger("-1")).toString());
-  }
-
-  @Test
   public void testValidateAndParseDate() {
     assertEquals(-923, validateAndParseDate("1967-06-23"));
     assertEquals(-923, validateAndParseDate("1967-06-23 01:01:01"));
@@ -537,32 +484,49 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseBinary() {
-    Assert.assertArrayEquals(
+    byte[] maxAllowedArray = new byte[BYTES_8_MB];
+    byte[] maxAllowedArrayMinusOne = new byte[BYTES_8_MB - 1];
+
+    assertArrayEquals(
         "honk".getBytes(StandardCharsets.UTF_8),
-        DataValidationUtil.validateAndParseBinary(
-            "honk".getBytes(StandardCharsets.UTF_8), Optional.empty()));
+        validateAndParseBinary("honk".getBytes(StandardCharsets.UTF_8), Optional.empty()));
 
-    Assert.assertArrayEquals(
-        DatatypeConverter.parseHexBinary("12"),
-        DataValidationUtil.validateAndParseBinary("12", Optional.empty()));
+    assertArrayEquals(
+        new byte[] {-1, 0, 1}, validateAndParseBinary(new byte[] {-1, 0, 1}, Optional.empty()));
+    assertArrayEquals(
+        DatatypeConverter.parseHexBinary(
+            "1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
+        validateAndParseBinary(
+            "1234567890abcdef", Optional.empty())); // pragma: allowlist secret NOT A SECRET
 
-    Assert.assertArrayEquals(
-        DatatypeConverter.parseHexBinary("12"),
-        DataValidationUtil.validateAndParseBinary(12, Optional.empty()));
+    assertArrayEquals(maxAllowedArray, validateAndParseBinary(maxAllowedArray, Optional.empty()));
+    assertArrayEquals(
+        maxAllowedArrayMinusOne, validateAndParseBinary(maxAllowedArrayMinusOne, Optional.empty()));
 
-    try {
-      DataValidationUtil.validateAndParseBinary("1212", Optional.of(1));
-      Assert.fail("Expected error for Binary too long");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
-    }
+    // Too large arrays should be rejected
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(new byte[1], Optional.of(0)));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        () -> validateAndParseBinary(new byte[BYTES_8_MB + 1], Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(new byte[8], Optional.of(7)));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("aabb", Optional.of(1)));
 
-    try {
-      DataValidationUtil.validateAndParseBinary(123, Optional.empty());
-      Assert.fail("Expected error for invalid Binary format");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
-    }
+    // unsupported data types should fail
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("000", Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("abcg", Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary("c", Optional.empty()));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        () ->
+            validateAndParseBinary(Arrays.asList((byte) 1, (byte) 2, (byte) 3), Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(1, Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(12, Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(1.5, Optional.empty()));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseBinary(BigInteger.ONE, Optional.empty()));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseBinary(false, Optional.empty()));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseBinary(new Object(), Optional.empty()));
   }
 
   @Test
@@ -625,7 +589,9 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column BOOLEAN",
+            + " Snowflake column BOOLEAN: Not a valid boolean, see"
+            + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
+            + " for the list of supported formats",
         () -> validateAndParseBoolean("abc"));
 
     // TIME
@@ -638,7 +604,9 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column TIME",
+            + " Snowflake column TIME: Not a valid time, see"
+            + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#time-formats"
+            + " for the list of supported formats",
         () -> validateAndParseTime("abc", 10));
 
     // DATE
@@ -651,7 +619,9 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column DATE",
+            + " Snowflake column DATE: Not a valid date, see"
+            + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats"
+            + " for the list of supported formats",
         () -> validateAndParseDate("abc"));
 
     // TIMESTAMP_NTZ
@@ -664,7 +634,9 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column TIMESTAMP",
+            + " Snowflake column TIMESTAMP: Not a valid timestamp, see"
+            + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
+            + " for the list of supported formats",
         () -> validateAndParseTimestampNtzSb16("abc", 3, true));
 
     // TIMESTAMP_LTZ
@@ -677,7 +649,9 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column TIMESTAMP",
+            + " Snowflake column TIMESTAMP: Not a valid timestamp, see"
+            + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
+            + " for the list of supported formats",
         () -> validateAndParseTimestampNtzSb16("abc", 3, false));
 
     // TIMESTAMP_TZ
@@ -690,7 +664,9 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column TIMESTAMP",
+            + " Snowflake column TIMESTAMP: Not a valid timestamp, see"
+            + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
+            + " for the list of supported formats",
         () -> validateAndParseTimestampTz("abc", 3));
 
     // NUMBER
@@ -703,7 +679,7 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column NUMBER",
+            + " Snowflake column NUMBER: Not a valid number",
         () -> validateAndParseBigDecimal("abc"));
 
     // REAL
@@ -715,7 +691,38 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column REAL",
+            + " Snowflake column REAL: Not a valid decimal number",
         () -> validateAndParseReal("abc"));
+
+    // STRING
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
+            + " be ingested into Snowflake column of type STRING. Allowed Java types: String,"
+            + " Number, boolean, char",
+        () -> validateAndParseString(new Object(), Optional.empty()));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
+            + " Snowflake column STRING: String too long: length=3 maxLength=2",
+        () -> validateAndParseString("abc", Optional.of(2)));
+
+    // BINARY
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
+            + " be ingested into Snowflake column of type BINARY. Allowed Java types: byte[],"
+            + " String",
+        () -> validateAndParseBinary(new Object(), Optional.empty()));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: byte[2]. Value cannot be ingested into"
+            + " Snowflake column BINARY: Binary too long: length=2 maxLength=1",
+        () -> validateAndParseBinary(new byte[] {1, 2}, Optional.of(1)));
+    expectErrorCodeAndMessage(
+        ErrorCode.INVALID_ROW,
+        "The given row cannot be converted to Arrow format: ghi. Value cannot be ingested into"
+            + " Snowflake column BINARY: Not a valid hex string",
+        () -> validateAndParseBinary("ghi", Optional.empty()));
   }
 }
