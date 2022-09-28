@@ -65,7 +65,7 @@ class ParquetValueParser {
               getInt32Value(
                   value,
                   columnMetadata.getScale(),
-                  columnMetadata.getPrecision(),
+                  Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType);
           value = intVal;
@@ -77,7 +77,7 @@ class ParquetValueParser {
               getInt64Value(
                   value,
                   columnMetadata.getScale(),
-                  columnMetadata.getPrecision(),
+                  Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType);
           value = longValue;
@@ -100,7 +100,7 @@ class ParquetValueParser {
               getSb16Value(
                   value,
                   columnMetadata.getScale(),
-                  columnMetadata.getPrecision(),
+                  Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType);
           stats.addIntValue(intRep);
