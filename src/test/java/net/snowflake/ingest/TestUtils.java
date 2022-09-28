@@ -224,7 +224,7 @@ public class TestUtils {
    * @throws Exception
    */
   public static Connection getConnection(boolean isStreamingConnection) throws Exception {
-    if (!isStreamingConnection && snowpipeConn != null) {
+    if (!isStreamingConnection && snowpipeConn != null && !snowpipeConn.isClosed()) {
       return snowpipeConn;
     }
     if (isStreamingConnection && streamingConn != null && !streamingConn.isClosed()) {
