@@ -99,7 +99,8 @@ class DataValidationUtil {
           "Primitive data types and their arrays",
           "java.time.*",
           "List<T>",
-          "Map<String, T>"
+          "Map<String, T>",
+          "T[]"
         });
   }
 
