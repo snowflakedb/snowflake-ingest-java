@@ -13,11 +13,12 @@ public class ParameterProviderTest {
   public void withValuesSet() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3L);
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4L);
-    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6);
-    parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_MAP_KEY, 7L);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS, 7L);
     parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 10);
+    parameterMap.put(ParameterProvider.BLOB_UPLOAD_MAX_RETRY_COUNT, 100);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
@@ -25,14 +26,15 @@ public class ParameterProviderTest {
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
     Assert.assertEquals(7, parameterProvider.getInsertThrottleIntervalInMs());
     Assert.assertEquals(10, parameterProvider.getIOTimeCpuRatio());
+    Assert.assertEquals(100, parameterProvider.getBlobUploadMaxRetryCount());
   }
 
   @Test
   public void withNullProps() {
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3L);
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4L);
-    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
+    parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, null);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
@@ -46,9 +48,9 @@ public class ParameterProviderTest {
   @Test
   public void withNullParameterMap() {
     Properties props = new Properties();
-    props.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_MAP_KEY, 3L);
-    props.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_MAP_KEY, 4L);
-    props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_MAP_KEY, 6);
+    props.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
+    props.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
+    props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
     ParameterProvider parameterProvider = new ParameterProvider(null, props);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
@@ -95,5 +97,8 @@ public class ParameterProviderTest {
         parameterProvider.getInsertThrottleIntervalInMs());
     Assert.assertEquals(
         ParameterProvider.IO_TIME_CPU_RATIO_DEFAULT, parameterProvider.getIOTimeCpuRatio());
+    Assert.assertEquals(
+        ParameterProvider.BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT,
+        parameterProvider.getBlobUploadMaxRetryCount());
   }
 }

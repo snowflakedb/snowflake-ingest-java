@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
 import com.codahale.metrics.Timer;
@@ -49,7 +48,7 @@ class RegisterService<T> {
    *
    * @param client
    */
-  RegisterService(SnowflakeStreamingIngestClientInternal client, boolean isTestMode) {
+  RegisterService(SnowflakeStreamingIngestClientInternal<T> client, boolean isTestMode) {
     this.owningClient = client;
     this.blobsList = new ArrayList<>();
     this.blobsListLock = new ReentrantLock();
@@ -137,7 +136,9 @@ class RegisterService<T> {
               // blobs are generated before these channels got invalidated.
 
               // Retry logic for timeout exception only
-              if (e instanceof TimeoutException && retry < BLOB_UPLOAD_MAX_RETRY_COUNT) {
+              if (e instanceof TimeoutException
+                  && retry
+                      < this.owningClient.getParameterProvider().getBlobUploadMaxRetryCount()) {
                 logger.logInfo(
                     "Retry on waiting for uploading blob={}", futureBlob.getKey().getFilePath());
                 retry++;
