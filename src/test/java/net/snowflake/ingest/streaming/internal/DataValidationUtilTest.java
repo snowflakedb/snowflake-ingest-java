@@ -356,6 +356,9 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseVariant() throws Exception {
+    assertEquals("1", validateAndParseVariant(1));
+    assertEquals("1", validateAndParseVariant("1"));
+    assertEquals("1", validateAndParseVariant("                          1   "));
     String stringVariant = "{\"key\":1}";
     assertEquals(stringVariant, validateAndParseVariant(stringVariant));
 
@@ -395,6 +398,9 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseArray() throws Exception {
+    assertEquals("[1]", validateAndParseArray(1));
+    assertEquals("[1]", validateAndParseArray("1"));
+    assertEquals("[1]", validateAndParseArray("                          1   "));
     int[] intArray = new int[] {1, 2, 3};
     assertEquals("[1,2,3]", validateAndParseArray(intArray));
 

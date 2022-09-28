@@ -150,23 +150,37 @@ class DataValidationUtil {
    * @return If the passed object is allowed for ingestion into a VARIANT column
    */
   static boolean isAllowedVariantType(Object o) {
-    if (o == null) return true;
-    if (o instanceof String || o instanceof Boolean || o instanceof Character) return true;
+    if (o == null) {
+      return true;
+    }
+    if (o instanceof String || o instanceof Boolean || o instanceof Character) {
+      return true;
+    }
     if (o instanceof Long
         || o instanceof Integer
         || o instanceof Short
         || o instanceof Byte
-        || o instanceof BigInteger) return true;
-    if (o instanceof Float || o instanceof Double || o instanceof BigDecimal) return true;
-    if (o instanceof java.time.LocalTime || o instanceof OffsetTime) return true;
+        || o instanceof BigInteger) {
+      return true;
+    }
+    if (o instanceof Float || o instanceof Double || o instanceof BigDecimal) {
+      return true;
+    }
+    if (o instanceof java.time.LocalTime || o instanceof OffsetTime) {
+      return true;
+    }
     if (o instanceof LocalDate
         || o instanceof LocalDateTime
         || o instanceof ZonedDateTime
-        || o instanceof OffsetDateTime) return true;
+        || o instanceof OffsetDateTime) {
+      return true;
+    }
     if (o instanceof Map) {
       boolean allKeysAreStrings =
           ((Map<?, ?>) o).keySet().stream().allMatch(x -> x instanceof String);
-      if (!allKeysAreStrings) return false;
+      if (!allKeysAreStrings) {
+        return false;
+      }
       boolean allValuesAreAllowed =
           ((Map<?, ?>) o).values().stream().allMatch(DataValidationUtil::isAllowedVariantType);
       return allValuesAreAllowed;
@@ -178,11 +192,15 @@ class DataValidationUtil {
         || o instanceof float[]
         || o instanceof double[]
         || o instanceof boolean[]
-        || o instanceof char[]) return true;
-    if (o.getClass().isArray())
+        || o instanceof char[]) {
+      return true;
+    }
+    if (o.getClass().isArray()) {
       return Arrays.stream((Object[]) o).allMatch(DataValidationUtil::isAllowedVariantType);
-    if (o instanceof List)
+    }
+    if (o instanceof List) {
       return ((List<?>) o).stream().allMatch(DataValidationUtil::isAllowedVariantType);
+    }
     return false;
   }
 
