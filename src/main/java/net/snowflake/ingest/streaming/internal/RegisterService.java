@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
 import java.util.ArrayList;
@@ -156,24 +157,18 @@ class RegisterService<T> {
                 retry++;
                 break;
               }
-              StringBuilder stackTrace = new StringBuilder();
-              if (e.getCause() != null) {
-                for (StackTraceElement element : e.getCause().getStackTrace()) {
-                  stackTrace.append(System.lineSeparator()).append(element.toString());
-                }
-              }
               String errorMessage =
                   String.format(
                       "Building or uploading blob failed, client=%s, file=%s, exception=%s,"
-                          + " detail=%s, cause=%s, detail=%s, trace=%s all channels in the blob"
-                          + " will be invalidated",
+                          + " detail=%s, cause=%s, cause_detail=%s, cause_trace=%s all channels in"
+                          + " the blob will be invalidated",
                       this.owningClient.getName(),
                       futureBlob.getKey().getFilePath(),
                       e,
                       e.getMessage(),
                       e.getCause(),
                       e.getCause() == null ? null : e.getCause().getMessage(),
-                      stackTrace);
+                      getStackTrace(e.getCause()));
               logger.logError(errorMessage);
               if (this.owningClient.getTelemetryService() != null) {
                 this.owningClient
