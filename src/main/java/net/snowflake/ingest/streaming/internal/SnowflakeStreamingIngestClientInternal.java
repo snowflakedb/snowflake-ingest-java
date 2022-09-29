@@ -81,8 +81,10 @@ import org.apache.arrow.memory.RootAllocator;
  * manages a few things:
  * <li>the channel cache, which contains all the channels that belong to this account
  * <li>the flush service, which schedules and coordinates the flush to Snowflake tables
+ *
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
-public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamingIngestClient {
+public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStreamingIngestClient {
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestClientInternal.class);
 
@@ -105,10 +107,10 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   private final CloseableHttpClient httpClient;
 
   // Reference to the channel cache
-  private final ChannelCache channelCache;
+  private final ChannelCache<T> channelCache;
 
   // Reference to the flush service
-  private final FlushService flushService;
+  private final FlushService<T> flushService;
 
   // Memory allocator
   private final BufferAllocator allocator;
@@ -164,7 +166,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     this.name = name;
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient() : httpClient;
-    this.channelCache = new ChannelCache();
+    this.channelCache = new ChannelCache<>();
     this.allocator = new RootAllocator();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
@@ -190,7 +192,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       this.setupMetricsForClient();
     }
 
-    this.flushService = new FlushService(this, this.channelCache, this.isTestMode);
+    this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
 
     logger.logInfo(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
@@ -257,7 +259,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @return a SnowflakeStreamingIngestChannel object
    */
   @Override
-  public SnowflakeStreamingIngestChannelInternal openChannel(OpenChannelRequest request) {
+  public SnowflakeStreamingIngestChannelInternal<?> openChannel(OpenChannelRequest request) {
     if (isClosed) {
       throw new SFException(ErrorCode.CLOSED_CLIENT);
     }
@@ -307,8 +309,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
           getName());
 
       // Channel is now registered, add it to the in-memory channel pool
-      SnowflakeStreamingIngestChannelInternal channel =
-          SnowflakeStreamingIngestChannelFactory.builder(response.getChannelName())
+      SnowflakeStreamingIngestChannelInternal<T> channel =
+          SnowflakeStreamingIngestChannelFactory.<T>builder(response.getChannelName())
               .setDBName(response.getDBName())
               .setSchemaName(response.getSchemaName())
               .setTableName(response.getTableName())
@@ -339,7 +341,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param channels a list of channels that we want to get the status on
    * @return a ChannelsStatusResponse object
    */
-  ChannelsStatusResponse getChannelsStatus(List<SnowflakeStreamingIngestChannelInternal> channels) {
+  ChannelsStatusResponse getChannelsStatus(
+      List<SnowflakeStreamingIngestChannelInternal<?>> channels) {
     try {
       ChannelsStatusRequest request = new ChannelsStatusRequest();
       List<ChannelsStatusRequest.ChannelStatusRequestDTO> requestDTOs =
@@ -368,7 +371,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
       }
 
       for (int idx = 0; idx < channels.size(); idx++) {
-        SnowflakeStreamingIngestChannelInternal channel = channels.get(idx);
+        SnowflakeStreamingIngestChannelInternal<?> channel = channels.get(idx);
         ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
             response.getChannels().get(idx);
         if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
@@ -631,7 +634,7 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /** Remove the channel in the channel cache if the channel sequencer matches */
-  void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
+  void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal<T> channel) {
     this.channelCache.removeChannelIfSequencersMatch(channel);
   }
 
@@ -651,12 +654,12 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
   }
 
   /** Get the channel cache */
-  ChannelCache getChannelCache() {
+  ChannelCache<T> getChannelCache() {
     return this.channelCache;
   }
 
   /** Get the flush service */
-  FlushService getFlushService() {
+  FlushService<T> getFlushService() {
     return this.flushService;
   }
 
@@ -666,8 +669,8 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
    * @param channels a list of channels we want to check against
    * @return a list of channels that has uncommitted rows
    */
-  List<SnowflakeStreamingIngestChannelInternal> verifyChannelsAreFullyCommitted(
-      List<SnowflakeStreamingIngestChannelInternal> channels) {
+  List<SnowflakeStreamingIngestChannelInternal<?>> verifyChannelsAreFullyCommitted(
+      List<SnowflakeStreamingIngestChannelInternal<?>> channels) {
     if (channels.isEmpty()) {
       return channels;
     }
@@ -676,16 +679,16 @@ public class SnowflakeStreamingIngestClientInternal implements SnowflakeStreamin
     int retry = 0;
     boolean isTimeout = true;
     List<ChannelsStatusResponse.ChannelStatusResponseDTO> oldChannelsStatus = new ArrayList<>();
-    List<SnowflakeStreamingIngestChannelInternal> channelsWithError = new ArrayList<>();
+    List<SnowflakeStreamingIngestChannelInternal<?>> channelsWithError = new ArrayList<>();
     do {
       List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
           getChannelsStatus(channels).getChannels();
-      List<SnowflakeStreamingIngestChannelInternal> tempChannels = new ArrayList<>();
+      List<SnowflakeStreamingIngestChannelInternal<?>> tempChannels = new ArrayList<>();
       List<ChannelsStatusResponse.ChannelStatusResponseDTO> tempChannelsStatus = new ArrayList<>();
 
       for (int idx = 0; idx < channelsStatus.size(); idx++) {
         ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus = channelsStatus.get(idx);
-        SnowflakeStreamingIngestChannelInternal channel = channels.get(idx);
+        SnowflakeStreamingIngestChannelInternal<?> channel = channels.get(idx);
         logger.logInfo(
             "Get channel status name={}, status={}, clientSequencer={}, rowSequencer={},"
                 + " offsetToken={}, persistedRowSequencer={}, persistedOffsetToken={}",
