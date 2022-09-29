@@ -9,6 +9,7 @@ import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
 import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
 import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
 import java.io.ByteArrayOutputStream;
@@ -279,7 +280,25 @@ class FlushService<T> {
     this.flushWorker = Executors.newSingleThreadScheduledExecutor(flushThreadFactory);
     this.flushWorker.scheduleWithFixedDelay(
         () -> {
-          flush(false);
+          flush(false)
+              .exceptionally(
+                  e -> {
+                    String errorMessage =
+                        String.format(
+                            "Background flush task failed, client=%s, exception=%s, detail=%s,"
+                                + " trace=%s.",
+                            this.owningClient.getName(),
+                            e.getCause(),
+                            e.getCause().getMessage(),
+                            getStackTrace(e.getCause()));
+                    logger.logError(errorMessage);
+                    if (this.owningClient.getTelemetryService() != null) {
+                      this.owningClient
+                          .getTelemetryService()
+                          .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+                    }
+                    return null;
+                  });
         },
         0,
         this.owningClient.getParameterProvider().getBufferFlushCheckIntervalInMs(),
@@ -357,28 +376,39 @@ class FlushService<T> {
                     () -> {
                       try {
                         return buildAndUpload(filePath, blobData);
-                      } catch (IOException e) {
+                      } catch (Throwable e) {
+                        Throwable ex = e.getCause() == null ? e : e.getCause();
                         String errorMessage =
                             String.format(
                                 "Building blob failed, client=%s, file=%s, exception=%s,"
-                                    + " detail=%s, all channels in the blob will be invalidated",
-                                this.owningClient.getName(), filePath, e, e.getMessage());
+                                    + " detail=%s, trace=%s, all channels in the blob will be"
+                                    + " invalidated",
+                                this.owningClient.getName(),
+                                filePath,
+                                ex,
+                                ex.getMessage(),
+                                getStackTrace(ex));
                         logger.logError(errorMessage);
                         if (this.owningClient.getTelemetryService() != null) {
                           this.owningClient
                               .getTelemetryService()
                               .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
                         }
-                        invalidateAllChannelsInBlob(blobData);
-                        return null;
-                      } catch (NoSuchAlgorithmException e) {
-                        throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
-                      } catch (InvalidAlgorithmParameterException
-                          | NoSuchPaddingException
-                          | IllegalBlockSizeException
-                          | BadPaddingException
-                          | InvalidKeyException e) {
-                        throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+
+                        if (e instanceof IOException) {
+                          invalidateAllChannelsInBlob(blobData);
+                          return null;
+                        } else if (e instanceof NoSuchAlgorithmException) {
+                          throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
+                        } else if (e instanceof InvalidAlgorithmParameterException
+                            | e instanceof NoSuchPaddingException
+                            | e instanceof IllegalBlockSizeException
+                            | e instanceof BadPaddingException
+                            | e instanceof InvalidKeyException) {
+                          throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+                        } else {
+                          throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
+                        }
                       }
                     },
                     this.buildUploadWorkers)));

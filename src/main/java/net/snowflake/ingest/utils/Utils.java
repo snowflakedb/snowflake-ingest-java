@@ -301,4 +301,17 @@ public class Utils {
         heapMem.getUsed(),
         heapMem.getCommitted());
   }
+
+  /** Return the stack trace for a given exception */
+  public static String getStackTrace(Throwable e) {
+    if (e == null) {
+      return null;
+    }
+
+    StringBuilder stackTrace = new StringBuilder();
+    for (StackTraceElement element : e.getStackTrace()) {
+      stackTrace.append(System.lineSeparator()).append(element.toString());
+    }
+    return stackTrace.toString();
+  }
 }
