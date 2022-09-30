@@ -2,7 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_16_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;
-import static net.snowflake.ingest.streaming.internal.DataValidationUtil.isAllowedVariantType;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.isAllowedSemiStructuredType;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseArray;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBigDecimal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBinary;
@@ -535,100 +535,101 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: {a=ČČČČČČČČČČČČČČČČČ.... Value cannot"
             + " be ingested into Snowflake column VARIANT: Variant too long: length=18874376"
-            + " maxLength=16776192",
+            + " maxLength=16777152",
         () -> validateAndParseVariant(m));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: [{\"a\":\"ČČČČČČČČČČČČČ.... Value"
             + " cannot be ingested into Snowflake column ARRAY: Array too large. length=18874378"
-            + " maxLength=16776192",
+            + " maxLength=16777152",
         () -> validateAndParseArray(m));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: {\"a\":\"ČČČČČČČČČČČČČČ.... Value"
             + " cannot be ingested into Snowflake column OBJECT: Object too large. length=18874376"
-            + " maxLength=16776192",
+            + " maxLength=16777152",
         () -> validateAndParseObject(m));
   }
 
   @Test
   public void testValidVariantType() {
     // Test primitive types
-    Assert.assertTrue(isAllowedVariantType((byte) 1));
-    Assert.assertTrue(isAllowedVariantType((short) 1));
-    Assert.assertTrue(isAllowedVariantType(1));
-    Assert.assertTrue(isAllowedVariantType(1L));
-    Assert.assertTrue(isAllowedVariantType(1.25f));
-    Assert.assertTrue(isAllowedVariantType(1.25d));
-    Assert.assertTrue(isAllowedVariantType(false));
-    Assert.assertTrue(isAllowedVariantType('c'));
+    Assert.assertTrue(isAllowedSemiStructuredType((byte) 1));
+    Assert.assertTrue(isAllowedSemiStructuredType((short) 1));
+    Assert.assertTrue(isAllowedSemiStructuredType(1));
+    Assert.assertTrue(isAllowedSemiStructuredType(1L));
+    Assert.assertTrue(isAllowedSemiStructuredType(1.25f));
+    Assert.assertTrue(isAllowedSemiStructuredType(1.25d));
+    Assert.assertTrue(isAllowedSemiStructuredType(false));
+    Assert.assertTrue(isAllowedSemiStructuredType('c'));
 
     // Test boxed primitive types
-    Assert.assertTrue(isAllowedVariantType(Byte.valueOf((byte) 1)));
-    Assert.assertTrue(isAllowedVariantType(Short.valueOf((short) 1)));
-    Assert.assertTrue(isAllowedVariantType(Integer.valueOf(1)));
-    Assert.assertTrue(isAllowedVariantType(Long.valueOf(1L)));
-    Assert.assertTrue(isAllowedVariantType(Float.valueOf(1.25f)));
-    Assert.assertTrue(isAllowedVariantType(Double.valueOf(1.25d)));
-    Assert.assertTrue(isAllowedVariantType(Boolean.valueOf(false)));
-    Assert.assertTrue(isAllowedVariantType(Character.valueOf('c')));
+    Assert.assertTrue(isAllowedSemiStructuredType(Byte.valueOf((byte) 1)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Short.valueOf((short) 1)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Integer.valueOf(1)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Long.valueOf(1L)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Float.valueOf(1.25f)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Double.valueOf(1.25d)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Boolean.valueOf(false)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Character.valueOf('c')));
 
     // Test primitive arrays
-    Assert.assertTrue(isAllowedVariantType(new byte[] {1}));
-    Assert.assertTrue(isAllowedVariantType(new short[] {1}));
-    Assert.assertTrue(isAllowedVariantType(new int[] {1}));
-    Assert.assertTrue(isAllowedVariantType(new long[] {1L}));
-    Assert.assertTrue(isAllowedVariantType(new float[] {1.25f}));
-    Assert.assertTrue(isAllowedVariantType(new double[] {1.25d}));
-    Assert.assertTrue(isAllowedVariantType(new boolean[] {false}));
-    Assert.assertTrue(isAllowedVariantType(new char[] {'c'}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new byte[] {1}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new short[] {1}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new int[] {1}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new long[] {1L}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new float[] {1.25f}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new double[] {1.25d}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new boolean[] {false}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new char[] {'c'}));
 
     // Test primitive lists
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList((byte) 1)));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList((short) 1)));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1)));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1L)));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1.25f)));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(1.25d)));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(false)));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList('c')));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList((byte) 1)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList((short) 1)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(1)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(1L)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(1.25f)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(1.25d)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(false)));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList('c')));
 
     // Test additional numeric types and their collections
-    Assert.assertTrue(isAllowedVariantType(new BigInteger("1")));
-    Assert.assertTrue(isAllowedVariantType(new BigInteger[] {new BigInteger("1")}));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(new BigInteger("1"))));
-    Assert.assertTrue(isAllowedVariantType(new BigDecimal("1.25")));
-    Assert.assertTrue(isAllowedVariantType(new BigDecimal[] {new BigDecimal("1.25")}));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(new BigDecimal("1.25"))));
+    Assert.assertTrue(isAllowedSemiStructuredType(new BigInteger("1")));
+    Assert.assertTrue(isAllowedSemiStructuredType(new BigInteger[] {new BigInteger("1")}));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(new BigInteger("1"))));
+    Assert.assertTrue(isAllowedSemiStructuredType(new BigDecimal("1.25")));
+    Assert.assertTrue(isAllowedSemiStructuredType(new BigDecimal[] {new BigDecimal("1.25")}));
+    Assert.assertTrue(
+        isAllowedSemiStructuredType(Collections.singletonList(new BigDecimal("1.25"))));
 
     // Test strings
-    Assert.assertTrue(isAllowedVariantType("foo"));
-    Assert.assertTrue(isAllowedVariantType(new String[] {"foo"}));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList("foo")));
+    Assert.assertTrue(isAllowedSemiStructuredType("foo"));
+    Assert.assertTrue(isAllowedSemiStructuredType(new String[] {"foo"}));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList("foo")));
 
     // Test date/time objects and their collections
-    Assert.assertTrue(isAllowedVariantType(LocalTime.now()));
-    Assert.assertTrue(isAllowedVariantType(OffsetTime.now()));
-    Assert.assertTrue(isAllowedVariantType(LocalDate.now()));
-    Assert.assertTrue(isAllowedVariantType(LocalDateTime.now()));
-    Assert.assertTrue(isAllowedVariantType(ZonedDateTime.now()));
-    Assert.assertTrue(isAllowedVariantType(OffsetDateTime.now()));
-    Assert.assertTrue(isAllowedVariantType(new LocalTime[] {LocalTime.now()}));
-    Assert.assertTrue(isAllowedVariantType(new OffsetTime[] {OffsetTime.now()}));
-    Assert.assertTrue(isAllowedVariantType(new LocalDate[] {LocalDate.now()}));
-    Assert.assertTrue(isAllowedVariantType(new LocalDateTime[] {LocalDateTime.now()}));
-    Assert.assertTrue(isAllowedVariantType(new ZonedDateTime[] {ZonedDateTime.now()}));
-    Assert.assertTrue(isAllowedVariantType(new OffsetDateTime[] {OffsetDateTime.now()}));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(LocalTime.now())));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(OffsetTime.now())));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(LocalDate.now())));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(LocalDateTime.now())));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(ZonedDateTime.now())));
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonList(OffsetDateTime.now())));
+    Assert.assertTrue(isAllowedSemiStructuredType(LocalTime.now()));
+    Assert.assertTrue(isAllowedSemiStructuredType(OffsetTime.now()));
+    Assert.assertTrue(isAllowedSemiStructuredType(LocalDate.now()));
+    Assert.assertTrue(isAllowedSemiStructuredType(LocalDateTime.now()));
+    Assert.assertTrue(isAllowedSemiStructuredType(ZonedDateTime.now()));
+    Assert.assertTrue(isAllowedSemiStructuredType(OffsetDateTime.now()));
+    Assert.assertTrue(isAllowedSemiStructuredType(new LocalTime[] {LocalTime.now()}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new OffsetTime[] {OffsetTime.now()}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new LocalDate[] {LocalDate.now()}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new LocalDateTime[] {LocalDateTime.now()}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new ZonedDateTime[] {ZonedDateTime.now()}));
+    Assert.assertTrue(isAllowedSemiStructuredType(new OffsetDateTime[] {OffsetDateTime.now()}));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(LocalTime.now())));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(OffsetTime.now())));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(LocalDate.now())));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(LocalDateTime.now())));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(ZonedDateTime.now())));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonList(OffsetDateTime.now())));
 
     // Test mixed collections
     Assert.assertTrue(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             new Object[] {
               1,
               false,
@@ -637,7 +638,7 @@ public class DataValidationUtilTest {
               new Object[] {new Object[] {new Object[] {LocalDateTime.now(), false}}}
             }));
     Assert.assertFalse(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             new Object[] {
               1,
               false,
@@ -646,14 +647,14 @@ public class DataValidationUtilTest {
               new Object[] {new Object[] {new Object[] {new Object(), false}}}
             }));
     Assert.assertTrue(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             Arrays.asList(
                 new BigInteger("1"),
                 "foo",
                 false,
                 Arrays.asList(13, Arrays.asList(Arrays.asList(false, 'c'))))));
     Assert.assertFalse(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             Arrays.asList(
                 new BigInteger("1"),
                 "foo",
@@ -661,11 +662,11 @@ public class DataValidationUtilTest {
                 Arrays.asList(13, Arrays.asList(Arrays.asList(new Object(), 'c'))))));
 
     // Test maps
-    Assert.assertTrue(isAllowedVariantType(Collections.singletonMap("foo", "bar")));
-    Assert.assertFalse(isAllowedVariantType(Collections.singletonMap(new Object(), "foo")));
-    Assert.assertFalse(isAllowedVariantType(Collections.singletonMap("foo", new Object())));
+    Assert.assertTrue(isAllowedSemiStructuredType(Collections.singletonMap("foo", "bar")));
+    Assert.assertFalse(isAllowedSemiStructuredType(Collections.singletonMap(new Object(), "foo")));
+    Assert.assertFalse(isAllowedSemiStructuredType(Collections.singletonMap("foo", new Object())));
     Assert.assertTrue(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             Collections.singletonMap(
                 "foo",
                 new Object[] {
@@ -676,7 +677,7 @@ public class DataValidationUtilTest {
                   new Object[] {new Object[] {new Object[] {LocalDateTime.now(), false}}}
                 })));
     Assert.assertFalse(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             Collections.singletonMap(
                 "foo",
                 new Object[] {
@@ -687,7 +688,7 @@ public class DataValidationUtilTest {
                   new Object[] {new Object[] {new Object[] {new Object(), false}}}
                 })));
     Assert.assertTrue(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             Collections.singletonMap(
                 "foo",
                 Arrays.asList(
@@ -696,7 +697,7 @@ public class DataValidationUtilTest {
                     false,
                     Arrays.asList(13, Arrays.asList(Arrays.asList(false, 'c')))))));
     Assert.assertFalse(
-        isAllowedVariantType(
+        isAllowedSemiStructuredType(
             Collections.singletonMap(
                 "foo",
                 Arrays.asList(

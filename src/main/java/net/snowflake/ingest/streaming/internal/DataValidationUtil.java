@@ -45,7 +45,9 @@ class DataValidationUtil {
   public static final int BYTES_8_MB = 8 * 1024 * 1024;
   public static final int BYTES_16_MB = 2 * BYTES_8_MB;
 
-  static final int MAX_VARIANT_LENGTH = BYTES_16_MB - 1024; // SNOW-664249
+  // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its
+  // server-side representation. Validation leaves a small buffer for this difference.
+  static final int MAX_SEMI_STRUCTURED_LENGTH = BYTES_16_MB - 64;
 
   private static final TimeZone DEFAULT_TIMEZONE =
       TimeZone.getTimeZone("America/Los_Angeles"); // default value of TIMEZONE system parameter
@@ -53,6 +55,10 @@ class DataValidationUtil {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
+  // The version of Jackson we are using does not support serialization of date objects from the
+  // java.time package. Here we define a module with custom java.time serializers. Additionally, we
+  // define custom serializer for byte[] because the Jackson default is to serialize it as
+  // base64-encoded string, and we would like to serialize it as JSON array of numbers.
   static {
     SimpleModule module = new SimpleModule();
     module.addSerializer(byte[].class, new ByteArraySerializer());
@@ -75,19 +81,20 @@ class DataValidationUtil {
 
   /**
    * Validates and parses input as JSON. All types in the object tree must be valid variant types,
-   * see {@link DataValidationUtil#isAllowedVariantType}.
+   * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
    * @return JSON tree representing the input
    */
-  private static JsonNode validateAndParseVariantAsJsonTree(Object input, String snowflakeType) {
+  private static JsonNode validateAndParseSemiStructuredAsJsonTree(
+      Object input, String snowflakeType) {
     if (input instanceof String) {
       try {
         return objectMapper.readTree((String) input);
       } catch (JsonProcessingException e) {
         throw valueFormatNotAllowedException(input, snowflakeType, "Not a valid JSON");
       }
-    } else if (isAllowedVariantType(input)) {
+    } else if (isAllowedSemiStructuredType(input)) {
       return objectMapper.valueToTree(input);
     }
 
@@ -106,28 +113,29 @@ class DataValidationUtil {
 
   /**
    * Validates and parses input as JSON. All types in the object tree must be valid variant types,
-   * see {@link DataValidationUtil#isAllowedVariantType}.
+   * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
    * @return JSON string representing the input
    */
   static String validateAndParseVariant(Object input) {
-    String output = validateAndParseVariantAsJsonTree(input, "VARIANT").toString();
+    String output = validateAndParseSemiStructuredAsJsonTree(input, "VARIANT").toString();
     int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
-    if (stringLength > MAX_VARIANT_LENGTH) {
+    if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           input,
           "VARIANT",
           String.format(
-              "Variant too long: length=%d maxLength=%d", stringLength, MAX_VARIANT_LENGTH));
+              "Variant too long: length=%d maxLength=%d",
+              stringLength, MAX_SEMI_STRUCTURED_LENGTH));
     }
     return output;
   }
 
   /**
-   * Validates that passed object is allowed variant type. For non-trivial types like Maps, arrays
-   * or Lists, it recursively traverses the object tree and validates that all types in the tree are
-   * also allowed. Allowed Java types:
+   * Validates that passed object is allowed data type for semi-structured columns (i.e. VARIANT,
+   * ARRAY, OBJECT). For non-trivial types like maps, arrays or lists, it recursively traverses the
+   * object tree and validates that all types in the tree are also allowed. Allowed Java types:
    *
    * <ul>
    *   <li>primitive types (int, long, boolean, ...)
@@ -140,41 +148,54 @@ class DataValidationUtil {
    *   <li>LocalDateTime
    *   <li>OffsetDateTime
    *   <li>ZonedDateTime
-   *   <li>Map<String, T> where T is an allowed variant type
-   *   <li>List<T> where T is an allowed variant type
+   *   <li>Map<String, T> where T is an allowed semi-structured type
+   *   <li>List<T> where T is an allowed semi-structured type
    *   <li>primitive arrays (char[], int[], ...)
-   *   <li>T[] where T is an allowed variant type
+   *   <li>T[] where T is an allowed semi-structured type
    * </ul>
    *
    * @param o Object to validate
-   * @return If the passed object is allowed for ingestion into a VARIANT column
+   * @return If the passed object is allowed for ingestion into semi-structured column
    */
-  static boolean isAllowedVariantType(Object o) {
+  static boolean isAllowedSemiStructuredType(Object o) {
+    // Allow null
     if (o == null) {
       return true;
     }
-    if (o instanceof String || o instanceof Boolean || o instanceof Character) {
+
+    // Allow string
+    if (o instanceof String) {
       return true;
     }
+
+    // Allow all primitive Java data types
     if (o instanceof Long
         || o instanceof Integer
         || o instanceof Short
         || o instanceof Byte
-        || o instanceof BigInteger) {
+        || o instanceof Float
+        || o instanceof Double
+        || o instanceof Boolean
+        || o instanceof Character) {
       return true;
     }
-    if (o instanceof Float || o instanceof Double || o instanceof BigDecimal) {
+
+    // Allow BigInteger and BigDecimal
+    if (o instanceof BigInteger || o instanceof BigDecimal) {
       return true;
     }
-    if (o instanceof java.time.LocalTime || o instanceof OffsetTime) {
-      return true;
-    }
-    if (o instanceof LocalDate
+
+    // Allow supported types from java.time package
+    if (o instanceof java.time.LocalTime
+        || o instanceof OffsetTime
+        || o instanceof LocalDate
         || o instanceof LocalDateTime
         || o instanceof ZonedDateTime
         || o instanceof OffsetDateTime) {
       return true;
     }
+
+    // Map<String, T> is allowed, as long as T is also a supported semi-structured type
     if (o instanceof Map) {
       boolean allKeysAreStrings =
           ((Map<?, ?>) o).keySet().stream().allMatch(x -> x instanceof String);
@@ -182,9 +203,12 @@ class DataValidationUtil {
         return false;
       }
       boolean allValuesAreAllowed =
-          ((Map<?, ?>) o).values().stream().allMatch(DataValidationUtil::isAllowedVariantType);
+          ((Map<?, ?>) o)
+              .values().stream().allMatch(DataValidationUtil::isAllowedSemiStructuredType);
       return allValuesAreAllowed;
     }
+
+    // Allow arrays of primitive data types
     if (o instanceof byte[]
         || o instanceof short[]
         || o instanceof int[]
@@ -195,25 +219,31 @@ class DataValidationUtil {
         || o instanceof char[]) {
       return true;
     }
+
+    // Allow arrays of allowed semi-structured objects
     if (o.getClass().isArray()) {
-      return Arrays.stream((Object[]) o).allMatch(DataValidationUtil::isAllowedVariantType);
+      return Arrays.stream((Object[]) o).allMatch(DataValidationUtil::isAllowedSemiStructuredType);
     }
+
+    // Allow lists consisting of allowed semi-structured objects
     if (o instanceof List) {
-      return ((List<?>) o).stream().allMatch(DataValidationUtil::isAllowedVariantType);
+      return ((List<?>) o).stream().allMatch(DataValidationUtil::isAllowedSemiStructuredType);
     }
+
+    // If nothing matches, reject the input
     return false;
   }
 
   /**
    * Validates and parses JSON array. Non-array types are converted into single-element arrays. All
    * types in the array tree must be valid variant types, see {@link
-   * DataValidationUtil#isAllowedVariantType}.
+   * DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
    * @return JSON array representing the input
    */
   static String validateAndParseArray(Object input) {
-    JsonNode jsonNode = validateAndParseVariantAsJsonTree(input, "ARRAY");
+    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(input, "ARRAY");
 
     // Non-array values are ingested as single-element arrays, mimicking the Worksheets behavior
     if (!jsonNode.isArray()) {
@@ -223,12 +253,12 @@ class DataValidationUtil {
     String output = jsonNode.toString();
     // Throw an exception if the size is too large
     int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
-    if (stringLength > MAX_VARIANT_LENGTH) {
+    if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           jsonNode.toString(),
           "ARRAY",
           String.format(
-              "Array too large. length=%d maxLength=%d", stringLength, MAX_VARIANT_LENGTH));
+              "Array too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH));
     }
     return output;
   }
@@ -236,13 +266,13 @@ class DataValidationUtil {
   /**
    * Validates and parses JSON object. Input is rejected if the value does not represent JSON object
    * (e.g. String '{}' or Map<String, T>). All types in the object tree must be valid variant types,
-   * see {@link DataValidationUtil#isAllowedVariantType}.
+   * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
    * @return JSON object representing the input
    */
   static String validateAndParseObject(Object input) {
-    JsonNode jsonNode = validateAndParseVariantAsJsonTree(input, "OBJECT");
+    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(input, "OBJECT");
     if (!jsonNode.isObject()) {
       throw valueFormatNotAllowedException(jsonNode, "OBJECT", "Not an object");
     }
@@ -250,12 +280,13 @@ class DataValidationUtil {
     String output = jsonNode.toString();
     // Throw an exception if the size is too large
     int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
-    if (stringLength > MAX_VARIANT_LENGTH) {
+    if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           output,
           "OBJECT",
           String.format(
-              "Object too large. length=%d maxLength=%d", stringLength, MAX_VARIANT_LENGTH));
+              "Object too large. length=%d maxLength=%d",
+              stringLength, MAX_SEMI_STRUCTURED_LENGTH));
     }
     return output;
   }
