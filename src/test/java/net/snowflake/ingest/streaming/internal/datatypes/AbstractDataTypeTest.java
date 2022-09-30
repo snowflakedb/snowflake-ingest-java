@@ -284,16 +284,6 @@ public abstract class AbstractDataTypeTest {
       String expectedValue,
       String expectedType)
       throws Exception {
-    assertVariant(dataType, streamingIngestWriteValue, expectedValue, expectedType, true);
-  }
-
-  <STREAMING_INGEST_WRITE> void assertVariant(
-      String dataType,
-      STREAMING_INGEST_WRITE streamingIngestWriteValue,
-      String expectedValue,
-      String expectedType,
-      boolean compareAsJsons)
-      throws Exception {
 
     String tableName = createTable(dataType);
     String offsetToken = UUID.randomUUID().toString();
@@ -317,9 +307,7 @@ public abstract class AbstractDataTypeTest {
     }
 
     Assert.assertEquals(1, counter);
-    if (compareAsJsons)
-      Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
-    else Assert.assertEquals(expectedValue, value);
+    Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
     Assert.assertEquals(expectedType, typeof);
   }
 }
