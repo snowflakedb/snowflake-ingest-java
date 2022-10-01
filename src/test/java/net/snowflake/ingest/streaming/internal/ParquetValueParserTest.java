@@ -2,8 +2,8 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
@@ -31,6 +31,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
+        .expectedParsedValue(12)
         .expectedSize(4.0f)
         .expectedMinMax(BigInteger.valueOf(12))
         .assertMatches();
@@ -56,6 +57,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
+        .expectedParsedValue(1234)
         .expectedSize(4.0f)
         .expectedMinMax(BigInteger.valueOf(1234))
         .assertMatches();
@@ -81,6 +83,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
+        .expectedParsedValue(123456789)
         .expectedSize(4.0f)
         .expectedMinMax(BigInteger.valueOf(123456789))
         .assertMatches();
@@ -106,6 +109,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Long.class)
+        .expectedParsedValue(123456789987654321L)
         .expectedSize(8.0f)
         .expectedMinMax(BigInteger.valueOf(123456789987654321L))
         .assertMatches();
@@ -134,6 +138,9 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(byte[].class)
+        .expectedParsedValue(
+            ParquetValueParser.getSb16Bytes(
+                new BigInteger("91234567899876543219876543211234567891")))
         .expectedSize(16.0f)
         .expectedMinMax(new BigInteger("91234567899876543219876543211234567891"))
         .assertMatches();
@@ -162,6 +169,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Double.class)
+        .expectedParsedValue(Double.valueOf("12345.54321"))
         .expectedSize(8.0f)
         .expectedMinMax(Double.valueOf("12345.54321"))
         .assertMatches();
@@ -185,6 +193,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Double.class)
+        .expectedParsedValue(Double.valueOf(12345.54321))
         .expectedSize(8.0f)
         .expectedMinMax(Double.valueOf(12345.54321))
         .assertMatches();
@@ -208,6 +217,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Boolean.class)
+        .expectedParsedValue(true)
         .expectedSize(1.0f)
         .expectedMinMax(BigInteger.valueOf(1))
         .assertMatches();
@@ -231,6 +241,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(String.class)
+        .expectedParsedValue("Length7")
         .expectedSize(7.0f)
         .expectedMinMax("Length7")
         .assertMatches();
@@ -266,6 +277,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(String.class)
+        .expectedParsedValue(var)
         .expectedSize(var.getBytes().length)
         .expectedMinMax(null)
         .assertMatches();
@@ -280,18 +292,23 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    List<String> arr = Arrays.asList("{ \"a\": 1}", "{ \"b\": 2 }", "{ \"c\": 3 }");
+    Map<String, String> input = new HashMap<>();
+    input.put("a", "1");
+    input.put("b", "2");
+    input.put("c", "3");
+
     RowBufferStats rowBufferStats = new RowBufferStats();
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            arr, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+            input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
 
-    String resultArray = "[{ \"a\": 1}, { \"b\": 2 }, { \"c\": 3 }]";
+    String resultArray = "[{\"a\":\"1\",\"b\":\"2\",\"c\":\"3\"}]";
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(String.class)
+        .expectedParsedValue(resultArray)
         .expectedSize(resultArray.length())
         .expectedMinMax(null)
         .assertMatches();
@@ -345,6 +362,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Long.class)
+        .expectedParsedValue(1367182621000L)
         .expectedSize(8.0f)
         .expectedMinMax(BigInteger.valueOf(1367182621000L))
         .assertMatches();
@@ -372,6 +390,8 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(byte[].class)
+        .expectedParsedValue(
+            ParquetValueParser.getSb16Bytes(BigInteger.valueOf(1663538707123456789L)))
         .expectedSize(16.0f)
         .expectedMinMax(BigInteger.valueOf(1663538707123456789L))
         .assertMatches();
@@ -396,6 +416,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
+        .expectedParsedValue(Integer.valueOf(18628))
         .expectedSize(4.0f)
         .expectedMinMax(BigInteger.valueOf(18628))
         .assertMatches();
@@ -420,6 +441,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
+        .expectedParsedValue(3600)
         .expectedSize(4.0f)
         .expectedMinMax(BigInteger.valueOf(3600))
         .assertMatches();
@@ -444,6 +466,7 @@ public class ParquetValueParserTest {
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Long.class)
+        .expectedParsedValue(3600123L)
         .expectedSize(8.0f)
         .expectedMinMax(BigInteger.valueOf(3600123))
         .assertMatches();
@@ -478,6 +501,7 @@ public class ParquetValueParserTest {
     private ParquetValueParser.ParquetBufferValue parquetBufferValue;
     private RowBufferStats rowBufferStats;
     private Class valueClass;
+    private Object value;
     private float size;
     private Object minMaxStat;
 
@@ -502,6 +526,11 @@ public class ParquetValueParserTest {
       return this;
     }
 
+    ParquetValueParserAssertionBuilder expectedParsedValue(Object value) {
+      this.value = value;
+      return this;
+    }
+
     ParquetValueParserAssertionBuilder expectedSize(float size) {
       this.size = size;
       return this;
@@ -514,6 +543,12 @@ public class ParquetValueParserTest {
 
     void assertMatches() {
       Assert.assertEquals(valueClass, parquetBufferValue.getValue().getClass());
+      System.out.println("parquetBufferValue = " + parquetBufferValue.getValue().toString());
+      if (valueClass.equals(byte[].class)) {
+        Assert.assertArrayEquals((byte[]) value, (byte[]) parquetBufferValue.getValue());
+      } else {
+        Assert.assertEquals(value, parquetBufferValue.getValue());
+      }
       Assert.assertEquals(size, parquetBufferValue.getSize(), 0);
       if (minMaxStat instanceof BigInteger) {
         Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMinIntValue());

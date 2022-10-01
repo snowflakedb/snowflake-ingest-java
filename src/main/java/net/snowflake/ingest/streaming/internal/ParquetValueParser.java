@@ -272,7 +272,7 @@ class ParquetValueParser {
    * @param intRep int128 value
    * @return byte array representation
    */
-  private static byte[] getSb16Bytes(BigInteger intRep) {
+  static byte[] getSb16Bytes(BigInteger intRep) {
     byte[] bytes = intRep.toByteArray();
     byte padByte = (byte) (bytes[0] < 0 ? -1 : 0);
     byte[] bytesBE = new byte[16];
@@ -297,10 +297,20 @@ class ParquetValueParser {
         AbstractRowBuffer.ColumnLogicalType.valueOf(columnMetadata.getLogicalType());
     String str;
     if (logicalType.isObject()) {
-      str =
-          logicalType == AbstractRowBuffer.ColumnLogicalType.OBJECT
-              ? DataValidationUtil.validateAndParseObject(value)
-              : DataValidationUtil.validateAndParseVariant(value);
+      switch (logicalType) {
+        case OBJECT:
+          str = DataValidationUtil.validateAndParseObject(value);
+          break;
+        case VARIANT:
+          str = DataValidationUtil.validateAndParseVariant(value);
+          break;
+        case ARRAY:
+          str = DataValidationUtil.validateAndParseArray(value);
+          break;
+        default:
+          throw new SFException(
+              ErrorCode.UNKNOWN_DATA_TYPE, logicalType, columnMetadata.getPhysicalType());
+      }
     } else if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
       String maxLengthString = columnMetadata.getLength().toString();
       byte[] bytes =
