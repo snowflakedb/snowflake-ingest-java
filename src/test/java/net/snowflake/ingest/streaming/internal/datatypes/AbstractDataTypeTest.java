@@ -36,7 +36,7 @@ public abstract class AbstractDataTypeTest {
     return Arrays.asList(
         new Object[][] {
           {"Arrow", Constants.BdecVersion.ONE},
-          {"Parquet", Constants.BdecVersion.THREE}
+          // {"Parquet", Constants.BdecVersion.THREE}
         });
   }
 
