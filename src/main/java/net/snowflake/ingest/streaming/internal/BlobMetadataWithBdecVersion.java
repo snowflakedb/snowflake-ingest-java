@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -16,6 +20,6 @@ class BlobMetadataWithBdecVersion extends BlobMetadata {
 
   @JsonProperty("bdec_version")
   byte getVersionByte() {
-    return bdecVersion.toByte();
+    return getVersion().toByte();
   }
 }

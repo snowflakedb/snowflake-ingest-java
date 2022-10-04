@@ -122,12 +122,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       ParquetWriter<List<Object>> writer =
           new BdecParquetWriterBuilder(bdecOutput, schema, metadata)
               // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
-              // server side does not support it
-              // another fix could be to use lower level column writers and custom
-              // ValuesWriterFactory
-              // that uses plain byte array encoding used by PARQUET_1_0 and supported by server
-              // side
-              // TODO: SNOW-620624
+              // server side does not support it TODO: SNOW-657238
               .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
               // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
               // scanner yet
@@ -137,6 +132,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               .withWriteMode(ParquetFileWriter.Mode.CREATE)
               .build();
 
+      // We can use lower level column writers and custom ValuesWriterFactory that uses plain byte
+      // array encoding used by PARQUET_1_0 and supported by server side
+      // TODO: SNOW-672143
       for (List<Object> row : chunkRows) {
         writer.write(row);
       }
@@ -244,7 +242,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     RecordConsumer recordConsumer;
     Map<String, String> extraMetaData;
 
-    // TODO: support specifying encodings and compression
+    // TODO SNOW-672156: support specifying encodings and compression
     BdecWriteSupport(MessageType schema, Map<String, String> extraMetaData) {
       this.schema = schema;
       this.extraMetaData = extraMetaData;

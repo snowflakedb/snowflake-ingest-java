@@ -62,7 +62,6 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  *     ParquetChunkData})
  */
 class FlushService<T> {
-  private static final long NO_ENCRYPTION_KEY_ID = 0L;
 
   // Static class to save the list of channels that are used to build a blob, which is mainly used
   // to invalidate all the channels when there is a failure

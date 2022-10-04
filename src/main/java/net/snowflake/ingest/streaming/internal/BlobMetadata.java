@@ -14,7 +14,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 class BlobMetadata {
   private final String path;
   private final String md5;
-  final Constants.BdecVersion bdecVersion;
+  private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
 
   BlobMetadata(String path, String md5, List<ChunkMetadata> chunks) {
@@ -55,8 +55,8 @@ class BlobMetadata {
    */
   static BlobMetadata createBlobMetadata(
       String path, String md5, Constants.BdecVersion bdecVersion, List<ChunkMetadata> chunks) {
-    // TODO: Unify BlobMetadata with BlobMetadataWithBdecVersion once server side BdecVersion in
-    // production
+    // TODO SNOW-659721: Unify BlobMetadata with BlobMetadataWithBdecVersion once server side
+    // BdecVersion in production
     return bdecVersion == Constants.BdecVersion.ONE
         ? new BlobMetadata(path, md5, bdecVersion, chunks)
         : new BlobMetadataWithBdecVersion(path, md5, bdecVersion, chunks);
