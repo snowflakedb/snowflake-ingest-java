@@ -168,6 +168,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         : Optional.of(new ParquetChunkData(oldData, metadata));
   }
 
+  /** Used only for testing. */
   @Override
   Object getVectorValueAt(String column, int index) {
     int colIndex = fieldIndex.get(column).getSecond();

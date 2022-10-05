@@ -87,8 +87,8 @@ public class Constants {
 
     /**
      * Uses Parquet to generate BDEC chunks with {@link
-     * net.snowflake.ingest.streaming.internal.ParquetRowBuffer}. This version is experimental and
-     * WIP at the moment.
+     * net.snowflake.ingest.streaming.internal.ParquetRowBuffer} (page-level compression). This
+     * version is experimental and WIP at the moment.
      */
     THREE(3);
 

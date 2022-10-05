@@ -11,7 +11,10 @@ if jar tvf $DIR/../target/snowflake-ingest-sdk.jar  | awk '{print $8}' | grep -v
     | grep -v -E "^com/sun" | grep -v "log4j.properties" | grep -v "git.properties" | grep -v "io/" \
     | grep -v "codegen/" | grep -v "com/codahale/" | grep -v "com/ibm/" | grep -v "LICENSE" | grep -v "aix/" \
     | grep -v "darwin/" | grep -v "win/" | grep -v "freebsd/" | grep -v "linux/" | grep -v "com/github/" \
-    | grep -v -E "shaded/" | grep -v "webapps/"  | grep -v "microsoft/" | grep -v -E "^core-default.xml" \
+    | grep -v -E "shaded/" | grep -v "webapps/"  | grep -v "microsoft/" | grep -v "com/ctc/" \
+    | grep -v "edu/" | grep -v "com/jcraft/" | grep -v "contribs/" | grep -v "com/zaxxer/"  | grep -v "com/squareup/" \
+    | grep -v "com/thoughtworks/" | grep -v "com/jamesmurty/"  | grep -v "net/iharder/" \
+    | grep -v -E "^core-default.xml" \
     | grep -v "yarn-version-info.properties" | grep -v "yarn-version-info.properties" \
     | grep -v "common-version-info.properties" | grep -v "LocalizedFormats_fr.properties" \
     | grep -v "org.apache.hadoop.application-classloader.properties" | grep -v "assets/" | grep -v "ehcache-core.xsd" \
