@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -103,7 +104,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
 
-    flushToParquetBdecChunk(chunkData, rows, metadata);
+    flushToParquetBdecChunk(chunkData, rows, metadata, channelsMetadataList);
     return new SerializationResult(channelsMetadataList, columnEpStatsMapCombined, rowCount);
   }
 
@@ -113,14 +114,18 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
    * @param bdecOutput BDEC output stream
    * @param chunkRows chunk rows
    * @param metadata chunk metadata
+   * @param channelsMetadataList metadata of the channels the chunk rows belong to
    * @throws IOException thrown from Parquet library in case of writing problems
    */
   private void flushToParquetBdecChunk(
-      ByteArrayOutputStream bdecOutput, List<List<Object>> chunkRows, Map<String, String> metadata)
+      ByteArrayOutputStream bdecOutput,
+      List<List<Object>> chunkRows,
+      Map<String, String> metadata,
+      List<ChannelMetadata> channelsMetadataList)
       throws IOException {
     try {
       ParquetWriter<List<Object>> writer =
-          new BdecParquetWriterBuilder(bdecOutput, schema, metadata)
+          new BdecParquetWriterBuilder(bdecOutput, schema, metadata, channelsMetadataList)
               // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
               // server side does not support it TODO: SNOW-657238
               .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
@@ -155,12 +160,17 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       extends ParquetWriter.Builder<List<Object>, BdecParquetWriterBuilder> {
     private final MessageType schema;
     private final Map<String, String> extraMetaData;
+    private final List<ChannelMetadata> channelsMetadataList;
 
     protected BdecParquetWriterBuilder(
-        ByteArrayOutputStream stream, MessageType schema, Map<String, String> extraMetaData) {
+        ByteArrayOutputStream stream,
+        MessageType schema,
+        Map<String, String> extraMetaData,
+        List<ChannelMetadata> channelsMetadataList) {
       super(new ByteArrayOutputFile(stream));
       this.schema = schema;
       this.extraMetaData = extraMetaData;
+      this.channelsMetadataList = channelsMetadataList;
     }
 
     @Override
@@ -170,7 +180,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
     @Override
     protected WriteSupport<List<Object>> getWriteSupport(Configuration conf) {
-      return new BdecWriteSupport(schema, extraMetaData);
+      return new BdecWriteSupport(schema, extraMetaData, channelsMetadataList);
     }
   }
 
@@ -241,11 +251,16 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     MessageType schema;
     RecordConsumer recordConsumer;
     Map<String, String> extraMetaData;
+    List<ChannelMetadata> channelsMetadataList;
 
     // TODO SNOW-672156: support specifying encodings and compression
-    BdecWriteSupport(MessageType schema, Map<String, String> extraMetaData) {
+    BdecWriteSupport(
+        MessageType schema,
+        Map<String, String> extraMetaData,
+        List<ChannelMetadata> channelsMetadataList) {
       this.schema = schema;
       this.extraMetaData = extraMetaData;
+      this.channelsMetadataList = channelsMetadataList;
     }
 
     @Override
@@ -262,8 +277,14 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     public void write(List<Object> values) {
       List<ColumnDescriptor> cols = schema.getColumns();
       if (values.size() != cols.size()) {
+        List<String> channelNames =
+            this.channelsMetadataList.stream()
+                .map(ChannelMetadata::getChannelName)
+                .collect(Collectors.toList());
         throw new ParquetEncodingException(
-            "Invalid input data. Expecting "
+            "Invalid input data in channels "
+                + channelNames
+                + ". Expecting "
                 + cols.size()
                 + " columns. Input had "
                 + values.size()
