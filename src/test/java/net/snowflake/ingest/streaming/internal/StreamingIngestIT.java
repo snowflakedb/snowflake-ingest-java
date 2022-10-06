@@ -1261,19 +1261,7 @@ public class StreamingIngestIT {
             + "  }\n"
             + "}";
 
-    String formattedArrayForParquet =
-        "[\n"
-            + "  {\n"
-            + "    \"a\": 1\n"
-            + "  },\n"
-            + "  {\n"
-            + "    \"b\": 2\n"
-            + "  },\n"
-            + "  {\n"
-            + "    \"c\": 3\n"
-            + "  }\n"
-            + "]";
-    String formattedArrayForArrow =
+    String formattedArray =
         "[\n"
             + "  \"{ \\\"a\\\": 1}\",\n"
             + "  \"{ \\\"b\\\": 2 }\",\n"
@@ -1283,11 +1271,7 @@ public class StreamingIngestIT {
     assertNonTimeAndVarFields(expectedPosRow, actualResult);
     Assert.assertEquals(formattedJSON, actualResult.getString("VAR"));
     Assert.assertEquals(formattedJSON, actualResult.getString("OBJ"));
-    Assert.assertEquals(
-        (bdecVersion == Constants.BdecVersion.THREE
-            ? formattedArrayForParquet
-            : formattedArrayForArrow),
-        actualResult.getString("ARR"));
+    Assert.assertEquals(formattedArray, actualResult.getString("ARR"));
     Assert.assertEquals(
         1663459200000l, actualResult.getDate("EPOCHDAYS").getTime()); // in ms, 18.09.2022 00:00:00
     Assert.assertEquals(1663531507000L, actualResult.getTimestamp("EPOCHSEC").getTime());

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -129,9 +130,17 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
               // server side does not support it TODO: SNOW-657238
               .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
+
               // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
               // scanner yet
               .withDictionaryEncoding(false)
+
+              // Historically server side scanner supports only the case when the row number in all
+              // pages is the same.
+              // The quick fix is to effectively disable the page size/row limit
+              // to always have one page per chunk until server side is generalised.
+              .withPageSize((int) Constants.MAX_CHUNK_SIZE_IN_BYTES * 2)
+              .withPageRowCountLimit(chunkRows.size() + 1)
               .enableValidation()
               .withCompressionCodec(CompressionCodecName.GZIP)
               .withWriteMode(ParquetFileWriter.Mode.CREATE)
