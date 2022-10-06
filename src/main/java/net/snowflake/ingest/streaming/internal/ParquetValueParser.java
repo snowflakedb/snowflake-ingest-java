@@ -152,7 +152,7 @@ class ParquetValueParser {
       case FIXED:
         BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
         intVal = bigDecimalValue.intValue();
         break;
       default:
@@ -207,7 +207,7 @@ class ParquetValueParser {
       case FIXED:
         BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
         longValue = bigDecimalValue.longValue();
         break;
       default:
@@ -252,21 +252,10 @@ class ParquetValueParser {
         BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
         // explicitly match the BigDecimal input scale with the Snowflake data type scale
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
         return bigDecimalValue.unscaledValue();
       default:
         throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
-    }
-  }
-
-  private static void checkValueInRange(BigDecimal bigDecimalValue, int scale, int precision) {
-    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          bigDecimalValue,
-          String.format(
-              "Number out of representable exclusive range of (-1e%s..1e%s)",
-              precision - scale, precision - scale));
     }
   }
 

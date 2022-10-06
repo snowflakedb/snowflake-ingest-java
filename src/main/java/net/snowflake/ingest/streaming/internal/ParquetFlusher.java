@@ -250,22 +250,22 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private static class BdecWriteSupport extends WriteSupport<List<Object>> {
     MessageType schema;
     RecordConsumer recordConsumer;
-    Map<String, String> extraMetaData;
+    Map<String, String> extraMetadata;
     List<ChannelMetadata> channelsMetadataList;
 
     // TODO SNOW-672156: support specifying encodings and compression
     BdecWriteSupport(
         MessageType schema,
-        Map<String, String> extraMetaData,
+        Map<String, String> extraMetadata,
         List<ChannelMetadata> channelsMetadataList) {
       this.schema = schema;
-      this.extraMetaData = extraMetaData;
+      this.extraMetadata = extraMetadata;
       this.channelsMetadataList = channelsMetadataList;
     }
 
     @Override
     public WriteContext init(Configuration config) {
-      return new WriteContext(schema, extraMetaData);
+      return new WriteContext(schema, extraMetadata);
     }
 
     @Override
