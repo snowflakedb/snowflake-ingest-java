@@ -303,9 +303,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       }
 
       logger.logInfo(
-          "Open channel request succeeded, channel={}, table={}, client={}",
+          "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
+              + " rowSequencer={}, client={}",
           request.getChannelName(),
           request.getFullyQualifiedTableName(),
+          response.getClientSequencer(),
+          response.getRowSequencer(),
           getName());
 
       // Channel is now registered, add it to the in-memory channel pool
