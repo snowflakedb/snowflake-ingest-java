@@ -61,6 +61,7 @@ public class SFException extends RuntimeException {
     return cause;
   }
 
+  // returns the snowflake error code of the exception
   public ErrorCode getErrorCode() {
     return this.errorCode;
   }
