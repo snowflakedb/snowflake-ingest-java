@@ -18,6 +18,7 @@ public class SFException extends RuntimeException {
   private Throwable cause;
   private String vendorCode;
   private Object[] params;
+  private ErrorCode errorCode;
 
   /**
    * Construct a Snowflake exception from a cause, an error code and message parameters
@@ -35,6 +36,7 @@ public class SFException extends RuntimeException {
     this.vendorCode = errorCode.getMessageCode();
     this.params = params;
     this.cause = cause;
+    this.errorCode = errorCode;
   }
 
   /**
@@ -57,5 +59,9 @@ public class SFException extends RuntimeException {
 
   public Throwable getCause() {
     return cause;
+  }
+
+  public ErrorCode getErrorCode() {
+    return this.errorCode;
   }
 }
