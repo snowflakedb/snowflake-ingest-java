@@ -52,7 +52,7 @@ public class InsertValidationResponse {
     // Used to map this error row with original row in the insertRows Iterable.
     // i.e the rowIndex can be index 9 in the list of 10 rows.
     // index is 0 based so as to match with incoming Iterable
-    private final long rowIndex;
+    private long rowIndex;
 
     // List of extra column names in the input row compared with the table schema
     private List<String> extraColNames;
@@ -87,6 +87,15 @@ public class InsertValidationResponse {
     /** Get the exception */
     public SFException getException() {
       return this.exception;
+    }
+
+    /**
+     * Set the row index
+     *
+     * @param rowIndex the corresponding row index in the original input row list
+     */
+    public void setRowIndex(long rowIndex) {
+      this.rowIndex = rowIndex;
     }
 
     /**
