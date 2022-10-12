@@ -43,7 +43,7 @@
         <jacoco.skip.instrument>true</jacoco.skip.instrument>
         <jacoco.version>0.8.5</jacoco.version>
         <arrow.version>9.0.0</arrow.version>
-        <hadoop.version>2.10.1</hadoop.version>
+        <hadoop.version>3.2.4</hadoop.version>
     </properties>
 
     <build>
