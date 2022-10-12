@@ -83,7 +83,14 @@ public class Constants {
     ONE(1),
 
     /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#FILE}. */
-    TWO(2);
+    TWO(2),
+
+    /**
+     * Uses Parquet to generate BDEC chunks with {@link
+     * net.snowflake.ingest.streaming.internal.ParquetRowBuffer} (page-level compression). This
+     * version is experimental and WIP at the moment.
+     */
+    THREE(3);
 
     private final byte version;
 

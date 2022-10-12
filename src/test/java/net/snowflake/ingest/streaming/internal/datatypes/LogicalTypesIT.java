@@ -2,9 +2,15 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import net.snowflake.ingest.utils.Constants;
 import org.junit.Test;
 
 public class LogicalTypesIT extends AbstractDataTypeTest {
+
+  public LogicalTypesIT(String name, Constants.BdecVersion bdecVersion) {
+    super(name, bdecVersion);
+  }
+
   @Test
   public void testLogicalTypes() throws Exception {
     // Test booleans

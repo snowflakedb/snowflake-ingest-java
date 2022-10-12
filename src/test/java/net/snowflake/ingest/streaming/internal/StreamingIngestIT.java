@@ -9,14 +9,15 @@ import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -31,6 +32,7 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
@@ -38,9 +40,23 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 /** Example streaming ingest sdk integration test */
+@RunWith(Parameterized.class)
 public class StreamingIngestIT {
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<Object[]> bdecVersion() {
+    return Arrays.asList(
+        new Object[][] {
+          {"Arrow", Constants.BdecVersion.ONE},
+          // TODO: uncomment once SNOW-659721 is deployed and we set the parameter
+          // DISABLE_PARQUET_CACHE to true for the test account
+          // {"Parquet", Constants.BdecVersion.THREE}
+        });
+  }
+
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
@@ -55,11 +71,23 @@ public class StreamingIngestIT {
   private Connection jdbcConnection;
   private String testDb;
 
+  private final Constants.BdecVersion bdecVersion;
+
+  public StreamingIngestIT(
+      @SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
+    this.bdecVersion = bdecVersion;
+  }
+
   @Before
   public void beforeAll() throws Exception {
     testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
     // Create a streaming ingest client
     jdbcConnection = TestUtils.getConnection(true);
+    if (bdecVersion == Constants.BdecVersion.THREE) {
+      // TODO: encryption and interleaved mode are not yet supported by server side's Parquet
+      // scanner if local file cache is enabled (SNOW-656500)
+      jdbcConnection.createStatement().execute("alter session set disable_parquet_cache=true;");
+    }
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace database %s;", testDb));
@@ -78,7 +106,7 @@ public class StreamingIngestIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties();
+    prop = TestUtils.getProperties(bdecVersion);
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }
@@ -1042,7 +1070,7 @@ public class StreamingIngestIT {
   }
 
   @Test
-  public void testDataTypes() {
+  public void testDataTypes() throws SQLException, ParseException {
     String tableName = "t_data_types";
     try {
       jdbcConnection
@@ -1080,94 +1108,195 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel channel = openChannel(tableName, "CHANNEL");
 
-    Random r = new Random();
-    for (int val = 0; val < 10000; val++) {
-      verifyInsertValidationResponse(channel.insertRow(getRandomRow(r), Integer.toString(val)));
-    }
-    waitChannelFlushed(channel, 10000);
+    Map<String, Object> negRow = getNegRow();
+    verifyInsertValidationResponse(channel.insertRow(negRow, Integer.toString(0)));
+
+    Map<String, Object> nullRow = getNullRow();
+    verifyInsertValidationResponse(channel.insertRow(nullRow, Integer.toString(1)));
+
+    Map<String, Object> posRow = getPosRow();
+    verifyInsertValidationResponse(channel.insertRow(posRow, Integer.toString(2)));
+
+    waitChannelFlushed(channel, 3);
+    verifyTableRowCount(3, tableName);
+
+    ResultSet result =
+        jdbcConnection
+            .createStatement()
+            .executeQuery(
+                String.format(
+                    "select * from %s.%s.%s order by num", testDb, TEST_SCHEMA, tableName));
+
+    result.next(); // negRow
+    assertNegRow(negRow, result);
+
+    result.next(); // nullRow
+    assertNullRow(nullRow, result);
+
+    result.next(); // posRow
+    assertPosRow(posRow, result);
   }
 
-  private static Map<String, Object> getRandomRow(Random r) {
-    Map<String, Object> row = new HashMap<>();
-    row.put("num", r.nextInt());
-    row.put("num_10_5", nextFloat(r));
-    row.put(
-        "num_38_0",
-        new BigDecimal("" + nextLongOfPrecision(r, 18) + Math.abs(nextLongOfPrecision(r, 18))));
-    row.put("num_2_0", r.nextInt(100));
-    row.put("num_4_0", r.nextInt(10000));
-    row.put("num_9_0", r.nextInt(1000000000));
-    row.put("num_18_0", nextLongOfPrecision(r, 18));
-    row.put("num_float", nextFloat(r));
-    row.put("str_varchar", nextString(r));
-    row.put("bin", nextBytes(r));
-    row.put("bl", r.nextBoolean());
-    row.put("var", nextJson(r));
-    row.put("obj", nextJson(r));
-    row.put("arr", Arrays.asList(r.nextInt(100), r.nextInt(100), r.nextInt(100)));
-    row.put(
-        "epochdays",
-        String.valueOf(Math.abs(r.nextInt()) % (18963 * 24 * 60 * 60))); // DATE, 02.12.2021
-    row.put(
-        "timesec",
-        String.valueOf(
-            (r.nextInt(11) * 60 * 60 + r.nextInt(59) * 60 + r.nextInt(59)) * 10000
-                + r.nextInt(9999))); // TIME(4), 05:12:43.4536
-    row.put(
-        "timenano",
-        String.valueOf(
-            (14 * 60 * 60 + 26 * 60 + 34) * 1000000000L
-                + 437582643)); // TIME(9), 14:26:34.437582643
-    row.put(
-        "epochsec",
-        String.valueOf(
-            Math.abs(r.nextLong()) % 1638459438)); // TIMESTAMP_LTZ(0), 02.12.2021 15:37:18
-    row.put(
-        "epochnano",
-        String.format(
-            "%d%d",
-            Math.abs(r.nextInt()) % 1999999999,
-            100000000
-                + Math.abs(
-                    r.nextInt(899999999)))); // TIMESTAMP_LTZ(9), 18.05.2033 03:33:19.999999999
-    return row;
+  private Map<String, Object> getNegRow() {
+    Map<String, Object> negRow = new HashMap<>();
+    negRow.put("num", -123);
+    negRow.put("num_10_5", new BigDecimal("-12345.54321"));
+    negRow.put("num_38_0", new BigDecimal("-91234567899876543219876543211234567891"));
+    negRow.put("num_2_0", -12);
+    negRow.put("num_4_0", -1234);
+    negRow.put("num_9_0", -123456789);
+    negRow.put("num_18_0", -123456789987654321L);
+    negRow.put("num_float", -12345.54321f);
+    negRow.put("str_varchar", "zxccvbnm,.");
+    negRow.put("bin", new byte[] {1, 2, 3});
+    negRow.put("bl", true);
+    negRow.put("var", "{}");
+    negRow.put("obj", "{}");
+    negRow.put("arr", Arrays.asList());
+    negRow.put("epochdays", "0");
+    negRow.put("epochsec", "0");
+    negRow.put("epochnano", "0");
+    negRow.put("timesec", "0");
+    negRow.put("timenano", "0");
+
+    return negRow;
   }
 
-  private static long nextLongOfPrecision(Random r, int precision) {
-    return r.nextLong() % Math.round(Math.pow(10, precision));
+  private Map<String, Object> getNullRow() {
+    Map<String, Object> nullRow = new HashMap<>();
+    nullRow.put("num", 0);
+    nullRow.put("num_10_5", new BigDecimal("0.00000"));
+    nullRow.put("num_38_0", new BigDecimal("0"));
+    nullRow.put("num_2_0", 0);
+    nullRow.put("num_4_0", 0);
+    nullRow.put("num_9_0", 0);
+    nullRow.put("num_18_0", 0L);
+    nullRow.put("num_float", 0.0f);
+    nullRow.put("str_varchar", null);
+    nullRow.put("bin", null);
+    nullRow.put("bl", false);
+    nullRow.put("var", null);
+    nullRow.put("obj", null);
+    nullRow.put("arr", null);
+    nullRow.put("epochdays", null);
+    nullRow.put("epochsec", null);
+    nullRow.put("epochnano", null);
+    nullRow.put("timesec", null);
+    nullRow.put("timenano", null);
+
+    return nullRow;
   }
 
-  private static String nextString(Random r) {
-    return new String(nextBytes(r));
+  private Map<String, Object> getPosRow() {
+    Map<String, Object> posRow = new HashMap<>();
+    posRow.put("num", 123);
+    posRow.put("num_10_5", new BigDecimal("12345.54321"));
+    posRow.put("num_38_0", new BigDecimal("91234567899876543219876543211234567891"));
+    posRow.put("num_2_0", 12);
+    posRow.put("num_4_0", 1234);
+    posRow.put("num_9_0", 123456789);
+    posRow.put("num_18_0", 123456789987654321L);
+    posRow.put("num_float", 12345.54321f);
+    posRow.put("str_varchar", "abcd123456.");
+    posRow.put("bin", new byte[] {4, 5, 6});
+    posRow.put("bl", true);
+    posRow.put(
+        "var",
+        "{ \"a\": 1, \"b\": \"qwerty\", \"c\": null, \"d\": { \"e\": 2, \"f\": \"asdf\", \"g\":"
+            + " null } }");
+    posRow.put(
+        "obj",
+        "{ \"a\": 1, \"b\": \"qwerty\", \"c\": null, \"d\": { \"e\": 2, \"f\": \"asdf\", \"g\":"
+            + " null } }");
+    posRow.put("arr", Arrays.asList("{ \"a\": 1}", "{ \"b\": 2 }", "{ \"c\": 3 }"));
+    posRow.put("epochdays", "2022-09-18 20:05:07"); // DATE, 18.09.2022
+    posRow.put("epochsec", "2022-09-18 20:05:07"); // TIMESTAMP_NTZ(0)
+    posRow.put("epochnano", "2022-09-18 20:05:07.999999999"); // TIMESTAMP_NTZ(9)
+    posRow.put("timesec", "01:00:01.999999999"); // TIME(0)
+    posRow.put("timenano", "01:00:01.999999999"); // TIME(9)
+
+    return posRow;
   }
 
-  private static byte[] nextBytes(Random r) {
-    byte[] bin = new byte[128];
-    r.nextBytes(bin);
-    for (int i = 0; i < bin.length; i++) {
-      bin[i] = (byte) (Math.abs(bin[i]) % 25 + 97); // ascii letters
-    }
-    return bin;
+  private void assertNegRow(Map<String, Object> expectedNegRow, ResultSet actualResult)
+      throws SQLException {
+    assertNonTimeAndVarFields(expectedNegRow, actualResult);
+    Assert.assertEquals("{}", actualResult.getString("VAR"));
+    Assert.assertEquals("{}", actualResult.getString("OBJ"));
+    Assert.assertEquals("[]", actualResult.getString("ARR"));
+    Assert.assertEquals(0, actualResult.getDate("EPOCHDAYS").getTime());
+    Assert.assertEquals(0, actualResult.getTimestamp("EPOCHSEC").getTime());
+    Assert.assertEquals(0, actualResult.getTimestamp("EPOCHNANO").getNanos());
+    Assert.assertEquals(0, actualResult.getTimestamp("EPOCHNANO").getTime());
+    Assert.assertEquals(0, actualResult.getTimestamp("TIMESEC").getTime());
+    Assert.assertEquals(0, actualResult.getTimestamp("TIMENANO").getNanos());
+    Assert.assertEquals(0, actualResult.getTimestamp("TIMENANO").getTime());
   }
 
-  private static double nextFloat(Random r) {
-    return (r.nextLong() % Math.round(Math.pow(10, 10))) / 100000d;
+  private void assertNullRow(Map<String, Object> expectedNullRow, ResultSet actualResult)
+      throws SQLException {
+    Assert.assertNotNull(actualResult);
+    assertNonTimeAndVarFields(expectedNullRow, actualResult);
+    Assert.assertEquals(null, actualResult.getString("VAR"));
+    Assert.assertEquals(null, actualResult.getString("OBJ"));
+    Assert.assertEquals(null, actualResult.getString("ARR"));
+    Assert.assertEquals(null, actualResult.getDate("EPOCHDAYS"));
+    Assert.assertEquals(null, actualResult.getTimestamp("EPOCHSEC"));
+    Assert.assertEquals(null, actualResult.getTimestamp("EPOCHNANO"));
+    Assert.assertEquals(null, actualResult.getTimestamp("TIMESEC"));
+    Assert.assertEquals(null, actualResult.getTimestamp("TIMENANO"));
   }
 
-  private static String nextJson(Random r) {
-    return String.format(
-        "{ \"%s\": %d, \"%s\": \"%s\", \"%s\": null, \"%s\": { \"%s\": %f, \"%s\": \"%s\", \"%s\":"
-            + " null } }",
-        nextString(r),
-        r.nextInt(),
-        nextString(r),
-        nextString(r),
-        nextString(r),
-        nextString(r),
-        nextString(r),
-        r.nextFloat(),
-        nextString(r),
-        nextString(r),
-        nextString(r));
+  private void assertPosRow(Map<String, Object> expectedPosRow, ResultSet actualResult)
+      throws SQLException {
+    String formattedJSON =
+        "{\n"
+            + "  \"a\": 1,\n"
+            + "  \"b\": \"qwerty\",\n"
+            + "  \"c\": null,\n"
+            + "  \"d\": {\n"
+            + "    \"e\": 2,\n"
+            + "    \"f\": \"asdf\",\n"
+            + "    \"g\": null\n"
+            + "  }\n"
+            + "}";
+
+    String formattedArray =
+        "[\n"
+            + "  \"{ \\\"a\\\": 1}\",\n"
+            + "  \"{ \\\"b\\\": 2 }\",\n"
+            + "  \"{ \\\"c\\\": 3 }\"\n"
+            + "]";
+    Assert.assertNotNull(actualResult);
+    assertNonTimeAndVarFields(expectedPosRow, actualResult);
+    Assert.assertEquals(formattedJSON, actualResult.getString("VAR"));
+    Assert.assertEquals(formattedJSON, actualResult.getString("OBJ"));
+    Assert.assertEquals(formattedArray, actualResult.getString("ARR"));
+    Assert.assertEquals(
+        1663459200000l, actualResult.getDate("EPOCHDAYS").getTime()); // in ms, 18.09.2022 00:00:00
+    Assert.assertEquals(1663531507000L, actualResult.getTimestamp("EPOCHSEC").getTime());
+    Assert.assertEquals(999999999L, actualResult.getTimestamp("EPOCHNANO").getNanos());
+    // 1663531507000 ms + 999 ms (from ns)
+    Assert.assertEquals(1663531507999L, actualResult.getTimestamp("EPOCHNANO").getTime());
+    Assert.assertEquals(3601000, actualResult.getTimestamp("TIMESEC").getTime()); // 1h + 1s in ms
+    Assert.assertEquals(999999999, actualResult.getTimestamp("TIMENANO").getNanos());
+    // 1h + 1s + 999 ms (from ns)
+    Assert.assertEquals(3601999, actualResult.getTimestamp("TIMENANO").getTime());
+  }
+
+  private void assertNonTimeAndVarFields(Map<String, Object> row, ResultSet result)
+      throws SQLException {
+    Assert.assertNotNull(result);
+    Assert.assertEquals(row.get("num"), result.getInt("NUM"));
+    Assert.assertEquals(row.get("num_10_5"), result.getBigDecimal("NUM_10_5"));
+    Assert.assertEquals(row.get("num_38_0"), result.getBigDecimal("NUM_38_0"));
+    Assert.assertEquals(row.get("num_2_0"), result.getInt("NUM_2_0"));
+    Assert.assertEquals(row.get("num_4_0"), result.getInt("NUM_4_0"));
+    Assert.assertEquals(row.get("num_9_0"), result.getInt("NUM_9_0"));
+    Assert.assertEquals((long) row.get("num_18_0"), result.getLong("NUM_18_0"));
+    Assert.assertEquals((float) row.get("num_float"), result.getFloat("NUM_FLOAT"), 0);
+    Assert.assertEquals(row.get("str_varchar"), result.getString("STR_VARCHAR"));
+    Assert.assertArrayEquals((byte[]) row.get("bin"), result.getBytes("BIN"));
+    Assert.assertEquals(row.get("bl"), result.getBoolean("BL"));
   }
 }
