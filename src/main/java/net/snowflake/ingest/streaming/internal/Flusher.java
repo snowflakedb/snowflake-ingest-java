@@ -13,8 +13,7 @@ import java.util.Map;
  * Interface to convert {@link ChannelData} buffered in {@link RowBuffer} to the underlying format
  * implementation for faster processing.
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
 public interface Flusher<T> {
   /**

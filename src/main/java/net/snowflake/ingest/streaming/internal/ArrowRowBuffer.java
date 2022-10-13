@@ -471,7 +471,15 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             // vector.setSafe requires the BigDecimal input scale explicitly match its scale
             inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
-            DataValidationUtil.checkValueInRange(inputAsBigDecimal, columnScale, columnPrecision);
+            if (inputAsBigDecimal.abs().compareTo(BigDecimal.TEN.pow(columnPrecision - columnScale))
+                >= 0) {
+              throw new SFException(
+                  ErrorCode.INVALID_ROW,
+                  inputAsBigDecimal,
+                  String.format(
+                      "Number out of representable exclusive range of (-1e%s..1e%s)",
+                      columnPrecision - columnScale, columnPrecision - columnScale));
+            }
 
             if (columnScale != 0 || physicalType == ColumnPhysicalType.SB16) {
               ((DecimalVector) vector).setSafe(curRowIndex, inputAsBigDecimal);
