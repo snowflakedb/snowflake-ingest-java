@@ -55,8 +55,7 @@ import org.mockito.Mockito;
 public class FlushServiceTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> testContextFactory() {
-    return Arrays.asList(
-        new Object[][] {{ArrowTestContext.createFactory()}, {ParquetTestContext.createFactory()}});
+    return Arrays.asList(new Object[][] {{ArrowTestContext.createFactory()}});
   }
 
   public FlushServiceTest(TestContextFactory<?> testContextFactory) {
@@ -183,6 +182,11 @@ public class FlushServiceTest {
         return this;
       }
 
+      ChannelBuilder setOnErrorOption(OpenChannelRequest.OnErrorOption onErrorOption) {
+        this.onErrorOption = onErrorOption;
+        return this;
+      }
+
       SnowflakeStreamingIngestChannelInternal<T> buildAndAdd() {
         SnowflakeStreamingIngestChannelInternal<T> channel =
             createChannel(
@@ -276,48 +280,6 @@ public class FlushServiceTest {
         @Override
         TestContext<VectorSchemaRoot> create() {
           return new ArrowTestContext();
-        }
-      };
-    }
-  }
-
-  private static class ParquetTestContext extends TestContext<List<List<Object>>> {
-
-    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> createChannel(
-        String name,
-        String dbName,
-        String schemaName,
-        String tableName,
-        String offsetToken,
-        Long channelSequencer,
-        Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption) {
-      return new SnowflakeStreamingIngestChannelInternal<>(
-          name,
-          dbName,
-          schemaName,
-          tableName,
-          offsetToken,
-          channelSequencer,
-          rowSequencer,
-          client,
-          encryptionKey,
-          encryptionKeyId,
-          onErrorOption,
-          Constants.BdecVersion.THREE,
-          null);
-    }
-
-    @Override
-    public void close() {}
-
-    static TestContextFactory<List<List<Object>>> createFactory() {
-      return new TestContextFactory<List<List<Object>>>("Parquet") {
-        @Override
-        TestContext<List<List<Object>>> create() {
-          return new ParquetTestContext();
         }
       };
     }

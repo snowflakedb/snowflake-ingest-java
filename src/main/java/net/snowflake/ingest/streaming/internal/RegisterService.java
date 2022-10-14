@@ -25,8 +25,7 @@ import net.snowflake.ingest.utils.Utils;
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
  * thread in order to maintain ordering per channel
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
 class RegisterService<T> {
 

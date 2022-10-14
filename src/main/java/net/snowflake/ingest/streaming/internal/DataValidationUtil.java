@@ -674,17 +674,6 @@ class DataValidationUtil {
         input.getClass(), "BOOLEAN", new String[] {"boolean", "Number", "String"});
   }
 
-  static void checkValueInRange(BigDecimal bigDecimalValue, int scale, int precision) {
-    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
-      throw new SFException(
-          ErrorCode.INVALID_ROW,
-          bigDecimalValue,
-          String.format(
-              "Number out of representable exclusive range of (-1e%s..1e%s)",
-              precision - scale, precision - scale));
-    }
-  }
-
   static Set<String> allowedBooleanStringsLowerCased =
       Sets.newHashSet("1", "0", "yes", "no", "y", "n", "t", "f", "true", "false", "on", "off");
 
