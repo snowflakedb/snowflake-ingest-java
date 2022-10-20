@@ -35,6 +35,13 @@
       <url>https://github.com/snowflakedb/snowflake-ingest-java/tree/master</url>
     </scm>
 
+    <repositories>
+        <repository>
+            <id>cloudera-repo</id>
+            <url>https://repository.cloudera.com/artifactory/cloudera-repos/</url>
+        </repository>
+    </repositories>
+
     <!-- Set our Language Level to Java 8 -->
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -43,6 +50,7 @@
         <jacoco.skip.instrument>true</jacoco.skip.instrument>
         <jacoco.version>0.8.5</jacoco.version>
         <arrow.version>9.0.0</arrow.version>
+        <hadoop.version>2.10.1</hadoop.version>
     </properties>
 
     <build>
@@ -290,6 +298,20 @@
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-compression</artifactId>
             <version>${arrow.version}</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop -->
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-hadoop</artifactId>
+            <version>1.10.99.7.2.15.0-147</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>3.1.1.7.2.15.0-147</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-core -->
