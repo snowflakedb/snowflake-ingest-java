@@ -30,8 +30,7 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
 class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannel {
 
@@ -149,20 +148,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // TODO: The circular dependency SnowflakeStreamingIngestChannelInternal <-> RowBuffer
     // (SNOW-657667)
     // can be probably reconsidered
-    switch (bdecVersion) {
-      case ONE:
-      case TWO:
-        //noinspection unchecked
-        return (RowBuffer<T>)
-            new ArrowRowBuffer((SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>) this);
-      case THREE:
-        //noinspection unchecked
-        return (RowBuffer<T>)
-            new ParquetRowBuffer((SnowflakeStreamingIngestChannelInternal<ParquetChunkData>) this);
-      default:
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
-    }
+    //noinspection unchecked
+    return (RowBuffer<T>)
+        new ArrowRowBuffer((SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>) this);
   }
 
   /**

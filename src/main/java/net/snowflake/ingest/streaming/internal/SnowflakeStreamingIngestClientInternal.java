@@ -82,8 +82,7 @@ import org.apache.arrow.memory.RootAllocator;
  * <li>the channel cache, which contains all the channels that belong to this account
  * <li>the flush service, which schedules and coordinates the flush to Snowflake tables
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
 public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStreamingIngestClient {
 
@@ -554,7 +553,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                   .collect(Collectors.toList());
           if (!relevantChunks.isEmpty()) {
             retryBlobs.add(
-                BlobMetadata.createBlobMetadata(
+                new BlobMetadata(
                     blobMetadata.getPath(),
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),

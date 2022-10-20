@@ -49,16 +49,9 @@ class BlobMetadata {
     return this.chunks;
   }
 
-  /**
-   * Create {@link BlobMetadata} in case of {@link Constants.BdecVersion#ONE} and {@link
-   * BlobMetadataWithBdecVersion} otherwise to send BDEC version to server side.
-   */
-  static BlobMetadata createBlobMetadata(
-      String path, String md5, Constants.BdecVersion bdecVersion, List<ChunkMetadata> chunks) {
-    // TODO SNOW-659721: Unify BlobMetadata with BlobMetadataWithBdecVersion once server side
-    // BdecVersion in production
-    return bdecVersion == Constants.BdecVersion.ONE
-        ? new BlobMetadata(path, md5, bdecVersion, chunks)
-        : new BlobMetadataWithBdecVersion(path, md5, bdecVersion, chunks);
-  }
+  // TODO: send the bdec_version once server side supports this in production
+  //  @JsonProperty("bdec_version")
+  //  byte getVersionByte() {
+  //    return bdecVersion.toByte();
+  //  }
 }
