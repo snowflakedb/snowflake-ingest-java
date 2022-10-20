@@ -223,9 +223,17 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.21</version>
-            <scope>provided</scope>
         </dependency>
 
+<<<<<<< Updated upstream
+=======
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.35</version>
+        </dependency>
+
+>>>>>>> Stashed changes
         <!-- JDK logger backend for logging tests -->
         <dependency>
             <groupId>org.slf4j</groupId>
