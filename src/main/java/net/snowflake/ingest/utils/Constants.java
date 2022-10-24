@@ -31,8 +31,7 @@ public class Constants {
   public static final long RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL =
       7L; // Don't change, should match server side
   public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC = 5;
-  public static final int BLOB_UPLOAD_MAX_RETRY_COUNT = 12;
-  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 10;
+  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 60;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 512000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES = 32000000L;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
@@ -43,7 +42,6 @@ public class Constants {
   public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 300L;
   public static final String BLOB_EXTENSION_TYPE = "bdec";
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
-  public static final int CPU_IO_TIME_RATIO = 1;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
   public static final int COMMIT_MAX_RETRY_COUNT = 60;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
@@ -51,6 +49,7 @@ public class Constants {
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
+  public static final int LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES = 100 * 1024 * 1024;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
@@ -79,7 +78,7 @@ public class Constants {
   }
 
   /** The write mode to generate Arrow BDEC file. */
-  public enum BdecVerion {
+  public enum BdecVersion {
     /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#STREAM}. */
     ONE(1),
 
@@ -88,7 +87,7 @@ public class Constants {
 
     private final byte version;
 
-    BdecVerion(int version) {
+    BdecVersion(int version) {
       if (version > Byte.MAX_VALUE || version < Byte.MIN_VALUE) {
         throw new IllegalArgumentException("Version does not fit into the byte data type");
       }
@@ -99,12 +98,12 @@ public class Constants {
       return version;
     }
 
-    public static BdecVerion fromInt(int val) {
+    public static BdecVersion fromInt(int val) {
       if (val > Byte.MAX_VALUE || val < Byte.MIN_VALUE) {
         throw new IllegalArgumentException("Version does not fit into the byte data type");
       }
       byte version = (byte) val;
-      for (BdecVerion eversion : BdecVerion.values()) {
+      for (BdecVersion eversion : BdecVersion.values()) {
         if (eversion.version == version) {
           return eversion;
         }
@@ -112,7 +111,7 @@ public class Constants {
       throw new IllegalArgumentException(
           String.format(
               "Unsupported BLOB_FORMAT_VERSION = '%d', allowed values are %s",
-              version, Arrays.asList(BdecVerion.values())));
+              version, Arrays.asList(BdecVersion.values())));
     }
   }
 

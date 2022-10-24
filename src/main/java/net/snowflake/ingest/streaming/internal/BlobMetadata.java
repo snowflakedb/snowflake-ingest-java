@@ -14,7 +14,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 class BlobMetadata {
   private final String path;
   private final String md5;
-  private final Constants.BdecVerion bdecVersion;
+  private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
 
   BlobMetadata(String path, String md5, List<ChunkMetadata> chunks) {
@@ -22,7 +22,7 @@ class BlobMetadata {
   }
 
   BlobMetadata(
-      String path, String md5, Constants.BdecVerion bdecVersion, List<ChunkMetadata> chunks) {
+      String path, String md5, Constants.BdecVersion bdecVersion, List<ChunkMetadata> chunks) {
     this.path = path;
     this.md5 = md5;
     this.bdecVersion = bdecVersion;
@@ -30,7 +30,7 @@ class BlobMetadata {
   }
 
   @JsonIgnore
-  Constants.BdecVerion getVersion() {
+  Constants.BdecVersion getVersion() {
     return bdecVersion;
   }
 

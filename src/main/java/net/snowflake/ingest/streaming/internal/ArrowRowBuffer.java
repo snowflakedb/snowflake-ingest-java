@@ -6,21 +6,17 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
-import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
-import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -53,49 +49,7 @@ import org.apache.arrow.vector.util.TransferPair;
  * The buffer in the Streaming Ingest channel that holds the un-flushed rows, these rows will be
  * converted to Arrow format for faster processing
  */
-class ArrowRowBuffer {
-
-  // Snowflake table column logical type
-  private static enum ColumnLogicalType {
-    ANY,
-    BOOLEAN,
-    ROWINDEX,
-    NULL,
-    REAL,
-    FIXED,
-    TEXT,
-    CHAR,
-    BINARY,
-    DATE,
-    TIME,
-    TIMESTAMP_LTZ,
-    TIMESTAMP_NTZ,
-    TIMESTAMP_TZ,
-    INTERVAL,
-    RAW,
-    ARRAY,
-    OBJECT,
-    VARIANT,
-    ROW,
-    SEQUENCE,
-    FUNCTION,
-    USER_DEFINED_TYPE,
-  }
-
-  // Snowflake table column physical type
-  private static enum ColumnPhysicalType {
-    ROWINDEX,
-    DOUBLE,
-    SB1,
-    SB2,
-    SB4,
-    SB8,
-    SB16,
-    LOB,
-    BINARY,
-    ROW,
-  }
-
+class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   private static final Logging logger = new Logging(ArrowRowBuffer.class);
 
   // Constants for column fields
@@ -124,66 +78,18 @@ class ArrowRowBuffer {
   // Map the column name to Arrow column field
   private final Map<String, Field> fields;
 
-  // Map the column name to the stats
-  @VisibleForTesting Map<String, RowBufferStats> statsMap;
-
-  // Temp stats map to use until all the rows are validated
-  @VisibleForTesting Map<String, RowBufferStats> tempStatsMap;
-
-  // Lock used to protect the buffers from concurrent read/write
-  private final Lock flushLock;
-
-  // Current row count
-  @VisibleForTesting volatile int rowCount;
-
   // Allocator used to allocate the buffers
   private final BufferAllocator allocator;
-
-  // Current buffer size
-  private volatile float bufferSize;
-
-  // Reference to the Streaming Ingest channel that owns this buffer
-  @VisibleForTesting final SnowflakeStreamingIngestChannelInternal owningChannel;
-
-  // Names of non-nullable columns
-  private final Set<String> nonNullableFieldNames;
-
-  /**
-   * Given a set of col names to stats, build the right ep info
-   *
-   * @param rowCount: count of rows in the given arrow buffer
-   * @param colStats: map of column name to RowBufferStats
-   * @return the EPs built from column stats
-   */
-  static EpInfo buildEpInfoFromStats(long rowCount, Map<String, RowBufferStats> colStats) {
-    EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
-    for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
-      RowBufferStats stat = colStat.getValue();
-      FileColumnProperties dto = new FileColumnProperties(stat);
-
-      String colName = colStat.getKey();
-      epInfo.getColumnEps().put(colName, dto);
-    }
-    return epInfo;
-  }
 
   /**
    * Construct a ArrowRowBuffer object
    *
-   * @param channel
+   * @param channel client channel
    */
-  ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal channel) {
-    this.owningChannel = channel;
+  ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
+    super(channel);
     this.allocator = channel.getAllocator();
     this.fields = new HashMap<>();
-    this.nonNullableFieldNames = new HashSet<>();
-    this.flushLock = new ReentrantLock();
-    this.rowCount = 0;
-    this.bufferSize = 0F;
-
-    // Initialize empty stats
-    this.statsMap = new HashMap<>();
-    this.tempStatsMap = new HashMap<>();
   }
 
   /**
@@ -191,7 +97,8 @@ class ArrowRowBuffer {
    *
    * @param columns list of column metadata
    */
-  void setupSchema(List<ColumnMetadata> columns) {
+  @Override
+  public void setupSchema(List<ColumnMetadata> columns) {
     List<FieldVector> vectors = new ArrayList<>();
     List<FieldVector> tempVectors = new ArrayList<>();
 
@@ -199,7 +106,7 @@ class ArrowRowBuffer {
       Field field = buildField(column);
       FieldVector vector = field.createVector(this.allocator);
       if (!field.isNullable()) {
-        this.nonNullableFieldNames.add(field.getName());
+        addNonNullableFieldName(field.getName());
       }
       this.fields.put(column.getName(), field);
       vectors.add(vector);
@@ -220,7 +127,8 @@ class ArrowRowBuffer {
    * Close the row buffer and release resources. Note that the caller needs to handle
    * synchronization
    */
-  void close(String name) {
+  @Override
+  public void close(String name) {
     long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
     if (this.vectorsRoot != null) {
       this.vectorsRoot.close();
@@ -249,190 +157,10 @@ class ArrowRowBuffer {
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */
+  @Override
   void reset() {
+    super.reset();
     this.vectorsRoot.clear();
-    this.rowCount = 0;
-    this.bufferSize = 0F;
-    this.statsMap.replaceAll(
-        (key, value) -> new RowBufferStats(value.getCollationDefinitionString()));
-  }
-
-  /**
-   * Get the current buffer size
-   *
-   * @return the current buffer size
-   */
-  float getSize() {
-    return this.bufferSize;
-  }
-
-  /**
-   * Insert a batch of rows into the row buffer
-   *
-   * @param rows input row
-   * @param offsetToken offset token of the latest row in the batch
-   * @return insert response that possibly contains errors because of insertion failures
-   */
-  InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows, String offsetToken) {
-    float rowSize = 0F;
-    if (this.fields.isEmpty()) {
-      throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
-    }
-
-    InsertValidationResponse response = new InsertValidationResponse();
-    this.flushLock.lock();
-    try {
-      if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
-        // Used to map incoming row(nth row) to InsertError(for nth row) in response
-        long rowIndex = 0;
-        for (Map<String, Object> row : rows) {
-          try {
-            rowSize += convertRowToArrow(row, this.vectorsRoot, this.rowCount, this.statsMap);
-            this.rowCount++;
-            this.bufferSize += rowSize;
-          } catch (SFException e) {
-            response.addError(new InsertValidationResponse.InsertError(row, e, rowIndex));
-          } catch (Throwable e) {
-            logger.logWarn("Unexpected error happens during insertRows: {}", e.getMessage());
-            response.addError(
-                new InsertValidationResponse.InsertError(
-                    row, new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()), rowIndex));
-          }
-          rowIndex++;
-          if (this.rowCount == Integer.MAX_VALUE) {
-            throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-          }
-        }
-      } else {
-        // If the on_error option is ABORT, simply throw the first exception
-        float tempRowSize = 0F;
-        int tempRowCount = 0;
-        for (Map<String, Object> row : rows) {
-          tempRowSize +=
-              convertRowToArrow(row, this.tempVectorsRoot, tempRowCount, this.tempStatsMap);
-          tempRowCount++;
-        }
-
-        // If all the rows are inserted successfully, transfer the rows from temp vectors to
-        // the final vectors and update the row size and row count
-        // TODO: switch to VectorSchemaRootAppender once it works for all vector types
-        for (Field field : fields.values()) {
-          FieldVector from = this.tempVectorsRoot.getVector(field);
-          FieldVector to = this.vectorsRoot.getVector(field);
-          for (int rowIdx = 0; rowIdx < tempRowCount; rowIdx++) {
-            to.copyFromSafe(rowIdx, this.rowCount + rowIdx, from);
-          }
-        }
-        rowSize = tempRowSize;
-        if ((long) this.rowCount + tempRowCount >= Integer.MAX_VALUE) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-        }
-        this.rowCount += tempRowCount;
-        this.bufferSize += rowSize;
-        this.statsMap.forEach(
-            (colName, stats) -> {
-              this.statsMap.put(
-                  colName, RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName)));
-            });
-      }
-
-      this.owningChannel.setOffsetToken(offsetToken);
-      this.owningChannel.collectRowSize(rowSize);
-    } finally {
-      this.tempStatsMap.values().forEach(RowBufferStats::reset);
-      this.tempVectorsRoot.clear();
-      this.flushLock.unlock();
-    }
-
-    return response;
-  }
-
-  /**
-   * Flush the data in the row buffer by taking the ownership of the old vectors and pass all the
-   * required info back to the flush service to build the blob
-   *
-   * @return A ChannelData object that contains the info needed by the flush service to build a blob
-   */
-  ChannelData flush() {
-    logger.logDebug("Start get data for channel={}", this.owningChannel.getFullyQualifiedName());
-    if (this.rowCount > 0) {
-      List<FieldVector> oldVectors = new ArrayList<>();
-      int oldRowCount = 0;
-      float oldBufferSize = 0F;
-      long oldRowSequencer = 0;
-      String oldOffsetToken = null;
-      Map<String, RowBufferStats> oldColumnEps = null;
-
-      logger.logDebug(
-          "Arrow buffer flush about to take lock on channel={}",
-          this.owningChannel.getFullyQualifiedName());
-
-      this.flushLock.lock();
-      try {
-        if (this.rowCount > 0) {
-          // Transfer the ownership of the vectors
-          for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
-            vector.setValueCount(this.rowCount);
-            if (vector instanceof DecimalVector) {
-              // DecimalVectors do not transfer FieldType metadata when using
-              // vector.getTransferPair. We need to explicitly create the new vector to transfer to
-              // in order to keep the metadata.
-              ArrowType arrowType =
-                  new ArrowType.Decimal(
-                      ((DecimalVector) vector).getPrecision(),
-                      ((DecimalVector) vector).getScale(),
-                      DECIMAL_BIT_WIDTH);
-              FieldType fieldType =
-                  new FieldType(
-                      vector.getField().isNullable(),
-                      arrowType,
-                      null,
-                      vector.getField().getMetadata());
-              Field f = new Field(vector.getName(), fieldType, null);
-              DecimalVector newVector = new DecimalVector(f, this.allocator);
-              TransferPair t = vector.makeTransferPair(newVector);
-              t.transfer();
-              oldVectors.add((FieldVector) t.getTo());
-            } else {
-              TransferPair t = vector.getTransferPair(this.allocator);
-              t.transfer();
-              oldVectors.add((FieldVector) t.getTo());
-            }
-          }
-
-          oldRowCount = this.rowCount;
-          oldBufferSize = this.bufferSize;
-          oldRowSequencer = this.owningChannel.incrementAndGetRowSequencer();
-          oldOffsetToken = this.owningChannel.getOffsetToken();
-          oldColumnEps = new HashMap<>(this.statsMap);
-          // Reset everything in the buffer once we save all the info
-          reset();
-        }
-      } finally {
-        this.flushLock.unlock();
-      }
-
-      logger.logDebug(
-          "Arrow buffer flush released lock on channel={}, rowCount={}, bufferSize={}",
-          this.owningChannel.getFullyQualifiedName(),
-          rowCount,
-          bufferSize);
-
-      if (!oldVectors.isEmpty()) {
-        ChannelData data = new ChannelData();
-        VectorSchemaRoot vectors = new VectorSchemaRoot(oldVectors);
-        vectors.setRowCount(oldRowCount);
-        data.setVectors(vectors);
-        data.setBufferSize(oldBufferSize);
-        data.setChannel(this.owningChannel);
-        data.setRowSequencer(oldRowSequencer);
-        data.setOffsetToken(oldOffsetToken);
-        data.setColumnEps(oldColumnEps);
-
-        return data;
-      }
-    }
-    return null;
   }
 
   /**
@@ -614,43 +342,85 @@ class ArrowRowBuffer {
     return new Field(column.getName(), fieldType, children);
   }
 
-  private String formatColumnName(String columnName) {
-    Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
-    return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
-        ? columnName.substring(1, columnName.length() - 1)
-        : columnName.toUpperCase();
+  @Override
+  void moveTempRowsToActualBuffer(int tempRowCount) {
+    // If all the rows are inserted successfully, transfer the rows from temp vectors to
+    // the final vectors and update the row size and row count
+    // TODO: switch to VectorSchemaRootAppender once it works for all vector types
+    for (Field field : fields.values()) {
+      FieldVector from = this.tempVectorsRoot.getVector(field);
+      FieldVector to = this.vectorsRoot.getVector(field);
+      for (int rowIdx = 0; rowIdx < tempRowCount; rowIdx++) {
+        to.copyFromSafe(rowIdx, this.rowCount + rowIdx, from);
+      }
+    }
   }
 
-  /**
-   * Verify that the input row columns are all valid
-   *
-   * @param row the input row
-   * @return the set of input column names
-   */
-  private Set<String> verifyInputColumns(Map<String, Object> row) {
-    Set<String> inputColumns =
-        row.keySet().stream().map(this::formatColumnName).collect(Collectors.toSet());
+  @Override
+  void clearTempRows() {
+    tempVectorsRoot.clear();
+  }
 
-    for (String columnName : this.nonNullableFieldNames) {
-      if (!inputColumns.contains(columnName)) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            "Missing column: " + columnName,
-            "Values for all non-nullable columns must be specified.");
+  @Override
+  boolean hasColumns() {
+    return !fields.isEmpty();
+  }
+
+  @Override
+  Optional<VectorSchemaRoot> getSnapshot() {
+    List<FieldVector> oldVectors = new ArrayList<>();
+    for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
+      vector.setValueCount(this.rowCount);
+      if (vector instanceof DecimalVector) {
+        // DecimalVectors do not transfer FieldType metadata when using
+        // vector.getTransferPair. We need to explicitly create the new vector to transfer to
+        // in order to keep the metadata.
+        ArrowType arrowType =
+            new ArrowType.Decimal(
+                ((DecimalVector) vector).getPrecision(),
+                ((DecimalVector) vector).getScale(),
+                DECIMAL_BIT_WIDTH);
+        FieldType fieldType =
+            new FieldType(
+                vector.getField().isNullable(), arrowType, null, vector.getField().getMetadata());
+        Field f = new Field(vector.getName(), fieldType, null);
+        DecimalVector newVector = new DecimalVector(f, this.allocator);
+        TransferPair t = vector.makeTransferPair(newVector);
+        t.transfer();
+        oldVectors.add((FieldVector) t.getTo());
+      } else {
+        TransferPair t = vector.getTransferPair(this.allocator);
+        t.transfer();
+        oldVectors.add((FieldVector) t.getTo());
       }
     }
+    VectorSchemaRoot root = new VectorSchemaRoot(oldVectors);
+    root.setRowCount(this.rowCount);
+    return oldVectors.isEmpty() ? Optional.empty() : Optional.of(root);
+  }
 
-    for (String columnName : inputColumns) {
-      Field field = this.fields.get(columnName);
-      if (field == null) {
-        throw new SFException(
-            ErrorCode.INVALID_ROW,
-            "Extra column: " + columnName,
-            "Columns not present in the table shouldn't be specified.");
-      }
-    }
+  @Override
+  boolean hasColumn(String name) {
+    return this.fields.get(name) != null;
+  }
 
-    return inputColumns;
+  @Override
+  float addRow(
+      Map<String, Object> row,
+      int curRowIndex,
+      Map<String, RowBufferStats> statsMap,
+      Set<String> formattedInputColumnNames) {
+    return convertRowToArrow(row, vectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
+  }
+
+  @Override
+  float addTempRow(
+      Map<String, Object> row,
+      int curRowIndex,
+      Map<String, RowBufferStats> statsMap,
+      Set<String> formattedInputColumnNames) {
+    return convertRowToArrow(
+        row, tempVectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
   }
 
   /**
@@ -660,21 +430,20 @@ class ArrowRowBuffer {
    * @param sourceVectors vectors (buffers) that hold the row
    * @param curRowIndex current row index to use
    * @param statsMap column stats map
+   * @param inputColumnNames list of input column names after formatting
    * @return row size
    */
   private float convertRowToArrow(
       Map<String, Object> row,
       VectorSchemaRoot sourceVectors,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap) {
-    // Verify all the input columns are valid
-    Set<String> inputColumnNames = verifyInputColumns(row);
-
+      Map<String, RowBufferStats> statsMap,
+      Set<String> inputColumnNames) {
     // Insert values to the corresponding arrow buffers
     float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
-      String columnName = this.formatColumnName(entry.getKey());
+      String columnName = formatColumnName(entry.getKey());
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
@@ -696,45 +465,47 @@ class ArrowRowBuffer {
       } else {
         switch (logicalType) {
           case FIXED:
-            if (!field.getMetadata().get(COLUMN_SCALE).equals("0")
-                || physicalType == ColumnPhysicalType.SB16) {
-              int scale =
-                  DataValidationUtil.validateAndParseInteger(field.getMetadata().get(COLUMN_SCALE));
-              BigDecimal bigDecimalValue = DataValidationUtil.validateAndParseBigDecimal(value);
+            int columnPrecision = Integer.parseInt(field.getMetadata().get(COLUMN_PRECISION));
+            int columnScale = getColumnScale(field.getMetadata());
+            BigDecimal inputAsBigDecimal = DataValidationUtil.validateAndParseBigDecimal(value);
+            // vector.setSafe requires the BigDecimal input scale explicitly match its scale
+            inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
-              // vector.setSafe requires the BigDecimal input scale explicitly match its scale
-              bigDecimalValue = bigDecimalValue.setScale(scale);
-              ((DecimalVector) vector).setSafe(curRowIndex, bigDecimalValue);
-              BigInteger intRep =
-                  bigDecimalValue
-                      .multiply(BigDecimal.valueOf(Power10.intTable[scale]))
-                      .toBigInteger();
-              stats.addIntValue(intRep);
+            if (inputAsBigDecimal.abs().compareTo(BigDecimal.TEN.pow(columnPrecision - columnScale))
+                >= 0) {
+              throw new SFException(
+                  ErrorCode.INVALID_ROW,
+                  inputAsBigDecimal,
+                  String.format(
+                      "Number out of representable exclusive range of (-1e%s..1e%s)",
+                      columnPrecision - columnScale, columnPrecision - columnScale));
+            }
+
+            if (columnScale != 0 || physicalType == ColumnPhysicalType.SB16) {
+              ((DecimalVector) vector).setSafe(curRowIndex, inputAsBigDecimal);
+              stats.addIntValue(inputAsBigDecimal.unscaledValue());
               rowBufferSize += 16;
             } else {
               switch (physicalType) {
                 case SB1:
-                  byte byteValue = DataValidationUtil.validateAndParseByte(value);
-                  ((TinyIntVector) vector).setSafe(curRowIndex, byteValue);
-                  stats.addIntValue(BigInteger.valueOf(byteValue));
+                  ((TinyIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.byteValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 1;
                   break;
                 case SB2:
-                  short shortValue = DataValidationUtil.validateAndParseShort(value);
-                  ((SmallIntVector) vector).setSafe(curRowIndex, shortValue);
-                  stats.addIntValue(BigInteger.valueOf(shortValue));
+                  ((SmallIntVector) vector)
+                      .setSafe(curRowIndex, inputAsBigDecimal.shortValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 2;
                   break;
                 case SB4:
-                  int intVal = DataValidationUtil.validateAndParseInteger(value);
-                  ((IntVector) vector).setSafe(curRowIndex, intVal);
-                  stats.addIntValue(BigInteger.valueOf(intVal));
+                  ((IntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.intValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 4;
                   break;
                 case SB8:
-                  long longValue = DataValidationUtil.validateAndParseLong(value);
-                  ((BigIntVector) vector).setSafe(curRowIndex, longValue);
-                  stats.addIntValue(BigInteger.valueOf(longValue));
+                  ((BigIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.longValueExact());
+                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 8;
                   break;
                 default:
@@ -749,9 +520,7 @@ class ArrowRowBuffer {
               String maxLengthString = field.getMetadata().get(COLUMN_CHAR_LENGTH);
               String str =
                   DataValidationUtil.validateAndParseString(
-                      value,
-                      Optional.ofNullable(maxLengthString)
-                          .map(s -> DataValidationUtil.validateAndParseInteger(maxLengthString)));
+                      value, Optional.ofNullable(maxLengthString).map(Integer::parseInt));
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               stats.addStrValue(str);
@@ -784,14 +553,17 @@ class ArrowRowBuffer {
             }
           case TIMESTAMP_LTZ:
           case TIMESTAMP_NTZ:
+            boolean ignoreTimezone = logicalType == ColumnLogicalType.TIMESTAMP_NTZ;
+
             switch (physicalType) {
               case SB8:
                 {
                   BigIntVector bigIntVector = (BigIntVector) vector;
-                  BigInteger timeInScale =
-                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
-                  bigIntVector.setSafe(curRowIndex, timeInScale.longValue());
-                  stats.addIntValue(timeInScale);
+                  TimestampWrapper timestampWrapper =
+                      DataValidationUtil.validateAndParseTimestampNtzSb16(
+                          value, getColumnScale(field.getMetadata()), ignoreTimezone);
+                  bigIntVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
+                  stats.addIntValue(timestampWrapper.getTimeInScale());
                   rowBufferSize += 8;
                   break;
                 }
@@ -807,7 +579,7 @@ class ArrowRowBuffer {
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampNtzSb16(
-                          value, field.getMetadata());
+                          value, getColumnScale(field.getMetadata()), ignoreTimezone);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   rowBufferSize += 12;
@@ -831,7 +603,8 @@ class ArrowRowBuffer {
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTimestampTz(
+                          value, getColumnScale(field.getMetadata()));
                   epochVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
                   timezoneVector.setSafe(
                       curRowIndex,
@@ -870,7 +643,8 @@ class ArrowRowBuffer {
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampTz(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTimestampTz(
+                          value, getColumnScale(field.getMetadata()));
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   timezoneVector.setSafe(
@@ -916,7 +690,8 @@ class ArrowRowBuffer {
               case SB4:
                 {
                   BigInteger timeInScale =
-                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTime(
+                          value, getColumnScale(field.getMetadata()));
                   stats.addIntValue(timeInScale);
                   ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
                   stats.addIntValue(timeInScale);
@@ -926,7 +701,8 @@ class ArrowRowBuffer {
               case SB8:
                 {
                   BigInteger timeInScale =
-                      DataValidationUtil.validateAndParseTime(value, field.getMetadata());
+                      DataValidationUtil.validateAndParseTime(
+                          value, getColumnScale(field.getMetadata()));
                   ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
                   stats.addIntValue(timeInScale);
                   rowBufferSize += 8;
@@ -945,7 +721,10 @@ class ArrowRowBuffer {
               break;
             }
           case BINARY:
-            byte[] bytes = DataValidationUtil.validateAndParseBinary(value);
+            String maxLengthString = field.getMetadata().get(COLUMN_BYTE_LENGTH);
+            byte[] bytes =
+                DataValidationUtil.validateAndParseBinary(
+                    value, Optional.ofNullable(maxLengthString).map(Integer::parseInt));
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             stats.addStrValue(new String(bytes, StandardCharsets.UTF_8));
             rowBufferSize += bytes.length;
@@ -992,5 +771,26 @@ class ArrowRowBuffer {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Unexpected FieldType");
     }
     stats.incCurrentNullCount();
+  }
+
+  private int getColumnScale(Map<String, String> metadata) {
+    return Integer.parseInt(metadata.get(ArrowRowBuffer.COLUMN_SCALE));
+  }
+
+  @Override
+  public Flusher<VectorSchemaRoot> createFlusher(Constants.BdecVersion bdecVersion) {
+    return new ArrowFlusher(bdecVersion);
+  }
+
+  @VisibleForTesting
+  @Override
+  Object getVectorValueAt(String column, int index) {
+    Object value = vectorsRoot.getVector(column).getObject(index);
+    return (value instanceof Text) ? new String(((Text) value).getBytes()) : value;
+  }
+
+  @VisibleForTesting
+  int getTempRowCount() {
+    return tempVectorsRoot.getRowCount();
   }
 }

@@ -13,12 +13,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * channels belong to the same table will be stored together in order to combine the channel data
  * during flush. The key is a fully qualified table name and the value is a set of channels that
  * belongs to this table
+ *
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
  */
-class ChannelCache {
+class ChannelCache<T> {
   // Cache to hold all the valid channels, the key for the outer map is FullyQualifiedTableName and
   // the key for the inner map is ChannelName
   private ConcurrentHashMap<
-          String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>
+          String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>
       cache = new ConcurrentHashMap<>();
 
   /**
@@ -26,15 +28,16 @@ class ChannelCache {
    *
    * @param channel
    */
-  void addChannel(SnowflakeStreamingIngestChannelInternal channel) {
-    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> channels =
+  void addChannel(SnowflakeStreamingIngestChannelInternal<T> channel) {
+    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> channels =
         this.cache.computeIfAbsent(
             channel.getFullyQualifiedTableName(), v -> new ConcurrentHashMap<>());
 
-    SnowflakeStreamingIngestChannelInternal oldChannel = channels.put(channel.getName(), channel);
+    SnowflakeStreamingIngestChannelInternal<T> oldChannel =
+        channels.put(channel.getName(), channel);
     // Invalidate old channel if it exits to block new inserts and return error to users earlier
     if (oldChannel != null) {
-      oldChannel.invalidate();
+      oldChannel.invalidate("removed from cache");
     }
   }
 
@@ -43,7 +46,7 @@ class ChannelCache {
    *
    * @return
    */
-  Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal>>>
+  Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
       iterator() {
     return this.cache.entrySet().iterator();
   }
@@ -57,11 +60,11 @@ class ChannelCache {
 
   /** Remove a channel in the channel cache if the channel sequencer matches */
   // TODO: background cleaner to cleanup old stale channels that are not closed?
-  void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal channel) {
+  void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal<T> channel) {
     cache.computeIfPresent(
         channel.getFullyQualifiedTableName(),
         (k, v) -> {
-          SnowflakeStreamingIngestChannelInternal channelInCache = v.get(channel.getName());
+          SnowflakeStreamingIngestChannelInternal<T> channelInCache = v.get(channel.getName());
           // We need to compare the channel sequencer in case the old channel was already been
           // removed
           return channelInCache != null
@@ -81,12 +84,12 @@ class ChannelCache {
       String channelName,
       Long channelSequencer) {
     String fullyQualifiedTableName = String.format("%s.%s.%s", dbName, schemaName, tableName);
-    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal> channelsMapPerTable =
+    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> channelsMapPerTable =
         cache.get(fullyQualifiedTableName);
     if (channelsMapPerTable != null) {
-      SnowflakeStreamingIngestChannelInternal channel = channelsMapPerTable.get(channelName);
+      SnowflakeStreamingIngestChannelInternal<T> channel = channelsMapPerTable.get(channelName);
       if (channel != null && channel.getChannelSequencer().equals(channelSequencer)) {
-        channel.invalidate();
+        channel.invalidate("invalidate with matched sequencer");
       }
     }
   }

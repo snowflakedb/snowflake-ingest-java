@@ -47,16 +47,21 @@ public class InsertValidationResponse {
   /** Wraps the row content and exception when there is a failure */
   public static class InsertError {
     private final Object rowContent;
-    private final SFException exception;
+    private SFException exception;
 
     // Used to map this error row with original row in the insertRows Iterable.
     // i.e the rowIndex can be index 9 in the list of 10 rows.
     // index is 0 based so as to match with incoming Iterable
-    private final long rowIndex;
+    private long rowIndex;
 
-    public InsertError(Object row, SFException exception, long rowIndex) {
+    // List of extra column names in the input row compared with the table schema
+    private List<String> extraColNames;
+
+    // List of missing non-nullable column names in the input row compared with the table schema
+    private List<String> missingNotNullColNames;
+
+    public InsertError(Object row, long rowIndex) {
       this.rowContent = row;
-      this.exception = exception;
       this.rowIndex = rowIndex;
     }
 
@@ -70,9 +75,27 @@ public class InsertValidationResponse {
       return this.exception.getMessage();
     }
 
+    /**
+     * Set the insert exception
+     *
+     * @param exception exception encountered during the insert
+     */
+    public void setException(SFException exception) {
+      this.exception = exception;
+    }
+
     /** Get the exception */
     public SFException getException() {
       return this.exception;
+    }
+
+    /**
+     * Set the row index
+     *
+     * @param rowIndex the corresponding row index in the original input row list
+     */
+    public void setRowIndex(long rowIndex) {
+      this.rowIndex = rowIndex;
     }
 
     /**
@@ -81,6 +104,29 @@ public class InsertValidationResponse {
      */
     public long getRowIndex() {
       return rowIndex;
+    }
+
+    /** Set the extra column names in the input row compared with the table schema */
+    public void setExtraColNames(List<String> extraColNames) {
+      this.extraColNames = extraColNames;
+    }
+
+    /** Get the list of extra column names in the input row compared with the table schema */
+    public List<String> getExtraColNames() {
+      return extraColNames;
+    }
+
+    /** Set the missing non-nullable column names in the input row compared with the table schema */
+    public void setMissingNotNullColNames(List<String> missingNotNullColNames) {
+      this.missingNotNullColNames = missingNotNullColNames;
+    }
+
+    /**
+     * Get the list of missing non-nullable column names in the input row compared with the table
+     * schema
+     */
+    public List<String> getMissingNotNullColNames() {
+      return missingNotNullColNames;
     }
   }
 }
