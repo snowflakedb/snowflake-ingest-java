@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import net.snowflake.ingest.utils.Constants;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -16,6 +17,10 @@ import org.junit.Test;
  * https://docs.snowflake.com/en/user-guide/date-time-input-output.html#date-formats
  */
 public class DateTimeIT extends AbstractDataTypeTest {
+
+  public DateTimeIT(String name, Constants.BdecVersion bdecVersion) {
+    super(name, bdecVersion);
+  }
 
   @Test
   public void testTimestampWithTimeZone() throws Exception {
