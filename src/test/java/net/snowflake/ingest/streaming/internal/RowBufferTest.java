@@ -26,7 +26,11 @@ import org.junit.runners.Parameterized;
 public class RowBufferTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
-    return Arrays.asList(new Object[][] {{"Arrow", Constants.BdecVersion.ONE}});
+    return Arrays.asList(
+        new Object[][] {
+          {"Arrow", Constants.BdecVersion.ONE},
+          {"Parquet", Constants.BdecVersion.THREE}
+        });
   }
 
   private final Constants.BdecVersion bdecVersion;
@@ -1029,6 +1033,7 @@ public class RowBufferTest {
     colBinary.setPhysicalType("LOB");
     colBinary.setNullable(true);
     colBinary.setLogicalType("BINARY");
+    colBinary.setLength(32);
     colBinary.setScale(0);
 
     innerBuffer.setupSchema(Collections.singletonList(colBinary));

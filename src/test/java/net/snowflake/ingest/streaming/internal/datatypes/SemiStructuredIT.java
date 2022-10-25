@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import net.snowflake.ingest.utils.Constants;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -23,6 +24,10 @@ public class SemiStructuredIT extends AbstractDataTypeTest {
   // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its
   // server-side representation. Validation leaves a small buffer for this difference.
   private static final int MAX_ALLOWED_LENGTH = 16 * 1024 * 1024 - 64;
+
+  public SemiStructuredIT(String name, Constants.BdecVersion bdecVersion) {
+    super(name, bdecVersion);
+  }
 
   @Test
   public void testVariant() throws Exception {
