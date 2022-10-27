@@ -57,7 +57,8 @@ public class StreamingIngestIT {
 
   @Before
   public void beforeAll() throws Exception {
-    testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
+//    testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
+    testDb = TEST_DB_PREFIX;
     // Create a streaming ingest client
     jdbcConnection = TestUtils.getConnection(true);
     jdbcConnection
@@ -90,7 +91,7 @@ public class StreamingIngestIT {
   @After
   public void afterAll() throws Exception {
     client.close();
-    jdbcConnection.createStatement().execute(String.format("drop database %s", testDb));
+//    jdbcConnection.createStatement().execute(String.format("drop database %s", testDb));
   }
 
   @Test
@@ -133,6 +134,89 @@ public class StreamingIngestIT {
                     String.format(
                         "select * from %s.%s.%s order by c1 limit 2",
                         testDb, TEST_SCHEMA, TEST_TABLE));
+        result2.next();
+        Assert.assertEquals("0", result2.getString(1));
+        result2.next();
+        Assert.assertEquals("1", result2.getString(1));
+
+        // Verify perf metrics
+        if (client.getParameterProvider().hasEnabledSnowpipeStreamingMetrics()) {
+          Assert.assertEquals(1, client.blobSizeHistogram.getCount());
+          if (BLOB_NO_HEADER && COMPRESS_BLOB_TWICE) {
+            Assert.assertEquals(3445, client.blobSizeHistogram.getSnapshot().getMax());
+          } else if (BLOB_NO_HEADER) {
+            Assert.assertEquals(3600, client.blobSizeHistogram.getSnapshot().getMax());
+          } else if (COMPRESS_BLOB_TWICE) {
+            Assert.assertEquals(3981, client.blobSizeHistogram.getSnapshot().getMax());
+          } else {
+            Assert.assertEquals(4115, client.blobSizeHistogram.getSnapshot().getMax());
+          }
+        }
+        return;
+      }
+      Thread.sleep(500);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testMergeTableIngest() throws Exception {
+    String mergeTable = "merge_table";
+    jdbcConnection
+            .createStatement()
+            .execute(
+                    String.format(
+                            "create or replace table %s.%s.%s (k int,del boolean, v int);",
+                            testDb, TEST_SCHEMA, mergeTable));
+
+    jdbcConnection
+            .createStatement()
+            .execute(
+                    String.format(
+                            "select system$set_merge_table('%s', 'K', 'DEL', true);",
+                            mergeTable));
+
+    OpenChannelRequest request1 =
+            OpenChannelRequest.builder("CHANNEL")
+                    .setDBName(testDb)
+                    .setSchemaName(TEST_SCHEMA)
+                    .setTableName(mergeTable)
+                    .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+                    .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+    for (int val = 0; val < 1000; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("k",val);
+      row.put("del", false);
+      row.put("v", val);
+      row.put("METADATA$MERGE_TABLE_ROW_ACTION", "UPSERT");
+      verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
+    }
+
+    // Close the channel after insertion
+    channel1.close().get();
+
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+              && channel1.getLatestCommittedOffsetToken().equals("999")) {
+        ResultSet result =
+                jdbcConnection
+                        .createStatement()
+                        .executeQuery(
+                                String.format(
+                                        "select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, TEST_TABLE));
+        result.next();
+        Assert.assertEquals(1000, result.getLong(1));
+
+        ResultSet result2 =
+                jdbcConnection
+                        .createStatement()
+                        .executeQuery(
+                                String.format(
+                                        "select * from %s.%s.%s order by c1 limit 2",
+                                        testDb, TEST_SCHEMA, TEST_TABLE));
         result2.next();
         Assert.assertEquals("0", result2.getString(1));
         result2.next();
