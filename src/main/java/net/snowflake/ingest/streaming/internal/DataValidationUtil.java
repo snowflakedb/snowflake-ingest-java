@@ -453,12 +453,13 @@ class DataValidationUtil {
           input.getClass(), "STRING", new String[] {"String", "Number", "boolean", "char"});
     }
     int maxLength = maxLengthOptional.orElse(BYTES_16_MB);
+    int byteLength = output.getBytes(StandardCharsets.UTF_8).length;
 
-    if (output.length() > maxLength) {
+    if (byteLength > maxLength) {
       throw valueFormatNotAllowedException(
           input,
           "STRING",
-          String.format("String too long: length=%d maxLength=%d", output.length(), maxLength));
+          String.format("String too long: length=%d maxLength=%d", byteLength, maxLength));
     }
     return output;
   }

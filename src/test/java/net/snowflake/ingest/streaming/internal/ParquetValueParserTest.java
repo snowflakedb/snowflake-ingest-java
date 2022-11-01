@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.utils.SFException;
@@ -243,7 +244,7 @@ public class ParquetValueParserTest {
         .expectedValueClass(String.class)
         .expectedParsedValue("Length7")
         .expectedSize(7.0f)
-        .expectedMinMax("Length7")
+        .expectedMinMax("Length7".getBytes(StandardCharsets.UTF_8))
         .assertMatches();
   }
 
@@ -554,17 +555,24 @@ public class ParquetValueParserTest {
         Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMinIntValue());
         Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMaxIntValue());
         return;
-      } else if (minMaxStat instanceof String || valueClass.equals(String.class)) {
+      } else if (minMaxStat instanceof byte[]) {
+        Assert.assertArrayEquals(
+            (byte[]) minMaxStat, rowBufferStats.getCurrentMinColStrValueInBytes());
+        Assert.assertArrayEquals(
+            (byte[]) minMaxStat, rowBufferStats.getCurrentMaxColStrValueInBytes());
+        return;
+      } else if (valueClass.equals(String.class)) {
         // String can have null min/max stats for variant data types
-        Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMinColStrValue());
-        Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMaxColStrValue());
+        Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMinColStrValueInBytes());
+        Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMaxColStrValueInBytes());
         return;
       } else if (minMaxStat instanceof Double || minMaxStat instanceof BigDecimal) {
         Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMinRealValue());
         Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMaxRealValue());
         return;
       }
-      throw new IllegalArgumentException("Unknown data type for min stat");
+      throw new IllegalArgumentException(
+          String.format("Unknown data type for min stat: %s", minMaxStat.getClass()));
     }
   }
 }

@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.util.encoders.Hex;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -647,8 +648,12 @@ public class RowBufferTest {
     Assert.assertEquals(0, columnEpStats.get("COLBIGINT").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLBIGINT").getDistinctValues());
 
-    Assert.assertEquals("alice", columnEpStats.get("COLCHAR").getCurrentMaxColStrValue());
-    Assert.assertEquals("2", columnEpStats.get("COLCHAR").getCurrentMinColStrValue());
+    Assert.assertEquals(
+        Hex.encode("alice".getBytes(StandardCharsets.UTF_8)),
+        columnEpStats.get("COLCHAR").getCurrentMaxColStrValueInBytes());
+    Assert.assertEquals(
+        Hex.encode("2".getBytes(StandardCharsets.UTF_8)),
+        columnEpStats.get("COLCHAR").getCurrentMinColStrValueInBytes());
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
@@ -1066,9 +1071,9 @@ public class RowBufferTest {
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
     Assert.assertEquals(
-        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinColStrValue());
+        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinColStrValueInBytes());
     Assert.assertEquals(
-        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxColStrValue());
+        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxColStrValueInBytes());
     Assert.assertEquals(1, result.getColumnEps().get("COLBINARY").getCurrentNullCount());
   }
 

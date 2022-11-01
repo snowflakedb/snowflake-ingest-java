@@ -325,7 +325,7 @@ public class DataValidationUtilTest {
     // Check max String length
     StringBuilder longBuilder = new StringBuilder();
     for (int i = 0; i < BYTES_16_MB; i++) {
-      longBuilder.append("č"); // max string length is measured in chars, not bytes
+      longBuilder.append("a");
     }
     String maxString = longBuilder.toString();
     Assert.assertEquals(maxString, validateAndParseString(maxString, Optional.empty()));
@@ -352,6 +352,28 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW, () -> validateAndParseString(new Object(), Optional.empty()));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString(new byte[] {}, Optional.of(4)));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString(new char[] {}, Optional.of(4)));
+  }
+
+  @Test
+  public void testValidateMultiByteString() {
+    // Test multi-byte string, total max allowed size is in bytes, not in characters
+    StringBuilder longBuilder = new StringBuilder();
+    for (int i = 0; i < BYTES_8_MB; i++) {
+      longBuilder.append("š"); // š is 2-byte unicode character
+    }
+    String maxString = longBuilder.toString();
+    Assert.assertEquals(maxString, validateAndParseString(maxString, Optional.empty()));
+
+    // max length - 1 should also succeed
+    longBuilder.setLength(BYTES_8_MB - 1);
+    String maxStringMinusOne = longBuilder.toString();
+    Assert.assertEquals(
+        maxStringMinusOne, validateAndParseString(maxStringMinusOne, Optional.empty()));
+
+    // max length + 1 should fail
+    expectError(
+        ErrorCode.INVALID_ROW,
+        () -> validateAndParseString(longBuilder.append("šš").toString(), Optional.empty()));
   }
 
   @Test

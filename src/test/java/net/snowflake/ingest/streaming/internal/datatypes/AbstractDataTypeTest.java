@@ -42,8 +42,8 @@ public abstract class AbstractDataTypeTest {
         });
   }
 
-  private static final String SOURCE_COLUMN_NAME = "source";
-  private static final String VALUE_COLUMN_NAME = "value";
+  protected static final String SOURCE_COLUMN_NAME = "source";
+  protected static final String VALUE_COLUMN_NAME = "value";
 
   private static final String SOURCE_STREAMING_INGEST = "STREAMING_INGEST";
   private static final String SOURCE_JDBC = "JDBC";
@@ -63,10 +63,6 @@ public abstract class AbstractDataTypeTest {
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
 
-  protected String randomString() {
-    return UUID.randomUUID().toString().replace("-", "_");
-  }
-
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Constants.BdecVersion bdecVersion;
@@ -78,7 +74,9 @@ public abstract class AbstractDataTypeTest {
 
   @Before
   public void before() throws Exception {
-    databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", randomString());
+    databaseName =
+        String.format(
+            "SDK_DATATYPE_COMPATIBILITY_IT_%s", UUID.randomUUID().toString().replace("-", "_"));
     conn = TestUtils.getConnection(true);
     conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
     conn.createStatement().execute(String.format("use database %s;", databaseName));
@@ -113,7 +111,7 @@ public abstract class AbstractDataTypeTest {
     }
   }
 
-  protected String createTable(String dataType) throws SQLException {
+  protected String createTable(String dataType, String collation) throws SQLException {
     String tableName =
         String.format("test_%s_%s", dataType, UUID.randomUUID())
             .replace('-', '_')
@@ -123,12 +121,18 @@ public abstract class AbstractDataTypeTest {
             .replace(',', '_');
 
     //    System.out.printf("Creating table %s.%s.%s%n", databaseName, schemaName, tableName);
+
+    String collationString = collation == null ? "" : String.format("collate '%s'", collation);
     conn.createStatement()
         .execute(
             String.format(
-                "create or replace table %s (%s string, %s %s)",
-                tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
+                "create or replace table %s (%s string, %s %s %s)",
+                tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType, collationString));
     return tableName;
+  }
+
+  protected String createTable(String dataType) throws SQLException {
+    return createTable(dataType, null);
   }
 
   protected SnowflakeStreamingIngestChannel openChannel(String tableName) {
@@ -142,7 +146,7 @@ public abstract class AbstractDataTypeTest {
     return client.openChannel(openChannelRequest);
   }
 
-  private Map<String, Object> createStreamingIngestRow(Object value) {
+  protected Map<String, Object> createStreamingIngestRow(Object value) {
     Map<String, Object> row = new HashMap<>();
     row.put(SOURCE_COLUMN_NAME, SOURCE_STREAMING_INGEST);
     row.put(VALUE_COLUMN_NAME, value);
@@ -193,6 +197,15 @@ public abstract class AbstractDataTypeTest {
         x ->
             (x instanceof SFException
                 && x.getMessage().contains("The given row cannot be converted to Arrow format")));
+  }
+
+  /**
+   * Simplified version, which does not insert using JDBC. Useful for testing non-JDBC types like
+   * BigInteger, java.time.* types, etc.
+   */
+  <VALUE> void testIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
+      throws Exception {
+    ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider);
   }
 
   /**
@@ -306,6 +319,7 @@ public abstract class AbstractDataTypeTest {
     Assert.assertTrue(resultSet.next());
     int count = resultSet.getInt(1);
     Assert.assertEquals(insertAlsoWithJdbc ? 2 : 1, count);
+    migrateTable(tableName); // migration should always succeed
   }
 
   <STREAMING_INGEST_WRITE> void assertVariant(
@@ -339,5 +353,10 @@ public abstract class AbstractDataTypeTest {
     Assert.assertEquals(1, counter);
     Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
     Assert.assertEquals(expectedType, typeof);
+    migrateTable(tableName); // migration should always succeed
+  }
+
+  protected void migrateTable(String tableName) throws SQLException {
+    conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
   }
 }

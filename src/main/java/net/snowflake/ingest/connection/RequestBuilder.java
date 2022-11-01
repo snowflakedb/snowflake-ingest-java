@@ -127,7 +127,8 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "1.0.2-beta.6";
+  // TODO remove right before merge, must be here for now to trigger the new code path on the server
+  public static final String DEFAULT_VERSION = "1.0.2-beta.7";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 

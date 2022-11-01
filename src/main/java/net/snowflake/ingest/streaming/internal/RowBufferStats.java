@@ -61,7 +61,7 @@ class RowBufferStats {
     private Collator collator;
 
     /** Constructor - only called internally */
-    private CollationDefinition(String name) {
+    public CollationDefinition(String name) {
       name = name.toLowerCase();
       this.name = name;
 
@@ -293,8 +293,8 @@ class RowBufferStats {
     }
   }
 
-  private String currentMinColStrValue;
-  private String currentMaxColStrValue;
+  private String currentMinNonColStrValue;
+  private String currentMaxNonColStrValue;
   private byte[] currentMinColStrValueInBytes;
   private byte[] currentMaxColStrValueInBytes;
   private BigInteger currentMinIntValue;
@@ -306,8 +306,6 @@ class RowBufferStats {
   private long currentMaxLength;
   private CollationDefinition collationDefinition;
   private final String collationDefinitionString;
-
-  private static final int MAX_LOB_LEN = 32;
 
   /** Creates empty stats */
   RowBufferStats(String collationDefinitionString) {
@@ -323,8 +321,8 @@ class RowBufferStats {
   }
 
   void reset() {
-    this.currentMaxColStrValue = null;
-    this.currentMinColStrValue = null;
+    this.currentMaxNonColStrValue = null;
+    this.currentMinNonColStrValue = null;
     this.currentMaxColStrValueInBytes = null;
     this.currentMinColStrValueInBytes = null;
     this.currentMaxIntValue = null;
@@ -364,14 +362,14 @@ class RowBufferStats {
       combined.addIntValue(right.currentMaxIntValue);
     }
 
-    if (left.currentMinColStrValue != null) {
-      combined.addStrValue(left.currentMinColStrValue);
-      combined.addStrValue(left.currentMaxColStrValue);
+    if (left.currentMinColStrValueInBytes != null) {
+      combined.addStrValue(left.currentMinNonColStrValue);
+      combined.addStrValue(left.currentMaxNonColStrValue);
     }
 
-    if (right.currentMinColStrValue != null) {
-      combined.addStrValue(right.currentMinColStrValue);
-      combined.addStrValue(right.currentMaxColStrValue);
+    if (right.currentMinColStrValueInBytes != null) {
+      combined.addStrValue(right.currentMinNonColStrValue);
+      combined.addStrValue(right.currentMaxNonColStrValue);
     }
 
     if (left.currentMinRealValue != null) {
@@ -390,67 +388,43 @@ class RowBufferStats {
     return combined;
   }
 
-  void addStrValue(String inputValue) {
-    this.setCurrentMaxLength(inputValue.length());
-    String value =
-        inputValue.length() > MAX_LOB_LEN ? inputValue.substring(0, MAX_LOB_LEN) : inputValue;
+  void addStrValue(String value) {
+    this.setCurrentMaxLength(value.getBytes(StandardCharsets.UTF_8).length);
 
-    byte[] valueBytes = value.getBytes(StandardCharsets.UTF_8);
-    byte[] collatedValueBytes = getCollatedBytes(value);
+    byte[] valueCollated = getCollatedBytes(value);
 
     // Check if new min/max string
-    if (this.currentMinColStrValue == null) {
-      this.currentMinColStrValue = value;
-      this.currentMinColStrValueInBytes = collatedValueBytes;
-
-      /*
-      Snowflake stores the first MAX_LOB_LEN characters of a string.
-      When truncating the max value, we increment the last max value
-      byte by one to ensure the max value stat is greater than the actual max value.
-       */
-      if (inputValue.length() > MAX_LOB_LEN) {
-        byte[] incrementedValueBytes = valueBytes.clone();
-        byte[] incrementedCollatedValueBytes = collatedValueBytes.clone();
-        incrementedValueBytes[MAX_LOB_LEN - 1]++;
-        incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
-        this.currentMaxColStrValue = new String(incrementedValueBytes);
-        this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
-      } else {
-        this.currentMaxColStrValue = value;
-        this.currentMaxColStrValueInBytes = collatedValueBytes;
-      }
+    if (this.currentMinColStrValueInBytes == null) {
+      this.currentMinColStrValueInBytes = valueCollated;
+      this.currentMinNonColStrValue = value;
+      this.currentMaxColStrValueInBytes = valueCollated;
+      this.currentMaxNonColStrValue = value;
     } else {
       // Collated comparison
-      if (compare(currentMinColStrValueInBytes, collatedValueBytes) > 0) {
-        this.currentMinColStrValue = value;
-        this.currentMinColStrValueInBytes = collatedValueBytes;
-      } else if (compare(currentMaxColStrValueInBytes, collatedValueBytes) < 0) {
-        /*
-        Snowflake stores the first MAX_LOB_LEN characters of a string.
-        When truncating the max value, we increment the last max value
-        byte by one to ensure the max value stat is greater than the actual max value.
-         */
-        if (inputValue.length() > MAX_LOB_LEN) {
-          byte[] incrementedValueBytes = valueBytes.clone();
-          byte[] incrementedCollatedValueBytes = collatedValueBytes.clone();
-          incrementedValueBytes[MAX_LOB_LEN - 1]++;
-          incrementedCollatedValueBytes[MAX_LOB_LEN - 1]++;
-          this.currentMaxColStrValue = new String(incrementedValueBytes);
-          this.currentMaxColStrValueInBytes = incrementedCollatedValueBytes;
-        } else {
-          this.currentMaxColStrValue = value;
-          this.currentMaxColStrValueInBytes = collatedValueBytes;
-        }
+      if (compareUnsigned(currentMinColStrValueInBytes, valueCollated) > 0) {
+        this.currentMinColStrValueInBytes = valueCollated;
+        this.currentMinNonColStrValue = value;
+      } else if (compareUnsigned(currentMaxColStrValueInBytes, valueCollated) < 0) {
+        this.currentMaxColStrValueInBytes = valueCollated;
+        this.currentMaxNonColStrValue = value;
       }
     }
   }
 
-  String getCurrentMinColStrValue() {
-    return currentMinColStrValue;
+  byte[] getCurrentMinColStrValueInBytes() {
+    return currentMinColStrValueInBytes;
   }
 
-  String getCurrentMaxColStrValue() {
-    return currentMaxColStrValue;
+  byte[] getCurrentMaxColStrValueInBytes() {
+    return currentMaxColStrValueInBytes;
+  }
+
+  public String getCurrentMinNonColStrValue() {
+    return currentMinNonColStrValue;
+  }
+
+  public String getCurrentMaxNonColStrValue() {
+    return currentMaxNonColStrValue;
   }
 
   void addIntValue(BigInteger value) {
@@ -538,12 +512,12 @@ class RowBufferStats {
    *     second array; and a value greater than 0 if the first array is lexicographically greater
    *     than the second array
    */
-  static int compare(byte[] a, byte[] b) {
+  static int compareUnsigned(byte[] a, byte[] b) {
     if (a == b) return 0;
 
     for (int mismatchIdx = 0; mismatchIdx < Math.min(a.length, b.length); mismatchIdx++) {
       if (a[mismatchIdx] != b[mismatchIdx]) {
-        return Byte.compare(a[mismatchIdx], b[mismatchIdx]);
+        return Byte.toUnsignedInt(a[mismatchIdx]) - Byte.toUnsignedInt(b[mismatchIdx]);
       }
     }
 

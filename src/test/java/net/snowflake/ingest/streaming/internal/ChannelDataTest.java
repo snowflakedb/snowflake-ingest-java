@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -107,13 +108,15 @@ public class ChannelDataTest {
     Assert.assertEquals(new BigInteger("10"), oneCombined.getCurrentMinIntValue());
     Assert.assertEquals(new BigInteger("17"), oneCombined.getCurrentMaxIntValue());
     Assert.assertEquals(-1, oneCombined.getDistinctValues());
-    Assert.assertNull(oneCombined.getCurrentMinColStrValue());
-    Assert.assertNull(oneCombined.getCurrentMaxColStrValue());
+    Assert.assertNull(oneCombined.getCurrentMinColStrValueInBytes());
+    Assert.assertNull(oneCombined.getCurrentMaxColStrValueInBytes());
     Assert.assertNull(oneCombined.getCurrentMinRealValue());
     Assert.assertNull(oneCombined.getCurrentMaxRealValue());
 
-    Assert.assertEquals("10", twoCombined.getCurrentMinColStrValue());
-    Assert.assertEquals("17", twoCombined.getCurrentMaxColStrValue());
+    Assert.assertArrayEquals(
+        "10".getBytes(StandardCharsets.UTF_8), twoCombined.getCurrentMinColStrValueInBytes());
+    Assert.assertArrayEquals(
+        "17".getBytes(StandardCharsets.UTF_8), twoCombined.getCurrentMaxColStrValueInBytes());
     Assert.assertEquals(-1, twoCombined.getDistinctValues());
     Assert.assertNull(twoCombined.getCurrentMinIntValue());
     Assert.assertNull(twoCombined.getCurrentMaxIntValue());
