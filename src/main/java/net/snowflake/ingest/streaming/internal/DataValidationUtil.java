@@ -454,7 +454,7 @@ class DataValidationUtil {
     }
     int maxLength = maxLengthOptional.orElse(BYTES_16_MB);
 
-    if (output.length() > maxLength) {
+    if (output.getBytes(StandardCharsets.UTF_8).length > maxLength) {
       throw valueFormatNotAllowedException(
           input,
           "STRING",

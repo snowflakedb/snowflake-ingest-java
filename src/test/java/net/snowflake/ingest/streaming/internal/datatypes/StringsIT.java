@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class StringsIT extends AbstractDataTypeTest {
@@ -59,6 +58,13 @@ public class StringsIT extends AbstractDataTypeTest {
   public void testNonAsciiStrings() throws Exception {
     testIngestion(
         "VARCHAR", "ž, š, č, ř, c, j, ď, ť, ň", "ž, š, č, ř, c, j, ď, ť, ň", new StringProvider());
+    String times16 = "čččččččččččččččč";
+    String times17 = "ččččččččččččččččč";
+    testIngestion("VARCHAR", times16, times16, new StringProvider());
+    testIngestion("VARCHAR", times17, times17, new StringProvider());
+
+    String input = "❄❄❄öüß0öüä++ěšíáýšěčíáýřž+šáříé+ýšěáéíščžýříéě+ž❄❄❄";
+    testIngestion("VARCHAR", input, input, new StringProvider());
   }
 
   @Test
@@ -70,14 +76,14 @@ public class StringsIT extends AbstractDataTypeTest {
   }
 
   @Test
-  @Ignore("SNOW-663621")
-  public void testMaxAllowedMultibyteString() throws Exception {
-    String times16 = "čččččččččččččččč";
-    String times17 = "ččččččččččččččččč";
-    testIngestion("VARCHAR", times16, times16, new StringProvider()); // works fine
-    testIngestion("VARCHAR", times17, times17, new StringProvider()); // fails
-    //    expectArrowNotSupported("VARCHAR",
-    // maxAllowedMultibyteStringBuilder.append('a').toString());
+  public void testMaxAllowedMultiByteString() throws Exception {
+    // 'š' is a 2-byte unicode character
+    StringBuilder maxAllowedMultiByteStringBuilder = buildString('š', 8 * 1024 * 1024);
+    String maxAllowedMultiByteString = maxAllowedMultiByteStringBuilder.toString();
+    testIngestion(
+        "VARCHAR", maxAllowedMultiByteString, maxAllowedMultiByteString, new StringProvider());
+
+    expectArrowNotSupported("VARCHAR", maxAllowedMultiByteStringBuilder.append('a').toString());
   }
 
   private StringBuilder buildString(char character, int count) {

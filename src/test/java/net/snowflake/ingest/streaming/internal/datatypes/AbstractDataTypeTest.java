@@ -74,7 +74,9 @@ public abstract class AbstractDataTypeTest {
 
   @After
   public void after() throws Exception {
-    conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
+    if (!debugMode()) {
+      conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
+    }
     if (client != null) {
       client.close();
     }
@@ -92,7 +94,9 @@ public abstract class AbstractDataTypeTest {
             .replace(')', '_')
             .replace(',', '_');
 
-    //    System.out.printf("Creating table %s.%s.%s%n", databaseName, schemaName, tableName);
+    if (debugMode()) {
+      System.out.printf("Creating table %s.%s.%s%n", databaseName, schemaName, tableName);
+    }
     conn.createStatement()
         .execute(
             String.format(
@@ -309,5 +313,9 @@ public abstract class AbstractDataTypeTest {
     Assert.assertEquals(1, counter);
     Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
     Assert.assertEquals(expectedType, typeof);
+  }
+
+  protected boolean debugMode() {
+    return false;
   }
 }
