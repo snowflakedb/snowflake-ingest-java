@@ -391,7 +391,7 @@ class RowBufferStats {
   }
 
   void addStrValue(String inputValue) {
-    this.setCurrentMaxLength(inputValue.getBytes().length);
+    this.setCurrentMaxLength(inputValue.getBytes(StandardCharsets.UTF_8).length);
     String value =
         inputValue.length() > MAX_LOB_LEN ? inputValue.substring(0, MAX_LOB_LEN) : inputValue;
 
