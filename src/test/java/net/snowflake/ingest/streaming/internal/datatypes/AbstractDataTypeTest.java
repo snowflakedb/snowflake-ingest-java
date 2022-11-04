@@ -142,6 +142,10 @@ public abstract class AbstractDataTypeTest {
     }
   }
 
+  protected void migrateTable(String tableName) throws SQLException {
+    conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
+  }
+
   protected <T> void expectNumberOutOfRangeError(
       String dataType, T value, int maxPowerOf10Exclusive) throws Exception {
     expectError(

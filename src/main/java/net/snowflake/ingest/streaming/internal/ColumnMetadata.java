@@ -125,4 +125,12 @@ class ColumnMetadata {
     map.put("nullable", this.nullable);
     return map.toString();
   }
+
+  public String normalizedName() {
+    if (name.length() >= 2 && name.charAt(0) == '"' && name.charAt(name.length() - 1) == '"') {
+      return name.substring(1, name.length() - 1).replace("\"\"", "\"");
+    } else {
+      return name;
+    }
+  }
 }

@@ -339,7 +339,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // Create the corresponding column field base on the column data type
     fieldType = new FieldType(column.getNullable(), arrowType, null, metadata);
-    return new Field(column.getName(), fieldType, children);
+    return new Field(column.normalizedName(), fieldType, children);
   }
 
   @Override
