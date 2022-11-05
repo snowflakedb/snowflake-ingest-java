@@ -19,6 +19,7 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS, 7L);
     parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 10);
     parameterMap.put(ParameterProvider.BLOB_UPLOAD_MAX_RETRY_COUNT, 100);
+    parameterMap.put(ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES, 1000);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
@@ -27,6 +28,7 @@ public class ParameterProviderTest {
     Assert.assertEquals(7, parameterProvider.getInsertThrottleIntervalInMs());
     Assert.assertEquals(10, parameterProvider.getIOTimeCpuRatio());
     Assert.assertEquals(100, parameterProvider.getBlobUploadMaxRetryCount());
+    Assert.assertEquals(1000, parameterProvider.getMaxMemoryLimitInBytes());
   }
 
   @Test
@@ -100,5 +102,8 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         ParameterProvider.BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT,
         parameterProvider.getBlobUploadMaxRetryCount());
+    Assert.assertEquals(
+        ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT,
+        parameterProvider.getMaxMemoryLimitInBytes());
   }
 }
