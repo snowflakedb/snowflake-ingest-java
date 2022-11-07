@@ -31,7 +31,7 @@ public class ParameterProvider {
   public static final Constants.BdecVersion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVersion.ONE;
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
-  public static final int MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1;
+  public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();

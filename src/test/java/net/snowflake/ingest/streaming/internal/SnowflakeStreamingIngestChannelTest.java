@@ -530,7 +530,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE);
 
     Runtime mockedRunTime = Mockito.mock(Runtime.class);
-    Mockito.when(mockedRunTime.totalMemory()).thenReturn(1000000L);
+    Mockito.when(mockedRunTime.maxMemory()).thenReturn(1000000L);
     ParameterProvider parameterProvider = new ParameterProvider();
     Mockito.when(mockedRunTime.freeMemory())
         .thenReturn(
