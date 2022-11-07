@@ -7,6 +7,8 @@ package net.snowflake.ingest.utils;
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.security.Security;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -49,8 +51,9 @@ public class HttpUtil {
   public static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
 
   private static final String PROXY_SCHEME = "http";
+  private static final Duration RETRY_INTERVAL = Duration.of(3, ChronoUnit.SECONDS);
   private static final int MAX_RETRIES = 3;
-  private static CloseableHttpClient httpClient;
+  private static volatile CloseableHttpClient httpClient;
 
   private static PoolingHttpClientConnectionManager connectionManager;
 
@@ -80,7 +83,11 @@ public class HttpUtil {
 
   public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
-      initHttpClient();
+      synchronized (HttpUtil.class) {
+        if (httpClient == null) {
+          initHttpClient();
+        }
+      }
     }
 
     initIdleConnectionMonitoringThread();
@@ -189,7 +196,6 @@ public class HttpUtil {
 
   private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
     return new ServiceUnavailableRetryStrategy() {
-      private int executionCount = 0;
       final int REQUEST_TIMEOUT = 408;
       final int TOO_MANY_REQUESTS = 429;
       final int SERVER_ERRORS = 500;
@@ -197,7 +203,6 @@ public class HttpUtil {
       @Override
       public boolean retryRequest(
           final HttpResponse response, final int executionCount, final HttpContext context) {
-        this.executionCount = executionCount;
         int statusCode = response.getStatusLine().getStatusCode();
         if (executionCount == MAX_RETRIES + 1) {
           LOGGER.info("Reached the max retry time, not retrying anymore");
@@ -209,7 +214,7 @@ public class HttpUtil {
                     || statusCode >= SERVER_ERRORS)
                 && executionCount < MAX_RETRIES + 1;
         if (needNextRetry) {
-          long interval = (1 << executionCount) * 1000;
+          long interval = getRetryInterval();
           LOGGER.warn(
               "In retryRequest for service unavailability with statusCode:{} and uri:{}",
               statusCode,
@@ -220,11 +225,8 @@ public class HttpUtil {
       }
 
       @Override
-      // The waiting time is backoff, and is
-      // the exponential of the executionCount.
       public long getRetryInterval() {
-        long interval = (1 << executionCount) * 1000; // milliseconds
-        return interval;
+        return RETRY_INTERVAL.toMillis();
       }
     };
   }
