@@ -7,6 +7,8 @@ package net.snowflake.ingest.utils;
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.security.Security;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -196,6 +198,7 @@ public class HttpUtil {
       final int REQUEST_TIMEOUT = 408;
       final int TOO_MANY_REQUESTS = 429;
       final int SERVER_ERRORS = 500;
+      final Duration RETRY_INTERVAL = Duration.of(3, ChronoUnit.SECONDS);
 
       @Override
       public boolean retryRequest(
@@ -223,7 +226,7 @@ public class HttpUtil {
 
       @Override
       public long getRetryInterval() {
-        return 3000;
+        return RETRY_INTERVAL.toMillis();
       }
     };
   }
