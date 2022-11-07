@@ -8,6 +8,7 @@ import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.security.Security;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.Set;
@@ -51,6 +52,8 @@ public class HttpUtil {
   public static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
 
   private static final String PROXY_SCHEME = "http";
+  private static final String FIRST_FAULT_TIMESTAMP = "FIRST_FAULT_TIMESTAMP";
+  private static final Duration TOTAL_RETRY_DURATION = Duration.of(120, ChronoUnit.SECONDS);
   private static final Duration RETRY_INTERVAL = Duration.of(3, ChronoUnit.SECONDS);
   private static final int MAX_RETRIES = 3;
   private static volatile CloseableHttpClient httpClient;
@@ -203,23 +206,38 @@ public class HttpUtil {
       @Override
       public boolean retryRequest(
           final HttpResponse response, final int executionCount, final HttpContext context) {
-        int statusCode = response.getStatusLine().getStatusCode();
-        if (executionCount == MAX_RETRIES + 1) {
-          LOGGER.info("Reached the max retry time, not retrying anymore");
-          return false;
+        Object firstFault = context.getAttribute(FIRST_FAULT_TIMESTAMP);
+        long totalRetryDurationSoFarInSeconds = 0;
+        if (firstFault == null) {
+          context.setAttribute(FIRST_FAULT_TIMESTAMP, Instant.now());
+        } else {
+          Instant firstFaultInstant = (Instant) firstFault;
+          Instant now = Instant.now();
+          totalRetryDurationSoFarInSeconds = Duration.between(firstFaultInstant, now).getSeconds();
+
+          if (totalRetryDurationSoFarInSeconds > TOTAL_RETRY_DURATION.getSeconds()) {
+            LOGGER.info("Reached the max retry time, not retrying anymore");
+            return false;
+          }
         }
+
+        int statusCode = response.getStatusLine().getStatusCode();
         boolean needNextRetry =
             (statusCode == REQUEST_TIMEOUT
-                    || statusCode == TOO_MANY_REQUESTS
-                    || statusCode >= SERVER_ERRORS)
-                && executionCount < MAX_RETRIES + 1;
+                || statusCode == TOO_MANY_REQUESTS
+                || statusCode >= SERVER_ERRORS);
         if (needNextRetry) {
           long interval = getRetryInterval();
           LOGGER.warn(
               "In retryRequest for service unavailability with statusCode:{} and uri:{}",
               statusCode,
               getRequestUriFromContext(context));
-          LOGGER.info("Sleep time in millisecond: {}, retryCount: {}", interval, executionCount);
+          LOGGER.info(
+              "Sleep time in millisecond: {}, retryCount: {}, total retry duration: {}s / {}s",
+              interval,
+              executionCount,
+              totalRetryDurationSoFarInSeconds,
+              TOTAL_RETRY_DURATION.getSeconds());
         }
         return needNextRetry;
       }
