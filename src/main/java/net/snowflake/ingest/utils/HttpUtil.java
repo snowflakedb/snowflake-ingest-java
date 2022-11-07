@@ -51,6 +51,7 @@ public class HttpUtil {
   public static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
 
   private static final String PROXY_SCHEME = "http";
+  private static final Duration RETRY_INTERVAL = Duration.of(3, ChronoUnit.SECONDS);
   private static final int MAX_RETRIES = 3;
   private static volatile CloseableHttpClient httpClient;
 
@@ -198,7 +199,6 @@ public class HttpUtil {
       final int REQUEST_TIMEOUT = 408;
       final int TOO_MANY_REQUESTS = 429;
       final int SERVER_ERRORS = 500;
-      final Duration RETRY_INTERVAL = Duration.of(3, ChronoUnit.SECONDS);
 
       @Override
       public boolean retryRequest(
