@@ -287,11 +287,6 @@
             <version>${arrow.version}</version>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
-            <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-compression</artifactId>
-            <version>${arrow.version}</version>
-        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop -->
         <dependency>

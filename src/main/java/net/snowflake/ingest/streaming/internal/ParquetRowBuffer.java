@@ -16,7 +16,6 @@ import java.util.Optional;
 import java.util.Set;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -217,7 +216,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   @Override
-  public Flusher<ParquetChunkData> createFlusher(Constants.BdecVersion bdecVerion) {
+  public Flusher<ParquetChunkData> createFlusher() {
     return new ParquetFlusher(schema);
   }
 }

@@ -152,7 +152,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // can be probably reconsidered
     switch (bdecVersion) {
       case ONE:
-      case TWO:
         //noinspection unchecked
         return (RowBuffer<T>)
             new ArrowRowBuffer((SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>) this);
