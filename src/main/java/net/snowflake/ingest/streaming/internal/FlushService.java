@@ -449,7 +449,7 @@ class FlushService<T> {
       SnowflakeStreamingIngestChannelInternal<T> firstChannel =
           channelsDataPerTable.get(0).getChannel();
 
-      Flusher<T> flusher = firstChannel.getRowBuffer().createFlusher(bdecVersion);
+      Flusher<T> flusher = firstChannel.getRowBuffer().createFlusher();
       Flusher.SerializationResult result =
           flusher.serialize(channelsDataPerTable, chunkData, filePath);
 

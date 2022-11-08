@@ -6,18 +6,15 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.VectorUnloader;
-import org.apache.arrow.vector.compression.CompressionUtil;
 import org.apache.arrow.vector.ipc.ArrowStreamWriter;
 import org.apache.arrow.vector.ipc.ArrowWriter;
 import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
@@ -28,12 +25,6 @@ import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
  */
 public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
   private static final Logging logger = new Logging(ArrowFlusher.class);
-
-  private final Constants.BdecVersion bdecVersion;
-
-  public ArrowFlusher(Constants.BdecVersion bdecVersion) {
-    this.bdecVersion = bdecVersion;
-  }
 
   @Override
   public Flusher.SerializationResult serialize(
@@ -71,13 +62,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
         if (root == null) {
           columnEpStatsMapCombined = data.getColumnEps();
           root = data.getVectors();
-          arrowWriter =
-              getArrowBatchWriteMode() == Constants.ArrowBatchWriteMode.STREAM
-                  ? new ArrowStreamWriter(root, null, chunkData)
-                  : new ArrowFileWriterWithCompression(
-                      root,
-                      Channels.newChannel(chunkData),
-                      new CustomCompressionCodec(CompressionUtil.CodecType.ZSTD));
+          arrowWriter = new ArrowStreamWriter(root, null, chunkData);
           loader = new VectorLoader(root);
           firstChannel = data.getChannel();
           arrowWriter.start();
@@ -119,17 +104,5 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
     }
     return new Flusher.SerializationResult(
         channelsMetadataList, columnEpStatsMapCombined, rowCount);
-  }
-
-  private Constants.ArrowBatchWriteMode getArrowBatchWriteMode() {
-    switch (bdecVersion) {
-      case ONE:
-        return Constants.ArrowBatchWriteMode.STREAM;
-      case TWO:
-        return Constants.ArrowBatchWriteMode.FILE;
-      default:
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR, "Unsupported BLOB_FORMAT_VERSION: " + bdecVersion);
-    }
   }
 }

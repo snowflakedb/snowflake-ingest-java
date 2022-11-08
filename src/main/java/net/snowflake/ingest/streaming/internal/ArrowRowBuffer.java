@@ -16,7 +16,6 @@ import java.util.Optional;
 import java.util.Set;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -770,8 +769,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   }
 
   @Override
-  public Flusher<VectorSchemaRoot> createFlusher(Constants.BdecVersion bdecVersion) {
-    return new ArrowFlusher(bdecVersion);
+  public Flusher<VectorSchemaRoot> createFlusher() {
+    return new ArrowFlusher();
   }
 
   @VisibleForTesting
