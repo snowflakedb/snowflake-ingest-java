@@ -8,6 +8,7 @@ import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COU
 import static net.snowflake.ingest.utils.Constants.LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
 import java.util.Collections;
 import java.util.List;
@@ -457,16 +458,29 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         throw new SFException(ErrorCode.INTERNAL_ERROR, "Insert throttle get interrupted");
       }
     }
+    if (retry > 0) {
+      logger.logInfo(
+          "Insert throttled for a total of {} milliseconds, retryCount={}, client={}, channel={}",
+          retry * insertThrottleIntervalInMs,
+          retry,
+          this.owningClient.getName(),
+          getFullyQualifiedName());
+    }
   }
 
   /** Check whether we have a low runtime memory condition */
   private boolean hasLowRuntimeMemory(Runtime runtime) {
     int insertThrottleThresholdInPercentage =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
+    long maxMemoryLimitInBytes =
+        this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
+    long maxMemory =
+        maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
+            ? runtime.maxMemory()
+            : maxMemoryLimitInBytes;
     boolean hasLowRuntimeMemory =
         runtime.freeMemory() < LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES
-            && runtime.freeMemory() * 100 / runtime.totalMemory()
-                < insertThrottleThresholdInPercentage;
+            && runtime.freeMemory() * 100 / maxMemory < insertThrottleThresholdInPercentage;
     if (hasLowRuntimeMemory) {
       logger.logWarn(
           "Throttled due to memory pressure, client={}, channel={}.",

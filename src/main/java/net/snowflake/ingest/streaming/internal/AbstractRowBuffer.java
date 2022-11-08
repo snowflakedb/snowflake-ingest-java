@@ -271,7 +271,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
             error.setException(e);
             response.addError(error);
           } catch (Throwable e) {
-            logger.logWarn("Unexpected error happens during insertRows: {}", e.getMessage());
+            logger.logWarn("Unexpected error happens during insertRows: {}", e);
             error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
             response.addError(error);
           }

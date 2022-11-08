@@ -530,7 +530,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE);
 
     Runtime mockedRunTime = Mockito.mock(Runtime.class);
-    Mockito.when(mockedRunTime.totalMemory()).thenReturn(1000000L);
+    Mockito.when(mockedRunTime.maxMemory()).thenReturn(1000000L);
     ParameterProvider parameterProvider = new ParameterProvider();
     Mockito.when(mockedRunTime.freeMemory())
         .thenReturn(
@@ -540,9 +540,18 @@ public class SnowflakeStreamingIngestChannelTest {
         CompletableFuture.runAsync(() -> channel.throttleInsertIfNeeded(mockedRunTime));
 
     try {
-      future.get(1L, TimeUnit.SECONDS);
+      future.get(5L, TimeUnit.SECONDS);
       Assert.fail("the insert should be throttled.");
     } catch (TimeoutException ignored) {
+    } catch (Exception e) {
+      Assert.fail("unexpected exception encountered.");
+    }
+
+    Mockito.when(mockedRunTime.freeMemory()).thenReturn(1000000L);
+
+    // We should succeed now
+    try {
+      future.get(5L, TimeUnit.SECONDS);
     } catch (Exception e) {
       Assert.fail("unexpected exception encountered.");
     }
