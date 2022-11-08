@@ -20,6 +20,7 @@ public class ParameterProvider {
   public static final String IO_TIME_CPU_RATIO = "IO_TIME_CPU_RATIO".toLowerCase();
   public static final String BLOB_UPLOAD_MAX_RETRY_COUNT =
       "BLOB_UPLOAD_MAX_RETRY_COUNT".toLowerCase();
+  public static final String MAX_MEMORY_LIMIT_IN_BYTES = "MAX_MEMORY_LIMIT_IN_BYTES".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -30,6 +31,7 @@ public class ParameterProvider {
   public static final Constants.BdecVersion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVersion.ONE;
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
+  public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -108,6 +110,9 @@ public class ParameterProvider {
         BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT,
         parameterOverrides,
         props);
+
+    this.updateValue(
+        MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT, parameterOverrides, props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -204,6 +209,14 @@ public class ParameterProvider {
       return Integer.parseInt(val.toString());
     }
     return (int) val;
+  }
+
+  /** @return The max memory limit in bytes */
+  public long getMaxMemoryLimitInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT);
+    return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
   @Override
