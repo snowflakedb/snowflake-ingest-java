@@ -216,7 +216,10 @@ public class HttpUtil {
           totalRetryDurationSoFarInSeconds = Duration.between(firstFaultInstant, now).getSeconds();
 
           if (totalRetryDurationSoFarInSeconds > TOTAL_RETRY_DURATION.getSeconds()) {
-            LOGGER.info(String.format("Reached the max retry time of %d seconds, not retrying anymore", TOTAL_RETRY_DURATION.getSeconds()));
+            LOGGER.info(
+                String.format(
+                    "Reached the max retry time of %d seconds, not retrying anymore",
+                    TOTAL_RETRY_DURATION.getSeconds()));
             return false;
           }
         }
