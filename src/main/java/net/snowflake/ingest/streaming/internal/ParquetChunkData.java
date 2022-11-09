@@ -4,22 +4,27 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.util.List;
+import java.io.ByteArrayOutputStream;
 import java.util.Map;
+import org.apache.parquet.hadoop.BdecParquetWriter;
 
 /** Parquet data holder to buffer rows. */
 public class ParquetChunkData {
-  final List<List<Object>> rows;
+  final BdecParquetWriter parquetWriter;
+  final ByteArrayOutputStream output;
   final Map<String, String> metadata;
 
   /**
    * Construct parquet data chunk.
    *
-   * @param rows chunk row set
+   * @param parquetWriter buffered parquet row data
+   * @param output byte array file output
    * @param metadata chunk metadata
    */
-  public ParquetChunkData(List<List<Object>> rows, Map<String, String> metadata) {
-    this.rows = rows;
+  public ParquetChunkData(
+      BdecParquetWriter parquetWriter, ByteArrayOutputStream output, Map<String, String> metadata) {
+    this.parquetWriter = parquetWriter;
+    this.output = output;
     this.metadata = metadata;
   }
 }

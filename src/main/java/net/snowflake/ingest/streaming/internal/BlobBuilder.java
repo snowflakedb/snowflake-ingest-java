@@ -77,15 +77,14 @@ class BlobBuilder {
 
     // TODO: channels with different schema can't be combined even if they belongs to same table
     for (List<ChannelData<T>> channelsDataPerTable : blobData) {
-      ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
       SnowflakeStreamingIngestChannelInternal.ChannelContext firstChannelContext =
           channelsDataPerTable.get(0).getChannelContext();
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
-      Flusher.SerializationResult result =
-          flusher.serialize(channelsDataPerTable, chunkData, filePath);
+      Flusher.SerializationResult result = flusher.serialize(channelsDataPerTable, filePath);
 
       if (!result.channelsMetadataList.isEmpty()) {
+        ByteArrayOutputStream chunkData = result.chunkData;
         Pair<byte[], Integer> compressionResult =
             compressIfNeededAndPadChunk(
                 filePath,

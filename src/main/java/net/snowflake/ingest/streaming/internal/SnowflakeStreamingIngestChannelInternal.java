@@ -120,7 +120,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             offsetToken,
             rowSequencer,
             this::collectRowSize);
-    this.rowBuffer = AbstractRowBuffer.createRowBuffer(bufferConfig);
+    this.rowBuffer = AbstractRowBuffer.createRowBuffer(bufferConfig, false);
     logger.logInfo(
         "Channel={} created for table={}", this.channelContext.name, this.channelContext.tableName);
   }

@@ -168,7 +168,11 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   private final Consumer<Float> rowSizeMetric;
 
+  // Allocator used to allocate the buffers
+  final BufferAllocator allocator;
+
   AbstractRowBuffer(BufferConfig bufferConfig) {
+    this.allocator = bufferConfig.allocator;
     this.rowSizeMetric = bufferConfig.rowSizeMetric;
     this.isValid = true;
     this.offsetToken = bufferConfig.offsetToken;
@@ -480,6 +484,40 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   @VisibleForTesting
   abstract int getTempRowCount();
 
+  abstract void closeInternal();
+
+  /**
+   * Close the row buffer and release resources. Note that the caller needs to handle
+   * synchronization
+   */
+  @Override
+  public void close(String name) {
+    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
+
+    closeInternal();
+
+    long allocatedAfterRelease = this.allocator.getAllocatedMemory();
+    logger.logInfo(
+        "Trying to close {} for channel={} from function={}, allocatedBeforeRelease={},"
+            + " allocatedAfterRelease={}",
+        this.getClass().getSimpleName(),
+        channelFullyQualifiedName,
+        name,
+        allocatedBeforeRelease,
+        allocatedAfterRelease);
+    Utils.closeAllocator(this.allocator);
+
+    // If the channel is valid but still has leftover data, throw an exception because it should be
+    // cleaned up already before calling close
+    if (allocatedBeforeRelease > 0 && isValid()) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "Memory leaked=%d by allocator=%s, channel=%s",
+              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
+    }
+  }
+
   /** Normalize the column name, given with the inserted row, to send to server side. */
   static String formatColumnName(String columnName) {
     Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
@@ -508,7 +546,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   /** Row buffer factory. */
-  static <T> AbstractRowBuffer<T> createRowBuffer(BufferConfig bufferConfig) {
+  static <T> AbstractRowBuffer<T> createRowBuffer(
+      BufferConfig bufferConfig, boolean bufferForTests) {
     // TODO: The circular dependency SnowflakeStreamingIngestChannelInternal <-> RowBuffer
     // (SNOW-657667)
     // can be probably reconsidered
@@ -518,7 +557,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         return (AbstractRowBuffer<T>) new ArrowRowBuffer(bufferConfig);
       case THREE:
         //noinspection unchecked
-        return (AbstractRowBuffer<T>) new ParquetRowBuffer(bufferConfig);
+        return (AbstractRowBuffer<T>) new ParquetRowBuffer(bufferConfig, bufferForTests);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR,
