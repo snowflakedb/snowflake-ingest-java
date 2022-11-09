@@ -7,13 +7,13 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
-import net.snowflake.ingest.utils.Constants;
 
 /**
  * Interface for the buffer in the Streaming Ingest channel that holds the un-flushed rows, these
  * rows will be converted to the underlying format implementation for faster processing
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
+ *     ParquetChunkData})
  */
 interface RowBuffer<T> {
   /**
@@ -57,8 +57,7 @@ interface RowBuffer<T> {
    * Create {@link Flusher} implementation to flush the buffered rows to the underlying format
    * implementation for faster processing.
    *
-   * @param bdecVersion version of the BDEC file format to generate
    * @return flusher
    */
-  Flusher<T> createFlusher(Constants.BdecVersion bdecVersion);
+  Flusher<T> createFlusher();
 }

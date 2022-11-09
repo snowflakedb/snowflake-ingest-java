@@ -2,10 +2,16 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import net.snowflake.ingest.utils.Constants;
 import org.junit.Ignore;
 import org.junit.Test;
 
 public class StringsIT extends AbstractDataTypeTest {
+
+  public StringsIT(String name, Constants.BdecVersion bdecVersion) {
+    super(name, bdecVersion);
+  }
+
   @Test
   public void testStrings() throws Exception {
     testJdbcTypeCompatibility("VARCHAR", "", new StringProvider());

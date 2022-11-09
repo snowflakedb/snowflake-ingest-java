@@ -58,7 +58,8 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  * <li>upload the blob to stage
  * <li>register the blob to the targeted Snowflake table
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
+ *     ParquetChunkData})
  */
 class FlushService<T> {
 
@@ -448,7 +449,7 @@ class FlushService<T> {
       SnowflakeStreamingIngestChannelInternal<T> firstChannel =
           channelsDataPerTable.get(0).getChannel();
 
-      Flusher<T> flusher = firstChannel.getRowBuffer().createFlusher(bdecVersion);
+      Flusher<T> flusher = firstChannel.getRowBuffer().createFlusher();
       Flusher.SerializationResult result =
           flusher.serialize(channelsDataPerTable, chunkData, filePath);
 
@@ -467,7 +468,6 @@ class FlushService<T> {
         // We need to maintain IV as a block counter for the whole file, even interleaved,
         // to align with decryption on the Snowflake query path.
         // TODO: address alignment for the header SNOW-557866
-        // TODO: encryption is not yet supported by server side for Parquet
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
             Cryptor.encrypt(
@@ -559,7 +559,8 @@ class FlushService<T> {
         blob.length,
         System.currentTimeMillis() - startTime);
 
-    return new BlobMetadata(filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
+    return BlobMetadata.createBlobMetadata(
+        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
   }
 
   /**

@@ -216,10 +216,7 @@ public class ParameterProvider {
     Object val =
         this.parameterMap.getOrDefault(
             MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT);
-    if (val instanceof String) {
-      return Long.parseLong(val.toString());
-    }
-    return (long) val;
+    return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
   @Override
