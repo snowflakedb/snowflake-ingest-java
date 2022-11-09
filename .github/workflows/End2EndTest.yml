@@ -33,3 +33,6 @@ jobs:
         continue-on-error: false
         run: |
           ./scripts/run_gh_actions.sh
+
+      - name: Code Coverage
+        uses: codecov/codecov-action@v1
