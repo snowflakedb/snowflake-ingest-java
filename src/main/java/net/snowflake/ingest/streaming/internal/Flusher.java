@@ -21,13 +21,11 @@ public interface Flusher<T> {
    * Serialize buffered rows into the underlying format.
    *
    * @param channelsDataPerTable buffered rows
-   * @param chunkData output
    * @param filePath file path
    * @return {@link SerializationResult}
    * @throws IOException
    */
-  SerializationResult serialize(
-      List<ChannelData<T>> channelsDataPerTable, ByteArrayOutputStream chunkData, String filePath)
+  SerializationResult serialize(List<ChannelData<T>> channelsDataPerTable, String filePath)
       throws IOException;
 
   /** Holds result of the buffered rows conversion: channel metadata and stats. */
@@ -35,14 +33,17 @@ public interface Flusher<T> {
     final List<ChannelMetadata> channelsMetadataList;
     final Map<String, RowBufferStats> columnEpStatsMapCombined;
     final long rowCount;
+    final ByteArrayOutputStream chunkData;
 
     public SerializationResult(
         List<ChannelMetadata> channelsMetadataList,
         Map<String, RowBufferStats> columnEpStatsMapCombined,
-        long rowCount) {
+        long rowCount,
+        ByteArrayOutputStream chunkData) {
       this.channelsMetadataList = channelsMetadataList;
       this.columnEpStatsMapCombined = columnEpStatsMapCombined;
       this.rowCount = rowCount;
+      this.chunkData = chunkData;
     }
   }
 }

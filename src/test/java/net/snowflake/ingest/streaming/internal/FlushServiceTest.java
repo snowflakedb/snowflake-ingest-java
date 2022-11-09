@@ -79,17 +79,20 @@ public class FlushServiceTest {
     }
   }
 
-  private abstract static class TestContext<T> implements AutoCloseable {
+  private static class TestContext<T> implements AutoCloseable {
+    final Constants.BdecVersion bdecVersion;
     SnowflakeStreamingIngestClientInternal<T> client;
     ChannelCache<T> channelCache;
     final Map<String, SnowflakeStreamingIngestChannelInternal<T>> channels = new HashMap<>();
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
+    private final BufferAllocator allocator = new RootAllocator();
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
-    TestContext() {
+    TestContext(Constants.BdecVersion bdecVersion) {
+      this.bdecVersion = bdecVersion;
       stage = Mockito.mock(StreamingIngestStage.class);
       Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
       parameterProvider = new ParameterProvider();
@@ -113,7 +116,7 @@ public class FlushServiceTest {
       return flushService.buildAndUpload("file_name", blobData);
     }
 
-    abstract SnowflakeStreamingIngestChannelInternal<T> createChannel(
+    SnowflakeStreamingIngestChannelInternal<T> createChannel(
         String name,
         String dbName,
         String schemaName,
@@ -123,7 +126,32 @@ public class FlushServiceTest {
         Long rowSequencer,
         String encryptionKey,
         Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption);
+        OpenChannelRequest.OnErrorOption onErrorOption) {
+      return new SnowflakeStreamingIngestChannelInternal<>(
+              name,
+              dbName,
+              schemaName,
+              tableName,
+              offsetToken,
+              channelSequencer,
+              rowSequencer,
+              client,
+              encryptionKey,
+              encryptionKeyId,
+              onErrorOption,
+              bdecVersion,
+              allocator);
+    }
+
+    @Override
+    public void close() {
+      try {
+        // Close allocator to make sure no memory leak
+        allocator.close();
+      } catch (Exception e) {
+        Assert.fail(String.format("Allocator close failure. Caused by %s", e.getMessage()));
+      }
+    }
 
     ChannelBuilder channelBuilder(String name) {
       return new ChannelBuilder(name);
@@ -235,43 +263,8 @@ public class FlushServiceTest {
   }
 
   private static class ArrowTestContext extends TestContext<VectorSchemaRoot> {
-    private final BufferAllocator allocator = new RootAllocator();
-
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> createChannel(
-        String name,
-        String dbName,
-        String schemaName,
-        String tableName,
-        String offsetToken,
-        Long channelSequencer,
-        Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption) {
-      return new SnowflakeStreamingIngestChannelInternal<>(
-          name,
-          dbName,
-          schemaName,
-          tableName,
-          offsetToken,
-          channelSequencer,
-          rowSequencer,
-          client,
-          encryptionKey,
-          encryptionKeyId,
-          onErrorOption,
-          Constants.BdecVersion.ONE,
-          allocator);
-    }
-
-    @Override
-    public void close() {
-      try {
-        // Close allocator to make sure no memory leak
-        allocator.close();
-      } catch (Exception e) {
-        Assert.fail(String.format("Allocator close failure. Caused by %s", e.getMessage()));
-      }
+    private ArrowTestContext() {
+      super(Constants.BdecVersion.ONE);
     }
 
     static TestContextFactory<VectorSchemaRoot> createFactory() {
@@ -284,42 +277,16 @@ public class FlushServiceTest {
     }
   }
 
-  private static class ParquetTestContext extends TestContext<List<List<Object>>> {
+  private static class ParquetTestContext extends TestContext<ParquetChunkData> {
 
-    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> createChannel(
-        String name,
-        String dbName,
-        String schemaName,
-        String tableName,
-        String offsetToken,
-        Long channelSequencer,
-        Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption) {
-      return new SnowflakeStreamingIngestChannelInternal<>(
-          name,
-          dbName,
-          schemaName,
-          tableName,
-          offsetToken,
-          channelSequencer,
-          rowSequencer,
-          client,
-          encryptionKey,
-          encryptionKeyId,
-          onErrorOption,
-          Constants.BdecVersion.THREE,
-          null);
+    private ParquetTestContext() {
+      super(Constants.BdecVersion.THREE);
     }
 
-    @Override
-    public void close() {}
-
-    static TestContextFactory<List<List<Object>>> createFactory() {
-      return new TestContextFactory<List<List<Object>>>("Parquet") {
+    static TestContextFactory<ParquetChunkData> createFactory() {
+      return new TestContextFactory<ParquetChunkData>("Parquet") {
         @Override
-        TestContext<List<List<Object>>> create() {
+        TestContext<ParquetChunkData> create() {
           return new ParquetTestContext();
         }
       };

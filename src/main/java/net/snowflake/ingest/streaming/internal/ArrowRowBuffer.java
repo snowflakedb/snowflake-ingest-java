@@ -20,7 +20,6 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.arrow.vector.BaseFixedWidthVector;
 import org.apache.arrow.vector.BaseVariableWidthVector;
@@ -77,13 +76,9 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   // Map the column name to Arrow column field
   private final Map<String, Field> fields;
 
-  // Allocator used to allocate the buffers
-  private final BufferAllocator allocator;
-
   /** Construct a ArrowRowBuffer object. */
   ArrowRowBuffer(BufferConfig bufferConfig) {
     super(bufferConfig);
-    this.allocator = bufferConfig.allocator;
     this.fields = new HashMap<>();
   }
 
@@ -118,37 +113,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     this.tempVectorsRoot = new VectorSchemaRoot(tempVectors);
   }
 
-  /**
-   * Close the row buffer and release resources. Note that the caller needs to handle
-   * synchronization
-   */
   @Override
-  public void close(String name) {
-    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
+  void closeInternal() {
     if (this.vectorsRoot != null) {
       this.vectorsRoot.close();
       this.tempVectorsRoot.close();
     }
     this.fields.clear();
-    long allocatedAfterRelease = this.allocator.getAllocatedMemory();
-    logger.logInfo(
-        "Trying to close arrow buffer for channel={} from function={}, allocatedBeforeRelease={},"
-            + " allocatedAfterRelease={}",
-        channelFullyQualifiedName,
-        name,
-        allocatedBeforeRelease,
-        allocatedAfterRelease);
-    Utils.closeAllocator(this.allocator);
-
-    // If the channel is valid but still has leftover data, throw an exception because it should be
-    // cleaned up already before calling close
-    if (allocatedBeforeRelease > 0 && isValid()) {
-      throw new SFException(
-          ErrorCode.INTERNAL_ERROR,
-          String.format(
-              "Memory leaked=%d by allocator=%s, channel=%s",
-              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
-    }
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */

@@ -117,7 +117,7 @@ public class RowBufferTest {
     AbstractRowBuffer.BufferConfig bufferConfig =
         new AbstractRowBuffer.BufferConfig(
             new RootAllocator(), bdecVersion, onErrorOption, "test.buffer", "0", 0L, rs -> {});
-    return AbstractRowBuffer.createRowBuffer(bufferConfig);
+    return AbstractRowBuffer.createRowBuffer(bufferConfig, true);
   }
 
   @Test
