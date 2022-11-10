@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.ArrowType;
@@ -26,12 +27,9 @@ public class ArrowBufferTest {
   }
 
   ArrowRowBuffer createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
-    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel =
-        new SnowflakeStreamingIngestChannelInternal<>(
-            "channel", "db", "schema", "table", "0", 0L, 0L, client, "key", 1234L, onErrorOption);
-    return new ArrowRowBuffer(channel);
+    ChannelRuntimeState initialState = new ChannelRuntimeState("0", 0L, true);
+    return new ArrowRowBuffer(
+        onErrorOption, new RootAllocator(), "test.buffer", rs -> {}, initialState);
   }
 
   @Test

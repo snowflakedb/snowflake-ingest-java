@@ -14,10 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -39,13 +41,14 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private MessageType schema;
 
-  /**
-   * Construct a ParquetRowBuffer object
-   *
-   * @param channel client channel
-   */
-  ParquetRowBuffer(SnowflakeStreamingIngestChannelInternal<ParquetChunkData> channel) {
-    super(channel);
+  /** Construct a ParquetRowBuffer object. */
+  ParquetRowBuffer(
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      BufferAllocator allocator,
+      String fullyQualifiedChannelName,
+      Consumer<Float> rowSizeMetric,
+      ChannelRuntimeState channelRuntimeState) {
+    super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelRuntimeState);
     fieldIndex = new HashMap<>();
     metadata = new HashMap<>();
     data = new ArrayList<>();
@@ -73,7 +76,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       }
       this.statsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
 
-      if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.ABORT) {
+      if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
         this.tempStatsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
       }
 
@@ -211,7 +214,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.fieldIndex.clear();
     logger.logInfo(
         "Trying to close parquet buffer for channel={} from function={}",
-        this.owningChannel.getName(),
+        channelFullyQualifiedName,
         name);
   }
 
