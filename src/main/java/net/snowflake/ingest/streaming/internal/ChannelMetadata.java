@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.Nullable;
+import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestChannelInternal.ChannelContext;
 import net.snowflake.ingest.utils.Utils;
 
 /**
@@ -29,9 +30,9 @@ class ChannelMetadata {
     private Long rowSequencer;
     @Nullable private String offsetToken; // offset token could be null
 
-    Builder setOwningChannel(SnowflakeStreamingIngestChannelInternal<?> channel) {
-      this.channelName = channel.getName();
-      this.clientSequencer = channel.getChannelSequencer();
+    Builder setOwningChannelFromContext(ChannelContext channelContext) {
+      this.channelName = channelContext.name;
+      this.clientSequencer = channelContext.channelSequencer;
       return this;
     }
 

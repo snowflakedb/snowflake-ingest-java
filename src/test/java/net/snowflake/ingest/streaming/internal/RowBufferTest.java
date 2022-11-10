@@ -114,22 +114,10 @@ public class RowBufferTest {
   }
 
   private AbstractRowBuffer<?> createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
-    return (AbstractRowBuffer<?>)
-        new SnowflakeStreamingIngestChannelInternal<>(
-                "channel",
-                "db",
-                "schema",
-                "table",
-                "0",
-                0L,
-                0L,
-                new SnowflakeStreamingIngestClientInternal<>("client"),
-                "key",
-                1234L,
-                onErrorOption,
-                bdecVersion,
-                new RootAllocator())
-            .getRowBuffer();
+    AbstractRowBuffer.BufferConfig bufferConfig =
+        new AbstractRowBuffer.BufferConfig(
+            new RootAllocator(), bdecVersion, onErrorOption, "test.buffer", "0", 0L, rs -> {});
+    return AbstractRowBuffer.createRowBuffer(bufferConfig);
   }
 
   @Test
@@ -300,7 +288,7 @@ public class RowBufferTest {
     row.put("colDecimal", 1.23);
     row.put("colChar", "1111111111111111111111"); // too big
 
-    if (rowBuffer.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+    if (rowBuffer.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
       response = rowBuffer.insertRows(Collections.singletonList(row), null);
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(1, response.getErrorRowCount());
@@ -568,7 +556,7 @@ public class RowBufferTest {
     row.put("COLTIMESTAMPLTZ_SB8", "1621899220");
     row.put("COLTIMESTAMPLTZ_SB16", "1621899220.1234567");
 
-    if (innerBuffer.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+    if (innerBuffer.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
       InsertValidationResponse response =
           innerBuffer.insertRows(Collections.singletonList(row), null);
       Assert.assertTrue(response.hasErrors());
@@ -882,7 +870,7 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     row.put("COLBOOLEAN", null);
-    if (innerBuffer.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+    if (innerBuffer.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
       response = innerBuffer.insertRows(Collections.singletonList(row), "1");
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
@@ -929,7 +917,7 @@ public class RowBufferTest {
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLBOOLEAN2", true);
-    if (innerBuffer.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+    if (innerBuffer.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
       response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
       Assert.assertTrue(response.hasErrors());
       InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);

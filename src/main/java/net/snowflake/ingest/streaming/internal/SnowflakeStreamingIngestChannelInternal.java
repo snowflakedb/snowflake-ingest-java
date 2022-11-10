@@ -14,7 +14,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -26,7 +25,6 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
@@ -38,22 +36,10 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelInternal.class);
 
-  private final String channelName;
-  private final String dbName;
-  private final String schemaName;
-  private final String tableName;
-  private volatile String offsetToken;
-  private final AtomicLong rowSequencer;
-
-  // Sequencer for this channel, corresponding to client sequencer at server side because each
-  // connection to a channel at server side will be seen as a connection from a new client
-  private final Long channelSequencer;
+  private final ChannelContext channelContext;
 
   // Reference to the row buffer
   private final RowBuffer<T> rowBuffer;
-
-  // Indicates whether the channel is still valid
-  private volatile boolean isValid;
 
   // Indicates whether the channel is closed
   private volatile boolean isClosed;
@@ -63,15 +49,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   // Memory allocator
   private final BufferAllocator allocator;
-
-  // Data encryption key
-  private final String encryptionKey;
-
-  // Data encryption key id
-  private final Long encryptionKeyId;
-
-  // ON_ERROR option for this channel
-  private final OpenChannelRequest.OnErrorOption onErrorOption;
 
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
@@ -128,41 +105,24 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       OpenChannelRequest.OnErrorOption onErrorOption,
       Constants.BdecVersion bdecVersion,
       BufferAllocator allocator) {
-    this.channelName = name;
-    this.dbName = dbName;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
-    this.offsetToken = offsetToken;
-    this.channelSequencer = channelSequencer;
-    this.rowSequencer = new AtomicLong(rowSequencer);
-    this.isValid = true;
     this.isClosed = false;
     this.owningClient = client;
     this.allocator = allocator;
-    this.rowBuffer = createRowBuffer(bdecVersion);
-    this.encryptionKey = encryptionKey;
-    this.encryptionKeyId = encryptionKeyId;
-    this.onErrorOption = onErrorOption;
-    logger.logInfo("Channel={} created for table={}", this.channelName, this.tableName);
-  }
-
-  private RowBuffer<T> createRowBuffer(Constants.BdecVersion bdecVersion) {
-    // TODO: The circular dependency SnowflakeStreamingIngestChannelInternal <-> RowBuffer
-    // (SNOW-657667)
-    // can be probably reconsidered
-    switch (bdecVersion) {
-      case ONE:
-        //noinspection unchecked
-        return (RowBuffer<T>)
-            new ArrowRowBuffer((SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>) this);
-      case THREE:
-        //noinspection unchecked
-        return (RowBuffer<T>)
-            new ParquetRowBuffer((SnowflakeStreamingIngestChannelInternal<ParquetChunkData>) this);
-      default:
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
-    }
+    this.channelContext =
+        new ChannelContext(
+            name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
+    AbstractRowBuffer.BufferConfig bufferConfig =
+        new AbstractRowBuffer.BufferConfig(
+            allocator,
+            bdecVersion,
+            onErrorOption,
+            getFullyQualifiedName(),
+            offsetToken,
+            rowSequencer,
+            this::collectRowSize);
+    this.rowBuffer = AbstractRowBuffer.createRowBuffer(bufferConfig);
+    logger.logInfo(
+        "Channel={} created for table={}", this.channelContext.name, this.channelContext.tableName);
   }
 
   /**
@@ -173,8 +133,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public String getFullyQualifiedName() {
-    return String.format(
-        "%s.%s.%s.%s", this.dbName, this.schemaName, this.tableName, this.channelName);
+    return channelContext.fullyQualifiedName;
   }
 
   /**
@@ -184,50 +143,46 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public String getName() {
-    return this.channelName;
+    return this.channelContext.name;
   }
 
   @Override
   public String getDBName() {
-    return this.dbName;
+    return this.channelContext.dbName;
   }
 
   @Override
   public String getSchemaName() {
-    return this.schemaName;
+    return this.channelContext.schemaName;
   }
 
   @Override
   public String getTableName() {
-    return this.tableName;
+    return this.channelContext.tableName;
   }
 
   String getOffsetToken() {
-    return this.offsetToken;
-  }
-
-  void setOffsetToken(String offsetToken) {
-    this.offsetToken = offsetToken;
+    return this.rowBuffer.getOffsetToken();
   }
 
   Long getChannelSequencer() {
-    return this.channelSequencer;
+    return this.channelContext.channelSequencer;
   }
 
   long incrementAndGetRowSequencer() {
-    return this.rowSequencer.incrementAndGet();
+    return this.rowBuffer.getRowSequencer().incrementAndGet();
   }
 
   long getRowSequencer() {
-    return this.rowSequencer.get();
+    return this.rowBuffer.getRowSequencer().get();
   }
 
   String getEncryptionKey() {
-    return this.encryptionKey;
+    return this.channelContext.encryptionKey;
   }
 
   Long getEncryptionKeyId() {
-    return this.encryptionKeyId;
+    return this.channelContext.encryptionKeyId;
   }
 
   /**
@@ -237,7 +192,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public String getFullyQualifiedTableName() {
-    return String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
+    return channelContext.fullyQualifiedTableName;
   }
 
   /**
@@ -246,24 +201,28 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    * @return a ChannelData object
    */
   ChannelData<T> getData() {
-    return this.rowBuffer.flush();
+    ChannelData<T> data = this.rowBuffer.flush();
+    if (data != null) {
+      data.setChannelContext(channelContext);
+    }
+    return data;
   }
 
   /** @return a boolean to indicate whether the channel is valid or not */
   @Override
   public boolean isValid() {
-    return this.isValid;
+    return this.rowBuffer.isValid();
   }
 
   /** Mark the channel as invalid, and release resources */
   void invalidate(String message) {
-    this.isValid = false;
+    this.rowBuffer.invalidate();
     this.rowBuffer.close("invalidate");
     logger.logWarn(
         "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}, message={}",
         getFullyQualifiedName(),
-        channelSequencer,
-        rowSequencer,
+        channelContext.channelSequencer,
+        rowBuffer.getRowSequencer(),
         message);
   }
 
@@ -279,8 +238,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     logger.logInfo(
         "Channel is marked as closed, name={}, channel sequencer={}, row sequencer={}",
         getFullyQualifiedName(),
-        channelSequencer,
-        rowSequencer);
+        channelContext.channelSequencer,
+        rowBuffer.getRowSequencer());
   }
 
   /**
@@ -499,12 +458,84 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     }
   }
 
-  OpenChannelRequest.OnErrorOption getOnErrorOption() {
-    return this.onErrorOption;
-  }
-
   /** Returns underlying channel's row buffer implementation. */
   RowBuffer<T> getRowBuffer() {
     return rowBuffer;
+  }
+
+  /** Returns underlying channel's attributes. */
+  public ChannelContext getChannelContext() {
+    return channelContext;
+  }
+
+  /** Channel attributes. */
+  static class ChannelContext {
+    final String name;
+    final String fullyQualifiedName;
+    final String dbName;
+    final String schemaName;
+    final String tableName;
+    final String fullyQualifiedTableName;
+
+    // Sequencer for this channel, corresponding to client sequencer at server side because each
+    // connection to a channel at server side will be seen as a connection from a new client
+    final Long channelSequencer;
+
+    // Data encryption key
+    final String encryptionKey;
+
+    // Data encryption key id
+    final Long encryptionKeyId;
+
+    ChannelContext(
+        String name,
+        String dbName,
+        String schemaName,
+        String tableName,
+        Long channelSequencer,
+        String encryptionKey,
+        Long encryptionKeyId) {
+      this.name = name;
+      this.fullyQualifiedName = String.format("%s.%s.%s.%s", dbName, schemaName, tableName, name);
+      this.dbName = dbName;
+      this.schemaName = schemaName;
+      this.tableName = tableName;
+      this.fullyQualifiedTableName =
+          String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
+      this.channelSequencer = channelSequencer;
+      this.encryptionKey = encryptionKey;
+      this.encryptionKeyId = encryptionKeyId;
+    }
+
+    @Override
+    public String toString() {
+      return "ChannelContext{"
+          + "name='"
+          + name
+          + '\''
+          + ", fullyQualifiedName='"
+          + fullyQualifiedName
+          + '\''
+          + ", dbName='"
+          + dbName
+          + '\''
+          + ", schemaName='"
+          + schemaName
+          + '\''
+          + ", tableName='"
+          + tableName
+          + '\''
+          + ", fullyQualifiedTableName='"
+          + fullyQualifiedTableName
+          + '\''
+          + ", channelSequencer="
+          + channelSequencer
+          + ", encryptionKey='"
+          + encryptionKey
+          + '\''
+          + ", encryptionKeyId="
+          + encryptionKeyId
+          + '}';
+    }
   }
 }

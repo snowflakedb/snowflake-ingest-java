@@ -37,7 +37,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
     VectorSchemaRoot root = null;
     ArrowWriter arrowWriter = null;
     VectorLoader loader = null;
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> firstChannel = null;
+    String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
 
     try {
@@ -45,7 +45,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
         // Create channel metadata
         ChannelMetadata channelMetadata =
             ChannelMetadata.builder()
-                .setOwningChannel(data.getChannel())
+                .setOwningChannelFromContext(data.getChannelContext())
                 .setRowSequencer(data.getRowSequencer())
                 .setOffsetToken(data.getOffsetToken())
                 .build();
@@ -54,7 +54,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
 
         logger.logDebug(
             "Start building channel={}, rowCount={}, bufferSize={} in blob={}",
-            data.getChannel().getFullyQualifiedName(),
+            data.getChannelContext().fullyQualifiedName,
             data.getRowCount(),
             data.getBufferSize(),
             filePath);
@@ -64,14 +64,14 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
           root = data.getVectors();
           arrowWriter = new ArrowStreamWriter(root, null, chunkData);
           loader = new VectorLoader(root);
-          firstChannel = data.getChannel();
+          firstChannelFullyQualifiedTableName = data.getChannelContext().fullyQualifiedTableName;
           arrowWriter.start();
         } else {
           // This method assumes that channelsDataPerTable is grouped by table. We double check
           // here and throw an error if the assumption is violated
-          if (!data.getChannel()
-              .getFullyQualifiedTableName()
-              .equals(firstChannel.getFullyQualifiedTableName())) {
+          if (!data.getChannelContext()
+              .fullyQualifiedTableName
+              .equals(firstChannelFullyQualifiedTableName)) {
             throw new SFException(ErrorCode.INVALID_DATA_IN_CHUNK);
           }
 
@@ -91,7 +91,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
 
         logger.logDebug(
             "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
-            data.getChannel().getFullyQualifiedName(),
+            data.getChannelContext().fullyQualifiedName,
             data.getRowCount(),
             data.getBufferSize(),
             filePath);

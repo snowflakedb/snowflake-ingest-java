@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 
 /**
@@ -60,4 +61,16 @@ interface RowBuffer<T> {
    * @return flusher
    */
   Flusher<T> createFlusher();
+
+  /** Whether the buffer is still valid. */
+  boolean isValid();
+
+  /** Invalidate buffer. */
+  void invalidate();
+
+  /** Get offset token. */
+  String getOffsetToken();
+
+  /** Get row sequencer. */
+  AtomicLong getRowSequencer();
 }

@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.google.inject.Provider;
 import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -21,8 +22,9 @@ class ChannelData<T> {
   private T vectors;
   private float bufferSize;
   private int rowCount;
-  private SnowflakeStreamingIngestChannelInternal<T> channel;
   private Map<String, RowBufferStats> columnEps;
+  private SnowflakeStreamingIngestChannelInternal.ChannelContext channelContext;
+  private Provider<Flusher<T>> flusherFactory;
 
   // TODO performance test this vs in place update
   /**
@@ -104,16 +106,37 @@ class ChannelData<T> {
     this.bufferSize = bufferSize;
   }
 
-  SnowflakeStreamingIngestChannelInternal<T> getChannel() {
-    return this.channel;
+  public SnowflakeStreamingIngestChannelInternal.ChannelContext getChannelContext() {
+    return channelContext;
   }
 
-  void setChannel(SnowflakeStreamingIngestChannelInternal<T> channel) {
-    this.channel = channel;
+  public void setChannelContext(
+      SnowflakeStreamingIngestChannelInternal.ChannelContext channelContext) {
+    this.channelContext = channelContext;
+  }
+
+  public Flusher<T> createFlusher() {
+    return flusherFactory.get();
+  }
+
+  public void setFlusherFactory(Provider<Flusher<T>> flusherFactory) {
+    this.flusherFactory = flusherFactory;
   }
 
   @Override
   public String toString() {
-    return this.channel.toString();
+    return "ChannelData{"
+        + "rowSequencer="
+        + rowSequencer
+        + ", offsetToken='"
+        + offsetToken
+        + '\''
+        + ", bufferSize="
+        + bufferSize
+        + ", rowCount="
+        + rowCount
+        + ", channelContext="
+        + channelContext
+        + '}';
   }
 }

@@ -101,6 +101,7 @@ public class FlushServiceTest {
 
     ChannelData<T> flushChannel(String name) {
       ChannelData<T> channelData = channels.get(name).getRowBuffer().flush();
+      channelData.setChannelContext(channels.get(name).getChannelContext());
       this.channelData.add(channelData);
       return channelData;
     }
@@ -508,19 +509,19 @@ public class FlushServiceTest {
 
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
-            .setOwningChannel(channel1)
+            .setOwningChannelFromContext(channel1.getChannelContext())
             .setRowSequencer(1L)
             .setOffsetToken("offset1")
             .build();
     ChannelMetadata expectedChannel2Metadata =
         ChannelMetadata.builder()
-            .setOwningChannel(channel2)
+            .setOwningChannelFromContext(channel2.getChannelContext())
             .setRowSequencer(10L)
             .setOffsetToken("offset2")
             .build();
     ChunkMetadata expectedChunkMetadata =
         ChunkMetadata.builder()
-            .setOwningTable(channel1)
+            .setOwningTableFromChannelContext(channel1.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(248)
             .setChannelList(Arrays.asList(expectedChannel1Metadata, expectedChannel2Metadata))
@@ -658,8 +659,8 @@ public class FlushServiceTest {
 
     ChannelData<StubChunkData> channel1Data = new ChannelData<>();
     ChannelData<StubChunkData> channel2Data = new ChannelData<>();
-    channel1Data.setChannel(channel1);
-    channel2Data.setChannel(channel1);
+    channel1Data.setChannelContext(channel1.getChannelContext());
+    channel2Data.setChannelContext(channel1.getChannelContext());
 
     channel1Data.setVectors(new StubChunkData());
     channel2Data.setVectors(new StubChunkData());
@@ -699,13 +700,13 @@ public class FlushServiceTest {
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
-            .setOwningChannel(channel1)
+            .setOwningChannelFromContext(channel1.getChannelContext())
             .setRowSequencer(0L)
             .setOffsetToken("offset1")
             .build();
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
-            .setOwningTable(channel1)
+            .setOwningTableFromChannelContext(channel1.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(dataSize)
             .setChannelList(Collections.singletonList(channelMetadata))
@@ -718,7 +719,8 @@ public class FlushServiceTest {
 
     final Constants.BdecVersion bdecVersion = ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
     byte[] blob =
-        BlobBuilder.build(chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
+        BlobBuilder.buildBlobBytes(
+            chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
 
     // Read the blob byte array back to valid the behavior
     InputStream input = new ByteArrayInputStream(blob);
