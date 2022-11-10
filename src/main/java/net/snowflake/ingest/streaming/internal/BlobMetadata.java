@@ -49,9 +49,14 @@ class BlobMetadata {
     return this.chunks;
   }
 
-  // TODO: send the bdec_version once server side supports this in production
-  //  @JsonProperty("bdec_version")
-  //  byte getVersionByte() {
-  //    return bdecVersion.toByte();
-  //  }
+  @JsonProperty("bdec_version")
+  byte getVersionByte() {
+    return bdecVersion.toByte();
+  }
+
+  /** Create {@link BlobMetadata}. */
+  static BlobMetadata createBlobMetadata(
+      String path, String md5, Constants.BdecVersion bdecVersion, List<ChunkMetadata> chunks) {
+    return new BlobMetadata(path, md5, bdecVersion, chunks);
+  }
 }

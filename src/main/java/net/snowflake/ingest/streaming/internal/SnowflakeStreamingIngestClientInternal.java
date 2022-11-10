@@ -82,7 +82,8 @@ import org.apache.arrow.memory.RootAllocator;
  * <li>the channel cache, which contains all the channels that belong to this account
  * <li>the flush service, which schedules and coordinates the flush to Snowflake tables
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
+ *     ParquetChunkData})
  */
 public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStreamingIngestClient {
 
@@ -303,9 +304,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       }
 
       logger.logInfo(
-          "Open channel request succeeded, channel={}, table={}, client={}",
+          "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
+              + " rowSequencer={}, client={}",
           request.getChannelName(),
           request.getFullyQualifiedTableName(),
+          response.getClientSequencer(),
+          response.getRowSequencer(),
           getName());
 
       // Channel is now registered, add it to the in-memory channel pool
@@ -550,7 +554,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                   .collect(Collectors.toList());
           if (!relevantChunks.isEmpty()) {
             retryBlobs.add(
-                new BlobMetadata(
+                BlobMetadata.createBlobMetadata(
                     blobMetadata.getPath(),
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),

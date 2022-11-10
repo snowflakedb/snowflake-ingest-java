@@ -16,7 +16,6 @@ import java.util.Optional;
 import java.util.Set;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -471,15 +470,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             // vector.setSafe requires the BigDecimal input scale explicitly match its scale
             inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
-            if (inputAsBigDecimal.abs().compareTo(BigDecimal.TEN.pow(columnPrecision - columnScale))
-                >= 0) {
-              throw new SFException(
-                  ErrorCode.INVALID_ROW,
-                  inputAsBigDecimal,
-                  String.format(
-                      "Number out of representable exclusive range of (-1e%s..1e%s)",
-                      columnPrecision - columnScale, columnPrecision - columnScale));
-            }
+            DataValidationUtil.checkValueInRange(inputAsBigDecimal, columnScale, columnPrecision);
 
             if (columnScale != 0 || physicalType == ColumnPhysicalType.SB16) {
               ((DecimalVector) vector).setSafe(curRowIndex, inputAsBigDecimal);
@@ -778,8 +769,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   }
 
   @Override
-  public Flusher<VectorSchemaRoot> createFlusher(Constants.BdecVersion bdecVersion) {
-    return new ArrowFlusher(bdecVersion);
+  public Flusher<VectorSchemaRoot> createFlusher() {
+    return new ArrowFlusher();
   }
 
   @VisibleForTesting
