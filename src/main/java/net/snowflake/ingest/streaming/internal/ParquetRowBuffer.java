@@ -39,13 +39,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private MessageType schema;
 
-  /**
-   * Construct a ParquetRowBuffer object
-   *
-   * @param channel client channel
-   */
-  ParquetRowBuffer(SnowflakeStreamingIngestChannelInternal<ParquetChunkData> channel) {
-    super(channel);
+  /** Construct a ParquetRowBuffer object. */
+  ParquetRowBuffer(BufferConfig bufferConfig) {
+    super(bufferConfig);
     fieldIndex = new HashMap<>();
     metadata = new HashMap<>();
     data = new ArrayList<>();
@@ -73,7 +69,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       }
       this.statsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
 
-      if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.ABORT) {
+      if (getOnErrorOption() == OpenChannelRequest.OnErrorOption.ABORT) {
         this.tempStatsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
       }
 
@@ -211,7 +207,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.fieldIndex.clear();
     logger.logInfo(
         "Trying to close parquet buffer for channel={} from function={}",
-        this.owningChannel.getName(),
+        channelFullyQualifiedName,
         name);
   }
 

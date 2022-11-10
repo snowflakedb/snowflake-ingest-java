@@ -454,7 +454,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
-            .setOwningChannel(channel)
+            .setOwningChannelFromContext(channel.getChannelContext())
             .setRowSequencer(channel.incrementAndGetRowSequencer())
             .setOffsetToken(channel.getOffsetToken())
             .build();
@@ -465,7 +465,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
-            .setOwningTable(channel)
+            .setOwningTableFromChannelContext(channel.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(100)
             .setChannelList(Collections.singletonList(channelMetadata))
@@ -506,25 +506,25 @@ public class SnowflakeStreamingIngestClientTest {
 
     ChannelMetadata channelMetadata1 =
         ChannelMetadata.builder()
-            .setOwningChannel(channel1)
+            .setOwningChannelFromContext(channel1.getChannelContext())
             .setRowSequencer(channel1.incrementAndGetRowSequencer())
             .setOffsetToken(channel1.getOffsetToken())
             .build();
     ChannelMetadata channelMetadata2 =
         ChannelMetadata.builder()
-            .setOwningChannel(channel2)
+            .setOwningChannelFromContext(channel2.getChannelContext())
             .setRowSequencer(channel2.incrementAndGetRowSequencer())
             .setOffsetToken(channel2.getOffsetToken())
             .build();
     ChannelMetadata channelMetadata3 =
         ChannelMetadata.builder()
-            .setOwningChannel(channel3)
+            .setOwningChannelFromContext(channel3.getChannelContext())
             .setRowSequencer(channel3.incrementAndGetRowSequencer())
             .setOffsetToken(channel3.getOffsetToken())
             .build();
     ChannelMetadata channelMetadata4 =
         ChannelMetadata.builder()
-            .setOwningChannel(channel4)
+            .setOwningChannelFromContext(channel4.getChannelContext())
             .setRowSequencer(channel4.incrementAndGetRowSequencer())
             .setOffsetToken(channel4.getOffsetToken())
             .build();
@@ -538,7 +538,7 @@ public class SnowflakeStreamingIngestClientTest {
     channels1.add(channelMetadata2);
     ChunkMetadata chunkMetadata1 =
         ChunkMetadata.builder()
-            .setOwningTable(channel1)
+            .setOwningTableFromChannelContext(channel1.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(100)
             .setChannelList(channels1)
@@ -548,7 +548,7 @@ public class SnowflakeStreamingIngestClientTest {
             .build();
     ChunkMetadata chunkMetadata2 =
         ChunkMetadata.builder()
-            .setOwningTable(channel2)
+            .setOwningTableFromChannelContext(channel2.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(100)
             .setChannelList(Collections.singletonList(channelMetadata3))
@@ -558,7 +558,7 @@ public class SnowflakeStreamingIngestClientTest {
             .build();
     ChunkMetadata chunkMetadata3 =
         ChunkMetadata.builder()
-            .setOwningTable(channel3)
+            .setOwningTableFromChannelContext(channel3.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(100)
             .setChannelList(Collections.singletonList(channelMetadata4))

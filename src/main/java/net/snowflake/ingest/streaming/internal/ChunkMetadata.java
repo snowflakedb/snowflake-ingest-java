@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestChannelInternal.ChannelContext;
 import net.snowflake.ingest.utils.Utils;
 
 /** Metadata for a chunk that sends to Snowflake as part of the register blob request */
@@ -36,10 +37,10 @@ class ChunkMetadata {
     private EpInfo epInfo;
     private Long encryptionKeyId;
 
-    Builder setOwningTable(SnowflakeStreamingIngestChannelInternal channel) {
-      this.dbName = channel.getDBName();
-      this.schemaName = channel.getSchemaName();
-      this.tableName = channel.getTableName();
+    Builder setOwningTableFromChannelContext(ChannelContext channelContext) {
+      this.dbName = channelContext.dbName;
+      this.schemaName = channelContext.schemaName;
+      this.tableName = channelContext.tableName;
       return this;
     }
 

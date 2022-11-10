@@ -80,14 +80,10 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   // Allocator used to allocate the buffers
   private final BufferAllocator allocator;
 
-  /**
-   * Construct a ArrowRowBuffer object
-   *
-   * @param channel client channel
-   */
-  ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
-    super(channel);
-    this.allocator = channel.getAllocator();
+  /** Construct a ArrowRowBuffer object. */
+  ArrowRowBuffer(BufferConfig bufferConfig) {
+    super(bufferConfig);
+    this.allocator = bufferConfig.allocator;
     this.fields = new HashMap<>();
   }
 
@@ -111,7 +107,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       vectors.add(vector);
       this.statsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
 
-      if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.ABORT) {
+      if (getOnErrorOption() == OpenChannelRequest.OnErrorOption.ABORT) {
         FieldVector tempVector = field.createVector(this.allocator);
         tempVectors.add(tempVector);
         this.tempStatsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
@@ -138,7 +134,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     logger.logInfo(
         "Trying to close arrow buffer for channel={} from function={}, allocatedBeforeRelease={},"
             + " allocatedAfterRelease={}",
-        this.owningChannel.getName(),
+        channelFullyQualifiedName,
         name,
         allocatedBeforeRelease,
         allocatedAfterRelease);
@@ -146,12 +142,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // If the channel is valid but still has leftover data, throw an exception because it should be
     // cleaned up already before calling close
-    if (allocatedBeforeRelease > 0 && this.owningChannel.isValid()) {
+    if (allocatedBeforeRelease > 0 && isValid()) {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR,
           String.format(
               "Memory leaked=%d by allocator=%s, channel=%s",
-              allocatedBeforeRelease, this.allocator, this.owningChannel.getFullyQualifiedName()));
+              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
     }
   }
 
