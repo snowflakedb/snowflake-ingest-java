@@ -59,7 +59,11 @@ class BlobBuilder {
    * @throws IOException
    */
   static Pair<byte[], Integer> compress(
-      String filePath, ByteArrayOutputStream chunkData, int blockSizeToAlignTo) throws IOException {
+      String filePath,
+      ByteArrayOutputStream chunkData,
+      int blockSizeToAlignTo,
+      boolean disableEncryptionAndPadding)
+      throws IOException {
     int uncompressedSize = chunkData.size();
     ByteArrayOutputStream compressedOutputStream = new ByteArrayOutputStream(uncompressedSize);
     try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(compressedOutputStream, true)) {
@@ -90,7 +94,10 @@ class BlobBuilder {
         doubleCompressedSize);
 
     int compressedSize = compressedOutputStream.size();
-    int paddingSize = blockSizeToAlignTo - compressedSize % blockSizeToAlignTo;
+    int paddingSize =
+        disableEncryptionAndPadding
+            ? 0
+            : (blockSizeToAlignTo - compressedSize % blockSizeToAlignTo);
     compressedOutputStream.write(new byte[paddingSize]);
     return new Pair<>(compressedOutputStream.toByteArray(), compressedSize);
   }
@@ -108,7 +115,11 @@ class BlobBuilder {
    * @throws IOException
    */
   static Pair<byte[], Integer> compressIfNeededAndPadChunk(
-      String filePath, ByteArrayOutputStream chunkData, int blockSizeToAlignTo, boolean compress)
+      String filePath,
+      ByteArrayOutputStream chunkData,
+      int blockSizeToAlignTo,
+      boolean compress,
+      boolean disableEncryptionAndPadding)
       throws IOException {
     // Encryption needs padding to the ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES
     // to align with decryption on the Snowflake query path starting from this chunk offset.
@@ -119,10 +130,12 @@ class BlobBuilder {
     if (compress) {
       // Stream write mode does not support column level compression.
       // Compress the chunk data and pad it for encryption.
-      return BlobBuilder.compress(filePath, chunkData, blockSizeToAlignTo);
+      return BlobBuilder.compress(
+          filePath, chunkData, blockSizeToAlignTo, disableEncryptionAndPadding);
     } else {
       int actualSize = chunkData.size();
-      int paddingSize = blockSizeToAlignTo - actualSize % blockSizeToAlignTo;
+      int paddingSize =
+          disableEncryptionAndPadding ? 0 : (blockSizeToAlignTo - actualSize % blockSizeToAlignTo);
       chunkData.write(new byte[paddingSize]);
       return new Pair<>(chunkData.toByteArray(), actualSize);
     }

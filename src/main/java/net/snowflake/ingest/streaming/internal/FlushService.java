@@ -442,6 +442,8 @@ class FlushService<T> {
     long curDataSize = 0L;
     CRC32 crc = new CRC32();
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
+    boolean disableChunkEncryptionAndPadding =
+        this.owningClient.getParameterProvider().getDisableChunkEncryptionAndPadding();
 
     // TODO: channels with different schema can't be combined even if they belongs to same table
     for (List<ChannelData<T>> channelsDataPerTable : blobData) {
@@ -459,7 +461,8 @@ class FlushService<T> {
                 filePath,
                 chunkData,
                 Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES,
-                bdecVersion == Constants.BdecVersion.ONE);
+                bdecVersion == Constants.BdecVersion.ONE,
+                disableChunkEncryptionAndPadding);
         byte[] compressedAndPaddedChunkData = compressionResult.getFirst();
         int compressedChunkLength = compressionResult.getSecond();
 
@@ -470,8 +473,10 @@ class FlushService<T> {
         // TODO: address alignment for the header SNOW-557866
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(
-                compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
+            disableChunkEncryptionAndPadding
+                ? compressedAndPaddedChunkData
+                : Cryptor.encrypt(
+                    compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
@@ -490,7 +495,8 @@ class FlushService<T> {
                 .setChunkLength(compressedChunkLength)
                 .setChannelList(result.channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(firstChannel.getEncryptionKeyId())
+                .setEncryptionKeyId(
+                    disableChunkEncryptionAndPadding ? 0 : firstChannel.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
                         result.rowCount, result.columnEpStatsMapCombined))

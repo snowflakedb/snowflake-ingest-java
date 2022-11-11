@@ -21,6 +21,8 @@ public class ParameterProvider {
   public static final String BLOB_UPLOAD_MAX_RETRY_COUNT =
       "BLOB_UPLOAD_MAX_RETRY_COUNT".toLowerCase();
   public static final String MAX_MEMORY_LIMIT_IN_BYTES = "MAX_MEMORY_LIMIT_IN_BYTES".toLowerCase();
+  public static final String DISABLE_CHUNK_ENCRYPTION_AND_PADDING =
+      "DISABLE_CHUNK_ENCRYPTION_AND_PADDING".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -32,6 +34,7 @@ public class ParameterProvider {
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
+  public static final boolean DISABLE_CHUNK_ENCRYPTION_AND_PADDING_DEFAULT = false;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -113,6 +116,12 @@ public class ParameterProvider {
 
     this.updateValue(
         MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT, parameterOverrides, props);
+
+    this.updateValue(
+        DISABLE_CHUNK_ENCRYPTION_AND_PADDING,
+        DISABLE_CHUNK_ENCRYPTION_AND_PADDING_DEFAULT,
+        parameterOverrides,
+        props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -217,6 +226,17 @@ public class ParameterProvider {
         this.parameterMap.getOrDefault(
             MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT);
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  /** @return The flag value whether to disable chunk encryption and padding */
+  public boolean getDisableChunkEncryptionAndPadding() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            DISABLE_CHUNK_ENCRYPTION_AND_PADDING, DISABLE_CHUNK_ENCRYPTION_AND_PADDING_DEFAULT);
+    if (val instanceof String) {
+      return Boolean.parseBoolean(val.toString());
+    }
+    return (boolean) val;
   }
 
   @Override
