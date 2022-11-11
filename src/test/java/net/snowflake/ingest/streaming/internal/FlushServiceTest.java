@@ -475,8 +475,14 @@ public class FlushServiceTest {
     channel1.insertRows(rows1, "offset1");
     channel2.insertRows(rows2, "offset2");
 
-    ChannelData<?> channel1Data = testContext.flushChannel(channel1.getName());
-    ChannelData<?> channel2Data = testContext.flushChannel(channel2.getName());
+    Assert.assertNotNull(testContext);
+    Assert.assertNotNull(channel1);
+    String name1 = channel1.getName();
+    Assert.assertNotNull(name1);
+    ChannelData<?> channel1Data = testContext.flushChannel(name1);
+    String name2 = channel2.getName();
+    Assert.assertNotNull(name2);
+    ChannelData<?> channel2Data = testContext.flushChannel(name2);
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
     Map<String, RowBufferStats> eps2 = new HashMap<>();
@@ -596,8 +602,14 @@ public class FlushServiceTest {
     channel1.insertRows(rows1, "offset1");
     channel3.insertRows(rows2, "offset2");
 
-    ChannelData<?> data1 = testContext.flushChannel(channel1.getName());
-    ChannelData<?> data2 = testContext.flushChannel(channel3.getName());
+    Assert.assertNotNull(testContext);
+    Assert.assertNotNull(channel1);
+    String name1 = channel1.getName();
+    Assert.assertNotNull(name1);
+    ChannelData<?> data1 = testContext.flushChannel(name1);
+    String name2 = channel3.getName();
+    Assert.assertNotNull(name2);
+    ChannelData<?> data2 = testContext.flushChannel(name2);
 
     data1.setRowSequencer(0L);
     data1.setBufferSize(100);
