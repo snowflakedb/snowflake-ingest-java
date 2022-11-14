@@ -479,7 +479,13 @@ public class FlushServiceTest {
     Assert.assertNotNull(channel1);
     String name1 = channel1.getName();
     Assert.assertNotNull(name1);
-    ChannelData<?> channel1Data = testContext.flushChannel(name1);
+
+    Map<String, ? extends SnowflakeStreamingIngestChannelInternal<?>> channels = testContext.channels;
+    SnowflakeStreamingIngestChannelInternal<?> ch = channels.get(name1);
+    RowBuffer<?> rowBuffer = ch.getRowBuffer();
+    ChannelData<?> channel1Data = rowBuffer.flush();
+    channel1Data.setChannelContext(ch.getChannelContext());
+
     String name2 = channel2.getName();
     Assert.assertNotNull(name2);
     ChannelData<?> channel2Data = testContext.flushChannel(name2);
@@ -606,7 +612,13 @@ public class FlushServiceTest {
     Assert.assertNotNull(channel1);
     String name1 = channel1.getName();
     Assert.assertNotNull(name1);
-    ChannelData<?> data1 = testContext.flushChannel(name1);
+
+    Map<String, ? extends SnowflakeStreamingIngestChannelInternal<?>> channels = testContext.channels;
+    SnowflakeStreamingIngestChannelInternal<?> ch = channels.get(name1);
+    RowBuffer<?> rowBuffer = ch.getRowBuffer();
+    ChannelData<?> data1 = rowBuffer.flush();
+    data1.setChannelContext(ch.getChannelContext());
+
     String name2 = channel3.getName();
     Assert.assertNotNull(name2);
     ChannelData<?> data2 = testContext.flushChannel(name2);
