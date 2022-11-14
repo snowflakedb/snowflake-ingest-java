@@ -4,9 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.google.inject.Provider;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
+
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
@@ -24,7 +25,7 @@ class ChannelData<T> {
   private int rowCount;
   private Map<String, RowBufferStats> columnEps;
   private SnowflakeStreamingIngestChannelInternal.ChannelContext channelContext;
-  private Provider<Flusher<T>> flusherFactory;
+  private Supplier<Flusher<T>> flusherFactory;
 
   // TODO performance test this vs in place update
   /**
@@ -119,7 +120,7 @@ class ChannelData<T> {
     return flusherFactory.get();
   }
 
-  public void setFlusherFactory(Provider<Flusher<T>> flusherFactory) {
+  public void setFlusherFactory(Supplier<Flusher<T>> flusherFactory) {
     this.flusherFactory = flusherFactory;
   }
 
