@@ -476,6 +476,7 @@ public class FlushServiceTest {
     channel1.insertRows(rows1, "offset1");
     channel2.insertRows(rows2, "offset2");
 
+    TestContext<?> testContext = this.testContext;
     Assert.assertNotNull(testContext);
     Assert.assertNotNull(channel1);
     String name1 = channel1.getName();
@@ -611,6 +612,7 @@ public class FlushServiceTest {
     channel1.insertRows(rows1, "offset1");
     channel3.insertRows(rows2, "offset2");
 
+    TestContext<?> testContext = this.testContext;
     Assert.assertNotNull(testContext);
     Assert.assertNotNull(channel1);
     String name1 = channel1.getName();
