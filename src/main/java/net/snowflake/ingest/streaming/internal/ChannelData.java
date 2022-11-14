@@ -7,7 +7,6 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
-
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
