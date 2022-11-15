@@ -477,9 +477,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
             ? runtime.maxMemory()
             : maxMemoryLimitInBytes;
-    long freeMemory = runtime.freeMemory() + (runtime.maxMemory()-runtime.totalMemory());
+    long freeMemory = runtime.freeMemory() + (runtime.maxMemory() - runtime.totalMemory());
     boolean hasLowRuntimeMemory =
-            freeMemory < LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES
+        freeMemory < LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES
             && freeMemory * 100 / maxMemory < insertThrottleThresholdInPercentage;
     if (hasLowRuntimeMemory) {
       logger.logWarn(

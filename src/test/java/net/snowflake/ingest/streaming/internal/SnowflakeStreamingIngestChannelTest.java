@@ -536,7 +536,7 @@ public class SnowflakeStreamingIngestChannelTest {
     ParameterProvider parameterProvider = new ParameterProvider();
     Mockito.when(mockedRunTime.freeMemory())
         .thenReturn(
-                maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
+            maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
 
     CompletableFuture<Void> future =
         CompletableFuture.runAsync(() -> channel.throttleInsertIfNeeded(mockedRunTime));
