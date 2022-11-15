@@ -513,6 +513,7 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testInsertRowThrottling() {
+    long maxMemory = 1000000L;
     SnowflakeStreamingIngestClientInternal<?> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
     SnowflakeStreamingIngestChannelInternal<?> channel =
@@ -530,11 +531,12 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE);
 
     Runtime mockedRunTime = Mockito.mock(Runtime.class);
-    Mockito.when(mockedRunTime.maxMemory()).thenReturn(1000000L);
+    Mockito.when(mockedRunTime.maxMemory()).thenReturn(maxMemory);
+    Mockito.when(mockedRunTime.totalMemory()).thenReturn(maxMemory);
     ParameterProvider parameterProvider = new ParameterProvider();
     Mockito.when(mockedRunTime.freeMemory())
         .thenReturn(
-            1000000L * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
+            maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
 
     CompletableFuture<Void> future =
         CompletableFuture.runAsync(() -> channel.throttleInsertIfNeeded(mockedRunTime));
