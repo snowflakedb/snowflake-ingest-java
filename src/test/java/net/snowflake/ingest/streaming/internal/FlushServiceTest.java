@@ -43,6 +43,7 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -477,7 +478,21 @@ public class FlushServiceTest {
     channel1.insertRows(rows1, "offset1");
     channel2.insertRows(rows2, "offset2");
 
-    ChannelData<?> channel1Data = testContext.flushChannel(channel1.getName());
+    String name1 = channel1.getName();
+    ChannelData<?> channel1Data;
+    try {
+      channel1Data = testContext.flushChannel(name1);
+    } catch (NullPointerException e) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          "Channel '"
+              + name1
+              + "' - NullPointerException: "
+              + e.getMessage()
+              + ", stack trace: \n"
+              + ExceptionUtils.getStackTrace(e),
+          e);
+    }
     ChannelData<?> channel2Data = testContext.flushChannel(channel2.getName());
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
@@ -599,7 +614,21 @@ public class FlushServiceTest {
     channel1.insertRows(rows1, "offset1");
     channel3.insertRows(rows2, "offset2");
 
-    ChannelData<?> data1 = testContext.flushChannel(channel1.getName());
+    String name1 = channel1.getName();
+    ChannelData<?> data1;
+    try {
+      data1 = testContext.flushChannel(name1);
+    } catch (NullPointerException e) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          "Channel '"
+              + name1
+              + "' - NullPointerException: "
+              + e.getMessage()
+              + ", stack trace: \n"
+              + ExceptionUtils.getStackTrace(e),
+          e);
+    }
     ChannelData<?> data2 = testContext.flushChannel(channel3.getName());
 
     data1.setRowSequencer(0L);
