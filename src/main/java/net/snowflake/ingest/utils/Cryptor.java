@@ -103,7 +103,7 @@ public class Cryptor {
     // Generate the derived key
     SecretKey derivedKey = deriveKey(encryptionKey, diversifier);
 
-    // Encrypt with zero IV
+    // Encrypt with the corresponding IV
     Cipher cipher = Cipher.getInstance(ENCRYPTION_ALGORITHM);
     byte[] ivBytes = ByteBuffer.allocate(2 * Long.BYTES).putLong(0).putLong(iv).array();
     cipher.init(Cipher.ENCRYPT_MODE, derivedKey, new IvParameterSpec(ivBytes));

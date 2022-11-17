@@ -61,29 +61,13 @@ public class Constants {
     REST_API,
   }
 
-  /** Thw write mode to generate Arrow BDEC file. */
-  public enum ArrowBatchWriteMode {
-    /** Stream format is produced by {@link org.apache.arrow.vector.ipc.ArrowStreamWriter}. */
-    STREAM,
-
-    /**
-     * File format is produced by {@link org.apache.arrow.vector.ipc.ArrowFileWriter}.
-     *
-     * <p>The file format is same as stream format but it adds a footer at the end of the file. The
-     * footer contains metadata for quick random access of certain column data in batches when it is
-     * being read on server side. This way there is no need to download and parse the whole file if
-     * only certain columns are requested.
-     */
-    FILE,
-  }
-
   /** The write mode to generate Arrow BDEC file. */
   public enum BdecVersion {
-    /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#STREAM}. */
+    /** Uses Arrow to generate BDEC chunks. */
     ONE(1),
 
-    /** Uses Arrow to generate BDEC chunks with {@link ArrowBatchWriteMode#FILE}. */
-    TWO(2),
+    // Unused (previously Arrow with per column compression.
+    // TWO(2),
 
     /**
      * Uses Parquet to generate BDEC chunks with {@link
