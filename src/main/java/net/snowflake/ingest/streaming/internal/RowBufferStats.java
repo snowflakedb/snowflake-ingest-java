@@ -4,15 +4,9 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.ibm.icu.lang.UCharacter;
-import com.ibm.icu.text.CollationKey;
-import com.ibm.icu.text.Collator;
-import com.ibm.icu.util.ULocale;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Objects;
-
 import net.snowflake.common.core.CollationDefinitionBase;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;

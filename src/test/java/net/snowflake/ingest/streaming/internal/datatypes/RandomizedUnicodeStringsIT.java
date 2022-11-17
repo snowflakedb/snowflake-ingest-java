@@ -1,8 +1,10 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import net.snowflake.ingest.TestUtils;
@@ -21,21 +23,28 @@ public class RandomizedUnicodeStringsIT extends AbstractDataTypeTest {
   }
 
   private static final int MAX_STRING_LENGTH = 64;
-
-  private static final int BATCH_COUNT = 1000;
+  private static final int BATCH_COUNT = 100;
   private static final int MAX_BATCH_SIZE = 10;
 
   private static final Random random = new Random();
 
   @Test
-  public void testStrings() throws Exception {
+  public void testRandomValidUnicodeStrings() throws Exception {
     for (int i = 0; i < BATCH_COUNT; i++) {
       System.out.printf("Running batch %d / %d%n", i, BATCH_COUNT);
-      runBatch();
+      runBatch(this::randomUnicodeString);
     }
   }
 
-  private void runBatch() throws Exception {
+  @Test
+  public void testStringsFromRandomByteArrays() throws Exception {
+    for (int i = 0; i < BATCH_COUNT; i++) {
+      System.out.printf("Running batch %d / %d%n", i, BATCH_COUNT);
+      runBatch(this::utf8StringFromRandomBytes);
+    }
+  }
+
+  private void runBatch(Supplier<String> stringSupplier) throws Exception {
     String tableName = createTable("VARCHAR");
     SnowflakeStreamingIngestChannel channel = openChannel(tableName);
     List<String> strings = new ArrayList<>();
@@ -45,11 +54,10 @@ public class RandomizedUnicodeStringsIT extends AbstractDataTypeTest {
       int batchSize = random.nextInt(MAX_BATCH_SIZE) + 1;
       while (i < batchSize) {
         i++;
-        String stringInput = randomUnicodeString();
+        String stringInput = stringSupplier.get();
         strings.add(stringInput);
         channel.insertRow(createStreamingIngestRow(stringInput), String.valueOf(i));
       }
-      System.out.println(batchSize);
       TestUtils.waitForOffset(channel, String.valueOf(i));
       migrateTable(tableName); // migration should always succeed
     } catch (Exception e) {
@@ -75,7 +83,6 @@ public class RandomizedUnicodeStringsIT extends AbstractDataTypeTest {
 
     int length = 0;
     while (length < targetLength) {
-
       int codePoint = random.nextInt(Character.MAX_CODE_POINT);
       int codePointType = Character.getType(codePoint);
       if (codePointType == Character.UNASSIGNED
@@ -87,5 +94,11 @@ public class RandomizedUnicodeStringsIT extends AbstractDataTypeTest {
       sb.appendCodePoint(codePoint);
     }
     return sb.toString();
+  }
+
+  private String utf8StringFromRandomBytes() {
+    byte[] bytes = new byte[random.nextInt(MAX_STRING_LENGTH)];
+    random.nextBytes(bytes);
+    return new String(bytes, StandardCharsets.UTF_8);
   }
 }

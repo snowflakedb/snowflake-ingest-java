@@ -66,20 +66,28 @@ class FileColumnProperties {
             : stats.getCurrentMaxRealValue());
     this.setMaxLength(stats.getCurrentMaxLength());
 
-    // current hex-encoded non-collated min value. If it is longer than 32 bytes, it is null.
+    // current hex-encoded non-collated min value.
+    // If collated or non-collated MIN is > 32 bytes, set to null.
     // No truncation is happening here.
     if (stats.getCurrentMinNonColStrValue() != null) {
-      byte[] minNonCollated = stats.getCurrentMinNonColStrValue().getBytes(StandardCharsets.UTF_8);
-      this.setMinStrNonCollated(
-          minNonCollated.length > 32 ? null : truncateBytesAsHex(minNonCollated, false));
+      byte[] minNonCollatedBytes =
+          stats.getCurrentMinNonColStrValue().getBytes(StandardCharsets.UTF_8);
+      boolean shouldBeNull =
+          minNonCollatedBytes.length > MAX_LOB_LEN
+              || stats.getCurrentMinColStrValueInBytes().length > MAX_LOB_LEN;
+      this.setMinStrNonCollated(shouldBeNull ? null : Hex.encodeHexString(minNonCollatedBytes));
     }
 
-    // current hex-encoded non-collated max value. If it is longer than 32 bytes, it is null.
+    // current hex-encoded non-collated max value.
+    // If collated or non-collated MAX is > 32 bytes, set to null.
     // No truncation is happening here.
     if (stats.getCurrentMaxNonColStrValue() != null) {
-      byte[] maxNonCollated = stats.getCurrentMaxNonColStrValue().getBytes(StandardCharsets.UTF_8);
-      this.setMaxStrNonCollated(
-          maxNonCollated.length > 32 ? null : truncateBytesAsHex(maxNonCollated, true));
+      byte[] maxNonCollatedBytes =
+          stats.getCurrentMaxNonColStrValue().getBytes(StandardCharsets.UTF_8);
+      boolean shouldBeNull =
+          maxNonCollatedBytes.length > MAX_LOB_LEN
+              || stats.getCurrentMaxColStrValueInBytes().length > MAX_LOB_LEN;
+      this.setMaxStrNonCollated(shouldBeNull ? null : Hex.encodeHexString(maxNonCollatedBytes));
     }
 
     // current hex-encoded collated min value, truncated down to 32 bytes
@@ -282,11 +290,7 @@ class FileColumnProperties {
       }
       // Whole prefix overflew, return infinity
       if (idx == -1) {
-        // Switch full prefix back to 0xff
-        for (int i = 0; i < MAX_LOB_LEN; i++) {
-          bytes[i] = -1;
-        }
-        return Hex.encodeHexString(ByteBuffer.wrap(bytes, 0, MAX_LOB_LEN + 1));
+        return "Z";
       }
     }
 
