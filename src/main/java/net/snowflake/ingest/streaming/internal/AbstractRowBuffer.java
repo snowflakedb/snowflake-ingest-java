@@ -18,6 +18,7 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
@@ -256,6 +257,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     InsertValidationResponse response = new InsertValidationResponse();
     this.flushLock.lock();
     try {
+      this.owningChannel.updateInsertStats(System.currentTimeMillis(), this.rowCount);
       if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
         // Used to map incoming row(nth row) to InsertError(for nth row) in response
         long rowIndex = 0;
@@ -332,6 +334,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       long oldRowSequencer = 0;
       String oldOffsetToken = null;
       Map<String, RowBufferStats> oldColumnEps = null;
+      Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
 
       logger.logDebug(
           "Arrow buffer flush about to take lock on channel={}",
@@ -347,6 +350,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldRowSequencer = this.owningChannel.incrementAndGetRowSequencer();
           oldOffsetToken = this.owningChannel.getOffsetToken();
           oldColumnEps = new HashMap<>(this.statsMap);
+          oldMinMaxInsertTimeInMs =
+              new Pair<>(
+                  this.owningChannel.getFirstInsertInMs(), this.owningChannel.getLastInsertInMs());
+
           // Reset everything in the buffer once we save all the info
           reset();
         }
@@ -369,6 +376,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         data.setRowSequencer(oldRowSequencer);
         data.setOffsetToken(oldOffsetToken);
         data.setColumnEps(oldColumnEps);
+        data.setMinMaxInsertTimeInMs(oldMinMaxInsertTimeInMs);
         return data;
       }
     }

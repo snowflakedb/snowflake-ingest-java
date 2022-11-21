@@ -19,6 +19,8 @@ class ChunkMetadata {
   private final String chunkMD5;
   private final EpInfo epInfo;
   private final Long encryptionKeyId;
+  private final Long firstInsertTimeInMs;
+  private final Long lastInsertTimeInMs;
 
   static Builder builder() {
     return new Builder();
@@ -35,6 +37,8 @@ class ChunkMetadata {
     private String chunkMD5;
     private EpInfo epInfo;
     private Long encryptionKeyId;
+    private Long firstInsertTimeInMs;
+    private Long lastInsertTimeInMs;
 
     Builder setOwningTable(SnowflakeStreamingIngestChannelInternal channel) {
       this.dbName = channel.getDBName();
@@ -73,6 +77,16 @@ class ChunkMetadata {
       return this;
     }
 
+    Builder setFirstInsertTimeInMs(Long firstInsertTimeInMs) {
+      this.firstInsertTimeInMs = firstInsertTimeInMs;
+      return this;
+    }
+
+    Builder setLastInsertTimeInMs(Long lastInsertTimeInMs) {
+      this.lastInsertTimeInMs = lastInsertTimeInMs;
+      return this;
+    }
+
     ChunkMetadata build() {
       return new ChunkMetadata(this);
     }
@@ -88,6 +102,8 @@ class ChunkMetadata {
     Utils.assertNotNull("chunk MD5", builder.chunkMD5);
     Utils.assertNotNull("chunk ep info", builder.epInfo);
     Utils.assertNotNull("encryption key id", builder.encryptionKeyId);
+    Utils.assertNotNull("chunk first insert time in ms", builder.firstInsertTimeInMs);
+    Utils.assertNotNull("chunk last insert time in ms", builder.lastInsertTimeInMs);
 
     this.dbName = builder.dbName;
     this.schemaName = builder.schemaName;
@@ -98,6 +114,8 @@ class ChunkMetadata {
     this.chunkMD5 = builder.chunkMD5;
     this.epInfo = builder.epInfo;
     this.encryptionKeyId = builder.encryptionKeyId;
+    this.firstInsertTimeInMs = builder.firstInsertTimeInMs;
+    this.lastInsertTimeInMs = builder.lastInsertTimeInMs;
   }
 
   /**
@@ -152,5 +170,15 @@ class ChunkMetadata {
   @JsonProperty("encryption_key_id")
   Long getEncryptionKeyId() {
     return this.encryptionKeyId;
+  }
+
+  @JsonProperty("first_insert_time_in_ms")
+  Long getFirstInsertTimeInMs() {
+    return this.firstInsertTimeInMs;
+  }
+
+  @JsonProperty("last_insert_time_in_ms")
+  Long getLastInsertTimeInMs() {
+    return this.lastInsertTimeInMs;
   }
 }

@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 
 /**
@@ -23,6 +24,7 @@ class ChannelData<T> {
   private int rowCount;
   private SnowflakeStreamingIngestChannelInternal<T> channel;
   private Map<String, RowBufferStats> columnEps;
+  private Pair<Long, Long> minMaxInsertTimeInMs;
 
   // TODO performance test this vs in place update
   /**
@@ -54,6 +56,12 @@ class ChannelData<T> {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Column stats map key mismatch");
     }
     return result;
+  }
+
+  public static Pair<Long, Long> getCombinedMinMaxInsertTimeInMs(
+      Pair<Long, Long> left, Pair<Long, Long> right) {
+    return new Pair<>(
+        Math.min(left.getFirst(), right.getFirst()), Math.max(left.getSecond(), right.getSecond()));
   }
 
   public Map<String, RowBufferStats> getColumnEps() {
@@ -110,6 +118,14 @@ class ChannelData<T> {
 
   void setChannel(SnowflakeStreamingIngestChannelInternal<T> channel) {
     this.channel = channel;
+  }
+
+  Pair<Long, Long> getMinMaxInsertTimeInMs() {
+    return this.minMaxInsertTimeInMs;
+  }
+
+  void setMinMaxInsertTimeInMs(Pair<Long, Long> minMaxInsertTimeInMs) {
+    this.minMaxInsertTimeInMs = minMaxInsertTimeInMs;
   }
 
   @Override

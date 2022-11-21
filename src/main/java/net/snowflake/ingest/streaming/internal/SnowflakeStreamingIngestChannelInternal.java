@@ -73,6 +73,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // ON_ERROR option for this channel
   private final OpenChannelRequest.OnErrorOption onErrorOption;
 
+  private Long firstInsertInMs;
+  private Long lastInsertInMs;
+
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
    *
@@ -507,5 +510,24 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   /** Returns underlying channel's row buffer implementation. */
   RowBuffer<T> getRowBuffer() {
     return rowBuffer;
+  }
+
+  void updateInsertStats(long currentTimeInMs, int rowCount)
+  {
+    if (rowCount == 0)
+    {
+      this.firstInsertInMs = currentTimeInMs;
+    }
+    this.lastInsertInMs = currentTimeInMs;
+  }
+
+  Long getFirstInsertInMs()
+  {
+    return this.firstInsertInMs;
+  }
+
+  Long getLastInsertInMs()
+  {
+    return this.lastInsertInMs;
   }
 }
