@@ -153,6 +153,7 @@ public class RowBufferTest {
 
     // Fixed LOB
     testCol = new ColumnMetadata();
+    testCol.setName("COL1");
     testCol.setPhysicalType("LOB");
     testCol.setLogicalType("FIXED");
     try {
@@ -164,6 +165,7 @@ public class RowBufferTest {
 
     // TIMESTAMP_NTZ SB2
     testCol = new ColumnMetadata();
+    testCol.setName("COL1");
     testCol.setPhysicalType("SB2");
     testCol.setLogicalType("TIMESTAMP_NTZ");
     try {
@@ -175,6 +177,7 @@ public class RowBufferTest {
 
     // TIMESTAMP_TZ SB1
     testCol = new ColumnMetadata();
+    testCol.setName("COL1");
     testCol.setPhysicalType("SB1");
     testCol.setLogicalType("TIMESTAMP_TZ");
     try {
@@ -186,6 +189,7 @@ public class RowBufferTest {
 
     // TIME SB16
     testCol = new ColumnMetadata();
+    testCol.setName("COL1");
     testCol.setPhysicalType("SB16");
     testCol.setLogicalType("TIME");
     try {

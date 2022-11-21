@@ -67,7 +67,7 @@ public class ParquetTypeGenerator {
     ParquetTypeInfo res = new ParquetTypeInfo();
     Type parquetType;
     Map<String, String> metadata = new HashMap<>();
-    String name = column.getName();
+    String name = LiteralQuoteUtils.unquoteColumnName(column.getName());
 
     AbstractRowBuffer.ColumnPhysicalType physicalType;
     AbstractRowBuffer.ColumnLogicalType logicalType;
@@ -172,7 +172,7 @@ public class ParquetTypeGenerator {
       int id,
       AbstractRowBuffer.ColumnPhysicalType physicalType,
       Type.Repetition repetition) {
-    String name = column.getName();
+    String name = LiteralQuoteUtils.unquoteColumnName(column.getName());
     // the LogicalTypeAnnotation.DecimalLogicalTypeAnnotation is used by server side scanner
     // to discover data type scale and precision
     LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalTypeAnnotation =

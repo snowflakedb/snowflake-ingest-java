@@ -124,7 +124,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
       Object value = entry.getValue();
-      String columnName = formatColumnName(key);
+      String columnName = LiteralQuoteUtils.formatColumnName(key);
       int colIndex = fieldIndex.get(columnName).getSecond();
       RowBufferStats stats = statsMap.get(columnName);
       ColumnMetadata column = fieldIndex.get(columnName).getFirst();
@@ -171,9 +171,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /** Used only for testing. */
   @Override
   Object getVectorValueAt(String column, int index) {
-    int colIndex = fieldIndex.get(column).getSecond();
+    int colIndex = schema.getFieldIndex(column);
     Object value = data.get(index).get(colIndex);
-    ColumnMetadata columnMetadata = fieldIndex.get(column).getFirst();
+    ColumnMetadata columnMetadata =
+        fieldIndex.get(LiteralQuoteUtils.formatColumnName(column)).getFirst();
     String physicalTypeStr = columnMetadata.getPhysicalType();
     ColumnPhysicalType physicalType = ColumnPhysicalType.valueOf(physicalTypeStr);
     String logicalTypeStr = columnMetadata.getLogicalType();
