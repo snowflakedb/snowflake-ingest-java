@@ -105,8 +105,7 @@ class LiteralQuoteUtils {
   /**
    * Quote user column name to match server side metadata.
    *
-   * <p>This needs to be in sync with server side to code, until we decide to send the normalised
-   * unquoted column name from server.
+   * <p>This needs to be in sync with server side to code
    */
   private static String quoteColumnNameIfNeeded(String columnName) {
     if (!unquotedIdentifierPattern.matcher(columnName).matches()
