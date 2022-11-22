@@ -27,7 +27,7 @@ public class FileColumnPropertiesTest {
     props = new FileColumnProperties(stats);
     Assert.assertNull(props.getMinStrNonCollated());
     Assert.assertNull(props.getMaxStrNonCollated());
-    Assert.assertEquals(32 * 2, props.getMinStrValue().length());
+    Assert.assertEquals(32 * 2, props.getMinStrValue().length()); // *2 because it is a hex string
     Assert.assertEquals(32 * 2, props.getMaxStrValue().length());
 
     // Test that resulting non collated strings are null if non collated
