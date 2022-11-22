@@ -7,6 +7,9 @@ package net.snowflake.ingest.streaming.internal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+
+import com.ibm.icu.text.Collator;
+import com.ibm.icu.util.VersionInfo;
 import net.snowflake.common.core.CollationDefinitionBase;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -14,6 +17,7 @@ import net.snowflake.ingest.utils.SFException;
 /** Keeps track of the active EP stats, used to generate a file EP info */
 class RowBufferStats {
 
+  private static final VersionInfo EXPECTED_ICU_VERSION_INFO = VersionInfo.getInstance(61, 2, 0, 0);
   private String currentMinNonColStrValue;
   private String currentMaxNonColStrValue;
   private byte[] currentMinColStrValueInBytes;
@@ -32,6 +36,9 @@ class RowBufferStats {
   RowBufferStats(String collationDefinitionString) {
     this.collationDefinitionString = collationDefinitionString;
     if (collationDefinitionString != null) {
+      if (VersionInfo.ICU_VERSION.compareTo(EXPECTED_ICU_VERSION_INFO) != 0) {
+        throw new IllegalStateException(String.format("Unexpected version of ICU library found (Found=%s Expected=%s)", VersionInfo.ICU_VERSION, EXPECTED_ICU_VERSION_INFO));
+      }
       this.collationDefinition = new CollationDefinitionBase(collationDefinitionString, true);
     }
     reset();
