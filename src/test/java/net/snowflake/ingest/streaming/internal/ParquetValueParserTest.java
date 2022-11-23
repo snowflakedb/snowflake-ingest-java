@@ -235,15 +235,15 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats();
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "Length7".getBytes(), testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+            "1234abcd".getBytes(), testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
-        .expectedValueClass(String.class)
-        .expectedParsedValue("Length7")
-        .expectedSize(7.0f)
-        .expectedMinMax("Length7")
+        .expectedValueClass(byte[].class)
+        .expectedParsedValue("1234abcd".getBytes())
+        .expectedSize(8.0f)
+        .expectedMinMax("1234abcd")
         .assertMatches();
   }
 
@@ -543,7 +543,6 @@ public class ParquetValueParserTest {
 
     void assertMatches() {
       Assert.assertEquals(valueClass, parquetBufferValue.getValue().getClass());
-      System.out.println("parquetBufferValue = " + parquetBufferValue.getValue().toString());
       if (valueClass.equals(byte[].class)) {
         Assert.assertArrayEquals((byte[]) value, (byte[]) parquetBufferValue.getValue());
       } else {
