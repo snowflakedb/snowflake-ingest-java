@@ -61,7 +61,7 @@ public class OpenManyChannelsIT {
     String channelName = "CHANNEL";
     List<Thread> threads = new ArrayList<>();
     List<Exception> exceptions = Collections.synchronizedList(new ArrayList<>());
-    Set<Object> channelSequencers = Collections.synchronizedSet(new HashSet<>());
+    Set<Long> channelSequencers = Collections.synchronizedSet(new HashSet<>());
     for (int i = 0; i < THREAD_COUNT; i++) {
       Thread t =
           new Thread(
