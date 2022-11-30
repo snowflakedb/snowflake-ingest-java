@@ -353,7 +353,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldMinMaxInsertTimeInMs =
               new Pair<>(
                   this.owningChannel.getFirstInsertInMs(), this.owningChannel.getLastInsertInMs());
-
           // Reset everything in the buffer once we save all the info
           reset();
         }
