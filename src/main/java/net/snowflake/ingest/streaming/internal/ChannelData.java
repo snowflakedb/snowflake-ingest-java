@@ -58,6 +58,12 @@ class ChannelData<T> {
     return result;
   }
 
+  /**
+   * Combines the two paris of min/max insert timestamp together
+   *
+   * @return A new pair which the first element is min(left min, right min) and the second element
+   *     is max(left max, right max)
+   */
   public static Pair<Long, Long> getCombinedMinMaxInsertTimeInMs(
       Pair<Long, Long> left, Pair<Long, Long> right) {
     return new Pair<>(

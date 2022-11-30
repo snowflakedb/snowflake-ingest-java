@@ -73,6 +73,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // ON_ERROR option for this channel
   private final OpenChannelRequest.OnErrorOption onErrorOption;
 
+  // First and last insert time in ms, used for end2end latency measurement
   private Long firstInsertInMs;
   private Long lastInsertInMs;
 
@@ -512,22 +513,21 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return rowBuffer;
   }
 
-  void updateInsertStats(long currentTimeInMs, int rowCount)
-  {
-    if (rowCount == 0)
-    {
+  /** Update the insert stats for the current row buffer whenever needed */
+  void updateInsertStats(long currentTimeInMs, int rowCount) {
+    if (rowCount == 0) {
       this.firstInsertInMs = currentTimeInMs;
     }
     this.lastInsertInMs = currentTimeInMs;
   }
 
-  Long getFirstInsertInMs()
-  {
+  /** Get the insert timestamp of the first row in the current row buffer */
+  Long getFirstInsertInMs() {
     return this.firstInsertInMs;
   }
 
-  Long getLastInsertInMs()
-  {
+  /** Get the insert timestamp of the last row in the current row buffer */
+  Long getLastInsertInMs() {
     return this.lastInsertInMs;
   }
 }
