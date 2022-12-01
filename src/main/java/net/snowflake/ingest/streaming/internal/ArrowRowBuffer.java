@@ -105,14 +105,16 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       if (!field.isNullable()) {
         addNonNullableFieldName(field.getName());
       }
-      this.fields.put(column.getName(), field);
+      this.fields.put(column.getInternalName(), field);
       vectors.add(vector);
-      this.statsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
+      this.statsMap.put(
+          column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
 
       if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
         FieldVector tempVector = field.createVector(this.allocator);
         tempVectors.add(tempVector);
-        this.tempStatsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
+        this.tempStatsMap.put(
+            column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
       }
     }
 
@@ -336,7 +338,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // Create the corresponding column field base on the column data type
     fieldType = new FieldType(column.getNullable(), arrowType, null, metadata);
-    return new Field(column.getName(), fieldType, children);
+    return new Field(column.getInternalName(), fieldType, children);
   }
 
   @Override
@@ -440,7 +442,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
-      String columnName = formatColumnName(entry.getKey());
+      String columnName = LiteralQuoteUtils.unquoteColumnName(entry.getKey());
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);

@@ -13,7 +13,7 @@ public class ChannelDataTest {
   @Test
   public void testGetCombinedColumnStatsMapNulls() {
     Map<String, RowBufferStats> left = new HashMap<>();
-    RowBufferStats leftStats1 = new RowBufferStats();
+    RowBufferStats leftStats1 = new RowBufferStats("COL1");
     left.put("one", leftStats1);
     leftStats1.addIntValue(new BigInteger("10"));
 
@@ -42,12 +42,12 @@ public class ChannelDataTest {
   @Test
   public void testGetCombinedColumnStatsMapMissingColumn() {
     Map<String, RowBufferStats> left = new HashMap<>();
-    RowBufferStats leftStats1 = new RowBufferStats();
+    RowBufferStats leftStats1 = new RowBufferStats("COL1");
     left.put("one", leftStats1);
     leftStats1.addIntValue(new BigInteger("10"));
 
     Map<String, RowBufferStats> right = new HashMap<>();
-    RowBufferStats rightStats1 = new RowBufferStats();
+    RowBufferStats rightStats1 = new RowBufferStats("COL1");
     right.put("foo", rightStats1);
     rightStats1.addIntValue(new BigInteger("11"));
 
@@ -77,10 +77,10 @@ public class ChannelDataTest {
     Map<String, RowBufferStats> left = new HashMap<>();
     Map<String, RowBufferStats> right = new HashMap<>();
 
-    RowBufferStats leftStats1 = new RowBufferStats();
-    RowBufferStats rightStats1 = new RowBufferStats();
-    RowBufferStats leftStats2 = new RowBufferStats();
-    RowBufferStats rightStats2 = new RowBufferStats();
+    RowBufferStats leftStats1 = new RowBufferStats("COL1");
+    RowBufferStats rightStats1 = new RowBufferStats("COL1");
+    RowBufferStats leftStats2 = new RowBufferStats("COL1");
+    RowBufferStats rightStats2 = new RowBufferStats("COL1");
 
     left.put("one", leftStats1);
     left.put("two", leftStats2);

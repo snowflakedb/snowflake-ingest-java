@@ -306,11 +306,13 @@ class RowBufferStats {
   private long currentMaxLength;
   private CollationDefinition collationDefinition;
   private final String collationDefinitionString;
+  private final String columnDisplayName;
 
   private static final int MAX_LOB_LEN = 32;
 
   /** Creates empty stats */
-  RowBufferStats(String collationDefinitionString) {
+  RowBufferStats(String columnDisplayName, String collationDefinitionString) {
+    this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
     if (collationDefinitionString != null) {
       this.collationDefinition = new CollationDefinition(collationDefinitionString);
@@ -318,8 +320,8 @@ class RowBufferStats {
     reset();
   }
 
-  RowBufferStats() {
-    this(null);
+  RowBufferStats(String columnDisplayName) {
+    this(columnDisplayName, null);
   }
 
   void reset() {
@@ -352,7 +354,8 @@ class RowBufferStats {
               "left=%s, right=%s",
               left.getCollationDefinitionString(), right.getCollationDefinitionString()));
     }
-    RowBufferStats combined = new RowBufferStats(left.getCollationDefinitionString());
+    RowBufferStats combined =
+        new RowBufferStats(left.columnDisplayName, left.getCollationDefinitionString());
 
     if (left.currentMinIntValue != null) {
       combined.addIntValue(left.currentMinIntValue);
@@ -522,6 +525,10 @@ class RowBufferStats {
 
   String getCollationDefinitionString() {
     return collationDefinitionString;
+  }
+
+  String getColumnDisplayName() {
+    return columnDisplayName;
   }
 
   /**

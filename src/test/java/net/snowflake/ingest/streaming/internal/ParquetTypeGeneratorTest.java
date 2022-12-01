@@ -22,7 +22,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
@@ -49,7 +49,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
@@ -76,7 +76,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
@@ -103,7 +103,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
@@ -130,7 +130,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(16)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
@@ -157,7 +157,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
@@ -185,7 +185,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
@@ -211,7 +211,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(16)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
@@ -237,7 +237,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
@@ -263,7 +263,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(16)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
@@ -289,7 +289,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
@@ -315,7 +315,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
@@ -341,7 +341,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
@@ -367,7 +367,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BOOLEAN)
@@ -393,7 +393,7 @@ public class ParquetTypeGeneratorTest {
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     ParquetTypeInfoAssertionBuilder.newBuilder()
         .typeInfo(typeInfo)
-        .expectedFieldName("testCol")
+        .expectedFieldName("TESTCOL")
         .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.DOUBLE)

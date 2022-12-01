@@ -111,6 +111,10 @@ class ColumnMetadata {
     return this.nullable;
   }
 
+  String getInternalName() {
+    return LiteralQuoteUtils.unquoteColumnName(name);
+  }
+
   @Override
   public String toString() {
     Map<String, Object> map = new HashMap<>();

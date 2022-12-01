@@ -132,12 +132,17 @@ public abstract class AbstractDataTypeTest {
   }
 
   protected SnowflakeStreamingIngestChannel openChannel(String tableName) {
+    return openChannel(tableName, OpenChannelRequest.OnErrorOption.ABORT);
+  }
+
+  protected SnowflakeStreamingIngestChannel openChannel(
+      String tableName, OpenChannelRequest.OnErrorOption onErrorOption) {
     OpenChannelRequest openChannelRequest =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(databaseName)
             .setSchemaName(SCHEMA_NAME)
             .setTableName(tableName)
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+            .setOnErrorOption(onErrorOption)
             .build();
     return client.openChannel(openChannelRequest);
   }

@@ -22,7 +22,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             12, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
@@ -48,7 +48,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             1234, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
@@ -74,7 +74,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             123456789, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
@@ -100,7 +100,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             123456789987654321L, testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats);
@@ -126,7 +126,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             new BigDecimal("91234567899876543219876543211234567891"),
@@ -157,7 +157,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             new BigDecimal("12345.54321"),
@@ -184,7 +184,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             12345.54321d, testCol, PrimitiveType.PrimitiveTypeName.DOUBLE, rowBufferStats);
@@ -208,7 +208,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             true, testCol, PrimitiveType.PrimitiveTypeName.BOOLEAN, rowBufferStats);
@@ -232,7 +232,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             "1234abcd".getBytes(), testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
@@ -268,7 +268,7 @@ public class ParquetValueParserTest {
     String var =
         "{\"key1\":-879869596,\"key2\":\"value2\",\"key3\":null,"
             + "\"key4\":{\"key41\":0.032437,\"key42\":\"value42\",\"key43\":null}}";
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
@@ -297,7 +297,7 @@ public class ParquetValueParserTest {
     input.put("b", "2");
     input.put("c", "3");
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
@@ -325,7 +325,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     SFException exception =
         Assert.assertThrows(
             SFException.class,
@@ -350,7 +350,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             "2013-04-28 20:57:01.000",
@@ -378,7 +378,7 @@ public class ParquetValueParserTest {
             .scale(9) // nanos
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             "2022-09-18 22:05:07.123456789",
@@ -407,7 +407,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
@@ -432,7 +432,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             "01:00:00", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
@@ -457,7 +457,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
             "01:00:00.123", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats);
@@ -482,7 +482,7 @@ public class ParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats();
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     SFException exception =
         Assert.assertThrows(
             SFException.class,

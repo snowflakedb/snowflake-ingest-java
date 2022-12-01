@@ -483,8 +483,8 @@ public class FlushServiceTest {
     Map<String, RowBufferStats> eps1 = new HashMap<>();
     Map<String, RowBufferStats> eps2 = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats();
-    RowBufferStats stats2 = new RowBufferStats();
+    RowBufferStats stats1 = new RowBufferStats("COL1");
+    RowBufferStats stats2 = new RowBufferStats("COL1");
 
     eps1.put("one", stats1);
     eps2.put("one", stats2);
@@ -696,7 +696,7 @@ public class FlushServiceTest {
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats();
+    RowBufferStats stats1 = new RowBufferStats("COL1");
 
     eps1.put("one", stats1);
 
