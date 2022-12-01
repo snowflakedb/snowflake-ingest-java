@@ -693,19 +693,20 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       for (int idx = 0; idx < channelsStatus.size(); idx++) {
         ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus = channelsStatus.get(idx);
         SnowflakeStreamingIngestChannelInternal<?> channel = channels.get(idx);
+        long rowSequencer = channel.getChannelState().getRowSequencer();
         logger.logInfo(
             "Get channel status name={}, status={}, clientSequencer={}, rowSequencer={},"
                 + " offsetToken={}, persistedRowSequencer={}, persistedOffsetToken={}",
             channel.getName(),
             channelStatus.getStatusCode(),
             channel.getChannelSequencer(),
-            channel.getRowSequencer(),
-            channel.getOffsetToken(),
+            rowSequencer,
+            channel.getChannelState().getOffsetToken(),
             channelStatus.getPersistedRowSequencer(),
             channelStatus.getPersistedOffsetToken());
         if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
           channelsWithError.add(channel);
-        } else if (!channelStatus.getPersistedRowSequencer().equals(channel.getRowSequencer())) {
+        } else if (!channelStatus.getPersistedRowSequencer().equals(rowSequencer)) {
           tempChannels.add(channel);
           tempChannelsStatus.add(channelStatus);
         }

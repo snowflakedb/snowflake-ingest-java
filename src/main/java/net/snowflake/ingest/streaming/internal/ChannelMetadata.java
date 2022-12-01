@@ -29,9 +29,9 @@ class ChannelMetadata {
     private Long rowSequencer;
     @Nullable private String offsetToken; // offset token could be null
 
-    Builder setOwningChannel(SnowflakeStreamingIngestChannelInternal<?> channel) {
-      this.channelName = channel.getName();
-      this.clientSequencer = channel.getChannelSequencer();
+    Builder setOwningChannelFromContext(ChannelFlushContext channelFlushContext) {
+      this.channelName = channelFlushContext.getName();
+      this.clientSequencer = channelFlushContext.getChannelSequencer();
       return this;
     }
 
