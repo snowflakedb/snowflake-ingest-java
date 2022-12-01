@@ -48,7 +48,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   // Reference to the client that owns this channel
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
-
   // state of the channel that will be shared with its underlying buffer
   private final ChannelRuntimeState channelState;
 
@@ -120,7 +119,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             bdecVersion,
             getFullyQualifiedName(),
             this::collectRowSize,
-            channelState);
+            channelState,
+            false);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),

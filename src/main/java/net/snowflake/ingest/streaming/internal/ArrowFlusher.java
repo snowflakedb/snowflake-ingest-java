@@ -28,10 +28,9 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
 
   @Override
   public Flusher.SerializationResult serialize(
-      List<ChannelData<VectorSchemaRoot>> channelsDataPerTable,
-      ByteArrayOutputStream chunkData,
-      String filePath)
+      List<ChannelData<VectorSchemaRoot>> channelsDataPerTable, String filePath)
       throws IOException {
+    ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
     VectorSchemaRoot root = null;
@@ -104,6 +103,6 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
       }
     }
     return new Flusher.SerializationResult(
-        channelsMetadataList, columnEpStatsMapCombined, rowCount);
+        channelsMetadataList, columnEpStatsMapCombined, rowCount, chunkData);
   }
 }

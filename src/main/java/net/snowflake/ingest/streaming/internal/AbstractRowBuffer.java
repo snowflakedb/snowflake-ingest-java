@@ -21,6 +21,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.VisibleForTesting;
 
@@ -465,6 +466,48 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   @VisibleForTesting
   abstract int getTempRowCount();
 
+  abstract void closeInternal();
+
+  /**
+   * Close the row buffer and release resources. Note that the caller needs to handle
+   * synchronization
+   */
+  @Override
+  public void close(String name) {
+    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
+
+    closeInternal();
+
+    long allocatedAfterRelease = this.allocator.getAllocatedMemory();
+    logger.logInfo(
+        "Trying to close {} for channel={} from function={}, allocatedBeforeRelease={},"
+            + " allocatedAfterRelease={}",
+        this.getClass().getSimpleName(),
+        channelFullyQualifiedName,
+        name,
+        allocatedBeforeRelease,
+        allocatedAfterRelease);
+    Utils.closeAllocator(this.allocator);
+
+    // If the channel is valid but still has leftover data, throw an exception because it should be
+    // cleaned up already before calling close
+    if (allocatedBeforeRelease > 0 && this.channelState.isValid()) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "Memory leaked=%d by allocator=%s, channel=%s",
+              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
+    }
+  }
+
+  /** Normalize the column name, given with the inserted row, to send to server side. */
+  static String formatColumnName(String columnName) {
+    Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
+    return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
+        ? columnName
+        : columnName.toUpperCase();
+  }
+
   /**
    * Given a set of col names to stats, build the right ep info
    *
@@ -490,7 +533,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       Constants.BdecVersion bdecVersion,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
-      ChannelRuntimeState channelRuntimeState) {
+      ChannelRuntimeState channelRuntimeState,
+      boolean bufferForTests) {
     switch (bdecVersion) {
       case ONE:
         //noinspection unchecked
@@ -509,7 +553,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 allocator,
                 fullyQualifiedChannelName,
                 rowSizeMetric,
-                channelRuntimeState);
+                channelRuntimeState,
+                bufferForTests);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
