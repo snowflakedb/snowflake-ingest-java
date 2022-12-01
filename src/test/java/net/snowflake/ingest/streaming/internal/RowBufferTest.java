@@ -116,7 +116,13 @@ public class RowBufferTest {
   private AbstractRowBuffer<?> createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
     ChannelRuntimeState initialState = new ChannelRuntimeState("0", 0L, true);
     return AbstractRowBuffer.createRowBuffer(
-        onErrorOption, new RootAllocator(), bdecVersion, "test.buffer", rs -> {}, initialState);
+        onErrorOption,
+        new RootAllocator(),
+        bdecVersion,
+        "test.buffer",
+        rs -> {},
+        initialState,
+        true);
   }
 
   @Test

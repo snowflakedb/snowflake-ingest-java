@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -17,9 +19,11 @@ import java.util.Set;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
@@ -37,23 +41,29 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private final Map<String, Pair<ColumnMetadata, Integer>> fieldIndex;
   private final Map<String, String> metadata;
-  private final List<List<Object>> data;
+  private BdecParquetWriter data;
+  private ByteArrayOutputStream fileOutput;
   private final List<List<Object>> tempData;
+  private final String channelName;
 
   private MessageType schema;
-
+  private final List<List<Object>> testBuffer; // used only for tests for row index access
+  private final boolean bufferForTests;
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
-      ChannelRuntimeState channelRuntimeState) {
+      ChannelRuntimeState channelRuntimeState,
+      boolean bufferForTests) {
     super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelRuntimeState);
     fieldIndex = new HashMap<>();
     metadata = new HashMap<>();
-    data = new ArrayList<>();
     tempData = new ArrayList<>();
+    channelName = fullyQualifiedChannelName;
+    testBuffer = new ArrayList<>();
+    this.bufferForTests = bufferForTests;
   }
 
   @Override
@@ -86,6 +96,19 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       id++;
     }
     schema = new MessageType(PARQUET_MESSAGE_TYPE_NAME, parquetTypes);
+    createFileWriter();
+    tempData.clear();
+    testBuffer.clear();
+  }
+
+  private void createFileWriter() {
+    fileOutput = new ByteArrayOutputStream();
+    try {
+      data = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
+      testBuffer.clear();
+    } catch (IOException e) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "cannot create parquet writer", e);
+    }
   }
 
   @Override
@@ -99,7 +122,14 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames) {
-    return addRow(row, data, statsMap, formattedInputColumnNames);
+    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
+  }
+
+  void writeRow(List<Object> row) {
+    data.writeRow(row);
+    if (bufferForTests) {
+      testBuffer.add(row);
+    }
   }
 
   @Override
@@ -108,7 +138,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames) {
-    return addRow(row, tempData, statsMap, formattedInputColumnNames);
+    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
   }
 
   /**
@@ -122,7 +152,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
    */
   private float addRow(
       Map<String, Object> row,
-      List<List<Object>> out,
+      Consumer<List<Object>> out,
       Map<String, RowBufferStats> statsMap,
       Set<String> inputColumnNames) {
     Object[] indexedRow = new Object[fieldIndex.size()];
@@ -142,7 +172,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
-    out.add(Arrays.asList(indexedRow));
+    out.accept(Arrays.asList(indexedRow));
 
     for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
       statsMap.get(columnName).incCurrentNullCount();
@@ -152,7 +182,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   void moveTempRowsToActualBuffer(int tempRowCount) {
-    data.addAll(tempData);
+    tempData.forEach(this::writeRow);
   }
 
   @Override
@@ -167,24 +197,21 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   Optional<ParquetChunkData> getSnapshot(final String filePath) {
-    List<List<Object>> oldData = new ArrayList<>();
-    data.forEach(r -> oldData.add(new ArrayList<>(r)));
-
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
     // http://go/streams-on-replicated-mixed-tables
     metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
 
-    return oldData.isEmpty()
+    return rowCount <= 0
         ? Optional.empty()
-        : Optional.of(new ParquetChunkData(oldData, metadata));
+        : Optional.of(new ParquetChunkData(data, fileOutput, metadata));
   }
 
   /** Used only for testing. */
   @Override
   Object getVectorValueAt(String column, int index) {
     int colIndex = fieldIndex.get(column).getSecond();
-    Object value = data.get(index).get(colIndex);
+    Object value = testBuffer.get(index).get(colIndex);
     ColumnMetadata columnMetadata = fieldIndex.get(column).getFirst();
     String physicalTypeStr = columnMetadata.getPhysicalType();
     ColumnPhysicalType physicalType = ColumnPhysicalType.valueOf(physicalTypeStr);
@@ -215,16 +242,19 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   @Override
   void reset() {
     super.reset();
-    data.clear();
+    createFileWriter();
   }
 
   @Override
-  public void close(String name) {
+  void closeInternal() {
     this.fieldIndex.clear();
-    logger.logInfo(
-        "Trying to close parquet buffer for channel={} from function={}",
-        channelFullyQualifiedName,
-        name);
+    if (data != null) {
+      try {
+        data.close();
+      } catch (IOException e) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to close parquet writer", e);
+      }
+    }
   }
 
   @Override
