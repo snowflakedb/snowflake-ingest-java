@@ -329,7 +329,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               recordConsumer.addLong((long) val);
               break;
             case BINARY:
-              recordConsumer.addBinary(Binary.fromString((String) val));
+              Binary binVal =
+                  val instanceof String
+                      ? Binary.fromString((String) val)
+                      : Binary.fromConstantByteArray((byte[]) val);
+              recordConsumer.addBinary(binVal);
               break;
             case FIXED_LEN_BYTE_ARRAY:
               Binary binary = Binary.fromConstantByteArray((byte[]) val);

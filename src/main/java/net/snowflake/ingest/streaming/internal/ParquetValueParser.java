@@ -95,9 +95,14 @@ class ParquetValueParser {
           size = 8;
           break;
         case BINARY:
-          String str = getBinaryValue(value, stats, columnMetadata);
-          value = str;
-          size = str.getBytes().length;
+          if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
+            value = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
+            size = ((byte[]) value).length;
+          } else {
+            String str = getBinaryValue(value, stats, columnMetadata);
+            value = str;
+            size = str.getBytes().length;
+          }
           break;
         case FIXED_LEN_BYTE_ARRAY:
           BigInteger intRep =
@@ -277,12 +282,12 @@ class ParquetValueParser {
   }
 
   /**
-   * Converts an object, string or binary value to its byte array representation.
+   * Converts an object or string to its byte array representation.
    *
    * @param value value to parse
    * @param stats column stats to update
    * @param columnMetadata column metadata
-   * @return string (byte array) representation
+   * @return string representation
    */
   private static String getBinaryValue(
       Object value, RowBufferStats stats, ColumnMetadata columnMetadata) {
@@ -304,13 +309,6 @@ class ParquetValueParser {
           throw new SFException(
               ErrorCode.UNKNOWN_DATA_TYPE, logicalType, columnMetadata.getPhysicalType());
       }
-    } else if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
-      String maxLengthString = columnMetadata.getLength().toString();
-      byte[] bytes =
-          DataValidationUtil.validateAndParseBinary(
-              value, Optional.of(maxLengthString).map(Integer::parseInt));
-      str = new String(bytes, StandardCharsets.UTF_8);
-      stats.addStrValue(str);
     } else {
       String maxLengthString = columnMetadata.getLength().toString();
       str =
@@ -319,5 +317,25 @@ class ParquetValueParser {
       stats.addStrValue(str);
     }
     return str;
+  }
+  /**
+   * Converts a binary value to its byte array representation.
+   *
+   * @param value value to parse
+   * @param stats column stats to update
+   * @param columnMetadata column metadata
+   * @return byte array representation
+   */
+  private static byte[] getBinaryValueForLogicalBinary(
+      Object value, RowBufferStats stats, ColumnMetadata columnMetadata) {
+    String maxLengthString = columnMetadata.getLength().toString();
+    byte[] bytes =
+        DataValidationUtil.validateAndParseBinary(
+            value, Optional.of(maxLengthString).map(Integer::parseInt));
+
+    String str = new String(bytes, StandardCharsets.UTF_8);
+    stats.addStrValue(str);
+
+    return bytes;
   }
 }

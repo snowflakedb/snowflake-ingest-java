@@ -193,7 +193,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       }
     }
     if (logicalType == ColumnLogicalType.BINARY && value != null) {
-      value = ((String) value).getBytes(StandardCharsets.UTF_8);
+      value = value instanceof String ? ((String) value).getBytes(StandardCharsets.UTF_8) : value;
     }
     return value;
   }
