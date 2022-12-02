@@ -33,6 +33,15 @@ import org.junit.runners.Parameterized;
 public abstract class AbstractDataTypeTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
+    boolean enableParquetTests =
+        System.getProperty("enableParquetTests") != null
+            && Boolean.parseBoolean(System.getProperty("enableParquetTests"));
+    if (enableParquetTests) {
+      return Arrays.asList(
+          new Object[][] {
+            {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
+          });
+    }
     return Arrays.asList(
         new Object[][] {
           {"Arrow", Constants.BdecVersion.ONE},

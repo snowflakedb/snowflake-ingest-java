@@ -91,7 +91,11 @@ public class TestUtils {
    * @throws IOException if can't read profile
    */
   private static void init() throws Exception {
-    Path path = Paths.get(PROFILE_PATH);
+    String testProfilePath =
+        System.getProperty("testProfilePath") != null
+            ? System.getProperty("testProfilePath")
+            : PROFILE_PATH;
+    Path path = Paths.get(testProfilePath);
 
     if (Files.exists(path)) {
       profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(path)));
