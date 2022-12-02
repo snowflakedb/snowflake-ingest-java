@@ -8,17 +8,17 @@ public class RowBufferStatsTest {
 
   @Test
   public void testCollationStates() throws Exception {
-    RowBufferStats ai = new RowBufferStats("en-ai");
-    RowBufferStats as = new RowBufferStats("en-as");
-    RowBufferStats pi = new RowBufferStats("en-pi");
-    RowBufferStats ps = new RowBufferStats("en-ps");
-    RowBufferStats fu = new RowBufferStats("en-fu");
-    RowBufferStats fl = new RowBufferStats("en-fl");
-    RowBufferStats lower = new RowBufferStats("lower");
-    RowBufferStats upper = new RowBufferStats("upper");
-    RowBufferStats ltrim = new RowBufferStats("ltrim");
-    RowBufferStats rtrim = new RowBufferStats("rtrim");
-    RowBufferStats trim = new RowBufferStats("trim");
+    RowBufferStats ai = new RowBufferStats("COL1", "en-ai");
+    RowBufferStats as = new RowBufferStats("COL1", "en-as");
+    RowBufferStats pi = new RowBufferStats("COL1", "en-pi");
+    RowBufferStats ps = new RowBufferStats("COL1", "en-ps");
+    RowBufferStats fu = new RowBufferStats("COL1", "en-fu");
+    RowBufferStats fl = new RowBufferStats("COL1", "en-fl");
+    RowBufferStats lower = new RowBufferStats("COL1", "lower");
+    RowBufferStats upper = new RowBufferStats("COL1", "upper");
+    RowBufferStats ltrim = new RowBufferStats("COL1", "ltrim");
+    RowBufferStats rtrim = new RowBufferStats("COL1", "rtrim");
+    RowBufferStats trim = new RowBufferStats("COL1", "trim");
 
     // Accents
     ai.addStrValue("a");
@@ -69,7 +69,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testEmptyState() throws Exception {
-    RowBufferStats stats = new RowBufferStats();
+    RowBufferStats stats = new RowBufferStats("COL1");
 
     Assert.assertNull(stats.getCollationDefinitionString());
     Assert.assertNull(stats.getCurrentMinRealValue());
@@ -85,7 +85,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testMinMaxStrNonCol() throws Exception {
-    RowBufferStats stats = new RowBufferStats();
+    RowBufferStats stats = new RowBufferStats("COL1");
 
     stats.addStrValue("bob");
     Assert.assertEquals("bob", stats.getCurrentMinColStrValue());
@@ -112,7 +112,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testStrTruncation() throws Exception {
-    RowBufferStats stats = new RowBufferStats();
+    RowBufferStats stats = new RowBufferStats("COL1");
     stats.addStrValue("abcde|abcde|abcde|abcde|abcde|abcde|");
     Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", stats.getCurrentMinColStrValue());
     Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ac", stats.getCurrentMaxColStrValue());
@@ -121,7 +121,7 @@ public class RowBufferStatsTest {
     Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", stats.getCurrentMinColStrValue());
     Assert.assertEquals("zabcde|abcde|abcde|abcde|abcde|b", stats.getCurrentMaxColStrValue());
 
-    RowBufferStats ai = new RowBufferStats("en-ai");
+    RowBufferStats ai = new RowBufferStats("COL1", "en-ai");
     ai.addStrValue("abcde|abcde|abcde|abcde|abcde|abcde|");
     Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ab", ai.getCurrentMinColStrValue());
     Assert.assertEquals("abcde|abcde|abcde|abcde|abcde|ac", ai.getCurrentMaxColStrValue());
@@ -133,7 +133,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testMinMaxStrCol() throws Exception {
-    RowBufferStats stats = new RowBufferStats("en-ci");
+    RowBufferStats stats = new RowBufferStats("COL1", "en-ci");
 
     Assert.assertEquals("en-ci", stats.getCollationDefinitionString());
 
@@ -161,7 +161,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testMinMaxInt() throws Exception {
-    RowBufferStats stats = new RowBufferStats();
+    RowBufferStats stats = new RowBufferStats("COL1");
 
     stats.addIntValue(BigInteger.valueOf(5));
     Assert.assertEquals(BigInteger.valueOf((5)), stats.getCurrentMinIntValue());
@@ -188,7 +188,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testMinMaxReal() throws Exception {
-    RowBufferStats stats = new RowBufferStats();
+    RowBufferStats stats = new RowBufferStats("COL1");
 
     stats.addRealValue(1.0);
     Assert.assertEquals(Double.valueOf(1), stats.getCurrentMinRealValue());
@@ -215,7 +215,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testIncCurrentNullCount() throws Exception {
-    RowBufferStats stats = new RowBufferStats();
+    RowBufferStats stats = new RowBufferStats("COL1");
 
     Assert.assertEquals(0, stats.getCurrentNullCount());
     stats.incCurrentNullCount();
@@ -226,7 +226,7 @@ public class RowBufferStatsTest {
 
   @Test
   public void testMaxLength() throws Exception {
-    RowBufferStats stats = new RowBufferStats();
+    RowBufferStats stats = new RowBufferStats("COL1");
 
     Assert.assertEquals(0, stats.getCurrentMaxLength());
     stats.setCurrentMaxLength(100L);
@@ -238,8 +238,8 @@ public class RowBufferStatsTest {
   @Test
   public void testGetCombinedStats() throws Exception {
     // Test for Integers
-    RowBufferStats one = new RowBufferStats();
-    RowBufferStats two = new RowBufferStats();
+    RowBufferStats one = new RowBufferStats("COL1");
+    RowBufferStats two = new RowBufferStats("COL1");
 
     one.addIntValue(BigInteger.valueOf(2));
     one.addIntValue(BigInteger.valueOf(4));
@@ -265,8 +265,8 @@ public class RowBufferStatsTest {
     Assert.assertNull(result.getCurrentMaxRealValue());
 
     // Test for Reals
-    one = new RowBufferStats();
-    two = new RowBufferStats();
+    one = new RowBufferStats("COL1");
+    two = new RowBufferStats("COL1");
 
     one.addRealValue(2d);
     one.addRealValue(4d);
@@ -291,8 +291,8 @@ public class RowBufferStatsTest {
     Assert.assertNull(result.getCurrentMaxIntValue());
 
     // Test for Strings without collation
-    one = new RowBufferStats();
-    two = new RowBufferStats();
+    one = new RowBufferStats("COL1");
+    two = new RowBufferStats("COL1");
 
     one.addStrValue("alpha");
     one.addStrValue("d");
@@ -321,8 +321,8 @@ public class RowBufferStatsTest {
     Assert.assertNull(result.getCurrentMaxIntValue());
 
     // Test for Strings with collation
-    one = new RowBufferStats("en-ci");
-    two = new RowBufferStats("en-ci");
+    one = new RowBufferStats("COL1", "en-ci");
+    two = new RowBufferStats("COL1", "en-ci");
 
     one.addStrValue("a");
     one.addStrValue("d");
@@ -351,8 +351,8 @@ public class RowBufferStatsTest {
   @Test
   public void testGetCombinedStatsNull() throws Exception {
     // Test for Integers
-    RowBufferStats one = new RowBufferStats();
-    RowBufferStats two = new RowBufferStats();
+    RowBufferStats one = new RowBufferStats("COL1");
+    RowBufferStats two = new RowBufferStats("COL1");
 
     one.addIntValue(BigInteger.valueOf(2));
     one.addIntValue(BigInteger.valueOf(4));
@@ -373,7 +373,7 @@ public class RowBufferStatsTest {
     Assert.assertNull(result.getCurrentMaxRealValue());
 
     // Test for Reals
-    one = new RowBufferStats();
+    one = new RowBufferStats("COL1");
 
     one.addRealValue(2d);
     one.addRealValue(4d);
@@ -392,8 +392,8 @@ public class RowBufferStatsTest {
     Assert.assertNull(result.getCurrentMaxIntValue());
 
     // Test for Strings
-    one = new RowBufferStats();
-    two = new RowBufferStats();
+    one = new RowBufferStats("COL1");
+    two = new RowBufferStats("COL1");
 
     one.addStrValue("alpha");
     one.addStrValue("d");

@@ -11,6 +11,7 @@ import java.util.Map;
 /** Column metadata for each column in a Snowflake table */
 class ColumnMetadata {
   private String name;
+  private String internalName;
   private String type;
   private String logicalType;
   private String physicalType;
@@ -24,6 +25,7 @@ class ColumnMetadata {
   @JsonProperty("name")
   void setName(String name) {
     this.name = name;
+    this.internalName = LiteralQuoteUtils.unquoteColumnName(name);
   }
 
   String getName() {
@@ -109,6 +111,10 @@ class ColumnMetadata {
 
   boolean getNullable() {
     return this.nullable;
+  }
+
+  String getInternalName() {
+    return internalName;
   }
 
   @Override
