@@ -110,8 +110,12 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
     Assert.assertNull(rs.getObject(5));
   }
 
+  /**
+   * Test that original user input is used in extra column names validation response (required by
+   * KC)
+   */
   @Test
-  public void testExtraColNamesDisplayedCorrectly() throws Exception {
+  public void testExtraColNames() throws Exception {
     String tableName = "t1";
     conn.createStatement()
         .execute(String.format("create or replace table %s (\"create\" int);", tableName));
@@ -140,9 +144,9 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
         insertValidationResponse.getInsertErrors().get(0).getExtraColNames());
   }
 
-  /** Tests that quoted columns are correctly resolved and displayed for not-null checks */
+  /** Test that display names are shown in missing not null columns validation response */
   @Test
-  public void testExtraColumnDisplayedCorrectly() throws Exception {
+  public void testMissingNotNullColNames() throws Exception {
     String tableName = "t1";
     conn.createStatement()
         .execute(

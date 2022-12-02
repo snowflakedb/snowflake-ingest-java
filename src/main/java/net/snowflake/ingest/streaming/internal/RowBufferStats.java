@@ -306,6 +306,7 @@ class RowBufferStats {
   private long currentMaxLength;
   private CollationDefinition collationDefinition;
   private final String collationDefinitionString;
+  /** Display name is required for the registration endpoint */
   private final String columnDisplayName;
 
   private static final int MAX_LOB_LEN = 32;
