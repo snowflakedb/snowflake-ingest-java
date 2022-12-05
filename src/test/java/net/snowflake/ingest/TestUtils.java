@@ -372,4 +372,16 @@ public class TestUtils {
             "Timeout exceeded while waiting for offset %s. Last committed offset: %s",
             expectedOffset, lastCommittedOffset));
   }
+
+  /**
+   * Creates a string from a certain number of concatenated strings e.g. buildString("ab", 2) =>
+   * abab
+   */
+  public static String buildString(String str, int count) {
+    StringBuilder sb = new StringBuilder(count);
+    for (int i = 0; i < count; i++) {
+      sb.append(str);
+    }
+    return sb.toString();
+  }
 }

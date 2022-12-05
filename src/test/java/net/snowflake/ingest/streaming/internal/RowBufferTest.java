@@ -16,6 +16,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.commons.codec.binary.Hex;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -109,7 +110,6 @@ public class RowBufferTest {
     colChar.setByteLength(14);
     colChar.setLength(11);
     colChar.setScale(0);
-    colChar.setCollation("en-ci");
 
     return Arrays.asList(
         colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
@@ -201,12 +201,12 @@ public class RowBufferTest {
     RowBufferStats stats = this.rowBufferOnErrorContinue.statsMap.get("COLCHAR");
     stats.addIntValue(BigInteger.valueOf(1));
     Assert.assertEquals(BigInteger.valueOf(1), stats.getCurrentMaxIntValue());
-    Assert.assertEquals("en-ci", stats.getCollationDefinitionString());
+    Assert.assertNull(stats.getCollationDefinitionString());
     this.rowBufferOnErrorContinue.reset();
     RowBufferStats resetStats = this.rowBufferOnErrorContinue.statsMap.get("COLCHAR");
     Assert.assertNotNull(resetStats);
     Assert.assertNull(resetStats.getCurrentMaxIntValue());
-    Assert.assertEquals("en-ci", resetStats.getCollationDefinitionString());
+    Assert.assertNull(resetStats.getCollationDefinitionString());
   }
 
   @Test
@@ -501,8 +501,12 @@ public class RowBufferTest {
 
     FileColumnProperties strColumnResult = columnResults.get("strColumn");
     Assert.assertEquals(-1, strColumnResult.getDistinctValues());
-    Assert.assertEquals("alice", strColumnResult.getMinStrValue());
-    Assert.assertEquals("bob", strColumnResult.getMaxStrValue());
+    Assert.assertEquals(
+        Hex.encodeHexString("alice".getBytes(StandardCharsets.UTF_8)),
+        strColumnResult.getMinStrValue());
+    Assert.assertEquals(
+        Hex.encodeHexString("bob".getBytes(StandardCharsets.UTF_8)),
+        strColumnResult.getMaxStrValue());
     Assert.assertEquals(1, strColumnResult.getNullCount());
 
     FileColumnProperties intColumnResult = columnResults.get("intColumn");
@@ -678,8 +682,11 @@ public class RowBufferTest {
     Assert.assertEquals(0, columnEpStats.get("COLBIGINT").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLBIGINT").getDistinctValues());
 
-    Assert.assertEquals("alice", columnEpStats.get("COLCHAR").getCurrentMaxColStrValue());
-    Assert.assertEquals("2", columnEpStats.get("COLCHAR").getCurrentMinColStrValue());
+    Assert.assertArrayEquals(
+        "2".getBytes(StandardCharsets.UTF_8), columnEpStats.get("COLCHAR").getCurrentMinStrValue());
+    Assert.assertArrayEquals(
+        "alice".getBytes(StandardCharsets.UTF_8),
+        columnEpStats.get("COLCHAR").getCurrentMaxStrValue());
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
@@ -1101,10 +1108,12 @@ public class RowBufferTest {
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
-    Assert.assertEquals(
-        "Hello World", result.getColumnEps().get("COLBINARY").getCurrentMinColStrValue());
-    Assert.assertEquals(
-        "Honk Honk", result.getColumnEps().get("COLBINARY").getCurrentMaxColStrValue());
+    Assert.assertArrayEquals(
+        "Hello World".getBytes(StandardCharsets.UTF_8),
+        result.getColumnEps().get("COLBINARY").getCurrentMinStrValue());
+    Assert.assertArrayEquals(
+        "Honk Honk".getBytes(StandardCharsets.UTF_8),
+        result.getColumnEps().get("COLBINARY").getCurrentMaxStrValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLBINARY").getCurrentNullCount());
   }
 

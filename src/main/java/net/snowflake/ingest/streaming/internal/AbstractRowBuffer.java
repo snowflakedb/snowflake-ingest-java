@@ -154,6 +154,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Names of non-nullable columns
   private final Set<String> nonNullableFieldNames;
 
+  // Contains internal (i.e. unquoted) names of collated columns
+  private final Set<String> collatedColumnsInternalNames;
+
   // Buffer's channel fully qualified name with database, schema and table
   final String channelFullyQualifiedName;
 
@@ -181,6 +184,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.channelFullyQualifiedName = fullyQualifiedChannelName;
     this.allocator = allocator;
     this.nonNullableFieldNames = new HashSet<>();
+    this.collatedColumnsInternalNames = new HashSet<>();
     this.flushLock = new ReentrantLock();
     this.rowCount = 0;
     this.bufferSize = 0F;
@@ -191,12 +195,33 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   /**
-   * Adds non-nullable filed name.
+   * Adds non-nullable field name. It is used to check if all non-nullable fields have been
+   * provided.
    *
    * @param nonNullableFieldName non-nullable filed name
    */
   void addNonNullableFieldName(String nonNullableFieldName) {
     nonNullableFieldNames.add(nonNullableFieldName);
+  }
+
+  /**
+   * Ingestion of non-null values into collated columns is not supported. If non-nullable column has
+   * collation defined, an exception is thrown. If the column is nullable, we store the collated
+   * field name and later check that only NULLs are being ingested.
+   */
+  void validateNonNullableCollatedColumn(ColumnMetadata column) {
+    if (column.getCollation() != null) {
+      if (column.getNullable()) {
+        collatedColumnsInternalNames.add(column.getInternalName());
+      } else {
+        throw new SFException(
+            ErrorCode.DATA_TYPE_NOT_SUPPORTED,
+            String.format(
+                "Non-nullable column %s with collation %s detected. Ingestion of non-NULL values"
+                    + " into collated columns is not supported",
+                column.getName(), column.getCollation()));
+      }
+    }
   }
 
   /**
@@ -221,9 +246,23 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    */
   Set<String> verifyInputColumns(
       Map<String, Object> row, InsertValidationResponse.InsertError error) {
+    // Map of unquoted column name -> original column name
     Map<String, String> inputColNamesMap =
         row.keySet().stream()
             .collect(Collectors.toMap(LiteralQuoteUtils::unquoteColumnName, value -> value));
+
+    // Check that collated columns are NULLs
+    for (String collatedColumnInternalName : collatedColumnsInternalNames) {
+      String collatedColumnUserInputName = inputColNamesMap.get(collatedColumnInternalName);
+      if (row.get(collatedColumnUserInputName) != null) {
+        throw new SFException(
+            ErrorCode.DATA_TYPE_NOT_SUPPORTED,
+            String.format(
+                "Ingestion of non-null values into collated columns is not supported. Column name:"
+                    + " %s",
+                collatedColumnUserInputName));
+      }
+    }
 
     // Check for extra columns in the row
     List<String> extraCols = new ArrayList<>();

@@ -1,12 +1,19 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import static net.snowflake.ingest.TestUtils.buildString;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.Ignore;
 import org.junit.Test;
 
 public class StringsIT extends AbstractDataTypeTest {
+
+  private static final int MB_16 = 16 * 1024 * 1024;
 
   public StringsIT(String name, Constants.BdecVersion bdecVersion) {
     super(name, bdecVersion);
@@ -18,9 +25,9 @@ public class StringsIT extends AbstractDataTypeTest {
     testJdbcTypeCompatibility("VARCHAR", "foo", new StringProvider());
 
     // Test strings with limited size
-    testJdbcTypeCompatibility("VARCHAR(2)", "", new StringProvider());
+    testJdbcTypeCompatibility("VARCHAR(1)", "", new StringProvider());
     testJdbcTypeCompatibility("VARCHAR(2)", "ab", new StringProvider());
-    expectArrowNotSupported("VARCHAR(2)", "abc");
+    testJdbcTypeCompatibility("VARCHAR(2)", "🍞❄", new StringProvider());
 
     // test booleans
     testJdbcTypeCompatibility("CHAR(5)", true, "true", new BooleanProvider(), new StringProvider());
@@ -62,36 +69,145 @@ public class StringsIT extends AbstractDataTypeTest {
   }
 
   @Test
-  @Ignore("SNOW-663621")
   public void testNonAsciiStrings() throws Exception {
-    testIngestion(
-        "VARCHAR", "ž, š, č, ř, c, j, ď, ť, ň", "ž, š, č, ř, c, j, ď, ť, ň", new StringProvider());
+    testJdbcTypeCompatibility(
+        "VARCHAR", "❄😃öüß0ö😃üä++ěšíáýšěčí🍞áýřž+šář+🍞ýšš😃čžýříéě+ž❄", new StringProvider());
+  }
+
+  @Test
+  public void testStringCreatedFromInvalidBytes() throws Exception {
+    byte[] bytes = new byte[256];
+    int counter = 0;
+    while (counter < 256) {
+      bytes[counter] = (byte) (Byte.MIN_VALUE + counter);
+      counter++;
+    }
+
+    String s = new String(bytes, StandardCharsets.UTF_8);
+    testJdbcTypeCompatibility("VARCHAR", s, new StringProvider());
   }
 
   @Test
   public void testMaxAllowedString() throws Exception {
-    StringBuilder maxAllowedStringBuilder = buildString('a', 16 * 1024 * 1024);
-    String maxString = maxAllowedStringBuilder.toString();
-    testIngestion("VARCHAR", maxString, maxString, new StringProvider());
-    expectArrowNotSupported("VARCHAR", maxAllowedStringBuilder.append('a').toString());
+    // 1-byte chars
+    String maxString = buildString("a", MB_16);
+    testIngestion("VARCHAR", maxString, new StringProvider());
+    expectArrowNotSupported("VARCHAR", maxString + "a");
+
+    // 2-byte chars
+    maxString = buildString("š", MB_16 / 2);
+    testIngestion("VARCHAR", maxString, new StringProvider());
+
+    expectArrowNotSupported("VARCHAR", maxString + "a");
+
+    // 3-byte chars
+    maxString = buildString("❄", MB_16 / 3);
+    testIngestion("VARCHAR", maxString, new StringProvider());
+    expectArrowNotSupported("VARCHAR", maxString + "aa");
+
+    // 4-byte chars
+    maxString = buildString("🍞", MB_16 / 4);
+    testIngestion("VARCHAR", maxString, new StringProvider());
+    expectArrowNotSupported("VARCHAR", maxString + "a");
   }
 
   @Test
-  @Ignore("SNOW-663621")
-  public void testMaxAllowedMultibyteString() throws Exception {
-    String times16 = "čččččččččččččččč";
-    String times17 = "ččččččččččččččččč";
-    testIngestion("VARCHAR", times16, times16, new StringProvider()); // works fine
-    testIngestion("VARCHAR", times17, times17, new StringProvider()); // fails
-    //    expectArrowNotSupported("VARCHAR",
-    // maxAllowedMultibyteStringBuilder.append('a').toString());
+  public void testPrefixFF() throws Exception {
+
+    // 11x \xFFFF
+    testIngestion(
+        "VARCHAR",
+        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF",
+        new StringProvider());
+    // 10x \xFFFF + chars
+    testIngestion(
+        "VARCHAR",
+        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        new StringProvider());
+
+    // chars + 15+ times \uFFFF
+    ingestManyAndMigrate(
+        "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF");
+
+    // chars + 15+ times \uFFFF + chars
+    ingestManyAndMigrate(
+        "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa");
+
+    // 15+ times \uFFFF
+    ingestManyAndMigrate(
+        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF");
+
+    // 15+ times \uFFFF + chars
+    ingestManyAndMigrate(
+        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa");
   }
 
-  private StringBuilder buildString(char character, int count) {
-    StringBuilder maxStringBuilder = new StringBuilder(count);
-    for (int i = 0; i < count; i++) {
-      maxStringBuilder.append(character);
+  @Test
+  public void testMultiByteCharComparison() throws Exception {
+    ingestManyAndMigrate("a", "❄");
+    ingestManyAndMigrate("❄", "a");
+
+    ingestManyAndMigrate(
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄");
+    ingestManyAndMigrate(
+        "❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄",
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  }
+
+  /**
+   * Ingests string with length around EP-truncation point and asserts that both shorter, equal and
+   * longer strings are ingested correctly
+   */
+  @Test
+  public void testTruncationAndIncrementation() throws Exception {
+    // Test 1-byte
+    testIngestion("VARCHAR", buildString("a", 31), new StringProvider());
+    testIngestion("VARCHAR", buildString("a", 32), new StringProvider());
+    testIngestion("VARCHAR", buildString("a", 33), new StringProvider());
+
+    // Test 2-byte
+    testIngestion("VARCHAR", buildString("š", 15), new StringProvider());
+    testIngestion("VARCHAR", buildString("š", 16), new StringProvider());
+    testIngestion("VARCHAR", buildString("š", 17), new StringProvider());
+    testIngestion("VARCHAR", "a" + buildString("š", 15), new StringProvider());
+    testIngestion("VARCHAR", "a" + buildString("š", 16), new StringProvider());
+
+    // Test 3-byte
+    testIngestion("VARCHAR", buildString("❄", 10), new StringProvider());
+    testIngestion("VARCHAR", buildString("❄", 11), new StringProvider());
+    testIngestion("VARCHAR", buildString("❄", 12), new StringProvider());
+
+    // Test 4-byte
+    testIngestion("VARCHAR", buildString("🍞", 6), new StringProvider());
+    testIngestion("VARCHAR", buildString("🍞", 7), new StringProvider());
+    testIngestion("VARCHAR", buildString("🍞", 8), new StringProvider());
+
+    testIngestion("VARCHAR", "a" + buildString("🍞", 7), new StringProvider());
+  }
+
+  @Test
+  @Ignore("Failing due to GS SNOW-690281")
+  public void testByteSplit() throws Exception {
+    testIngestion("VARCHAR", "a" + buildString("🍞", 8), new StringProvider());
+    testIngestion("VARCHAR", "a" + buildString("🍞", 9), new StringProvider());
+  }
+
+  /**
+   * Ingest multiple values, wait for the latest offset to be committed, migrate the table and
+   * assert no errors have been thrown.
+   */
+  protected <STREAMING_INGEST_WRITE> void ingestManyAndMigrate(STREAMING_INGEST_WRITE... values)
+      throws Exception {
+    String tableName = createTable("VARCHAR");
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    String offsetToken = null;
+    for (int i = 0; i < values.length; i++) {
+      offsetToken = String.format("offsetToken%d", i);
+      channel.insertRow(createStreamingIngestRow(values[i]), offsetToken);
     }
-    return maxStringBuilder;
+
+    TestUtils.waitForOffset(channel, offsetToken);
+    migrateTable(tableName); // migration should always succeed
   }
 }

@@ -55,11 +55,6 @@ public abstract class AbstractDataTypeTest {
 
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
-
-  protected String randomString() {
-    return UUID.randomUUID().toString().replace("-", "_");
-  }
-
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Constants.BdecVersion bdecVersion;
@@ -71,7 +66,7 @@ public abstract class AbstractDataTypeTest {
 
   @Before
   public void before() throws Exception {
-    databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", randomString());
+    databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
     conn = TestUtils.getConnection(true);
     conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
     conn.createStatement().execute(String.format("use database %s;", databaseName));
@@ -107,21 +102,17 @@ public abstract class AbstractDataTypeTest {
   }
 
   protected String createTable(String dataType) throws SQLException {
-    String tableName =
-        String.format("test_%s_%s", dataType, UUID.randomUUID())
-            .replace('-', '_')
-            .replace(' ', '_')
-            .replace('(', '_')
-            .replace(')', '_')
-            .replace(',', '_');
-
-    //    System.out.printf("Creating table %s.%s.%s%n", databaseName, schemaName, tableName);
+    String tableName = getRandomIdentifier();
     conn.createStatement()
         .execute(
             String.format(
                 "create or replace table %s (%s string, %s %s)",
                 tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
     return tableName;
+  }
+
+  protected String getRandomIdentifier() {
+    return String.format("test_%s", UUID.randomUUID()).replace('-', '_');
   }
 
   protected SnowflakeStreamingIngestChannel openChannel(String tableName) {
@@ -140,7 +131,7 @@ public abstract class AbstractDataTypeTest {
     return client.openChannel(openChannelRequest);
   }
 
-  private Map<String, Object> createStreamingIngestRow(Object value) {
+  protected Map<String, Object> createStreamingIngestRow(Object value) {
     Map<String, Object> row = new HashMap<>();
     row.put(SOURCE_COLUMN_NAME, SOURCE_STREAMING_INGEST);
     row.put(VALUE_COLUMN_NAME, value);
@@ -191,6 +182,15 @@ public abstract class AbstractDataTypeTest {
         x ->
             (x instanceof SFException
                 && x.getMessage().contains("The given row cannot be converted to Arrow format")));
+  }
+
+  /**
+   * Simplified version, which does not insert using JDBC. Useful for testing non-JDBC types like
+   * BigInteger, java.time.* types, etc.
+   */
+  <VALUE> void testIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
+      throws Exception {
+    ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider);
   }
 
   /**
