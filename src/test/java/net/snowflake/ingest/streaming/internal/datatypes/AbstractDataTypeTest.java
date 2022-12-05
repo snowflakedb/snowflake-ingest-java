@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,22 +32,7 @@ import org.junit.runners.Parameterized;
 public abstract class AbstractDataTypeTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
-    boolean enableParquetTests =
-        System.getProperty("enableParquetTests") != null
-            && Boolean.parseBoolean(System.getProperty("enableParquetTests"));
-    if (enableParquetTests) {
-      return Arrays.asList(
-          new Object[][] {
-            {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
-          });
-    }
-    return Arrays.asList(
-        new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE},
-          // TODO: uncomment once SNOW-659721 is deployed and we set the parameter
-          // DISABLE_PARQUET_CACHE to true for the test account
-          // {"Parquet", Constants.BdecVersion.THREE}
-        });
+    return TestUtils.getBdecVersionItCases();
   }
 
   private static final String SOURCE_COLUMN_NAME = "source";
