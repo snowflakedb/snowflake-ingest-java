@@ -146,7 +146,7 @@ public class StreamingIngestIT {
                     String.format(
                         "select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, TEST_TABLE));
         result.next();
-        Assert.assertEquals(1000, result.getLong(1));
+        Assert.assertEquals(100, result.getLong(1));
 
         ResultSet result2 =
             jdbcConnection
