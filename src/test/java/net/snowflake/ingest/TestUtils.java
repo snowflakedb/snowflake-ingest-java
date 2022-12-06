@@ -28,6 +28,8 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.Properties;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
@@ -91,7 +93,8 @@ public class TestUtils {
    * @throws IOException if can't read profile
    */
   private static void init() throws Exception {
-    Path path = Paths.get(PROFILE_PATH);
+    String testProfilePath = getTestProfilePath();
+    Path path = Paths.get(testProfilePath);
 
     if (Files.exists(path)) {
       profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(path)));
@@ -127,6 +130,35 @@ public class TestUtils {
       privateKey = keyPair.getPrivate();
       privateKeyPem = java.util.Base64.getEncoder().encodeToString(privateKey.getEncoded());
     }
+  }
+
+  /** @return profile path that will be used for tests. */
+  private static String getTestProfilePath() {
+    String testProfilePath =
+        System.getProperty("testProfilePath") != null
+            ? System.getProperty("testProfilePath")
+            : PROFILE_PATH;
+    return testProfilePath;
+  }
+
+  /** @return list of Bdec versions for which to execute IT tests. */
+  public static Collection<Object[]> getBdecVersionItCases() {
+    boolean enableParquetTests =
+        System.getProperty("enableParquetTests") != null
+            && Boolean.parseBoolean(System.getProperty("enableParquetTests"));
+    if (enableParquetTests) {
+      return Arrays.asList(
+          new Object[][] {
+            {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
+          });
+    }
+    return Arrays.asList(
+        new Object[][] {
+          {"Arrow", Constants.BdecVersion.ONE},
+          // TODO: uncomment once SNOW-659721 is deployed and we set the parameter
+          // DISABLE_PARQUET_CACHE to true for the test account
+          // {"Parquet", Constants.BdecVersion.THREE}
+        });
   }
 
   public static String getUser() throws Exception {
