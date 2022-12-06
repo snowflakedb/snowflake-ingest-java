@@ -88,7 +88,7 @@ public class ChannelCacheTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE);
     cache.addChannel(channel);
-    Assert.assertEquals(1, cache.getSize());
+    Assert.assertEquals(0, cache.getSize());
     Assert.assertTrue(channel == cache.iterator().next().getValue().get(channelName));
 
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channelDup =
