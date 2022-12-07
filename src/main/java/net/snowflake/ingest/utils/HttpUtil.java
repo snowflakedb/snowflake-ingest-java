@@ -231,7 +231,7 @@ public class HttpUtil {
                 || statusCode >= SERVER_ERRORS);
         if (needNextRetry) {
           long interval = getRetryInterval();
-          LOGGER.warn(
+          LOGGER.info(
               "In retryRequest for service unavailability with statusCode:{} and uri:{}",
               statusCode,
               getRequestUriFromContext(context));
