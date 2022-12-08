@@ -229,7 +229,7 @@ public class DataValidationUtilTest {
     TimestampWrapper result =
         DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", 4);
     assertEquals(1609459200, result.getEpoch());
-    assertEquals(1230, result.getFraction());
+    assertEquals(123000000, result.getFraction());
     assertEquals(Optional.of(3600000), result.getTimezoneOffset());
     assertEquals(Optional.of(1500), result.getTimeZoneIndex());
 

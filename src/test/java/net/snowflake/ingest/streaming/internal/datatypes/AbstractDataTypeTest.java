@@ -304,6 +304,7 @@ public abstract class AbstractDataTypeTest {
     Assert.assertTrue(resultSet.next());
     int count = resultSet.getInt(1);
     Assert.assertEquals(insertAlsoWithJdbc ? 2 : 1, count);
+    migrateTable(tableName); // migration should always succeed
   }
 
   <STREAMING_INGEST_WRITE> void assertVariant(
@@ -337,5 +338,10 @@ public abstract class AbstractDataTypeTest {
     Assert.assertEquals(1, counter);
     Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
     Assert.assertEquals(expectedType, typeof);
+    migrateTable(tableName); // migration should always succeed
+  }
+
+  protected void migrateTable(String tableName) throws SQLException {
+    conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
   }
 }
