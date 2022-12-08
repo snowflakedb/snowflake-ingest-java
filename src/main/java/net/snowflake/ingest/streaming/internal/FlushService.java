@@ -141,7 +141,7 @@ class FlushService<T> {
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
-    this.latencyTimerContextMap = new HashMap<>();
+    this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
     createWorkers();
   }
