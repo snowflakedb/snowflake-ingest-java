@@ -13,13 +13,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.VisibleForTesting;
 
 /**
@@ -147,14 +149,35 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Current buffer size
   private volatile float bufferSize;
 
-  // Reference to the Streaming Ingest channel that owns this buffer
-  @VisibleForTesting final SnowflakeStreamingIngestChannelInternal<T> owningChannel;
-
   // Names of non-nullable columns
   private final Set<String> nonNullableFieldNames;
 
-  AbstractRowBuffer(SnowflakeStreamingIngestChannelInternal<T> channel) {
-    this.owningChannel = channel;
+  // buffer's channel fully qualified name with database, schema and table
+  final String channelFullyQualifiedName;
+
+  // metric callback to report size of inserted rows
+  private final Consumer<Float> rowSizeMetric;
+
+  // Allocator used to allocate the buffers
+  final BufferAllocator allocator;
+
+  // State of the owning channel
+  final ChannelRuntimeState channelState;
+
+  // ON_ERROR option for this channel
+  final OpenChannelRequest.OnErrorOption onErrorOption;
+
+  AbstractRowBuffer(
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      BufferAllocator allocator,
+      String fullyQualifiedChannelName,
+      Consumer<Float> rowSizeMetric,
+      ChannelRuntimeState channelRuntimeState) {
+    this.onErrorOption = onErrorOption;
+    this.rowSizeMetric = rowSizeMetric;
+    this.channelState = channelRuntimeState;
+    this.channelFullyQualifiedName = fullyQualifiedChannelName;
+    this.allocator = allocator;
     this.nonNullableFieldNames = new HashSet<>();
     this.flushLock = new ReentrantLock();
     this.rowCount = 0;
@@ -198,7 +221,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       Map<String, Object> row, InsertValidationResponse.InsertError error) {
     Map<String, String> inputColNamesMap =
         row.keySet().stream()
-            .collect(Collectors.toMap(AbstractRowBuffer::formatColumnName, value -> value));
+            .collect(Collectors.toMap(LiteralQuoteUtils::unquoteColumnName, value -> value));
 
     // Check for extra columns in the row
     List<String> extraCols = new ArrayList<>();
@@ -222,7 +245,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     List<String> missingCols = new ArrayList<>();
     for (String columnName : this.nonNullableFieldNames) {
       if (!inputColNamesMap.containsKey(columnName)) {
-        missingCols.add(columnName);
+        missingCols.add(statsMap.get(columnName).getColumnDisplayName());
       }
     }
 
@@ -256,7 +279,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     InsertValidationResponse response = new InsertValidationResponse();
     this.flushLock.lock();
     try {
-      if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.CONTINUE) {
+      if (onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
         // Used to map incoming row(nth row) to InsertError(for nth row) in response
         long rowIndex = 0;
         for (Map<String, Object> row : rows) {
@@ -305,8 +328,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                     RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
       }
 
-      this.owningChannel.setOffsetToken(offsetToken);
-      this.owningChannel.collectRowSize(rowSize);
+      this.channelState.setOffsetToken(offsetToken);
+      this.rowSizeMetric.accept(rowSize);
     } finally {
       this.tempStatsMap.values().forEach(RowBufferStats::reset);
       clearTempRows();
@@ -324,7 +347,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    */
   @Override
   public ChannelData<T> flush() {
-    logger.logDebug("Start get data for channel={}", this.owningChannel.getFullyQualifiedName());
+    logger.logDebug("Start get data for channel={}", channelFullyQualifiedName);
     if (this.rowCount > 0) {
       Optional<T> oldData = Optional.empty();
       int oldRowCount = 0;
@@ -334,8 +357,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       Map<String, RowBufferStats> oldColumnEps = null;
 
       logger.logDebug(
-          "Arrow buffer flush about to take lock on channel={}",
-          this.owningChannel.getFullyQualifiedName());
+          "Arrow buffer flush about to take lock on channel={}", channelFullyQualifiedName);
 
       this.flushLock.lock();
       try {
@@ -344,8 +366,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldData = getSnapshot();
           oldRowCount = this.rowCount;
           oldBufferSize = this.bufferSize;
-          oldRowSequencer = this.owningChannel.incrementAndGetRowSequencer();
-          oldOffsetToken = this.owningChannel.getOffsetToken();
+          oldRowSequencer = this.channelState.incrementAndGetRowSequencer();
+          oldOffsetToken = this.channelState.getOffsetToken();
           oldColumnEps = new HashMap<>(this.statsMap);
           // Reset everything in the buffer once we save all the info
           reset();
@@ -356,7 +378,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
       logger.logDebug(
           "Arrow buffer flush released lock on channel={}, rowCount={}, bufferSize={}",
-          this.owningChannel.getFullyQualifiedName(),
+          channelFullyQualifiedName,
           oldRowCount,
           oldBufferSize);
 
@@ -365,10 +387,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         data.setVectors(oldData.get());
         data.setRowCount(oldRowCount);
         data.setBufferSize(oldBufferSize);
-        data.setChannel(owningChannel);
         data.setRowSequencer(oldRowSequencer);
         data.setOffsetToken(oldOffsetToken);
         data.setColumnEps(oldColumnEps);
+        data.setFlusherFactory(this::createFlusher);
         return data;
       }
     }
@@ -425,7 +447,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.rowCount = 0;
     this.bufferSize = 0F;
     this.statsMap.replaceAll(
-        (key, value) -> new RowBufferStats(value.getCollationDefinitionString()));
+        (key, value) ->
+            new RowBufferStats(value.getColumnDisplayName(), value.getCollationDefinitionString()));
   }
 
   /** Get buffered data snapshot for later flushing. */
@@ -436,14 +459,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   @VisibleForTesting
   abstract int getTempRowCount();
-
-  /** Normalize the column name, given with the inserted row, to send to server side. */
-  static String formatColumnName(String columnName) {
-    Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
-    return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
-        ? columnName
-        : columnName.toUpperCase();
-  }
 
   /**
    * Given a set of col names to stats, build the right ep info
@@ -457,10 +472,42 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
       RowBufferStats stat = colStat.getValue();
       FileColumnProperties dto = new FileColumnProperties(stat);
-
-      String colName = colStat.getKey();
+      String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
     }
     return epInfo;
+  }
+
+  /** Row buffer factory. */
+  static <T> AbstractRowBuffer<T> createRowBuffer(
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      BufferAllocator allocator,
+      Constants.BdecVersion bdecVersion,
+      String fullyQualifiedChannelName,
+      Consumer<Float> rowSizeMetric,
+      ChannelRuntimeState channelRuntimeState) {
+    switch (bdecVersion) {
+      case ONE:
+        //noinspection unchecked
+        return (AbstractRowBuffer<T>)
+            new ArrowRowBuffer(
+                onErrorOption,
+                allocator,
+                fullyQualifiedChannelName,
+                rowSizeMetric,
+                channelRuntimeState);
+      case THREE:
+        //noinspection unchecked
+        return (AbstractRowBuffer<T>)
+            new ParquetRowBuffer(
+                onErrorOption,
+                allocator,
+                fullyQualifiedChannelName,
+                rowSizeMetric,
+                channelRuntimeState);
+      default:
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
+    }
   }
 }

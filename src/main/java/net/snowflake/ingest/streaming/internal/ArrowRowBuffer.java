@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -77,17 +78,14 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   // Map the column name to Arrow column field
   private final Map<String, Field> fields;
 
-  // Allocator used to allocate the buffers
-  private final BufferAllocator allocator;
-
-  /**
-   * Construct a ArrowRowBuffer object
-   *
-   * @param channel client channel
-   */
-  ArrowRowBuffer(SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel) {
-    super(channel);
-    this.allocator = channel.getAllocator();
+  /** Construct a ArrowRowBuffer object. */
+  ArrowRowBuffer(
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      BufferAllocator allocator,
+      String fullyQualifiedChannelName,
+      Consumer<Float> rowSizeMetric,
+      ChannelRuntimeState channelState) {
+    super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelState);
     this.fields = new HashMap<>();
   }
 
@@ -107,14 +105,16 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       if (!field.isNullable()) {
         addNonNullableFieldName(field.getName());
       }
-      this.fields.put(column.getName(), field);
+      this.fields.put(column.getInternalName(), field);
       vectors.add(vector);
-      this.statsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
+      this.statsMap.put(
+          column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
 
-      if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.ABORT) {
+      if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
         FieldVector tempVector = field.createVector(this.allocator);
         tempVectors.add(tempVector);
-        this.tempStatsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
+        this.tempStatsMap.put(
+            column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
       }
     }
 
@@ -138,7 +138,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     logger.logInfo(
         "Trying to close arrow buffer for channel={} from function={}, allocatedBeforeRelease={},"
             + " allocatedAfterRelease={}",
-        this.owningChannel.getName(),
+        channelFullyQualifiedName,
         name,
         allocatedBeforeRelease,
         allocatedAfterRelease);
@@ -146,12 +146,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // If the channel is valid but still has leftover data, throw an exception because it should be
     // cleaned up already before calling close
-    if (allocatedBeforeRelease > 0 && this.owningChannel.isValid()) {
+    if (allocatedBeforeRelease > 0 && channelState.isValid()) {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR,
           String.format(
               "Memory leaked=%d by allocator=%s, channel=%s",
-              allocatedBeforeRelease, this.allocator, this.owningChannel.getFullyQualifiedName()));
+              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
     }
   }
 
@@ -338,7 +338,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // Create the corresponding column field base on the column data type
     fieldType = new FieldType(column.getNullable(), arrowType, null, metadata);
-    return new Field(column.getName(), fieldType, children);
+    return new Field(column.getInternalName(), fieldType, children);
   }
 
   @Override
@@ -442,7 +442,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
-      String columnName = formatColumnName(entry.getKey());
+      String columnName = LiteralQuoteUtils.unquoteColumnName(entry.getKey());
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);

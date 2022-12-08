@@ -10,11 +10,11 @@ import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -26,7 +26,6 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
@@ -38,22 +37,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelInternal.class);
 
-  private final String channelName;
-  private final String dbName;
-  private final String schemaName;
-  private final String tableName;
-  private volatile String offsetToken;
-  private final AtomicLong rowSequencer;
-
-  // Sequencer for this channel, corresponding to client sequencer at server side because each
-  // connection to a channel at server side will be seen as a connection from a new client
-  private final Long channelSequencer;
+  // this context contains channel immutable identification and encryption attributes
+  private final ChannelFlushContext channelFlushContext;
 
   // Reference to the row buffer
   private final RowBuffer<T> rowBuffer;
-
-  // Indicates whether the channel is still valid
-  private volatile boolean isValid;
 
   // Indicates whether the channel is closed
   private volatile boolean isClosed;
@@ -61,17 +49,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // Reference to the client that owns this channel
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
-  // Memory allocator
-  private final BufferAllocator allocator;
-
-  // Data encryption key
-  private final String encryptionKey;
-
-  // Data encryption key id
-  private final Long encryptionKeyId;
-
-  // ON_ERROR option for this channel
-  private final OpenChannelRequest.OnErrorOption onErrorOption;
+  // state of the channel that will be shared with its underlying buffer
+  private final ChannelRuntimeState channelState;
 
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
@@ -128,41 +107,24 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       OpenChannelRequest.OnErrorOption onErrorOption,
       Constants.BdecVersion bdecVersion,
       BufferAllocator allocator) {
-    this.channelName = name;
-    this.dbName = dbName;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
-    this.offsetToken = offsetToken;
-    this.channelSequencer = channelSequencer;
-    this.rowSequencer = new AtomicLong(rowSequencer);
-    this.isValid = true;
     this.isClosed = false;
     this.owningClient = client;
-    this.allocator = allocator;
-    this.rowBuffer = createRowBuffer(bdecVersion);
-    this.encryptionKey = encryptionKey;
-    this.encryptionKeyId = encryptionKeyId;
-    this.onErrorOption = onErrorOption;
-    logger.logInfo("Channel={} created for table={}", this.channelName, this.tableName);
-  }
-
-  private RowBuffer<T> createRowBuffer(Constants.BdecVersion bdecVersion) {
-    // TODO: The circular dependency SnowflakeStreamingIngestChannelInternal <-> RowBuffer
-    // (SNOW-657667)
-    // can be probably reconsidered
-    switch (bdecVersion) {
-      case ONE:
-        //noinspection unchecked
-        return (RowBuffer<T>)
-            new ArrowRowBuffer((SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot>) this);
-      case THREE:
-        //noinspection unchecked
-        return (RowBuffer<T>)
-            new ParquetRowBuffer((SnowflakeStreamingIngestChannelInternal<ParquetChunkData>) this);
-      default:
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
-    }
+    this.channelFlushContext =
+        new ChannelFlushContext(
+            name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
+    this.channelState = new ChannelRuntimeState(offsetToken, rowSequencer, true);
+    this.rowBuffer =
+        AbstractRowBuffer.createRowBuffer(
+            onErrorOption,
+            allocator,
+            bdecVersion,
+            getFullyQualifiedName(),
+            this::collectRowSize,
+            channelState);
+    logger.logInfo(
+        "Channel={} created for table={}",
+        this.channelFlushContext.getName(),
+        this.channelFlushContext.getTableName());
   }
 
   /**
@@ -173,8 +135,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public String getFullyQualifiedName() {
-    return String.format(
-        "%s.%s.%s.%s", this.dbName, this.schemaName, this.tableName, this.channelName);
+    return channelFlushContext.getFullyQualifiedName();
   }
 
   /**
@@ -184,50 +145,32 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public String getName() {
-    return this.channelName;
+    return this.channelFlushContext.getName();
   }
 
   @Override
   public String getDBName() {
-    return this.dbName;
+    return this.channelFlushContext.getDbName();
   }
 
   @Override
   public String getSchemaName() {
-    return this.schemaName;
+    return this.channelFlushContext.getSchemaName();
   }
 
   @Override
   public String getTableName() {
-    return this.tableName;
-  }
-
-  String getOffsetToken() {
-    return this.offsetToken;
-  }
-
-  void setOffsetToken(String offsetToken) {
-    this.offsetToken = offsetToken;
+    return this.channelFlushContext.getTableName();
   }
 
   Long getChannelSequencer() {
-    return this.channelSequencer;
+    return this.channelFlushContext.getChannelSequencer();
   }
 
-  long incrementAndGetRowSequencer() {
-    return this.rowSequencer.incrementAndGet();
-  }
-
-  long getRowSequencer() {
-    return this.rowSequencer.get();
-  }
-
-  String getEncryptionKey() {
-    return this.encryptionKey;
-  }
-
-  Long getEncryptionKeyId() {
-    return this.encryptionKeyId;
+  /** @return current state of the channel */
+  @VisibleForTesting
+  ChannelRuntimeState getChannelState() {
+    return this.channelState;
   }
 
   /**
@@ -237,7 +180,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public String getFullyQualifiedTableName() {
-    return String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
+    return channelFlushContext.getFullyQualifiedTableName();
   }
 
   /**
@@ -246,24 +189,28 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    * @return a ChannelData object
    */
   ChannelData<T> getData() {
-    return this.rowBuffer.flush();
+    ChannelData<T> data = this.rowBuffer.flush();
+    if (data != null) {
+      data.setChannelContext(channelFlushContext);
+    }
+    return data;
   }
 
   /** @return a boolean to indicate whether the channel is valid or not */
   @Override
   public boolean isValid() {
-    return this.isValid;
+    return this.channelState.isValid();
   }
 
   /** Mark the channel as invalid, and release resources */
   void invalidate(String message) {
-    this.isValid = false;
+    this.channelState.invalidate();
     this.rowBuffer.close("invalidate");
     logger.logWarn(
         "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}, message={}",
         getFullyQualifiedName(),
-        channelSequencer,
-        rowSequencer,
+        channelFlushContext.getChannelSequencer(),
+        channelState.getRowSequencer(),
         message);
   }
 
@@ -279,8 +226,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     logger.logInfo(
         "Channel is marked as closed, name={}, channel sequencer={}, row sequencer={}",
         getFullyQualifiedName(),
-        channelSequencer,
-        rowSequencer);
+        channelFlushContext.getChannelSequencer(),
+        channelState.getRowSequencer());
   }
 
   /**
@@ -338,15 +285,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                         .collect(Collectors.toList()));
               }
             });
-  }
-
-  /**
-   * Get the buffer allocator
-   *
-   * @return the buffer allocator
-   */
-  BufferAllocator getAllocator() {
-    return this.allocator;
   }
 
   /**
@@ -500,12 +438,14 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     }
   }
 
-  OpenChannelRequest.OnErrorOption getOnErrorOption() {
-    return this.onErrorOption;
-  }
-
   /** Returns underlying channel's row buffer implementation. */
   RowBuffer<T> getRowBuffer() {
     return rowBuffer;
+  }
+
+  /** Returns underlying channel's attributes. */
+  @VisibleForTesting
+  public ChannelFlushContext getChannelContext() {
+    return channelFlushContext;
   }
 }

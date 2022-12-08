@@ -313,7 +313,7 @@ public class RequestBuilder {
       return properties;
     }
 
-    LOGGER.debug("Loaded project version " + properties.getProperty("version"));
+    LOGGER.info("Loaded project version " + properties.getProperty("version"));
     return properties;
   }
 
@@ -345,9 +345,11 @@ public class RequestBuilder {
 
     // Add Java Version
     final String javaVersion = System.getProperty("java.version");
-    defaultUserAgent.append(JAVA_USER_AGENT + "/" + javaVersion);
+    defaultUserAgent.append(JAVA_USER_AGENT + "/").append(javaVersion);
+    String userAgent = defaultUserAgent.toString();
 
-    return defaultUserAgent.toString();
+    LOGGER.info("Default user agent " + userAgent);
+    return userAgent;
   }
 
   private static String buildCustomUserAgent(String additionalUserAgentInfo) {

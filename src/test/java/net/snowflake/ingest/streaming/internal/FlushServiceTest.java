@@ -100,7 +100,9 @@ public class FlushServiceTest {
     }
 
     ChannelData<T> flushChannel(String name) {
-      ChannelData<T> channelData = channels.get(name).getRowBuffer().flush();
+      SnowflakeStreamingIngestChannelInternal<T> channel = channels.get(name);
+      ChannelData<T> channelData = channel.getRowBuffer().flush();
+      channelData.setChannelContext(channel.getChannelContext());
       this.channelData.add(channelData);
       return channelData;
     }
@@ -324,15 +326,13 @@ public class FlushServiceTest {
   }
 
   TestContextFactory<?> testContextFactory;
-  TestContext<?> testContext;
 
   @Before
   public void setup() {
     java.security.Security.addProvider(new BouncyCastleProvider());
-    testContext = testContextFactory.create();
   }
 
-  private SnowflakeStreamingIngestChannelInternal<?> addChannel1() {
+  private SnowflakeStreamingIngestChannelInternal<?> addChannel1(TestContext<?> testContext) {
     return testContext
         .channelBuilder("channel1")
         .setDBName("db1")
@@ -344,7 +344,7 @@ public class FlushServiceTest {
         .buildAndAdd();
   }
 
-  private SnowflakeStreamingIngestChannelInternal<?> addChannel2() {
+  private SnowflakeStreamingIngestChannelInternal<?> addChannel2(TestContext<?> testContext) {
     return testContext
         .channelBuilder("channel2")
         .setDBName("db1")
@@ -356,7 +356,7 @@ public class FlushServiceTest {
         .buildAndAdd();
   }
 
-  private SnowflakeStreamingIngestChannelInternal<?> addChannel3() {
+  private SnowflakeStreamingIngestChannelInternal<?> addChannel3(TestContext<?> testContext) {
     return testContext
         .channelBuilder("channel3")
         .setDBName("db2")
@@ -394,6 +394,7 @@ public class FlushServiceTest {
 
   @Test
   public void testGetFilePath() {
+    TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
@@ -427,6 +428,7 @@ public class FlushServiceTest {
 
   @Test
   public void testFlush() throws Exception {
+    TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
 
     // Nothing to flush
@@ -453,8 +455,9 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildAndUpload() throws Exception {
-    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1();
-    SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2();
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
 
     List<ColumnMetadata> schema = Arrays.asList(createTestIntegerColumn(), createTestTextColumn());
     channel1.getRowBuffer().setupSchema(schema);
@@ -480,8 +483,8 @@ public class FlushServiceTest {
     Map<String, RowBufferStats> eps1 = new HashMap<>();
     Map<String, RowBufferStats> eps2 = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats();
-    RowBufferStats stats2 = new RowBufferStats();
+    RowBufferStats stats1 = new RowBufferStats("COL1");
+    RowBufferStats stats2 = new RowBufferStats("COL1");
 
     eps1.put("one", stats1);
     eps2.put("one", stats2);
@@ -508,19 +511,19 @@ public class FlushServiceTest {
 
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
-            .setOwningChannel(channel1)
+            .setOwningChannelFromContext(channel1.getChannelContext())
             .setRowSequencer(1L)
             .setOffsetToken("offset1")
             .build();
     ChannelMetadata expectedChannel2Metadata =
         ChannelMetadata.builder()
-            .setOwningChannel(channel2)
+            .setOwningChannelFromContext(channel2.getChannelContext())
             .setRowSequencer(10L)
             .setOffsetToken("offset2")
             .build();
     ChunkMetadata expectedChunkMetadata =
         ChunkMetadata.builder()
-            .setOwningTable(channel1)
+            .setOwningTableFromChannelContext(channel1.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(248)
             .setChannelList(Arrays.asList(expectedChannel1Metadata, expectedChannel2Metadata))
@@ -580,8 +583,9 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildErrors() throws Exception {
-    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1();
-    SnowflakeStreamingIngestChannelInternal<?> channel3 = addChannel3();
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel3 = addChannel3(testContext);
 
     List<ColumnMetadata> schema = Arrays.asList(createTestIntegerColumn(), createTestTextColumn());
     channel1.getRowBuffer().setupSchema(schema);
@@ -658,16 +662,18 @@ public class FlushServiceTest {
 
     ChannelData<StubChunkData> channel1Data = new ChannelData<>();
     ChannelData<StubChunkData> channel2Data = new ChannelData<>();
-    channel1Data.setChannel(channel1);
-    channel2Data.setChannel(channel1);
+    channel1Data.setChannelContext(channel1.getChannelContext());
+    channel2Data.setChannelContext(channel1.getChannelContext());
 
     channel1Data.setVectors(new StubChunkData());
     channel2Data.setVectors(new StubChunkData());
     innerData.add(channel1Data);
     innerData.add(channel2Data);
 
+    StreamingIngestStage stage = Mockito.mock(StreamingIngestStage.class);
+    Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     FlushService<StubChunkData> flushService =
-        new FlushService<>(client, channelCache, testContext.stage, false);
+        new FlushService<>(client, channelCache, stage, false);
     flushService.invalidateAllChannelsInBlob(blobData);
 
     Assert.assertFalse(channel1.isValid());
@@ -676,7 +682,8 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobBuilder() throws Exception {
-    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1();
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
 
     ObjectMapper mapper = new ObjectMapper();
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
@@ -689,7 +696,7 @@ public class FlushServiceTest {
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats();
+    RowBufferStats stats1 = new RowBufferStats("COL1");
 
     eps1.put("one", stats1);
 
@@ -699,13 +706,13 @@ public class FlushServiceTest {
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
-            .setOwningChannel(channel1)
+            .setOwningChannelFromContext(channel1.getChannelContext())
             .setRowSequencer(0L)
             .setOffsetToken("offset1")
             .build();
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
-            .setOwningTable(channel1)
+            .setOwningTableFromChannelContext(channel1.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(dataSize)
             .setChannelList(Collections.singletonList(channelMetadata))
@@ -718,7 +725,7 @@ public class FlushServiceTest {
 
     final Constants.BdecVersion bdecVersion = ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
     byte[] blob =
-        BlobBuilder.build(chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
+        BlobBuilder.buildBlob(chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
 
     // Read the blob byte array back to valid the behavior
     InputStream input = new ByteArrayInputStream(blob);
@@ -770,6 +777,7 @@ public class FlushServiceTest {
 
   @Test
   public void testShutDown() throws Exception {
+    TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());

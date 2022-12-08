@@ -53,7 +53,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
-    SnowflakeStreamingIngestChannelInternal<ParquetChunkData> firstChannel = null;
+    String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
 
@@ -61,7 +61,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       // Create channel metadata
       ChannelMetadata channelMetadata =
           ChannelMetadata.builder()
-              .setOwningChannel(data.getChannel())
+              .setOwningChannelFromContext(data.getChannelContext())
               .setRowSequencer(data.getRowSequencer())
               .setOffsetToken(data.getOffsetToken())
               .build();
@@ -70,7 +70,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
       logger.logDebug(
           "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={}",
-          data.getChannel().getFullyQualifiedName(),
+          data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
           filePath);
@@ -78,13 +78,13 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       if (rows == null) {
         columnEpStatsMapCombined = data.getColumnEps();
         rows = new ArrayList<>();
-        firstChannel = data.getChannel();
+        firstChannelFullyQualifiedTableName = data.getChannelContext().getFullyQualifiedTableName();
       } else {
         // This method assumes that channelsDataPerTable is grouped by table. We double check
         // here and throw an error if the assumption is violated
-        if (!data.getChannel()
+        if (!data.getChannelContext()
             .getFullyQualifiedTableName()
-            .equals(firstChannel.getFullyQualifiedTableName())) {
+            .equals(firstChannelFullyQualifiedTableName)) {
           throw new SFException(ErrorCode.INVALID_DATA_IN_CHUNK);
         }
 
@@ -97,7 +97,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
-          data.getChannel().getFullyQualifiedName(),
+          data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
           filePath);
@@ -329,7 +329,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               recordConsumer.addLong((long) val);
               break;
             case BINARY:
-              recordConsumer.addBinary(Binary.fromString((String) val));
+              Binary binVal =
+                  val instanceof String
+                      ? Binary.fromString((String) val)
+                      : Binary.fromConstantByteArray((byte[]) val);
+              recordConsumer.addBinary(binVal);
               break;
             case FIXED_LEN_BYTE_ARRAY:
               Binary binary = Binary.fromConstantByteArray((byte[]) val);
