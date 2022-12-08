@@ -83,8 +83,8 @@ public class SnowflakeStreamingIngestPerf {
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("DB_STREAMINGINGEST")
-              .setSchemaName("PUBLIC")
+              .setDBName("TESTDB_KAFKA")
+              .setSchemaName("KAFKA_TEST")
               .setTableName("T_STREAMINGINGEST")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
