@@ -186,10 +186,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   /**
    * Get all the data needed to build the blob during flush
    *
+   * @param filePath the name of the file the data will be written in
    * @return a ChannelData object
    */
-  ChannelData<T> getData() {
-    ChannelData<T> data = this.rowBuffer.flush();
+  ChannelData<T> getData(final String filePath) {
+    ChannelData<T> data = this.rowBuffer.flush(filePath);
     if (data != null) {
       data.setChannelContext(channelFlushContext);
     }

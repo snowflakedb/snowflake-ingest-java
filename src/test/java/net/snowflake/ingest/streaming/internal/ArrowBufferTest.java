@@ -48,7 +48,8 @@ public class ArrowBufferTest {
         rowBufferOnErrorContinue.insertRows(Collections.singletonList(row), offsetToken);
     Assert.assertFalse(response.hasErrors());
 
-    ChannelData<VectorSchemaRoot> data = rowBufferOnErrorContinue.flush();
+    ChannelData<VectorSchemaRoot> data =
+        rowBufferOnErrorContinue.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(7, data.getVectors().getFieldVectors().size());
   }
 

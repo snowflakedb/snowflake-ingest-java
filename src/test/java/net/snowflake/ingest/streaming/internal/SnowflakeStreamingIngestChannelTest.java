@@ -494,7 +494,7 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData<VectorSchemaRoot> data = channel.getData();
+    ChannelData<VectorSchemaRoot> data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertNull(data);
 
     InsertValidationResponse response = channel.insertRow(row, "1");
@@ -503,7 +503,7 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertFalse(response.hasErrors());
 
     // Get data again to verify the row is inserted
-    data = channel.getData();
+    data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(1, data.getVectors().getFieldVectors().size());

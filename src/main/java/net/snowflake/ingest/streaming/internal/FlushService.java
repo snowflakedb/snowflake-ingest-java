@@ -341,6 +341,8 @@ class FlushService<T> {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
 
+      final String filePath = getFilePath(this.targetStage.getClientPrefix());
+
       // Distribute work at table level, create a new blob if reaching the blob size limit
       while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
         ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
@@ -349,7 +351,7 @@ class FlushService<T> {
         // TODO: we could do parallel stream to get the channelData if needed
         for (SnowflakeStreamingIngestChannelInternal<T> channel : table.values()) {
           if (channel.isValid()) {
-            ChannelData<T> data = channel.getData();
+            ChannelData<T> data = channel.getData(filePath);
             if (data != null) {
               channelsDataPerTable.add(data);
               totalBufferSize += data.getBufferSize();
@@ -362,8 +364,11 @@ class FlushService<T> {
       }
 
       // Kick off a build job
-      if (!blobData.isEmpty()) {
-        String filePath = getFilePath(this.targetStage.getClientPrefix());
+      if (blobData.isEmpty()) {
+        // we decrement the counter so that we do not have gaps in the filenames created by this
+        // client. See method getFilePath() below.
+        this.counter.decrementAndGet();
+      } else {
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
         }

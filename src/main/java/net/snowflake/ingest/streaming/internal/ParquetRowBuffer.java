@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import org.apache.arrow.memory.BufferAllocator;
@@ -165,9 +166,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   @Override
-  Optional<ParquetChunkData> getSnapshot() {
+  Optional<ParquetChunkData> getSnapshot(final String filePath) {
     List<List<Object>> oldData = new ArrayList<>();
     data.forEach(r -> oldData.add(new ArrayList<>(r)));
+
+    // We insert the filename in the file itself as metadata so that streams can work on replicated
+    // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
+    // http://go/streams-on-replicated-mixed-tables
+    metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
+
     return oldData.isEmpty()
         ? Optional.empty()
         : Optional.of(new ParquetChunkData(oldData, metadata));
