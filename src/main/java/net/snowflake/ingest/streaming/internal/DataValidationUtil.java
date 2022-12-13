@@ -638,9 +638,8 @@ class DataValidationUtil {
     } else if (input instanceof Number) {
       return ((Number) input).doubleValue();
     } else if (input instanceof String) {
-      String stringInput = null;
+      String stringInput = (String) input;
       try {
-        stringInput = (String) input;
         return Double.parseDouble(stringInput);
       } catch (NumberFormatException err) {
         stringInput = stringInput.toLowerCase();
