@@ -638,9 +638,23 @@ class DataValidationUtil {
     } else if (input instanceof Number) {
       return ((Number) input).doubleValue();
     } else if (input instanceof String) {
+      String stringInput = null;
       try {
-        return Double.parseDouble((String) input);
+        stringInput = (String) input;
+        return Double.parseDouble(stringInput);
       } catch (NumberFormatException err) {
+        stringInput = stringInput.toLowerCase();
+        if ("nan".equals(stringInput)) {
+          return Double.NaN;
+        }
+        if ("-inf".equals(stringInput)) {
+          return Double.NEGATIVE_INFINITY;
+        }
+
+        if ("inf".equals(stringInput)) {
+          return Double.POSITIVE_INFINITY;
+        }
+
         throw valueFormatNotAllowedException(input, "REAL", "Not a valid decimal number");
       }
     }

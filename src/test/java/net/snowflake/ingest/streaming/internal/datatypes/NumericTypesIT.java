@@ -282,6 +282,11 @@ public class NumericTypesIT extends AbstractDataTypeTest {
     testJdbcTypeCompatibility("REAL", 1, 1., new IntProvider(), new DoubleProvider());
     testJdbcTypeCompatibility("REAL", 1L, 1., new LongProvider(), new DoubleProvider());
     testJdbcTypeCompatibility("REAL", "1.35", 1.35, new StringProvider(), new DoubleProvider());
+
+    testJdbcTypeCompatibility("REAL", "Nan", Double.NaN, new StringProvider(), new DoubleProvider());
+    testJdbcTypeCompatibility("REAL", "Inf", Double.POSITIVE_INFINITY, new StringProvider(), new DoubleProvider());
+    testJdbcTypeCompatibility("REAL", "-Inf", Double.NEGATIVE_INFINITY, new StringProvider(), new DoubleProvider());
+
     testIngestion("REAL", new BigDecimal("1.35"), new BigDecimal("1.35"), new BigDecimalProvider());
     testIngestion("REAL", BigInteger.ONE, BigDecimal.ONE, new BigDecimalProvider());
   }
