@@ -643,18 +643,16 @@ class DataValidationUtil {
         return Double.parseDouble(stringInput);
       } catch (NumberFormatException err) {
         stringInput = stringInput.toLowerCase();
-        if ("nan".equals(stringInput)) {
-          return Double.NaN;
+        switch (stringInput.toLowerCase()) {
+          case "nan":
+            return Double.NaN;
+          case "inf":
+            return Double.POSITIVE_INFINITY;
+          case "-inf":
+            return Double.NEGATIVE_INFINITY;
+          default:
+            throw valueFormatNotAllowedException(input, "REAL", "Not a valid decimal number");
         }
-        if ("-inf".equals(stringInput)) {
-          return Double.NEGATIVE_INFINITY;
-        }
-
-        if ("inf".equals(stringInput)) {
-          return Double.POSITIVE_INFINITY;
-        }
-
-        throw valueFormatNotAllowedException(input, "REAL", "Not a valid decimal number");
       }
     }
 
