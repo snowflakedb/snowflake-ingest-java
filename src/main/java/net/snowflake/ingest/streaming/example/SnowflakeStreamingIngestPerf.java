@@ -79,7 +79,9 @@ public class SnowflakeStreamingIngestPerf {
 
     // Create a streaming ingest client
     try (SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("TZHANG0").setProperties(props).build()) {
+        SnowflakeStreamingIngestClientFactory.builder(args[3] == null ? "TZHANG" : args[3])
+            .setProperties(props)
+            .build()) {
 
       int threadCount = Integer.parseInt(args[2]);
       ExecutorService testThreadPool = Executors.newFixedThreadPool(threadCount);
