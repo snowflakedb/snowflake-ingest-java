@@ -65,7 +65,6 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   private static final String COLUMN_PRECISION = "precision";
   private static final String COLUMN_CHAR_LENGTH = "charLength";
   private static final String COLUMN_BYTE_LENGTH = "byteLength";
-  @VisibleForTesting static final int DECIMAL_BIT_WIDTH = 128;
 
   // Holder for a set of the Arrow vectors (buffers)
   @VisibleForTesting VectorSchemaRoot vectorsRoot;
@@ -208,7 +207,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
         if ((column.getScale() != null && column.getScale() != 0)
             || physicalType == ColumnPhysicalType.SB16) {
           arrowType =
-              new ArrowType.Decimal(column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
+              new ArrowType.Decimal(column.getPrecision(), column.getScale());
         } else {
           switch (physicalType) {
             case SB1:
@@ -377,8 +376,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
         ArrowType arrowType =
             new ArrowType.Decimal(
                 ((DecimalVector) vector).getPrecision(),
-                ((DecimalVector) vector).getScale(),
-                DECIMAL_BIT_WIDTH);
+                ((DecimalVector) vector).getScale());
         FieldType fieldType =
             new FieldType(
                 vector.getField().isNullable(), arrowType, null, vector.getField().getMetadata());

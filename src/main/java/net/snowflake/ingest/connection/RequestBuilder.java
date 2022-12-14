@@ -328,7 +328,7 @@ public class RequestBuilder {
    * @return the default agent string
    */
   private static String getDefaultUserAgent() {
-    final String clientVersion = PROPERTIES.getProperty("version");
+    final String clientVersion = DEFAULT_VERSION;
     StringBuilder defaultUserAgent = new StringBuilder(CLIENT_NAME + "/" + clientVersion);
 
     final String osInformation =
