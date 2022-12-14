@@ -371,6 +371,8 @@ public class DataValidationUtilTest {
             ZonedDateTime.of(2022, 9, 28, 3, 4, 12, 123456789, ZoneId.of("America/Los_Angeles"))));
 
     // Test forbidden values
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseVariant, "");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseVariant, "   ");
     expectError(
         ErrorCode.INVALID_ROW,
         DataValidationUtil::validateAndParseVariant,
@@ -426,6 +428,8 @@ public class DataValidationUtilTest {
     assertEquals("[[1,2,3],2,3]", validateAndParseArray(nestedList));
 
     // Test forbidden values
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseArray, "");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseArray, "   ");
     expectError(
         ErrorCode.INVALID_ROW,
         DataValidationUtil::validateAndParseArray,
@@ -479,6 +483,8 @@ public class DataValidationUtilTest {
     }
 
     // Test forbidden values
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, "");
+    expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseObject, "   ");
     expectError(
         ErrorCode.INVALID_ROW,
         DataValidationUtil::validateAndParseObject,

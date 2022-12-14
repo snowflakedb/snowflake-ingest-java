@@ -90,7 +90,13 @@ class DataValidationUtil {
       Object input, String snowflakeType) {
     if (input instanceof String) {
       try {
-        return objectMapper.readTree((String) input);
+        JsonNode jsonTree = objectMapper.readTree((String) input);
+        if (jsonTree.isMissingNode()) {
+          throw valueFormatNotAllowedException(input, snowflakeType, "Empty input is not allowed");
+        }
+
+        return jsonTree;
+
       } catch (JsonProcessingException e) {
         throw valueFormatNotAllowedException(input, snowflakeType, "Not a valid JSON");
       }
