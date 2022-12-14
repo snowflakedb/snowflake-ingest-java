@@ -14,6 +14,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -76,54 +79,62 @@ public class SnowflakeStreamingIngestPerf {
 
     // Create a streaming ingest client
     try (SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build()) {
+        SnowflakeStreamingIngestClientFactory.builder("TZHANG0").setProperties(props).build()) {
 
-      // Create an open channel request on table MY_TABLE, note that the corresponding
-      // db/schema/table needs to be present
-      // Example: create or replace table MY_TABLE(c1 number);
-      OpenChannelRequest request1 =
-          OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("TESTDB_KAFKA")
-              .setSchemaName("KAFKA_TEST")
-              .setTableName("T_STREAMINGINGEST")
-              .setOnErrorOption(
-                  OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
-              .build();
-
-      // Open a streaming ingest channel from the given client
-      SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
-
-      // Insert rows into the channel (Using insertRows API)
-      int iteration = Integer.parseInt(args[1]);
-      for (int val = 0; val < iteration; val++) {
-        // Insert the row with the current offset_token
-        InsertValidationResponse response = channel1.insertRows(rows, String.valueOf(val));
-        if (response.hasErrors()) {
-          // Simply throw if there is an exception, or you can do whatever you want with the
-          // erroneous row
-          throw response.getInsertErrors().get(0).getException();
-        }
+      int threadCount = Integer.parseInt(args[2]);
+      ExecutorService testThreadPool = Executors.newFixedThreadPool(threadCount);
+      CompletableFuture[] futures = new CompletableFuture[threadCount];
+      List<SnowflakeStreamingIngestChannel> channelList = new ArrayList<>();
+      for (int i = 0; i < threadCount; i++) {
+        final String channelName = "CHANNEL" + i;
+        futures[i] =
+            CompletableFuture.runAsync(
+                () -> {
+                  OpenChannelRequest request =
+                      OpenChannelRequest.builder(channelName)
+                          .setDBName("TESTDB_KAFKA")
+                          .setSchemaName("KAFKA_TEST")
+                          .setTableName("T_STREAMINGINGEST")
+                          .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+                          .build();
+                  SnowflakeStreamingIngestChannel channel = client.openChannel(request);
+                  channelList.add(channel);
+                  int iteration = Integer.parseInt(args[1]);
+                  for (int val = 1; val <= iteration; val++) {
+                    InsertValidationResponse response =
+                        channel.insertRows(rows, Integer.toString(val));
+                    if (response.hasErrors()) {
+                      // Simply throw if there is an exception, or you can do whatever you want with
+                      // the
+                      // erroneous row
+                      throw response.getInsertErrors().get(0).getException();
+                    }
+                  }
+                },
+                testThreadPool);
       }
+      CompletableFuture joined = CompletableFuture.allOf(futures);
+      joined.get();
 
-      // If needed, you can check the offset_token registered in Snowflake to make sure everything
-      // is committed
-      final int expectedOffsetTokenInSnowflake = iteration; // 0 based offset_token
-      final int maxRetries = 10;
-      int retryCount = 0;
-
-      do {
-        String offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
-        if (offsetTokenFromSnowflake != null
-            && offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {
-          System.out.println("SUCCESSFULLY inserted " + iteration * batchSize + " rows");
-          break;
-        }
-        retryCount++;
-      } while (retryCount < maxRetries);
-
-      // Close the channel, the function internally will make sure everything is committed (or throw
-      // an exception if there is any issue)
-      channel1.close().get();
+      //      // If needed, you can check the offset_token registered in Snowflake to make sure
+      // everything
+      //      // is committed
+      //      final int expectedOffsetTokenInSnowflake = iteration; // 0 based offset_token
+      //      final int maxRetries = 10;
+      //      int retryCount = 0;
+      //
+      //      do {
+      //        String offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
+      //        if (offsetTokenFromSnowflake != null
+      //            &&
+      // offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {
+      //          System.out.println("SUCCESSFULLY inserted " + iteration * batchSize + " rows");
+      //          break;
+      //        }
+      //        retryCount++;
+      //      } while (retryCount < maxRetries);
     }
+
+    System.out.println("finished");
   }
 }
