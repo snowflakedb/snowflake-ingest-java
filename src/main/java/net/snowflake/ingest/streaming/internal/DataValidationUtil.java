@@ -643,7 +643,7 @@ class DataValidationUtil {
         return Double.parseDouble(stringInput);
       } catch (NumberFormatException err) {
         stringInput = stringInput.toLowerCase();
-        switch (stringInput.toLowerCase()) {
+        switch (stringInput) {
           case "nan":
             return Double.NaN;
           case "inf":
