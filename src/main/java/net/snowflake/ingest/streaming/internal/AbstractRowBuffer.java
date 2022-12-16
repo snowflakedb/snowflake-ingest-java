@@ -343,10 +343,11 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * Flush the data in the row buffer by taking the ownership of the old vectors and pass all the
    * required info back to the flush service to build the blob
    *
+   * @param filePath the name of the file the data will be written in
    * @return A ChannelData object that contains the info needed by the flush service to build a blob
    */
   @Override
-  public ChannelData<T> flush() {
+  public ChannelData<T> flush(final String filePath) {
     logger.logDebug("Start get data for channel={}", channelFullyQualifiedName);
     if (this.rowCount > 0) {
       Optional<T> oldData = Optional.empty();
@@ -363,7 +364,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       try {
         if (this.rowCount > 0) {
           // Transfer the ownership of the vectors
-          oldData = getSnapshot();
+          oldData = getSnapshot(filePath);
           oldRowCount = this.rowCount;
           oldBufferSize = this.bufferSize;
           oldRowSequencer = this.channelState.incrementAndGetRowSequencer();
@@ -451,8 +452,12 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
             new RowBufferStats(value.getColumnDisplayName(), value.getCollationDefinitionString()));
   }
 
-  /** Get buffered data snapshot for later flushing. */
-  abstract Optional<T> getSnapshot();
+  /**
+   * Get buffered data snapshot for later flushing.
+   *
+   * @param filePath the name of the file the data will be written in
+   */
+  abstract Optional<T> getSnapshot(final String filePath);
 
   @VisibleForTesting
   abstract Object getVectorValueAt(String column, int index);

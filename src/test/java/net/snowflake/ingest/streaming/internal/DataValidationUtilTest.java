@@ -229,7 +229,7 @@ public class DataValidationUtilTest {
     TimestampWrapper result =
         DataValidationUtil.validateAndParseTimestampTz("2021-01-01 01:00:00.123 +0100", 4);
     assertEquals(1609459200, result.getEpoch());
-    assertEquals(1230, result.getFraction());
+    assertEquals(123000000, result.getFraction());
     assertEquals(Optional.of(3600000), result.getTimezoneOffset());
     assertEquals(Optional.of(1500), result.getTimeZoneIndex());
 
@@ -792,7 +792,7 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseReal() throws Exception {
+  public void testValidateAndParseReal() {
     // From number types
     assertEquals(1.23d, validateAndParseReal(1.23f), 0);
     assertEquals(1.23d, validateAndParseReal(1.23), 0);
@@ -803,6 +803,9 @@ public class DataValidationUtilTest {
     assertEquals(1.23d, validateAndParseReal("1.23"), 0);
     assertEquals(123d, validateAndParseReal("1.23E2"), 0);
     assertEquals(123d, validateAndParseReal("1.23e2"), 0);
+    assertEquals(Double.NaN, validateAndParseReal("Nan"), 0);
+    assertEquals(Double.POSITIVE_INFINITY, validateAndParseReal("inF"), 0);
+    assertEquals(Double.NEGATIVE_INFINITY, validateAndParseReal("-inF"), 0);
 
     // Test forbidden values
     expectError(ErrorCode.INVALID_ROW, DataValidationUtil::validateAndParseReal, "foo");

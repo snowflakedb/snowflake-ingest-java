@@ -366,7 +366,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   }
 
   @Override
-  Optional<VectorSchemaRoot> getSnapshot() {
+  Optional<VectorSchemaRoot> getSnapshot(final String filePath) {
     List<FieldVector> oldVectors = new ArrayList<>();
     for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
       vector.setValueCount(this.rowCount);

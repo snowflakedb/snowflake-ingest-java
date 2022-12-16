@@ -407,11 +407,19 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
     float bufferSize = rowBuffer.getSize();
 
-    ChannelData<?> data = rowBuffer.flush();
+    final String filename = "2022/7/13/16/56/testFlushHelper_streaming.bdec";
+    ChannelData<?> data = rowBuffer.flush(filename);
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(offsetToken, data.getOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
+
+    if (bdecVersion == Constants.BdecVersion.THREE) {
+      final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
+      Assert.assertEquals(
+          StreamingIngestUtils.getShortname(filename),
+          chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
+    }
   }
 
   @Test
@@ -602,9 +610,10 @@ public class RowBufferTest {
     row2.put("colDecimal", 4);
     row2.put("colChar", "alice");
 
+    final String filename = "testStatsE2EHelper_streaming.bdec";
     InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData<?> result = rowBuffer.flush();
+    ChannelData<?> result = rowBuffer.flush(filename);
     Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
 
     Assert.assertEquals(
@@ -645,8 +654,13 @@ public class RowBufferTest {
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
+    if (bdecVersion == Constants.BdecVersion.THREE) {
+      final ParquetChunkData chunkData = (ParquetChunkData) result.getVectors();
+      Assert.assertEquals(filename, chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
+    }
+
     // Confirm we reset
-    ChannelData<?> resetResults = rowBuffer.flush();
+    ChannelData<?> resetResults = rowBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertNull(resetResults);
   }
 
@@ -701,7 +715,7 @@ public class RowBufferTest {
     InsertValidationResponse response =
         innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData<?> result = innerBuffer.flush();
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -768,7 +782,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLDATE", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush();
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -831,7 +845,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB8", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush();
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1002,7 +1016,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLBOOLEAN", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush();
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1054,7 +1068,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLBINARY", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush();
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
@@ -1102,7 +1116,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLREAL", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush();
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(
@@ -1183,7 +1197,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
-    ChannelData<?> data = innerBuffer.flush();
+    ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals(0, innerBuffer.rowCount);
   }

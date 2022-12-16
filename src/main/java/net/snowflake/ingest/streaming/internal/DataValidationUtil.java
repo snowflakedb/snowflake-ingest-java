@@ -339,12 +339,13 @@ class DataValidationUtil {
             valueString, effectiveTimeZone, 0, DATE | TIMESTAMP, ignoreTimezone, null);
     if (timestamp != null) {
       long epoch = timestamp.getSeconds().longValue();
-      int fraction = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
+      int fractionInScale = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
       BigInteger timeInScale =
           BigInteger.valueOf(epoch)
               .multiply(Power10.sb16Table[scale])
-              .add(BigInteger.valueOf(fraction));
-      return new TimestampWrapper(epoch, fraction, timeInScale);
+              .add(BigInteger.valueOf(fractionInScale));
+      return new TimestampWrapper(
+          epoch, fractionInScale * Power10.intTable[9 - scale], timeInScale);
     } else {
       throw valueFormatNotAllowedException(
           input.toString(),
@@ -408,11 +409,11 @@ class DataValidationUtil {
             stringInput, DEFAULT_TIMEZONE, 0, DATE | TIMESTAMP, false, null);
     if (timestamp != null) {
       long epoch = timestamp.getSeconds().longValue();
-      int fraction = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
+      int fractionInScale = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
       return new TimestampWrapper(
           epoch,
-          fraction,
-          BigInteger.valueOf(epoch * Power10.intTable[scale] + fraction),
+          fractionInScale * Power10.intTable[9 - scale],
+          BigInteger.valueOf(epoch * Power10.intTable[scale] + fractionInScale),
           timestamp);
     } else {
       throw valueFormatNotAllowedException(
@@ -637,10 +638,21 @@ class DataValidationUtil {
     } else if (input instanceof Number) {
       return ((Number) input).doubleValue();
     } else if (input instanceof String) {
+      String stringInput = (String) input;
       try {
-        return Double.parseDouble((String) input);
+        return Double.parseDouble(stringInput);
       } catch (NumberFormatException err) {
-        throw valueFormatNotAllowedException(input, "REAL", "Not a valid decimal number");
+        stringInput = stringInput.toLowerCase();
+        switch (stringInput) {
+          case "nan":
+            return Double.NaN;
+          case "inf":
+            return Double.POSITIVE_INFINITY;
+          case "-inf":
+            return Double.NEGATIVE_INFINITY;
+          default:
+            throw valueFormatNotAllowedException(input, "REAL", "Not a valid decimal number");
+        }
       }
     }
 
