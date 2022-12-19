@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
+import org.apache.parquet.hadoop.BdecParquetWriter;
 
 /** Parquet data holder to buffer rows. */
 public class ParquetChunkData {

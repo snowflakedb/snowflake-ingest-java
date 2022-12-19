@@ -1,4 +1,8 @@
-package net.snowflake.ingest.streaming.internal;
+/*
+ * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ */
+
+package org.apache.parquet.hadoop;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -8,7 +12,7 @@ import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
@@ -22,23 +26,45 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 
+/**
+ * BDEC specific parquet reader.
+ *
+ * <p>Resides in parquet package because, it uses {@link InternalParquetRecordReader} that is
+ * package private.
+ */
 public class BdecParquetReader implements AutoCloseable {
-  private final ParquetReader<List<Object>> reader;
+  private final InternalParquetRecordReader<List<Object>> reader;
 
+  /**
+   * @param data buffer where the data that has to be read resides.
+   * @throws IOException
+   */
   public BdecParquetReader(byte[] data) throws IOException {
-    reader =
-        new ParquetReader.Builder<List<Object>>(new BdecInputFile(data)) {
-          @Override
-          protected ReadSupport<List<Object>> getReadSupport() {
-            return new BdecReadSupport();
-          }
-        }.build();
+    ParquetReadOptions options = ParquetReadOptions.builder().build();
+    ParquetFileReader fileReader = ParquetFileReader.open(new BdecInputFile(data), options);
+    reader = new InternalParquetRecordReader<>(new BdecReadSupport(), options.getRecordFilter());
+    reader.initialize(fileReader, options);
   }
 
+  /**
+   * Reads the current row, i.e. list of values.
+   *
+   * @return current row
+   * @throws IOException
+   */
   public List<Object> read() throws IOException {
-    return reader.read();
+    try {
+      return reader.nextKeyValue() ? reader.getCurrentValue() : null;
+    } catch (InterruptedException e) {
+      throw new IOException(e);
+    }
   }
 
+  /**
+   * Close the reader.
+   *
+   * @throws IOException
+   */
   @Override
   public void close() throws IOException {
     reader.close();
@@ -47,7 +73,7 @@ public class BdecParquetReader implements AutoCloseable {
   /**
    * Reads the input data using Parquet reader and writes them using a Parquet Writer.
    *
-   * @param data input data to be read and written into outputWriter
+   * @param data input data to be read first and then written with outputWriter
    * @param outputWriter output parquet writer
    */
   public static void readFileIntoWriter(byte[] data, BdecParquetWriter outputWriter) {
