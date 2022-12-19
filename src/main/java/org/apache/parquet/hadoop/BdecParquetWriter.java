@@ -1,4 +1,8 @@
-package net.snowflake.ingest.streaming.internal;
+/*
+ * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ */
+
+package org.apache.parquet.hadoop;
 
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 
@@ -12,8 +16,8 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.hadoop.ParquetFileWriter;
-import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
+import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
@@ -25,9 +29,15 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
-/** BDEC specific parquet writer. */
+/**
+ * BDEC specific parquet writer.
+ *
+ * <p>Resides in parquet package because, it uses {@link InternalParquetRecordWriter} and {@link
+ * CodecFactory} that are package private.
+ */
 public class BdecParquetWriter implements AutoCloseable {
-  private final ParquetWriter<List<Object>> writer;
+  private final InternalParquetRecordWriter<List<Object>> writer;
+  private final CodecFactory codecFactory;
 
   public BdecParquetWriter(
       ByteArrayOutputStream stream,
@@ -35,78 +45,80 @@ public class BdecParquetWriter implements AutoCloseable {
       Map<String, String> extraMetaData,
       String channelName)
       throws IOException {
+    OutputFile file = new ByteArrayOutputFile(stream);
+    ParquetProperties encodingProps = createParquetProperties();
+    Configuration conf = new Configuration();
+    WriteSupport<List<Object>> writeSupport =
+        new BdecWriteSupport(schema, extraMetaData, channelName);
+    WriteSupport.WriteContext writeContext = writeSupport.init(conf);
+
+    ParquetFileWriter fileWriter =
+        new ParquetFileWriter(
+            file,
+            schema,
+            ParquetFileWriter.Mode.CREATE,
+            ParquetWriter.DEFAULT_BLOCK_SIZE,
+            ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+            encodingProps.getColumnIndexTruncateLength(),
+            encodingProps.getStatisticsTruncateLength(),
+            encodingProps.getPageWriteChecksumEnabled(),
+            (FileEncryptionProperties) null);
+    fileWriter.start();
+
+    codecFactory = new CodecFactory(conf, ParquetWriter.DEFAULT_PAGE_SIZE);
+    @SuppressWarnings("deprecation") // Parquet does not support the new one now
+    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(CompressionCodecName.GZIP);
     writer =
-        new BdecParquetWriterBuilder(stream, schema, extraMetaData, channelName)
-            // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
-            // server side does not support it TODO: SNOW-657238
-            .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
-
-            // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
-            // scanner yet
-            .withDictionaryEncoding(false)
-
-            // Historically server side scanner supports only the case when the row number in all
-            // pages is the same.
-            // The quick fix is to effectively disable the page size/row limit
-            // to always have one page per chunk until server side is generalised.
-            .withPageSize((int) Constants.MAX_CHUNK_SIZE_IN_BYTES * 2)
-            .enableValidation()
-            .withCompressionCodec(CompressionCodecName.GZIP)
-            .withWriteMode(ParquetFileWriter.Mode.CREATE)
-            .build();
+        new InternalParquetRecordWriter<>(
+            fileWriter,
+            writeSupport,
+            schema,
+            writeContext.getExtraMetaData(),
+            ParquetWriter.DEFAULT_BLOCK_SIZE,
+            compressor,
+            true,
+            encodingProps);
   }
 
-  /**
-   * Writes an input row into Parquet buffers.
-   *
-   * @param row input row
-   */
   public void writeRow(List<Object> row) {
     try {
       writer.write(row);
-    } catch (IOException e) {
+    } catch (InterruptedException | IOException e) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "parquet row write failed", e);
     }
   }
 
   @Override
   public void close() throws IOException {
-    writer.close();
-  }
-
-  /**
-   * A parquet specific write builder.
-   *
-   * <p>This class is implemented as parquet library API requires, mostly to provide {@link
-   * BdecWriteSupport} implementation.
-   */
-  private static class BdecParquetWriterBuilder
-      extends ParquetWriter.Builder<List<Object>, BdecParquetWriterBuilder> {
-    private final MessageType schema;
-    private final Map<String, String> extraMetaData;
-    private final String channelName;
-
-    protected BdecParquetWriterBuilder(
-        ByteArrayOutputStream stream,
-        MessageType schema,
-        Map<String, String> extraMetaData,
-        String channelName) {
-      super(new ByteArrayOutputFile(stream));
-      this.schema = schema;
-      this.extraMetaData = extraMetaData;
-      this.channelName = channelName;
-    }
-
-    @Override
-    protected BdecParquetWriterBuilder self() {
-      return this;
-    }
-
-    @Override
-    protected WriteSupport<List<Object>> getWriteSupport(Configuration conf) {
-      return new BdecWriteSupport(schema, extraMetaData, channelName);
+    try {
+      writer.close();
+    } catch (InterruptedException e) {
+      throw new IOException(e);
+    } finally {
+      codecFactory.release();
     }
   }
+
+  private static ParquetProperties createParquetProperties() {
+    return ParquetProperties.builder()
+        // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
+        // server side does not support it TODO: SNOW-657238
+        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
+        .withValuesWriterFactory(new DefaultV1ValuesWriterFactory())
+
+        // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
+        // scanner yet
+        .withDictionaryEncoding(false)
+
+        // Historically server side scanner supports only the case when the row number in all
+        // pages is the same.
+        // The quick fix is to effectively disable the page size/row limit
+        // to always have one page per chunk until server side is generalised.
+        .withPageSize((int) Constants.MAX_CHUNK_SIZE_IN_BYTES * 2)
+        .withPageRowCountLimit(Integer.MAX_VALUE)
+        .build();
+  }
+
   /**
    * A parquet specific file output implementation.
    *

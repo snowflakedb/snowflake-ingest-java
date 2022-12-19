@@ -122,13 +122,9 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     this.tempVectorsRoot = new VectorSchemaRoot(tempVectors);
   }
 
-  /**
-   * Close the row buffer and release resources. Note that the caller needs to handle
-   * synchronization
-   */
+  /** Close the row buffer by releasing its internal resources. */
   @Override
   public void closeInternal() {
-    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
     if (this.vectorsRoot != null) {
       this.vectorsRoot.close();
       this.tempVectorsRoot.close();

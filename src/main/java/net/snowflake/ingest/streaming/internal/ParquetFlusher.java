@@ -17,6 +17,8 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.hadoop.BdecParquetReader;
+import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.DelegatingPositionOutputStream;

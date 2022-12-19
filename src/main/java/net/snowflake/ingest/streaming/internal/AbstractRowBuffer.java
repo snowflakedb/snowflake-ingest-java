@@ -466,14 +466,15 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   @VisibleForTesting
   abstract int getTempRowCount();
 
+  /**
+   * Close row buffer by releasing its internal resources only. Note that the allocated memory for
+   * the channel is released elsewhere (in close).
+   */
   abstract void closeInternal();
 
-  /**
-   * Close the row buffer and release resources. Note that the caller needs to handle
-   * synchronization
-   */
+  /** Close the row buffer and release allocated memory for the channel. */
   @Override
-  public void close(String name) {
+  public synchronized void close(String name) {
     long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
 
     closeInternal();
@@ -498,14 +499,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               "Memory leaked=%d by allocator=%s, channel=%s",
               allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
     }
-  }
-
-  /** Normalize the column name, given with the inserted row, to send to server side. */
-  static String formatColumnName(String columnName) {
-    Utils.assertStringNotNullOrEmpty("invalid column name", columnName);
-    return (columnName.charAt(0) == '"' && columnName.charAt(columnName.length() - 1) == '"')
-        ? columnName
-        : columnName.toUpperCase();
   }
 
   /**

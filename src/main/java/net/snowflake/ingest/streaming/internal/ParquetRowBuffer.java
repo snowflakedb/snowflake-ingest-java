@@ -19,13 +19,14 @@ import java.util.Set;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -40,8 +41,13 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private static final String PARQUET_MESSAGE_TYPE_NAME = "bdec";
 
   private final Map<String, Pair<ColumnMetadata, Integer>> fieldIndex;
+
+  /* map that contains metadata like typeinfo for columns and other information needed by the server scanner */
   private final Map<String, String> metadata;
-  private BdecParquetWriter data;
+
+  /* BDEC Parquet writer. It is used to buffer unflushed data instead of serializing in Java objects */
+  private BdecParquetWriter bdecParquetWriter;
+
   private ByteArrayOutputStream fileOutput;
   private final List<List<Object>> tempData;
   private final String channelName;
@@ -104,7 +110,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private void createFileWriter() {
     fileOutput = new ByteArrayOutputStream();
     try {
-      data = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
+      bdecParquetWriter = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
       testBuffer.clear();
     } catch (IOException e) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "cannot create parquet writer", e);
@@ -126,7 +132,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   void writeRow(List<Object> row) {
-    data.writeRow(row);
+    bdecParquetWriter.writeRow(row);
     if (bufferForTests) {
       testBuffer.add(row);
     }
@@ -204,7 +210,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     return rowCount <= 0
         ? Optional.empty()
-        : Optional.of(new ParquetChunkData(data, fileOutput, metadata));
+        : Optional.of(new ParquetChunkData(bdecParquetWriter, fileOutput, metadata));
   }
 
   /** Used only for testing. */
@@ -245,12 +251,13 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     createFileWriter();
   }
 
+  /** Close the row buffer by releasing its internal resources. */
   @Override
   void closeInternal() {
     this.fieldIndex.clear();
-    if (data != null) {
+    if (bdecParquetWriter != null) {
       try {
-        data.close();
+        bdecParquetWriter.close();
       } catch (IOException e) {
         throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to close parquet writer", e);
       }
