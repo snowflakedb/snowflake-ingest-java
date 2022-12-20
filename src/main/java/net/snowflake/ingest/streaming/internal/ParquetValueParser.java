@@ -344,7 +344,7 @@ class ParquetValueParser {
     String maxLengthString = columnMetadata.getLength().toString();
     byte[] bytes =
         DataValidationUtil.validateAndParseBinary(
-                columnMetadata.getName(), value, Optional.of(maxLengthString).map(Integer::parseInt));
+            columnMetadata.getName(), value, Optional.of(maxLengthString).map(Integer::parseInt));
 
     String str = new String(bytes, StandardCharsets.UTF_8);
     stats.addStrValue(str);
