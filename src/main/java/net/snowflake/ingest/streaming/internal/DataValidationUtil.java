@@ -673,7 +673,7 @@ class DataValidationUtil {
             return Double.NEGATIVE_INFINITY;
           default:
             throw valueFormatNotAllowedException(
-                    columnName, input, "REAL", "Not a valid decimal number");
+                columnName, input, "REAL", "Not a valid decimal number");
         }
       }
     }

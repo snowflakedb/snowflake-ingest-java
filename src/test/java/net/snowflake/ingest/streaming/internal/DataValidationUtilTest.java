@@ -840,9 +840,9 @@ public class DataValidationUtilTest {
     assertEquals(1.23d, validateAndParseReal("COL", 1.23), 0);
     assertEquals(1.23d, validateAndParseReal("COL", 1.23d), 0);
     assertEquals(1.23d, validateAndParseReal("COL", new BigDecimal("1.23")), 0);
-    assertEquals(Double.NaN, validateAndParseReal("COL","Nan"), 0);
-    assertEquals(Double.POSITIVE_INFINITY, validateAndParseReal("COL","inF"), 0);
-    assertEquals(Double.NEGATIVE_INFINITY, validateAndParseReal("COL","-inF"), 0);
+    assertEquals(Double.NaN, validateAndParseReal("COL", "Nan"), 0);
+    assertEquals(Double.POSITIVE_INFINITY, validateAndParseReal("COL", "inF"), 0);
+    assertEquals(Double.NEGATIVE_INFINITY, validateAndParseReal("COL", "-inF"), 0);
 
     // From string
     assertEquals(1.23d, validateAndParseReal("COL", "1.23"), 0);
