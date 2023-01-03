@@ -15,8 +15,7 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validat
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampNtzSb16;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampTz;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariant;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -420,7 +419,25 @@ public class DataValidationUtilTest {
             "COL",
             ZonedDateTime.of(2022, 9, 28, 3, 4, 12, 123456789, ZoneId.of("America/Los_Angeles"))));
 
+    // Test valid JSON tokens
+    assertEquals("null", validateAndParseVariant("COL", null));
+    assertEquals("null", validateAndParseVariant("COL", "null"));
+    assertEquals("true", validateAndParseVariant("COL", true));
+    assertEquals("true", validateAndParseVariant("COL", "true"));
+    assertEquals("false", validateAndParseVariant("COL", false));
+    assertEquals("false", validateAndParseVariant("COL", "false"));
+    assertEquals("{}", validateAndParseVariant("COL", "{}"));
+    assertEquals("[]", validateAndParseVariant("COL", "[]"));
+    assertEquals("[\"foo\",1,null]", validateAndParseVariant("COL", "[\"foo\",1,null]"));
+    assertEquals("\"\"", validateAndParseVariant("COL", "\"\""));
+
+    // Test missing values are null instead of empty string
+    assertNull(validateAndParseVariant("COL", ""));
+    assertNull(validateAndParseVariant("COL", "  "));
+
     // Test forbidden values
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "{null}"));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "}{"));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", readTree("{}")));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", new Object()));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "foo"));
@@ -469,6 +486,12 @@ public class DataValidationUtilTest {
 
     List<Object> nestedList = Arrays.asList(Arrays.asList(1, 2, 3), 2, 3);
     assertEquals("[[1,2,3],2,3]", validateAndParseArray("COL", nestedList));
+
+    // Test null values
+    assertEquals("[null]", validateAndParseArray("COL", ""));
+    assertEquals("[null]", validateAndParseArray("COL", " "));
+    assertEquals("[null]", validateAndParseArray("COL", "null"));
+    assertEquals("[null]", validateAndParseArray("COL", null));
 
     // Test forbidden values
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseArray("COL", readTree("[]")));
