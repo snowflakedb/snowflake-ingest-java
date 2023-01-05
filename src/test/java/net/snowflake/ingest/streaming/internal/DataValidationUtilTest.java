@@ -55,8 +55,7 @@ public class DataValidationUtilTest {
       Assert.fail("Expected Exception");
     } catch (SFException e) {
       assertEquals(expectedErrorCode.getMessageCode(), e.getVendorCode());
-      if (expectedExceptionMessage != null)
-        assertEquals(expectedExceptionMessage, e.getMessage());
+      if (expectedExceptionMessage != null) assertEquals(expectedExceptionMessage, e.getMessage());
     } catch (Exception e) {
       Assert.fail("Invalid error through");
     }
