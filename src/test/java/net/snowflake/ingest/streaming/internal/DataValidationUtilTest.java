@@ -15,7 +15,9 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validat
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampNtzSb16;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampTz;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariant;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -54,7 +56,7 @@ public class DataValidationUtilTest {
     } catch (SFException e) {
       assertEquals(expectedErrorCode.getMessageCode(), e.getVendorCode());
       if (expectedExceptionMessage != null)
-        Assert.assertEquals(expectedExceptionMessage, e.getMessage());
+        assertEquals(expectedExceptionMessage, e.getMessage());
     } catch (Exception e) {
       Assert.fail("Invalid error through");
     }
@@ -372,12 +374,12 @@ public class DataValidationUtilTest {
       longBuilder.append("č"); // max string length is measured in chars, not bytes
     }
     String maxString = longBuilder.toString();
-    Assert.assertEquals(maxString, validateAndParseString("COL", maxString, Optional.empty()));
+    assertEquals(maxString, validateAndParseString("COL", maxString, Optional.empty()));
 
     // max length - 1 should also succeed
     longBuilder.setLength(BYTES_16_MB - 1);
     String maxStringMinusOne = longBuilder.toString();
-    Assert.assertEquals(
+    assertEquals(
         maxStringMinusOne, validateAndParseString("COL", maxStringMinusOne, Optional.empty()));
 
     // max length + 1 should fail
