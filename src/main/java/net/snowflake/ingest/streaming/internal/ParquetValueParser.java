@@ -51,7 +51,6 @@ class ParquetValueParser {
       PrimitiveType.PrimitiveTypeName typeName,
       RowBufferStats stats) {
     Utils.assertNotNull("Parquet column stats", stats);
-    Object parsedValue = value;
     float size = 0F;
     if (value != null) {
       AbstractRowBuffer.ColumnLogicalType logicalType =
@@ -62,7 +61,7 @@ class ParquetValueParser {
         case BOOLEAN:
           int intValue =
               DataValidationUtil.validateAndParseBoolean(columnMetadata.getName(), value);
-          parsedValue = intValue > 0;
+          value = intValue > 0;
           stats.addIntValue(BigInteger.valueOf(intValue));
           size = 1;
           break;
@@ -75,7 +74,7 @@ class ParquetValueParser {
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType);
-          parsedValue = intVal;
+          value = intVal;
           stats.addIntValue(BigInteger.valueOf(intVal));
           size = 4;
           break;
@@ -88,24 +87,24 @@ class ParquetValueParser {
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType);
-          parsedValue = longValue;
+          value = longValue;
           stats.addIntValue(BigInteger.valueOf(longValue));
           size = 8;
           break;
         case DOUBLE:
           double doubleValue =
               DataValidationUtil.validateAndParseReal(columnMetadata.getName(), value);
-          parsedValue = doubleValue;
+          value = doubleValue;
           stats.addRealValue(doubleValue);
           size = 8;
           break;
         case BINARY:
           if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
-            parsedValue = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
-            size = ((byte[]) parsedValue).length;
+            value = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
+            size = ((byte[]) value).length;
           } else {
             String str = getBinaryValue(value, stats, columnMetadata);
-            parsedValue = str;
+            value = str;
             if (str != null) {
               size = str.getBytes().length;
             }
@@ -121,7 +120,7 @@ class ParquetValueParser {
                   logicalType,
                   physicalType);
           stats.addIntValue(intRep);
-          parsedValue = getSb16Bytes(intRep);
+          value = getSb16Bytes(intRep);
           size += 16;
           break;
         default:
@@ -129,7 +128,7 @@ class ParquetValueParser {
       }
     }
 
-    if (value == null || parsedValue == null) {
+    if (value == null) {
       if (!columnMetadata.getNullable()) {
         throw new SFException(
             ErrorCode.INVALID_ROW, columnMetadata.getName(), "Passed null to non nullable field");
@@ -137,7 +136,7 @@ class ParquetValueParser {
       stats.incCurrentNullCount();
     }
 
-    return new ParquetBufferValue(parsedValue, size);
+    return new ParquetBufferValue(value, size);
   }
 
   /**
