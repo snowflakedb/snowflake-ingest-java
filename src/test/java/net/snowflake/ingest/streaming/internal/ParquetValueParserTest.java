@@ -284,6 +284,45 @@ public class ParquetValueParserTest {
   }
 
   @Test
+  public void parseValueNullVariantToBinary() {
+    testNullJsonWithLogicalType(null);
+  }
+
+  @Test
+  public void parseValueEmptyStringVariantToBinary() {
+    testNullJsonWithLogicalType("");
+  }
+
+  @Test
+  public void parseValueEmptySpaceStringVariantToBinary() {
+    testNullJsonWithLogicalType("     ");
+  }
+
+    private void testNullJsonWithLogicalType(String var) {
+    ColumnMetadata testCol =
+            ColumnMetadataBuilder.newBuilder()
+                    .logicalType("VARIANT")
+                    .physicalType("BINARY")
+                    .nullable(true)
+                    .build();
+
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    ParquetValueParser.ParquetBufferValue pv =
+            ParquetValueParser.parseColumnValueToParquet(
+                    var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+
+    ParquetValueParserAssertionBuilder.newBuilder()
+            .parquetBufferValue(pv)
+            .rowBufferStats(rowBufferStats)
+            .expectedValueClass(String.class)
+            .expectedParsedValue(var)
+            .expectedSize(0)
+            .expectedMinMax(null)
+            .expectedNullCount(1)
+            .assertNull();
+  }
+
+  @Test
   public void parseValueArrayToBinary() {
     ColumnMetadata testCol =
         ColumnMetadataBuilder.newBuilder()
@@ -504,6 +543,7 @@ public class ParquetValueParserTest {
     private Object value;
     private float size;
     private Object minMaxStat;
+    private long currentNullCount;
 
     static ParquetValueParserAssertionBuilder newBuilder() {
       ParquetValueParserAssertionBuilder builder = new ParquetValueParserAssertionBuilder();
@@ -541,6 +581,11 @@ public class ParquetValueParserTest {
       return this;
     }
 
+    public ParquetValueParserAssertionBuilder expectedNullCount(long currentNullCount) {
+      this.currentNullCount = currentNullCount;
+      return this;
+    }
+
     void assertMatches() {
       Assert.assertEquals(valueClass, parquetBufferValue.getValue().getClass());
       if (valueClass.equals(byte[].class)) {
@@ -564,6 +609,11 @@ public class ParquetValueParserTest {
         return;
       }
       throw new IllegalArgumentException("Unknown data type for min stat");
+    }
+
+    void assertNull() {
+      Assert.assertNull(parquetBufferValue.getValue());
+      Assert.assertEquals(currentNullCount, rowBufferStats.getCurrentNullCount());
     }
   }
 }

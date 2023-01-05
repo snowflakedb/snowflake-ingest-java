@@ -444,6 +444,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
       String columnName = LiteralQuoteUtils.unquoteColumnName(entry.getKey());
       Object value = entry.getValue();
+      Object parsedValue = value;
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
       FieldVector vector = sourceVectors.getVector(field);
@@ -454,14 +455,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
           ColumnLogicalType.valueOf(field.getMetadata().get(COLUMN_LOGICAL_TYPE));
       ColumnPhysicalType physicalType =
           ColumnPhysicalType.valueOf(field.getMetadata().get(COLUMN_PHYSICAL_TYPE));
-
-      if (value == null) {
-        if (!field.getFieldType().isNullable()) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
-        }
-        insertNull(vector, stats, curRowIndex);
-      } else {
+      if (value != null) {
         switch (logicalType) {
           case FIXED:
             int columnPrecision = Integer.parseInt(field.getMetadata().get(COLUMN_PRECISION));
@@ -474,28 +468,33 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             DataValidationUtil.checkValueInRange(inputAsBigDecimal, columnScale, columnPrecision);
 
             if (columnScale != 0 || physicalType == ColumnPhysicalType.SB16) {
+              parsedValue = inputAsBigDecimal;
               ((DecimalVector) vector).setSafe(curRowIndex, inputAsBigDecimal);
               stats.addIntValue(inputAsBigDecimal.unscaledValue());
               rowBufferSize += 16;
             } else {
               switch (physicalType) {
                 case SB1:
+                  parsedValue = inputAsBigDecimal.byteValueExact();
                   ((TinyIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.byteValueExact());
                   stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 1;
                   break;
                 case SB2:
+                  parsedValue = inputAsBigDecimal.shortValueExact();
                   ((SmallIntVector) vector)
                       .setSafe(curRowIndex, inputAsBigDecimal.shortValueExact());
                   stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 2;
                   break;
                 case SB4:
+                  parsedValue = inputAsBigDecimal.intValueExact();
                   ((IntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.intValueExact());
                   stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 4;
                   break;
                 case SB8:
+                  parsedValue = inputAsBigDecimal.longValueExact();
                   ((BigIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.longValueExact());
                   stats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 8;
@@ -515,6 +514,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                       stats.getColumnDisplayName(),
                       value,
                       Optional.ofNullable(maxLengthString).map(Integer::parseInt));
+              parsedValue = str;
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               stats.addStrValue(str);
@@ -525,6 +525,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseObject(stats.getColumnDisplayName(), value);
+              parsedValue = str;
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               rowBufferSize += text.getBytes().length;
@@ -534,6 +535,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseArray(stats.getColumnDisplayName(), value);
+              parsedValue = str;
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               rowBufferSize += text.getBytes().length;
@@ -543,9 +545,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseVariant(stats.getColumnDisplayName(), value);
-              Text text = new Text(str);
-              ((VarCharVector) vector).setSafe(curRowIndex, text);
-              rowBufferSize += text.getBytes().length;
+              parsedValue = str;
+              if (parsedValue != null) {
+                Text text = new Text(str);
+                ((VarCharVector) vector).setSafe(curRowIndex, text);
+                rowBufferSize += text.getBytes().length;
+              }
               break;
             }
           case TIMESTAMP_LTZ:
@@ -562,6 +567,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           value,
                           getColumnScale(field.getMetadata()),
                           ignoreTimezone);
+                  parsedValue = timestampWrapper.getTimeInScale().longValue();
                   bigIntVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
                   stats.addIntValue(timestampWrapper.getTimeInScale());
                   rowBufferSize += 8;
@@ -576,6 +582,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                       (IntVector) structVector.getChild(FIELD_FRACTION_IN_NANOSECONDS);
                   rowBufferSize += 0.25; // for children vector's null value
                   structVector.setIndexDefined(curRowIndex);
+                  parsedValue = structVector;
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampNtzSb16(
@@ -604,6 +611,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
                   rowBufferSize += 0.25; // for children vector's null value
                   structVector.setIndexDefined(curRowIndex);
+                  parsedValue = structVector;
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampTz(
@@ -644,6 +652,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
                   rowBufferSize += 0.375; // for children vector's null value
                   structVector.setIndexDefined(curRowIndex);
+                  parsedValue = structVector;
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestampTz(
@@ -684,6 +693,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               // Expect days past the epoch
               int intValue =
                   DataValidationUtil.validateAndParseDate(stats.getColumnDisplayName(), value);
+              parsedValue = intValue;
               dateDayVector.setSafe(curRowIndex, intValue);
               stats.addIntValue(BigInteger.valueOf(intValue));
               rowBufferSize += 4;
@@ -696,7 +706,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   BigInteger timeInScale =
                       DataValidationUtil.validateAndParseTime(
                           stats.getColumnDisplayName(), value, getColumnScale(field.getMetadata()));
-                  stats.addIntValue(timeInScale);
+                  parsedValue = timeInScale.intValue();
                   ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
                   stats.addIntValue(timeInScale);
                   rowBufferSize += 4;
@@ -707,6 +717,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   BigInteger timeInScale =
                       DataValidationUtil.validateAndParseTime(
                           stats.getColumnDisplayName(), value, getColumnScale(field.getMetadata()));
+                  parsedValue = timeInScale.longValue();
                   ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
                   stats.addIntValue(timeInScale);
                   rowBufferSize += 8;
@@ -720,6 +731,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               int intValue =
                   DataValidationUtil.validateAndParseBoolean(stats.getColumnDisplayName(), value);
+              parsedValue = intValue;
               ((BitVector) vector).setSafe(curRowIndex, intValue);
               rowBufferSize += 0.125;
               stats.addIntValue(BigInteger.valueOf(intValue));
@@ -732,6 +744,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                     stats.getColumnDisplayName(),
                     value,
                     Optional.ofNullable(maxLengthString).map(Integer::parseInt));
+            parsedValue = bytes;
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             stats.addStrValue(new String(bytes, StandardCharsets.UTF_8));
             rowBufferSize += bytes.length;
@@ -739,12 +752,22 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
           case REAL:
             double doubleValue =
                 DataValidationUtil.validateAndParseReal(stats.getColumnDisplayName(), value);
+            parsedValue = doubleValue;
             ((Float8Vector) vector).setSafe(curRowIndex, doubleValue);
             stats.addRealValue(doubleValue);
             rowBufferSize += 8;
             break;
           default:
             throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+        }
+      }
+
+      if (value == null || parsedValue == null){
+        if(!field.getFieldType().isNullable()) {
+          throw new SFException(
+                  ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
+        } else {
+          insertNull(vector, stats, curRowIndex);
         }
       }
     }
