@@ -762,10 +762,10 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
         }
       }
 
-      if (value == null || parsedValue == null){
-        if(!field.getFieldType().isNullable()) {
+      if (value == null || parsedValue == null) {
+        if (!field.getFieldType().isNullable()) {
           throw new SFException(
-                  ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
+              ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
         } else {
           insertNull(vector, stats, curRowIndex);
         }

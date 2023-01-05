@@ -347,6 +347,7 @@ public class RowBufferTest {
     InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
     Assert.assertFalse(response.hasErrors());
   }
+
   @Test
   public void testInsertRows() {
     testInsertRowsHelper(this.rowBufferOnErrorContinue);
@@ -1254,7 +1255,7 @@ public class RowBufferTest {
     row5.put("COLVARIANT", 3);
 
     InsertValidationResponse response =
-            innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1269,7 +1270,6 @@ public class RowBufferTest {
     Assert.assertEquals(5, result.getRowCount());
     Assert.assertEquals(2, result.getColumnEps().get("COLVARIANT").getCurrentNullCount());
   }
-
 
   @Test
   public void testE2EObject() {
@@ -1291,9 +1291,7 @@ public class RowBufferTest {
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLOBJECT", "{\"key\":1}");
 
-
-    InsertValidationResponse response =
-            innerBuffer.insertRows(Arrays.asList(row1), null);
+    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row1), null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1336,9 +1334,8 @@ public class RowBufferTest {
     Map<String, Object> row5 = new HashMap<>();
     row5.put("COLARRAY", Arrays.asList(1, 2, 3));
 
-
     InsertValidationResponse response =
-            innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly

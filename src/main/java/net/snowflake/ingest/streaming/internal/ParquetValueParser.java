@@ -132,7 +132,7 @@ class ParquetValueParser {
     if (value == null || parsedValue == null) {
       if (!columnMetadata.getNullable()) {
         throw new SFException(
-                ErrorCode.INVALID_ROW, columnMetadata.getName(), "Passed null to non nullable field");
+            ErrorCode.INVALID_ROW, columnMetadata.getName(), "Passed null to non nullable field");
       }
       stats.incCurrentNullCount();
     }

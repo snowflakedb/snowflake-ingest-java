@@ -298,28 +298,28 @@ public class ParquetValueParserTest {
     testNullJsonWithLogicalType("     ");
   }
 
-    private void testNullJsonWithLogicalType(String var) {
+  private void testNullJsonWithLogicalType(String var) {
     ColumnMetadata testCol =
-            ColumnMetadataBuilder.newBuilder()
-                    .logicalType("VARIANT")
-                    .physicalType("BINARY")
-                    .nullable(true)
-                    .build();
+        ColumnMetadataBuilder.newBuilder()
+            .logicalType("VARIANT")
+            .physicalType("BINARY")
+            .nullable(true)
+            .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
-            ParquetValueParser.parseColumnValueToParquet(
-                    var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+        ParquetValueParser.parseColumnValueToParquet(
+            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
 
     ParquetValueParserAssertionBuilder.newBuilder()
-            .parquetBufferValue(pv)
-            .rowBufferStats(rowBufferStats)
-            .expectedValueClass(String.class)
-            .expectedParsedValue(var)
-            .expectedSize(0)
-            .expectedMinMax(null)
-            .expectedNullCount(1)
-            .assertNull();
+        .parquetBufferValue(pv)
+        .rowBufferStats(rowBufferStats)
+        .expectedValueClass(String.class)
+        .expectedParsedValue(var)
+        .expectedSize(0)
+        .expectedMinMax(null)
+        .expectedNullCount(1)
+        .assertNull();
   }
 
   @Test
