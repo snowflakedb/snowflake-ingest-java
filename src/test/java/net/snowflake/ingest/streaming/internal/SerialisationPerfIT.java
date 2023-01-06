@@ -72,12 +72,14 @@ public class SerialisationPerfIT {
         final float rowSize;
         final int fileSize;
         final int rowNumber;
+        final long memUsage;
 
-        private FileStats(long runtimeMilli, float rowSize, int fileSize, int rowNumber) {
+        private FileStats(long runtimeMilli, float rowSize, int fileSize, int rowNumber, long memUsage) {
             this.runtimeMilli = runtimeMilli;
             this.rowSize = rowSize;
             this.fileSize = fileSize;
             this.rowNumber = rowNumber;
+            this.memUsage = memUsage;
         }
     }
 
@@ -103,13 +105,16 @@ public class SerialisationPerfIT {
         double avgFileSize = fileStatsList.stream().mapToLong(s -> (long)s.fileSize).average().getAsDouble();
         long totalRowNumber = fileStatsList.stream().mapToLong(s -> (long)s.rowNumber).sum();
         double avgRowNumber = fileStatsList.stream().mapToLong(s -> (long)s.rowNumber).average().getAsDouble();
+        long totalMemUsage = fileStatsList.stream().mapToLong(s -> s.memUsage).sum();
+        double avgMemUsage = fileStatsList.stream().mapToLong(s -> s.memUsage).average().getAsDouble();
 
         System.out.printf(
                 "fileNumber=%s\n" +
                 "totalRuntimeMilli=%s, avgRuntimeMilli=%s\n" +
                     "totalRowSize=%s, avgRowSize=%s\n" +
                     "totalFileSize=%s, avgFileSize=%s\n" +
-                        "totalRowNumber=%s, avgRowNumber=%s\n%n",
+                        "totalRowNumber=%s, avgRowNumber=%s\n" +
+                        "totalMemUsage=%s, avgMemUsage=%s\n",
                 fileStatsList.size(),
                 totalRuntimeMilli,
                 avgRuntimeMilli,
@@ -118,7 +123,9 @@ public class SerialisationPerfIT {
                 totalFileSize,
                 avgFileSize,
                 totalRowNumber,
-                avgRowNumber);
+                avgRowNumber,
+                totalMemUsage,
+                avgMemUsage);
 
 //        try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
 //            outputStream.write(chunkData.toByteArray());
@@ -143,26 +150,32 @@ public class SerialisationPerfIT {
             rows++;
             float size = (float) buffers.stream().mapToDouble(b -> b.size).sum();
             if (size >= Constants.MAX_CHUNK_SIZE_IN_BYTES) {
-                int fileSize = flush(buffers, fileIndex + ".bdec");
-                long runtimeMilli = System.currentTimeMillis() - fileStartTimeMilli;
-                FileStats fileStats = new FileStats(runtimeMilli, size, fileSize, rows);
-                fileStatsList.add(fileStats);
-                for (BufferChannelContext<?> bufferChannelContext : buffers) {
-                    bufferChannelContext.buffer.reset();
-                    bufferChannelContext.size = 0;
-                }
-                size = 0;
+                flush(buffers, fileStatsList, fileIndex, rows, fileStartTimeMilli, size);
                 rows = 0;
-                fileStartTimeMilli = System.currentTimeMillis();
                 fileIndex++;
+                fileStartTimeMilli = System.currentTimeMillis();
             }
         }
+        long memUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         float size = (float) buffers.stream().mapToDouble(b -> b.size).sum();
         int fileSize = flush(buffers, fileIndex + ".bdec");
         long runtimeMilli = System.currentTimeMillis() - fileStartTimeMilli;
-        FileStats fileStats = new FileStats(runtimeMilli, size, fileSize, rows);
+        FileStats fileStats = new FileStats(runtimeMilli, size, fileSize, rows, memUsage);
         fileStatsList.add(fileStats);
         return fileStatsList;
+    }
+
+    private <T> void flush(List<BufferChannelContext<T>> buffers, List<FileStats> fileStatsList, int fileIndex, int rows, long fileStartTimeMilli, float size) throws IOException {
+        long memUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        int fileSize = flush(buffers, fileIndex + ".bdec");
+        long runtimeMilli = System.currentTimeMillis() - fileStartTimeMilli;
+        FileStats fileStats = new FileStats(runtimeMilli, size, fileSize, rows, memUsage);
+        fileStatsList.add(fileStats);
+        for (BufferChannelContext<?> bufferChannelContext : buffers) {
+            bufferChannelContext.buffer.reset();
+            bufferChannelContext.size = 0;
+        }
+        System.gc();
     }
 
     private <T> int flush(List<BufferChannelContext<T>> buffers, String filePath) throws IOException {
