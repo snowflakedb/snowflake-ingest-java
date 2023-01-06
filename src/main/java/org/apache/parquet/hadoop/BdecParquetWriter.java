@@ -39,6 +39,15 @@ public class BdecParquetWriter implements AutoCloseable {
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
 
+  /**
+   * Creates a BDEC specific parquet writer.
+   *
+   * @param stream output
+   * @param schema row schema
+   * @param extraMetaData extra metadata
+   * @param channelName name of the channel that is using the writer
+   * @throws IOException
+   */
   public BdecParquetWriter(
       ByteArrayOutputStream stream,
       MessageType schema,
@@ -65,6 +74,11 @@ public class BdecParquetWriter implements AutoCloseable {
             (FileEncryptionProperties) null);
     fileWriter.start();
 
+    /* If our optimization for Parquet is enabled, there will be one writer per channel on each flush.
+    The memory will be allocated for each writer at the beginning even if we don't write anything with each writer,
+    which is the case when we enable the optimization.
+    Hence, to avoid huge memory allocations, we have to use CodecFactory
+    and move the BdecParquetWriter class in the parquet.hadoop package. */
     codecFactory = new CodecFactory(conf, ParquetWriter.DEFAULT_PAGE_SIZE);
     @SuppressWarnings("deprecation") // Parquet does not support the new one now
     CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(CompressionCodecName.GZIP);

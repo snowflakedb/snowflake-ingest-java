@@ -21,7 +21,6 @@ public interface Flusher<T> {
    * Serialize buffered rows into the underlying format.
    *
    * @param channelsDataPerTable buffered rows
-   * @param chunkData output
    * @param filePath file path
    * @return {@link SerializationResult}
    * @throws IOException
