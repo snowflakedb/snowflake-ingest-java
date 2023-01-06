@@ -45,6 +45,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /* map that contains metadata like typeinfo for columns and other information needed by the server scanner */
   private final Map<String, String> metadata;
 
+  /* Unflushed rows serialized into Java objects. Needed for the Parquet w/o memory optimization. */
+  private final List<List<Object>> data;
   /* BDEC Parquet writer. It is used to buffer unflushed data instead of serializing in Java objects */
   private BdecParquetWriter bdecParquetWriter;
 
@@ -55,6 +57,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private MessageType schema;
   private final List<List<Object>> testBuffer; // used only for tests for row index access
   private final boolean bufferForTests;
+  private final boolean enableParquetMemoryOptimization;
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
@@ -62,14 +65,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean bufferForTests) {
+      boolean bufferForTests,
+      boolean enableParquetMemoryOptimization) {
     super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelRuntimeState);
     fieldIndex = new HashMap<>();
     metadata = new HashMap<>();
+    data = new ArrayList<>();
     tempData = new ArrayList<>();
     channelName = fullyQualifiedChannelName;
     testBuffer = new ArrayList<>();
     this.bufferForTests = bufferForTests;
+    this.enableParquetMemoryOptimization = enableParquetMemoryOptimization;
   }
 
   @Override
@@ -104,13 +110,19 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     schema = new MessageType(PARQUET_MESSAGE_TYPE_NAME, parquetTypes);
     createFileWriter();
     tempData.clear();
+    data.clear();
     testBuffer.clear();
   }
 
+  /** Create BDEC file writer if Parquet memory optimization is enabled. */
   private void createFileWriter() {
     fileOutput = new ByteArrayOutputStream();
     try {
-      bdecParquetWriter = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
+      if (enableParquetMemoryOptimization) {
+        bdecParquetWriter = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
+      } else {
+        this.bdecParquetWriter = null;
+      }
       testBuffer.clear();
     } catch (IOException e) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "cannot create parquet writer", e);
@@ -132,7 +144,11 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   void writeRow(List<Object> row) {
-    bdecParquetWriter.writeRow(row);
+    if (enableParquetMemoryOptimization) {
+      bdecParquetWriter.writeRow(row);
+    } else {
+      data.add(row);
+    }
     if (bufferForTests) {
       testBuffer.add(row);
     }
@@ -208,9 +224,13 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     // http://go/streams-on-replicated-mixed-tables
     metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
 
+    List<List<Object>> oldData = new ArrayList<>();
+    if (!enableParquetMemoryOptimization) {
+      data.forEach(r -> oldData.add(new ArrayList<>(r)));
+    }
     return rowCount <= 0
         ? Optional.empty()
-        : Optional.of(new ParquetChunkData(bdecParquetWriter, fileOutput, metadata));
+        : Optional.of(new ParquetChunkData(oldData, bdecParquetWriter, fileOutput, metadata));
   }
 
   /** Used only for testing. */
@@ -249,6 +269,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   void reset() {
     super.reset();
     createFileWriter();
+    data.clear();
   }
 
   /** Close the row buffer by releasing its internal resources. */
@@ -266,6 +287,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   public Flusher<ParquetChunkData> createFlusher() {
-    return new ParquetFlusher(schema);
+    return new ParquetFlusher(schema, enableParquetMemoryOptimization);
   }
 }

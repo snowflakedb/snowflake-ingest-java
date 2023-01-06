@@ -21,6 +21,7 @@ public class ParameterProvider {
   public static final String BLOB_UPLOAD_MAX_RETRY_COUNT =
       "BLOB_UPLOAD_MAX_RETRY_COUNT".toLowerCase();
   public static final String MAX_MEMORY_LIMIT_IN_BYTES = "MAX_MEMORY_LIMIT_IN_BYTES".toLowerCase();
+  public static final String ENABLE_PARQUET_MEM_OPT = "ENABLE_PARQUET_MEM_OPT".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -32,6 +33,8 @@ public class ParameterProvider {
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
+  /* parameter that enables main memory optimization for Parquet format (BdecVersion.THREE) */
+  public static final boolean ENABLE_PARQUET_MEM_OPT_DEFAULT = true;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -113,6 +116,9 @@ public class ParameterProvider {
 
     this.updateValue(
         MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT, parameterOverrides, props);
+
+    this.updateValue(
+        ENABLE_PARQUET_MEM_OPT, ENABLE_PARQUET_MEM_OPT_DEFAULT, parameterOverrides, props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -217,6 +223,13 @@ public class ParameterProvider {
         this.parameterMap.getOrDefault(
             MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT);
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  /** @return Return whether memory optimization for Parquet is enabled. */
+  public boolean getEnableParquetMemoryOptimization() {
+    Object val =
+        this.parameterMap.getOrDefault(ENABLE_PARQUET_MEM_OPT, ENABLE_PARQUET_MEM_OPT_DEFAULT);
+    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
   @Override

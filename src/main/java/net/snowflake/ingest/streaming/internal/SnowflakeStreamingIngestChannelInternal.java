@@ -120,7 +120,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
-            false);
+            false,
+            owningClient.getParameterProvider().getEnableParquetMemoryOptimization());
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),

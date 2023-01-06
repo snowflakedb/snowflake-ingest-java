@@ -527,7 +527,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean bufferForTests) {
+      boolean bufferForTests,
+      boolean enableParquetMemoryOptimization) {
     switch (bdecVersion) {
       case ONE:
         //noinspection unchecked
@@ -547,7 +548,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 fullyQualifiedChannelName,
                 rowSizeMetric,
                 channelRuntimeState,
-                bufferForTests);
+                bufferForTests,
+                enableParquetMemoryOptimization);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
