@@ -36,15 +36,19 @@ public class SerialisationPerfIT {
     public static Collection<Object[]> bdecVersion() {
         return Arrays.asList(
                 new Object[][] {
-                        {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
+                        {"Arrow", Constants.BdecVersion.ONE, false},
+                        {"Parquet w/o memory optimization", Constants.BdecVersion.THREE, false},
+                        {"Parquet with memory optimization", Constants.BdecVersion.THREE, true}
                 });
     }
 
     private final BdecVersion bdecVersion;
+    private final boolean enableParquetMemoryOptimization;
 
     public SerialisationPerfIT(
-            @SuppressWarnings("unused") String name, BdecVersion bdecVersion) {
+            @SuppressWarnings("unused") String name, BdecVersion bdecVersion, boolean enableParquetMemoryOptimization) {
         this.bdecVersion = bdecVersion;
+        this.enableParquetMemoryOptimization = enableParquetMemoryOptimization;
     }
 
     private static class BufferChannelContext<T> {
@@ -53,7 +57,7 @@ public class SerialisationPerfIT {
         final AbstractRowBuffer<T> buffer;
         float size = 0;
 
-        private BufferChannelContext(BdecVersion bdecVersion, int index, List<ColumnMetadata> columns, RootAllocator allocator) {
+        private BufferChannelContext(BdecVersion bdecVersion, int index, List<ColumnMetadata> columns, RootAllocator allocator, boolean enableParquetMemoryOptimization) {
             this.index = index;
             this.channelFlushContext = new ChannelFlushContext("SerialisationPerfITChannel" + index, "dummyDb", "dummySchema", "dummyTable", 0L, "encryptionKey", 1L);
             this.buffer = AbstractRowBuffer.createRowBuffer(
@@ -62,7 +66,7 @@ public class SerialisationPerfIT {
                     bdecVersion,
                     "test.buffer" + index,
                     rs -> size += rs,
-                    new ChannelRuntimeState("0", 0, true), false);
+                    new ChannelRuntimeState("0", 0, true), false, enableParquetMemoryOptimization);
             buffer.setupSchema(columns);
         }
     }
@@ -128,7 +132,7 @@ public class SerialisationPerfIT {
     private <T> List<FileStats> run(int numberOfChannels, int rowNumber, List<ColumnMetadata> columns, Map<String, RowBufferStats> statsMap) throws IOException {
         RootAllocator allocator = new RootAllocator();
         List<BufferChannelContext<T>> buffers = IntStream.range(0, numberOfChannels)
-                .mapToObj(i -> new BufferChannelContext<T>(bdecVersion, i, columns, allocator))
+                .mapToObj(i -> new BufferChannelContext<T>(bdecVersion, i, columns, allocator, enableParquetMemoryOptimization))
                 .collect(Collectors.toList());
 
         List<FileStats> fileStatsList = new ArrayList<>();
