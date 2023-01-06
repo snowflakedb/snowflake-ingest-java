@@ -12,8 +12,7 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validat
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseReal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseString;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTime;
-import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampNtzSb16;
-import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestampTz;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestamp;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariant;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -39,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import javax.xml.bind.DatatypeConverter;
+import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
@@ -182,83 +182,73 @@ public class DataValidationUtilTest {
   @Test
   public void testValidateAndParseTimestampNtzSb16() {
     assertEquals(
-        new TimestampWrapper(1609462800, 123000000, new BigInteger("1609462800123000000")),
-        DataValidationUtil.validateAndParseTimestampNtzSb16(
-            "COL", "2021-01-01 01:00:00.123", 9, true));
+        new TimestampWrapper(
+            1609462800,
+            123000000,
+            new BigInteger("1609462800123000000"),
+            SFTimestamp.fromNanoseconds(
+                BigDecimal.valueOf(1609462800 * 1_000_000_000L + 123000000))),
+        DataValidationUtil.validateAndParseTimestamp("COL", "2021-01-01 01:00:00.123", 9, true));
 
     // Time formats are not supported
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", "20:57:01.123456789+07:00", 3, false));
+        () -> validateAndParseTimestamp("COL", "20:57:01.123456789+07:00", 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", "20:57:01.123456789", 3, false));
+        () -> validateAndParseTimestamp("COL", "20:57:01.123456789", 3, false));
     expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "20:57:01", 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "20:57", 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", "07:57:01.123456789 AM", 3, false));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "20:57:01", 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "20:57", 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", "04:01:07 AM", 3, false));
+        () -> validateAndParseTimestamp("COL", "07:57:01.123456789 AM", 3, false));
     expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "04:01 AM", 3, false));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "04:01:07 AM", 3, false));
     expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "04:01 PM", 3, false));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "04:01 AM", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "04:01 PM", 3, false));
 
     // Test forbidden values
     expectError(
-        ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", LocalTime.now(), 3, false));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", LocalTime.now(), 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", OffsetTime.now(), 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", new Date(), 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", 1.5f, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", 1.5, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "1.5", 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "1.0", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", new Object(), 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", false, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "", 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "foo", 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", OffsetTime.now(), 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", new Date(), 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", 1.5f, 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", 1.5, 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "1.5", 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "1.0", 3, false));
+        () -> validateAndParseTimestamp("COL", java.sql.Time.valueOf("20:57:00"), 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", new Object(), 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", false, 3, false));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "", 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", "foo", 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", java.sql.Time.valueOf("20:57:00"), 3, false));
+        () -> validateAndParseTimestamp("COL", java.sql.Date.valueOf("2010-11-03"), 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
         () ->
-            validateAndParseTimestampNtzSb16("COL", java.sql.Date.valueOf("2010-11-03"), 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW,
-        () ->
-            validateAndParseTimestampNtzSb16(
+            validateAndParseTimestamp(
                 "COL", java.sql.Timestamp.valueOf("2010-11-03 20:57:00"), 3, false));
     expectError(
-        ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", BigInteger.ZERO, 3, false));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", BigInteger.ZERO, 3, false));
     expectError(
-        ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampNtzSb16("COL", BigDecimal.ZERO, 3, false));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampNtzSb16("COL", 'c', 3, false));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", BigDecimal.ZERO, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", 'c', 3, false));
   }
 
   @Test
   public void testValidateAndPareTimestampTz() {
     TimestampWrapper result =
-        DataValidationUtil.validateAndParseTimestampTz("COL", "2021-01-01 01:00:00.123 +0100", 4);
+        DataValidationUtil.validateAndParseTimestamp(
+            "COL", "2021-01-01 01:00:00.123 +0100", 4, false);
     assertEquals(1609459200, result.getEpoch());
     assertEquals(123000000, result.getFraction());
     assertEquals(Optional.of(3600000), result.getTimezoneOffset());
@@ -267,48 +257,55 @@ public class DataValidationUtilTest {
     // Time formats are not supported
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampTz("COL", "20:57:01.123456789+07:00", 3));
-    expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "20:57:01.123456789", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "20:57:01", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "20:57", 3));
+        () -> validateAndParseTimestamp("COL", "20:57:01.123456789+07:00", 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampTz("COL", "07:57:01.123456789 AM", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "04:01:07 AM", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "04:01 AM", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "04:01 PM", 3));
+        () -> validateAndParseTimestamp("COL", "20:57:01.123456789", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "20:57:01", 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "20:57", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW,
+        () -> validateAndParseTimestamp("COL", "07:57:01.123456789 AM", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "04:01:07 AM", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "04:01 AM", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "04:01 PM", 3, false));
 
     // Test forbidden values
     expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", LocalTime.now(), 3));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", LocalTime.now(), 3, false));
     expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", OffsetTime.now(), 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", new Date(), 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", 1.5f, 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", 1.5, 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "1.5", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "1.0", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", new Object(), 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", false, 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "", 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", "foo", 3));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", OffsetTime.now(), 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", new Date(), 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", 1.5f, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", 1.5, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "1.5", 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "1.0", 3, false));
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", new Object(), 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", false, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "", 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", "foo", 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampTz("COL", java.sql.Time.valueOf("20:57:00"), 3));
+        () -> validateAndParseTimestamp("COL", java.sql.Time.valueOf("20:57:00"), 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseTimestampTz("COL", java.sql.Date.valueOf("2010-11-03"), 3));
+        () -> validateAndParseTimestamp("COL", java.sql.Date.valueOf("2010-11-03"), 3, false));
     expectError(
         ErrorCode.INVALID_ROW,
         () ->
-            validateAndParseTimestampTz(
-                "COL", java.sql.Timestamp.valueOf("2010-11-03 20:57:00"), 3));
+            validateAndParseTimestamp(
+                "COL", java.sql.Timestamp.valueOf("2010-11-03 20:57:00"), 3, false));
     expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", BigInteger.ZERO, 3));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", BigInteger.ZERO, 3, false));
     expectError(
-        ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", BigDecimal.ZERO, 3));
-    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestampTz("COL", 'c', 3));
+        ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", BigDecimal.ZERO, 3, false));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseTimestamp("COL", 'c', 3, false));
   }
 
   @Test
@@ -937,14 +934,14 @@ public class DataValidationUtilTest {
         "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
             + " be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
             + " String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
-        () -> validateAndParseTimestampNtzSb16("COL", new Object(), 3, true));
+        () -> validateAndParseTimestamp("COL", new Object(), 3, true));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type TIMESTAMP: Not a valid timestamp, see"
             + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
             + " for the list of supported formats",
-        () -> validateAndParseTimestampNtzSb16("COL", "abc", 3, true));
+        () -> validateAndParseTimestamp("COL", "abc", 3, true));
 
     // TIMESTAMP_LTZ
     expectErrorCodeAndMessage(
@@ -952,14 +949,14 @@ public class DataValidationUtilTest {
         "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
             + " be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
             + " String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
-        () -> validateAndParseTimestampNtzSb16("COL", new Object(), 3, false));
+        () -> validateAndParseTimestamp("COL", new Object(), 3, false));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type TIMESTAMP: Not a valid timestamp, see"
             + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
             + " for the list of supported formats",
-        () -> validateAndParseTimestampNtzSb16("COL", "abc", 3, false));
+        () -> validateAndParseTimestamp("COL", "abc", 3, false));
 
     // TIMESTAMP_TZ
     expectErrorCodeAndMessage(
@@ -967,14 +964,14 @@ public class DataValidationUtilTest {
         "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
             + " be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
             + " String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
-        () -> validateAndParseTimestampTz("COL", new Object(), 3));
+        () -> validateAndParseTimestamp("COL", new Object(), 3, false));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type TIMESTAMP: Not a valid timestamp, see"
             + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
             + " for the list of supported formats",
-        () -> validateAndParseTimestampTz("COL", "abc", 3));
+        () -> validateAndParseTimestamp("COL", "abc", 3, false));
 
     // NUMBER
     expectErrorCodeAndMessage(

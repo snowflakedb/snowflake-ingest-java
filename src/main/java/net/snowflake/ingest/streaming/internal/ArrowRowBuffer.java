@@ -557,7 +557,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                 {
                   BigIntVector bigIntVector = (BigIntVector) vector;
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampNtzSb16(
+                      DataValidationUtil.validateAndParseTimestamp(
                           stats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
@@ -578,7 +578,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampNtzSb16(
+                      DataValidationUtil.validateAndParseTimestamp(
                           stats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
@@ -606,8 +606,11 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampTz(
-                          stats.getColumnDisplayName(), value, getColumnScale(field.getMetadata()));
+                      DataValidationUtil.validateAndParseTimestamp(
+                          stats.getColumnDisplayName(),
+                          value,
+                          getColumnScale(field.getMetadata()),
+                          false);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
                   timezoneVector.setSafe(
                       curRowIndex,
@@ -646,8 +649,11 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   structVector.setIndexDefined(curRowIndex);
 
                   TimestampWrapper timestampWrapper =
-                      DataValidationUtil.validateAndParseTimestampTz(
-                          stats.getColumnDisplayName(), value, getColumnScale(field.getMetadata()));
+                      DataValidationUtil.validateAndParseTimestamp(
+                          stats.getColumnDisplayName(),
+                          value,
+                          getColumnScale(field.getMetadata()),
+                          false);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   timezoneVector.setSafe(

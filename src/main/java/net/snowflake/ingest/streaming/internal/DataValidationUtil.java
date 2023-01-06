@@ -15,18 +15,19 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.SimpleTimeZone;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import javax.xml.bind.DatatypeConverter;
@@ -315,34 +316,31 @@ class DataValidationUtil {
    * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
    *     scale
    */
-  static TimestampWrapper validateAndParseTimestampNtzSb16(
+  static TimestampWrapper validateAndParseTimestamp(
       String columnName, Object input, int scale, boolean ignoreTimezone) {
-    String valueString;
-    if (input instanceof String) valueString = (String) input;
-    else if (input instanceof LocalDate) valueString = input.toString();
-    else if (input instanceof LocalDateTime) valueString = input.toString();
-    else if (input instanceof ZonedDateTime)
-      valueString =
-          ignoreTimezone
-              ? ((ZonedDateTime) input).toLocalDateTime().toString()
-              : DateTimeFormatter.ISO_DATE_TIME.format(((ZonedDateTime) input).toOffsetDateTime());
-    else if (input instanceof OffsetDateTime)
-      valueString =
-          ignoreTimezone
-              ? ((OffsetDateTime) input).toLocalDateTime().toString()
-              : DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
-    else
+    TimeZone effectiveTimeZone = ignoreTimezone ? GMT : DEFAULT_TIMEZONE;
+    SFTimestamp timestamp;
+    if (input instanceof String) {
+      SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
+      timestamp =
+          snowflakeDateTimeFormatter.parse(
+              (String) input, effectiveTimeZone, 0, DATE | TIMESTAMP, ignoreTimezone, null);
+    } else if (input instanceof LocalDate) {
+      timestamp = timeStampFromLocalDate((LocalDate) input, effectiveTimeZone);
+    } else if (input instanceof LocalDateTime) {
+      timestamp = timeStampFromLocalDateTime((LocalDateTime) input, effectiveTimeZone);
+    } else if (input instanceof ZonedDateTime) {
+      timestamp = timestampFromZonedDateTime((ZonedDateTime) input, ignoreTimezone);
+    } else if (input instanceof OffsetDateTime) {
+      timestamp = timestampFromOffsetDateTime((OffsetDateTime) input, ignoreTimezone);
+    } else {
       throw typeNotAllowedException(
           columnName,
           input.getClass(),
           "TIMESTAMP",
           new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
+    }
 
-    SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
-    TimeZone effectiveTimeZone = ignoreTimezone ? GMT : DEFAULT_TIMEZONE;
-    SFTimestamp timestamp =
-        snowflakeDateTimeFormatter.parse(
-            valueString, effectiveTimeZone, 0, DATE | TIMESTAMP, ignoreTimezone, null);
     if (timestamp != null) {
       long epoch = timestamp.getSeconds().longValue();
       int fractionInScale = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
@@ -351,7 +349,7 @@ class DataValidationUtil {
               .multiply(Power10.sb16Table[scale])
               .add(BigInteger.valueOf(fractionInScale));
       return new TimestampWrapper(
-          epoch, fractionInScale * Power10.intTable[9 - scale], timeInScale);
+          epoch, fractionInScale * Power10.intTable[9 - scale], timeInScale, timestamp);
     } else {
       throw valueFormatNotAllowedException(
           columnName,
@@ -374,64 +372,6 @@ class DataValidationUtil {
     BigDecimal epochSecondsInNanoSeconds =
         new BigDecimal(input.getSeconds().multiply(BigInteger.valueOf(Power10.intTable[9])));
     return input.getNanosSinceEpoch().subtract(epochSecondsInNanoSeconds).intValue();
-  }
-
-  /**
-   * Validates and parses input for TIMESTAMP_TZ Snowflake type. Allowed Java types:
-   *
-   * <ul>
-   *   <li>String
-   *   <li>LocalDate
-   *   <li>LocalDateTime
-   *   <li>OffsetDateTime
-   *   <li>ZonedDateTime
-   * </ul>
-   *
-   * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
-   * @param scale decimal scale of timestamp 16 byte integer
-   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
-   *     scale
-   */
-  static TimestampWrapper validateAndParseTimestampTz(String columnName, Object input, int scale) {
-
-    String stringInput;
-    if (input instanceof String) stringInput = (String) input;
-    else if (input instanceof LocalDate) stringInput = input.toString();
-    else if (input instanceof LocalDateTime) stringInput = input.toString();
-    else if (input instanceof ZonedDateTime)
-      stringInput =
-          DateTimeFormatter.ISO_DATE_TIME.format(((ZonedDateTime) input).toOffsetDateTime());
-    else if (input instanceof OffsetDateTime)
-      stringInput = DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
-    else
-      throw typeNotAllowedException(
-          columnName,
-          input.getClass(),
-          "TIMESTAMP",
-          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
-
-    SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
-
-    SFTimestamp timestamp =
-        snowflakeDateTimeFormatter.parse(
-            stringInput, DEFAULT_TIMEZONE, 0, DATE | TIMESTAMP, false, null);
-    if (timestamp != null) {
-      long epoch = timestamp.getSeconds().longValue();
-      int fractionInScale = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
-      return new TimestampWrapper(
-          epoch,
-          fractionInScale * Power10.intTable[9 - scale],
-          BigInteger.valueOf(epoch * Power10.intTable[scale] + fractionInScale),
-          timestamp);
-    } else {
-      throw valueFormatNotAllowedException(
-          columnName,
-          input.toString(),
-          "TIMESTAMP",
-          "Not a valid timestamp, see"
-              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
-              + " for the list of supported formats");
-    }
   }
 
   /**
@@ -477,6 +417,7 @@ class DataValidationUtil {
     }
     return output;
   }
+
   /**
    * Returns a BigDecimal representation of the input. Strings of the form "1.23E4" will be treated
    * as being written in * scientific notation (e.g. 1.23 * 10^4). Does not perform any size
@@ -527,17 +468,18 @@ class DataValidationUtil {
    * </ul>
    */
   static int validateAndParseDate(String columnName, Object input) {
-    String inputString;
+    SFTimestamp timestamp;
     if (input instanceof String) {
-      inputString = (String) input;
+      timestamp =
+          createDateTimeFormatter().parse((String) input, GMT, 0, DATE | TIMESTAMP, true, null);
     } else if (input instanceof LocalDate) {
-      inputString = input.toString();
+      timestamp = timeStampFromLocalDate((LocalDate) input, GMT);
     } else if (input instanceof LocalDateTime) {
-      inputString = ((LocalDateTime) input).toLocalDate().toString();
+      timestamp = timeStampFromLocalDateTime((LocalDateTime) input, GMT);
     } else if (input instanceof ZonedDateTime) {
-      inputString = ((ZonedDateTime) input).toLocalDate().toString();
+      timestamp = timestampFromZonedDateTime((ZonedDateTime) input, true);
     } else if (input instanceof OffsetDateTime) {
-      inputString = ((OffsetDateTime) input).toLocalDate().toString();
+      timestamp = timestampFromOffsetDateTime((OffsetDateTime) input, true);
     } else {
       throw typeNotAllowedException(
           columnName,
@@ -546,8 +488,6 @@ class DataValidationUtil {
           new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
     }
 
-    SFTimestamp timestamp =
-        createDateTimeFormatter().parse(inputString, GMT, 0, DATE | TIMESTAMP, true, null);
     if (timestamp == null)
       throw valueFormatNotAllowedException(
           columnName,
@@ -611,21 +551,24 @@ class DataValidationUtil {
    * </ul>
    */
   static BigInteger validateAndParseTime(String columnName, Object input, int scale) {
-    String stringInput;
+    SFTimestamp timestamp;
     if (input instanceof String) {
-      stringInput = (String) input;
+      String stringInput = (String) input;
+      timestamp =
+          createDateTimeFormatter()
+              .parse(stringInput, GMT, 0, SnowflakeDateTimeFormat.TIME, true, null);
     } else if (input instanceof LocalTime) {
-      stringInput = input.toString();
+      timestamp =
+          timeStampFromLocalDateTime(((LocalTime) input).atDate(LocalDate.ofEpochDay(0)), GMT);
     } else if (input instanceof OffsetTime) {
-      stringInput = ((OffsetTime) input).toLocalTime().toString();
+      timestamp =
+          timeStampFromLocalDateTime(
+              ((OffsetTime) input).toLocalTime().atDate(LocalDate.ofEpochDay(0)), GMT);
     } else {
       throw typeNotAllowedException(
           columnName, input.getClass(), "TIME", new String[] {"String", "LocalTime", "OffsetTime"});
     }
 
-    SFTimestamp timestamp =
-        createDateTimeFormatter()
-            .parse(stringInput, GMT, 0, SnowflakeDateTimeFormat.TIME, true, null);
     if (timestamp == null) {
       throw valueFormatNotAllowedException(
           columnName,
@@ -634,13 +577,13 @@ class DataValidationUtil {
           "Not a valid time, see"
               + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#time-formats"
               + " for the list of supported formats");
-    } else {
-      return timestamp
-          .getNanosSinceEpoch()
-          .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
-          .toBigInteger()
-          .mod(BigInteger.valueOf(24L * 60 * 60 * Power10.intTable[scale]));
     }
+
+    return timestamp
+        .getNanosSinceEpoch()
+        .toBigInteger()
+        .divide(Power10.sb16Table[9 - scale])
+        .mod(BigInteger.valueOf(24L * 60 * 60).multiply(Power10.sb16Table[scale]));
   }
 
   /**
@@ -786,5 +729,43 @@ class DataValidationUtil {
     int maxSize = 20;
     String valueString = value.toString();
     return valueString.length() <= maxSize ? valueString : valueString.substring(0, 20) + "...";
+  }
+
+  private static SFTimestamp timeStampFromLocalDate(LocalDate date, TimeZone tz) {
+    return timeStampFromLocalDateTime(date.atStartOfDay(), tz);
+  }
+
+  private static SFTimestamp timeStampFromLocalDateTime(LocalDateTime localDateTime, TimeZone tz) {
+    return timestampFromInstant(localDateTime.atZone(tz.toZoneId()).toInstant(), tz);
+  }
+
+  private static SFTimestamp timestampFromZonedDateTime(
+      ZonedDateTime zonedDateTime, boolean ignoreTimezone) {
+    if (ignoreTimezone) {
+      LocalDateTime local = zonedDateTime.toLocalDateTime();
+      return timeStampFromLocalDateTime(local, GMT);
+    }
+
+    TimeZone timeZone = TimeZone.getTimeZone(zonedDateTime.getZone().toString());
+    return timestampFromInstant(zonedDateTime.toInstant(), timeZone);
+  }
+
+  private static SFTimestamp timestampFromOffsetDateTime(
+      OffsetDateTime offsetDateTime, boolean dropTimezone) {
+    if (dropTimezone) {
+      LocalDateTime local = offsetDateTime.toLocalDateTime();
+      return timeStampFromLocalDateTime(local, GMT);
+    }
+    TimeZone tz =
+        new SimpleTimeZone(
+            offsetDateTime.getOffset().getTotalSeconds() * 1000,
+            "GENERATED_SNOWPIPE_STREAMING:" + offsetDateTime.getOffset());
+    return timestampFromInstant(offsetDateTime.toInstant(), tz);
+  }
+
+  /** Constructs SFTimestamp from instant and timestamp. */
+  private static SFTimestamp timestampFromInstant(Instant instant, TimeZone timeZone) {
+    return SFTimestamp.fromNanoseconds(
+        instant.getEpochSecond() * Power10.intTable[9] + instant.getNano(), timeZone);
   }
 }

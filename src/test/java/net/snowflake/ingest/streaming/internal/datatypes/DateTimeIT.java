@@ -864,10 +864,35 @@ public class DateTimeIT extends AbstractDataTypeTest {
         new StringProvider());
     testIngestion(
         "DATE",
+        OffsetDateTime.parse("2007-12-03T00:00:00+01:00"),
+        "2007-12-03",
+        new StringProvider());
+    testIngestion(
+        "DATE",
+        OffsetDateTime.parse("2007-12-03T00:00:00-08:00"),
+        "2007-12-03",
+        new StringProvider());
+    testIngestion(
+        "DATE",
         ZonedDateTime.parse("2007-12-03T10:15:30+01:00[Europe/Paris]"),
         "2007-12-03",
         new StringProvider());
-
+    testIngestion(
+        "DATE",
+        ZonedDateTime.parse("2007-12-03T00:00:00+01:00[Europe/Paris]"),
+        "2007-12-03",
+        new StringProvider());
+    testIngestion(
+        "DATE",
+        ZonedDateTime.parse("2007-12-03T00:00:00-08:00[America/Los_Angeles]"),
+        "2007-12-03",
+        new StringProvider());
+    testIngestion(
+        "DATE",
+        ZonedDateTime.parse("2007-07-03T00:00:00-07:00[America/Los_Angeles]"),
+        "2007-07-03",
+        new StringProvider());
+    //
     // TIMESTAMP_NTZ (LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime are supported)
     testIngestion(
         "TIMESTAMP_NTZ",
@@ -893,6 +918,11 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "TIMESTAMP_NTZ",
         ZonedDateTime.parse("2007-12-03T10:15:30.123456789+01:00[Europe/Paris]"),
         "2007-12-03 10:15:30.123456789 Z",
+        new StringProvider());
+    testIngestion(
+        "TIMESTAMP_NTZ",
+        ZonedDateTime.parse("2007-07-03T10:15:30.123456789+02:00[Europe/Paris]"),
+        "2007-07-03 10:15:30.123456789 Z",
         new StringProvider());
 
     useLosAngelesTimeZone();
@@ -922,6 +952,11 @@ public class DateTimeIT extends AbstractDataTypeTest {
         ZonedDateTime.parse("2007-12-03T10:15:30.123456789+01:00[Europe/Paris]"),
         "2007-12-03 01:15:30.123456789 -0800",
         new StringProvider());
+    testIngestion(
+        "TIMESTAMP_LTZ",
+        ZonedDateTime.parse("2007-07-03T10:15:30.123456789+02:00[Europe/Paris]"),
+        "2007-07-03 01:15:30.123456789 -0700",
+        new StringProvider());
 
     // TIMESTAMP_TZ (LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime are supported)
     testIngestion(
@@ -948,6 +983,11 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "TIMESTAMP_TZ",
         ZonedDateTime.parse("2007-12-03T10:15:30.123456789+01:00[Europe/Paris]"),
         "2007-12-03 10:15:30.123456789 +0100",
+        new StringProvider());
+    testIngestion(
+        "TIMESTAMP_TZ",
+        ZonedDateTime.parse("2007-07-03T10:15:30.123456789+02:00[Europe/Paris]"),
+        "2007-07-03 10:15:30.123456789 +0200",
         new StringProvider());
   }
 
