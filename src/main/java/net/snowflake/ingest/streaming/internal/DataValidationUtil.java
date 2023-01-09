@@ -298,8 +298,8 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_NTZ or TIMESTAMP_LTZ Snowflake type. Allowed Java
-   * types:
+   * Validates and parses input for TIMESTAMP_NTZ, TIMESTAMP_LTZ and TIMEATAMP_TZ Snowflake types.
+   * Allowed Java types:
    *
    * <ul>
    *   <li>String
@@ -309,8 +309,8 @@ class DataValidationUtil {
    *   <li>ZonedDateTime
    * </ul>
    *
-   * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
-   *     with precision up to the column's scale
+   * @param input String date in valid format, seconds past the epoch or java.time.* object. Accepts
+   *     fractional seconds with precision up to the column's scale
    * @param scale decimal scale of timestamp 16 byte integer
    * @param ignoreTimezone Must be true for TIMESTAMP_NTZ
    * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
@@ -731,14 +731,23 @@ class DataValidationUtil {
     return valueString.length() <= maxSize ? valueString : valueString.substring(0, 20) + "...";
   }
 
+  /**
+   * Constructs SFTimestamp from {@link LocalDate}. Default timezone is used for _TZ and _LTZ and
+   * UTC for _NTZ.
+   */
   private static SFTimestamp timeStampFromLocalDate(LocalDate date, TimeZone tz) {
     return timeStampFromLocalDateTime(date.atStartOfDay(), tz);
   }
 
+  /**
+   * Constructs SFTimestamp from {@link LocalDateTime}. Default timezone is used for _TZ and _LTZ
+   * and UTC for _NTZ.
+   */
   private static SFTimestamp timeStampFromLocalDateTime(LocalDateTime localDateTime, TimeZone tz) {
     return timestampFromInstant(localDateTime.atZone(tz.toZoneId()).toInstant(), tz);
   }
 
+  /** Constructs SFTimestamp from {@link ZonedDateTime}. Timezone is dropped for _NTZ. */
   private static SFTimestamp timestampFromZonedDateTime(
       ZonedDateTime zonedDateTime, boolean ignoreTimezone) {
     if (ignoreTimezone) {
@@ -750,6 +759,7 @@ class DataValidationUtil {
     return timestampFromInstant(zonedDateTime.toInstant(), timeZone);
   }
 
+  /** Constructs SFTimestamp from {@link OffsetDateTime}. Timezone is dropped for _NTZ. */
   private static SFTimestamp timestampFromOffsetDateTime(
       OffsetDateTime offsetDateTime, boolean dropTimezone) {
     if (dropTimezone) {
@@ -763,7 +773,7 @@ class DataValidationUtil {
     return timestampFromInstant(offsetDateTime.toInstant(), tz);
   }
 
-  /** Constructs SFTimestamp from instant and timestamp. */
+  /** Constructs SFTimestamp from {@link Instant} and time zone. */
   private static SFTimestamp timestampFromInstant(Instant instant, TimeZone timeZone) {
     return SFTimestamp.fromNanoseconds(
         instant.getEpochSecond() * Power10.intTable[9] + instant.getNano(), timeZone);
