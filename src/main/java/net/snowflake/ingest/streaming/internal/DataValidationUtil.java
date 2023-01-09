@@ -350,15 +350,15 @@ class DataValidationUtil {
               .add(BigInteger.valueOf(fractionInScale));
       return new TimestampWrapper(
           epoch, fractionInScale * Power10.intTable[9 - scale], timeInScale, timestamp);
-    } else {
-      throw valueFormatNotAllowedException(
-          columnName,
-          input.toString(),
-          "TIMESTAMP",
-          "Not a valid timestamp, see"
-              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
-              + " for the list of supported formats");
     }
+
+    throw valueFormatNotAllowedException(
+        columnName,
+        input.toString(),
+        "TIMESTAMP",
+        "Not a valid timestamp, see"
+            + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
+            + " for the list of supported formats");
   }
 
   /**
