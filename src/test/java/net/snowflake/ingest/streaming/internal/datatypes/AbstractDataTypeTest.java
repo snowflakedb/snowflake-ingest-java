@@ -336,7 +336,11 @@ public abstract class AbstractDataTypeTest {
     }
 
     Assert.assertEquals(1, counter);
-    Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+    if (expectedValue == null) {
+      Assert.assertNull(value);
+    } else {
+      Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+    }
     Assert.assertEquals(expectedType, typeof);
     migrateTable(tableName); // migration should always succeed
   }

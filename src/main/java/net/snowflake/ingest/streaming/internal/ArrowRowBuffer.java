@@ -455,13 +455,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       ColumnPhysicalType physicalType =
           ColumnPhysicalType.valueOf(field.getMetadata().get(COLUMN_PHYSICAL_TYPE));
 
-      if (value == null) {
-        if (!field.getFieldType().isNullable()) {
-          throw new SFException(
-              ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
-        }
-        insertNull(vector, stats, curRowIndex);
-      } else {
+      boolean isParsedValueNull = false;
+      if (value != null) {
         switch (logicalType) {
           case FIXED:
             int columnPrecision = Integer.parseInt(field.getMetadata().get(COLUMN_PRECISION));
@@ -543,9 +538,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseVariant(stats.getColumnDisplayName(), value);
-              Text text = new Text(str);
-              ((VarCharVector) vector).setSafe(curRowIndex, text);
-              rowBufferSize += text.getBytes().length;
+              if (str != null) {
+                Text text = new Text(str);
+                ((VarCharVector) vector).setSafe(curRowIndex, text);
+                rowBufferSize += text.getBytes().length;
+              } else {
+                isParsedValueNull = true;
+              }
               break;
             }
           case TIMESTAMP_LTZ:
@@ -696,7 +695,6 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   BigInteger timeInScale =
                       DataValidationUtil.validateAndParseTime(
                           stats.getColumnDisplayName(), value, getColumnScale(field.getMetadata()));
-                  stats.addIntValue(timeInScale);
                   ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
                   stats.addIntValue(timeInScale);
                   rowBufferSize += 4;
@@ -745,6 +743,15 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             break;
           default:
             throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+        }
+      }
+
+      if (value == null || isParsedValueNull) {
+        if (!field.getFieldType().isNullable()) {
+          throw new SFException(
+              ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
+        } else {
+          insertNull(vector, stats, curRowIndex);
         }
       }
     }
