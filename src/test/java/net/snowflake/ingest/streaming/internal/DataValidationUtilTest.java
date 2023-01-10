@@ -16,6 +16,7 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validat
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariant;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -54,8 +55,7 @@ public class DataValidationUtilTest {
       Assert.fail("Expected Exception");
     } catch (SFException e) {
       assertEquals(expectedErrorCode.getMessageCode(), e.getVendorCode());
-      if (expectedExceptionMessage != null)
-        Assert.assertEquals(expectedExceptionMessage, e.getMessage());
+      if (expectedExceptionMessage != null) assertEquals(expectedExceptionMessage, e.getMessage());
     } catch (Exception e) {
       Assert.fail("Invalid error through");
     }
@@ -370,12 +370,12 @@ public class DataValidationUtilTest {
       longBuilder.append("č"); // max string length is measured in chars, not bytes
     }
     String maxString = longBuilder.toString();
-    Assert.assertEquals(maxString, validateAndParseString("COL", maxString, Optional.empty()));
+    assertEquals(maxString, validateAndParseString("COL", maxString, Optional.empty()));
 
     // max length - 1 should also succeed
     longBuilder.setLength(BYTES_16_MB - 1);
     String maxStringMinusOne = longBuilder.toString();
-    Assert.assertEquals(
+    assertEquals(
         maxStringMinusOne, validateAndParseString("COL", maxStringMinusOne, Optional.empty()));
 
     // max length + 1 should fail
@@ -417,7 +417,25 @@ public class DataValidationUtilTest {
             "COL",
             ZonedDateTime.of(2022, 9, 28, 3, 4, 12, 123456789, ZoneId.of("America/Los_Angeles"))));
 
+    // Test valid JSON tokens
+    assertEquals("null", validateAndParseVariant("COL", null));
+    assertEquals("null", validateAndParseVariant("COL", "null"));
+    assertEquals("true", validateAndParseVariant("COL", true));
+    assertEquals("true", validateAndParseVariant("COL", "true"));
+    assertEquals("false", validateAndParseVariant("COL", false));
+    assertEquals("false", validateAndParseVariant("COL", "false"));
+    assertEquals("{}", validateAndParseVariant("COL", "{}"));
+    assertEquals("[]", validateAndParseVariant("COL", "[]"));
+    assertEquals("[\"foo\",1,null]", validateAndParseVariant("COL", "[\"foo\",1,null]"));
+    assertEquals("\"\"", validateAndParseVariant("COL", "\"\""));
+
+    // Test missing values are null instead of empty string
+    assertNull(validateAndParseVariant("COL", ""));
+    assertNull(validateAndParseVariant("COL", "  "));
+
     // Test forbidden values
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "{null}"));
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "}{"));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", readTree("{}")));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", new Object()));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "foo"));
@@ -466,6 +484,12 @@ public class DataValidationUtilTest {
 
     List<Object> nestedList = Arrays.asList(Arrays.asList(1, 2, 3), 2, 3);
     assertEquals("[[1,2,3],2,3]", validateAndParseArray("COL", nestedList));
+
+    // Test null values
+    assertEquals("[null]", validateAndParseArray("COL", ""));
+    assertEquals("[null]", validateAndParseArray("COL", " "));
+    assertEquals("[null]", validateAndParseArray("COL", "null"));
+    assertEquals("[null]", validateAndParseArray("COL", null));
 
     // Test forbidden values
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseArray("COL", readTree("[]")));

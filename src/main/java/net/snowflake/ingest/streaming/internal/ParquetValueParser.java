@@ -105,7 +105,9 @@ class ParquetValueParser {
           } else {
             String str = getBinaryValue(value, stats, columnMetadata);
             value = str;
-            size = str.getBytes().length;
+            if (str != null) {
+              size = str.getBytes().length;
+            }
           }
           break;
         case FIXED_LEN_BYTE_ARRAY:
@@ -124,13 +126,16 @@ class ParquetValueParser {
         default:
           throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
       }
-    } else {
+    }
+
+    if (value == null) {
       if (!columnMetadata.getNullable()) {
         throw new SFException(
             ErrorCode.INVALID_ROW, columnMetadata.getName(), "Passed null to non nullable field");
       }
       stats.incCurrentNullCount();
     }
+
     return new ParquetBufferValue(value, size);
   }
 

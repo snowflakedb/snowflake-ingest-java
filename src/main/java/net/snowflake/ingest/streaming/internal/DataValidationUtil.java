@@ -121,8 +121,14 @@ class DataValidationUtil {
    * @return JSON string representing the input
    */
   static String validateAndParseVariant(String columnName, Object input) {
-    String output =
-        validateAndParseSemiStructuredAsJsonTree(columnName, input, "VARIANT").toString();
+    JsonNode node = validateAndParseSemiStructuredAsJsonTree(columnName, input, "VARIANT");
+
+    // Missing nodes are not valid json, ingest them as NULL instead
+    if (node.isMissingNode()) {
+      return null;
+    }
+
+    String output = node.toString();
     int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(

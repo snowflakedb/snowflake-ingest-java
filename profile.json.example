@@ -10,6 +10,6 @@
   "database": "database_name",
   "connect_string": "jdbc:snowflake://account_name.snowflakecomputing.com:443",
   "ssl": "on",
-  "warehouse": "warehouse_name"
+  "warehouse": "warehouse_name",
   "role": "role_name"
 }
