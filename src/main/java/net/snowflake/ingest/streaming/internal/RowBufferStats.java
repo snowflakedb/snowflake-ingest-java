@@ -74,13 +74,13 @@ class RowBufferStats {
     }
 
     if (left.currentMinStrValue != null) {
-      combined.addStrValue(left.currentMinStrValue);
-      combined.addStrValue(left.currentMaxStrValue);
+      combined.addBinaryValue(left.currentMinStrValue);
+      combined.addBinaryValue(left.currentMaxStrValue);
     }
 
     if (right.currentMinStrValue != null) {
-      combined.addStrValue(right.currentMinStrValue);
-      combined.addStrValue(right.currentMaxStrValue);
+      combined.addBinaryValue(right.currentMinStrValue);
+      combined.addBinaryValue(right.currentMaxStrValue);
     }
 
     if (left.currentMinRealValue != null) {
@@ -100,10 +100,10 @@ class RowBufferStats {
   }
 
   void addStrValue(String value) {
-    addStrValue(value.getBytes(StandardCharsets.UTF_8));
+    addBinaryValue(value.getBytes(StandardCharsets.UTF_8));
   }
 
-  void addStrValue(byte[] valueBytes) {
+  void addBinaryValue(byte[] valueBytes) {
     this.setCurrentMaxLength(valueBytes.length);
 
     // Check if new min/max string
