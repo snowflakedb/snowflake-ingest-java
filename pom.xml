@@ -39,7 +39,6 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <shadeBase>net.snowflake.ingest.internal</shadeBase>
         <jacoco.skip.instrument>true</jacoco.skip.instrument>
         <jacoco.version>0.8.5</jacoco.version>
         <arrow.version>10.0.0</arrow.version>
@@ -116,22 +115,6 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>check-shaded-content</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>${basedir}/scripts/check_content.sh</executable>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -440,95 +423,6 @@
     </dependencies>
 
     <profiles>
-        <profile>
-            <id>shadeDep</id>
-            <activation>
-                <property>
-                    <name>!not-shadeDep</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <!-- Relocate all dependencies to internal to solve dependency conflict problem -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-shade-plugin</artifactId>
-                        <version>3.1.1</version>
-                        <configuration>
-                            <relocations>
-                                <relocation>
-                                    <pattern>com.nimbusds</pattern>
-                                    <shadedPattern>
-                                        ${shadeBase}.com.nimbusds
-                                    </shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>net.jcip</pattern>
-                                    <shadedPattern>${shadeBase}.net.jcip</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>net.minidev</pattern>
-                                    <shadedPattern>${shadeBase}.net.minidev</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>org.objectweb</pattern>
-                                    <shadedPattern>${shadeBase}.org.objectweb</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>com.fasterxml</pattern>
-                                    <shadedPattern>${shadeBase}.fasterxml</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>org.apache</pattern>
-                                    <shadedPattern>${shadeBase}.apache</shadedPattern>
-                                </relocation>
-                            </relocations>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/LICENSE*</exclude>
-                                        <exclude>META-INF/NOTICE*</exclude>
-                                        <exclude>META-INF/DEPENDENCIES</exclude>
-                                        <exclude>META-INF/maven/**</exclude>
-                                        <exclude>META-INF/services/com.fasterxml.*</exclude>
-                                        <exclude>META-INF/*.xml</exclude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                                <filter>
-                                    <artifact>commons-logging:commons-logging</artifact>
-                                    <excludes>
-                                        <exclude>org/apache/commons/logging/impl/AvalonLogger.class</exclude>
-                                    </excludes>
-                                </filter>
-                                <filter>
-                                    <artifact>org.slf4j:slf4j-simple</artifact>
-                                    <excludes>
-                                        <exclude>org/slf4j/**</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                </transformer>
-                            </transformers>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>shade</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <profile>
             <id>ossrh-deploy</id>
             <activation>
