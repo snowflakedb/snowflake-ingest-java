@@ -205,14 +205,13 @@ class ParquetValueParser {
       case TIMESTAMP_NTZ:
         boolean ignoreTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
         longValue =
-            DataValidationUtil.validateAndParseTimestampNtzSb16(
-                    columnName, value, scale, ignoreTimezone)
+            DataValidationUtil.validateAndParseTimestamp(columnName, value, scale, ignoreTimezone)
                 .getTimeInScale()
                 .longValue();
         break;
       case TIMESTAMP_TZ:
         longValue =
-            DataValidationUtil.validateAndParseTimestampTz(columnName, value, scale)
+            DataValidationUtil.validateAndParseTimestamp(columnName, value, scale, false)
                 .getSfTimestamp()
                 .orElseThrow(
                     () ->
@@ -255,7 +254,7 @@ class ParquetValueParser {
       AbstractRowBuffer.ColumnPhysicalType physicalType) {
     switch (logicalType) {
       case TIMESTAMP_TZ:
-        return DataValidationUtil.validateAndParseTimestampTz(columnName, value, scale)
+        return DataValidationUtil.validateAndParseTimestamp(columnName, value, scale, false)
             .getSfTimestamp()
             .orElseThrow(
                 () ->
@@ -267,7 +266,7 @@ class ParquetValueParser {
       case TIMESTAMP_LTZ:
       case TIMESTAMP_NTZ:
         boolean ignoreTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
-        return DataValidationUtil.validateAndParseTimestampNtzSb16(
+        return DataValidationUtil.validateAndParseTimestamp(
                 columnName, value, scale, ignoreTimezone)
             .getTimeInScale();
       case FIXED:
