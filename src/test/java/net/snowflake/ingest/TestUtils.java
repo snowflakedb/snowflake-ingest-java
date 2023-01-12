@@ -154,10 +154,7 @@ public class TestUtils {
     }
     return Arrays.asList(
         new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE},
-          // TODO: uncomment once SNOW-659721 is deployed and we set the parameter
-          // DISABLE_PARQUET_CACHE to true for the test account
-          // {"Parquet", Constants.BdecVersion.THREE}
+          {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
         });
   }
 

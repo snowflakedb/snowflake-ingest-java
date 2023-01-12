@@ -77,12 +77,6 @@ public abstract class AbstractDataTypeTest {
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-      // TODO: encryption and interleaved mode are not yet supported by server side's Parquet
-      // scanner if local file cache is enabled (SNOW-656500)
-      conn.createStatement().execute("alter session set disable_parquet_cache=true;");
-    }
-
     Properties props = TestUtils.getProperties(bdecVersion);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
