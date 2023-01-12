@@ -82,10 +82,10 @@ class BlobBuilder {
           channelsDataPerTable.get(0).getChannelContext();
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
-      Flusher.SerializationResult result =
+      Flusher.SerializationResult serializedChunk =
           flusher.serialize(channelsDataPerTable, chunkData, filePath);
 
-      if (!result.channelsMetadataList.isEmpty()) {
+      if (!serializedChunk.channelsMetadataList.isEmpty()) {
         Pair<byte[], Integer> compressionResult =
             compressIfNeededAndPadChunk(
                 filePath,
@@ -123,12 +123,14 @@ class BlobBuilder {
                 // The compressedChunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
                 .setChunkLength(compressedChunkLength)
-                .setChannelList(result.channelsMetadataList)
+                .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
-                        result.rowCount, result.columnEpStatsMapCombined))
+                        serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
+                .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
+                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
                 .build();
 
         // Add chunk metadata and data to the list
@@ -143,7 +145,7 @@ class BlobBuilder {
                 + " bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
-            result.rowCount,
+            serializedChunk.rowCount,
             startOffset,
             chunkData.size(),
             compressedChunkLength,

@@ -49,7 +49,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // Reference to the client that owns this channel
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
-  // state of the channel that will be shared with its underlying buffer
+  // State of the channel that will be shared with its underlying buffer
   private final ChannelRuntimeState channelState;
 
   /**
