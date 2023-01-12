@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>1.0.2-beta.6</version>
+    <version>1.0.2-beta.7</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
@@ -335,6 +335,10 @@
                     <groupId>io.netty</groupId>
                     <artifactId>netty</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-reload4j</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -405,6 +409,10 @@
                 <exclusion>
                     <groupId>org.apache.avro</groupId>
                     <artifactId>avro</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-reload4j</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

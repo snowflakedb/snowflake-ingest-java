@@ -74,12 +74,14 @@ public class TelemetryService {
   /** Report the Streaming Ingest latency metrics */
   public void reportLatencyInSec(
       Timer buildLatency, Timer uploadLatency, Timer registerLatency, Timer flushLatency) {
-    ObjectNode msg = MAPPER.createObjectNode();
-    msg.set("build_latency_sec", buildMsgFromTimer(buildLatency));
-    msg.set("upload_latency_sec", buildMsgFromTimer(uploadLatency));
-    msg.set("register_latency_sec", buildMsgFromTimer(registerLatency));
-    msg.set("flush_latency_sec", buildMsgFromTimer(flushLatency));
-    send(TelemetryType.STREAMING_INGEST_LATENCY_IN_SEC, msg);
+    if (flushLatency.getCount() > 0) {
+      ObjectNode msg = MAPPER.createObjectNode();
+      msg.set("build_latency_ms", buildMsgFromTimer(buildLatency));
+      msg.set("upload_latency_ms", buildMsgFromTimer(uploadLatency));
+      msg.set("register_latency_ms", buildMsgFromTimer(registerLatency));
+      msg.set("flush_latency_ms", buildMsgFromTimer(flushLatency));
+      send(TelemetryType.STREAMING_INGEST_LATENCY_IN_SEC, msg);
+    }
   }
 
   /** Report the Streaming Ingest failure metrics */
@@ -91,24 +93,30 @@ public class TelemetryService {
   }
 
   /** Report the Streaming Ingest throughput metrics */
-  public void reportThroughputBytesPerSecond(Meter inputThroughput, Meter uploadThrough) {
-    ObjectNode msg = MAPPER.createObjectNode();
-    msg.put("input_mean_rate_bytes_per_sec", inputThroughput.getMeanRate());
-    msg.put("upload_mean_rate_bytes_per_sec", uploadThrough.getMeanRate());
-    send(TelemetryType.STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC, msg);
+  public void reportThroughputBytesPerSecond(Meter inputThroughput, Meter uploadThroughput) {
+    if (inputThroughput.getCount() > 0) {
+      ObjectNode msg = MAPPER.createObjectNode();
+      msg.put(COUNT, inputThroughput.getCount());
+      msg.put("input_mean_rate_bytes_per_sec", inputThroughput.getMeanRate());
+      msg.put("upload_mean_rate_bytes_per_sec", uploadThroughput.getMeanRate());
+      send(TelemetryType.STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC, msg);
+    }
   }
 
   /** Report the Streaming Ingest CUP/memory usage metrics */
   public void reportCpuMemoryUsage(Histogram cpuUsage) {
-    ObjectNode msg = MAPPER.createObjectNode();
-    Snapshot cpuSnapshot = cpuUsage.getSnapshot();
-    Runtime runTime = Runtime.getRuntime();
-    msg.put("cpu_max", cpuSnapshot.getMax());
-    msg.put("cpu_mean", cpuSnapshot.getMean());
-    msg.put("max_memory", runTime.maxMemory());
-    msg.put("total_memory", runTime.totalMemory());
-    msg.put("free_memory", runTime.freeMemory());
-    send(TelemetryType.STREAMING_INGEST_CPU_MEMORY_USAGE, msg);
+    if (cpuUsage.getCount() > 0) {
+      ObjectNode msg = MAPPER.createObjectNode();
+      Snapshot cpuSnapshot = cpuUsage.getSnapshot();
+      Runtime runTime = Runtime.getRuntime();
+      msg.put(COUNT, cpuUsage.getCount());
+      msg.put("cpu_max", cpuSnapshot.getMax());
+      msg.put("cpu_mean", cpuSnapshot.getMean());
+      msg.put("max_memory", runTime.maxMemory());
+      msg.put("total_memory", runTime.totalMemory());
+      msg.put("free_memory", runTime.freeMemory());
+      send(TelemetryType.STREAMING_INGEST_CPU_MEMORY_USAGE, msg);
+    }
   }
 
   /** Send log to Snowflake asynchronously through JDBC client telemetry */

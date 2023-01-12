@@ -48,13 +48,7 @@ import org.junit.runners.Parameterized;
 public class StreamingIngestIT {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
-    return Arrays.asList(
-        new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE},
-          // TODO: uncomment once SNOW-659721 is deployed and we set the parameter
-          // DISABLE_PARQUET_CACHE to true for the test account
-          // {"Parquet", Constants.BdecVersion.THREE}
-        });
+    return TestUtils.getBdecVersionItCases();
   }
 
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
@@ -971,6 +965,88 @@ public class StreamingIngestIT {
     for (int idx = 1; idx < 18; idx++) {
       Assert.assertNull(result.getObject(idx));
     }
+  }
+
+  @Test
+  public void testColumnNameQuotes() throws Exception {
+    final String tableName = "T_COLUMN_WITH_QUOTES";
+    final String unquotedColumn = "c1"; // user name <C1>
+    final String quotedColumn = "\"c 2\""; // user name <c 2>
+    final String doubleQuotedColumn = "\"c\"\"a\\ \"\"\\ 3\""; // user name <c"a\ "\ 3>
+    final String escapedSpacesColumn1 =
+        "c\\ 4"; // space is escaped with '\' in Snowflake SQL, user name <C 4>
+    final String escapedSpacesColumn2 =
+        "c\\ 5"; // space is escaped with '\' in Snowflake SQL, user name <C 5>
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s.%s.%s (%s NUMBER(38,0), %s NUMBER(38,0), %s"
+                    + " NUMBER(38,0), %s NUMBER(38,0), %s NUMBER(38,0));",
+                testDb,
+                TEST_SCHEMA,
+                tableName,
+                unquotedColumn,
+                quotedColumn,
+                doubleQuotedColumn,
+                escapedSpacesColumn1,
+                escapedSpacesColumn2));
+
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(testDb)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(tableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+    for (int val = 0; val < 10; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put(unquotedColumn, val);
+      row.put(quotedColumn, val);
+      row.put(doubleQuotedColumn, val);
+      row.put(escapedSpacesColumn1, val);
+      // space escape '\' is not really required, because Java always has its own outer double
+      // quotes.
+      // hence, it happens to also work w/o the space escape after the internal literal
+      // normalisation.
+      String escapedSpacesColumn2NoSpaceEscape = escapedSpacesColumn2.replace("\\", "");
+      row.put(escapedSpacesColumn2NoSpaceEscape, val);
+      verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
+    }
+
+    // Close the channel after insertion
+    channel1.close().get();
+
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("9")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select %s, %s, %s, %s, %s from %s.%s.%s order by %s",
+                        unquotedColumn,
+                        quotedColumn,
+                        doubleQuotedColumn,
+                        escapedSpacesColumn1,
+                        escapedSpacesColumn2,
+                        testDb,
+                        TEST_SCHEMA,
+                        tableName,
+                        unquotedColumn));
+        for (int val = 0; val < 10; val++) {
+          result.next();
+          for (int index = 1; index <= 5; index++) Assert.assertEquals(val, result.getInt(index));
+        }
+        return;
+      }
+      Thread.sleep(500);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
   }
 
   /** Verify the insert validation response and throw the exception if needed */

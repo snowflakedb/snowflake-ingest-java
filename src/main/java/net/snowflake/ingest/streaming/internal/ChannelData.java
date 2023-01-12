@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
@@ -22,9 +23,10 @@ class ChannelData<T> {
   private T vectors;
   private float bufferSize;
   private int rowCount;
-  private SnowflakeStreamingIngestChannelInternal<T> channel;
   private Map<String, RowBufferStats> columnEps;
   private Pair<Long, Long> minMaxInsertTimeInMs;
+  private ChannelFlushContext channelFlushContext;
+  private Supplier<Flusher<T>> flusherFactory;
 
   // TODO performance test this vs in place update
   /**
@@ -118,12 +120,20 @@ class ChannelData<T> {
     this.bufferSize = bufferSize;
   }
 
-  SnowflakeStreamingIngestChannelInternal<T> getChannel() {
-    return this.channel;
+  public ChannelFlushContext getChannelContext() {
+    return channelFlushContext;
   }
 
-  void setChannel(SnowflakeStreamingIngestChannelInternal<T> channel) {
-    this.channel = channel;
+  public void setChannelContext(ChannelFlushContext channelFlushContext) {
+    this.channelFlushContext = channelFlushContext;
+  }
+
+  public Flusher<T> createFlusher() {
+    return flusherFactory.get();
+  }
+
+  public void setFlusherFactory(Supplier<Flusher<T>> flusherFactory) {
+    this.flusherFactory = flusherFactory;
   }
 
   Pair<Long, Long> getMinMaxInsertTimeInMs() {
@@ -136,6 +146,18 @@ class ChannelData<T> {
 
   @Override
   public String toString() {
-    return this.channel.toString();
+    return "ChannelData{"
+        + "rowSequencer="
+        + rowSequencer
+        + ", offsetToken='"
+        + offsetToken
+        + '\''
+        + ", bufferSize="
+        + bufferSize
+        + ", rowCount="
+        + rowCount
+        + ", channelContext="
+        + channelFlushContext
+        + '}';
   }
 }

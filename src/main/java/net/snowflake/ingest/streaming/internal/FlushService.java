@@ -12,7 +12,6 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -34,14 +33,12 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.zip.CRC32;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
@@ -144,7 +141,7 @@ class FlushService<T> {
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
-    this.latencyTimerContextMap = new HashMap<>();
+    this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
     createWorkers();
   }
@@ -344,6 +341,8 @@ class FlushService<T> {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
 
+      final String filePath = getFilePath(this.targetStage.getClientPrefix());
+
       // Distribute work at table level, create a new blob if reaching the blob size limit
       while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
         ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
@@ -352,7 +351,7 @@ class FlushService<T> {
         // TODO: we could do parallel stream to get the channelData if needed
         for (SnowflakeStreamingIngestChannelInternal<T> channel : table.values()) {
           if (channel.isValid()) {
-            ChannelData<T> data = channel.getData();
+            ChannelData<T> data = channel.getData(filePath);
             if (data != null) {
               channelsDataPerTable.add(data);
               totalBufferSize += data.getBufferSize();
@@ -365,8 +364,11 @@ class FlushService<T> {
       }
 
       // Kick off a build job
-      if (!blobData.isEmpty()) {
-        String filePath = getFilePath(this.targetStage.getClientPrefix());
+      if (blobData.isEmpty()) {
+        // we decrement the counter so that we do not have gaps in the filenames created by this
+        // client. See method getFilePath() below.
+        this.counter.decrementAndGet();
+      } else {
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
         }
@@ -437,97 +439,15 @@ class FlushService<T> {
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
-    List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
-    List<byte[]> chunksDataList = new ArrayList<>();
-    long curDataSize = 0L;
-    CRC32 crc = new CRC32();
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
-    // TODO: channels with different schema can't be combined even if they belongs to same table
-    for (List<ChannelData<T>> channelsDataPerTable : blobData) {
-      ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
-      SnowflakeStreamingIngestChannelInternal<T> firstChannel =
-          channelsDataPerTable.get(0).getChannel();
+    // Construct the blob along with the metadata of the blob
+    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
 
-      Flusher<T> flusher = firstChannel.getRowBuffer().createFlusher();
-      Flusher.SerializationResult serializedChunk =
-          flusher.serialize(channelsDataPerTable, chunkData, filePath);
-
-      if (!serializedChunk.channelsMetadataList.isEmpty()) {
-        Pair<byte[], Integer> compressionResult =
-            BlobBuilder.compressIfNeededAndPadChunk(
-                filePath,
-                chunkData,
-                Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES,
-                bdecVersion == Constants.BdecVersion.ONE);
-        byte[] compressedAndPaddedChunkData = compressionResult.getFirst();
-        int compressedChunkLength = compressionResult.getSecond();
-
-        // Encrypt the compressed chunk data, the encryption key is derived using the key from
-        // server with the full blob path.
-        // We need to maintain IV as a block counter for the whole file, even interleaved,
-        // to align with decryption on the Snowflake query path.
-        // TODO: address alignment for the header SNOW-557866
-        long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
-        byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(
-                compressedAndPaddedChunkData, firstChannel.getEncryptionKey(), filePath, iv);
-
-        // Compute the md5 of the chunk data
-        String md5 = BlobBuilder.computeMD5(encryptedCompressedChunkData, compressedChunkLength);
-        int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
-
-        // Create chunk metadata
-        long startOffset = curDataSize;
-        ChunkMetadata chunkMetadata =
-            ChunkMetadata.builder()
-                .setOwningTable(firstChannel)
-                // The start offset will be updated later in BlobBuilder#build to include the blob
-                // header
-                .setChunkStartOffset(startOffset)
-                // The compressedChunkLength is used because it is the actual data size used for
-                // decompression and md5 calculation on server side.
-                .setChunkLength(compressedChunkLength)
-                .setChannelList(serializedChunk.channelsMetadataList)
-                .setChunkMD5(md5)
-                .setEncryptionKeyId(firstChannel.getEncryptionKeyId())
-                .setEpInfo(
-                    AbstractRowBuffer.buildEpInfoFromStats(
-                        serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
-                .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
-                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
-                .build();
-
-        // Add chunk metadata and data to the list
-        chunksMetadataList.add(chunkMetadata);
-        chunksDataList.add(encryptedCompressedChunkData);
-        curDataSize += encryptedCompressedChunkDataSize;
-        crc.update(encryptedCompressedChunkData, 0, encryptedCompressedChunkDataSize);
-
-        logger.logInfo(
-            "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
-                + " uncompressedSize={}, compressedChunkLength={}, encryptedCompressedSize={},"
-                + " bdecVersion={}",
-            filePath,
-            firstChannel.getFullyQualifiedTableName(),
-            serializedChunk.rowCount,
-            startOffset,
-            chunkData.size(),
-            compressedChunkLength,
-            encryptedCompressedChunkDataSize,
-            bdecVersion);
-      }
-    }
-
-    // Build blob file, and then upload to streaming ingest dedicated stage
-    byte[] blob =
-        BlobBuilder.build(
-            chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
     if (buildContext != null) {
       buildContext.stop();
     }
-
-    return upload(filePath, blob, chunksMetadataList);
+    return upload(filePath, blob.blobBytes, blob.chunksMetadataList);
   }
 
   /**
@@ -649,11 +569,11 @@ class FlushService<T> {
                   this.owningClient
                       .getChannelCache()
                       .invalidateChannelIfSequencersMatch(
-                          channelData.getChannel().getDBName(),
-                          channelData.getChannel().getSchemaName(),
-                          channelData.getChannel().getTableName(),
-                          channelData.getChannel().getName(),
-                          channelData.getChannel().getChannelSequencer());
+                          channelData.getChannelContext().getDbName(),
+                          channelData.getChannelContext().getSchemaName(),
+                          channelData.getChannelContext().getTableName(),
+                          channelData.getChannelContext().getName(),
+                          channelData.getChannelContext().getChannelSequencer());
                 }));
   }
 

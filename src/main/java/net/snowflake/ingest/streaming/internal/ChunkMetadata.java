@@ -40,10 +40,10 @@ class ChunkMetadata {
     private Long firstInsertTimeInMs;
     private Long lastInsertTimeInMs;
 
-    Builder setOwningTable(SnowflakeStreamingIngestChannelInternal channel) {
-      this.dbName = channel.getDBName();
-      this.schemaName = channel.getSchemaName();
-      this.tableName = channel.getTableName();
+    Builder setOwningTableFromChannelContext(ChannelFlushContext channelFlushContext) {
+      this.dbName = channelFlushContext.getDbName();
+      this.schemaName = channelFlushContext.getSchemaName();
+      this.tableName = channelFlushContext.getTableName();
       return this;
     }
 

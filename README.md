@@ -118,7 +118,7 @@ you would need to remove the following scope limits in pom.xml
 -   Use an unencrypted version(Only for testing) of private key while generating keys(private and public pair) using OpenSSL.
 
     -   Here is the link for documentation [Key Pair
-            Generator](https://docs.snowflake.net/manuals/user-guide/python-connector-example.html#using-key-pair-authentication)
+            Generator](https://docs.snowflake.com/en/user-guide/key-pair-auth.html)
 
 # Code style
 

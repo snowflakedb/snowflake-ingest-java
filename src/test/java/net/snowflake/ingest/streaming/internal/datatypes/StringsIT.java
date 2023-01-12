@@ -62,6 +62,7 @@ public class StringsIT extends AbstractDataTypeTest {
   }
 
   @Test
+  @Ignore("SNOW-663621")
   public void testNonAsciiStrings() throws Exception {
     testIngestion(
         "VARCHAR", "ž, š, č, ř, c, j, ď, ť, ň", "ž, š, č, ř, c, j, ď, ť, ň", new StringProvider());

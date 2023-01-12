@@ -226,7 +226,7 @@ class StreamingIngestStage {
     JsonNode responseNode = this.parseClientConfigureResponse(response);
     // Do not change the prefix everytime we have to refresh credentials
     if (Utils.isNullOrEmpty(this.clientPrefix)) {
-      this.clientPrefix = responseNode.get("prefix").textValue();
+      this.clientPrefix = createClientPrefix(responseNode);
     }
     Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
 
@@ -257,6 +257,22 @@ class StreamingIngestStage {
               Optional.of(System.currentTimeMillis()));
     }
     return this.fileTransferMetadataWithAge;
+  }
+
+  /**
+   * Creates a client-specific prefix that will be also part of the files registered by this client.
+   * The prefix will include a server-side generated string and the GlobalID of the deployment the
+   * client is registering blobs to. The latter (deploymentId) is needed in order to guarantee that
+   * blob filenames are unique across deployments even with replication enabled.
+   *
+   * @param response the client/configure response from the server
+   * @return the client prefix.
+   */
+  private String createClientPrefix(final JsonNode response) {
+    final String prefix = response.get("prefix").textValue();
+    final String deploymentId =
+        response.has("deployment_id") ? "_" + response.get("deployment_id").longValue() : "";
+    return prefix + deploymentId;
   }
 
   /**

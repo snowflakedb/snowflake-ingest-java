@@ -14,10 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -39,13 +42,14 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private MessageType schema;
 
-  /**
-   * Construct a ParquetRowBuffer object
-   *
-   * @param channel client channel
-   */
-  ParquetRowBuffer(SnowflakeStreamingIngestChannelInternal<ParquetChunkData> channel) {
-    super(channel);
+  /** Construct a ParquetRowBuffer object. */
+  ParquetRowBuffer(
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      BufferAllocator allocator,
+      String fullyQualifiedChannelName,
+      Consumer<Float> rowSizeMetric,
+      ChannelRuntimeState channelRuntimeState) {
+    super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelRuntimeState);
     fieldIndex = new HashMap<>();
     metadata = new HashMap<>();
     data = new ArrayList<>();
@@ -67,14 +71,16 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
           ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
       parquetTypes.add(typeInfo.getParquetType());
       this.metadata.putAll(typeInfo.getMetadata());
-      fieldIndex.put(column.getName(), new Pair<>(column, parquetTypes.size() - 1));
+      fieldIndex.put(column.getInternalName(), new Pair<>(column, parquetTypes.size() - 1));
       if (!column.getNullable()) {
-        addNonNullableFieldName(column.getName());
+        addNonNullableFieldName(column.getInternalName());
       }
-      this.statsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
+      this.statsMap.put(
+          column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
 
-      if (this.owningChannel.getOnErrorOption() == OpenChannelRequest.OnErrorOption.ABORT) {
-        this.tempStatsMap.put(column.getName(), new RowBufferStats(column.getCollation()));
+      if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
+        this.tempStatsMap.put(
+            column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
       }
 
       id++;
@@ -124,7 +130,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
       Object value = entry.getValue();
-      String columnName = formatColumnName(key);
+      String columnName = LiteralQuoteUtils.unquoteColumnName(key);
       int colIndex = fieldIndex.get(columnName).getSecond();
       RowBufferStats stats = statsMap.get(columnName);
       ColumnMetadata column = fieldIndex.get(columnName).getFirst();
@@ -160,9 +166,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   @Override
-  Optional<ParquetChunkData> getSnapshot() {
+  Optional<ParquetChunkData> getSnapshot(final String filePath) {
     List<List<Object>> oldData = new ArrayList<>();
     data.forEach(r -> oldData.add(new ArrayList<>(r)));
+
+    // We insert the filename in the file itself as metadata so that streams can work on replicated
+    // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
+    // http://go/streams-on-replicated-mixed-tables
+    metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
+
     return oldData.isEmpty()
         ? Optional.empty()
         : Optional.of(new ParquetChunkData(oldData, metadata));
@@ -190,7 +202,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       }
     }
     if (logicalType == ColumnLogicalType.BINARY && value != null) {
-      value = ((String) value).getBytes(StandardCharsets.UTF_8);
+      value = value instanceof String ? ((String) value).getBytes(StandardCharsets.UTF_8) : value;
     }
     return value;
   }
@@ -211,7 +223,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.fieldIndex.clear();
     logger.logInfo(
         "Trying to close parquet buffer for channel={} from function={}",
-        this.owningChannel.getName(),
+        channelFullyQualifiedName,
         name);
   }
 

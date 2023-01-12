@@ -169,6 +169,11 @@ public class SemiStructuredIT extends AbstractDataTypeTest {
 
     // Test JSON null
     assertVariant("VARIANT", "null", "null", "NULL_VALUE");
+
+    // Test SQL null, if the value is SQL NULL, the value returned is null
+    assertVariant("VARIANT", "", null, null);
+    assertVariant("VARIANT", " ", null, null);
+    assertVariant("VARIANT", null, null, null);
   }
 
   @Test

@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,13 +32,7 @@ import org.junit.runners.Parameterized;
 public abstract class AbstractDataTypeTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
-    return Arrays.asList(
-        new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE},
-          // TODO: uncomment once SNOW-659721 is deployed and we set the parameter
-          // DISABLE_PARQUET_CACHE to true for the test account
-          // {"Parquet", Constants.BdecVersion.THREE}
-        });
+    return TestUtils.getBdecVersionItCases();
   }
 
   private static final String SOURCE_COLUMN_NAME = "source";
@@ -132,12 +125,17 @@ public abstract class AbstractDataTypeTest {
   }
 
   protected SnowflakeStreamingIngestChannel openChannel(String tableName) {
+    return openChannel(tableName, OpenChannelRequest.OnErrorOption.ABORT);
+  }
+
+  protected SnowflakeStreamingIngestChannel openChannel(
+      String tableName, OpenChannelRequest.OnErrorOption onErrorOption) {
     OpenChannelRequest openChannelRequest =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(databaseName)
             .setSchemaName(SCHEMA_NAME)
             .setTableName(tableName)
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+            .setOnErrorOption(onErrorOption)
             .build();
     return client.openChannel(openChannelRequest);
   }
@@ -306,6 +304,7 @@ public abstract class AbstractDataTypeTest {
     Assert.assertTrue(resultSet.next());
     int count = resultSet.getInt(1);
     Assert.assertEquals(insertAlsoWithJdbc ? 2 : 1, count);
+    migrateTable(tableName); // migration should always succeed
   }
 
   <STREAMING_INGEST_WRITE> void assertVariant(
@@ -337,7 +336,16 @@ public abstract class AbstractDataTypeTest {
     }
 
     Assert.assertEquals(1, counter);
-    Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+    if (expectedValue == null) {
+      Assert.assertNull(value);
+    } else {
+      Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+    }
     Assert.assertEquals(expectedType, typeof);
+    migrateTable(tableName); // migration should always succeed
+  }
+
+  protected void migrateTable(String tableName) throws SQLException {
+    conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
   }
 }
