@@ -34,7 +34,7 @@ public class ParameterProvider {
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   /* parameter that enables main memory optimization for Parquet format (BdecVersion.THREE) */
-  public static final boolean ENABLE_PARQUET_MEM_OPT_DEFAULT = true;
+  public static final boolean ENABLE_PARQUET_MEM_OPT_DEFAULT = false;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
