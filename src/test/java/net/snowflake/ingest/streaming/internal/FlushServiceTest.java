@@ -530,6 +530,8 @@ public class FlushServiceTest {
             .setChunkMD5("md5")
             .setEncryptionKeyId(1234L)
             .setEpInfo(expectedChunkEpInfo)
+            .setFirstInsertTimeInMs(1L)
+            .setLastInsertTimeInMs(2L)
             .build();
 
     // Check FlushService.upload called with correct arguments
@@ -719,6 +721,8 @@ public class FlushServiceTest {
             .setChunkMD5("md5")
             .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
+            .setFirstInsertTimeInMs(1L)
+            .setLastInsertTimeInMs(2L)
             .build();
 
     chunksMetadataList.add(chunkMetadata);

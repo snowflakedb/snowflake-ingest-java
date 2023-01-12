@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -56,6 +57,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
+    Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
     for (ChannelData<ParquetChunkData> data : channelsDataPerTable) {
       // Create channel metadata
@@ -79,6 +81,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         columnEpStatsMapCombined = data.getColumnEps();
         rows = new ArrayList<>();
         firstChannelFullyQualifiedTableName = data.getChannelContext().getFullyQualifiedTableName();
+        chunkMinMaxInsertTimeInMs = data.getMinMaxInsertTimeInMs();
       } else {
         // This method assumes that channelsDataPerTable is grouped by table. We double check
         // here and throw an error if the assumption is violated
@@ -90,6 +93,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
         columnEpStatsMapCombined =
             ChannelData.getCombinedColumnStatsMap(columnEpStatsMapCombined, data.getColumnEps());
+        chunkMinMaxInsertTimeInMs =
+            ChannelData.getCombinedMinMaxInsertTimeInMs(
+                chunkMinMaxInsertTimeInMs, data.getMinMaxInsertTimeInMs());
       }
       rows.addAll(data.getVectors().rows);
 
@@ -106,7 +112,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
 
     flushToParquetBdecChunk(chunkData, rows, metadata, channelsMetadataList);
-    return new SerializationResult(channelsMetadataList, columnEpStatsMapCombined, rowCount);
+    return new SerializationResult(
+        channelsMetadataList, columnEpStatsMapCombined, rowCount, chunkMinMaxInsertTimeInMs);
   }
 
   /**

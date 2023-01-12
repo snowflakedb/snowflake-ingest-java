@@ -472,6 +472,8 @@ public class SnowflakeStreamingIngestClientTest {
             .setChunkMD5("md5")
             .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
+            .setFirstInsertTimeInMs(1L)
+            .setLastInsertTimeInMs(2L)
             .build();
 
     List<BlobMetadata> blobs =
@@ -545,6 +547,8 @@ public class SnowflakeStreamingIngestClientTest {
             .setChunkMD5("md51")
             .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
+            .setFirstInsertTimeInMs(1L)
+            .setLastInsertTimeInMs(2L)
             .build();
     ChunkMetadata chunkMetadata2 =
         ChunkMetadata.builder()
@@ -555,6 +559,8 @@ public class SnowflakeStreamingIngestClientTest {
             .setChunkMD5("md52")
             .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
+            .setFirstInsertTimeInMs(1L)
+            .setLastInsertTimeInMs(2L)
             .build();
     ChunkMetadata chunkMetadata3 =
         ChunkMetadata.builder()
@@ -565,6 +571,8 @@ public class SnowflakeStreamingIngestClientTest {
             .setChunkMD5("md53")
             .setEncryptionKeyId(1234L)
             .setEpInfo(epInfo)
+            .setFirstInsertTimeInMs(1L)
+            .setLastInsertTimeInMs(2L)
             .build();
 
     chunks1.add(chunkMetadata1);
