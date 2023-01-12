@@ -135,6 +135,23 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <id>unshaded</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>unshaded</classifier>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
 
         <!-- disable default maven deploy plugin since we are using gpg:sign-and-deploy-file -->
@@ -455,6 +472,7 @@
                         <artifactId>maven-shade-plugin</artifactId>
                         <version>3.1.1</version>
                         <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <relocations>
                                 <relocation>
                                     <pattern>com.nimbusds</pattern>
@@ -646,5 +664,4 @@
             </build>
         </profile>
     </profiles>
-
 </project>
