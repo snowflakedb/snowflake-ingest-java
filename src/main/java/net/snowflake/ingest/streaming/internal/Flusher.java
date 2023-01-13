@@ -8,6 +8,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import net.snowflake.ingest.utils.Pair;
 
 /**
  * Interface to convert {@link ChannelData} buffered in {@link RowBuffer} to the underlying format
@@ -34,16 +35,19 @@ public interface Flusher<T> {
     final Map<String, RowBufferStats> columnEpStatsMapCombined;
     final long rowCount;
     final ByteArrayOutputStream chunkData;
+    final Pair<Long, Long> chunkMinMaxInsertTimeInMs;
 
     public SerializationResult(
         List<ChannelMetadata> channelsMetadataList,
         Map<String, RowBufferStats> columnEpStatsMapCombined,
         long rowCount,
-        ByteArrayOutputStream chunkData) {
+        ByteArrayOutputStream chunkData,
+        Pair<Long, Long> chunkMinMaxInsertTimeInMs) {
       this.channelsMetadataList = channelsMetadataList;
       this.columnEpStatsMapCombined = columnEpStatsMapCombined;
       this.rowCount = rowCount;
       this.chunkData = chunkData;
+      this.chunkMinMaxInsertTimeInMs = chunkMinMaxInsertTimeInMs;
     }
   }
 }

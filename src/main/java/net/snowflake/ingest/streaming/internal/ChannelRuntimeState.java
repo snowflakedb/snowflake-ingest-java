@@ -11,11 +11,15 @@ class ChannelRuntimeState {
   // Indicates whether the channel is still valid
   private volatile boolean isValid;
 
-  // the channel's current offset token
+  // The channel's current offset token
   private volatile String offsetToken;
 
-  // the channel's current row sequencer
+  // The channel's current row sequencer
   private final AtomicLong rowSequencer;
+
+  // First and last insert time in ms, used for end2end latency measurement
+  private Long firstInsertInMs;
+  private Long lastInsertInMs;
 
   ChannelRuntimeState(String offsetToken, long rowSequencer, boolean isValid) {
     this.offsetToken = offsetToken;
@@ -59,5 +63,23 @@ class ChannelRuntimeState {
    */
   void setOffsetToken(String offsetToken) {
     this.offsetToken = offsetToken;
+  }
+
+  /** Update the insert stats for the current row buffer whenever needed */
+  void updateInsertStats(long currentTimeInMs, int rowCount) {
+    if (rowCount == 0) {
+      this.firstInsertInMs = currentTimeInMs;
+    }
+    this.lastInsertInMs = currentTimeInMs;
+  }
+
+  /** Get the insert timestamp of the first row in the current row buffer */
+  Long getFirstInsertInMs() {
+    return this.firstInsertInMs;
+  }
+
+  /** Get the insert timestamp of the last row in the current row buffer */
+  Long getLastInsertInMs() {
+    return this.lastInsertInMs;
   }
 }

@@ -20,6 +20,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
@@ -153,10 +154,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Names of non-nullable columns
   private final Set<String> nonNullableFieldNames;
 
-  // buffer's channel fully qualified name with database, schema and table
+  // Buffer's channel fully qualified name with database, schema and table
   final String channelFullyQualifiedName;
 
-  // metric callback to report size of inserted rows
+  // Metric callback to report size of inserted rows
   private final Consumer<Float> rowSizeMetric;
 
   // Allocator used to allocate the buffers
@@ -280,6 +281,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     InsertValidationResponse response = new InsertValidationResponse();
     this.flushLock.lock();
     try {
+      this.channelState.updateInsertStats(System.currentTimeMillis(), this.rowCount);
       if (onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
         // Used to map incoming row(nth row) to InsertError(for nth row) in response
         long rowIndex = 0;
@@ -357,6 +359,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       long oldRowSequencer = 0;
       String oldOffsetToken = null;
       Map<String, RowBufferStats> oldColumnEps = null;
+      Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
 
       logger.logDebug(
           "Arrow buffer flush about to take lock on channel={}", channelFullyQualifiedName);
@@ -371,6 +374,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldRowSequencer = this.channelState.incrementAndGetRowSequencer();
           oldOffsetToken = this.channelState.getOffsetToken();
           oldColumnEps = new HashMap<>(this.statsMap);
+          oldMinMaxInsertTimeInMs =
+              new Pair<>(
+                  this.channelState.getFirstInsertInMs(), this.channelState.getLastInsertInMs());
           // Reset everything in the buffer once we save all the info
           reset();
         }
@@ -392,6 +398,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         data.setRowSequencer(oldRowSequencer);
         data.setOffsetToken(oldOffsetToken);
         data.setColumnEps(oldColumnEps);
+        data.setMinMaxInsertTimeInMs(oldMinMaxInsertTimeInMs);
         data.setFlusherFactory(this::createFlusher);
         return data;
       }
