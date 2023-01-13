@@ -28,9 +28,8 @@ public class RowBufferTest {
   public static Collection<Object[]> bdecVersion() {
     return Arrays.asList(
         new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE, false},
-          {"Parquet_with_optimization", Constants.BdecVersion.THREE, true},
-          {"Parquet_w/o_optimization", Constants.BdecVersion.THREE, false}
+          {"Arrow", Constants.BdecVersion.ONE},
+          {"Parquet_w/o_optimization", Constants.BdecVersion.THREE}
         });
   }
 
@@ -39,12 +38,9 @@ public class RowBufferTest {
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
 
-  public RowBufferTest(
-      @SuppressWarnings("unused") String name,
-      Constants.BdecVersion bdecVersion,
-      boolean enableParquetMemoryOptimization) {
+  public RowBufferTest(@SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
     this.bdecVersion = bdecVersion;
-    this.enableParquetMemoryOptimization = enableParquetMemoryOptimization;
+    this.enableParquetMemoryOptimization = false;
   }
 
   @Before

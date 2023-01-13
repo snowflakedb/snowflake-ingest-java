@@ -39,12 +39,12 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
       throws IOException {
     if (enableParquetMemoryOptimization) {
-      return serializeWithEnabledOptimization(channelsDataPerTable, filePath);
+      return serializeFromParquetWriteBuffers(channelsDataPerTable, filePath);
     }
-    return serializeWithDisabledOptimization(channelsDataPerTable, filePath);
+    return serializeFromJavaObjects(channelsDataPerTable, filePath);
   }
 
-  private SerializationResult serializeWithEnabledOptimization(
+  private SerializationResult serializeFromParquetWriteBuffers(
       List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
@@ -110,7 +110,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         channelsMetadataList, columnEpStatsMapCombined, rowCount, mergedChunkData);
   }
 
-  private SerializationResult serializeWithDisabledOptimization(
+  private SerializationResult serializeFromJavaObjects(
       List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();

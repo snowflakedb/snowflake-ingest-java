@@ -123,8 +123,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             channelState,
             false,
             owningClient != null
-                ? owningClient.getParameterProvider().getEnableParquetMemoryOptimization()
-                : ParameterProvider.ENABLE_PARQUET_MEM_OPT_DEFAULT);
+                ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
+                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),

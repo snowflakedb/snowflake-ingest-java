@@ -45,9 +45,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /* map that contains metadata like typeinfo for columns and other information needed by the server scanner */
   private final Map<String, String> metadata;
 
-  /* Unflushed rows serialized into Java objects. Needed for the Parquet w/o memory optimization. */
+  /* Unflushed rows as Java objects. Needed for the Parquet w/o memory optimization. */
   private final List<List<Object>> data;
-  /* BDEC Parquet writer. It is used to buffer unflushed data instead of serializing in Java objects */
+  /* BDEC Parquet writer. It is used to buffer unflushed data in Parquet internal buffers instead of using Java objects */
   private BdecParquetWriter bdecParquetWriter;
 
   private ByteArrayOutputStream fileOutput;
@@ -55,9 +55,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private final String channelName;
 
   private MessageType schema;
-  private final List<List<Object>> testBuffer; // used only for tests for row index access
   private final boolean bufferForTests;
-  private final boolean enableParquetMemoryOptimization;
+  private final boolean enableParquetInternalBuffering;
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
@@ -66,16 +65,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
       boolean bufferForTests,
-      boolean enableParquetMemoryOptimization) {
+      boolean enableParquetInternalBuffering) {
     super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelRuntimeState);
     fieldIndex = new HashMap<>();
     metadata = new HashMap<>();
     data = new ArrayList<>();
     tempData = new ArrayList<>();
     channelName = fullyQualifiedChannelName;
-    testBuffer = new ArrayList<>();
     this.bufferForTests = bufferForTests;
-    this.enableParquetMemoryOptimization = enableParquetMemoryOptimization;
+    this.enableParquetInternalBuffering = enableParquetInternalBuffering;
   }
 
   @Override
@@ -111,19 +109,18 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     createFileWriter();
     tempData.clear();
     data.clear();
-    testBuffer.clear();
   }
 
   /** Create BDEC file writer if Parquet memory optimization is enabled. */
   private void createFileWriter() {
     fileOutput = new ByteArrayOutputStream();
     try {
-      if (enableParquetMemoryOptimization) {
+      if (enableParquetInternalBuffering) {
         bdecParquetWriter = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
       } else {
         this.bdecParquetWriter = null;
       }
-      testBuffer.clear();
+      data.clear();
     } catch (IOException e) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "cannot create parquet writer", e);
     }
@@ -144,13 +141,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   void writeRow(List<Object> row) {
-    if (enableParquetMemoryOptimization) {
+    if (enableParquetInternalBuffering) {
       bdecParquetWriter.writeRow(row);
     } else {
       data.add(row);
-    }
-    if (bufferForTests) {
-      testBuffer.add(row);
     }
   }
 
@@ -225,7 +219,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
 
     List<List<Object>> oldData = new ArrayList<>();
-    if (!enableParquetMemoryOptimization) {
+    if (!enableParquetInternalBuffering) {
       data.forEach(r -> oldData.add(new ArrayList<>(r)));
     }
     return rowCount <= 0
@@ -236,8 +230,11 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /** Used only for testing. */
   @Override
   Object getVectorValueAt(String column, int index) {
+    if (data == null) {
+      return null;
+    }
     int colIndex = fieldIndex.get(column).getSecond();
-    Object value = testBuffer.get(index).get(colIndex);
+    Object value = data.get(index).get(colIndex);
     ColumnMetadata columnMetadata = fieldIndex.get(column).getFirst();
     String physicalTypeStr = columnMetadata.getPhysicalType();
     ColumnPhysicalType physicalType = ColumnPhysicalType.valueOf(physicalTypeStr);
@@ -287,6 +284,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   public Flusher<ParquetChunkData> createFlusher() {
-    return new ParquetFlusher(schema, enableParquetMemoryOptimization);
+    return new ParquetFlusher(schema, enableParquetInternalBuffering);
   }
 }

@@ -74,11 +74,17 @@ public class BdecParquetWriter implements AutoCloseable {
             (FileEncryptionProperties) null);
     fileWriter.start();
 
-    /* If our optimization for Parquet is enabled, there will be one writer per channel on each flush.
+    /*
+    Internally parquet writer initialises CodecFactory with the configured page size.
+    We set the page size to the max chunk size that is quite big in general.
+    CodecFactory allocates a byte buffer of that size on heap during initialisation.
+
+    If we use Parquet writer for buffering, there will be one writer per channel on each flush.
     The memory will be allocated for each writer at the beginning even if we don't write anything with each writer,
-    which is the case when we enable the optimization.
-    Hence, to avoid huge memory allocations, we have to use CodecFactory
-    and move the BdecParquetWriter class in the parquet.hadoop package. */
+    which is the case when we enable parquet writer buffering.
+    Hence, to avoid huge memory allocations, we have to internally initialise CodecFactory with `ParquetWriter.DEFAULT_PAGE_SIZE` as it usually happens.
+    To get code access to this internal initialisation, we have to move the BdecParquetWriter class in the parquet.hadoop package.
+    */
     codecFactory = new CodecFactory(conf, ParquetWriter.DEFAULT_PAGE_SIZE);
     @SuppressWarnings("deprecation") // Parquet does not support the new one now
     CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(CompressionCodecName.GZIP);

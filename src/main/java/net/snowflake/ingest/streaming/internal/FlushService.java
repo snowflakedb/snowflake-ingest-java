@@ -445,7 +445,7 @@ class FlushService<T> {
             filePath,
             blobData,
             bdecVersion,
-            owningClient.getParameterProvider().getEnableParquetMemoryOptimization());
+            owningClient.getParameterProvider().getEnableParquetInternalBuffering());
     if (buildContext != null) {
       buildContext.stop();
     }
