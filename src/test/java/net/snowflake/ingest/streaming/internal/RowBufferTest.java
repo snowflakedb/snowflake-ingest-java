@@ -29,16 +29,18 @@ public class RowBufferTest {
     return Arrays.asList(
         new Object[][] {
           {"Arrow", Constants.BdecVersion.ONE},
-          {"Parquet", Constants.BdecVersion.THREE}
+          {"Parquet_w/o_optimization", Constants.BdecVersion.THREE}
         });
   }
 
   private final Constants.BdecVersion bdecVersion;
+  private final boolean enableParquetMemoryOptimization;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
 
   public RowBufferTest(@SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
     this.bdecVersion = bdecVersion;
+    this.enableParquetMemoryOptimization = false;
   }
 
   @Before
@@ -116,7 +118,14 @@ public class RowBufferTest {
   private AbstractRowBuffer<?> createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
     ChannelRuntimeState initialState = new ChannelRuntimeState("0", 0L, true);
     return AbstractRowBuffer.createRowBuffer(
-        onErrorOption, new RootAllocator(), bdecVersion, "test.buffer", rs -> {}, initialState);
+        onErrorOption,
+        new RootAllocator(),
+        bdecVersion,
+        "test.buffer",
+        rs -> {},
+        initialState,
+        true,
+        enableParquetMemoryOptimization);
   }
 
   @Test
