@@ -90,7 +90,7 @@ public class BdecParquetWriter implements AutoCloseable {
             writeContext.getExtraMetaData(),
             ParquetWriter.DEFAULT_BLOCK_SIZE,
             compressor,
-            true,
+            false,
             encodingProps);
   }
 

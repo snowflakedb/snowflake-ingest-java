@@ -9,15 +9,10 @@ import net.snowflake.ingest.utils.Constants.BdecVersion;
 import net.snowflake.ingest.utils.Pair;
 import org.apache.arrow.memory.RootAllocator;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -30,22 +25,11 @@ import java.util.stream.IntStream;
 
 import static net.snowflake.ingest.streaming.internal.BlobBuilder.compressIfNeededAndPadChunk;
 
-@RunWith(Parameterized.class)
 public class SerialisationPerfIT {
-    @Parameterized.Parameters(name = "{0}")
-    public static Collection<Object[]> bdecVersion() {
-        return Arrays.asList(
-                new Object[][] {
-                        {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
-                });
-    }
-
-    private final BdecVersion bdecVersion;
-
-    public SerialisationPerfIT(
-            @SuppressWarnings("unused") String name, BdecVersion bdecVersion) {
-        this.bdecVersion = bdecVersion;
-    }
+    private static final int numberOfChannels = 10;
+    private static final int rowNumber = 100000;
+    private static final boolean scale = true;
+    private static final boolean nullable = true;
 
     private static class BufferChannelContext<T> {
         final int index;
@@ -53,7 +37,7 @@ public class SerialisationPerfIT {
         final AbstractRowBuffer<T> buffer;
         float size = 0;
 
-        private BufferChannelContext(BdecVersion bdecVersion, int index, List<ColumnMetadata> columns, RootAllocator allocator) {
+        private BufferChannelContext(BdecVersion bdecVersion, int index, List<ColumnMetadata> columns, RootAllocator allocator, boolean enableParquetBuffers) {
             this.index = index;
             this.channelFlushContext = new ChannelFlushContext("SerialisationPerfITChannel" + index, "dummyDb", "dummySchema", "dummyTable", 0L, "encryptionKey", 1L);
             this.buffer = AbstractRowBuffer.createRowBuffer(
@@ -62,7 +46,7 @@ public class SerialisationPerfIT {
                     bdecVersion,
                     "test.buffer" + index,
                     rs -> size += rs,
-                    new ChannelRuntimeState("0", 0, true), false);
+                    new ChannelRuntimeState("0", 0, true), false, enableParquetBuffers);
             buffer.setupSchema(columns);
         }
     }
@@ -86,17 +70,32 @@ public class SerialisationPerfIT {
     //@Ignore
     @Test
     public void test() throws IOException {
-        final int numberOfChannels = 10;
-        final int rowNumber = 100000;
+        Random r = new Random();
+        List<Map<String, Object>> rows = IntStream.range(0, numberOfChannels * rowNumber)
+                .mapToObj(i -> getRandomRow(r, scale)).collect(Collectors.toList());
+        testVersion("Arrow", Constants.BdecVersion.ONE, false, rows);
+        testVersion("Parquet", Constants.BdecVersion.THREE, false, rows);
+    }
 
-        List<ColumnMetadata> columns = createColumns(true);
+    public void testVersion(String testName, BdecVersion bdecVersion, boolean enableParquetBuffers, List<Map<String, Object>> rows) throws IOException {
+        System.out.println("Test " + testName);
+
+        List<ColumnMetadata> columns = createColumns(scale);
 
         Map<String, RowBufferStats> statsMap = new HashMap<>();
         for (ColumnMetadata column : columns) {
             statsMap.put(column.getName(), new RowBufferStats(column.getName()));
         }
 
-        List<FileStats> fileStatsList = run(numberOfChannels, rowNumber, columns, statsMap);
+        List<FileStats> fileStatsList = run(columns, bdecVersion, enableParquetBuffers, rows);
+        printStat(fileStatsList);
+
+//        try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
+//            outputStream.write(chunkData.toByteArray());
+//        }
+    }
+
+    private void printStat(List<FileStats> fileStatsList) {
         long totalRuntimeMilli = fileStatsList.stream().mapToLong(s -> s.runtimeMilli).sum();
         double avgRuntimeMilli = fileStatsList.stream().mapToLong(s -> s.runtimeMilli).average().getAsDouble();
         double totalRowSize = fileStatsList.stream().mapToDouble(s -> (double) s.rowSize).sum();
@@ -126,48 +125,45 @@ public class SerialisationPerfIT {
                 avgRowNumber,
                 totalMemUsage,
                 avgMemUsage);
-
-//        try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
-//            outputStream.write(chunkData.toByteArray());
-//        }
     }
 
-    private <T> List<FileStats> run(int numberOfChannels, int rowNumber, List<ColumnMetadata> columns, Map<String, RowBufferStats> statsMap) throws IOException {
+    private <T> List<FileStats> run(List<ColumnMetadata> columns, BdecVersion bdecVersion, boolean enableParquetBuffers, List<Map<String, Object>> rows) throws IOException {
         RootAllocator allocator = new RootAllocator();
         List<BufferChannelContext<T>> buffers = IntStream.range(0, numberOfChannels)
-                .mapToObj(i -> new BufferChannelContext<T>(bdecVersion, i, columns, allocator))
+                .mapToObj(i -> new BufferChannelContext<T>(bdecVersion, i, columns, allocator, enableParquetBuffers))
                 .collect(Collectors.toList());
 
         List<FileStats> fileStatsList = new ArrayList<>();
-        Random r = new Random();
         int fileIndex = 0;
-        int rows = 0;
+        int rowCount = 0;
+        int totalRows = 0;
         long fileStartTimeMilli = System.currentTimeMillis();
         for (int i = 0; i < rowNumber; i++) {
             for (BufferChannelContext<?> bufferChannelContext : buffers) {
-                bufferChannelContext.buffer.insertRows(Collections.singletonList(getRandomRow(r)), null);
+                bufferChannelContext.buffer.insertRows(Collections.singletonList(rows.get(totalRows)), null);
+                totalRows++;
             }
-            rows++;
+            rowCount++;
             float size = (float) buffers.stream().mapToDouble(b -> b.size).sum();
             if (size >= Constants.MAX_CHUNK_SIZE_IN_BYTES) {
-                flush(buffers, fileStatsList, fileIndex, rows, fileStartTimeMilli, size);
-                rows = 0;
+                flush(buffers, fileStatsList, fileIndex, rowCount, fileStartTimeMilli, size, bdecVersion);
+                rowCount = 0;
                 fileIndex++;
                 fileStartTimeMilli = System.currentTimeMillis();
             }
         }
         long memUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         float size = (float) buffers.stream().mapToDouble(b -> b.size).sum();
-        int fileSize = flush(buffers, fileIndex + ".bdec");
+        int fileSize = flush(buffers, fileIndex + ".bdec", bdecVersion);
         long runtimeMilli = System.currentTimeMillis() - fileStartTimeMilli;
-        FileStats fileStats = new FileStats(runtimeMilli, size, fileSize, rows, memUsage);
+        FileStats fileStats = new FileStats(runtimeMilli, size, fileSize, rowCount, memUsage);
         fileStatsList.add(fileStats);
         return fileStatsList;
     }
 
-    private <T> void flush(List<BufferChannelContext<T>> buffers, List<FileStats> fileStatsList, int fileIndex, int rows, long fileStartTimeMilli, float size) throws IOException {
+    private <T> void flush(List<BufferChannelContext<T>> buffers, List<FileStats> fileStatsList, int fileIndex, int rows, long fileStartTimeMilli, float size, BdecVersion bdecVersion) throws IOException {
         long memUsage = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-        int fileSize = flush(buffers, fileIndex + ".bdec");
+        int fileSize = flush(buffers, fileIndex + ".bdec", bdecVersion);
         long runtimeMilli = System.currentTimeMillis() - fileStartTimeMilli;
         FileStats fileStats = new FileStats(runtimeMilli, size, fileSize, rows, memUsage);
         fileStatsList.add(fileStats);
@@ -178,7 +174,7 @@ public class SerialisationPerfIT {
         System.gc();
     }
 
-    private <T> int flush(List<BufferChannelContext<T>> buffers, String filePath) throws IOException {
+    private <T> int flush(List<BufferChannelContext<T>> buffers, String filePath, BdecVersion bdecVersion) throws IOException {
         List<ChannelData<T>> chdataList = new ArrayList<>();
         for (BufferChannelContext<T> bufferChannelContext : buffers) {
             ChannelData<T> chdata = bufferChannelContext.buffer.flush(filePath);
@@ -204,10 +200,10 @@ public class SerialisationPerfIT {
 
         //columns.add(startBuild("bl", ColumnPhysicalType.SB1, ColumnLogicalType.BOOLEAN).build());
 
-        columns.add(createFixedNumberColumn(1, 2, scale ? 1 : 0));
-        columns.add(createFixedNumberColumn(2, 4, scale ? 2 : 0));
-        columns.add(createFixedNumberColumn(4, 9, scale ? 4 : 0));
-        columns.add(createFixedNumberColumn(8, 18, scale ? 7 : 0));
+        columns.add(createFixedNumberColumn(1, 2,   scale ? 1 : 0 ));
+        columns.add(createFixedNumberColumn(2, 4,   scale ? 2 : 0 ));
+        columns.add(createFixedNumberColumn(4, 9,   scale ? 4 : 0 ));
+        columns.add(createFixedNumberColumn(8, 18,  scale ? 7 : 0 ));
         columns.add(createFixedNumberColumn(16, 38, scale ? 15 : 0));
 
         columns.add(startBuild("num_float", ColumnPhysicalType.DOUBLE, ColumnLogicalType.REAL).build());
@@ -255,15 +251,15 @@ public class SerialisationPerfIT {
         return columns;
     }
 
-    private static Map<String, Object> getRandomRow(Random r) {
+    private static Map<String, Object> getRandomRow(Random r, boolean scale) {
         Map<String, Object> row = new HashMap<>();
 
-        row.put("num_2_1", nullOr(r, () -> r.nextInt(100) / 10.0));
-        row.put("num_4_2", nullOr(r, () -> r.nextInt(10000) / 100.0));
-        row.put("num_9_4", nullOr(r, () -> r.nextInt(1000000000) / Math.pow(10, 4)));
-        row.put("num_18_7", nullOr(r, () -> nextLongOfPrecision(r, 18) / Math.pow(10, 7)));
+        row.put("num_2_"  + (scale ? 1 : 0), nullOr(r, () -> r.nextInt(100) / 10.0));
+        row.put("num_4_"  + (scale ? 2 : 0), nullOr(r, () -> r.nextInt(10000) / 100.0));
+        row.put("num_9_"  + (scale ? 4 : 0), nullOr(r, () -> r.nextInt(1000000000) / Math.pow(10, 4)));
+        row.put("num_18_" + (scale ? 7 : 0), nullOr(r, () -> nextLongOfPrecision(r, 18) / Math.pow(10, 7)));
         row.put(
-                "num_38_15",
+                "num_38_"  + (scale ? 15 : 0),
                 nullOr(
                         r,
                         () ->
@@ -347,7 +343,7 @@ public class SerialisationPerfIT {
         return ColumnMetadataBuilder
                 .newBuilder()
                 .name(name.toUpperCase(Locale.ROOT))
-                .nullable(true)
+                .nullable(nullable)
                 .physicalType(pt.toString())
                 .logicalType(lt.toString());
     }
