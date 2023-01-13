@@ -122,37 +122,14 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     this.tempVectorsRoot = new VectorSchemaRoot(tempVectors);
   }
 
-  /**
-   * Close the row buffer and release resources. Note that the caller needs to handle
-   * synchronization
-   */
+  /** Close the row buffer by releasing its internal resources. */
   @Override
-  public void close(String name) {
-    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
+  public void closeInternal() {
     if (this.vectorsRoot != null) {
       this.vectorsRoot.close();
       this.tempVectorsRoot.close();
     }
     this.fields.clear();
-    long allocatedAfterRelease = this.allocator.getAllocatedMemory();
-    logger.logInfo(
-        "Trying to close arrow buffer for channel={} from function={}, allocatedBeforeRelease={},"
-            + " allocatedAfterRelease={}",
-        channelFullyQualifiedName,
-        name,
-        allocatedBeforeRelease,
-        allocatedAfterRelease);
-    Utils.closeAllocator(this.allocator);
-
-    // If the channel is valid but still has leftover data, throw an exception because it should be
-    // cleaned up already before calling close
-    if (allocatedBeforeRelease > 0 && channelState.isValid()) {
-      throw new SFException(
-          ErrorCode.INTERNAL_ERROR,
-          String.format(
-              "Memory leaked=%d by allocator=%s, channel=%s",
-              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
-    }
   }
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization */

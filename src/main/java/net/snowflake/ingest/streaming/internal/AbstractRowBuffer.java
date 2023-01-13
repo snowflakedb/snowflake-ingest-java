@@ -22,6 +22,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.util.VisibleForTesting;
 
@@ -473,6 +474,41 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   abstract int getTempRowCount();
 
   /**
+   * Close row buffer by releasing its internal resources only. Note that the allocated memory for
+   * the channel is released elsewhere (in close).
+   */
+  abstract void closeInternal();
+
+  /** Close the row buffer and release allocated memory for the channel. */
+  @Override
+  public synchronized void close(String name) {
+    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
+
+    closeInternal();
+
+    long allocatedAfterRelease = this.allocator.getAllocatedMemory();
+    logger.logInfo(
+        "Trying to close {} for channel={} from function={}, allocatedBeforeRelease={},"
+            + " allocatedAfterRelease={}",
+        this.getClass().getSimpleName(),
+        channelFullyQualifiedName,
+        name,
+        allocatedBeforeRelease,
+        allocatedAfterRelease);
+    Utils.closeAllocator(this.allocator);
+
+    // If the channel is valid but still has leftover data, throw an exception because it should be
+    // cleaned up already before calling close
+    if (allocatedBeforeRelease > 0 && this.channelState.isValid()) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "Memory leaked=%d by allocator=%s, channel=%s",
+              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
+    }
+  }
+
+  /**
    * Given a set of col names to stats, build the right ep info
    *
    * @param rowCount: count of rows in the given arrow buffer
@@ -497,7 +533,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       Constants.BdecVersion bdecVersion,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
-      ChannelRuntimeState channelRuntimeState) {
+      ChannelRuntimeState channelRuntimeState,
+      boolean bufferForTests,
+      boolean enableParquetMemoryOptimization) {
     switch (bdecVersion) {
       case ONE:
         //noinspection unchecked
@@ -516,7 +554,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 allocator,
                 fullyQualifiedChannelName,
                 rowSizeMetric,
-                channelRuntimeState);
+                channelRuntimeState,
+                bufferForTests,
+                enableParquetMemoryOptimization);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);

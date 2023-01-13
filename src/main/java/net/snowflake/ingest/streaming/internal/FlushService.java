@@ -442,8 +442,12 @@ class FlushService<T> {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
-
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            filePath,
+            blobData,
+            bdecVersion,
+            owningClient.getParameterProvider().getEnableParquetInternalBuffering());
     if (buildContext != null) {
       buildContext.stop();
     }
