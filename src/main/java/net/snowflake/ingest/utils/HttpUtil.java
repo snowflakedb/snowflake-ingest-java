@@ -9,6 +9,8 @@ import java.security.Security;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -38,12 +40,13 @@ import org.slf4j.LoggerFactory;
 
 /** Created by hyu on 8/10/17. */
 public class HttpUtil {
-  private static String USE_PROXY = "http.useProxy";
-  private static String PROXY_HOST = "http.proxyHost";
-  private static String PROXY_PORT = "http.proxyPort";
-
+  private static final String USE_PROXY = "http.useProxy";
+  private static final String PROXY_HOST = "http.proxyHost";
+  private static final String PROXY_PORT = "http.proxyPort";
+  private static final String NON_PROXY_HOSTS = "http.nonProxyHosts";
   private static final String HTTP_PROXY_USER = "http.proxyUser";
   private static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
+  private static final String SNOWFLAKE_DOMAIN_NAME = ".snowflakecomputing.com";
 
   private static String PROXY_SCHEME = "http";
   private static int MAX_RETRIES = 3;
@@ -76,9 +79,9 @@ public class HttpUtil {
   // Only connections that are currently owned, not checked out, are subject to idle timeouts.
   private static final int DEFAULT_IDLE_CONNECTION_TIMEOUT_SECONDS = 30;
 
-  public static CloseableHttpClient getHttpClient() {
+  public static CloseableHttpClient getHttpClient(String account) {
     if (httpClient == null) {
-      initHttpClient();
+      initHttpClient(account);
     }
 
     initIdleConnectionMonitoringThread();
@@ -88,7 +91,7 @@ public class HttpUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
 
-  private static void initHttpClient() {
+  private static void initHttpClient(String account) {
 
     Security.setProperty("ocsp.enable", "true");
 
@@ -138,29 +141,31 @@ public class HttpUtil {
 
     // proxy settings
     if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY))) {
-      if (System.getProperty(PROXY_PORT) == null) {
-        throw new IllegalArgumentException(
-            "proxy port number is not provided, please assign proxy port to http.proxyPort option");
-      }
-      if (System.getProperty(PROXY_HOST) == null) {
-        throw new IllegalArgumentException(
-            "proxy host IP is not provided, please assign proxy host IP to http.proxyHost option");
-      }
-      String proxyHost = System.getProperty(PROXY_HOST);
-      int proxyPort = Integer.parseInt(System.getProperty(PROXY_PORT));
-      HttpHost proxy = new HttpHost(proxyHost, proxyPort, PROXY_SCHEME);
-      DefaultProxyRoutePlanner routePlanner = new DefaultProxyRoutePlanner(proxy);
-      clientBuilder = clientBuilder.setRoutePlanner(routePlanner);
+      if (!bypassProxy(account)) {
+        if (System.getProperty(PROXY_PORT) == null) {
+          throw new IllegalArgumentException(
+                  "proxy port number is not provided, please assign proxy port to http.proxyPort option");
+        }
+        if (System.getProperty(PROXY_HOST) == null) {
+          throw new IllegalArgumentException(
+                  "proxy host IP is not provided, please assign proxy host IP to http.proxyHost option");
+        }
+        String proxyHost = System.getProperty(PROXY_HOST);
+        int proxyPort = Integer.parseInt(System.getProperty(PROXY_PORT));
+        HttpHost proxy = new HttpHost(proxyHost, proxyPort, PROXY_SCHEME);
+        DefaultProxyRoutePlanner routePlanner = new DefaultProxyRoutePlanner(proxy);
+        clientBuilder = clientBuilder.setRoutePlanner(routePlanner);
 
-      // Check if proxy username and password are set
-      final String proxyUser = System.getProperty(HTTP_PROXY_USER);
-      final String proxyPassword = System.getProperty(HTTP_PROXY_PASSWORD);
-      if (!Strings.isNullOrEmpty(proxyUser) && !Strings.isNullOrEmpty(proxyPassword)) {
-        Credentials credentials = new UsernamePasswordCredentials(proxyUser, proxyPassword);
-        AuthScope authScope = new AuthScope(proxyHost, proxyPort);
-        CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(authScope, credentials);
-        clientBuilder = clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+        // Check if proxy username and password are set
+        final String proxyUser = System.getProperty(HTTP_PROXY_USER);
+        final String proxyPassword = System.getProperty(HTTP_PROXY_PASSWORD);
+        if (!Strings.isNullOrEmpty(proxyUser) && !Strings.isNullOrEmpty(proxyPassword)) {
+          Credentials credentials = new UsernamePasswordCredentials(proxyUser, proxyPassword);
+          AuthScope authScope = new AuthScope(proxyHost, proxyPort);
+          CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+          credentialsProvider.setCredentials(authScope, credentials);
+          clientBuilder = clientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+        }
       }
     }
 
@@ -338,5 +343,30 @@ public class HttpUtil {
       return title + poolStats + "\n";
     }
     return title;
+  }
+
+  private static Boolean bypassProxy(String account){
+    String targetHost = account + SNOWFLAKE_DOMAIN_NAME;
+    if(System.getProperty(NON_PROXY_HOSTS) != null){
+      if(isInNonProxyHosts(targetHost))
+        return true;
+    }
+    return false;
+  }
+
+  private static Boolean isInNonProxyHosts(String targetHost){
+    String nonProxyHosts = System.getProperty(NON_PROXY_HOSTS)
+            .replace(".", "\\.")
+            .replace("*", ".*");
+    String[] nonProxyHostsArray = nonProxyHosts.split("\\|");
+    Pattern p;
+    Matcher m;
+    for(String i : nonProxyHostsArray){
+      p = Pattern.compile(i);
+      m = p.matcher(targetHost);
+      if(m.matches())
+        return true;
+    }
+    return false;
   }
 }
