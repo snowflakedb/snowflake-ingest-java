@@ -216,7 +216,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.21</version>
-            <scope>provided</scope>
         </dependency>
 
         <!-- JDK logger backend for logging tests -->
@@ -224,7 +223,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.21</version>
-            <scope>test</scope>
         </dependency>
 
         <!-- JUnit so that we can make some basic unit tests -->
@@ -425,6 +423,14 @@
             <artifactId>metrics-jmx</artifactId>
             <version>4.2.3</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/net.jpountz.lz4/lz4 -->
+        <dependency>
+            <groupId>net.jpountz.lz4</groupId>
+            <artifactId>lz4</artifactId>
+            <version>1.3.0</version>
+        </dependency>
+
     </dependencies>
 
     <profiles>
@@ -466,10 +472,6 @@
                                     <pattern>com.fasterxml</pattern>
                                     <shadedPattern>${shadeBase}.fasterxml</shadedPattern>
                                 </relocation>
-                                <relocation>
-                                    <pattern>org.apache</pattern>
-                                    <shadedPattern>${shadeBase}.apache</shadedPattern>
-                                </relocation>
                             </relocations>
                             <filters>
                                 <filter>
@@ -490,12 +492,6 @@
                                     <artifact>commons-logging:commons-logging</artifact>
                                     <excludes>
                                         <exclude>org/apache/commons/logging/impl/AvalonLogger.class</exclude>
-                                    </excludes>
-                                </filter>
-                                <filter>
-                                    <artifact>org.slf4j:slf4j-simple</artifact>
-                                    <excludes>
-                                        <exclude>org/slf4j/**</exclude>
                                     </excludes>
                                 </filter>
                             </filters>

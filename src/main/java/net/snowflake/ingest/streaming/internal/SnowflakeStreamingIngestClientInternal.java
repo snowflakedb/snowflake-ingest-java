@@ -336,6 +336,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
       return channel;
     } catch (IOException | IngestResponseException e) {
+      System.out.println(this.role);
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
   }
