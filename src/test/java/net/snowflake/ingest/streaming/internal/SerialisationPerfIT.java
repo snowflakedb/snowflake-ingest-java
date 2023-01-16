@@ -82,7 +82,7 @@ public class SerialisationPerfIT {
               rs -> size += rs,
               new ChannelRuntimeState("0", 0, true),
               false,
-                  enableParquetInternalBuffering);
+              enableParquetInternalBuffering);
       buffer.setupSchema(columns);
     }
   }
@@ -240,7 +240,7 @@ public class SerialisationPerfIT {
     return columns;
   }
 
-  private static Map<String, Object> getRandomRow(Random r) {
+  public static Map<String, Object> getRandomRow(Random r) {
     Map<String, Object> row = new HashMap<>();
 
     row.put("num_2_1", nullOr(r, () -> r.nextInt(100) / 10.0));

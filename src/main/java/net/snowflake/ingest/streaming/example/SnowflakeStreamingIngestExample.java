@@ -41,16 +41,16 @@ public class SnowflakeStreamingIngestExample {
 
     // Create a streaming ingest client
     try (SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build()) {
+        SnowflakeStreamingIngestClientFactory.builder("gdoci").setProperties(props).build()) {
 
       // Create an open channel request on table MY_TABLE, note that the corresponding
       // db/schema/table needs to be present
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("DB_STREAMINGINGEST")
-              .setSchemaName("PUBLIC")
-              .setTableName("T_STREAMINGINGEST")
+              .setDBName(props.getProperty("database"))
+              .setSchemaName(props.getProperty("schema"))
+              .setTableName("MY_TABLE")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
               .build();
