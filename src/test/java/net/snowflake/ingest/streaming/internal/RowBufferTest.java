@@ -129,6 +129,27 @@ public class RowBufferTest {
   }
 
   @Test
+  public void testCollatedColumnsAreRejected() {
+    AbstractRowBuffer<?> testBuffer = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+
+    ColumnMetadata collatedColumn = new ColumnMetadata();
+    collatedColumn.setName("COLCHAR");
+    collatedColumn.setPhysicalType("LOB");
+    collatedColumn.setNullable(true);
+    collatedColumn.setLogicalType("TEXT");
+    collatedColumn.setByteLength(14);
+    collatedColumn.setLength(11);
+    collatedColumn.setScale(0);
+    collatedColumn.setCollation("en-ci");
+    try {
+      this.rowBufferOnErrorAbort.setupSchema(Collections.singletonList(collatedColumn));
+      Assert.fail("Collated columns are not supported");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.UNSUPPORTED_DATA_TYPE.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
   public void buildFieldErrorStates() {
     // Nonsense Type
     ColumnMetadata testCol = new ColumnMetadata();

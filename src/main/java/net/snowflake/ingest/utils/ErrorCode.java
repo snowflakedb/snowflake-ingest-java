@@ -34,7 +34,7 @@ public enum ErrorCode {
   INVALID_COLLATION_STRING("0026"),
   ENCRYPTION_FAILURE("0027"),
   CHANNEL_STATUS_INVALID("0028"),
-  DATA_TYPE_NOT_SUPPORTED("0029");
+  UNSUPPORTED_DATA_TYPE("0029");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

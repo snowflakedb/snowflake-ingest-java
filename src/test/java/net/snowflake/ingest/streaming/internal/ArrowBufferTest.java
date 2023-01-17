@@ -42,7 +42,7 @@ public class ArrowBufferTest {
     row.put("colInt", 3);
     row.put("colBigInt", 4L);
     row.put("colDecimal", 1.23);
-    row.put("colChar", null); // only nulls can be ingested into collated columns
+    row.put("colChar", "2");
 
     InsertValidationResponse response =
         rowBufferOnErrorContinue.insertRows(Collections.singletonList(row), offsetToken);

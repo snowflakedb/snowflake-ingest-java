@@ -100,7 +100,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     List<FieldVector> tempVectors = new ArrayList<>();
 
     for (ColumnMetadata column : columns) {
-      validateNonNullableCollatedColumn(column);
+      validateColumnCollation(column);
       Field field = buildField(column);
       FieldVector vector = field.createVector(this.allocator);
       if (!field.isNullable()) {

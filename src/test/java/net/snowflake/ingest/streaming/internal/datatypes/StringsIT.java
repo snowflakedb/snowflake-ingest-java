@@ -5,9 +5,13 @@ import static net.snowflake.ingest.TestUtils.buildString;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -191,6 +195,25 @@ public class StringsIT extends AbstractDataTypeTest {
   public void testByteSplit() throws Exception {
     testIngestion("VARCHAR", "a" + buildString("🍞", 8), new StringProvider());
     testIngestion("VARCHAR", "a" + buildString("🍞", 9), new StringProvider());
+  }
+
+  /**
+   * Verifies that non-nullable collated columns are not supported at all and an exception is thrown
+   * already while creating the channel.
+   */
+  @Test
+  public void testCollatedColumnsNotSupported() throws SQLException {
+    String tableName = getRandomIdentifier();
+    conn.createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (\"create\" string collate 'en-ci')", tableName));
+    try {
+      openChannel(tableName);
+      Assert.fail("Opening a channel shouldn't have succeeded");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.UNSUPPORTED_DATA_TYPE.getMessageCode(), e.getVendorCode());
+    }
   }
 
   /**
