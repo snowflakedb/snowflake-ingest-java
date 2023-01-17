@@ -19,14 +19,12 @@ import net.snowflake.ingest.utils.ParameterProvider;
 public class SnowflakeStreamingIngestParquetPerfRunner {
 
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
-  private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
+  private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
   private Properties prop;
 
   private SnowflakeStreamingIngestClientInternal<?> client;
-  private Connection jdbcConnection;
-  private String testDb;
 
   private final Constants.BdecVersion bdecVersion;
 
@@ -60,27 +58,7 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
   }
 
   public void setup() throws Exception {
-    testDb = TEST_DB_PREFIX;
-
     prop = Util.getProperties(bdecVersion);
-    jdbcConnection = Util.getConnection();
-
-    jdbcConnection
-        .createStatement()
-        .execute(String.format("use role %s;", prop.getProperty("role")));
-
-    jdbcConnection
-        .createStatement()
-        .execute(String.format("create or replace database %s;", testDb));
-    jdbcConnection
-        .createStatement()
-        .execute(String.format("create or replace schema %s.%s;", testDb, TEST_SCHEMA));
-
-    // Set timezone to UTC
-    jdbcConnection.createStatement().execute("alter session set timezone = 'UTC';");
-    jdbcConnection
-        .createStatement()
-        .execute(String.format("use warehouse %s", prop.getProperty("warehouse")));
 
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
@@ -100,12 +78,11 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
 
   public void tearDown() throws Exception {
     client.close();
-    jdbcConnection.createStatement().execute(String.format("drop database %s", testDb));
   }
 
   public void runPerfExperiment() throws ExecutionException, InterruptedException {
-    try {
-      jdbcConnection
+   /* try {
+      *//*jdbcConnection
           .createStatement()
           .execute(
               String.format(
@@ -118,10 +95,10 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
                       + "                                    num_float FLOAT,\n"
                       + "                                    str VARCHAR(256),\n"
                       + "                                    bin BINARY(256));",
-                  TEST_TABLE));
+                  TEST_TABLE));*//*
     } catch (SQLException e) {
       throw new RuntimeException("Cannot create table " + TEST_TABLE, e);
-    }
+    }*/
 
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < batchSize; i++) {
@@ -163,7 +140,7 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
   private SnowflakeStreamingIngestChannel openChannel(String tableName, String channelName) {
     OpenChannelRequest request =
         OpenChannelRequest.builder(channelName)
-            .setDBName(testDb)
+            .setDBName(TEST_DB)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(tableName)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
@@ -190,19 +167,4 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
     }
   }
 
-  private void verifyTableRowCount(int rowNumber, String tableName) {
-    try {
-      ResultSet resultCount =
-          jdbcConnection
-              .createStatement()
-              .executeQuery(
-                  String.format("select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, tableName));
-      resultCount.next();
-      if (rowNumber != resultCount.getLong(1)) {
-        throw new IllegalArgumentException("Number of rows is not as expected!");
-      }
-    } catch (SQLException e) {
-      throw new RuntimeException("Cannot verifyTableRowCount for " + tableName, e);
-    }
-  }
 }
