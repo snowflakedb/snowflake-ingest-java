@@ -63,10 +63,15 @@ class BlobBuilder {
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
+   * @param enableParquetMemoryOptimization indicates whether Parquet memory optimization should be
+   *     applied
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
-      String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
+      String filePath,
+      List<List<ChannelData<T>>> blobData,
+      Constants.BdecVersion bdecVersion,
+      boolean enableParquetMemoryOptimization)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -77,15 +82,15 @@ class BlobBuilder {
 
     // TODO: channels with different schema can't be combined even if they belongs to same table
     for (List<ChannelData<T>> channelsDataPerTable : blobData) {
-      ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
       ChannelFlushContext firstChannelFlushContext =
           channelsDataPerTable.get(0).getChannelContext();
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
-      Flusher.SerializationResult result =
-          flusher.serialize(channelsDataPerTable, chunkData, filePath);
+      Flusher.SerializationResult serializedChunk =
+          flusher.serialize(channelsDataPerTable, filePath);
 
-      if (!result.channelsMetadataList.isEmpty()) {
+      if (!serializedChunk.channelsMetadataList.isEmpty()) {
+        ByteArrayOutputStream chunkData = serializedChunk.chunkData;
         Pair<byte[], Integer> compressionResult =
             compressIfNeededAndPadChunk(
                 filePath,
@@ -123,12 +128,14 @@ class BlobBuilder {
                 // The compressedChunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
                 .setChunkLength(compressedChunkLength)
-                .setChannelList(result.channelsMetadataList)
+                .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
-                        result.rowCount, result.columnEpStatsMapCombined))
+                        serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
+                .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
+                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
                 .build();
 
         // Add chunk metadata and data to the list
@@ -143,7 +150,7 @@ class BlobBuilder {
                 + " bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
-            result.rowCount,
+            serializedChunk.rowCount,
             startOffset,
             chunkData.size(),
             compressedChunkLength,

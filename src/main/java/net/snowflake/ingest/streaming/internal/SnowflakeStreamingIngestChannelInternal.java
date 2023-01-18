@@ -22,6 +22,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
@@ -49,7 +50,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // Reference to the client that owns this channel
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
-  // state of the channel that will be shared with its underlying buffer
+  // State of the channel that will be shared with its underlying buffer
   private final ChannelRuntimeState channelState;
 
   /**
@@ -120,7 +121,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             bdecVersion,
             getFullyQualifiedName(),
             this::collectRowSize,
-            channelState);
+            channelState,
+            false,
+            owningClient != null
+                ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
+                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),

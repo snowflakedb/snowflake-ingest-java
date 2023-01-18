@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.vector.VectorLoader;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -28,10 +29,9 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
 
   @Override
   public Flusher.SerializationResult serialize(
-      List<ChannelData<VectorSchemaRoot>> channelsDataPerTable,
-      ByteArrayOutputStream chunkData,
-      String filePath)
+      List<ChannelData<VectorSchemaRoot>> channelsDataPerTable, String filePath)
       throws IOException {
+    ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
     VectorSchemaRoot root = null;
@@ -39,6 +39,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
     VectorLoader loader = null;
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
+    Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
     try {
       for (ChannelData<VectorSchemaRoot> data : channelsDataPerTable) {
@@ -67,6 +68,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
           firstChannelFullyQualifiedTableName =
               data.getChannelContext().getFullyQualifiedTableName();
           arrowWriter.start();
+          chunkMinMaxInsertTimeInMs = data.getMinMaxInsertTimeInMs();
         } else {
           // This method assumes that channelsDataPerTable is grouped by table. We double check
           // here and throw an error if the assumption is violated
@@ -78,6 +80,9 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
 
           columnEpStatsMapCombined =
               ChannelData.getCombinedColumnStatsMap(columnEpStatsMapCombined, data.getColumnEps());
+          chunkMinMaxInsertTimeInMs =
+              ChannelData.getCombinedMinMaxInsertTimeInMs(
+                  chunkMinMaxInsertTimeInMs, data.getMinMaxInsertTimeInMs());
 
           VectorUnloader unloader = new VectorUnloader(data.getVectors());
           ArrowRecordBatch recordBatch = unloader.getRecordBatch();
@@ -104,6 +109,10 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
       }
     }
     return new Flusher.SerializationResult(
-        channelsMetadataList, columnEpStatsMapCombined, rowCount);
+        channelsMetadataList,
+        columnEpStatsMapCombined,
+        rowCount,
+        chunkData,
+        chunkMinMaxInsertTimeInMs);
   }
 }

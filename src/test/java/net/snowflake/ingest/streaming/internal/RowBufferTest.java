@@ -29,16 +29,18 @@ public class RowBufferTest {
     return Arrays.asList(
         new Object[][] {
           {"Arrow", Constants.BdecVersion.ONE},
-          {"Parquet", Constants.BdecVersion.THREE}
+          {"Parquet_w/o_optimization", Constants.BdecVersion.THREE}
         });
   }
 
   private final Constants.BdecVersion bdecVersion;
+  private final boolean enableParquetMemoryOptimization;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
 
   public RowBufferTest(@SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
     this.bdecVersion = bdecVersion;
+    this.enableParquetMemoryOptimization = false;
   }
 
   @Before
@@ -116,7 +118,14 @@ public class RowBufferTest {
   private AbstractRowBuffer<?> createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
     ChannelRuntimeState initialState = new ChannelRuntimeState("0", 0L, true);
     return AbstractRowBuffer.createRowBuffer(
-        onErrorOption, new RootAllocator(), bdecVersion, "test.buffer", rs -> {}, initialState);
+        onErrorOption,
+        new RootAllocator(),
+        bdecVersion,
+        "test.buffer",
+        rs -> {},
+        initialState,
+        true,
+        enableParquetMemoryOptimization);
   }
 
   @Test
@@ -323,6 +332,26 @@ public class RowBufferTest {
     row.put("colBigInt", 4L);
     row.put("colDecimal", 1.23);
     row.put("colChar", "2");
+
+    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
+    Assert.assertFalse(response.hasErrors());
+  }
+
+  @Test
+  public void testNullInsertRow() {
+    testInsertNullRowHelper(this.rowBufferOnErrorContinue);
+    testInsertNullRowHelper(this.rowBufferOnErrorAbort);
+  }
+
+  private void testInsertNullRowHelper(AbstractRowBuffer<?> rowBuffer) {
+    Map<String, Object> row = new HashMap<>();
+    row.put("colTinyInt", null);
+    row.put("\"colTinyInt\"", null);
+    row.put("colSmallInt", null);
+    row.put("colInt", null);
+    row.put("colBigInt", null);
+    row.put("colDecimal", null);
+    row.put("colChar", null);
 
     InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
     Assert.assertFalse(response.hasErrors());
@@ -1200,5 +1229,133 @@ public class RowBufferTest {
     ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals(0, innerBuffer.rowCount);
+  }
+
+  @Test
+  public void testE2EVariant() {
+    testE2EVariantHelper(OpenChannelRequest.OnErrorOption.ABORT);
+    testE2EVariantHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+  }
+
+  private void testE2EVariantHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
+    AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
+
+    ColumnMetadata colVariant = new ColumnMetadata();
+    colVariant.setName("COLVARIANT");
+    colVariant.setPhysicalType("LOB");
+    colVariant.setNullable(true);
+    colVariant.setLogicalType("VARIANT");
+
+    innerBuffer.setupSchema(Collections.singletonList(colVariant));
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("COLVARIANT", null);
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("COLVARIANT", "");
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("COLVARIANT", "null");
+
+    Map<String, Object> row4 = new HashMap<>();
+    row4.put("COLVARIANT", "{\"key\":1}");
+
+    Map<String, Object> row5 = new HashMap<>();
+    row5.put("COLVARIANT", 3);
+
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
+    Assert.assertFalse(response.hasErrors());
+
+    // Check data was inserted into the buffer correctly
+    Assert.assertNull(null, innerBuffer.getVectorValueAt("COLVARIANT", 0));
+    Assert.assertNull(null, innerBuffer.getVectorValueAt("COLVARIANT", 1));
+    Assert.assertEquals("null", innerBuffer.getVectorValueAt("COLVARIANT", 2));
+    Assert.assertEquals("{\"key\":1}", innerBuffer.getVectorValueAt("COLVARIANT", 3));
+    Assert.assertEquals("3", innerBuffer.getVectorValueAt("COLVARIANT", 4));
+
+    // Check stats generation
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    Assert.assertEquals(5, result.getRowCount());
+    Assert.assertEquals(2, result.getColumnEps().get("COLVARIANT").getCurrentNullCount());
+  }
+
+  @Test
+  public void testE2EObject() {
+    testE2EObjectHelper(OpenChannelRequest.OnErrorOption.ABORT);
+    testE2EObjectHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+  }
+
+  private void testE2EObjectHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
+    AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
+
+    ColumnMetadata colObject = new ColumnMetadata();
+    colObject.setName("COLOBJECT");
+    colObject.setPhysicalType("LOB");
+    colObject.setNullable(true);
+    colObject.setLogicalType("OBJECT");
+
+    innerBuffer.setupSchema(Collections.singletonList(colObject));
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("COLOBJECT", "{\"key\":1}");
+
+    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row1), null);
+    Assert.assertFalse(response.hasErrors());
+
+    // Check data was inserted into the buffer correctly
+    Assert.assertEquals("{\"key\":1}", innerBuffer.getVectorValueAt("COLOBJECT", 0));
+
+    // Check stats generation
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    Assert.assertEquals(1, result.getRowCount());
+  }
+
+  @Test
+  public void testE2EArray() {
+    testE2EArrayHelper(OpenChannelRequest.OnErrorOption.ABORT);
+    testE2EArrayHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+  }
+
+  private void testE2EArrayHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
+    AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
+
+    ColumnMetadata colObject = new ColumnMetadata();
+    colObject.setName("COLARRAY");
+    colObject.setPhysicalType("LOB");
+    colObject.setNullable(true);
+    colObject.setLogicalType("ARRAY");
+
+    innerBuffer.setupSchema(Collections.singletonList(colObject));
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("COLARRAY", null);
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("COLARRAY", "");
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("COLARRAY", "null");
+
+    Map<String, Object> row4 = new HashMap<>();
+    row4.put("COLARRAY", "{\"key\":1}");
+
+    Map<String, Object> row5 = new HashMap<>();
+    row5.put("COLARRAY", Arrays.asList(1, 2, 3));
+
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
+    Assert.assertFalse(response.hasErrors());
+
+    // Check data was inserted into the buffer correctly
+    Assert.assertNull(innerBuffer.getVectorValueAt("COLARRAY", 0));
+    Assert.assertEquals("[null]", innerBuffer.getVectorValueAt("COLARRAY", 1));
+    Assert.assertEquals("[null]", innerBuffer.getVectorValueAt("COLARRAY", 2));
+    Assert.assertEquals("[{\"key\":1}]", innerBuffer.getVectorValueAt("COLARRAY", 3));
+    Assert.assertEquals("[1,2,3]", innerBuffer.getVectorValueAt("COLARRAY", 4));
+
+    // Check stats generation
+    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    Assert.assertEquals(5, result.getRowCount());
   }
 }

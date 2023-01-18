@@ -440,7 +440,14 @@ class FlushService<T> {
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
+
+    // Construct the blob along with the metadata of the blob
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            filePath,
+            blobData,
+            bdecVersion,
+            owningClient.getParameterProvider().getEnableParquetInternalBuffering());
     if (buildContext != null) {
       buildContext.stop();
     }

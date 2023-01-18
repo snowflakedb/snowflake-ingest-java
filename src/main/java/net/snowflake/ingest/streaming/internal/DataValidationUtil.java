@@ -15,18 +15,19 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.SimpleTimeZone;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import javax.xml.bind.DatatypeConverter;
@@ -87,18 +88,19 @@ class DataValidationUtil {
    * @return JSON tree representing the input
    */
   private static JsonNode validateAndParseSemiStructuredAsJsonTree(
-      Object input, String snowflakeType) {
+      String columnName, Object input, String snowflakeType) {
     if (input instanceof String) {
       try {
         return objectMapper.readTree((String) input);
       } catch (JsonProcessingException e) {
-        throw valueFormatNotAllowedException(input, snowflakeType, "Not a valid JSON");
+        throw valueFormatNotAllowedException(columnName, input, snowflakeType, "Not a valid JSON");
       }
     } else if (isAllowedSemiStructuredType(input)) {
       return objectMapper.valueToTree(input);
     }
 
     throw typeNotAllowedException(
+        columnName,
         input.getClass(),
         snowflakeType,
         new String[] {
@@ -118,11 +120,19 @@ class DataValidationUtil {
    * @param input Object to validate
    * @return JSON string representing the input
    */
-  static String validateAndParseVariant(Object input) {
-    String output = validateAndParseSemiStructuredAsJsonTree(input, "VARIANT").toString();
+  static String validateAndParseVariant(String columnName, Object input) {
+    JsonNode node = validateAndParseSemiStructuredAsJsonTree(columnName, input, "VARIANT");
+
+    // Missing nodes are not valid json, ingest them as NULL instead
+    if (node.isMissingNode()) {
+      return null;
+    }
+
+    String output = node.toString();
     int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
+          columnName,
           input,
           "VARIANT",
           String.format(
@@ -242,8 +252,8 @@ class DataValidationUtil {
    * @param input Object to validate
    * @return JSON array representing the input
    */
-  static String validateAndParseArray(Object input) {
-    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(input, "ARRAY");
+  static String validateAndParseArray(String columnName, Object input) {
+    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(columnName, input, "ARRAY");
 
     // Non-array values are ingested as single-element arrays, mimicking the Worksheets behavior
     if (!jsonNode.isArray()) {
@@ -255,6 +265,7 @@ class DataValidationUtil {
     int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
+          columnName,
           jsonNode.toString(),
           "ARRAY",
           String.format(
@@ -271,10 +282,10 @@ class DataValidationUtil {
    * @param input Object to validate
    * @return JSON object representing the input
    */
-  static String validateAndParseObject(Object input) {
-    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(input, "OBJECT");
+  static String validateAndParseObject(String columnName, Object input) {
+    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(columnName, input, "OBJECT");
     if (!jsonNode.isObject()) {
-      throw valueFormatNotAllowedException(jsonNode, "OBJECT", "Not an object");
+      throw valueFormatNotAllowedException(columnName, jsonNode, "OBJECT", "Not an object");
     }
 
     String output = jsonNode.toString();
@@ -282,6 +293,7 @@ class DataValidationUtil {
     int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
+          columnName,
           output,
           "OBJECT",
           String.format(
@@ -292,8 +304,8 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input for TIMESTAMP_NTZ or TIMESTAMP_LTZ Snowflake type. Allowed Java
-   * types:
+   * Validates and parses input for TIMESTAMP_NTZ, TIMESTAMP_LTZ and TIMEATAMP_TZ Snowflake types.
+   * Allowed Java types:
    *
    * <ul>
    *   <li>String
@@ -303,40 +315,38 @@ class DataValidationUtil {
    *   <li>ZonedDateTime
    * </ul>
    *
-   * @param input String date in valid format or seconds past the epoch. Accepts fractional seconds
-   *     with precision up to the column's scale
+   * @param input String date in valid format, seconds past the epoch or java.time.* object. Accepts
+   *     fractional seconds with precision up to the column's scale
    * @param scale decimal scale of timestamp 16 byte integer
    * @param ignoreTimezone Must be true for TIMESTAMP_NTZ
    * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
    *     scale
    */
-  static TimestampWrapper validateAndParseTimestampNtzSb16(
-      Object input, int scale, boolean ignoreTimezone) {
-    String valueString;
-    if (input instanceof String) valueString = (String) input;
-    else if (input instanceof LocalDate) valueString = input.toString();
-    else if (input instanceof LocalDateTime) valueString = input.toString();
-    else if (input instanceof ZonedDateTime)
-      valueString =
-          ignoreTimezone
-              ? ((ZonedDateTime) input).toLocalDateTime().toString()
-              : DateTimeFormatter.ISO_DATE_TIME.format(((ZonedDateTime) input).toOffsetDateTime());
-    else if (input instanceof OffsetDateTime)
-      valueString =
-          ignoreTimezone
-              ? ((OffsetDateTime) input).toLocalDateTime().toString()
-              : DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
-    else
+  static TimestampWrapper validateAndParseTimestamp(
+      String columnName, Object input, int scale, boolean ignoreTimezone) {
+    TimeZone effectiveTimeZone = ignoreTimezone ? GMT : DEFAULT_TIMEZONE;
+    SFTimestamp timestamp;
+    if (input instanceof String) {
+      SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
+      timestamp =
+          snowflakeDateTimeFormatter.parse(
+              (String) input, effectiveTimeZone, 0, DATE | TIMESTAMP, ignoreTimezone, null);
+    } else if (input instanceof LocalDate) {
+      timestamp = timeStampFromLocalDate((LocalDate) input, effectiveTimeZone);
+    } else if (input instanceof LocalDateTime) {
+      timestamp = timeStampFromLocalDateTime((LocalDateTime) input, effectiveTimeZone);
+    } else if (input instanceof ZonedDateTime) {
+      timestamp = timestampFromZonedDateTime((ZonedDateTime) input, ignoreTimezone);
+    } else if (input instanceof OffsetDateTime) {
+      timestamp = timestampFromOffsetDateTime((OffsetDateTime) input, ignoreTimezone);
+    } else {
       throw typeNotAllowedException(
+          columnName,
           input.getClass(),
           "TIMESTAMP",
           new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
+    }
 
-    SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
-    TimeZone effectiveTimeZone = ignoreTimezone ? GMT : DEFAULT_TIMEZONE;
-    SFTimestamp timestamp =
-        snowflakeDateTimeFormatter.parse(
-            valueString, effectiveTimeZone, 0, DATE | TIMESTAMP, ignoreTimezone, null);
     if (timestamp != null) {
       long epoch = timestamp.getSeconds().longValue();
       int fractionInScale = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
@@ -345,15 +355,16 @@ class DataValidationUtil {
               .multiply(Power10.sb16Table[scale])
               .add(BigInteger.valueOf(fractionInScale));
       return new TimestampWrapper(
-          epoch, fractionInScale * Power10.intTable[9 - scale], timeInScale);
-    } else {
-      throw valueFormatNotAllowedException(
-          input.toString(),
-          "TIMESTAMP",
-          "Not a valid timestamp, see"
-              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
-              + " for the list of supported formats");
+          epoch, fractionInScale * Power10.intTable[9 - scale], timeInScale, timestamp);
     }
+
+    throw valueFormatNotAllowedException(
+        columnName,
+        input.toString(),
+        "TIMESTAMP",
+        "Not a valid timestamp, see"
+            + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
+            + " for the list of supported formats");
   }
 
   /**
@@ -367,62 +378,6 @@ class DataValidationUtil {
     BigDecimal epochSecondsInNanoSeconds =
         new BigDecimal(input.getSeconds().multiply(BigInteger.valueOf(Power10.intTable[9])));
     return input.getNanosSinceEpoch().subtract(epochSecondsInNanoSeconds).intValue();
-  }
-
-  /**
-   * Validates and parses input for TIMESTAMP_TZ Snowflake type. Allowed Java types:
-   *
-   * <ul>
-   *   <li>String
-   *   <li>LocalDate
-   *   <li>LocalDateTime
-   *   <li>OffsetDateTime
-   *   <li>ZonedDateTime
-   * </ul>
-   *
-   * @param input TIMESTAMP_TZ in "2021-01-01 01:00:00 +0100" format
-   * @param scale decimal scale of timestamp 16 byte integer
-   * @return TimestampWrapper with epoch seconds, fractional seconds, and epoch time in the column
-   *     scale
-   */
-  static TimestampWrapper validateAndParseTimestampTz(Object input, int scale) {
-
-    String stringInput;
-    if (input instanceof String) stringInput = (String) input;
-    else if (input instanceof LocalDate) stringInput = input.toString();
-    else if (input instanceof LocalDateTime) stringInput = input.toString();
-    else if (input instanceof ZonedDateTime)
-      stringInput =
-          DateTimeFormatter.ISO_DATE_TIME.format(((ZonedDateTime) input).toOffsetDateTime());
-    else if (input instanceof OffsetDateTime)
-      stringInput = DateTimeFormatter.ISO_DATE_TIME.format((OffsetDateTime) input);
-    else
-      throw typeNotAllowedException(
-          input.getClass(),
-          "TIMESTAMP",
-          new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
-
-    SnowflakeDateTimeFormat snowflakeDateTimeFormatter = createDateTimeFormatter();
-
-    SFTimestamp timestamp =
-        snowflakeDateTimeFormatter.parse(
-            stringInput, DEFAULT_TIMEZONE, 0, DATE | TIMESTAMP, false, null);
-    if (timestamp != null) {
-      long epoch = timestamp.getSeconds().longValue();
-      int fractionInScale = getFractionFromTimestamp(timestamp) / Power10.intTable[9 - scale];
-      return new TimestampWrapper(
-          epoch,
-          fractionInScale * Power10.intTable[9 - scale],
-          BigInteger.valueOf(epoch * Power10.intTable[scale] + fractionInScale),
-          timestamp);
-    } else {
-      throw valueFormatNotAllowedException(
-          input.toString(),
-          "TIMESTAMP",
-          "Not a valid timestamp, see"
-              + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#timestamp-formats"
-              + " for the list of supported formats");
-    }
   }
 
   /**
@@ -441,7 +396,8 @@ class DataValidationUtil {
    *     maximum allowed by Snowflake
    *     (https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar)
    */
-  static String validateAndParseString(Object input, Optional<Integer> maxLengthOptional) {
+  static String validateAndParseString(
+      String columnName, Object input, Optional<Integer> maxLengthOptional) {
     String output;
     if (input instanceof String) {
       output = (String) input;
@@ -451,18 +407,23 @@ class DataValidationUtil {
       output = input.toString();
     } else {
       throw typeNotAllowedException(
-          input.getClass(), "STRING", new String[] {"String", "Number", "boolean", "char"});
+          columnName,
+          input.getClass(),
+          "STRING",
+          new String[] {"String", "Number", "boolean", "char"});
     }
     int maxLength = maxLengthOptional.orElse(BYTES_16_MB);
 
     if (output.length() > maxLength) {
       throw valueFormatNotAllowedException(
+          columnName,
           input,
           "STRING",
           String.format("String too long: length=%d maxLength=%d", output.length(), maxLength));
     }
     return output;
   }
+
   /**
    * Returns a BigDecimal representation of the input. Strings of the form "1.23E4" will be treated
    * as being written in * scientific notation (e.g. 1.23 * 10^4). Does not perform any size
@@ -472,7 +433,7 @@ class DataValidationUtil {
    * <li>BigInteger, BigDecimal
    * <li>String
    */
-  static BigDecimal validateAndParseBigDecimal(Object input) {
+  static BigDecimal validateAndParseBigDecimal(String columnName, Object input) {
     if (input instanceof BigDecimal) {
       return (BigDecimal) input;
     } else if (input instanceof BigInteger) {
@@ -488,10 +449,11 @@ class DataValidationUtil {
       try {
         return new BigDecimal((String) input);
       } catch (NumberFormatException e) {
-        throw valueFormatNotAllowedException(input, "NUMBER", "Not a valid number");
+        throw valueFormatNotAllowedException(columnName, input, "NUMBER", "Not a valid number");
       }
     } else {
       throw typeNotAllowedException(
+          columnName,
           input.getClass(),
           "NUMBER",
           new String[] {
@@ -511,29 +473,30 @@ class DataValidationUtil {
    *   <li>ZonedDateTime
    * </ul>
    */
-  static int validateAndParseDate(Object input) {
-    String inputString;
+  static int validateAndParseDate(String columnName, Object input) {
+    SFTimestamp timestamp;
     if (input instanceof String) {
-      inputString = (String) input;
+      timestamp =
+          createDateTimeFormatter().parse((String) input, GMT, 0, DATE | TIMESTAMP, true, null);
     } else if (input instanceof LocalDate) {
-      inputString = input.toString();
+      timestamp = timeStampFromLocalDate((LocalDate) input, GMT);
     } else if (input instanceof LocalDateTime) {
-      inputString = ((LocalDateTime) input).toLocalDate().toString();
+      timestamp = timeStampFromLocalDateTime((LocalDateTime) input, GMT);
     } else if (input instanceof ZonedDateTime) {
-      inputString = ((ZonedDateTime) input).toLocalDate().toString();
+      timestamp = timestampFromZonedDateTime((ZonedDateTime) input, true);
     } else if (input instanceof OffsetDateTime) {
-      inputString = ((OffsetDateTime) input).toLocalDate().toString();
+      timestamp = timestampFromOffsetDateTime((OffsetDateTime) input, true);
     } else {
       throw typeNotAllowedException(
+          columnName,
           input.getClass(),
           "DATE",
           new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
     }
 
-    SFTimestamp timestamp =
-        createDateTimeFormatter().parse(inputString, GMT, 0, DATE | TIMESTAMP, true, null);
     if (timestamp == null)
       throw valueFormatNotAllowedException(
+          columnName,
           input,
           "DATE",
           "Not a valid date, see"
@@ -556,7 +519,8 @@ class DataValidationUtil {
    *     BINARY column
    * @return Validated array
    */
-  static byte[] validateAndParseBinary(Object input, Optional<Integer> maxLengthOptional) {
+  static byte[] validateAndParseBinary(
+      String columnName, Object input, Optional<Integer> maxLengthOptional) {
     byte[] output;
     if (input instanceof byte[]) {
       output = (byte[]) input;
@@ -564,15 +528,17 @@ class DataValidationUtil {
       try {
         output = DatatypeConverter.parseHexBinary((String) input);
       } catch (IllegalArgumentException e) {
-        throw valueFormatNotAllowedException(input, "BINARY", "Not a valid hex string");
+        throw valueFormatNotAllowedException(columnName, input, "BINARY", "Not a valid hex string");
       }
     } else {
-      throw typeNotAllowedException(input.getClass(), "BINARY", new String[] {"byte[]", "String"});
+      throw typeNotAllowedException(
+          columnName, input.getClass(), "BINARY", new String[] {"byte[]", "String"});
     }
 
     int maxLength = maxLengthOptional.orElse(BYTES_8_MB);
     if (output.length > maxLength) {
       throw valueFormatNotAllowedException(
+          columnName,
           String.format("byte[%d]", output.length),
           "BINARY",
           String.format("Binary too long: length=%d maxLength=%d", output.length, maxLength));
@@ -590,36 +556,40 @@ class DataValidationUtil {
    *   <li>OffsetTime
    * </ul>
    */
-  static BigInteger validateAndParseTime(Object input, int scale) {
-    String stringInput;
+  static BigInteger validateAndParseTime(String columnName, Object input, int scale) {
+    SFTimestamp timestamp;
     if (input instanceof String) {
-      stringInput = (String) input;
+      String stringInput = (String) input;
+      timestamp =
+          createDateTimeFormatter()
+              .parse(stringInput, GMT, 0, SnowflakeDateTimeFormat.TIME, true, null);
     } else if (input instanceof LocalTime) {
-      stringInput = input.toString();
+      timestamp =
+          timeStampFromLocalDateTime(((LocalTime) input).atDate(LocalDate.ofEpochDay(0)), GMT);
     } else if (input instanceof OffsetTime) {
-      stringInput = ((OffsetTime) input).toLocalTime().toString();
+      timestamp =
+          timeStampFromLocalDateTime(
+              ((OffsetTime) input).toLocalTime().atDate(LocalDate.ofEpochDay(0)), GMT);
     } else {
       throw typeNotAllowedException(
-          input.getClass(), "TIME", new String[] {"String", "LocalTime", "OffsetTime"});
+          columnName, input.getClass(), "TIME", new String[] {"String", "LocalTime", "OffsetTime"});
     }
 
-    SFTimestamp timestamp =
-        createDateTimeFormatter()
-            .parse(stringInput, GMT, 0, SnowflakeDateTimeFormat.TIME, true, null);
     if (timestamp == null) {
       throw valueFormatNotAllowedException(
+          columnName,
           input,
           "TIME",
           "Not a valid time, see"
               + " https://docs.snowflake.com/en/user-guide/date-time-input-output.html#time-formats"
               + " for the list of supported formats");
-    } else {
-      return timestamp
-          .getNanosSinceEpoch()
-          .divide(BigDecimal.valueOf(Power10.intTable[9 - scale]))
-          .toBigInteger()
-          .mod(BigInteger.valueOf(24L * 60 * 60 * Power10.intTable[scale]));
     }
+
+    return timestamp
+        .getNanosSinceEpoch()
+        .toBigInteger()
+        .divide(Power10.sb16Table[9 - scale])
+        .mod(BigInteger.valueOf(24L * 60 * 60).multiply(Power10.sb16Table[scale]));
   }
 
   /**
@@ -632,7 +602,7 @@ class DataValidationUtil {
    *
    * @param input
    */
-  static double validateAndParseReal(Object input) {
+  static double validateAndParseReal(String columnName, Object input) {
     if (input instanceof Float) {
       return Double.parseDouble(input.toString());
     } else if (input instanceof Number) {
@@ -651,12 +621,13 @@ class DataValidationUtil {
           case "-inf":
             return Double.NEGATIVE_INFINITY;
           default:
-            throw valueFormatNotAllowedException(input, "REAL", "Not a valid decimal number");
+            throw valueFormatNotAllowedException(
+                columnName, input, "REAL", "Not a valid decimal number");
         }
       }
     }
-
-    throw typeNotAllowedException(input.getClass(), "REAL", new String[] {"Number", "String"});
+    throw typeNotAllowedException(
+        columnName, input.getClass(), "REAL", new String[] {"Number", "String"});
   }
 
   /**
@@ -673,17 +644,17 @@ class DataValidationUtil {
    * @param input Input to be converted
    * @return 1 or 0 where 1=true, 0=false
    */
-  static int validateAndParseBoolean(Object input) {
+  static int validateAndParseBoolean(String columnName, Object input) {
     if (input instanceof Boolean) {
       return (boolean) input ? 1 : 0;
     } else if (input instanceof Number) {
       return new BigDecimal(input.toString()).compareTo(BigDecimal.ZERO) == 0 ? 0 : 1;
     } else if (input instanceof String) {
-      return convertStringToBoolean((String) input) ? 1 : 0;
+      return convertStringToBoolean(columnName, (String) input) ? 1 : 0;
     }
 
     throw typeNotAllowedException(
-        input.getClass(), "BOOLEAN", new String[] {"boolean", "Number", "String"});
+        columnName, input.getClass(), "BOOLEAN", new String[] {"boolean", "Number", "String"});
   }
 
   static void checkValueInRange(BigDecimal bigDecimalValue, int scale, int precision) {
@@ -700,10 +671,11 @@ class DataValidationUtil {
   static Set<String> allowedBooleanStringsLowerCased =
       Sets.newHashSet("1", "0", "yes", "no", "y", "n", "t", "f", "true", "false", "on", "off");
 
-  private static boolean convertStringToBoolean(String value) {
+  private static boolean convertStringToBoolean(String columnName, String value) {
     String lowerCasedValue = value.toLowerCase();
     if (!allowedBooleanStringsLowerCased.contains(lowerCasedValue)) {
       throw valueFormatNotAllowedException(
+          columnName,
           value,
           "BOOLEAN",
           "Not a valid boolean, see"
@@ -726,12 +698,12 @@ class DataValidationUtil {
    * @param allowedJavaTypes Java types supported for the Java type
    */
   private static SFException typeNotAllowedException(
-      Class<?> javaType, String snowflakeType, String[] allowedJavaTypes) {
+      String columnName, Class<?> javaType, String snowflakeType, String[] allowedJavaTypes) {
     return new SFException(
         ErrorCode.INVALID_ROW,
         String.format(
-            "Object of type %s cannot be ingested into Snowflake column of type %s",
-            javaType.getName(), snowflakeType),
+            "Object of type %s cannot be ingested into Snowflake column %s of type %s",
+            javaType.getName(), columnName, snowflakeType),
         String.format(
             String.format("Allowed Java types: %s", String.join(", ", allowedJavaTypes))));
   }
@@ -744,12 +716,13 @@ class DataValidationUtil {
    * @param snowflakeType Snowflake column type
    */
   private static SFException valueFormatNotAllowedException(
-      Object value, String snowflakeType, String reason) {
+      String columnName, Object value, String snowflakeType, String reason) {
     return new SFException(
         ErrorCode.INVALID_ROW,
         sanitizeValueForExceptionMessage(value),
         String.format(
-            "Value cannot be ingested into Snowflake column %s: %s", snowflakeType, reason));
+            "Value cannot be ingested into Snowflake column %s of type %s: %s",
+            columnName, snowflakeType, reason));
   }
 
   /**
@@ -762,5 +735,53 @@ class DataValidationUtil {
     int maxSize = 20;
     String valueString = value.toString();
     return valueString.length() <= maxSize ? valueString : valueString.substring(0, 20) + "...";
+  }
+
+  /**
+   * Constructs SFTimestamp from {@link LocalDate}. Default timezone is used for _TZ and _LTZ and
+   * UTC for _NTZ.
+   */
+  private static SFTimestamp timeStampFromLocalDate(LocalDate date, TimeZone tz) {
+    return timeStampFromLocalDateTime(date.atStartOfDay(), tz);
+  }
+
+  /**
+   * Constructs SFTimestamp from {@link LocalDateTime}. Default timezone is used for _TZ and _LTZ
+   * and UTC for _NTZ.
+   */
+  private static SFTimestamp timeStampFromLocalDateTime(LocalDateTime localDateTime, TimeZone tz) {
+    return timestampFromInstant(localDateTime.atZone(tz.toZoneId()).toInstant(), tz);
+  }
+
+  /** Constructs SFTimestamp from {@link ZonedDateTime}. Timezone is dropped for _NTZ. */
+  private static SFTimestamp timestampFromZonedDateTime(
+      ZonedDateTime zonedDateTime, boolean ignoreTimezone) {
+    if (ignoreTimezone) {
+      LocalDateTime local = zonedDateTime.toLocalDateTime();
+      return timeStampFromLocalDateTime(local, GMT);
+    }
+
+    TimeZone timeZone = TimeZone.getTimeZone(zonedDateTime.getZone().toString());
+    return timestampFromInstant(zonedDateTime.toInstant(), timeZone);
+  }
+
+  /** Constructs SFTimestamp from {@link OffsetDateTime}. Timezone is dropped for _NTZ. */
+  private static SFTimestamp timestampFromOffsetDateTime(
+      OffsetDateTime offsetDateTime, boolean dropTimezone) {
+    if (dropTimezone) {
+      LocalDateTime local = offsetDateTime.toLocalDateTime();
+      return timeStampFromLocalDateTime(local, GMT);
+    }
+    TimeZone tz =
+        new SimpleTimeZone(
+            offsetDateTime.getOffset().getTotalSeconds() * 1000,
+            "GENERATED_SNOWPIPE_STREAMING:" + offsetDateTime.getOffset());
+    return timestampFromInstant(offsetDateTime.toInstant(), tz);
+  }
+
+  /** Constructs SFTimestamp from {@link Instant} and time zone. */
+  private static SFTimestamp timestampFromInstant(Instant instant, TimeZone timeZone) {
+    return SFTimestamp.fromNanoseconds(
+        instant.getEpochSecond() * Power10.intTable[9] + instant.getNano(), timeZone);
   }
 }

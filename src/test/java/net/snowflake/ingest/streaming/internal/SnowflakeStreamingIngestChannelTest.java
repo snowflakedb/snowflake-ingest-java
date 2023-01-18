@@ -497,10 +497,12 @@ public class SnowflakeStreamingIngestChannelTest {
     ChannelData<VectorSchemaRoot> data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertNull(data);
 
+    long insertStartTimeInMs = System.currentTimeMillis();
     InsertValidationResponse response = channel.insertRow(row, "1");
     Assert.assertFalse(response.hasErrors());
     response = channel.insertRows(Collections.singletonList(row), "2");
     Assert.assertFalse(response.hasErrors());
+    long insertEndTimeInMs = System.currentTimeMillis();
 
     // Get data again to verify the row is inserted
     data = channel.getData("my_snowpipe_streaming.bdec");
@@ -509,6 +511,8 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertEquals(1, data.getVectors().getFieldVectors().size());
     Assert.assertEquals("2", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
+    Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
+    Assert.assertTrue(insertEndTimeInMs >= data.getMinMaxInsertTimeInMs().getSecond());
   }
 
   @Test

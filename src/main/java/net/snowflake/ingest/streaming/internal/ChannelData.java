@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 
 /**
@@ -23,6 +24,7 @@ class ChannelData<T> {
   private float bufferSize;
   private int rowCount;
   private Map<String, RowBufferStats> columnEps;
+  private Pair<Long, Long> minMaxInsertTimeInMs;
   private ChannelFlushContext channelFlushContext;
   private Supplier<Flusher<T>> flusherFactory;
 
@@ -56,6 +58,18 @@ class ChannelData<T> {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Column stats map key mismatch");
     }
     return result;
+  }
+
+  /**
+   * Combines the two paris of min/max insert timestamp together
+   *
+   * @return A new pair which the first element is min(left min, right min) and the second element
+   *     is max(left max, right max)
+   */
+  public static Pair<Long, Long> getCombinedMinMaxInsertTimeInMs(
+      Pair<Long, Long> left, Pair<Long, Long> right) {
+    return new Pair<>(
+        Math.min(left.getFirst(), right.getFirst()), Math.max(left.getSecond(), right.getSecond()));
   }
 
   public Map<String, RowBufferStats> getColumnEps() {
@@ -120,6 +134,14 @@ class ChannelData<T> {
 
   public void setFlusherFactory(Supplier<Flusher<T>> flusherFactory) {
     this.flusherFactory = flusherFactory;
+  }
+
+  Pair<Long, Long> getMinMaxInsertTimeInMs() {
+    return this.minMaxInsertTimeInMs;
+  }
+
+  void setMinMaxInsertTimeInMs(Pair<Long, Long> minMaxInsertTimeInMs) {
+    this.minMaxInsertTimeInMs = minMaxInsertTimeInMs;
   }
 
   @Override
