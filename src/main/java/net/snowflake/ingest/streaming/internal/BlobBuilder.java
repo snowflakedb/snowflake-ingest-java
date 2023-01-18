@@ -86,11 +86,15 @@ class BlobBuilder {
           channelsDataPerTable.get(0).getChannelContext();
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
+      long serialize = System.currentTimeMillis();
       Flusher.SerializationResult serializedChunk =
           flusher.serialize(channelsDataPerTable, filePath);
+      System.out.println("sssssss serialize " + (System.currentTimeMillis() - serialize));
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         ByteArrayOutputStream chunkData = serializedChunk.chunkData;
+        long compressEncrypt = System.currentTimeMillis();
+        long compress = System.currentTimeMillis();
         Pair<byte[], Integer> compressionResult =
             compressIfNeededAndPadChunk(
                 filePath,
@@ -99,12 +103,14 @@ class BlobBuilder {
                 bdecVersion == Constants.BdecVersion.ONE);
         byte[] compressedAndPaddedChunkData = compressionResult.getFirst();
         int compressedChunkLength = compressionResult.getSecond();
+        System.out.println("sssssss compress " + (System.currentTimeMillis() - compress));
 
         // Encrypt the compressed chunk data, the encryption key is derived using the key from
         // server with the full blob path.
         // We need to maintain IV as a block counter for the whole file, even interleaved,
         // to align with decryption on the Snowflake query path.
         // TODO: address alignment for the header SNOW-557866
+        long encrypt = System.currentTimeMillis();
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
             Cryptor.encrypt(
@@ -156,12 +162,16 @@ class BlobBuilder {
             compressedChunkLength,
             encryptedCompressedChunkDataSize,
             bdecVersion);
+
+        System.out.println("sssssss encrypt " + (System.currentTimeMillis() - encrypt));
       }
     }
 
+    long build = System.currentTimeMillis();
     // Build blob file bytes
     byte[] blobBytes =
         buildBlob(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
+    System.out.println("sssssss build " + (System.currentTimeMillis() - build));
     return new Blob(blobBytes, chunksMetadataList);
   }
 
