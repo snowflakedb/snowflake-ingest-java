@@ -49,6 +49,7 @@ public class SnowflakeStreamingIngestPerf {
       row.put("c6", randAlphabeticString());
       row.put("c7", randAlphabeticString());
       rows.add(row);
+      row = new HashMap<>();
     }
     return rows;
   }
