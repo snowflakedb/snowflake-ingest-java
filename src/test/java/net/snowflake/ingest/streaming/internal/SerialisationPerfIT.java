@@ -17,6 +17,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.streaming.example.Util;
 import net.snowflake.ingest.streaming.internal.AbstractRowBuffer.ColumnLogicalType;
 import net.snowflake.ingest.streaming.internal.AbstractRowBuffer.ColumnPhysicalType;
 import net.snowflake.ingest.streaming.internal.Flusher.SerializationResult;
@@ -106,6 +107,7 @@ public class SerialisationPerfIT {
   public void test() throws IOException {
     final int numberOfChannels = 10;
     final int rowNumber = 100000;
+    boolean nullable = false;
 
     List<ColumnMetadata> columns = createColumns(true);
 
@@ -114,7 +116,7 @@ public class SerialisationPerfIT {
       statsMap.put(column.getName(), new RowBufferStats(column.getName()));
     }
 
-    List<FileStats> fileStatsList = run(numberOfChannels, rowNumber, columns, statsMap);
+    List<FileStats> fileStatsList = run(numberOfChannels, rowNumber, columns, statsMap, nullable);
     long totalRuntimeMilli = fileStatsList.stream().mapToLong(s -> s.runtimeMilli).sum();
     double avgRuntimeMilli =
         fileStatsList.stream().mapToLong(s -> s.runtimeMilli).average().getAsDouble();
@@ -153,7 +155,8 @@ public class SerialisationPerfIT {
       int numberOfChannels,
       int rowNumber,
       List<ColumnMetadata> columns,
-      Map<String, RowBufferStats> statsMap)
+      Map<String, RowBufferStats> statsMap,
+      boolean nullable)
       throws IOException {
     RootAllocator allocator = new RootAllocator();
     List<BufferChannelContext<T>> buffers =
@@ -171,7 +174,7 @@ public class SerialisationPerfIT {
     long fileStartTimeMilli = System.currentTimeMillis();
     for (int i = 0; i < rowNumber; i++) {
       for (BufferChannelContext<?> bufferChannelContext : buffers) {
-        bufferChannelContext.buffer.insertRows(Collections.singletonList(getRandomRow(r)), null);
+        bufferChannelContext.buffer.insertRows(Collections.singletonList(Util.getRandomRow(r, nullable)), null);
         rows++;
       }
       float size = (float) buffers.stream().mapToDouble(b -> b.size).sum();
