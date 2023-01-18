@@ -2,9 +2,6 @@ package net.snowflake.ingest.streaming.example;
 
 import static net.snowflake.ingest.utils.Constants.ROLE;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.*;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
@@ -33,7 +30,9 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
   private final int batchSize;
   private final int iterations;
   private final int numChannels;
-  private String clientName = "GDOCI_PERF_";
+
+  private boolean nullable;
+  private String clientName = "EC2_GDOCI_PERF_";
 
   public SnowflakeStreamingIngestParquetPerfRunner(
       @SuppressWarnings("unused") String name,
@@ -41,12 +40,14 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
       Constants.BdecVersion bdecVersion,
       int batchSize,
       int iterations,
-      int numChannels) {
+      int numChannels,
+      boolean nullable) {
     this.bdecVersion = bdecVersion;
     this.enableInternalParquetBuffering = enableInternalParquetBuffering;
     this.batchSize = batchSize;
     this.iterations = iterations;
     this.numChannels = numChannels;
+    this.nullable = nullable;
     this.clientName +=
         enableInternalParquetBuffering
             + "_"
@@ -54,7 +55,9 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
             + "_"
             + (this.batchSize * iterations)
             + "x"
-            + numChannels;
+            + numChannels
+            + "_nullable_"
+            + nullable;
   }
 
   public void setup() throws Exception {
@@ -81,21 +84,23 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
   }
 
   public void runPerfExperiment() throws ExecutionException, InterruptedException {
-   /* try {
-      *//*jdbcConnection
-          .createStatement()
-          .execute(
-              String.format(
-                  "create or replace table %s (\n"
-                      + "                                    num_2_1 NUMBER(2, 1),\n"
-                      + "                                    num_4_2 NUMBER(4, 2),\n"
-                      + "                                    num_9_4 NUMBER(9, 4),\n"
-                      + "                                    num_18_7 NUMBER(18, 7),\n"
-                      + "                                    num_38_15 NUMBER(38, 15),\n"
-                      + "                                    num_float FLOAT,\n"
-                      + "                                    str VARCHAR(256),\n"
-                      + "                                    bin BINARY(256));",
-                  TEST_TABLE));*//*
+    /* try {
+     */
+    /*jdbcConnection
+    .createStatement()
+    .execute(
+        String.format(
+            "create or replace table %s (\n"
+                + "                                    num_2_1 NUMBER(2, 1),\n"
+                + "                                    num_4_2 NUMBER(4, 2),\n"
+                + "                                    num_9_4 NUMBER(9, 4),\n"
+                + "                                    num_18_7 NUMBER(18, 7),\n"
+                + "                                    num_38_15 NUMBER(38, 15),\n"
+                + "                                    num_float FLOAT,\n"
+                + "                                    str VARCHAR(256),\n"
+                + "                                    bin BINARY(256));",
+            TEST_TABLE));*/
+    /*
     } catch (SQLException e) {
       throw new RuntimeException("Cannot create table " + TEST_TABLE, e);
     }*/
@@ -103,7 +108,7 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < batchSize; i++) {
       Random r = new Random();
-      rows.add(Util.getRandomRow(r));
+      rows.add(Util.getRandomRow(r, nullable));
     }
 
     ExecutorService testThreadPool = Executors.newFixedThreadPool(numChannels);
@@ -166,5 +171,4 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
       }
     }
   }
-
 }
