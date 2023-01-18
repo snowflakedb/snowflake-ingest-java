@@ -93,7 +93,6 @@ class BlobBuilder {
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         ByteArrayOutputStream chunkData = serializedChunk.chunkData;
-        long compressEncrypt = System.currentTimeMillis();
         long compress = System.currentTimeMillis();
         Pair<byte[], Integer> compressionResult =
             compressIfNeededAndPadChunk(
@@ -103,7 +102,15 @@ class BlobBuilder {
                 bdecVersion == Constants.BdecVersion.ONE);
         byte[] compressedAndPaddedChunkData = compressionResult.getFirst();
         int compressedChunkLength = compressionResult.getSecond();
-        System.out.println("sssssss compress " + (System.currentTimeMillis() - compress));
+        System.out.println(
+            "sssssss compress "
+                + (System.currentTimeMillis() - compress)
+                + " "
+                + filePath
+                + " "
+                + serializedChunk.rowCount
+                + " "
+                + compressedChunkLength);
 
         // Encrypt the compressed chunk data, the encryption key is derived using the key from
         // server with the full blob path.
@@ -163,7 +170,8 @@ class BlobBuilder {
             encryptedCompressedChunkDataSize,
             bdecVersion);
 
-        System.out.println("sssssss encrypt " + (System.currentTimeMillis() - encrypt));
+        System.out.println(
+            "sssssss encrypt " + (System.currentTimeMillis() - encrypt) + " " + filePath);
       }
     }
 
@@ -171,7 +179,13 @@ class BlobBuilder {
     // Build blob file bytes
     byte[] blobBytes =
         buildBlob(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
-    System.out.println("sssssss build " + (System.currentTimeMillis() - build));
+    System.out.println(
+        "sssssss build "
+            + (System.currentTimeMillis() - build)
+            + " "
+            + filePath
+            + " "
+            + curDataSize);
     return new Blob(blobBytes, chunksMetadataList);
   }
 

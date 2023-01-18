@@ -59,6 +59,16 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
             data.getRowCount(),
             data.getBufferSize(),
             filePath);
+        System.out.println(
+            "sssssss Start building channel="
+                + data.getChannelContext().getFullyQualifiedName()
+                + ", rowCount="
+                + data.getRowCount()
+                + ", bufferSize="
+                + data.getBufferSize()
+                + ",+ in blob="
+                + filePath
+                + ")");
 
         if (root == null) {
           columnEpStatsMapCombined = data.getColumnEps();
