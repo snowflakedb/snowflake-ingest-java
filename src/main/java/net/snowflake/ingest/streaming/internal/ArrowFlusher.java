@@ -65,7 +65,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
                 + ", rowCount="
                 + data.getRowCount()
                 + ", bufferSize="
-                + data.getBufferSize()
+                + (long) data.getBufferSize()
                 + ",+ in blob="
                 + filePath
                 + ")");

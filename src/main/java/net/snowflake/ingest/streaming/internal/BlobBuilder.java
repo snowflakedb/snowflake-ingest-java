@@ -30,6 +30,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.xml.bind.DatatypeConverter;
+import net.snowflake.client.jdbc.internal.google.api.client.util.DateTime;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
@@ -89,7 +90,13 @@ class BlobBuilder {
       long serialize = System.currentTimeMillis();
       Flusher.SerializationResult serializedChunk =
           flusher.serialize(channelsDataPerTable, filePath);
-      System.out.println("sssssss serialize " + (System.currentTimeMillis() - serialize));
+      System.out.println(
+          "sssssss serialize "
+              + (System.currentTimeMillis() - serialize)
+              + " "
+              + filePath
+              + " "
+              + new DateTime(System.currentTimeMillis()));
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         ByteArrayOutputStream chunkData = serializedChunk.chunkData;

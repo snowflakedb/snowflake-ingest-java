@@ -353,6 +353,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
     if (this.rowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
+      System.out.println("sssssss need flush");
       this.owningClient.setNeedFlush();
     }
 
