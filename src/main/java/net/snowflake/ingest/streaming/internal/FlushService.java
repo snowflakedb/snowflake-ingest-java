@@ -338,6 +338,7 @@ class FlushService<T> {
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
 
     while (itr.hasNext()) {
+      long flush = System.currentTimeMillis();
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSize = 0;
 
@@ -362,6 +363,8 @@ class FlushService<T> {
           blobData.add(channelsDataPerTable);
         }
       }
+
+      System.out.println("sssssss flush " + (System.currentTimeMillis() - flush) + " " + filePath);
 
       // Kick off a build job
       if (blobData.isEmpty()) {
