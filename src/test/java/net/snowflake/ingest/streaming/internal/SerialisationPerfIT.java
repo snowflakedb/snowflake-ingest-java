@@ -31,25 +31,49 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class SerialisationPerfIT {
+  private static int n_10_k = 10 * 1000;
+  private static int n_100_k = 100 * 1000;
+  private static int n_1_M = 1000 * 1000;
+
+  private static int numRuns = 4;
+
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
     return Arrays.asList(
         new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE, false},
-          {"Parquet w/o ParquetInternalBuffering", Constants.BdecVersion.THREE, false},
-          {"Parquet with ParquetInternalBuffering", Constants.BdecVersion.THREE, true}
+                // 100k x 10
+          {"Arrow", Constants.BdecVersion.ONE, false, n_100_k, 10, false},
+          {"Parquet w/o ParquetInternalBuffering", Constants.BdecVersion.THREE, false, n_100_k, 10, false},
+          {"Parquet w/o ParquetInternalBuffering", Constants.BdecVersion.THREE, true, n_100_k, 10, false},
+
+          {"Arrow", Constants.BdecVersion.ONE, false, n_1_M, 1, false},
+          {"Parquet w/o ParquetInternalBuffering", Constants.BdecVersion.THREE, false, n_1_M, 1, false},
+          {"Parquet w/o ParquetInternalBuffering", Constants.BdecVersion.THREE, true, n_1_M, 1, false},
+
+          {"Arrow", Constants.BdecVersion.ONE, false, n_10_k, 100, false},
+          {"Parquet w/o ParquetInternalBuffering", Constants.BdecVersion.THREE, false, n_10_k, 100, false},
+          {"Parquet w/o ParquetInternalBuffering", Constants.BdecVersion.THREE, true, n_10_k, 100, false},
         });
   }
 
   private final BdecVersion bdecVersion;
   private final boolean enableParquetInternalBuffering;
 
+  private int numRowsPerChannel;
+  private int numChannels;
+
+  private boolean nullable;
+
+
   public SerialisationPerfIT(
-      @SuppressWarnings("unused") String name,
-      BdecVersion bdecVersion,
-      boolean enableParquetInternalBuffering) {
+          @SuppressWarnings("unused") String name,
+          BdecVersion bdecVersion,
+          boolean enableParquetInternalBuffering, int numRowsPerChannel, int numChannels, boolean nullable) {
     this.bdecVersion = bdecVersion;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
+    this.numRowsPerChannel = numRowsPerChannel;
+    this.numChannels = numChannels;
+    this.nullable = nullable;
   }
 
   private static class BufferChannelContext<T> {
@@ -105,10 +129,21 @@ public class SerialisationPerfIT {
   // @Ignore
   @Test
   public void test() throws IOException {
-    final int numberOfChannels = 10;
-    final int rowNumber = 100000;
-    boolean nullable = false;
 
+    long avgTotalRunTime = 0;
+    for(int i = 0; i < numRuns; i++) {
+
+      avgTotalRunTime += runExp();
+    }
+
+    avgTotalRunTime /= numRuns;
+
+    System.out.println(
+            "BDEC_VERSION=" + bdecVersion + "\n" +
+            "avgTotalRuntimeMilli=" + avgTotalRunTime + "\nnumRowsPerChannel=" + numRowsPerChannel + "\nnumChannels=" + numChannels);
+  }
+
+  private long runExp() throws IOException {
     List<ColumnMetadata> columns = createColumns(true);
 
     Map<String, RowBufferStats> statsMap = new HashMap<>();
@@ -116,7 +151,7 @@ public class SerialisationPerfIT {
       statsMap.put(column.getName(), new RowBufferStats(column.getName()));
     }
 
-    List<FileStats> fileStatsList = run(numberOfChannels, rowNumber, columns, statsMap, nullable);
+    List<FileStats> fileStatsList = run(numChannels, numRowsPerChannel, columns, statsMap, nullable);
     long totalRuntimeMilli = fileStatsList.stream().mapToLong(s -> s.runtimeMilli).sum();
     double avgRuntimeMilli =
         fileStatsList.stream().mapToLong(s -> s.runtimeMilli).average().getAsDouble();
@@ -145,6 +180,8 @@ public class SerialisationPerfIT {
         avgFileSize,
         totalRowNumber,
         avgRowNumber);
+
+    return totalRuntimeMilli;
 
     //        try (FileOutputStream outputStream = new FileOutputStream(filePath)) {
     //            outputStream.write(chunkData.toByteArray());

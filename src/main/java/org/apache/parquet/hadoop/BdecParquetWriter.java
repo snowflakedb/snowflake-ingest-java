@@ -87,7 +87,7 @@ public class BdecParquetWriter implements AutoCloseable {
     */
     codecFactory = new CodecFactory(conf, ParquetWriter.DEFAULT_PAGE_SIZE);
     @SuppressWarnings("deprecation") // Parquet does not support the new one now
-    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(CompressionCodecName.GZIP);
+    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(CompressionCodecName.GZIP); // snappy, lz4, zstd, uncompressed
     writer =
         new InternalParquetRecordWriter<>(
             fileWriter,
