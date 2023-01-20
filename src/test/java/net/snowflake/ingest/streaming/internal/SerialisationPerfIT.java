@@ -139,8 +139,8 @@ public class SerialisationPerfIT {
     avgTotalRunTime /= numRuns;
 
     System.out.println(
-            "BDEC_VERSION=" + bdecVersion + "\n" +
-            "avgTotalRuntimeMilli=" + avgTotalRunTime + "\nnumRowsPerChannel=" + numRowsPerChannel + "\nnumChannels=" + numChannels);
+            "BDEC_VERSION=" + bdecVersion + ",PARQUET_BUFFERS=" + enableParquetInternalBuffering +
+            "\navgTotalRuntimeMilli=" + avgTotalRunTime + "\nnumRowsPerChannel=" + numRowsPerChannel + "\nnumChannels=" + numChannels);
   }
 
   private long runExp() throws IOException {
