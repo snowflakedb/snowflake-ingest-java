@@ -19,6 +19,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -349,7 +350,7 @@ class FlushService<T> {
       while (itr.hasNext() && totalBufferSize.get() <= MAX_BLOB_SIZE_IN_BYTES) {
         ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
             itr.next().getValue();
-        List<ChannelData<T>> channelsDataPerTable = new ArrayList<>();
+        List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
         // Use parallel stream since getData could be the performance bottleneck when the number of
         // channels are big
         table.values().parallelStream()
