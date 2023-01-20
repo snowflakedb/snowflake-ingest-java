@@ -210,7 +210,9 @@ class FlushService<T> {
     return CompletableFuture.runAsync(
         () -> {
           logFlushTask(isForce, timeDiffMillis);
+          long flush = System.currentTimeMillis();
           distributeFlushTasks();
+          System.out.println("sssssss flush " + (System.currentTimeMillis() - flush));
           this.isNeedFlush = false;
           this.lastFlushTime = System.currentTimeMillis();
           return;
@@ -265,7 +267,7 @@ class FlushService<T> {
             && (this.isNeedFlush
                 || timeDiffMillis
                     >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
-      System.out.println("sssss flush " + new DateTime(System.currentTimeMillis()));
+      System.out.println("sssss schedule " + new DateTime(System.currentTimeMillis()));
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
           .thenCompose((v) -> this.registerFuture());
@@ -341,7 +343,6 @@ class FlushService<T> {
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
 
     while (itr.hasNext()) {
-      long flush = System.currentTimeMillis();
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       AtomicReference<Float> totalBufferSize = new AtomicReference<>((float) 0);
 
@@ -369,8 +370,6 @@ class FlushService<T> {
           blobData.add(channelsDataPerTable);
         }
       }
-
-      System.out.println("sssssss flush " + (System.currentTimeMillis() - flush) + " " + filePath);
 
       // Kick off a build job
       if (blobData.isEmpty()) {
