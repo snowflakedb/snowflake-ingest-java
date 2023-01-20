@@ -245,6 +245,7 @@ class FlushService<T> {
    * @return
    */
   private CompletableFuture<Void> registerFuture() {
+    System.out.println("sssss schedule finish " + new DateTime(System.currentTimeMillis()));
     return CompletableFuture.runAsync(
         () -> this.registerService.registerBlobs(latencyTimerContextMap), this.registerWorker);
   }
@@ -261,13 +262,14 @@ class FlushService<T> {
    */
   CompletableFuture<Void> flush(boolean isForce) {
     long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
+    System.out.println("sssss schedule no " + new DateTime(System.currentTimeMillis()));
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
             && !this.isTestMode
             && (this.isNeedFlush
                 || timeDiffMillis
                     >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
-      System.out.println("sssss schedule " + new DateTime(System.currentTimeMillis()));
+      System.out.println("sssss schedule yes " + new DateTime(System.currentTimeMillis()));
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
           .thenCompose((v) -> this.registerFuture());
