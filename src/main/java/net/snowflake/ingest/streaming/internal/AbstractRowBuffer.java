@@ -329,7 +329,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                     RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
       }
 
-      this.bufferSize = rowsSize;
+      this.bufferSize += rowsSize;
       this.channelState.setOffsetToken(offsetToken);
       this.rowSizeMetric.accept(rowsSize);
     } finally {

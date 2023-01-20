@@ -39,6 +39,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.internal.google.api.client.util.DateTime;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -264,7 +265,7 @@ class FlushService<T> {
             && (this.isNeedFlush
                 || timeDiffMillis
                     >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
-
+      System.out.println("sssss flush " + new DateTime(System.currentTimeMillis()));
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
           .thenCompose((v) -> this.registerFuture());
