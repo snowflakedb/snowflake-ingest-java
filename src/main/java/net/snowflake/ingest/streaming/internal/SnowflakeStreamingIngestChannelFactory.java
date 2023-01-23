@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
@@ -28,6 +30,8 @@ class SnowflakeStreamingIngestChannelFactory {
     private String encryptionKey;
     private Long encryptionKeyId;
     private OpenChannelRequest.OnErrorOption onErrorOption;
+
+    private ZoneId defaultTimezone = ZoneOffset.UTC;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;
@@ -79,6 +83,11 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
+    SnowflakeStreamingIngestChannelBuilder<T> setDefaultTimezone(ZoneId zoneId) {
+      this.defaultTimezone = zoneId;
+      return this;
+    }
+
     SnowflakeStreamingIngestChannelBuilder<T> setOwningClient(
         SnowflakeStreamingIngestClientInternal<T> client) {
       this.owningClient = client;
@@ -96,6 +105,7 @@ class SnowflakeStreamingIngestChannelFactory {
       Utils.assertStringNotNullOrEmpty("encryption key", this.encryptionKey);
       Utils.assertNotNull("encryption key_id", this.encryptionKeyId);
       Utils.assertNotNull("on_error option", this.onErrorOption);
+      Utils.assertNotNull("default timezone", this.defaultTimezone);
       BufferAllocator allocator = createBufferAllocator();
       return new SnowflakeStreamingIngestChannelInternal<>(
           this.name,
@@ -109,6 +119,7 @@ class SnowflakeStreamingIngestChannelFactory {
           this.encryptionKey,
           this.encryptionKeyId,
           this.onErrorOption,
+          this.defaultTimezone,
           this.owningClient.getParameterProvider().getBlobFormatVersion(),
           allocator);
     }

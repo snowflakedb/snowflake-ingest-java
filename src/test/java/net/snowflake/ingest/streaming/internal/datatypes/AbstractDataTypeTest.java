@@ -9,6 +9,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +44,8 @@ public abstract class AbstractDataTypeTest {
   private static final String SOURCE_JDBC = "JDBC";
   private static final String SCHEMA_NAME = "PUBLIC";
 
+  private static final ZoneId DEFAULT_DEFAULT_TIMEZONE = ZoneOffset.UTC;
+
   protected static BigInteger MAX_ALLOWED_BIG_INTEGER =
       new BigInteger("99999999999999999999999999999999999999");
   protected static BigInteger MIN_ALLOWED_BIG_INTEGER =
@@ -52,6 +56,8 @@ public abstract class AbstractDataTypeTest {
 
   protected Connection conn;
   private String databaseName;
+
+  private ZoneId defaultTimezone = DEFAULT_DEFAULT_TIMEZONE;
 
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
@@ -86,6 +92,7 @@ public abstract class AbstractDataTypeTest {
 
   @After
   public void after() throws Exception {
+    resetTimezone();
     conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
     if (client != null) {
       client.close();
@@ -93,6 +100,14 @@ public abstract class AbstractDataTypeTest {
     if (conn != null) {
       conn.close();
     }
+  }
+
+  void setChannelDefaultTimezone(ZoneId defaultTimezone) {
+    this.defaultTimezone = defaultTimezone;
+  }
+
+  void resetTimezone() {
+    this.defaultTimezone = DEFAULT_DEFAULT_TIMEZONE;
   }
 
   protected String createTable(String dataType) throws SQLException {
@@ -121,6 +136,7 @@ public abstract class AbstractDataTypeTest {
             .setSchemaName(SCHEMA_NAME)
             .setTableName(tableName)
             .setOnErrorOption(onErrorOption)
+            .setDefaultTimezone(defaultTimezone)
             .build();
     return client.openChannel(openChannelRequest);
   }

@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.Optional;
 import javax.annotation.Nullable;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -49,7 +50,8 @@ class ParquetValueParser {
       Object value,
       ColumnMetadata columnMetadata,
       PrimitiveType.PrimitiveTypeName typeName,
-      RowBufferStats stats) {
+      RowBufferStats stats,
+      ZoneId defaultTimezone) {
     Utils.assertNotNull("Parquet column stats", stats);
     float size = 0F;
     if (value != null) {
@@ -86,7 +88,8 @@ class ParquetValueParser {
                   columnMetadata.getScale(),
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
-                  physicalType);
+                  physicalType,
+                  defaultTimezone);
           value = longValue;
           stats.addIntValue(BigInteger.valueOf(longValue));
           size = 8;
@@ -118,7 +121,8 @@ class ParquetValueParser {
                   columnMetadata.getScale(),
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
-                  physicalType);
+                  physicalType,
+                  defaultTimezone);
           stats.addIntValue(intRep);
           value = getSb16Bytes(intRep);
           size += 16;
@@ -194,7 +198,8 @@ class ParquetValueParser {
       int scale,
       int precision,
       AbstractRowBuffer.ColumnLogicalType logicalType,
-      AbstractRowBuffer.ColumnPhysicalType physicalType) {
+      AbstractRowBuffer.ColumnPhysicalType physicalType,
+      ZoneId defaultTimezone) {
     long longValue;
     switch (logicalType) {
       case TIME:
@@ -203,23 +208,18 @@ class ParquetValueParser {
         break;
       case TIMESTAMP_LTZ:
       case TIMESTAMP_NTZ:
-        boolean ignoreTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
+        boolean trimTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
         longValue =
-            DataValidationUtil.validateAndParseTimestamp(columnName, value, scale, ignoreTimezone)
-                .getTimeInScale()
+            DataValidationUtil.validateAndParseTimestamp(
+                    columnName, value, scale, defaultTimezone, trimTimezone)
+                .toBinary(false)
                 .longValue();
         break;
       case TIMESTAMP_TZ:
         longValue =
-            DataValidationUtil.validateAndParseTimestamp(columnName, value, scale, false)
-                .getSfTimestamp()
-                .orElseThrow(
-                    () ->
-                        new SFException(
-                            ErrorCode.INVALID_ROW,
-                            value,
-                            "Unable to parse timestamp for TIMESTAMP_TZ column"))
-                .toBinary(scale, true)
+            DataValidationUtil.validateAndParseTimestamp(
+                    columnName, value, scale, defaultTimezone, false)
+                .toBinary(true)
                 .longValue();
         break;
       case FIXED:
@@ -251,24 +251,19 @@ class ParquetValueParser {
       int scale,
       int precision,
       AbstractRowBuffer.ColumnLogicalType logicalType,
-      AbstractRowBuffer.ColumnPhysicalType physicalType) {
+      AbstractRowBuffer.ColumnPhysicalType physicalType,
+      ZoneId defaultTimezone) {
     switch (logicalType) {
       case TIMESTAMP_TZ:
-        return DataValidationUtil.validateAndParseTimestamp(columnName, value, scale, false)
-            .getSfTimestamp()
-            .orElseThrow(
-                () ->
-                    new SFException(
-                        ErrorCode.INVALID_ROW,
-                        value,
-                        "Unable to parse timestamp for TIMESTAMP_TZ column"))
-            .toBinary(scale, true);
+        return DataValidationUtil.validateAndParseTimestamp(
+                columnName, value, scale, defaultTimezone, false)
+            .toBinary(true);
       case TIMESTAMP_LTZ:
       case TIMESTAMP_NTZ:
-        boolean ignoreTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
+        boolean trimTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
         return DataValidationUtil.validateAndParseTimestamp(
-                columnName, value, scale, ignoreTimezone)
-            .getTimeInScale();
+                columnName, value, scale, defaultTimezone, trimTimezone)
+            .toBinary(false);
       case FIXED:
         BigDecimal bigDecimalValue =
             DataValidationUtil.validateAndParseBigDecimal(columnName, value);

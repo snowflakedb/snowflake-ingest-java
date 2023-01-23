@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
@@ -138,7 +139,8 @@ public class SnowflakeStreamingIngestChannelTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
 
     Assert.assertTrue(channel.isValid());
     channel.invalidate("from testChannelValid");
@@ -187,7 +189,8 @@ public class SnowflakeStreamingIngestChannelTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
 
     Assert.assertFalse(channel.isClosed());
     channel.markClosed();
@@ -484,7 +487,8 @@ public class SnowflakeStreamingIngestChannelTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
 
     ColumnMetadata col = new ColumnMetadata();
     col.setName("COL");
@@ -543,7 +547,8 @@ public class SnowflakeStreamingIngestChannelTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
 
     Runtime mockedRunTime = Mockito.mock(Runtime.class);
     Mockito.when(mockedRunTime.maxMemory()).thenReturn(maxMemory);
@@ -590,7 +595,8 @@ public class SnowflakeStreamingIngestChannelTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -625,7 +631,8 @@ public class SnowflakeStreamingIngestChannelTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -658,7 +665,8 @@ public class SnowflakeStreamingIngestChannelTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
 
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);

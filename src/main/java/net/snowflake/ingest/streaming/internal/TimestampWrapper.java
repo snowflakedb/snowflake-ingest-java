@@ -1,40 +1,48 @@
-/*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
- */
-
 package net.snowflake.ingest.streaming.internal;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Objects;
-import java.util.Optional;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
+import java.math.RoundingMode;
+import java.time.OffsetDateTime;
+import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 
-class TimestampWrapper {
+public class TimestampWrapper {
+  private final long epoch;
+  private final int fraction;
+  private final int timezoneOffsetSeconds;
 
-  /** Seconds since the epoch */
-  private long epoch;
+  private final int scale;
 
-  /** Fraction of a second since the epoch in nanoseconds */
-  private int fraction;
+  private static final int BITS_FOR_TIMEZONE = 14;
 
-  /** Epoch time in column's scale, e.g. for scale=3 this milliseconds past the epoch */
-  private BigInteger timeInScale;
+  private static final int MASK_OF_TIMEZONE = (1 << BITS_FOR_TIMEZONE) - 1;
 
-  /** SFTimestamp including timezone information */
-  private Optional<SFTimestamp> sfTimestamp = Optional.empty();
-
-  public TimestampWrapper(long epoch, int fraction, BigInteger timeInScale) {
-    this.epoch = epoch;
-    this.fraction = fraction;
-    this.timeInScale = timeInScale;
+  public TimestampWrapper(OffsetDateTime offsetDateTime, int scale) {
+    if (scale < 0 || scale > 9) {
+      throw new IllegalArgumentException(
+          String.format("Scale must be between 0 and 9, actual: %d", scale));
+    }
+    this.epoch = offsetDateTime.toEpochSecond();
+    this.fraction =
+        offsetDateTime.getNano() / Power10.intTable[9 - scale] * Power10.intTable[9 - scale];
+    this.timezoneOffsetSeconds = offsetDateTime.getOffset().getTotalSeconds();
+    this.scale = scale;
   }
 
-  public TimestampWrapper(
-      long epoch, int fraction, BigInteger timeInScale, SFTimestamp sfTimestamp) {
-    this.epoch = epoch;
-    this.fraction = fraction;
-    this.timeInScale = timeInScale;
-    this.sfTimestamp = Optional.ofNullable(sfTimestamp);
+  public BigInteger toBinary(boolean includeTimezone) {
+    BigDecimal timeInNs =
+        BigDecimal.valueOf(epoch).scaleByPowerOfTen(9).add(new BigDecimal(fraction));
+    BigDecimal scaledTime = timeInNs.scaleByPowerOfTen(scale - 9);
+    scaledTime = scaledTime.setScale(0, RoundingMode.DOWN);
+    BigInteger fcpInt = scaledTime.unscaledValue();
+    if (includeTimezone) {
+      int offsetMin = timezoneOffsetSeconds / 60;
+      assert offsetMin >= -1440 && offsetMin <= 1440;
+      offsetMin += 1440;
+      fcpInt = fcpInt.shiftLeft(14);
+      fcpInt = fcpInt.add(BigInteger.valueOf(offsetMin & MASK_OF_TIMEZONE));
+    }
+    return fcpInt;
   }
 
   public long getEpoch() {
@@ -45,35 +53,11 @@ class TimestampWrapper {
     return fraction;
   }
 
-  public BigInteger getTimeInScale() {
-    return timeInScale;
+  public int getTimezoneOffsetSeconds() {
+    return timezoneOffsetSeconds;
   }
 
-  public Optional<Integer> getTimezoneOffset() {
-    return sfTimestamp.map(t -> t.getTimeZoneOffsetMillis());
-  }
-
-  public Optional<Integer> getTimeZoneIndex() {
-    return this.getTimezoneOffset().map(t -> (t / 1000 / 60) + 1440);
-  }
-
-  public Optional<SFTimestamp> getSfTimestamp() {
-    return sfTimestamp;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    TimestampWrapper that = (TimestampWrapper) o;
-    return epoch == that.epoch
-        && fraction == that.fraction
-        && Objects.equals(timeInScale, that.timeInScale)
-        && sfTimestamp.equals(that.sfTimestamp);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(epoch, fraction, timeInScale, sfTimestamp);
+  public int getTimeZoneIndex() {
+    return timezoneOffsetSeconds / 60 + 1440;
   }
 }
