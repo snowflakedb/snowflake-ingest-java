@@ -1070,6 +1070,7 @@ public class RowBufferTest {
     colBinary.setNullable(true);
     colBinary.setLogicalType("BINARY");
     colBinary.setLength(32);
+    colBinary.setByteLength(256);
     colBinary.setScale(0);
 
     innerBuffer.setupSchema(Collections.singletonList(colBinary));

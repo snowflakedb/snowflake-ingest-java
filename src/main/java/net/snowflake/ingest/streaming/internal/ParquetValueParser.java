@@ -345,7 +345,7 @@ class ParquetValueParser {
    */
   private static byte[] getBinaryValueForLogicalBinary(
       Object value, RowBufferStats stats, ColumnMetadata columnMetadata) {
-    String maxLengthString = columnMetadata.getLength().toString();
+    String maxLengthString = columnMetadata.getByteLength().toString();
     byte[] bytes =
         DataValidationUtil.validateAndParseBinary(
             columnMetadata.getName(), value, Optional.of(maxLengthString).map(Integer::parseInt));
