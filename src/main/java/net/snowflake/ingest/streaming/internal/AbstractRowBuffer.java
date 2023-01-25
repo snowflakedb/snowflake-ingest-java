@@ -274,7 +274,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
-    float rowsSize = 0F;
+    float rowsSizeInBytes = 0F;
     if (!hasColumns()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
     }
@@ -290,7 +290,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               new InsertValidationResponse.InsertError(row, rowIndex);
           try {
             Set<String> inputColumnNames = verifyInputColumns(row, error);
-            rowsSize += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
+            rowsSizeInBytes += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
             this.rowCount++;
           } catch (SFException e) {
             error.setException(e);
@@ -307,17 +307,17 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         }
       } else {
         // If the on_error option is ABORT, simply throw the first exception
-        float tempRowsSize = 0F;
+        float tempRowsSizeInBytes = 0F;
         int tempRowCount = 0;
         for (Map<String, Object> row : rows) {
           Set<String> inputColumnNames = verifyInputColumns(row, null);
-          tempRowsSize += addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames);
+          tempRowsSizeInBytes += addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames);
           tempRowCount++;
         }
 
         moveTempRowsToActualBuffer(tempRowCount);
 
-        rowsSize = tempRowsSize;
+        rowsSizeInBytes = tempRowsSizeInBytes;
         if ((long) this.rowCount + tempRowCount >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
         }
@@ -329,9 +329,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                     RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
       }
 
-      this.bufferSize += rowsSize;
+      this.bufferSize += rowsSizeInBytes;
       this.channelState.setOffsetToken(offsetToken);
-      this.rowSizeMetric.accept(rowsSize);
+      this.rowSizeMetric.accept(rowsSizeInBytes);
     } finally {
       this.tempStatsMap.values().forEach(RowBufferStats::reset);
       clearTempRows();

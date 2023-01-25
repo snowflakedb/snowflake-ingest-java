@@ -341,17 +341,17 @@ class FlushService<T> {
 
     while (itr.hasNext()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
-      AtomicReference<Float> totalBufferSize = new AtomicReference<>((float) 0);
+      AtomicReference<Float> totalBufferSizeInBytes = new AtomicReference<>((float) 0);
 
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
-      while (itr.hasNext() && totalBufferSize.get() <= MAX_BLOB_SIZE_IN_BYTES) {
+      while (itr.hasNext() && totalBufferSizeInBytes.get() <= MAX_BLOB_SIZE_IN_BYTES) {
         ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
             itr.next().getValue();
         List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
-        // Use parallel stream since getData could be the performance bottleneck when the number of
-        // channels are big
+        // Use parallel stream since getData could be the performance bottleneck when we have a high
+        // number of channels
         table.values().parallelStream()
             .forEach(
                 channel -> {
@@ -359,7 +359,7 @@ class FlushService<T> {
                     ChannelData<T> data = channel.getData(filePath);
                     if (data != null) {
                       channelsDataPerTable.add(data);
-                      totalBufferSize.updateAndGet(v -> v + data.getBufferSize());
+                      totalBufferSizeInBytes.updateAndGet(v -> v + data.getBufferSize());
                     }
                   }
                 });
