@@ -191,12 +191,25 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   /**
-   * Adds non-nullable filed name.
+   * Adds non-nullable field name. It is used to check if all non-nullable fields have been
+   * provided.
    *
    * @param nonNullableFieldName non-nullable filed name
    */
   void addNonNullableFieldName(String nonNullableFieldName) {
     nonNullableFieldNames.add(nonNullableFieldName);
+  }
+
+  /** Throws an exception if the column has a collation defined. */
+  void validateColumnCollation(ColumnMetadata column) {
+    if (column.getCollation() != null) {
+      throw new SFException(
+          ErrorCode.UNSUPPORTED_DATA_TYPE,
+          String.format(
+              "Column %s with collation %s detected. Ingestion into collated columns is not"
+                  + " supported",
+              column.getName(), column.getCollation()));
+    }
   }
 
   /**
@@ -221,6 +234,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    */
   Set<String> verifyInputColumns(
       Map<String, Object> row, InsertValidationResponse.InsertError error) {
+    // Map of unquoted column name -> original column name
     Map<String, String> inputColNamesMap =
         row.keySet().stream()
             .collect(Collectors.toMap(LiteralQuoteUtils::unquoteColumnName, value -> value));

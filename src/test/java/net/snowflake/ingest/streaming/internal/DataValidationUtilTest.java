@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.TestUtils.buildString;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_16_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.isAllowedSemiStructuredType;
@@ -364,31 +365,38 @@ public class DataValidationUtilTest {
   public void testValidateAndParseString() {
     assertEquals("honk", validateAndParseString("COL", "honk", Optional.empty()));
 
-    // Check max String length
-    StringBuilder longBuilder = new StringBuilder();
-    for (int i = 0; i < BYTES_16_MB; i++) {
-      longBuilder.append("č"); // max string length is measured in chars, not bytes
-    }
-    String maxString = longBuilder.toString();
+    // Check max byte length
+    String maxString = buildString("a", BYTES_16_MB);
     assertEquals(maxString, validateAndParseString("COL", maxString, Optional.empty()));
 
-    // max length - 1 should also succeed
-    longBuilder.setLength(BYTES_16_MB - 1);
-    String maxStringMinusOne = longBuilder.toString();
+    // max byte length - 1 should also succeed
+    String maxStringMinusOne = buildString("a", BYTES_16_MB - 1);
     assertEquals(
         maxStringMinusOne, validateAndParseString("COL", maxStringMinusOne, Optional.empty()));
 
-    // max length + 1 should fail
+    // max byte length + 1 should fail
     expectError(
         ErrorCode.INVALID_ROW,
-        () -> validateAndParseString("COL", longBuilder.append("aa").toString(), Optional.empty()));
+        () -> validateAndParseString("COL", maxString + "a", Optional.empty()));
 
-    // Test max length validation
+    // Test that max character length validation counts characters and not bytes
+    assertEquals("a", validateAndParseString("COL", "a", Optional.of(1)));
+    assertEquals("č", validateAndParseString("COL", "č", Optional.of(1)));
+    assertEquals("❄", validateAndParseString("COL", "❄", Optional.of(1)));
+    assertEquals("🍞", validateAndParseString("COL", "🍞", Optional.of(1)));
+
+    // Test max character length rejection
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString("COL", "a🍞", Optional.of(1)));
     expectError(
         ErrorCode.INVALID_ROW, () -> validateAndParseString("COL", "12345", Optional.of(4)));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString("COL", false, Optional.of(4)));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString("COL", 12345, Optional.of(4)));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseString("COL", 1.2345, Optional.of(4)));
+
+    // Test that invalid UTF-8 strings cannot be ingested
+    expectError(
+        ErrorCode.INVALID_ROW,
+        () -> validateAndParseString("COL", "foo\uD800bar", Optional.empty()));
 
     // Test unsupported values
     expectError(
@@ -432,6 +440,9 @@ public class DataValidationUtilTest {
     // Test missing values are null instead of empty string
     assertNull(validateAndParseVariant("COL", ""));
     assertNull(validateAndParseVariant("COL", "  "));
+
+    // Test that invalid UTF-8 strings cannot be ingested
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "\"foo\uD800bar\""));
 
     // Test forbidden values
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseVariant("COL", "{null}"));
@@ -491,6 +502,9 @@ public class DataValidationUtilTest {
     assertEquals("[null]", validateAndParseArray("COL", "null"));
     assertEquals("[null]", validateAndParseArray("COL", null));
 
+    // Test that invalid UTF-8 strings cannot be ingested
+    expectError(ErrorCode.INVALID_ROW, () -> validateAndParseArray("COL", "\"foo\uD800bar\""));
+
     // Test forbidden values
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseArray("COL", readTree("[]")));
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseArray("COL", new Object()));
@@ -537,6 +551,10 @@ public class DataValidationUtilTest {
     } catch (SFException err) {
       assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), err.getVendorCode());
     }
+
+    // Test that invalid UTF-8 strings cannot be ingested
+    expectError(
+        ErrorCode.INVALID_ROW, () -> validateAndParseObject("COL", "{\"foo\": \"foo\uD800bar\"}"));
 
     // Test forbidden values
     expectError(ErrorCode.INVALID_ROW, () -> validateAndParseObject("COL", readTree("{}")));
@@ -588,8 +606,8 @@ public class DataValidationUtilTest {
     m.put("a", new String(stringContent));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: {a=ČČČČČČČČČČČČČČČČČ.... Value cannot"
-            + " be ingested into Snowflake column COL of type VARIANT: Variant too long:"
+        "The given row cannot be converted to Arrow format: {\"a\":\"ČČČČČČČČČČČČČČ.... Value"
+            + " cannot be ingested into Snowflake column COL of type VARIANT: Variant too long:"
             + " length=18874376 maxLength=16777152",
         () -> validateAndParseVariant("COL", m));
     expectErrorCodeAndMessage(
@@ -1033,7 +1051,8 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type STRING: String too long: length=3 maxLength=2",
+            + " Snowflake column COL of type STRING: String too long: length=3 characters"
+            + " maxLength=2 characters",
         () -> validateAndParseString("COL", "abc", Optional.of(2)));
 
     // BINARY
