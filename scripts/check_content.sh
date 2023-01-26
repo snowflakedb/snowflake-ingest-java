@@ -27,6 +27,7 @@ if jar tvf $DIR/../target/snowflake-ingest-sdk.jar  | awk '{print $8}' | grep -v
     | grep -v "about.html" | grep -v "jetty-dir.css" | grep -v "krb5-template.conf" \
     | grep -v "krb5_udp-template.conf" | grep -v "ccache.txt" | grep -v "keytab.txt" \
     | grep -v "lookup.class" | grep -v "update.class" | grep -v "dig.class" | grep -v "jnamed"  \
+    | grep -v "net/jpountz/" | grep -v "win32/"  \
     ; then
   echo "[ERROR] Ingest SDK jar includes class not under the snowflake namespace"
   exit 1
