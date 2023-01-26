@@ -63,15 +63,10 @@ class BlobBuilder {
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
-   * @param enableParquetMemoryOptimization indicates whether Parquet memory optimization should be
-   *     applied
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
-      String filePath,
-      List<List<ChannelData<T>>> blobData,
-      Constants.BdecVersion bdecVersion,
-      boolean enableParquetMemoryOptimization)
+      String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {

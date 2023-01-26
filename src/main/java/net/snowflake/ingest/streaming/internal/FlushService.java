@@ -19,6 +19,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -33,6 +34,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -339,25 +341,28 @@ class FlushService<T> {
 
     while (itr.hasNext()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
-      float totalBufferSize = 0;
+      AtomicReference<Float> totalBufferSizeInBytes = new AtomicReference<>((float) 0);
 
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
-      while (itr.hasNext() && totalBufferSize <= MAX_BLOB_SIZE_IN_BYTES) {
+      while (itr.hasNext() && totalBufferSizeInBytes.get() <= MAX_BLOB_SIZE_IN_BYTES) {
         ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
             itr.next().getValue();
-        List<ChannelData<T>> channelsDataPerTable = new ArrayList<>();
-        // TODO: we could do parallel stream to get the channelData if needed
-        for (SnowflakeStreamingIngestChannelInternal<T> channel : table.values()) {
-          if (channel.isValid()) {
-            ChannelData<T> data = channel.getData(filePath);
-            if (data != null) {
-              channelsDataPerTable.add(data);
-              totalBufferSize += data.getBufferSize();
-            }
-          }
-        }
+        List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
+        // Use parallel stream since getData could be the performance bottleneck when we have a high
+        // number of channels
+        table.values().parallelStream()
+            .forEach(
+                channel -> {
+                  if (channel.isValid()) {
+                    ChannelData<T> data = channel.getData(filePath);
+                    if (data != null) {
+                      channelsDataPerTable.add(data);
+                      totalBufferSizeInBytes.updateAndGet(v -> v + data.getBufferSize());
+                    }
+                  }
+                });
         if (!channelsDataPerTable.isEmpty()) {
           blobData.add(channelsDataPerTable);
         }
@@ -442,12 +447,7 @@ class FlushService<T> {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob =
-        BlobBuilder.constructBlobAndMetadata(
-            filePath,
-            blobData,
-            bdecVersion,
-            owningClient.getParameterProvider().getEnableParquetInternalBuffering());
+    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
     if (buildContext != null) {
       buildContext.stop();
     }
