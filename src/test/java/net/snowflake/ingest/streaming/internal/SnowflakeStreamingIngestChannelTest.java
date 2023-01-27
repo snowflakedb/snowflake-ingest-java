@@ -36,7 +36,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -463,9 +462,9 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testInsertRow() {
-    SnowflakeStreamingIngestClientInternal<VectorSchemaRoot> client =
+    SnowflakeStreamingIngestClientInternal<ParquetChunkData> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> channel =
+    SnowflakeStreamingIngestChannelInternal<ParquetChunkData> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
             "db",
@@ -494,7 +493,7 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData<VectorSchemaRoot> data = channel.getData("my_snowpipe_streaming.bdec");
+    ChannelData<ParquetChunkData> data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertNull(data);
 
     long insertStartTimeInMs = System.currentTimeMillis();
@@ -508,7 +507,7 @@ public class SnowflakeStreamingIngestChannelTest {
     data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
-    Assert.assertEquals(1, data.getVectors().getFieldVectors().size());
+    Assert.assertEquals(1, data.getVectors().rows.get(0).size()); // row has one column
     Assert.assertEquals("2", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
