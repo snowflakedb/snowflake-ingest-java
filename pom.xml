@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>1.0.2-beta.7</version>
+    <version>1.0.2-beta.8</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
@@ -195,13 +195,6 @@
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc</artifactId>
             <version>3.13.18</version>
-        </dependency>
-
-        <!-- String collation-->
-        <dependency>
-            <groupId>com.ibm.icu</groupId>
-            <artifactId>icu4j</artifactId>
-            <version>70.1</version>
         </dependency>
 
         <!-- jwt token for key pair authentication with GS -->

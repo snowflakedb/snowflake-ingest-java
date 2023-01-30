@@ -388,7 +388,6 @@ public class FlushServiceTest {
     colChar.setByteLength(14);
     colChar.setLength(11);
     colChar.setScale(0);
-    colChar.setCollation("en-ci");
     return colChar;
   }
 

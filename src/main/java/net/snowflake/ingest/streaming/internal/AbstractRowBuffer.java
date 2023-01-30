@@ -191,12 +191,25 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   /**
-   * Adds non-nullable filed name.
+   * Adds non-nullable field name. It is used to check if all non-nullable fields have been
+   * provided.
    *
    * @param nonNullableFieldName non-nullable filed name
    */
   void addNonNullableFieldName(String nonNullableFieldName) {
     nonNullableFieldNames.add(nonNullableFieldName);
+  }
+
+  /** Throws an exception if the column has a collation defined. */
+  void validateColumnCollation(ColumnMetadata column) {
+    if (column.getCollation() != null) {
+      throw new SFException(
+          ErrorCode.UNSUPPORTED_DATA_TYPE,
+          String.format(
+              "Column %s with collation %s detected. Ingestion into collated columns is not"
+                  + " supported",
+              column.getName(), column.getCollation()));
+    }
   }
 
   /**
@@ -221,6 +234,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    */
   Set<String> verifyInputColumns(
       Map<String, Object> row, InsertValidationResponse.InsertError error) {
+    // Map of unquoted column name -> original column name
     Map<String, String> inputColNamesMap =
         row.keySet().stream()
             .collect(Collectors.toMap(LiteralQuoteUtils::unquoteColumnName, value -> value));
@@ -274,7 +288,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
-    float rowSize = 0F;
+    float rowsSizeInBytes = 0F;
     if (!hasColumns()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
     }
@@ -290,9 +304,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               new InsertValidationResponse.InsertError(row, rowIndex);
           try {
             Set<String> inputColumnNames = verifyInputColumns(row, error);
-            rowSize += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
+            rowsSizeInBytes += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
             this.rowCount++;
-            this.bufferSize += rowSize;
           } catch (SFException e) {
             error.setException(e);
             response.addError(error);
@@ -308,22 +321,21 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         }
       } else {
         // If the on_error option is ABORT, simply throw the first exception
-        float tempRowSize = 0F;
+        float tempRowsSizeInBytes = 0F;
         int tempRowCount = 0;
         for (Map<String, Object> row : rows) {
           Set<String> inputColumnNames = verifyInputColumns(row, null);
-          tempRowSize += addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames);
+          tempRowsSizeInBytes += addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames);
           tempRowCount++;
         }
 
         moveTempRowsToActualBuffer(tempRowCount);
 
-        rowSize = tempRowSize;
+        rowsSizeInBytes = tempRowsSizeInBytes;
         if ((long) this.rowCount + tempRowCount >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
         }
         this.rowCount += tempRowCount;
-        this.bufferSize += rowSize;
         this.statsMap.forEach(
             (colName, stats) ->
                 this.statsMap.put(
@@ -331,8 +343,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                     RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
       }
 
+      this.bufferSize += rowsSizeInBytes;
       this.channelState.setOffsetToken(offsetToken);
-      this.rowSizeMetric.accept(rowSize);
+      this.rowSizeMetric.accept(rowsSizeInBytes);
     } finally {
       this.tempStatsMap.values().forEach(RowBufferStats::reset);
       clearTempRows();
