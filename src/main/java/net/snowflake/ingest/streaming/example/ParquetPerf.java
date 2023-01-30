@@ -10,26 +10,13 @@ public class ParquetPerf {
     private static int n_10_k = 10 * 1000;
     private static int n_100_k = 100 * 1000;
     private static int n_1_M = 1000 * 1000;
-    private static int numRuns = 4;
+    private static int numRuns = 1;
 
     public static Collection<Object[]> getParameters() {
         return Arrays.asList(
                 new Object[][]{
                         // 100k x 10
-                        {"Arrow", false, Constants.BdecVersion.ONE, n_10_k, 10, 10},
                         {"Parquet", false, Constants.BdecVersion.THREE, n_10_k, 10, 10},
-                        // 10k x 100
-                        {"Arrow", false, Constants.BdecVersion.ONE, n_10_k, 1, 100},
-                        {"Parquet", false, Constants.BdecVersion.THREE, n_10_k, 1, 100},
-                        // 1M X 1
-                        {"Arrow", false, Constants.BdecVersion.ONE, n_10_k, 100, 1},
-                        {"Parquet", false, Constants.BdecVersion.THREE, n_10_k, 100, 1},
-                        // 1M X 2
-                        {"Arrow", false, Constants.BdecVersion.ONE, n_10_k, 100, 2},
-                        {"Parquet", false, Constants.BdecVersion.THREE, n_10_k, 100, 2},
-                        // 1M x 3
-                        {"Arrow", false, Constants.BdecVersion.ONE, n_10_k, 100, 3},
-                        {"Parquet", false, Constants.BdecVersion.THREE, n_10_k, 100, 3},
                 });
     }
 
