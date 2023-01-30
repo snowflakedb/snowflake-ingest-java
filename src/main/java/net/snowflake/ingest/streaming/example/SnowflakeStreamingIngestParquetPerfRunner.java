@@ -32,7 +32,7 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
   private final int numChannels;
 
   private boolean nullable;
-  private String clientName = "EC2_GDOCI_PERF_";
+  private String clientName = "GZIP_EC2_GDOCI_PERF_";
 
   public SnowflakeStreamingIngestParquetPerfRunner(
       @SuppressWarnings("unused") String name,
