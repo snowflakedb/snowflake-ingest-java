@@ -36,7 +36,7 @@ public class ParquetPerf {
     public static void main(String[] args) {
         Collection<Object[]> param = getParameters();
 
-        boolean[] nullables = {true, false};
+        boolean[] nullables = {false};
         for (boolean n : nullables) {
             for (Object[] p : param) {
                 for (int i = 0; i < numRuns; i++) {
