@@ -36,6 +36,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -462,9 +463,16 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testInsertRow() {
-    SnowflakeStreamingIngestClientInternal<ParquetChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
-    SnowflakeStreamingIngestChannelInternal<ParquetChunkData> channel =
+    SnowflakeStreamingIngestClientInternal<?> client;
+    boolean isArrowDefault =
+        ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT == Constants.BdecVersion.ONE;
+    if (isArrowDefault) {
+      client = new SnowflakeStreamingIngestClientInternal<VectorSchemaRoot>("client_ARROW");
+    } else {
+      client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
+    }
+
+    SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
             "db",
@@ -493,7 +501,7 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData<ParquetChunkData> data = channel.getData("my_snowpipe_streaming.bdec");
+    ChannelData<?> data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertNull(data);
 
     long insertStartTimeInMs = System.currentTimeMillis();
@@ -507,7 +515,11 @@ public class SnowflakeStreamingIngestChannelTest {
     data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
-    Assert.assertEquals(1, data.getVectors().rows.get(0).size()); // row has one column
+    Assert.assertEquals(
+        1,
+        isArrowDefault
+            ? ((ChannelData<VectorSchemaRoot>) data).getVectors().getFieldVectors().size()
+            : ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
     Assert.assertEquals("2", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
