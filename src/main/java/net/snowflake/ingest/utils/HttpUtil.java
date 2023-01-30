@@ -150,7 +150,7 @@ public class HttpUtil {
 
     // proxy settings
     if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY))) {
-      if(!bypassProxy(account)) {
+      if("true".equalsIgnoreCase(System.getProperty(USE_PROXY)) && !bypassProxy(account)) {
         if (System.getProperty(PROXY_PORT) == null) {
           throw new IllegalArgumentException(
                   "proxy port number is not provided, please assign proxy port to http.proxyPort option");
