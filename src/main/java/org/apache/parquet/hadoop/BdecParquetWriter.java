@@ -136,6 +136,7 @@ public class BdecParquetWriter implements AutoCloseable {
         // to always have one page per chunk until server side is generalised.
         .withPageSize((int) Constants.MAX_CHUNK_SIZE_IN_BYTES * 2)
         .withPageRowCountLimit(Integer.MAX_VALUE)
+        .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .build();
   }
 
