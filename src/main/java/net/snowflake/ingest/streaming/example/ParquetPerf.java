@@ -16,7 +16,7 @@ public class ParquetPerf {
         return Arrays.asList(
                 new Object[][]{
                         // 100k x 10
-                        {"Parquet", false, Constants.BdecVersion.THREE, n_10_k, 10, 10},
+                        {"Arrow", false, Constants.BdecVersion.ONE, n_10_k, 10, 10},
                 });
     }
 
