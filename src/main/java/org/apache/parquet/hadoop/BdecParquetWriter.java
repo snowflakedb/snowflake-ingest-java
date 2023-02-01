@@ -10,7 +10,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
@@ -46,16 +45,19 @@ public class BdecParquetWriter implements AutoCloseable {
    * @param schema row schema
    * @param extraMetaData extra metadata
    * @param channelName name of the channel that is using the writer
+   * @param estimatedUncompressedChunkSizeInBytes estimated uncompressed chunk size in bytes
    * @throws IOException
    */
   public BdecParquetWriter(
       ByteArrayOutputStream stream,
       MessageType schema,
       Map<String, String> extraMetaData,
-      String channelName)
+      String channelName,
+      float estimatedUncompressedChunkSizeInBytes)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream);
-    ParquetProperties encodingProps = createParquetProperties();
+    ParquetProperties encodingProps =
+        createParquetProperties(estimatedUncompressedChunkSizeInBytes);
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
         new BdecWriteSupport(schema, extraMetaData, channelName);
@@ -119,7 +121,10 @@ public class BdecParquetWriter implements AutoCloseable {
     }
   }
 
-  private static ParquetProperties createParquetProperties() {
+  private static ParquetProperties createParquetProperties(
+      float estimatedUncompressedChunkSizeInBytes) {
+    int pageSizeLimit =
+        (int) MAX_CHUNK_SIZE_IN_BYTES * 2; // (int) (estimatedUncompressedChunkSizeInBytes * 2);
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
@@ -134,7 +139,7 @@ public class BdecParquetWriter implements AutoCloseable {
         // pages is the same.
         // The quick fix is to effectively disable the page size/row limit
         // to always have one page per chunk until server side is generalised.
-        .withPageSize((int) Constants.MAX_CHUNK_SIZE_IN_BYTES * 2)
+        .withPageSize(pageSizeLimit)
         .withPageRowCountLimit(Integer.MAX_VALUE)
         .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .build();

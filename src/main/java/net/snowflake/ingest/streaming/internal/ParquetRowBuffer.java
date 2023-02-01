@@ -117,7 +117,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     fileOutput = new ByteArrayOutputStream();
     try {
       if (enableParquetInternalBuffering) {
-        bdecParquetWriter = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
+        bdecParquetWriter =
+            new BdecParquetWriter(fileOutput, schema, metadata, channelName, getSize());
       } else {
         this.bdecParquetWriter = null;
       }
