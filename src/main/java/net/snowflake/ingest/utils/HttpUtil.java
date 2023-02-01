@@ -414,19 +414,21 @@ public class HttpUtil {
     return title;
   }
 
-  // Changes the account name to the format accountName.snowflakecomputing.com
-  // then returns a boolean to indicate if we should go through a proxy or not.
+  /**
+   * Changes the account name to the format accountName.snowflakecomputing.com then returns a
+   * boolean to indicate if we should go through a proxy or not.
+   */
   public static Boolean shouldBypassProxy(String accountName) {
     String targetHost = accountName + SNOWFLAKE_DOMAIN_NAME;
     return System.getProperty(NON_PROXY_HOSTS) != null && isInNonProxyHosts(targetHost);
   }
 
-  /* The target hostname input is compared with the hosts in the '|' separated
-    list provided by the http.nonProxyHosts parameter using regex. The nonProxyHosts
-    will be used as our Patterns, so we need to replace the '.' and '*' characters
-    since those are special regex constructs that mean 'any character,' and
-    'repeat 0 or more times.'
-  */
+  /**
+   * The target hostname input is compared with the hosts in the '|' separated list provided by the
+   * http.nonProxyHosts parameter using regex. The nonProxyHosts will be used as our Patterns, so we
+   * need to replace the '.' and '*' characters since those are special regex constructs that mean
+   * 'any character,' and 'repeat 0 or more times.'
+   */
   private static Boolean isInNonProxyHosts(String targetHost) {
     String nonProxyHosts =
         System.getProperty(NON_PROXY_HOSTS).replace(".", "\\.").replace("*", ".*");
