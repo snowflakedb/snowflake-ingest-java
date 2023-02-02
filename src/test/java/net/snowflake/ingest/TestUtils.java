@@ -209,6 +209,20 @@ public class TestUtils {
     return keyPair;
   }
 
+  public static String getDatabase() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return database;
+  }
+
+  public static String getSchema() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return schema;
+  }
+
   public static Properties getProperties(Constants.BdecVersion bdecVersion) throws Exception {
     if (profile == null) {
       init();

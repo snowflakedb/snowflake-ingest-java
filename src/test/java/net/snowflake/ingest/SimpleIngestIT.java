@@ -82,6 +82,18 @@ public class SimpleIngestIT {
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + RAND_NUM;
 
+    String databaseName = TestUtils.getDatabase();
+
+    String schemaName = TestUtils.getSchema();
+
+    TestUtils.executeQuery("create database if not exists " + databaseName);
+
+    TestUtils.executeQuery("create schema if not exists " + schemaName);
+
+    TestUtils.executeQuery("use database " + databaseName);
+
+    TestUtils.executeQuery("use schema " + schemaName);
+
     TestUtils.executeQuery("create or replace table " + tableName + " (str string, num int)");
 
     TestUtils.executeQuery("create or replace stage " + stageName);
