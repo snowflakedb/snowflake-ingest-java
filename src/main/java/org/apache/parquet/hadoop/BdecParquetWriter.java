@@ -123,8 +123,34 @@ public class BdecParquetWriter implements AutoCloseable {
 
   private static ParquetProperties createParquetProperties(
       float estimatedUncompressedChunkSizeInBytes) {
+    /**
+     * There are two main limitations on the server side that we have to overcome by tweaking
+     * Parquet limits:
+     *
+     * <p>1. Scanner supports only the case when the row number in pages is the same. Remember that
+     * a page has data from only one column.
+     *
+     * <p>2. Scanner supports only 1 row group per Parquet file.
+     *
+     * <p>We can't guarantee that each page will have the same number of rows, because we have no
+     * internal control over Parquet lib. That's why to satisfy 1., we will generate one page per
+     * column by changing the page size limit and increasing the page row limit. To satisfy 2., we
+     * will disable a check that decides when to flush buffered rows to row groups. The check
+     * happens after a configurable amount of row counts and by setting it to Integer.MAX_VALUE,
+     * Parquet lib will never perform the check and flush all buffered rows to one row group on
+     * close().
+     *
+     * <p>TODO: Remove the enforcements of single row group SNOW-738040 and single page (per column)
+     * SNOW-737331 *
+     */
+
+    // an estimate of the final page size after compression and encoding.
+    // For every column/value, Parquet stores other metadata like: nullability, repetition which
+    // require more space. To be on the safe side, we are multiplying the estimated uncompressed
+    // size with a factor.
     int pageSizeLimit =
-        (int) MAX_CHUNK_SIZE_IN_BYTES * 2; // (int) (estimatedUncompressedChunkSizeInBytes * 2);
+        (int)
+            Math.max((int) MAX_CHUNK_SIZE_IN_BYTES * 2, estimatedUncompressedChunkSizeInBytes * 2);
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
@@ -134,11 +160,6 @@ public class BdecParquetWriter implements AutoCloseable {
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)
-
-        // Historically server side scanner supports only the case when the row number in all
-        // pages is the same.
-        // The quick fix is to effectively disable the page size/row limit
-        // to always have one page per chunk until server side is generalised.
         .withPageSize(pageSizeLimit)
         .withPageRowCountLimit(Integer.MAX_VALUE)
         .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
