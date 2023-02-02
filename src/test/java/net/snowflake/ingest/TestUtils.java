@@ -16,6 +16,7 @@ import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,17 +25,13 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Optional;
-import java.util.Properties;
+import java.sql.*;
+import java.util.*;
+import java.util.function.Supplier;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Utils;
@@ -384,6 +381,48 @@ public class TestUtils {
             expectedOffset, lastCommittedOffset));
   }
 
+  public static void waitChannelFlushed(SnowflakeStreamingIngestChannel channel, int numberOfRows) {
+    String latestCommittedOffsetToken = null;
+    for (int i = 1; i < 30; i++) {
+      latestCommittedOffsetToken = channel.getLatestCommittedOffsetToken();
+      if (latestCommittedOffsetToken != null
+          && latestCommittedOffsetToken.equals(Integer.toString(numberOfRows - 1))) {
+        return;
+      }
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(
+            "Interrupted waitChannelFlushed for " + numberOfRows + " rows", e);
+      }
+    }
+    Assert.fail(
+        "Row sequencer not updated before timeout, latestCommittedOffsetToken: "
+            + latestCommittedOffsetToken);
+  }
+
+  /** Verify the insert validation response and throw the exception if needed */
+  public static void verifyInsertValidationResponse(InsertValidationResponse response) {
+    if (response.hasErrors()) {
+      throw response.getInsertErrors().get(0).getException();
+    }
+  }
+
+  public static void verifyTableRowCount(
+      int rowNumber, Connection jdbcConnection, String database, String schema, String tableName) {
+    try {
+      ResultSet resultCount =
+          jdbcConnection
+              .createStatement()
+              .executeQuery(
+                  String.format("select count(*) from %s.%s.%s", database, schema, tableName));
+      resultCount.next();
+      Assert.assertEquals(rowNumber, resultCount.getLong(1));
+    } catch (SQLException e) {
+      throw new RuntimeException("Cannot verifyTableRowCount for " + tableName, e);
+    }
+  }
+
   /**
    * Creates a string from a certain number of concatenated strings e.g. buildString("ab", 2) =>
    * abab
@@ -394,5 +433,56 @@ public class TestUtils {
       sb.append(str);
     }
     return sb.toString();
+  }
+
+  public static Map<String, Object> getRandomRow(Random r, boolean nullable) {
+    Map<String, Object> row = new HashMap<>();
+
+    row.put("num_2_1", nullOrIfNullable(nullable, r, () -> r.nextInt(100) / 10.0));
+    row.put("num_4_2", nullOrIfNullable(nullable, r, () -> r.nextInt(10000) / 100.0));
+    row.put(
+        "num_9_4", nullOrIfNullable(nullable, r, () -> r.nextInt(1000000000) / Math.pow(10, 4)));
+    row.put(
+        "num_18_7",
+        nullOrIfNullable(nullable, r, () -> nextLongOfPrecision(r, 18) / Math.pow(10, 7)));
+    row.put(
+        "num_38_15",
+        nullOrIfNullable(
+            nullable,
+            r,
+            () ->
+                new BigDecimal(
+                    "" + nextLongOfPrecision(r, 18) + "." + Math.abs(nextLongOfPrecision(r, 15)))));
+
+    row.put("num_float", nullOrIfNullable(nullable, r, () -> nextFloat(r)));
+    row.put("str", nullOrIfNullable(nullable, r, () -> nextString(r)));
+    row.put("bin", nullOrIfNullable(nullable, r, () -> nextBytes(r)));
+
+    return row;
+  }
+
+  private static <T> T nullOrIfNullable(boolean nullable, Random r, Supplier<T> value) {
+    return !nullable ? value.get() : (r.nextBoolean() ? value.get() : null);
+  }
+
+  private static long nextLongOfPrecision(Random r, int precision) {
+    return r.nextLong() % Math.round(Math.pow(10, precision));
+  }
+
+  private static String nextString(Random r) {
+    return new String(nextBytes(r));
+  }
+
+  private static byte[] nextBytes(Random r) {
+    byte[] bin = new byte[128];
+    r.nextBytes(bin);
+    for (int i = 0; i < bin.length; i++) {
+      bin[i] = (byte) (Math.abs(bin[i]) % 25 + 97); // ascii letters
+    }
+    return bin;
+  }
+
+  private static double nextFloat(Random r) {
+    return (r.nextLong() % Math.round(Math.pow(10, 10))) / 100000d;
   }
 }
