@@ -82,7 +82,6 @@ public class SimpleIngestIT {
 
     stageWithPatternName = "ingest_sdk_test_stage_pattern" + RAND_NUM;
 
-
     String databaseName = TestUtils.getDatabase();
 
     String schemaName = TestUtils.getSchema();
