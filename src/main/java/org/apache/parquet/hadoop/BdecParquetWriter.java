@@ -54,8 +54,7 @@ public class BdecParquetWriter implements AutoCloseable {
       String channelName)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream);
-    ParquetProperties encodingProps =
-        createParquetProperties();
+    ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
         new BdecWriteSupport(schema, extraMetaData, channelName);
@@ -141,9 +140,9 @@ public class BdecParquetWriter implements AutoCloseable {
      * buffered data of the rowgroup to one page.
      *
      * <p>TODO: Remove the enforcements of single row group SNOW-738040 and single page (per column)
-     * SNOW-737331 *
+     * SNOW-737331. TODO: Revisit block and page size estimate after limitation (1) is removed
+     * SNOW-738614 *
      */
-
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238

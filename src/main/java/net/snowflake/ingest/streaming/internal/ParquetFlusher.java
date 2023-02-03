@@ -188,11 +188,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     parquetWriter =
-        new BdecParquetWriter(
-            mergedData,
-            schema,
-            metadata,
-            firstChannelFullyQualifiedTableName);
+        new BdecParquetWriter(mergedData, schema, metadata, firstChannelFullyQualifiedTableName);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 
