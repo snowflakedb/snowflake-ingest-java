@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -35,6 +36,8 @@ import org.apache.parquet.schema.PrimitiveType;
  * CodecFactory} that are package private.
  */
 public class BdecParquetWriter implements AutoCloseable {
+
+  private static final Logging logger = new Logging(BdecParquetWriter.class);
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
 
@@ -150,7 +153,13 @@ public class BdecParquetWriter implements AutoCloseable {
     // size with a factor.
     int pageSizeLimit =
         (int)
-            Math.max((int) MAX_CHUNK_SIZE_IN_BYTES * 2, estimatedUncompressedChunkSizeInBytes * 2);
+            Math.max((int) MAX_CHUNK_SIZE_IN_BYTES, estimatedUncompressedChunkSizeInBytes);
+    logger.logInfo(
+        "Setting Parquet page limit={}, estimatedUncompressedChunkSizeInBytes={},"
+            + " MAX_CHUNK_SIZE_IN_BYTES={}.",
+        pageSizeLimit,
+        estimatedUncompressedChunkSizeInBytes,
+        MAX_CHUNK_SIZE_IN_BYTES);
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
@@ -160,8 +169,10 @@ public class BdecParquetWriter implements AutoCloseable {
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)
-        .withPageSize(pageSizeLimit)
+        .withPageSize(64)
+            .withMaxRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .withPageRowCountLimit(Integer.MAX_VALUE)
+            .estimateRowCountForPageSizeCheck(false)
         .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .build();
   }

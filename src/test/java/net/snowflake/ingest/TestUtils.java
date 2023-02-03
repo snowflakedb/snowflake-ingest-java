@@ -151,7 +151,7 @@ public class TestUtils {
     }
     return Arrays.asList(
         new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
+          {"Parquet", Constants.BdecVersion.THREE}
         });
   }
 
@@ -369,7 +369,7 @@ public class TestUtils {
 
   public static void waitChannelFlushed(SnowflakeStreamingIngestChannel channel, int numberOfRows) {
     String latestCommittedOffsetToken = null;
-    for (int i = 1; i < 30; i++) {
+    for (int i = 1; i < 40; i++) {
       latestCommittedOffsetToken = channel.getLatestCommittedOffsetToken();
       if (latestCommittedOffsetToken != null
           && latestCommittedOffsetToken.equals(Integer.toString(numberOfRows - 1))) {

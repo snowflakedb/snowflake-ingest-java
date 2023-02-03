@@ -28,7 +28,7 @@ public class StreamingIngestBigFilesIT {
     return TestUtils.getBdecVersionItCases();
   }
 
-  private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
+  private static final String TEST_DB_PREFIX = "STREAMING_INGEST_BIG_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
   private Properties prop;
@@ -49,7 +49,7 @@ public class StreamingIngestBigFilesIT {
     testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
     // Create a streaming ingest client
     jdbcConnection = TestUtils.getConnection(true);
-
+    jdbcConnection.createStatement().execute(String.format("use role %s;", TestUtils.getRole()));
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace database %s;", testDb));
@@ -74,7 +74,7 @@ public class StreamingIngestBigFilesIT {
   @After
   public void afterAll() throws Exception {
     client.close();
-    jdbcConnection.createStatement().execute(String.format("drop database %s", testDb));
+    //jdbcConnection.createStatement().execute(String.format("drop database %s", testDb));
   }
 
   @Test
