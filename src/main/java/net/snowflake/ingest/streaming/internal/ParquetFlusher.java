@@ -132,7 +132,6 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
-    float estimatedChunkSizeInBytes = 0f;
     for (ChannelData<ParquetChunkData> data : channelsDataPerTable) {
       // Create channel metadata
       ChannelMetadata channelMetadata =
@@ -177,7 +176,6 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       rows.addAll(data.getVectors().rows);
 
       rowCount += data.getRowCount();
-      estimatedChunkSizeInBytes += data.getBufferSize();
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
@@ -194,8 +192,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             mergedData,
             schema,
             metadata,
-            firstChannelFullyQualifiedTableName,
-            estimatedChunkSizeInBytes);
+            firstChannelFullyQualifiedTableName);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 

@@ -45,19 +45,17 @@ public class BdecParquetWriter implements AutoCloseable {
    * @param schema row schema
    * @param extraMetaData extra metadata
    * @param channelName name of the channel that is using the writer
-   * @param estimatedUncompressedChunkSizeInBytes estimated uncompressed chunk size in bytes
    * @throws IOException
    */
   public BdecParquetWriter(
       ByteArrayOutputStream stream,
       MessageType schema,
       Map<String, String> extraMetaData,
-      String channelName,
-      float estimatedUncompressedChunkSizeInBytes)
+      String channelName)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream);
     ParquetProperties encodingProps =
-        createParquetProperties(estimatedUncompressedChunkSizeInBytes);
+        createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
         new BdecWriteSupport(schema, extraMetaData, channelName);
@@ -121,8 +119,7 @@ public class BdecParquetWriter implements AutoCloseable {
     }
   }
 
-  private static ParquetProperties createParquetProperties(
-      float estimatedUncompressedChunkSizeInBytes) {
+  private static ParquetProperties createParquetProperties() {
     /**
      * There are two main limitations on the server side that we have to overcome by tweaking
      * Parquet limits:
@@ -134,23 +131,19 @@ public class BdecParquetWriter implements AutoCloseable {
      *
      * <p>We can't guarantee that each page will have the same number of rows, because we have no
      * internal control over Parquet lib. That's why to satisfy 1., we will generate one page per
-     * column by changing the page size limit and increasing the page row limit. To satisfy 2., we
-     * will disable a check that decides when to flush buffered rows to row groups. The check
-     * happens after a configurable amount of row counts and by setting it to Integer.MAX_VALUE,
-     * Parquet lib will never perform the check and flush all buffered rows to one row group on
-     * close().
+     * column.
+     *
+     * <p>To satisfy 1. and 2., we will disable a check that decides when to flush buffered rows to
+     * row groups and pages. The check happens after a configurable amount of row counts and by
+     * setting it to Integer.MAX_VALUE, Parquet lib will never perform the check and flush all
+     * buffered rows to one row group on close(). The same check decides when to flush a rowgroup to
+     * page. So by disabling it, we are not checking any page limits as well and flushing all
+     * buffered data of the rowgroup to one page.
      *
      * <p>TODO: Remove the enforcements of single row group SNOW-738040 and single page (per column)
      * SNOW-737331 *
      */
 
-    // an estimate of the final page size after compression and encoding.
-    // For every column/value, Parquet stores other metadata like: nullability, repetition which
-    // require more space. To be on the safe side, we are multiplying the estimated uncompressed
-    // size with a factor.
-    int pageSizeLimit =
-        (int)
-            Math.max((int) MAX_CHUNK_SIZE_IN_BYTES * 2, estimatedUncompressedChunkSizeInBytes * 2);
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
@@ -160,7 +153,6 @@ public class BdecParquetWriter implements AutoCloseable {
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)
-        .withPageSize(pageSizeLimit)
         .withPageRowCountLimit(Integer.MAX_VALUE)
         .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .build();
