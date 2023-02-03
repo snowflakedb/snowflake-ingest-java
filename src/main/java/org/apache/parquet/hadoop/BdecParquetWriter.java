@@ -169,10 +169,7 @@ public class BdecParquetWriter implements AutoCloseable {
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)
-        .withPageSize(64)
-            .withMaxRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .withPageRowCountLimit(Integer.MAX_VALUE)
-            .estimateRowCountForPageSizeCheck(false)
         .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .build();
   }
