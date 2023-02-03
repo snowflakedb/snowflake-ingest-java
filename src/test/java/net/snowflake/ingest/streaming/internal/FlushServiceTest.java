@@ -776,6 +776,11 @@ public class FlushServiceTest {
     } else {
       Assert.assertArrayEquals(data, blob);
     }
+
+    // Verify BlobBuilder.computeMD5 returns as expected
+    Assert.assertEquals(
+        "08c8c3a0b5d92627f24fed878afd8325",
+        BlobBuilder.computeMD5("snowflake".getBytes(StandardCharsets.UTF_8)));
   }
 
   @Test

@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.SimpleTimeZone;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-import javax.xml.bind.DatatypeConverter;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SFDate;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp;
@@ -45,6 +44,8 @@ import net.snowflake.ingest.streaming.internal.serialization.ByteArraySerializer
 import net.snowflake.ingest.streaming.internal.serialization.ZonedDateTimeSerializer;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
@@ -553,8 +554,8 @@ class DataValidationUtil {
       output = (byte[]) input;
     } else if (input instanceof String) {
       try {
-        output = DatatypeConverter.parseHexBinary((String) input);
-      } catch (IllegalArgumentException e) {
+        output = Hex.decodeHex((String) input);
+      } catch (DecoderException e) {
         throw valueFormatNotAllowedException(columnName, input, "BINARY", "Not a valid hex string");
       }
     } else {
