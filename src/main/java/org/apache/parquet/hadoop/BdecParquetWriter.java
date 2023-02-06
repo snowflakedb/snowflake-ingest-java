@@ -10,6 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
@@ -65,7 +66,7 @@ public class BdecParquetWriter implements AutoCloseable {
             file,
             schema,
             ParquetFileWriter.Mode.CREATE,
-            ParquetWriter.DEFAULT_BLOCK_SIZE,
+            Constants.MAX_BLOB_SIZE_IN_BYTES * 2,
             ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
             encodingProps.getColumnIndexTruncateLength(),
             encodingProps.getStatisticsTruncateLength(),
@@ -93,7 +94,7 @@ public class BdecParquetWriter implements AutoCloseable {
             writeSupport,
             schema,
             writeContext.getExtraMetaData(),
-            ParquetWriter.DEFAULT_BLOCK_SIZE,
+            Constants.MAX_BLOB_SIZE_IN_BYTES * 2,
             compressor,
             true,
             encodingProps);
