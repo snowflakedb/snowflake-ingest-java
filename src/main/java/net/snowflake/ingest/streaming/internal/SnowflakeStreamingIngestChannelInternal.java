@@ -209,15 +209,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Mark the channel as invalid, and release resources */
-  void invalidate(String message) {
+  void invalidate(String message, boolean needLogging) {
     this.channelState.invalidate();
     this.rowBuffer.close("invalidate");
-    logger.logWarn(
-        "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}, message={}",
-        getFullyQualifiedName(),
-        channelFlushContext.getChannelSequencer(),
-        channelState.getRowSequencer(),
-        message);
+    if (needLogging) {
+      logger.logWarn(
+          "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}, message={}",
+          getFullyQualifiedName(),
+          channelFlushContext.getChannelSequencer(),
+          channelState.getRowSequencer(),
+          message);
+    }
   }
 
   /** @return a boolean to indicate whether the channel is closed or not */

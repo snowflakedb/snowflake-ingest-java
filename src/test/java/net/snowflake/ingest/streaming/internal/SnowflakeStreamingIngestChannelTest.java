@@ -141,7 +141,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE);
 
     Assert.assertTrue(channel.isValid());
-    channel.invalidate("from testChannelValid");
+    channel.invalidate("from testChannelValid", true);
     Assert.assertFalse(channel.isValid());
 
     // Can't insert rows to invalid channel

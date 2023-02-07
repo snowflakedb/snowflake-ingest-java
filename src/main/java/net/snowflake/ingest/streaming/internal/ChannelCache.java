@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 class ChannelCache<T> {
   // Cache to hold all the valid channels, the key for the outer map is FullyQualifiedTableName and
   // the key for the inner map is ChannelName
-  private ConcurrentHashMap<
+  private final ConcurrentHashMap<
           String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>
       cache = new ConcurrentHashMap<>();
 
@@ -38,7 +38,7 @@ class ChannelCache<T> {
         channels.put(channel.getName(), channel);
     // Invalidate old channel if it exits to block new inserts and return error to users earlier
     if (oldChannel != null) {
-      oldChannel.invalidate("removed from cache");
+      oldChannel.invalidate("removed from cache", false);
     }
   }
 
@@ -90,7 +90,7 @@ class ChannelCache<T> {
     if (channelsMapPerTable != null) {
       SnowflakeStreamingIngestChannelInternal<T> channel = channelsMapPerTable.get(channelName);
       if (channel != null && channel.getChannelSequencer().equals(channelSequencer)) {
-        channel.invalidate("invalidate with matched sequencer");
+        channel.invalidate("invalidate with matched sequencer", true);
       }
     }
   }
