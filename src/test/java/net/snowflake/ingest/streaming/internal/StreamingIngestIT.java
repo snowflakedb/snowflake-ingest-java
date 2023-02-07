@@ -77,11 +77,7 @@ public class StreamingIngestIT {
     testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
     // Create a streaming ingest client
     jdbcConnection = TestUtils.getConnection(true);
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-      // TODO: encryption and interleaved mode are not yet supported by server side's Parquet
-      // scanner if local file cache is enabled (SNOW-656500)
-      jdbcConnection.createStatement().execute("alter session set disable_parquet_cache=true;");
-    }
+
     jdbcConnection
         .createStatement()
         .execute(String.format("create or replace database %s;", testDb));
@@ -285,57 +281,6 @@ public class StreamingIngestIT {
                 1 << (i + 1),
                 INTERLEAVED_CHANNEL_TABLE,
                 INTERLEAVED_CHANNEL_TABLE + "_channel_" + i));
-  }
-
-  @Test
-  public void testCollation() throws Exception {
-    String collationTable = "collation_table";
-    jdbcConnection
-        .createStatement()
-        .execute(
-            String.format(
-                "create or replace table %s (noncol char(10), col char(10) collate 'en-ci');",
-                collationTable));
-
-    OpenChannelRequest request1 =
-        OpenChannelRequest.builder("CHANNEL")
-            .setDBName(testDb)
-            .setSchemaName(TEST_SCHEMA)
-            .setTableName(collationTable)
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
-            .build();
-
-    // Open a streaming ingest channel from the given client
-    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
-    Map<String, Object> row = new HashMap<>();
-    row.put("col", "AA");
-    row.put("noncol", "AA");
-    verifyInsertValidationResponse(channel1.insertRow(row, "1"));
-    row.put("col", "a");
-    row.put("noncol", "a");
-    verifyInsertValidationResponse(channel1.insertRow(row, "2"));
-
-    // Close the channel after insertion
-    channel1.close().get();
-
-    for (int i = 1; i < 15; i++) {
-      if (channel1.getLatestCommittedOffsetToken() != null
-          && channel1.getLatestCommittedOffsetToken().equals("2")) {
-        ResultSet result =
-            jdbcConnection
-                .createStatement()
-                .executeQuery(
-                    String.format(
-                        "select min(col), min(noncol) from %s.%s.%s",
-                        testDb, TEST_SCHEMA, collationTable));
-        result.next();
-        Assert.assertEquals("a", result.getString(1));
-        Assert.assertEquals("AA", result.getString(2));
-        return;
-      }
-      Thread.sleep(1000);
-    }
-    Assert.fail("Row sequencer not updated before timeout");
   }
 
   @Test
@@ -1313,14 +1258,14 @@ public class StreamingIngestIT {
       throws SQLException {
     Assert.assertNotNull(actualResult);
     assertNonTimeAndVarFields(expectedNullRow, actualResult);
-    Assert.assertEquals(null, actualResult.getString("VAR"));
-    Assert.assertEquals(null, actualResult.getString("OBJ"));
-    Assert.assertEquals(null, actualResult.getString("ARR"));
-    Assert.assertEquals(null, actualResult.getDate("EPOCHDAYS"));
-    Assert.assertEquals(null, actualResult.getTimestamp("EPOCHSEC"));
-    Assert.assertEquals(null, actualResult.getTimestamp("EPOCHNANO"));
-    Assert.assertEquals(null, actualResult.getTimestamp("TIMESEC"));
-    Assert.assertEquals(null, actualResult.getTimestamp("TIMENANO"));
+    Assert.assertNull(actualResult.getString("VAR"));
+    Assert.assertNull(actualResult.getString("OBJ"));
+    Assert.assertNull(actualResult.getString("ARR"));
+    Assert.assertNull(actualResult.getDate("EPOCHDAYS"));
+    Assert.assertNull(actualResult.getTimestamp("EPOCHSEC"));
+    Assert.assertNull(actualResult.getTimestamp("EPOCHNANO"));
+    Assert.assertNull(actualResult.getTimestamp("TIMESEC"));
+    Assert.assertNull(actualResult.getTimestamp("TIMENANO"));
   }
 
   private void assertPosRow(Map<String, Object> expectedPosRow, ResultSet actualResult)

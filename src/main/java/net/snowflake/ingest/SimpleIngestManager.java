@@ -407,7 +407,7 @@ public class SimpleIngestManager implements AutoCloseable {
     this.keyPair = keyPair;
 
     // make our client for sending requests
-    httpClient = HttpUtil.getHttpClient();
+    httpClient = HttpUtil.getHttpClient(account);
     // make the request builder we'll use to build messages to the service
   }
 

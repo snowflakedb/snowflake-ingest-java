@@ -33,7 +33,8 @@ public enum ErrorCode {
   CHANNELS_WITH_UNCOMMITTED_ROWS("0025"),
   INVALID_COLLATION_STRING("0026"),
   ENCRYPTION_FAILURE("0027"),
-  CHANNEL_STATUS_INVALID("0028");
+  CHANNEL_STATUS_INVALID("0028"),
+  UNSUPPORTED_DATA_TYPE("0029");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

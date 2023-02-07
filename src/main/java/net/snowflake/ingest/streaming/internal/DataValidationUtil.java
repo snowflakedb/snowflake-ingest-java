@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat.DATE;
 import static net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat.TIMESTAMP;
+import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.unicodeCharactersCount;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +15,10 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -90,8 +95,10 @@ class DataValidationUtil {
   private static JsonNode validateAndParseSemiStructuredAsJsonTree(
       String columnName, Object input, String snowflakeType) {
     if (input instanceof String) {
+      String stringInput = (String) input;
+      verifyValidUtf8(stringInput, columnName, snowflakeType);
       try {
-        return objectMapper.readTree((String) input);
+        return objectMapper.readTree(stringInput);
       } catch (JsonProcessingException e) {
         throw valueFormatNotAllowedException(columnName, input, snowflakeType, "Not a valid JSON");
       }
@@ -133,7 +140,7 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          input,
+          output,
           "VARIANT",
           String.format(
               "Variant too long: length=%d maxLength=%d",
@@ -266,7 +273,7 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          jsonNode.toString(),
+          output,
           "ARRAY",
           String.format(
               "Array too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH));
@@ -401,6 +408,7 @@ class DataValidationUtil {
     String output;
     if (input instanceof String) {
       output = (String) input;
+      verifyValidUtf8(output, columnName, "STRING");
     } else if (input instanceof Number) {
       output = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString();
     } else if (input instanceof Boolean || input instanceof Character) {
@@ -412,15 +420,34 @@ class DataValidationUtil {
           "STRING",
           new String[] {"String", "Number", "boolean", "char"});
     }
-    int maxLength = maxLengthOptional.orElse(BYTES_16_MB);
+    byte[] utf8Bytes = output.getBytes(StandardCharsets.UTF_8);
 
-    if (output.length() > maxLength) {
+    // Strings can never be larger than 16MB
+    if (utf8Bytes.length > BYTES_16_MB) {
       throw valueFormatNotAllowedException(
           columnName,
           input,
           "STRING",
-          String.format("String too long: length=%d maxLength=%d", output.length(), maxLength));
+          String.format(
+              "String too long: length=%d bytes maxLength=%d bytes",
+              utf8Bytes.length, BYTES_16_MB));
     }
+
+    // If max allowed length is specified (e.g. VARCHAR(10)), the number of unicode characters must
+    // not exceed this value
+    maxLengthOptional.ifPresent(
+        maxAllowedCharacters -> {
+          int actualCharacters = unicodeCharactersCount(output);
+          if (actualCharacters > maxAllowedCharacters) {
+            throw valueFormatNotAllowedException(
+                columnName,
+                input,
+                "STRING",
+                String.format(
+                    "String too long: length=%d characters maxLength=%d characters",
+                    actualCharacters, maxAllowedCharacters));
+          }
+        });
     return output;
   }
 
@@ -783,5 +810,22 @@ class DataValidationUtil {
   private static SFTimestamp timestampFromInstant(Instant instant, TimeZone timeZone) {
     return SFTimestamp.fromNanoseconds(
         instant.getEpochSecond() * Power10.intTable[9] + instant.getNano(), timeZone);
+  }
+
+  /**
+   * Validates that a string is valid UTF-8 string. It catches situations like unmatched high/low
+   * UTF-16 surrogate, for example.
+   */
+  private static void verifyValidUtf8(String input, String columnName, String dataType) {
+    CharsetEncoder charsetEncoder =
+        StandardCharsets.UTF_8
+            .newEncoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT);
+    try {
+      charsetEncoder.encode(CharBuffer.wrap(input));
+    } catch (CharacterCodingException e) {
+      throw valueFormatNotAllowedException(columnName, input, dataType, "Invalid Unicode string");
+    }
   }
 }
