@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.TestUtils.buildString;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_16_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;

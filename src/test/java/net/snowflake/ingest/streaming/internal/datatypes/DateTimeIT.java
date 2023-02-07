@@ -11,6 +11,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class DateTimeIT extends AbstractDataTypeTest {
@@ -23,9 +24,23 @@ public class DateTimeIT extends AbstractDataTypeTest {
     super(name, bdecVersion);
   }
 
+  @Before
+  public void setup() throws Exception {
+    // Set to a random time zone not to interfere with any of the tests
+    conn.createStatement().execute("alter session set timezone = 'America/New_York';");
+  }
+
   @After
   public void tearDown() throws Exception {
     conn.createStatement().execute("alter session unset timezone;");
+  }
+
+  @Test
+  public void testDefaultTimezone() throws Exception {
+    testIngestion(
+        "TIMESTAMP_TZ", "2000-01-01", "2000-01-01 00:00:00.000000000 -0800", new StringProvider());
+    testIngestion(
+        "TIMESTAMP_LTZ", "2000-01-01", "2000-01-01 03:00:00.000000000 -0500", new StringProvider());
   }
 
   @Test

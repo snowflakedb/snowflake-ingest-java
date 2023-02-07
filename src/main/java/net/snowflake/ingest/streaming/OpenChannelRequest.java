@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming;
 
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import net.snowflake.ingest.utils.Utils;
 
 /** A class that is used to open/create a {@link SnowflakeStreamingIngestChannel} */
@@ -14,6 +13,12 @@ public class OpenChannelRequest {
     CONTINUE, // CONTINUE loading the rows, and return all the errors in the response
     ABORT, // ABORT the entire batch, and throw an exception when we hit the first error
   }
+
+  /**
+   * Default value of the timezone, which will be used for TIMESTAMP_LTZ and TIMESTAMP_TZ column
+   * types when the user input does not have any timezone information.
+   */
+  private static final ZoneId DEFAULT_DEFAULT_TIMEZONE = ZoneId.of("America/Los_Angeles");
 
   // Name of the channel
   private final String channelName;
@@ -48,7 +53,7 @@ public class OpenChannelRequest {
 
     public OpenChannelRequestBuilder(String channelName) {
       this.channelName = channelName;
-      this.defaultTimezone = ZoneOffset.UTC;
+      this.defaultTimezone = DEFAULT_DEFAULT_TIMEZONE;
     }
 
     public OpenChannelRequestBuilder setDBName(String dbName) {
@@ -87,6 +92,7 @@ public class OpenChannelRequest {
     Utils.assertStringNotNullOrEmpty("schema name", builder.schemaName);
     Utils.assertStringNotNullOrEmpty("table name", builder.tableName);
     Utils.assertNotNull("on_error option", builder.onErrorOption);
+    Utils.assertNotNull("default_timezone", builder.defaultTimezone);
 
     this.channelName = builder.channelName;
     this.dbName = builder.dbName;

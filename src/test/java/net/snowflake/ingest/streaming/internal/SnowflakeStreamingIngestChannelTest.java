@@ -11,6 +11,7 @@ import static net.snowflake.ingest.utils.Constants.USER;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,7 +57,9 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal<>("client");
 
     Object[] fields =
-        new Object[] {name, dbName, schemaName, tableName, channelSequencer, rowSequencer, client};
+        new Object[] {
+          name, dbName, schemaName, tableName, channelSequencer, rowSequencer, client, UTC
+        };
 
     for (int i = 0; i < fields.length; i++) {
       Object tmp = fields[i];
@@ -69,6 +72,7 @@ public class SnowflakeStreamingIngestChannelTest {
             .setRowSequencer((Long) fields[4])
             .setChannelSequencer((Long) fields[5])
             .setOwningClient((SnowflakeStreamingIngestClientInternal<StubChunkData>) fields[6])
+            .setDefaultTimezone((ZoneId) fields[7])
             .build();
         Assert.fail("Channel factory should fail with null fields");
       } catch (SFException e) {
@@ -106,6 +110,7 @@ public class SnowflakeStreamingIngestChannelTest {
             .setEncryptionKey(encryptionKey)
             .setEncryptionKeyId(1234L)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .setDefaultTimezone(UTC)
             .build();
 
     Assert.assertEquals(name, channel.getName());

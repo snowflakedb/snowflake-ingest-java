@@ -184,7 +184,7 @@ public interface SnowflakeStreamingIngestChannel {
    *
    *             </ul>
    *
-   *             For TIMESTAMP_LTZ and TIMESTAMP_TZ, all input without timezone will be by default interpreted in UTC. This can be changed by calling {@link net.snowflake.ingest.streaming.OpenChannelRequest.OpenChannelRequestBuilder#setDefaultTimezone(ZoneId)}.
+   *             For TIMESTAMP_LTZ and TIMESTAMP_TZ, all input without timezone will be by default interpreted in the timezone "America/Los_Angeles". This can be changed by calling {@link net.snowflake.ingest.streaming.OpenChannelRequest.OpenChannelRequestBuilder#setDefaultTimezone(ZoneId)}.
    *         </td>
    *         <tr>
    *             <td>VARIANT, ARRAY</td>

@@ -46,8 +46,22 @@ import net.snowflake.ingest.utils.SFException;
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
 
+  /**
+   * Seconds limit used for integer-stored timestamp scale guessing. Value needs to be aligned with
+   * the value from {@link SnowflakeDateTimeFormat#parse}
+   */
   private static final long SECONDS_LIMIT_FOR_EPOCH = 31536000000L;
+
+  /**
+   * Milliseconds limit used for integer-stored timestamp scale guessing. Value needs to be aligned
+   * with the value from {@link SnowflakeDateTimeFormat#parse}
+   */
   private static final long MILLISECONDS_LIMIT_FOR_EPOCH = SECONDS_LIMIT_FOR_EPOCH * 1000L;
+
+  /**
+   * Microseconds limit used for integer-stored timestamp scale guessing. Value needs to be aligned
+   * with the value from {@link SnowflakeDateTimeFormat#parse}
+   */
   private static final long MICROSECONDS_LIMIT_FOR_EPOCH = SECONDS_LIMIT_FOR_EPOCH * 1000000L;
 
   public static final int BYTES_8_MB = 8 * 1024 * 1024;
@@ -340,36 +354,46 @@ class DataValidationUtil {
       {
         // First, try to parse ZonedDateTime
         ZonedDateTime zoned = catchParsingError(() -> ZonedDateTime.parse(stringInput));
-        if (zoned != null) return zoned.toOffsetDateTime();
+        if (zoned != null) {
+          return zoned.toOffsetDateTime();
+        }
       }
 
       {
         // Next, try to parse OffsetDateTime
         OffsetDateTime offset = catchParsingError(() -> OffsetDateTime.parse(stringInput));
-        if (offset != null) return offset;
+        if (offset != null) {
+          return offset;
+        }
       }
 
       {
         // Alternatively, try to parse LocalDateTime
         LocalDateTime localDateTime = catchParsingError(() -> LocalDateTime.parse(stringInput));
-        if (localDateTime != null) return localDateTime.atZone(defaultTimezone).toOffsetDateTime();
+        if (localDateTime != null) {
+          return localDateTime.atZone(defaultTimezone).toOffsetDateTime();
+        }
       }
 
       {
         // Alternatively, try to parse LocalDate
         LocalDate localDate = catchParsingError(() -> LocalDate.parse(stringInput));
-        if (localDate != null)
+        if (localDate != null) {
           return localDate.atStartOfDay().atZone(defaultTimezone).toOffsetDateTime();
+        }
       }
 
       {
         // Alternatively, try to parse integer-stored timestamp
         // Just like in Snowflake, integer-stored timestamps are always in UTC
         Instant instant = catchParsingError(() -> parseInstantGuessScale(stringInput));
-        if (instant != null) return instant.atOffset(ZoneOffset.UTC);
+        if (instant != null) {
+          return instant.atOffset(ZoneOffset.UTC);
+        }
       }
 
       // Couldn't parse anything, throw an exception
+      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input.toString(),
@@ -633,6 +657,7 @@ class DataValidationUtil {
         }
       }
 
+      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input,
@@ -824,10 +849,10 @@ class DataValidationUtil {
    */
   private static void verifyValidUtf8(String input, String columnName, String dataType) {
     CharsetEncoder charsetEncoder =
-            StandardCharsets.UTF_8
-                    .newEncoder()
-                    .onMalformedInput(CodingErrorAction.REPORT)
-                    .onUnmappableCharacter(CodingErrorAction.REPORT);
+        StandardCharsets.UTF_8
+            .newEncoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT);
     try {
       charsetEncoder.encode(CharBuffer.wrap(input));
     } catch (CharacterCodingException e) {

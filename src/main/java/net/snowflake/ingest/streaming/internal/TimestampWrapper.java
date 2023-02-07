@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2023 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import java.math.BigDecimal;
@@ -6,17 +10,37 @@ import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 
+/**
+ * This class represents the outcome of timestamp parsing and validation. It contains methods needed
+ * to serialize timestamps into Arrow and Parquet.
+ */
 public class TimestampWrapper {
+
+  /** Epoch seconds */
   private final long epoch;
+
+  /** Fractional part of the second */
   private final int fraction;
+
+  /** Timezone offset in seconds */
   private final int timezoneOffsetSeconds;
 
+  /** Scale of the timestamp column (0-9) */
   private final int scale;
 
+  /**
+   * How many bits should be reserver for the timezone part. Needs to be aligned with {@link
+   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#BITS_FOR_TIMEZONE}
+   */
   private static final int BITS_FOR_TIMEZONE = 14;
 
+  /**
+   * Mask of the timezone bits. Needs to be aligned with {@link
+   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#MASK_OF_TIMEZONE}
+   */
   private static final int MASK_OF_TIMEZONE = (1 << BITS_FOR_TIMEZONE) - 1;
 
+  /** Create a new instance from {@link OffsetDateTime} and its scale. */
   public TimestampWrapper(OffsetDateTime offsetDateTime, int scale) {
     if (scale < 0 || scale > 9) {
       throw new IllegalArgumentException(
@@ -29,6 +53,10 @@ public class TimestampWrapper {
     this.scale = scale;
   }
 
+  /**
+   * Convert the timestamp to a binary representation. Needs to be aligned with {@link
+   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#toBinary}.
+   */
   public BigInteger toBinary(boolean includeTimezone) {
     BigDecimal timeInNs =
         BigDecimal.valueOf(epoch).scaleByPowerOfTen(9).add(new BigDecimal(fraction));
@@ -45,18 +73,25 @@ public class TimestampWrapper {
     return fcpInt;
   }
 
+  /** Get epoch in seconds */
   public long getEpoch() {
     return epoch;
   }
 
+  /** Get fractional part of a second */
   public int getFraction() {
     return fraction;
   }
 
+  /** Get timezone offset in seconds */
   public int getTimezoneOffsetSeconds() {
     return timezoneOffsetSeconds;
   }
 
+  /**
+   * Get timezone index, 1440 means UTC. Calculation needs to be aligned with {@link
+   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#toBinary}
+   */
   public int getTimeZoneIndex() {
     return timezoneOffsetSeconds / 60 + 1440;
   }

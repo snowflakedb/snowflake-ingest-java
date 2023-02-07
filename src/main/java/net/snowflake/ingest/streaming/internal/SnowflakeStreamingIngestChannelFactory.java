@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
@@ -31,7 +30,7 @@ class SnowflakeStreamingIngestChannelFactory {
     private Long encryptionKeyId;
     private OpenChannelRequest.OnErrorOption onErrorOption;
 
-    private ZoneId defaultTimezone = ZoneOffset.UTC;
+    private ZoneId defaultTimezone;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;

@@ -10,10 +10,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -44,8 +44,6 @@ public abstract class AbstractDataTypeTest {
   private static final String SOURCE_JDBC = "JDBC";
   private static final String SCHEMA_NAME = "PUBLIC";
 
-  private static final ZoneId DEFAULT_DEFAULT_TIMEZONE = ZoneOffset.UTC;
-
   protected static BigInteger MAX_ALLOWED_BIG_INTEGER =
       new BigInteger("99999999999999999999999999999999999999");
   protected static BigInteger MIN_ALLOWED_BIG_INTEGER =
@@ -57,7 +55,11 @@ public abstract class AbstractDataTypeTest {
   protected Connection conn;
   private String databaseName;
 
-  private ZoneId defaultTimezone = DEFAULT_DEFAULT_TIMEZONE;
+  /**
+   * Default timezone for newly created channels. If empty, the test will not explicitly set default
+   * timezone in the channel builder.
+   */
+  private Optional<ZoneId> defaultTimezone = Optional.empty();
 
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
@@ -78,9 +80,6 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use database %s;", databaseName));
     conn.createStatement().execute(String.format("use schema %s;", schemaName));
 
-    // Set to a random time zone not to interfere with any of the tests
-    conn.createStatement().execute("alter session set timezone = 'America/New_York';");
-
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
     Properties props = TestUtils.getProperties(bdecVersion);
@@ -92,7 +91,7 @@ public abstract class AbstractDataTypeTest {
 
   @After
   public void after() throws Exception {
-    resetTimezone();
+    this.defaultTimezone = Optional.empty();
     conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
     if (client != null) {
       client.close();
@@ -103,11 +102,7 @@ public abstract class AbstractDataTypeTest {
   }
 
   void setChannelDefaultTimezone(ZoneId defaultTimezone) {
-    this.defaultTimezone = defaultTimezone;
-  }
-
-  void resetTimezone() {
-    this.defaultTimezone = DEFAULT_DEFAULT_TIMEZONE;
+    this.defaultTimezone = Optional.of(defaultTimezone);
   }
 
   protected String createTable(String dataType) throws SQLException {
@@ -130,14 +125,14 @@ public abstract class AbstractDataTypeTest {
 
   protected SnowflakeStreamingIngestChannel openChannel(
       String tableName, OpenChannelRequest.OnErrorOption onErrorOption) {
-    OpenChannelRequest openChannelRequest =
+    OpenChannelRequest.OpenChannelRequestBuilder requestBuilder =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(databaseName)
             .setSchemaName(SCHEMA_NAME)
             .setTableName(tableName)
-            .setOnErrorOption(onErrorOption)
-            .setDefaultTimezone(defaultTimezone)
-            .build();
+            .setOnErrorOption(onErrorOption);
+    defaultTimezone.ifPresent(requestBuilder::setDefaultTimezone);
+    OpenChannelRequest openChannelRequest = requestBuilder.build();
     return client.openChannel(openChannelRequest);
   }
 
