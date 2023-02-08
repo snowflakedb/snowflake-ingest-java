@@ -6,8 +6,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import net.snowflake.ingest.TestUtils;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -131,30 +129,36 @@ public class StringsIT extends AbstractDataTypeTest {
 
     // chars + 15+ times \uFFFF
     ingestManyAndMigrate(
+        "VARCHAR",
         "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF");
 
     // chars + 15+ times \uFFFF + chars
     ingestManyAndMigrate(
+        "VARCHAR",
         "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa");
 
     // 15+ times \uFFFF
     ingestManyAndMigrate(
+        "VARCHAR",
         "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF");
 
     // 15+ times \uFFFF + chars
     ingestManyAndMigrate(
+        "VARCHAR",
         "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa");
   }
 
   @Test
   public void testMultiByteCharComparison() throws Exception {
-    ingestManyAndMigrate("a", "❄");
-    ingestManyAndMigrate("❄", "a");
+    ingestManyAndMigrate("VARCHAR", "a", "❄");
+    ingestManyAndMigrate("VARCHAR", "❄", "a");
 
     ingestManyAndMigrate(
+        "VARCHAR",
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄");
     ingestManyAndMigrate(
+        "VARCHAR",
         "❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄❄",
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   }
@@ -214,23 +218,5 @@ public class StringsIT extends AbstractDataTypeTest {
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNSUPPORTED_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
-  }
-
-  /**
-   * Ingest multiple values, wait for the latest offset to be committed, migrate the table and
-   * assert no errors have been thrown.
-   */
-  protected <STREAMING_INGEST_WRITE> void ingestManyAndMigrate(STREAMING_INGEST_WRITE... values)
-      throws Exception {
-    String tableName = createTable("VARCHAR");
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
-    String offsetToken = null;
-    for (int i = 0; i < values.length; i++) {
-      offsetToken = String.format("offsetToken%d", i);
-      channel.insertRow(createStreamingIngestRow(values[i]), offsetToken);
-    }
-
-    TestUtils.waitForOffset(channel, offsetToken);
-    migrateTable(tableName); // migration should always succeed
   }
 }

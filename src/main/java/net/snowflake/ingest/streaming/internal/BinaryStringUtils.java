@@ -20,12 +20,16 @@ public class BinaryStringUtils {
       return Hex.encodeHexString(bytes);
     }
 
+    // In order not to mutate the original byte array, let's make a copy
+    byte[] result = new byte[MAX_LOB_LEN];
+    System.arraycopy(bytes, 0, result, 0, MAX_LOB_LEN);
+
     // Round the least significant byte(s) up
     if (truncateUp) {
       int idx;
       for (idx = MAX_LOB_LEN - 1; idx >= 0; idx--) {
         // increment the current byte, if there was no overflow, we can stop
-        if (++bytes[idx] != 0) {
+        if (++result[idx] != 0) {
           break;
         }
       }
@@ -35,6 +39,6 @@ public class BinaryStringUtils {
       }
     }
 
-    return Hex.encodeHexString(ByteBuffer.wrap(bytes, 0, MAX_LOB_LEN));
+    return Hex.encodeHexString(ByteBuffer.wrap(result, 0, MAX_LOB_LEN));
   }
 }

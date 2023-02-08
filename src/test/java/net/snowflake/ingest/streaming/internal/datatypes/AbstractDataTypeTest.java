@@ -353,4 +353,23 @@ public abstract class AbstractDataTypeTest {
   protected void migrateTable(String tableName) throws SQLException {
     conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
   }
+
+  /**
+   * Ingest multiple values, wait for the latest offset to be committed, migrate the table and
+   * assert no errors have been thrown.
+   */
+  @SafeVarargs
+  protected final <STREAMING_INGEST_WRITE> void ingestManyAndMigrate(
+      String datatype, final STREAMING_INGEST_WRITE... values) throws Exception {
+    String tableName = createTable(datatype);
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    String offsetToken = null;
+    for (int i = 0; i < values.length; i++) {
+      offsetToken = String.format("offsetToken%d", i);
+      channel.insertRow(createStreamingIngestRow(values[i]), offsetToken);
+    }
+
+    TestUtils.waitForOffset(channel, offsetToken);
+    migrateTable(tableName); // migration should always succeed
+  }
 }
