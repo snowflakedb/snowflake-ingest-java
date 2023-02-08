@@ -19,6 +19,8 @@ import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -122,7 +124,8 @@ public class FlushServiceTest {
         Long rowSequencer,
         String encryptionKey,
         Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption);
+        OpenChannelRequest.OnErrorOption onErrorOption,
+        ZoneId defaultTimezone);
 
     ChannelBuilder channelBuilder(String name) {
       return new ChannelBuilder(name);
@@ -197,7 +200,8 @@ public class FlushServiceTest {
                 rowSequencer,
                 encryptionKey,
                 encryptionKeyId,
-                onErrorOption);
+                onErrorOption,
+                ZoneOffset.UTC);
         channels.put(name, channel);
         channelCache.addChannel(channel);
         return channel;
@@ -246,7 +250,8 @@ public class FlushServiceTest {
         Long rowSequencer,
         String encryptionKey,
         Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption) {
+        OpenChannelRequest.OnErrorOption onErrorOption,
+        ZoneId defaultTimezone) {
       return new SnowflakeStreamingIngestChannelInternal<>(
           name,
           dbName,
@@ -259,6 +264,7 @@ public class FlushServiceTest {
           encryptionKey,
           encryptionKeyId,
           onErrorOption,
+          defaultTimezone,
           Constants.BdecVersion.ONE,
           allocator);
     }
@@ -295,7 +301,8 @@ public class FlushServiceTest {
         Long rowSequencer,
         String encryptionKey,
         Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption) {
+        OpenChannelRequest.OnErrorOption onErrorOption,
+        ZoneId defaultTimezone) {
       return new SnowflakeStreamingIngestChannelInternal<>(
           name,
           dbName,
@@ -308,6 +315,7 @@ public class FlushServiceTest {
           encryptionKey,
           encryptionKeyId,
           onErrorOption,
+          defaultTimezone,
           Constants.BdecVersion.THREE,
           null);
     }
@@ -638,7 +646,8 @@ public class FlushServiceTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC);
 
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -652,7 +661,8 @@ public class FlushServiceTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC);
 
     channelCache.addChannel(channel1);
     channelCache.addChannel(channel2);

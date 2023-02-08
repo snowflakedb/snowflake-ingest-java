@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.ArrowRowBuffer.DECIMAL_BIT_WIDTH;
 
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,7 +30,7 @@ public class ArrowBufferTest {
   ArrowRowBuffer createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
     ChannelRuntimeState initialState = new ChannelRuntimeState("0", 0L, true);
     return new ArrowRowBuffer(
-        onErrorOption, new RootAllocator(), "test.buffer", rs -> {}, initialState);
+        onErrorOption, ZoneOffset.UTC, new RootAllocator(), "test.buffer", rs -> {}, initialState);
   }
 
   @Test

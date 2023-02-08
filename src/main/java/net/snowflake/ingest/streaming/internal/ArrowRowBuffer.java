@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,11 +82,18 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   /** Construct a ArrowRowBuffer object. */
   ArrowRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneId defaultTimezone,
       BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelState) {
-    super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelState);
+    super(
+        onErrorOption,
+        defaultTimezone,
+        allocator,
+        fullyQualifiedChannelName,
+        rowSizeMetric,
+        channelState);
     this.fields = new HashMap<>();
   }
 
@@ -527,7 +535,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             }
           case TIMESTAMP_LTZ:
           case TIMESTAMP_NTZ:
-            boolean ignoreTimezone = logicalType == ColumnLogicalType.TIMESTAMP_NTZ;
+            boolean trimTimezone = logicalType == ColumnLogicalType.TIMESTAMP_NTZ;
 
             switch (physicalType) {
               case SB8:
@@ -538,9 +546,11 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           stats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
-                          ignoreTimezone);
-                  bigIntVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
-                  stats.addIntValue(timestampWrapper.getTimeInScale());
+                          defaultTimezone,
+                          trimTimezone);
+                  BigInteger timestampBinary = timestampWrapper.toBinary(false);
+                  bigIntVector.setSafe(curRowIndex, timestampBinary.longValue());
+                  stats.addIntValue(timestampBinary);
                   rowBufferSize += 8;
                   break;
                 }
@@ -559,11 +569,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           stats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
-                          ignoreTimezone);
+                          defaultTimezone,
+                          trimTimezone);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   rowBufferSize += 12;
-                  stats.addIntValue(timestampWrapper.getTimeInScale());
+                  stats.addIntValue(timestampWrapper.toBinary(false));
                   break;
                 }
               default:
@@ -587,30 +598,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           stats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
+                          defaultTimezone,
                           false);
-                  epochVector.setSafe(curRowIndex, timestampWrapper.getTimeInScale().longValue());
-                  timezoneVector.setSafe(
-                      curRowIndex,
-                      timestampWrapper
-                          .getTimeZoneIndex()
-                          .orElseThrow(
-                              () ->
-                                  new SFException(
-                                      ErrorCode.INVALID_ROW,
-                                      value,
-                                      "Unable to parse timezone for TIMESTAMP_TZ column")));
+                  epochVector.setSafe(
+                      curRowIndex, timestampWrapper.toBinary(false).longValueExact());
+                  timezoneVector.setSafe(curRowIndex, timestampWrapper.getTimeZoneIndex());
                   rowBufferSize += 12;
-                  BigInteger timeInBinary =
-                      timestampWrapper
-                          .getSfTimestamp()
-                          .orElseThrow(
-                              () ->
-                                  new SFException(
-                                      ErrorCode.INVALID_ROW,
-                                      value,
-                                      "Unable to parse timestamp for TIMESTAMP_TZ column"))
-                          .toBinary(Integer.parseInt(field.getMetadata().get(COLUMN_SCALE)), true);
-                  stats.addIntValue(timeInBinary);
+                  stats.addIntValue(timestampWrapper.toBinary(true));
                   break;
                 }
               case SB16:
@@ -630,30 +624,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           stats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
+                          defaultTimezone,
                           false);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
-                  timezoneVector.setSafe(
-                      curRowIndex,
-                      timestampWrapper
-                          .getTimeZoneIndex()
-                          .orElseThrow(
-                              () ->
-                                  new SFException(
-                                      ErrorCode.INVALID_ROW,
-                                      value,
-                                      "Unable to parse timezone for TIMESTAMP_TZ column")));
+                  timezoneVector.setSafe(curRowIndex, timestampWrapper.getTimeZoneIndex());
                   rowBufferSize += 16;
-                  BigInteger timeInBinary =
-                      timestampWrapper
-                          .getSfTimestamp()
-                          .orElseThrow(
-                              () ->
-                                  new SFException(
-                                      ErrorCode.INVALID_ROW,
-                                      value,
-                                      "Unable to parse timestamp for TIMESTAMP_TZ column"))
-                          .toBinary(Integer.parseInt(field.getMetadata().get(COLUMN_SCALE)), true);
+                  BigInteger timeInBinary = timestampWrapper.toBinary(true);
                   stats.addIntValue(timeInBinary);
                   break;
                 }
