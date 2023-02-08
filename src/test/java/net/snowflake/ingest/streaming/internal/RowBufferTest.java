@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static java.time.ZoneOffset.UTC;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -119,6 +121,7 @@ public class RowBufferTest {
     ChannelRuntimeState initialState = new ChannelRuntimeState("0", 0L, true);
     return AbstractRowBuffer.createRowBuffer(
         onErrorOption,
+        UTC,
         new RootAllocator(),
         bdecVersion,
         "test.buffer",
@@ -572,6 +575,31 @@ public class RowBufferTest {
         FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMaxRealValue());
     Assert.assertEquals(1, realColumnResult.getNullCount());
     Assert.assertEquals(0, realColumnResult.getMaxLength());
+  }
+
+  @Test
+  public void testInvalidEPInfo() {
+    Map<String, RowBufferStats> colStats = new HashMap<>();
+
+    RowBufferStats stats1 = new RowBufferStats("intColumn");
+    stats1.addIntValue(BigInteger.valueOf(2));
+    stats1.addIntValue(BigInteger.valueOf(10));
+    stats1.addIntValue(BigInteger.valueOf(1));
+
+    RowBufferStats stats2 = new RowBufferStats("strColumn");
+    stats2.addStrValue("alice");
+    stats2.incCurrentNullCount();
+    stats2.incCurrentNullCount();
+
+    colStats.put("intColumn", stats1);
+    colStats.put("strColumn", stats2);
+
+    try {
+      AbstractRowBuffer.buildEpInfoFromStats(1, colStats);
+      Assert.fail("should fail when row count is smaller than null count.");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
+    }
   }
 
   @Test

@@ -30,7 +30,8 @@ public class ParameterProvider {
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final int INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
-  public static final Constants.BdecVersion BLOB_FORMAT_VERSION_DEFAULT = Constants.BdecVersion.ONE;
+  public static final Constants.BdecVersion BLOB_FORMAT_VERSION_DEFAULT =
+      Constants.BdecVersion.THREE;
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;

@@ -361,26 +361,26 @@ public class StreamingIngestIT {
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
     Map<String, Object> row = new HashMap<>();
-    row.put("ttzsmall", "2021-01-01 01:00:00.123 -0300");
-    row.put("ttzbig", "2021-01-01 09:00:00.12345678 -0300");
+    row.put("ttzsmall", "2021-01-01T01:00:00.123-03:00");
+    row.put("ttzbig", "2021-01-01T09:00:00.12345678-03:00");
     row.put("tsmall", "01:00:00.123");
     row.put("tbig", "09:00:00.12345678");
     row.put("tntzsmall", "1609462800123");
     row.put("tntzbig", "1609462800123450000");
     verifyInsertValidationResponse(channel1.insertRow(row, null));
-    row.put("ttzsmall", "2021-01-01 10:00:00.123 +0700");
-    row.put("ttzbig", "2021-01-01 19:00:00.12345678 -0300");
+    row.put("ttzsmall", "2021-01-01T10:00:00.123+07:00");
+    row.put("ttzbig", "2021-01-01T19:00:00.12345678-03:00");
     row.put("tsmall", "02:00:00.123");
     row.put("tbig", "10:00:00.12345678");
     row.put("tntzsmall", "1709462800123");
     row.put("tntzbig", "170946280212345000");
     verifyInsertValidationResponse(channel1.insertRow(row, null));
-    row.put("ttzsmall", "2021-01-01 05:00:00 +0100");
-    row.put("ttzbig", "2021-01-01 23:00:00.12345678 -0300");
+    row.put("ttzsmall", "2021-01-01T05:00:00+01:00");
+    row.put("ttzbig", "2021-01-01T23:00:00.12345678-03:00");
     row.put("tsmall", "03:00:00.123");
     row.put("tbig", "11:00:00.12345678");
     row.put("tntzsmall", "1809462800123");
-    row.put("tntzbig", "2031-01-01 09:00:00.123456780");
+    row.put("tntzbig", "2031-01-01T09:00:00.123456780");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     // Close the channel after insertion
@@ -472,7 +472,7 @@ public class StreamingIngestIT {
     row.put("tinyfloat", 1.1);
     row.put("var", "{\"e\":2.7}");
     row.put("t", String.valueOf(timestamp));
-    row.put("d", "1969-12-31 00:00:00");
+    row.put("d", "1969-12-31T00:00:00");
     verifyInsertValidationResponse(channel1.insertRow(row, "1"));
 
     // Close the channel after insertion
@@ -1230,9 +1230,9 @@ public class StreamingIngestIT {
         "{ \"a\": 1, \"b\": \"qwerty\", \"c\": null, \"d\": { \"e\": 2, \"f\": \"asdf\", \"g\":"
             + " null } }");
     posRow.put("arr", Arrays.asList("{ \"a\": 1}", "{ \"b\": 2 }", "{ \"c\": 3 }"));
-    posRow.put("epochdays", "2022-09-18 20:05:07"); // DATE, 18.09.2022
-    posRow.put("epochsec", "2022-09-18 20:05:07"); // TIMESTAMP_NTZ(0)
-    posRow.put("epochnano", "2022-09-18 20:05:07.999999999"); // TIMESTAMP_NTZ(9)
+    posRow.put("epochdays", "2022-09-18T20:05:07"); // DATE, 18.09.2022
+    posRow.put("epochsec", "2022-09-18T20:05:07"); // TIMESTAMP_NTZ(0)
+    posRow.put("epochnano", "2022-09-18T20:05:07.999999999"); // TIMESTAMP_NTZ(9)
     posRow.put("timesec", "01:00:01.999999999"); // TIME(0)
     posRow.put("timenano", "01:00:01.999999999"); // TIME(9)
 

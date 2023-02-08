@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static java.time.ZoneOffset.UTC;
+
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,7 +37,8 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel2",
@@ -48,7 +51,8 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     channel3 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel3",
@@ -61,7 +65,8 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     cache.addChannel(channel1);
     cache.addChannel(channel2);
     cache.addChannel(channel3);
@@ -86,7 +91,8 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     cache.addChannel(channel);
     Assert.assertEquals(1, cache.getSize());
     Assert.assertTrue(channel == cache.iterator().next().getValue().get(channelName));
@@ -103,7 +109,8 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     cache.addChannel(channelDup);
     // The old channel should be invalid now
     Assert.assertTrue(!channel.isValid());
@@ -183,7 +190,8 @@ public class ChannelCacheTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     cache.removeChannelIfSequencersMatch(channel3Dup);
     // Verify that remove the same channel with a different channel sequencer is a no op
     Assert.assertEquals(1, cache.getSize());

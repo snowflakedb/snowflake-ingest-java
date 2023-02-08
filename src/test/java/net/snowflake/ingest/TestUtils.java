@@ -150,15 +150,6 @@ public class TestUtils {
 
   /** @return list of Bdec versions for which to execute IT tests. */
   public static Collection<Object[]> getBdecVersionItCases() {
-    boolean enableParquetTests =
-        System.getProperty("enableParquetTests") != null
-            && Boolean.parseBoolean(System.getProperty("enableParquetTests"));
-    if (enableParquetTests) {
-      return Arrays.asList(
-          new Object[][] {
-            {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
-          });
-    }
     return Arrays.asList(
         new Object[][] {
           {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}

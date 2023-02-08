@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -169,13 +170,17 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // ON_ERROR option for this channel
   final OpenChannelRequest.OnErrorOption onErrorOption;
 
+  final ZoneId defaultTimezone;
+
   AbstractRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneId defaultTimezone,
       BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState) {
     this.onErrorOption = onErrorOption;
+    this.defaultTimezone = defaultTimezone;
     this.rowSizeMetric = rowSizeMetric;
     this.channelState = channelRuntimeState;
     this.channelFullyQualifiedName = fullyQualifiedChannelName;
@@ -536,12 +541,14 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
     }
+    epInfo.verifyEpInfo();
     return epInfo;
   }
 
   /** Row buffer factory. */
   static <T> AbstractRowBuffer<T> createRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneId defaultTimezone,
       BufferAllocator allocator,
       Constants.BdecVersion bdecVersion,
       String fullyQualifiedChannelName,
@@ -555,6 +562,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         return (AbstractRowBuffer<T>)
             new ArrowRowBuffer(
                 onErrorOption,
+                defaultTimezone,
                 allocator,
                 fullyQualifiedChannelName,
                 rowSizeMetric,
@@ -564,6 +572,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         return (AbstractRowBuffer<T>)
             new ParquetRowBuffer(
                 onErrorOption,
+                defaultTimezone,
                 allocator,
                 fullyQualifiedChannelName,
                 rowSizeMetric,

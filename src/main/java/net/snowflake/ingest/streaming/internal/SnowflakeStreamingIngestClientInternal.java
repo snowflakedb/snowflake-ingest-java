@@ -328,6 +328,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .setEncryptionKey(response.getEncryptionKey())
               .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
+              .setDefaultTimezone(request.getDefaultTimezone())
               .build();
 
       // Setup the row buffer schema
@@ -382,11 +383,17 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
             response.getChannels().get(idx);
         if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
-          logger.logWarn(
-              "Channel has failure status_code, name={}, channel_sequencer={}," + " status_code={}",
-              channel.getFullyQualifiedName(),
-              channel.getChannelSequencer(),
-              channelStatus.getStatusCode());
+          String errorMessage =
+              String.format(
+                  "Channel has failure status_code, name=%s, channel_sequencer=%d, status_code=%d",
+                  channel.getFullyQualifiedName(),
+                  channel.getChannelSequencer(),
+                  channelStatus.getStatusCode());
+          logger.logWarn(errorMessage);
+          if (getTelemetryService() != null) {
+            getTelemetryService()
+                .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+          }
         }
       }
 
@@ -480,14 +487,21 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                                 < MAX_STREAMING_INGEST_API_CHANNEL_RETRY) {
                                           queueFullChunks.add(chunkStatus);
                                         } else {
-                                          logger.logWarn(
-                                              "Channel has been invalidated because of failure"
-                                                  + " response, name={}, channel_sequencer={},"
-                                                  + " status_code={}, executionCount={}",
-                                              channelStatus.getChannelName(),
-                                              channelStatus.getChannelSequencer(),
-                                              channelStatus.getStatusCode(),
-                                              executionCount);
+                                          String errorMessage =
+                                              String.format(
+                                                  "Channel has been invalidated because of failure"
+                                                      + " response, name=%s, channel_sequencer=%d,"
+                                                      + " status_code=%d, executionCount=%d",
+                                                  channelStatus.getChannelName(),
+                                                  channelStatus.getChannelSequencer(),
+                                                  channelStatus.getStatusCode(),
+                                                  executionCount);
+                                          logger.logWarn(errorMessage);
+                                          if (getTelemetryService() != null) {
+                                            getTelemetryService()
+                                                .reportClientFailure(
+                                                    this.getClass().getSimpleName(), errorMessage);
+                                          }
                                           channelCache.invalidateChannelIfSequencersMatch(
                                               chunkStatus.getDBName(),
                                               chunkStatus.getSchemaName(),
