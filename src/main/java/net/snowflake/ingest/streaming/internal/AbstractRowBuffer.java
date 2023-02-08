@@ -541,6 +541,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
     }
+    epInfo.verifyEpInfo();
     return epInfo;
   }
 

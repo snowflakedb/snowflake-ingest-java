@@ -43,11 +43,17 @@ class ChannelData<T> {
     if (left == null || right == null) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "null column stats");
     }
-    if (left.size() != right.size()) {
-      throw new SFException(ErrorCode.INTERNAL_ERROR, "Column stats map key mismatch");
-    }
-    Map<String, RowBufferStats> result = new HashMap<>();
 
+    if (left.size() != right.size()) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "Column stats map key size mismatch, left=%d, right=%d, leftKeySet=%s,"
+                  + " rightKeySet=%s",
+              left.size(), right.size(), left.keySet(), right.keySet()));
+    }
+
+    Map<String, RowBufferStats> result = new HashMap<>();
     try {
       for (String key : left.keySet()) {
         RowBufferStats leftStats = left.get(key);
@@ -55,7 +61,7 @@ class ChannelData<T> {
         result.put(key, RowBufferStats.getCombinedStats(leftStats, rightStats));
       }
     } catch (NullPointerException npe) {
-      throw new SFException(ErrorCode.INTERNAL_ERROR, "Column stats map key mismatch");
+      throw new SFException(npe, ErrorCode.INTERNAL_ERROR, "Column stats map key mismatch");
     }
     return result;
   }
