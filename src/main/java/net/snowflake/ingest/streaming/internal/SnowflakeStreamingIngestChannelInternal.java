@@ -11,6 +11,8 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +78,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       SnowflakeStreamingIngestClientInternal<T> client,
       String encryptionKey,
       Long encryptionKeyId,
-      OpenChannelRequest.OnErrorOption onErrorOption) {
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneOffset defaultTimezone) {
     this(
         name,
         dbName,
@@ -89,6 +92,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKey,
         encryptionKeyId,
         onErrorOption,
+        defaultTimezone,
         client.getParameterProvider().getBlobFormatVersion(),
         new RootAllocator());
   }
@@ -106,6 +110,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       String encryptionKey,
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneId defaultTimezone,
       Constants.BdecVersion bdecVersion,
       BufferAllocator allocator) {
     this.isClosed = false;
@@ -117,6 +122,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     this.rowBuffer =
         AbstractRowBuffer.createRowBuffer(
             onErrorOption,
+            defaultTimezone,
             allocator,
             bdecVersion,
             getFullyQualifiedName(),

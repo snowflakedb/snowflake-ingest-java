@@ -328,6 +328,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .setEncryptionKey(response.getEncryptionKey())
               .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
+              .setDefaultTimezone(request.getDefaultTimezone())
               .build();
 
       // Setup the row buffer schema
