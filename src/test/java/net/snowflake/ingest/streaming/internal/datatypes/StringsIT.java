@@ -128,28 +128,24 @@ public class StringsIT extends AbstractDataTypeTest {
         new StringProvider());
 
     // chars + 15+ times \uFFFF
-    testIngestion(
+    ingestManyAndMigrate(
         "VARCHAR",
-        "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF",
-        new StringProvider());
+        "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF");
 
     // chars + 15+ times \uFFFF + chars
-    testIngestion(
+    ingestManyAndMigrate(
         "VARCHAR",
-        "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa",
-        new StringProvider());
+        "aaaaaaaaa\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa");
 
     // 15+ times \uFFFF
-    testIngestion(
+    ingestManyAndMigrate(
         "VARCHAR",
-        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF",
-        new StringProvider());
+        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF");
 
     // 15+ times \uFFFF + chars
-    testIngestion(
+    ingestManyAndMigrate(
         "VARCHAR",
-        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa",
-        new StringProvider());
+        "\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFF\uFFFFaaaaaaaaa");
   }
 
   @Test
