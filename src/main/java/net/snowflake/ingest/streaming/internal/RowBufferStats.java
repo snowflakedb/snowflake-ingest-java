@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
+
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -22,11 +24,9 @@ class RowBufferStats {
   private long currentNullCount;
   // for binary or string columns
   private long currentMaxLength;
-  private String collationDefinitionString;
+  private final String collationDefinitionString;
   /** Display name is required for the registration endpoint */
   private final String columnDisplayName;
-
-  private static final int MAX_LOB_LEN = 32;
 
   /** Creates empty stats */
   RowBufferStats(String columnDisplayName, String collationDefinitionString) {
@@ -193,7 +193,7 @@ class RowBufferStats {
    * @return -1 indicating the NDV is unknown
    */
   long getDistinctValues() {
-    return -1;
+    return EP_NDV_UNKNOWN;
   }
 
   String getCollationDefinitionString() {

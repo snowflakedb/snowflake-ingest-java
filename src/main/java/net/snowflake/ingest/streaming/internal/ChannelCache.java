@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 class ChannelCache<T> {
   // Cache to hold all the valid channels, the key for the outer map is FullyQualifiedTableName and
   // the key for the inner map is ChannelName
-  private ConcurrentHashMap<
+  private final ConcurrentHashMap<
           String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>
       cache = new ConcurrentHashMap<>();
 
