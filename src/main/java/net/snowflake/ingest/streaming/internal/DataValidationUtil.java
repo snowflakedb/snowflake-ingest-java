@@ -34,8 +34,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import net.snowflake.client.jdbc.internal.apache.commons.codec.DecoderException;
-import net.snowflake.client.jdbc.internal.apache.commons.codec.binary.Hex;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
@@ -43,6 +41,8 @@ import net.snowflake.ingest.streaming.internal.serialization.ByteArraySerializer
 import net.snowflake.ingest.streaming.internal.serialization.ZonedDateTimeSerializer;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
