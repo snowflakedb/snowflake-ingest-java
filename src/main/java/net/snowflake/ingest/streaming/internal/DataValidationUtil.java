@@ -34,7 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import javax.xml.bind.DatatypeConverter;
+import net.snowflake.client.jdbc.internal.apache.commons.codec.DecoderException;
+import net.snowflake.client.jdbc.internal.apache.commons.codec.binary.Hex;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
@@ -592,8 +593,8 @@ class DataValidationUtil {
       output = (byte[]) input;
     } else if (input instanceof String) {
       try {
-        output = DatatypeConverter.parseHexBinary((String) input);
-      } catch (IllegalArgumentException e) {
+        output = Hex.decodeHex((String) input);
+      } catch (DecoderException e) {
         throw valueFormatNotAllowedException(columnName, input, "BINARY", "Not a valid hex string");
       }
     } else {
