@@ -67,7 +67,7 @@ class ParquetValueParser {
               DataValidationUtil.validateAndParseBoolean(columnMetadata.getName(), value);
           value = intValue > 0;
           stats.addIntValue(BigInteger.valueOf(intValue));
-          estimatedParquetSize =
+          estimatedParquetSize +=
               0.125f; // Parquet uses BitPacking for encoding boolean, hence 1 bit
           break;
         case INT32:
@@ -81,7 +81,7 @@ class ParquetValueParser {
                   physicalType);
           value = intVal;
           stats.addIntValue(BigInteger.valueOf(intVal));
-          estimatedParquetSize = 4;
+          estimatedParquetSize += 4;
           break;
         case INT64:
           long longValue =
@@ -95,24 +95,24 @@ class ParquetValueParser {
                   defaultTimezone);
           value = longValue;
           stats.addIntValue(BigInteger.valueOf(longValue));
-          estimatedParquetSize = 8;
+          estimatedParquetSize += 8;
           break;
         case DOUBLE:
           double doubleValue =
               DataValidationUtil.validateAndParseReal(columnMetadata.getName(), value);
           value = doubleValue;
           stats.addRealValue(doubleValue);
-          estimatedParquetSize = 8;
+          estimatedParquetSize += 8;
           break;
         case BINARY:
           if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
             value = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
-            estimatedParquetSize = ((byte[]) value).length;
+            estimatedParquetSize += ((byte[]) value).length;
           } else {
             String str = getBinaryValue(value, stats, columnMetadata);
             value = str;
             if (str != null) {
-              estimatedParquetSize = str.getBytes().length;
+              estimatedParquetSize += str.getBytes().length;
             }
             estimatedParquetSize +=
                 4; // Parquet stores length in 4 bytes before the actual data bytes
