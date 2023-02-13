@@ -149,7 +149,7 @@ public class ParquetValueParserTest {
         .expectedParsedValue(
             ParquetValueParser.getSb16Bytes(
                 new BigInteger("91234567899876543219876543211234567891")))
-        .expectedSize(16.0f)
+        .expectedSize(16.0f + 1 + 1f / 8) // 1 byte + 1 bit for definition level encoding
         .expectedMinMax(new BigInteger("91234567899876543219876543211234567891"))
         .assertMatches();
   }
@@ -227,7 +227,7 @@ public class ParquetValueParserTest {
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Boolean.class)
         .expectedParsedValue(true)
-        .expectedSize(1.0f)
+        .expectedSize(1.0f / 8) // 1 bit
         .expectedMinMax(BigInteger.valueOf(1))
         .assertMatches();
   }
@@ -291,7 +291,7 @@ public class ParquetValueParserTest {
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(String.class)
         .expectedParsedValue(var)
-        .expectedSize(var.getBytes().length)
+        .expectedSize(4 + var.getBytes().length) // 4 bytes for length before actual data bytes
         .expectedMinMax(null)
         .assertMatches();
   }
@@ -361,7 +361,7 @@ public class ParquetValueParserTest {
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(String.class)
         .expectedParsedValue(resultArray)
-        .expectedSize(resultArray.length())
+        .expectedSize(4 + resultArray.length()) // 4 bytes for length before actual data bytes
         .expectedMinMax(null)
         .assertMatches();
   }
@@ -447,7 +447,7 @@ public class ParquetValueParserTest {
         .expectedValueClass(byte[].class)
         .expectedParsedValue(
             ParquetValueParser.getSb16Bytes(BigInteger.valueOf(1663538707123456789L)))
-        .expectedSize(16.0f)
+        .expectedSize(16.0f + 1 + 1.0f / 8) // 1 byte + 1 bit for definition level encoding
         .expectedMinMax(BigInteger.valueOf(1663538707123456789L))
         .assertMatches();
   }
