@@ -17,6 +17,17 @@ import org.apache.parquet.schema.PrimitiveType;
 
 /** Parses a user column value into Parquet internal representation for buffering. */
 class ParquetValueParser {
+
+  // Parquet uses BitPacking to encode boolean, hence 1 bit per value
+  public static final float BIT_ENCODING_BYTE_LEN = 1.0f / 8;
+
+  /* (on average) 2 bytes / 8 values for the RLE+bitpack encoded definition level.
+  Since we don't have nested types, repetition level is always 0 and is not stored at all by Parquet. */
+  public static final float DEFINITION_LEVEL_ENCODING_BYTE_LEN = 2.0f / 8;
+
+  // Parquet stores length in 4 bytes before the actual data bytes
+  public static final int BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN = 4;
+
   /** Parquet internal value representation for buffering. */
   static class ParquetBufferValue {
     private final Object value;
@@ -53,9 +64,7 @@ class ParquetValueParser {
       ZoneId defaultTimezone) {
     Utils.assertNotNull("Parquet column stats", stats);
     float estimatedParquetSize = 0F;
-    estimatedParquetSize +=
-        (1 + 0.125f); // 1 byte + 1 bit for the definition level value in the RLE+bitpack encoded
-    // Parquet column
+    estimatedParquetSize += DEFINITION_LEVEL_ENCODING_BYTE_LEN;
     if (value != null) {
       AbstractRowBuffer.ColumnLogicalType logicalType =
           AbstractRowBuffer.ColumnLogicalType.valueOf(columnMetadata.getLogicalType());
@@ -67,8 +76,7 @@ class ParquetValueParser {
               DataValidationUtil.validateAndParseBoolean(columnMetadata.getName(), value);
           value = intValue > 0;
           stats.addIntValue(BigInteger.valueOf(intValue));
-          estimatedParquetSize +=
-              0.125f; // Parquet uses BitPacking for encoding boolean, hence 1 bit
+          estimatedParquetSize += BIT_ENCODING_BYTE_LEN;
           break;
         case INT32:
           int intVal =
@@ -105,18 +113,21 @@ class ParquetValueParser {
           estimatedParquetSize += 8;
           break;
         case BINARY:
+          int length = 0;
           if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
             value = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
-            estimatedParquetSize += ((byte[]) value).length;
+            length = ((byte[]) value).length;
           } else {
             String str = getBinaryValue(value, stats, columnMetadata);
             value = str;
             if (str != null) {
-              estimatedParquetSize += str.getBytes().length;
+              length = str.getBytes().length;
             }
-            estimatedParquetSize +=
-                4; // Parquet stores length in 4 bytes before the actual data bytes
           }
+          if (value != null) {
+            estimatedParquetSize += (BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + length);
+          }
+
           break;
         case FIXED_LEN_BYTE_ARRAY:
           BigInteger intRep =
