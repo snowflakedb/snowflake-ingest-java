@@ -14,7 +14,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHost;
@@ -48,10 +47,9 @@ public class HttpUtil {
   public static final String USE_PROXY = "http.useProxy";
   public static final String PROXY_HOST = "http.proxyHost";
   public static final String PROXY_PORT = "http.proxyPort";
-  public static final String NON_PROXY_HOSTS = "http.nonProxyHosts";
+
   public static final String HTTP_PROXY_USER = "http.proxyUser";
   public static final String HTTP_PROXY_PASSWORD = "http.proxyPassword";
-  private static final String SNOWFLAKE_DOMAIN_NAME = ".snowflakecomputing.com";
 
   private static final String PROXY_SCHEME = "http";
   private static final String FIRST_FAULT_TIMESTAMP = "FIRST_FAULT_TIMESTAMP";
@@ -86,15 +84,11 @@ public class HttpUtil {
   // Only connections that are currently owned, not checked out, are subject to idle timeouts.
   private static final int DEFAULT_IDLE_CONNECTION_TIMEOUT_SECONDS = 30;
 
-  /**
-   * @param {@code String} account name to connect to (excluding snowflakecomputing.com domain)
-   * @return Instance of CloseableHttpClient
-   */
-  public static CloseableHttpClient getHttpClient(String accountName) {
+  public static CloseableHttpClient getHttpClient() {
     if (httpClient == null) {
       synchronized (HttpUtil.class) {
         if (httpClient == null) {
-          initHttpClient(accountName);
+          initHttpClient();
         }
       }
     }
@@ -106,7 +100,7 @@ public class HttpUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
 
-  private static void initHttpClient(String accountName) {
+  private static void initHttpClient() {
 
     Security.setProperty("ocsp.enable", "true");
 
@@ -152,7 +146,7 @@ public class HttpUtil {
             .setDefaultRequestConfig(requestConfig);
 
     // proxy settings
-    if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY)) && !shouldBypassProxy(accountName)) {
+    if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY))) {
       if (System.getProperty(PROXY_PORT) == null) {
         throw new IllegalArgumentException(
             "proxy port number is not provided, please assign proxy port to http.proxyPort option");
@@ -322,12 +316,6 @@ public class HttpUtil {
         proxyProperties.put(SFSessionProperty.PROXY_USER.getPropertyKey(), proxyUser);
         proxyProperties.put(SFSessionProperty.PROXY_PASSWORD.getPropertyKey(), proxyPassword);
       }
-
-      // Check if http.nonProxyHosts was set
-      final String nonProxyHosts = System.getProperty(NON_PROXY_HOSTS);
-      if (!isNullOrEmpty(nonProxyHosts)) {
-        proxyProperties.put(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey(), nonProxyHosts);
-      }
     }
     return proxyProperties;
   }
@@ -412,30 +400,5 @@ public class HttpUtil {
       return title + poolStats + "\n";
     }
     return title;
-  }
-
-  // Changes the account name to the format accountName.snowflakecomputing.com
-  // then returns a boolean to indicate if we should go through a proxy or not.
-  public static Boolean shouldBypassProxy(String accountName) {
-    String targetHost = accountName + SNOWFLAKE_DOMAIN_NAME;
-    return System.getProperty(NON_PROXY_HOSTS) != null && isInNonProxyHosts(targetHost);
-  }
-
-  /* The target hostname input is compared with the hosts in the '|' separated
-    list provided by the http.nonProxyHosts parameter using regex. The nonProxyHosts
-    will be used as our Patterns, so we need to replace the '.' and '*' characters
-    since those are special regex constructs that mean 'any character,' and
-    'repeat 0 or more times.'
-  */
-  private static Boolean isInNonProxyHosts(String targetHost) {
-    String nonProxyHosts =
-        System.getProperty(NON_PROXY_HOSTS).replace(".", "\\.").replace("*", ".*");
-    String[] nonProxyHostsArray = nonProxyHosts.split("\\|");
-    for (String i : nonProxyHostsArray) {
-      if (Pattern.compile(i).matcher(targetHost).matches()) {
-        return true;
-      }
-    }
-    return false;
   }
 }
