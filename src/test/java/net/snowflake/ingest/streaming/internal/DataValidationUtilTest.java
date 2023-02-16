@@ -42,9 +42,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import javax.xml.bind.DatatypeConverter;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -747,7 +748,7 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseBinary() {
+  public void testValidateAndParseBinary() throws DecoderException {
     byte[] maxAllowedArray = new byte[BYTES_8_MB];
     byte[] maxAllowedArrayMinusOne = new byte[BYTES_8_MB - 1];
 
@@ -759,8 +760,7 @@ public class DataValidationUtilTest {
         new byte[] {-1, 0, 1},
         validateAndParseBinary("COL", new byte[] {-1, 0, 1}, Optional.empty()));
     assertArrayEquals(
-        DatatypeConverter.parseHexBinary(
-            "1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
+        Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL", "1234567890abcdef", Optional.empty())); // pragma: allowlist secret NOT A SECRET
 

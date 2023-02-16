@@ -29,11 +29,11 @@ import java.util.zip.GZIPOutputStream;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.xml.bind.DatatypeConverter;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import org.apache.commons.codec.binary.Hex;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -319,7 +319,7 @@ class BlobBuilder {
         MessageDigest.getInstance("MD5");
     md.update(data, 0, length);
     byte[] digest = md.digest();
-    return DatatypeConverter.printHexBinary(digest).toLowerCase();
+    return Hex.encodeHexString(digest);
   }
 
   /** Blob data to store in a file and register by server side. */
