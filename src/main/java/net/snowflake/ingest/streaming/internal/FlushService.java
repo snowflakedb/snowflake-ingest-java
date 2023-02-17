@@ -4,11 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Constants.*;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
@@ -17,35 +13,15 @@ import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
+import net.snowflake.ingest.utils.*;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.arrow.vector.VectorSchemaRoot;
 
@@ -341,30 +317,53 @@ class FlushService<T> {
 
     while (itr.hasNext()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
-      AtomicReference<Float> totalBufferSizeInBytes = new AtomicReference<>((float) 0);
-
+      List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
+      float totalBufferSizeInBytes = 0F;
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
 
       // Distribute work at table level, create a new blob if reaching the blob size limit
-      while (itr.hasNext() && totalBufferSizeInBytes.get() <= MAX_BLOB_SIZE_IN_BYTES) {
-        ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
-            itr.next().getValue();
+      while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
         List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
-        // Use parallel stream since getData could be the performance bottleneck when we have a high
-        // number of channels
-        table.values().parallelStream()
-            .forEach(
-                channel -> {
-                  if (channel.isValid()) {
-                    ChannelData<T> data = channel.getData(filePath);
-                    if (data != null) {
-                      channelsDataPerTable.add(data);
-                      totalBufferSizeInBytes.updateAndGet(v -> v + data.getBufferSize());
+        if (!leftoverChannelsDataPerTable.isEmpty()) {
+          channelsDataPerTable.addAll(leftoverChannelsDataPerTable);
+          leftoverChannelsDataPerTable.clear();
+        } else {
+          ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
+              itr.next().getValue();
+          // Use parallel stream since getData could be the performance bottleneck when we have a
+          // high number of channels
+          table.values().parallelStream()
+              .forEach(
+                  channel -> {
+                    if (channel.isValid()) {
+                      ChannelData<T> data = channel.getData(filePath);
+                      if (data != null) {
+                        channelsDataPerTable.add(data);
+                      }
                     }
-                  }
-                });
+                  });
+        }
+
         if (!channelsDataPerTable.isEmpty()) {
-          blobData.add(channelsDataPerTable);
+          int idx = 0;
+          while (idx < channelsDataPerTable.size()) {
+            ChannelData<T> channelData = channelsDataPerTable.get(idx);
+            totalBufferSizeInBytes += channelData.getBufferSize();
+            if (totalBufferSizeInBytes > MAX_BLOB_SIZE_IN_BYTES
+                || (idx > 0
+                    && !Objects.equals(
+                        channelData.getChannelContext().getEncryptionKeyId(),
+                        channelsDataPerTable
+                            .get(idx - 1)
+                            .getChannelContext()
+                            .getEncryptionKeyId()))) {
+              leftoverChannelsDataPerTable.addAll(
+                  channelsDataPerTable.subList(idx + 1, channelsDataPerTable.size()));
+              break;
+            }
+            idx++;
+          }
+          blobData.add(channelsDataPerTable.subList(0, idx));
         }
       }
 
