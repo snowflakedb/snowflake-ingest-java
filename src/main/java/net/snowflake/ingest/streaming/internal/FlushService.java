@@ -4,7 +4,11 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
@@ -13,15 +17,35 @@ import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TimeZone;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.*;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.arrow.vector.VectorSchemaRoot;
 
