@@ -4,22 +4,9 @@
 
 package net.snowflake.ingest.connection;
 
-import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
-import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.KeyPair;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
@@ -35,6 +22,16 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.KeyPair;
+import java.util.*;
+
+import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 /**
  * This class handles constructing the URIs for our requests as well as putting together the
@@ -127,7 +124,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "1.0.3-beta";
+  public static final String DEFAULT_VERSION = "1.0.3-beta.1";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
