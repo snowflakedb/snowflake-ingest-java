@@ -26,10 +26,10 @@ public class ParquetPerf {
                         {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 1},
                         // 1M X 2
                         {"Arrow", false, Constants.BdecVersion.ONE, 10000, 100, 2},
-                        {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 1},
+                        {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 2},
                         // 1M X 3
                         {"Arrow", false, Constants.BdecVersion.ONE, 10000, 100, 3},
-                        {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 1},
+                        {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 3},
                 });
     }
 
