@@ -338,14 +338,15 @@ class FlushService<T> {
                 String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
         itr = this.channelCache.iterator();
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
+    List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
 
-    while (itr.hasNext()) {
+    while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
-      List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
 
-      // Distribute work at table level, create a new blob if reaching the blob size limit
+      // Distribute work at table level, split the blob if reaching the blob size limit or the
+      // channel has different encryption key ids
       while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
         List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
         if (!leftoverChannelsDataPerTable.isEmpty()) {
@@ -372,22 +373,37 @@ class FlushService<T> {
           int idx = 0;
           while (idx < channelsDataPerTable.size()) {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
-            totalBufferSizeInBytes += channelData.getBufferSize();
-            if (totalBufferSizeInBytes > MAX_BLOB_SIZE_IN_BYTES
-                || (idx > 0
-                    && !Objects.equals(
+            // Stop processing the rest of channels if reaching the blob size limit or the channel
+            // has different encryption key ids
+            if (idx > 0
+                && (totalBufferSizeInBytes + channelData.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
+                    || !Objects.equals(
                         channelData.getChannelContext().getEncryptionKeyId(),
                         channelsDataPerTable
                             .get(idx - 1)
                             .getChannelContext()
                             .getEncryptionKeyId()))) {
               leftoverChannelsDataPerTable.addAll(
-                  channelsDataPerTable.subList(idx + 1, channelsDataPerTable.size()));
+                  channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
+              logger.logInfo(
+                  "Creation of another blob is needed because of blob size limit or different"
+                      + " encryption ids, client={}, table={},  size={}, encryptionId1={},"
+                      + " encryptionId2={}",
+                  this.owningClient.getName(),
+                  channelData.getChannelContext().getTableName(),
+                  totalBufferSizeInBytes + channelData.getBufferSize(),
+                  channelData.getChannelContext().getEncryptionKeyId(),
+                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId());
               break;
             }
+            totalBufferSizeInBytes += channelData.getBufferSize();
             idx++;
           }
+          // Add processed channels to the current blob, stop if we need to create a new blob
           blobData.add(channelsDataPerTable.subList(0, idx));
+          if (idx != channelsDataPerTable.size()) {
+            break;
+          }
         }
       }
 
