@@ -583,8 +583,8 @@ class DataValidationUtil {
     byte[] output;
     if (input instanceof byte[]) {
       // byte[] is a mutable object, we need to create a defensive copy to protect against
-      // concurrent
-      // modifications of the array, which could lead to mismatch between data and metadata
+      // concurrent modifications of the array, which could lead to mismatch between data
+      // and metadata
       byte[] originalInputArray = (byte[]) input;
       output = new byte[originalInputArray.length];
       System.arraycopy(originalInputArray, 0, output, 0, originalInputArray.length);
