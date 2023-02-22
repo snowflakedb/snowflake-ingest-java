@@ -14,6 +14,8 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -353,7 +355,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       throw new SFException(ErrorCode.CLOSED_CHANNEL, getFullyQualifiedName());
     }
 
-    InsertValidationResponse response = this.rowBuffer.insertRows(rows, offsetToken);
+    // We create a shallow copy to protect against concurrent addition/removal of columns, which can
+    // lead to double counting of null values, for example. Individual mutable values may still be
+    // concurrently modified (e.g. byte[]). Before validation and EP calculation, we must make sure
+    // that defensive copies of all mutable objects are created.
+    final List<Map<String, Object>> rowsCopy = new LinkedList<>();
+    for (Map<String, Object> row : rows) {
+      rowsCopy.add(new HashMap<>(row));
+    }
+
+    InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
