@@ -57,7 +57,8 @@ import org.mockito.Mockito;
 public class FlushServiceTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> testContextFactory() {
-    return Arrays.asList(new Object[][] {{ArrowTestContext.createFactory()}});
+    return Arrays.asList(
+        new Object[][] {{ArrowTestContext.createFactory()}, {ParquetTestContext.createFactory()}});
   }
 
   public FlushServiceTest(TestContextFactory<?> testContextFactory) {
