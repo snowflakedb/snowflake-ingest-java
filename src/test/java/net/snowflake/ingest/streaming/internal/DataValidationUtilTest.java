@@ -94,6 +94,7 @@ public class DataValidationUtilTest {
     assertEquals(19380, validateAndParseDate("COL", Instant.ofEpochMilli(1674478926000L)));
 
     assertEquals(-923, validateAndParseDate("COL", "1967-06-23"));
+    assertEquals(-923, validateAndParseDate("COL", "  1967-06-23 \t\n"));
     assertEquals(-923, validateAndParseDate("COL", "1967-06-23T01:01:01"));
     assertEquals(18464, validateAndParseDate("COL", "2020-07-21"));
     assertEquals(18464, validateAndParseDate("COL", "2020-07-21T23:31:00"));
@@ -133,6 +134,7 @@ public class DataValidationUtilTest {
   public void testValidateAndParseTime() {
     // Test local time
     assertEquals(46920, validateAndParseTime("COL", "13:02", 0).longValueExact());
+    assertEquals(46920, validateAndParseTime("COL", "  13:02 \t\n", 0).longValueExact());
     assertEquals(46926, validateAndParseTime("COL", "13:02:06", 0).longValueExact());
     assertEquals(469260, validateAndParseTime("COL", "13:02:06", 1).longValueExact());
     assertEquals(46926000000000L, validateAndParseTime("COL", "13:02:06", 9).longValueExact());
@@ -225,7 +227,7 @@ public class DataValidationUtilTest {
     assertEquals(3600, wrapper.getTimezoneOffsetSeconds());
     assertEquals(1500, wrapper.getTimeZoneIndex());
 
-    wrapper = validateAndParseTimestamp("COL", "2021-01-01T01:00:00.123", 9, UTC, true);
+    wrapper = validateAndParseTimestamp("COL", "  2021-01-01T01:00:00.123 \t\n", 9, UTC, true);
     Assert.assertEquals(1609462800, wrapper.getEpoch());
     Assert.assertEquals(123000000, wrapper.getFraction());
     Assert.assertEquals(new BigInteger("1609462800123000000"), wrapper.toBinary(false));
@@ -279,6 +281,13 @@ public class DataValidationUtilTest {
   @Test
   public void testValidateAndParseBigDecimal() {
     assertEquals(new BigDecimal("1"), validateAndParseBigDecimal("COL", "1"));
+    assertEquals(new BigDecimal("1"), validateAndParseBigDecimal("COL", "  1 \t\n "));
+    assertEquals(
+        new BigDecimal("1000").toBigInteger(),
+        validateAndParseBigDecimal("COL", "1e3").toBigInteger());
+    assertEquals(
+        new BigDecimal("1000").toBigInteger(),
+        validateAndParseBigDecimal("COL", "  1e3 \t\n").toBigInteger());
     assertEquals(
         new BigDecimal("1000").toBigInteger(),
         validateAndParseBigDecimal("COL", "1e3").toBigInteger());
@@ -381,6 +390,7 @@ public class DataValidationUtilTest {
     assertEquals("1", validateAndParseVariant("COL", "                          1   "));
     String stringVariant = "{\"key\":1}";
     assertEquals(stringVariant, validateAndParseVariant("COL", stringVariant));
+    assertEquals(stringVariant, validateAndParseVariant("COL", "  " + stringVariant + " \t\n"));
 
     // Test custom serializers
     assertEquals(
@@ -439,6 +449,8 @@ public class DataValidationUtilTest {
     assertEquals("[1]", validateAndParseArray("COL", 1));
     assertEquals("[1]", validateAndParseArray("COL", "1"));
     assertEquals("[1]", validateAndParseArray("COL", "                          1   "));
+    assertEquals("[1,2,3]", validateAndParseArray("COL", "[1, 2, 3]"));
+    assertEquals("[1,2,3]", validateAndParseArray("COL", "  [1, 2, 3] \t\n"));
     int[] intArray = new int[] {1, 2, 3};
     assertEquals("[1,2,3]", validateAndParseArray("COL", intArray));
 
@@ -497,6 +509,7 @@ public class DataValidationUtilTest {
   public void testValidateAndParseObject() throws Exception {
     String stringObject = "{\"key\":1}";
     assertEquals(stringObject, validateAndParseObject("COL", stringObject));
+    assertEquals(stringObject, validateAndParseObject("COL", "  " + stringObject + " \t\n"));
 
     String badObject = "foo";
     try {
@@ -763,6 +776,12 @@ public class DataValidationUtilTest {
         Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL", "1234567890abcdef", Optional.empty())); // pragma: allowlist secret NOT A SECRET
+    assertArrayEquals(
+        Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
+        validateAndParseBinary(
+            "COL",
+            "  1234567890abcdef \t\n",
+            Optional.empty())); // pragma: allowlist secret NOT A SECRET
 
     assertArrayEquals(
         maxAllowedArray, validateAndParseBinary("COL", maxAllowedArray, Optional.empty()));
@@ -813,8 +832,10 @@ public class DataValidationUtilTest {
     assertEquals(Double.NaN, validateAndParseReal("COL", "Nan"), 0);
     assertEquals(Double.POSITIVE_INFINITY, validateAndParseReal("COL", "inF"), 0);
     assertEquals(Double.NEGATIVE_INFINITY, validateAndParseReal("COL", "-inF"), 0);
+    assertEquals(Double.NEGATIVE_INFINITY, validateAndParseReal("COL", " -inF \t\n"), 0);
 
     // From string
+    assertEquals(1.23d, validateAndParseReal("COL", "   1.23 \t\n"), 0);
     assertEquals(1.23d, validateAndParseReal("COL", "1.23"), 0);
     assertEquals(123d, validateAndParseReal("COL", "1.23E2"), 0);
     assertEquals(123d, validateAndParseReal("COL", "1.23e2"), 0);
@@ -832,7 +853,21 @@ public class DataValidationUtilTest {
 
     for (Object input :
         Arrays.asList(
-            true, "true", "True", "TruE", "t", "yes", "YeS", "y", "on", "1", 1.1, -1.1, -10, 10)) {
+            true,
+            "true",
+            "True",
+            "TruE",
+            "t",
+            "yes",
+            "YeS",
+            "y",
+            "on",
+            "1",
+            "  true \t\n",
+            1.1,
+            -1.1,
+            -10,
+            10)) {
       assertEquals(1, validateAndParseBoolean("COL", input));
     }
 
