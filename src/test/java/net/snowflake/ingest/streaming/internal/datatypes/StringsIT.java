@@ -25,6 +25,7 @@ public class StringsIT extends AbstractDataTypeTest {
   public void testStrings() throws Exception {
     testJdbcTypeCompatibility("VARCHAR", "", new StringProvider());
     testJdbcTypeCompatibility("VARCHAR", "foo", new StringProvider());
+    testJdbcTypeCompatibility("VARCHAR", "  foo  \t\n", new StringProvider());
 
     // Test strings with limited size
     testJdbcTypeCompatibility("VARCHAR(1)", "", new StringProvider());
