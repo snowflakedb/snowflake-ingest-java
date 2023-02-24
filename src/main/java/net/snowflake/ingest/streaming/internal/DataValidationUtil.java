@@ -91,14 +91,6 @@ class DataValidationUtil {
   }
 
   /**
-   * Creates a new SnowflakeDateTimeFormat. In order to avoid SnowflakeDateTimeFormat's
-   * synchronization blocks, we create a new instance when needed instead of sharing one instance.
-   */
-  private static SnowflakeDateTimeFormat createDateTimeFormatter() {
-    return SnowflakeDateTimeFormat.fromSqlFormat("auto");
-  }
-
-  /**
    * Validates and parses input as JSON. All types in the object tree must be valid variant types,
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
@@ -590,7 +582,12 @@ class DataValidationUtil {
       String columnName, Object input, Optional<Integer> maxLengthOptional) {
     byte[] output;
     if (input instanceof byte[]) {
-      output = (byte[]) input;
+      // byte[] is a mutable object, we need to create a defensive copy to protect against
+      // concurrent modifications of the array, which could lead to mismatch between data
+      // and metadata
+      byte[] originalInputArray = (byte[]) input;
+      output = new byte[originalInputArray.length];
+      System.arraycopy(originalInputArray, 0, output, 0, originalInputArray.length);
     } else if (input instanceof String) {
       try {
         output = Hex.decodeHex((String) input);
