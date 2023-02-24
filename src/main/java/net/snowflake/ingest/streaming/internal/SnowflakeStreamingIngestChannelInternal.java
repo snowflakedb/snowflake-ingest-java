@@ -360,9 +360,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // concurrently modified (e.g. byte[]). Before validation and EP calculation, we must make sure
     // that defensive copies of all mutable objects are created.
     final List<Map<String, Object>> rowsCopy = new LinkedList<>();
-    for (Map<String, Object> row : rows) {
-      rowsCopy.add(new HashMap<>(row));
-    }
+    rows.forEach(r -> rowsCopy.add(new HashMap<>(r)));
 
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
