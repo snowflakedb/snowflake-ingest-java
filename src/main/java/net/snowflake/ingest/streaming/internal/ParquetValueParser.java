@@ -134,19 +134,10 @@ class ParquetValueParser {
           estimatedParquetSize += 8;
           break;
         case BINARY:
-          int length = 0;
-          if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
-            value = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
-            length = ((byte[]) value).length;
-          } else {
-            String str = getBinaryValue(value, stats, columnMetadata);
-            value = str;
-            if (str != null) {
-              length = str.getBytes().length;
-            }
-          }
-          if (value != null) {
-            estimatedParquetSize += (BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + length);
+          byte[] str = getBinaryValue(value, stats, columnMetadata);
+          value = str;
+          if (str != null) {
+            estimatedParquetSize += (BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + str.length);
           }
 
           break;
@@ -338,35 +329,42 @@ class ParquetValueParser {
    * @param columnMetadata column metadata
    * @return string representation
    */
-  private static String getBinaryValue(
+  private static byte[] getBinaryValue(
       Object value, RowBufferStats stats, ColumnMetadata columnMetadata) {
     AbstractRowBuffer.ColumnLogicalType logicalType =
         AbstractRowBuffer.ColumnLogicalType.valueOf(columnMetadata.getLogicalType());
-    String str;
+    byte[] bytes;
     if (logicalType.isObject()) {
       switch (logicalType) {
         case OBJECT:
-          str = DataValidationUtil.validateAndParseObject(columnMetadata.getName(), value);
+          bytes = DataValidationUtil.validateAndParseObject(columnMetadata.getName(), value);
           break;
         case VARIANT:
-          str = DataValidationUtil.validateAndParseVariant(columnMetadata.getName(), value);
+          bytes = DataValidationUtil.validateAndParseVariant(columnMetadata.getName(), value);
           break;
         case ARRAY:
-          str = DataValidationUtil.validateAndParseArray(columnMetadata.getName(), value);
+          bytes = DataValidationUtil.validateAndParseArray(columnMetadata.getName(), value);
           break;
         default:
           throw new SFException(
               ErrorCode.UNKNOWN_DATA_TYPE, logicalType, columnMetadata.getPhysicalType());
       }
+    } else if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
+      String maxLengthString = columnMetadata.getByteLength().toString();
+      bytes =
+          DataValidationUtil.validateAndParseBinary(
+              columnMetadata.getName(), value, Optional.of(maxLengthString).map(Integer::parseInt));
+      stats.addBinaryValue(bytes);
     } else {
       String maxLengthString = columnMetadata.getLength().toString();
-      str =
+      bytes =
           DataValidationUtil.validateAndParseString(
               columnMetadata.getName(), value, Optional.of(maxLengthString).map(Integer::parseInt));
-      stats.addStrValue(str);
+      stats.addBinaryValue(bytes);
     }
-    return str;
+    return bytes;
   }
+
   /**
    * Converts a binary value to its byte array representation.
    *

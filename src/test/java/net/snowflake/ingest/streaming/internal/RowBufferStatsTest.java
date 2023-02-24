@@ -27,18 +27,18 @@ public class RowBufferStatsTest {
   public void testMinMaxStrNonCol() throws Exception {
     RowBufferStats stats = new RowBufferStats("COL1");
 
-    stats.addStrValue("bob");
+    stats.addBinaryValue("bob".getBytes(StandardCharsets.UTF_8));
     Assert.assertArrayEquals("bob".getBytes(StandardCharsets.UTF_8), stats.getCurrentMinStrValue());
     Assert.assertArrayEquals("bob".getBytes(StandardCharsets.UTF_8), stats.getCurrentMaxStrValue());
     Assert.assertEquals(-1, stats.getDistinctValues());
 
-    stats.addStrValue("charlie");
+    stats.addBinaryValue("charlie".getBytes(StandardCharsets.UTF_8));
     Assert.assertArrayEquals("bob".getBytes(StandardCharsets.UTF_8), stats.getCurrentMinStrValue());
     Assert.assertArrayEquals(
         "charlie".getBytes(StandardCharsets.UTF_8), stats.getCurrentMaxStrValue());
     Assert.assertEquals(-1, stats.getDistinctValues());
 
-    stats.addStrValue("alice");
+    stats.addBinaryValue("alice".getBytes(StandardCharsets.UTF_8));
     Assert.assertArrayEquals(
         "alice".getBytes(StandardCharsets.UTF_8), stats.getCurrentMinStrValue());
     Assert.assertArrayEquals(
@@ -188,17 +188,17 @@ public class RowBufferStatsTest {
     one = new RowBufferStats("COL1");
     two = new RowBufferStats("COL1");
 
-    one.addStrValue("alpha");
-    one.addStrValue("d");
-    one.addStrValue("f");
-    one.addStrValue("g");
+    one.addBinaryValue("alpha".getBytes(StandardCharsets.UTF_8));
+    one.addBinaryValue("d".getBytes(StandardCharsets.UTF_8));
+    one.addBinaryValue("f".getBytes(StandardCharsets.UTF_8));
+    one.addBinaryValue("g".getBytes(StandardCharsets.UTF_8));
     one.incCurrentNullCount();
     one.setCurrentMaxLength(5);
 
-    two.addStrValue("a");
-    two.addStrValue("b");
-    two.addStrValue("c");
-    two.addStrValue("d");
+    two.addBinaryValue("a".getBytes(StandardCharsets.UTF_8));
+    two.addBinaryValue("b".getBytes(StandardCharsets.UTF_8));
+    two.addBinaryValue("c".getBytes(StandardCharsets.UTF_8));
+    two.addBinaryValue("d".getBytes(StandardCharsets.UTF_8));
     two.incCurrentNullCount();
     two.setCurrentMaxLength(1);
 
@@ -262,10 +262,10 @@ public class RowBufferStatsTest {
     one = new RowBufferStats("COL1");
     two = new RowBufferStats("COL1");
 
-    one.addStrValue("alpha");
-    one.addStrValue("d");
-    one.addStrValue("f");
-    one.addStrValue("g");
+    one.addBinaryValue("alpha".getBytes(StandardCharsets.UTF_8));
+    one.addBinaryValue("d".getBytes(StandardCharsets.UTF_8));
+    one.addBinaryValue("f".getBytes(StandardCharsets.UTF_8));
+    one.addBinaryValue("g".getBytes(StandardCharsets.UTF_8));
     one.incCurrentNullCount();
 
     result = RowBufferStats.getCombinedStats(one, two);

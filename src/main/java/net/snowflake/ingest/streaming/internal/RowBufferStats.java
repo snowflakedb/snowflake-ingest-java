@@ -99,10 +99,6 @@ class RowBufferStats {
     return combined;
   }
 
-  void addStrValue(String value) {
-    addBinaryValue(value.getBytes(StandardCharsets.UTF_8));
-  }
-
   void addBinaryValue(byte[] valueBytes) {
     this.setCurrentMaxLength(valueBytes.length);
 

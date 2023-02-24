@@ -512,8 +512,8 @@ public class RowBufferTest {
     stats1.addIntValue(BigInteger.valueOf(1));
 
     RowBufferStats stats2 = new RowBufferStats("strColumn");
-    stats2.addStrValue("alice");
-    stats2.addStrValue("bob");
+    stats2.addBinaryValue("alice".getBytes(StandardCharsets.UTF_8));
+    stats2.addBinaryValue("bob".getBytes(StandardCharsets.UTF_8));
     stats2.incCurrentNullCount();
 
     colStats.put("intColumn", stats1);
@@ -587,7 +587,7 @@ public class RowBufferTest {
     stats1.addIntValue(BigInteger.valueOf(1));
 
     RowBufferStats stats2 = new RowBufferStats("strColumn");
-    stats2.addStrValue("alice");
+    stats2.addBinaryValue("alice".getBytes(StandardCharsets.UTF_8));
     stats2.incCurrentNullCount();
     stats2.incCurrentNullCount();
 

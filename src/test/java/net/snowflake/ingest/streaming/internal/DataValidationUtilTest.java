@@ -508,8 +508,8 @@ public class DataValidationUtilTest {
   @Test
   public void testValidateAndParseObject() throws Exception {
     String stringObject = "{\"key\":1}";
-    assertEquals(stringObject, validateAndParseObject("COL", stringObject));
-    assertEquals(stringObject, validateAndParseObject("COL", "  " + stringObject + " \t\n"));
+    assertArrayEquals(stringObject.getBytes(StandardCharsets.UTF_8), validateAndParseObject("COL", stringObject));
+    assertArrayEquals(stringObject.getBytes(StandardCharsets.UTF_8), validateAndParseObject("COL", "  " + stringObject + " \t\n"));
 
     String badObject = "foo";
     try {

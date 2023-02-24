@@ -490,41 +490,41 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
           case TEXT:
             {
               String maxLengthString = field.getMetadata().get(COLUMN_CHAR_LENGTH);
-              String str =
+              byte[] bytes =
                   DataValidationUtil.validateAndParseString(
                       stats.getColumnDisplayName(),
                       value,
                       Optional.ofNullable(maxLengthString).map(Integer::parseInt));
-              Text text = new Text(str);
+              Text text = new Text(bytes);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
-              stats.addStrValue(str);
+              stats.addBinaryValue(bytes);
               rowBufferSize += text.getBytes().length;
               break;
             }
           case OBJECT:
             {
-              String str =
+              byte[] utf8Bytes =
                   DataValidationUtil.validateAndParseObject(stats.getColumnDisplayName(), value);
-              Text text = new Text(str);
+              Text text = new Text(utf8Bytes);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               rowBufferSize += text.getBytes().length;
               break;
             }
           case ARRAY:
             {
-              String str =
+              byte[] utf8Bytes =
                   DataValidationUtil.validateAndParseArray(stats.getColumnDisplayName(), value);
-              Text text = new Text(str);
+              Text text = new Text(utf8Bytes);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               rowBufferSize += text.getBytes().length;
               break;
             }
           case VARIANT:
             {
-              String str =
+              byte[] utf8Bytes =
                   DataValidationUtil.validateAndParseVariant(stats.getColumnDisplayName(), value);
-              if (str != null) {
-                Text text = new Text(str);
+              if (utf8Bytes != null) {
+                Text text = new Text(utf8Bytes);
                 ((VarCharVector) vector).setSafe(curRowIndex, text);
                 rowBufferSize += text.getBytes().length;
               } else {

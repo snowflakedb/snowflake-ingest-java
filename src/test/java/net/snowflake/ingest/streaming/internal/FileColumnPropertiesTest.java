@@ -3,14 +3,16 @@ package net.snowflake.ingest.streaming.internal;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
+
 public class FileColumnPropertiesTest {
 
   @Test
   public void testFileColumnPropertiesConstructor() {
     // Test simple construction
     RowBufferStats stats = new RowBufferStats("COL");
-    stats.addStrValue("bcd");
-    stats.addStrValue("abcde");
+    stats.addBinaryValue("bcd".getBytes(StandardCharsets.UTF_8));
+    stats.addBinaryValue("abcde".getBytes(StandardCharsets.UTF_8));
     FileColumnProperties props = new FileColumnProperties(stats);
     Assert.assertEquals("6162636465", props.getMinStrValue());
     Assert.assertNull(props.getMinStrNonCollated());
@@ -19,7 +21,7 @@ public class FileColumnPropertiesTest {
 
     // Test that truncation is performed
     stats = new RowBufferStats("COL");
-    stats.addStrValue("aßßßßßßßßßßßßßßßß");
+    stats.addBinaryValue("aßßßßßßßßßßßßßßßß".getBytes(StandardCharsets.UTF_8));
     Assert.assertEquals(33, stats.getCurrentMinStrValue().length);
     props = new FileColumnProperties(stats);
     Assert.assertNull(props.getMinStrNonCollated());

@@ -132,7 +132,7 @@ class DataValidationUtil {
    * @param input Object to validate
    * @return JSON string representing the input
    */
-  static String validateAndParseVariant(String columnName, Object input) {
+  static byte[] validateAndParseVariant(String columnName, Object input) {
     JsonNode node = validateAndParseSemiStructuredAsJsonTree(columnName, input, "VARIANT");
 
     // Missing nodes are not valid json, ingest them as NULL instead
@@ -141,7 +141,8 @@ class DataValidationUtil {
     }
 
     String output = node.toString();
-    int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
+    byte[] outputBytes = output.getBytes(StandardCharsets.UTF_8);
+    int stringLength = outputBytes.length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
@@ -151,7 +152,7 @@ class DataValidationUtil {
               "Variant too long: length=%d maxLength=%d",
               stringLength, MAX_SEMI_STRUCTURED_LENGTH));
     }
-    return output;
+    return outputBytes;
   }
 
   /**
@@ -264,7 +265,7 @@ class DataValidationUtil {
    * @param input Object to validate
    * @return JSON array representing the input
    */
-  static String validateAndParseArray(String columnName, Object input) {
+  static byte[] validateAndParseArray(String columnName, Object input) {
     JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(columnName, input, "ARRAY");
 
     // Non-array values are ingested as single-element arrays, mimicking the Worksheets behavior
@@ -283,7 +284,7 @@ class DataValidationUtil {
           String.format(
               "Array too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH));
     }
-    return output;
+    return output.getBytes(StandardCharsets.UTF_8);
   }
 
   /**
@@ -294,7 +295,7 @@ class DataValidationUtil {
    * @param input Object to validate
    * @return JSON object representing the input
    */
-  static String validateAndParseObject(String columnName, Object input) {
+  static byte[] validateAndParseObject(String columnName, Object input) {
     JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(columnName, input, "OBJECT");
     if (!jsonNode.isObject()) {
       throw valueFormatNotAllowedException(columnName, jsonNode, "OBJECT", "Not an object");
@@ -312,7 +313,7 @@ class DataValidationUtil {
               "Object too large. length=%d maxLength=%d",
               stringLength, MAX_SEMI_STRUCTURED_LENGTH));
     }
-    return output;
+    return output.getBytes(StandardCharsets.UTF_8);
   }
 
   /**
@@ -461,16 +462,26 @@ class DataValidationUtil {
    *     maximum allowed by Snowflake
    *     (https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar)
    */
-  static String validateAndParseString(
+  static byte[] validateAndParseString(
       String columnName, Object input, Optional<Integer> maxLengthOptional) {
-    String output;
+    byte[] utf8Bytes;
+    int utf8CharactersCount;
     if (input instanceof String) {
-      output = (String) input;
-      verifyValidUtf8(output, columnName, "STRING");
+      String inputString = (String) input;
+      utf8CharactersCount = unicodeCharactersCount(inputString);
+      utf8Bytes = verifyValidUtf8((String) input, columnName, "STRING");
     } else if (input instanceof Number) {
-      output = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString();
-    } else if (input instanceof Boolean || input instanceof Character) {
-      output = input.toString();
+      utf8Bytes = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString().getBytes(StandardCharsets.UTF_8);
+      // in a number there cannot be any non-unicode chars
+      utf8CharactersCount = utf8Bytes.length;
+    } else if (input instanceof Boolean) {
+      utf8Bytes = input.toString().getBytes(StandardCharsets.UTF_8);
+      // in boolean there cannot be any non-unicode chars
+      utf8CharactersCount = utf8Bytes.length;
+    } else if (input instanceof Character) {
+      utf8Bytes = input.toString().getBytes(StandardCharsets.UTF_8);
+      // A character is exactly 1 unicode char
+      utf8CharactersCount = 1;
     } else {
       throw typeNotAllowedException(
           columnName,
@@ -478,7 +489,6 @@ class DataValidationUtil {
           "STRING",
           new String[] {"String", "Number", "boolean", "char"});
     }
-    byte[] utf8Bytes = output.getBytes(StandardCharsets.UTF_8);
 
     // Strings can never be larger than 16MB
     if (utf8Bytes.length > BYTES_16_MB) {
@@ -495,18 +505,17 @@ class DataValidationUtil {
     // not exceed this value
     maxLengthOptional.ifPresent(
         maxAllowedCharacters -> {
-          int actualCharacters = unicodeCharactersCount(output);
-          if (actualCharacters > maxAllowedCharacters) {
+          if (utf8CharactersCount > maxAllowedCharacters) {
             throw valueFormatNotAllowedException(
                 columnName,
                 input,
                 "STRING",
                 String.format(
                     "String too long: length=%d characters maxLength=%d characters",
-                    actualCharacters, maxAllowedCharacters));
+                    utf8CharactersCount, maxAllowedCharacters));
           }
         });
-    return output;
+    return utf8Bytes;
   }
 
   /**
@@ -847,14 +856,14 @@ class DataValidationUtil {
    * Validates that a string is valid UTF-8 string. It catches situations like unmatched high/low
    * UTF-16 surrogate, for example.
    */
-  private static void verifyValidUtf8(String input, String columnName, String dataType) {
+  private static byte[] verifyValidUtf8(String input, String columnName, String dataType) {
     CharsetEncoder charsetEncoder =
         StandardCharsets.UTF_8
             .newEncoder()
             .onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT);
     try {
-      charsetEncoder.encode(CharBuffer.wrap(input));
+      return charsetEncoder.encode(CharBuffer.wrap(input)).array();
     } catch (CharacterCodingException e) {
       throw valueFormatNotAllowedException(columnName, input, dataType, "Invalid Unicode string");
     }
