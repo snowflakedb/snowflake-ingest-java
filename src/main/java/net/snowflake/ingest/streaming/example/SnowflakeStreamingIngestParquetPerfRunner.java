@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.example;
 
 import static net.snowflake.ingest.utils.Constants.ROLE;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
@@ -15,7 +16,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 /** Streaming ingest sdk perf test */
 public class SnowflakeStreamingIngestParquetPerfRunner {
 
-  private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
+  private static String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
@@ -27,12 +28,14 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
 
   private final boolean enableInternalParquetBuffering;
 
-  private final int batchSize;
+  private int batchSize;
   private final int iterations;
   private final int numChannels;
 
   private boolean nullable;
   private String clientName = "GZIP_EC2_GDOCI_PERF_";
+
+  private boolean useCriteoDataset= false;
 
   public SnowflakeStreamingIngestParquetPerfRunner(
       @SuppressWarnings("unused") String name,
@@ -41,7 +44,8 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
       int batchSize,
       int iterations,
       int numChannels,
-      boolean nullable) {
+      boolean nullable,
+      boolean useCriteoDataset) {
     this.bdecVersion = bdecVersion;
     this.enableInternalParquetBuffering = enableInternalParquetBuffering;
     this.batchSize = batchSize;
@@ -58,6 +62,8 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
             + numChannels
             + "_nullable_"
             + nullable;
+    this.useCriteoDataset = useCriteoDataset;
+    this.TEST_TABLE = useCriteoDataset ? "STREAMING_INGEST_TEST_TABLE_CRITEO" : TEST_TABLE;
   }
 
   public void setup() throws Exception {
@@ -83,32 +89,17 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
     client.close();
   }
 
-  public void runPerfExperiment() throws ExecutionException, InterruptedException {
-    /* try {
-     */
-    /*jdbcConnection
-    .createStatement()
-    .execute(
-        String.format(
-            "create or replace table %s (\n"
-                + "                                    num_2_1 NUMBER(2, 1),\n"
-                + "                                    num_4_2 NUMBER(4, 2),\n"
-                + "                                    num_9_4 NUMBER(9, 4),\n"
-                + "                                    num_18_7 NUMBER(18, 7),\n"
-                + "                                    num_38_15 NUMBER(38, 15),\n"
-                + "                                    num_float FLOAT,\n"
-                + "                                    str VARCHAR(256),\n"
-                + "                                    bin BINARY(256));",
-            TEST_TABLE));*/
-    /*
-    } catch (SQLException e) {
-      throw new RuntimeException("Cannot create table " + TEST_TABLE, e);
-    }*/
-
-    List<Map<String, Object>> rows = new ArrayList<>();
-    for (int i = 0; i < batchSize; i++) {
-      Random r = new Random();
-      rows.add(Util.getRandomRow(r, nullable));
+  public void runPerfExperiment() throws ExecutionException, InterruptedException, IOException {
+    List<Map<String, Object>> rows;
+    if(useCriteoDataset) {
+      rows = CriteoPerf.readData();
+      batchSize = rows.size();
+    } else {
+      rows = new ArrayList<>();
+      for (int i = 0; i < batchSize; i++) {
+        Random r = new Random();
+        rows.add(Util.getRandomRow(r, nullable));
+      }
     }
 
     ExecutorService testThreadPool = Executors.newFixedThreadPool(numChannels);
