@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static java.time.ZoneOffset.UTC;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -119,6 +121,7 @@ public class RowBufferTest {
     ChannelRuntimeState initialState = new ChannelRuntimeState("0", 0L, true);
     return AbstractRowBuffer.createRowBuffer(
         onErrorOption,
+        UTC,
         new RootAllocator(),
         bdecVersion,
         "test.buffer",

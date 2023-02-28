@@ -1,5 +1,10 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.streaming.internal.ParquetValueParser.BIT_ENCODING_BYTE_LEN;
+import static net.snowflake.ingest.streaming.internal.ParquetValueParser.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN;
+import static net.snowflake.ingest.streaming.internal.ParquetValueParser.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -26,14 +31,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            12, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
+            12, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
         .expectedParsedValue(12)
-        .expectedSize(4.0f)
+        .expectedSize(4.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(12))
         .assertMatches();
   }
@@ -52,14 +57,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            1234, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
+            1234, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
         .expectedParsedValue(1234)
-        .expectedSize(4.0f)
+        .expectedSize(4.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(1234))
         .assertMatches();
   }
@@ -78,14 +83,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            123456789, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
+            123456789, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
         .expectedParsedValue(123456789)
-        .expectedSize(4.0f)
+        .expectedSize(4.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(123456789))
         .assertMatches();
   }
@@ -104,14 +109,18 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            123456789987654321L, testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats);
+            123456789987654321L,
+            testCol,
+            PrimitiveType.PrimitiveTypeName.INT64,
+            rowBufferStats,
+            UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Long.class)
         .expectedParsedValue(123456789987654321L)
-        .expectedSize(8.0f)
+        .expectedSize(8.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(123456789987654321L))
         .assertMatches();
   }
@@ -133,7 +142,8 @@ public class ParquetValueParserTest {
             new BigDecimal("91234567899876543219876543211234567891"),
             testCol,
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
-            rowBufferStats);
+            rowBufferStats,
+            UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -142,7 +152,7 @@ public class ParquetValueParserTest {
         .expectedParsedValue(
             ParquetValueParser.getSb16Bytes(
                 new BigInteger("91234567899876543219876543211234567891")))
-        .expectedSize(16.0f)
+        .expectedSize(16.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(new BigInteger("91234567899876543219876543211234567891"))
         .assertMatches();
   }
@@ -164,14 +174,15 @@ public class ParquetValueParserTest {
             new BigDecimal("12345.54321"),
             testCol,
             PrimitiveType.PrimitiveTypeName.DOUBLE,
-            rowBufferStats);
+            rowBufferStats,
+            UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Double.class)
         .expectedParsedValue(Double.valueOf("12345.54321"))
-        .expectedSize(8.0f)
+        .expectedSize(8.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(Double.valueOf("12345.54321"))
         .assertMatches();
   }
@@ -188,14 +199,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            12345.54321d, testCol, PrimitiveType.PrimitiveTypeName.DOUBLE, rowBufferStats);
+            12345.54321d, testCol, PrimitiveType.PrimitiveTypeName.DOUBLE, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Double.class)
         .expectedParsedValue(Double.valueOf(12345.54321))
-        .expectedSize(8.0f)
+        .expectedSize(8.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(Double.valueOf(12345.54321))
         .assertMatches();
   }
@@ -212,14 +223,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            true, testCol, PrimitiveType.PrimitiveTypeName.BOOLEAN, rowBufferStats);
+            true, testCol, PrimitiveType.PrimitiveTypeName.BOOLEAN, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Boolean.class)
         .expectedParsedValue(true)
-        .expectedSize(1.0f)
+        .expectedSize(BIT_ENCODING_BYTE_LEN + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(1))
         .assertMatches();
   }
@@ -236,14 +247,19 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "1234abcd".getBytes(), testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+            "1234abcd".getBytes(),
+            testCol,
+            PrimitiveType.PrimitiveTypeName.BINARY,
+            rowBufferStats,
+            UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(byte[].class)
         .expectedParsedValue("1234abcd".getBytes())
-        .expectedSize(8.0f)
+        .expectedSize(
+            BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + 8.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax("1234abcd".getBytes(StandardCharsets.UTF_8))
         .assertMatches();
   }
@@ -272,14 +288,17 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(String.class)
         .expectedParsedValue(var)
-        .expectedSize(var.getBytes().length)
+        .expectedSize(
+            BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
+                + var.getBytes().length
+                + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(null)
         .assertMatches();
   }
@@ -310,7 +329,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -340,7 +359,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats);
+            input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC);
 
     String resultArray = "[{\"a\":\"1\",\"b\":\"2\",\"c\":\"3\"}]";
 
@@ -349,8 +368,43 @@ public class ParquetValueParserTest {
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(String.class)
         .expectedParsedValue(resultArray)
-        .expectedSize(resultArray.length())
+        .expectedSize(
+            BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
+                + resultArray.length()
+                + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void parseValueTextToBinary() {
+    ColumnMetadata testCol =
+        ColumnMetadataBuilder.newBuilder()
+            .logicalType("TEXT")
+            .physicalType("LOB")
+            .nullable(true)
+            .length(56)
+            .build();
+
+    String text = "This is a sample text! Length is bigger than 32 bytes :)";
+
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    ParquetValueParser.ParquetBufferValue pv =
+        ParquetValueParser.parseColumnValueToParquet(
+            text, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC);
+
+    String result = text;
+
+    ParquetValueParserAssertionBuilder.newBuilder()
+        .parquetBufferValue(pv)
+        .rowBufferStats(rowBufferStats)
+        .expectedValueClass(String.class)
+        .expectedParsedValue(result)
+        .expectedSize(
+            BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
+                + result.length()
+                + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
+        .expectedMinMax(text) // min/max are truncated later to 32 bytes, not in the parsing step.
         .assertMatches();
   }
 
@@ -374,7 +428,8 @@ public class ParquetValueParserTest {
                     "2013-04-28 20:57:00",
                     testCol,
                     PrimitiveType.PrimitiveTypeName.INT32,
-                    rowBufferStats));
+                    rowBufferStats,
+                    UTC));
     Assert.assertEquals(
         "Unknown data type for logical: TIMESTAMP_NTZ, physical: SB4.", exception.getMessage());
   }
@@ -393,17 +448,18 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "2013-04-28 20:57:01.000",
+            "2013-04-28T20:57:01.000",
             testCol,
             PrimitiveType.PrimitiveTypeName.INT64,
-            rowBufferStats);
+            rowBufferStats,
+            UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Long.class)
         .expectedParsedValue(1367182621000L)
-        .expectedSize(8.0f)
+        .expectedSize(8.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(1367182621000L))
         .assertMatches();
   }
@@ -421,10 +477,11 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "2022-09-18 22:05:07.123456789",
+            "2022-09-18T22:05:07.123456789",
             testCol,
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
-            rowBufferStats);
+            rowBufferStats,
+            UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -432,7 +489,7 @@ public class ParquetValueParserTest {
         .expectedValueClass(byte[].class)
         .expectedParsedValue(
             ParquetValueParser.getSb16Bytes(BigInteger.valueOf(1663538707123456789L)))
-        .expectedSize(16.0f)
+        .expectedSize(16.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(1663538707123456789L))
         .assertMatches();
   }
@@ -450,14 +507,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
+            "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
         .expectedParsedValue(Integer.valueOf(18628))
-        .expectedSize(4.0f)
+        .expectedSize(4.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(18628))
         .assertMatches();
   }
@@ -475,14 +532,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "01:00:00", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats);
+            "01:00:00", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Integer.class)
         .expectedParsedValue(3600)
-        .expectedSize(4.0f)
+        .expectedSize(4.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(3600))
         .assertMatches();
   }
@@ -500,14 +557,14 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "01:00:00.123", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats);
+            "01:00:00.123", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats, UTC);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(Long.class)
         .expectedParsedValue(3600123L)
-        .expectedSize(8.0f)
+        .expectedSize(8.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(3600123))
         .assertMatches();
   }
@@ -531,7 +588,8 @@ public class ParquetValueParserTest {
                     "11:00:00.12345678",
                     testCol,
                     PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
-                    rowBufferStats));
+                    rowBufferStats,
+                    UTC));
     Assert.assertEquals(
         "Unknown data type for logical: TIME, physical: SB16.", exception.getMessage());
   }
@@ -605,8 +663,16 @@ public class ParquetValueParserTest {
         return;
       } else if (valueClass.equals(String.class)) {
         // String can have null min/max stats for variant data types
-        Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMinStrValue());
-        Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMaxStrValue());
+        Object min =
+            rowBufferStats.getCurrentMinStrValue() != null
+                ? new String(rowBufferStats.getCurrentMinStrValue(), StandardCharsets.UTF_8)
+                : rowBufferStats.getCurrentMinStrValue();
+        Object max =
+            rowBufferStats.getCurrentMaxStrValue() != null
+                ? new String(rowBufferStats.getCurrentMaxStrValue(), StandardCharsets.UTF_8)
+                : rowBufferStats.getCurrentMaxStrValue();
+        Assert.assertEquals(minMaxStat, min);
+        Assert.assertEquals(minMaxStat, max);
         return;
       } else if (minMaxStat instanceof Double || minMaxStat instanceof BigDecimal) {
         Assert.assertEquals(minMaxStat, rowBufferStats.getCurrentMinRealValue());

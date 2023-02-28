@@ -9,9 +9,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -53,6 +55,12 @@ public abstract class AbstractDataTypeTest {
   protected Connection conn;
   private String databaseName;
 
+  /**
+   * Default timezone for newly created channels. If empty, the test will not explicitly set default
+   * timezone in the channel builder.
+   */
+  private Optional<ZoneId> defaultTimezone = Optional.empty();
+
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
   private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -72,9 +80,6 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use database %s;", databaseName));
     conn.createStatement().execute(String.format("use schema %s;", schemaName));
 
-    // Set to a random time zone not to interfere with any of the tests
-    conn.createStatement().execute("alter session set timezone = 'America/New_York';");
-
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
     Properties props = TestUtils.getProperties(bdecVersion);
@@ -86,6 +91,7 @@ public abstract class AbstractDataTypeTest {
 
   @After
   public void after() throws Exception {
+    this.defaultTimezone = Optional.empty();
     conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
     if (client != null) {
       client.close();
@@ -93,6 +99,10 @@ public abstract class AbstractDataTypeTest {
     if (conn != null) {
       conn.close();
     }
+  }
+
+  void setChannelDefaultTimezone(ZoneId defaultTimezone) {
+    this.defaultTimezone = Optional.of(defaultTimezone);
   }
 
   protected String createTable(String dataType) throws SQLException {
@@ -115,13 +125,14 @@ public abstract class AbstractDataTypeTest {
 
   protected SnowflakeStreamingIngestChannel openChannel(
       String tableName, OpenChannelRequest.OnErrorOption onErrorOption) {
-    OpenChannelRequest openChannelRequest =
+    OpenChannelRequest.OpenChannelRequestBuilder requestBuilder =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(databaseName)
             .setSchemaName(SCHEMA_NAME)
             .setTableName(tableName)
-            .setOnErrorOption(onErrorOption)
-            .build();
+            .setOnErrorOption(onErrorOption);
+    defaultTimezone.ifPresent(requestBuilder::setDefaultTimezone);
+    OpenChannelRequest openChannelRequest = requestBuilder.build();
     return client.openChannel(openChannelRequest);
   }
 
@@ -341,5 +352,24 @@ public abstract class AbstractDataTypeTest {
 
   protected void migrateTable(String tableName) throws SQLException {
     conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
+  }
+
+  /**
+   * Ingest multiple values, wait for the latest offset to be committed, migrate the table and
+   * assert no errors have been thrown.
+   */
+  @SafeVarargs
+  protected final <STREAMING_INGEST_WRITE> void ingestManyAndMigrate(
+      String datatype, final STREAMING_INGEST_WRITE... values) throws Exception {
+    String tableName = createTable(datatype);
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    String offsetToken = null;
+    for (int i = 0; i < values.length; i++) {
+      offsetToken = String.format("offsetToken%d", i);
+      channel.insertRow(createStreamingIngestRow(values[i]), offsetToken);
+    }
+
+    TestUtils.waitForOffset(channel, offsetToken);
+    migrateTable(tableName); // migration should always succeed
   }
 }

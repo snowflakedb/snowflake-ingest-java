@@ -101,8 +101,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Name of the client
   private final String name;
 
-  private String accountName;
-
   // Snowflake role for the client to use
   private String role;
 
@@ -167,9 +165,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
-    this.accountName = accountURL == null ? null : accountURL.getAccount();
     this.isTestMode = isTestMode;
-    this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
+    this.httpClient = httpClient == null ? HttpUtil.getHttpClient() : httpClient;
     this.channelCache = new ChannelCache<>();
     this.allocator = new RootAllocator();
     this.isClosed = false;
@@ -328,6 +325,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .setEncryptionKey(response.getEncryptionKey())
               .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
+              .setDefaultTimezone(request.getDefaultTimezone())
               .build();
 
       // Setup the row buffer schema

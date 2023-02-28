@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -60,13 +61,20 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneId defaultTimezone,
       BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
       boolean bufferForTests,
       boolean enableParquetInternalBuffering) {
-    super(onErrorOption, allocator, fullyQualifiedChannelName, rowSizeMetric, channelRuntimeState);
+    super(
+        onErrorOption,
+        defaultTimezone,
+        allocator,
+        fullyQualifiedChannelName,
+        rowSizeMetric,
+        channelRuntimeState);
     fieldIndex = new HashMap<>();
     metadata = new HashMap<>();
     data = new ArrayList<>();
@@ -185,7 +193,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       PrimitiveType.PrimitiveTypeName typeName =
           columnDescriptor.getPrimitiveType().getPrimitiveTypeName();
       ParquetValueParser.ParquetBufferValue valueWithSize =
-          ParquetValueParser.parseColumnValueToParquet(value, column, typeName, stats);
+          ParquetValueParser.parseColumnValueToParquet(
+              value, column, typeName, stats, defaultTimezone);
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }

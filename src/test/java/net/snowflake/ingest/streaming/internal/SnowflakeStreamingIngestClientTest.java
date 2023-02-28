@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
@@ -20,6 +21,7 @@ import java.io.StringWriter;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.Security;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -89,6 +91,7 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
             Constants.BdecVersion.ONE,
             new RootAllocator());
     channel2 =
@@ -104,6 +107,7 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
             Constants.BdecVersion.ONE,
             new RootAllocator());
     channel3 =
@@ -119,6 +123,7 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
             Constants.BdecVersion.ONE,
             new RootAllocator());
     channel4 =
@@ -134,6 +139,7 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
             Constants.BdecVersion.ONE,
             new RootAllocator());
   }
@@ -351,6 +357,7 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
             Constants.BdecVersion.ONE,
             new RootAllocator());
 
@@ -410,6 +417,7 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
             Constants.BdecVersion.ONE,
             new RootAllocator());
 
@@ -449,6 +457,7 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
             Constants.BdecVersion.ONE,
             new RootAllocator());
 
@@ -1050,7 +1059,8 @@ public class SnowflakeStreamingIngestClientTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
             channel2Name,
@@ -1063,7 +1073,8 @@ public class SnowflakeStreamingIngestClientTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     client.getChannelCache().addChannel(channel1);
     client.getChannelCache().addChannel(channel2);
 
@@ -1189,7 +1200,8 @@ public class SnowflakeStreamingIngestClientTest {
             client,
             "key",
             1234L,
-            OpenChannelRequest.OnErrorOption.CONTINUE);
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
     client.getChannelCache().addChannel(channel);
 
     ChannelsStatusResponse response = new ChannelsStatusResponse();

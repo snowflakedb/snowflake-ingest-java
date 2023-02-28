@@ -1,7 +1,7 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import net.snowflake.client.jdbc.internal.org.bouncycastle.util.encoders.Hex;
 import net.snowflake.ingest.utils.Constants;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class BinaryIT extends AbstractDataTypeTest {
@@ -11,13 +11,38 @@ public class BinaryIT extends AbstractDataTypeTest {
   }
 
   @Test
-  public void testBinarySimple() throws Exception {
+  public void testBinary() throws Exception {
     testJdbcTypeCompatibility("BINARY", new byte[0], new ByteArrayProvider());
     testJdbcTypeCompatibility("BINARY", new byte[3], new ByteArrayProvider());
+    testJdbcTypeCompatibility(
+        "BINARY", new byte[] {Byte.MIN_VALUE, 0, Byte.MAX_VALUE}, new ByteArrayProvider());
+    testJdbcTypeCompatibility("BINARY", Hex.decode("a0b0c0d0e0f0"), new ByteArrayProvider());
+    testJdbcTypeCompatibility("BINARY", Hex.decode("aaff"), new ByteArrayProvider());
+    testJdbcTypeCompatibility(
+        "BINARY",
+        Hex.decode("0000000000000000000000000000000000000000000000000000000000000000"),
+        new ByteArrayProvider());
+    testJdbcTypeCompatibility(
+        "BINARY",
+        Hex.decode("000000000000000000000000000000000000000000000000000000000000000000"),
+        new ByteArrayProvider());
+    testJdbcTypeCompatibility(
+        "BINARY",
+        Hex.decode("aaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        new ByteArrayProvider());
+    testJdbcTypeCompatibility(
+        "BINARY",
+        Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        new ByteArrayProvider());
+    testJdbcTypeCompatibility(
+        "BINARY",
+        Hex.decode("aaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        new ByteArrayProvider());
+    testJdbcTypeCompatibility(
+        "BINARY",
+        Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        new ByteArrayProvider());
 
-    testJdbcTypeCompatibility("BINARY", new byte[8 * 1024 * 1024], new ByteArrayProvider());
-
-    testJdbcTypeCompatibility("BINARY", new byte[] {1, 2, 3, 4}, new ByteArrayProvider());
     testJdbcTypeCompatibility(
         "BINARY", "212D", new byte[] {33, 45}, new StringProvider(), new ByteArrayProvider());
     testJdbcTypeCompatibility(
@@ -29,8 +54,24 @@ public class BinaryIT extends AbstractDataTypeTest {
   }
 
   @Test
-  @Ignore("SNOW-663704")
-  public void testBinary() throws Exception {
-    testJdbcTypeCompatibility("BINARY", new byte[] {-1}, new ByteArrayProvider());
+  public void testBinaryComparison() throws Exception {
+    ingestManyAndMigrate(
+        "BINARY", new byte[] {Byte.MIN_VALUE}, new byte[] {Byte.MAX_VALUE}, new byte[] {0});
+    ingestManyAndMigrate(
+        "BINARY", new byte[] {Byte.MAX_VALUE}, new byte[] {Byte.MIN_VALUE}, new byte[] {0});
+    ingestManyAndMigrate(
+        "BINARY",
+        Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00"));
+    ingestManyAndMigrate(
+        "BINARY",
+        Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+        Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00"));
+  }
+
+  @Test
+  public void testMaxBinary() throws Exception {
+    byte[] arr = new byte[8 * 1024 * 1024];
+    testJdbcTypeCompatibility("BINARY", arr, new ByteArrayProvider());
   }
 }
