@@ -36,6 +36,7 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.Object
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
@@ -46,6 +47,8 @@ class StreamingIngestStage {
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
   static final int MAX_RETRY_COUNT = 1;
+
+  private static final Logging logger = new Logging(StreamingIngestStage.class);
 
   /**
    * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
@@ -186,6 +189,8 @@ class StreamingIngestStage {
               .build());
     } catch (SnowflakeSQLException e) {
       if (e.getErrorCode() != CLOUD_STORAGE_CREDENTIALS_EXPIRED || retryCount >= MAX_RETRY_COUNT) {
+        logger.logError(
+            "Failed to upload to stage, client={}, message={}", clientName, e.getMessage());
         throw e;
       }
       this.refreshSnowflakeMetadata();
@@ -197,6 +202,7 @@ class StreamingIngestStage {
 
   SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata()
       throws SnowflakeSQLException, IOException {
+    logger.logInfo("Refresh Snowflake metadata, client={}", clientName);
     return refreshSnowflakeMetadata(false);
   }
 
