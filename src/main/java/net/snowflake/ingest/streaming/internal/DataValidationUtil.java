@@ -392,7 +392,7 @@ class DataValidationUtil {
           input.toString(),
           typeName,
           "Not a valid value, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
               + " for the list of supported formats");
     }
 
@@ -663,7 +663,7 @@ class DataValidationUtil {
           input,
           "TIME",
           "Not a valid time, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
               + " for the list of supported formats");
 
     } else {
