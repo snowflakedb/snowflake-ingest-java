@@ -386,7 +386,6 @@ class DataValidationUtil {
       }
 
       // Couldn't parse anything, throw an exception
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input.toString(),
@@ -657,7 +656,6 @@ class DataValidationUtil {
         }
       }
 
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input,
