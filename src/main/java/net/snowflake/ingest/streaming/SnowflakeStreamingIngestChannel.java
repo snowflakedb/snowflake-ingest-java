@@ -13,8 +13,8 @@ import javax.annotation.Nullable;
  * A logical partition that represents a connection to a single Snowflake table, data will be
  * ingested into the channel, and then flushed to Snowflake table periodically in the background.
  *
- * <p>Channels are identified by their name and only one channel with the same name may ingest data at
- * the same time. When a new channel is opened, all previously opened channels with the same name
+ * <p>Channels are identified by their name and only one channel with the same name may ingest data
+ * at the same time. When a new channel is opened, all previously opened channels with the same name
  * are invalidated (this applies for the table globally. not just in a single JVM). In order to
  * ingest data from multiple threads/clients/applications, we recommend opening multiple channels,
  * each with a different name. There is no limit on the number of channels that can be opened.
