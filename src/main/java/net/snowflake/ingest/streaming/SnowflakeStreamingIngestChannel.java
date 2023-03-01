@@ -11,11 +11,17 @@ import javax.annotation.Nullable;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
- * ingested into the channel, and then flush to Snowflake table periodically in the background. Note
- * that only one client (or thread) could write to a channel at a given time, so if there are
- * multiple clients (or multiple threads in the same client) try to ingest using the same channel,
- * the latest client (or thread) that opens the channel will win and all the other opened channels
- * will be invalid
+ * ingested into the channel, and then flushed to Snowflake table periodically in the background.
+ *
+ * <p>Channels are identified by their name and only one channel with the same name may ingest data at
+ * the same time. When a new channel is opened, all previously opened channels with the same name
+ * are invalidated (this applies for the table globally. not just in a single JVM). In order to
+ * ingest data from multiple threads/clients/applications, we recommend opening multiple channels,
+ * each with a different name. There is no limit on the number of channels that can be opened.
+ *
+ * <p>Thread safety note: Implementations of this interface are required to be thread safe, one
+ * instance of a channel can be used to ingest data from multiple threads. The recommended way,
+ * however, would be to open a new channel in every thread.
  */
 public interface SnowflakeStreamingIngestChannel {
   /**
@@ -220,7 +226,8 @@ public interface SnowflakeStreamingIngestChannel {
    *
    * </table>
    *
-   * @param row object data to write
+   * @param row object data to write. For predictable results, we recommend not to concurrently
+   *     modify the input row data.
    * @param offsetToken offset of given row, used for replay in case of failures. It could be null
    *     if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
