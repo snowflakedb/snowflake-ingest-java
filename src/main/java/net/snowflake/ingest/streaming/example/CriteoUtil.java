@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CriteoPerf {
+public class CriteoUtil {
 
   private static final String COMMA_DELIMITER = ",";
   /**

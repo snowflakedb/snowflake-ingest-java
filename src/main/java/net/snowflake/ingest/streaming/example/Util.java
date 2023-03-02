@@ -13,11 +13,14 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.sql.Connection;
-import java.sql.DriverManager;
+import java.sql.*;
 import java.util.*;
 import java.util.function.Supplier;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Utils;
 
@@ -113,6 +116,7 @@ public class Util {
     // build our properties
     Properties props = new Properties();
     props.put("user", user);
+    props.put("role", role);
     props.put("account", account);
     props.put("ssl", ssl);
     props.put("db", database);
@@ -124,6 +128,68 @@ public class Util {
     return DriverManager.getConnection(connectString, props);
   }
 
+  /**
+   * This method converts a result set into list of rows where each row is represented in a name -> value map
+   *
+   * @param rs result set
+   * @return list of rows as hashmap
+   * @throws SQLException
+   */
+  public static List resultSetToArrayList(ResultSet rs) throws SQLException {
+    ResultSetMetaData md = rs.getMetaData();
+    int columns = md.getColumnCount();
+    List list = new ArrayList();
+    while (rs.next()){
+      Map<String, Object> row = new HashMap(columns);
+      for(int i=1; i<=columns; ++i){
+        Object val = rs.getObject(i);
+        if(val instanceof java.sql.Date) {
+          val = val.toString();
+        }
+        row.put(md.getColumnName(i), val);
+      }
+      list.add(row);
+    }
+    return list;
+  }
+
+  public static SnowflakeStreamingIngestChannel openChannel(String databaseName, String schemaName, String tableName, String channelName, SnowflakeStreamingIngestClientInternal clientInternal) {
+    OpenChannelRequest request =
+            OpenChannelRequest.builder(channelName)
+                    .setDBName(databaseName)
+                    .setSchemaName(schemaName)
+                    .setTableName(tableName)
+                    .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+                    .build();
+
+    // Open a streaming ingest channel from the given client
+    return clientInternal.openChannel(request);
+  }
+
+  /** Verify the insert validation response and throw the exception if needed */
+  public static void verifyInsertValidationResponse(InsertValidationResponse response) {
+    if (response.hasErrors()) {
+      throw response.getInsertErrors().get(0).getException();
+    }
+  }
+
+
+  public static void waitChannelFlushed(SnowflakeStreamingIngestChannel channel, int numberOfRows) {
+    String latestCommittedOffsetToken = null;
+    for (int i = 1; i < 15; i++) {
+      latestCommittedOffsetToken = channel.getLatestCommittedOffsetToken();
+      if (latestCommittedOffsetToken != null
+              && latestCommittedOffsetToken.equals(Integer.toString(numberOfRows - 1))) {
+        return;
+      }
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        throw new RuntimeException(
+                "Interrupted waitChannelFlushed for " + numberOfRows + " rows", e);
+      }
+    }
+  }
   public static Map<String, Object> getRandomRow(Random r, boolean nullable) {
     Map<String, Object> row = new HashMap<>();
 
@@ -173,5 +239,9 @@ public class Util {
 
   private static double nextFloat(Random r) {
     return (r.nextLong() % Math.round(Math.pow(10, 10))) / 100000d;
+  }
+
+  public static String getWarehouse() {
+    return warehouse;
   }
 }

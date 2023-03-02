@@ -31,8 +31,8 @@ public class ParquetPerf {
         for (boolean n : nullables) {
             for (Object[] p : param) {
                 for (int i = 0; i < numRuns; i++) {
-                    SnowflakeStreamingIngestParquetPerfRunner perfRunner =
-                            new SnowflakeStreamingIngestParquetPerfRunner(
+                    Runner perfRunner =
+                            new Runner(
                                     (String) p[0],
                                     (Boolean) p[1],
                                     (Constants.BdecVersion) p[2],
