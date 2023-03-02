@@ -14,7 +14,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 
 /** Streaming ingest sdk perf test */
-public class SnowflakeStreamingIngestParquetPerfRunner {
+public class Runner {
 
   private static String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB = "STREAMING_INGEST_TEST_DB";
@@ -37,7 +37,7 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
 
   private boolean useCriteoDataset= false;
 
-  public SnowflakeStreamingIngestParquetPerfRunner(
+  public Runner(
       @SuppressWarnings("unused") String name,
       boolean enableInternalParquetBuffering,
       Constants.BdecVersion bdecVersion,
@@ -92,8 +92,7 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
   public void runPerfExperiment() throws ExecutionException, InterruptedException, IOException {
     List<Map<String, Object>> rows;
     if(useCriteoDataset) {
-      rows = CriteoPerf.readData();
-      batchSize = rows.size();
+      rows = CriteoUtil.readData(batchSize);
     } else {
       rows = new ArrayList<>();
       for (int i = 0; i < batchSize; i++) {
@@ -110,10 +109,10 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
       futures[i] =
           CompletableFuture.runAsync(
               () -> {
-                SnowflakeStreamingIngestChannel channel = openChannel(TEST_TABLE, channelName);
+                SnowflakeStreamingIngestChannel channel = Util.openChannel(TEST_DB, TEST_SCHEMA, TEST_TABLE, channelName, client);
                 channelList.add(channel);
                 for (int val = 0; val < iterations; val++) {
-                  verifyInsertValidationResponse(channel.insertRows(rows, Integer.toString(val)));
+                  Util.verifyInsertValidationResponse(channel.insertRows(rows, Integer.toString(val)));
                 }
                 // waitChannelFlushed(channel, batchSize * iterations);
               },
@@ -124,42 +123,5 @@ public class SnowflakeStreamingIngestParquetPerfRunner {
     testThreadPool.shutdown();
 
     // verifyTableRowCount(batchSize * iterations * numChannels, tableName);
-  }
-
-  /** Verify the insert validation response and throw the exception if needed */
-  private void verifyInsertValidationResponse(InsertValidationResponse response) {
-    if (response.hasErrors()) {
-      throw response.getInsertErrors().get(0).getException();
-    }
-  }
-
-  private SnowflakeStreamingIngestChannel openChannel(String tableName, String channelName) {
-    OpenChannelRequest request =
-        OpenChannelRequest.builder(channelName)
-            .setDBName(TEST_DB)
-            .setSchemaName(TEST_SCHEMA)
-            .setTableName(tableName)
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
-            .build();
-
-    // Open a streaming ingest channel from the given client
-    return client.openChannel(request);
-  }
-
-  private void waitChannelFlushed(SnowflakeStreamingIngestChannel channel, int numberOfRows) {
-    String latestCommittedOffsetToken = null;
-    for (int i = 1; i < 15; i++) {
-      latestCommittedOffsetToken = channel.getLatestCommittedOffsetToken();
-      if (latestCommittedOffsetToken != null
-          && latestCommittedOffsetToken.equals(Integer.toString(numberOfRows - 1))) {
-        return;
-      }
-      try {
-        Thread.sleep(500);
-      } catch (InterruptedException e) {
-        throw new RuntimeException(
-            "Interrupted waitChannelFlushed for " + numberOfRows + " rows", e);
-      }
-    }
   }
 }
