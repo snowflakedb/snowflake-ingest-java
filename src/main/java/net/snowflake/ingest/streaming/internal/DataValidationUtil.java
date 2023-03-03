@@ -386,13 +386,12 @@ class DataValidationUtil {
       }
 
       // Couldn't parse anything, throw an exception
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input.toString(),
           typeName,
           "Not a valid value, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
               + " for the list of supported formats");
     }
 
@@ -657,13 +656,12 @@ class DataValidationUtil {
         }
       }
 
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input,
           "TIME",
           "Not a valid time, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
               + " for the list of supported formats");
 
     } else {

@@ -9,6 +9,8 @@ package net.snowflake.ingest.streaming;
  * maps to exactly one account in Snowflake; however, multiple clients can point to the same
  * account. Each client will contain information for Snowflake authentication and authorization, and
  * it will be used to create one or more {@link SnowflakeStreamingIngestChannel}
+ *
+ * <p>Thread safety note: Implementations of this interface are required to be thread safe.
  */
 public interface SnowflakeStreamingIngestClient extends AutoCloseable {
 
