@@ -19,9 +19,7 @@ import javax.annotation.Nullable;
  * ingest data from multiple threads/clients/applications, we recommend opening multiple channels,
  * each with a different name. There is no limit on the number of channels that can be opened.
  *
- * <p>Thread safety note: Implementations of this interface are required to be thread safe, one
- * instance of a channel can be used to ingest data from multiple threads. The recommended way,
- * however, would be to open a new channel in every thread.
+ * <p>Thread safety note: Implementations of this interface are required to be thread safe.
  */
 public interface SnowflakeStreamingIngestChannel {
   /**
