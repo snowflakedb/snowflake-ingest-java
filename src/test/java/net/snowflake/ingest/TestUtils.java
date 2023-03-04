@@ -37,12 +37,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
+import java.util.UUID;
 import java.util.function.Supplier;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
@@ -363,8 +367,7 @@ public class TestUtils {
    * Given a channel and expected offset, this method waits up to 60 seconds until the last
    * committed offset is equal to the passed offset
    */
-  public static void waitForOffset(SnowflakeStreamingIngestChannel channel, String expectedOffset)
-      throws InterruptedException {
+  public static void waitForOffset(SnowflakeStreamingIngestChannel channel, String expectedOffset) {
     int counter = 0;
     String lastCommittedOffset = null;
     while (counter < 600) {
@@ -374,7 +377,11 @@ public class TestUtils {
       }
       lastCommittedOffset = currentOffset;
       counter++;
-      Thread.sleep(100);
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        throw new RuntimeException("Thread sleep exception thrown", e);
+      }
     }
     Assert.fail(
         String.format(
@@ -485,5 +492,43 @@ public class TestUtils {
 
   private static double nextFloat(Random r) {
     return (r.nextLong() % Math.round(Math.pow(10, 10))) / 100000d;
+  }
+
+  public static SnowflakeStreamingIngestClient createStreamingIngestClient(
+      Constants.BdecVersion bdecVersion) {
+    Properties props;
+    try {
+      props = getProperties(bdecVersion);
+    } catch (Exception e) {
+      throw new RuntimeException("Cannot create properties", e);
+    }
+
+    if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
+      props.setProperty(ROLE, "ACCOUNTADMIN");
+    }
+    return SnowflakeStreamingIngestClientFactory.builder(
+            String.format("client-%s", UUID.randomUUID()))
+        .setProperties(props)
+        .build();
+  }
+
+  public static SnowflakeStreamingIngestChannel openChannel(
+      SnowflakeStreamingIngestClient client, String database, String table) {
+    OpenChannelRequest openChannelRequest =
+        OpenChannelRequest.builder(UUID.randomUUID().toString())
+            .setDBName(database)
+            .setSchemaName("PUBLIC")
+            .setTableName(table)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    return client.openChannel(openChannelRequest);
+  }
+
+  public static String createDatabase(Connection conn) throws SQLException {
+    String databaseName =
+        String.format("STREAMING_INGEST_IT_%s", UUID.randomUUID()).replace("-", "_");
+    conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
+    return databaseName;
   }
 }

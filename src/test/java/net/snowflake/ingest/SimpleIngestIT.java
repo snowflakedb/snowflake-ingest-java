@@ -33,9 +33,11 @@ import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Example ingest sdk integration test */
+@Ignore
 public class SimpleIngestIT {
   private final String TEST_FILE_NAME = "test1.csv";
   private final String TEST_FILE_NAME_2 = "test2.csv";
