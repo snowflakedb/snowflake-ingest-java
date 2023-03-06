@@ -92,8 +92,7 @@ public class Runner {
   public void runPerfExperiment() throws ExecutionException, InterruptedException, IOException {
     List<Map<String, Object>> rows;
     if(useCriteoDataset) {
-      rows = CriteoUtil.readData();
-      batchSize = rows.size();
+      rows = CriteoUtil.readData(batchSize);
     } else {
       rows = new ArrayList<>();
       for (int i = 0; i < batchSize; i++) {

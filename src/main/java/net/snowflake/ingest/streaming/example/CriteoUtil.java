@@ -23,12 +23,14 @@ public class CriteoUtil {
         "C16", "C17", "C18", "C19", "C20", "C21", "C22", "C23", "C24", "C25", "C26"
       };
 
-  public static List<Map<String, Object>> readData() throws IOException {
+  public static List<Map<String, Object>> readData(int numRows) throws IOException {
     List<Map<String, Object>> records = new ArrayList<>();
+    int ctr = 0;
     try (BufferedReader br = new BufferedReader(new FileReader("/home/ec2-user/criteo.csv"))) {
       String line;
-      while ((line = br.readLine()) != null) {
+      while (ctr < numRows && (line = br.readLine()) != null) {
         records.add(getRowAsMap(line));
+        ctr++;
       }
     }
     return records;

@@ -13,14 +13,14 @@ public class ParquetPerf {
         return Arrays.asList(
                 new Object[][]{
                         // 1M X 1
-                        {"Arrow", false, Constants.BdecVersion.ONE, 100000, 1, 1, true},
-                        {"Parquet", false, Constants.BdecVersion.THREE, 100000, 1, 1, true},
+                        {"Arrow", false, Constants.BdecVersion.ONE, 10000, 100, 1, true},
+                        {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 1, true},
                         // 1M X 2
-                        {"Arrow", false, Constants.BdecVersion.ONE, 1000000, 1, 2, true},
-                        {"Parquet", false, Constants.BdecVersion.THREE, 1000000, 1, 2, true},
+                        {"Arrow", false, Constants.BdecVersion.ONE, 10000, 100, 2, true},
+                        {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 2, true},
                         // 1M X 3
-                        {"Arrow", false, Constants.BdecVersion.ONE, 1000000, 1, 3, true},
-                        {"Parquet", false, Constants.BdecVersion.THREE, 1000000, 1, 3, true},
+                        {"Arrow", false, Constants.BdecVersion.ONE, 10000, 100, 3, true},
+                        {"Parquet", false, Constants.BdecVersion.THREE, 10000, 100, 3, true},
                 });
     }
 
