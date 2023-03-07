@@ -193,7 +193,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
         if ((column.getScale() != null && column.getScale() != 0)
             || physicalType == ColumnPhysicalType.SB16) {
           arrowType =
-              new ArrowType.Decimal(column.getPrecision(), column.getScale(), DECIMAL_BIT_WIDTH);
+              new ArrowType.Decimal(column.getPrecision(), column.getScale()); // ARROW won't work
         } else {
           switch (physicalType) {
             case SB1:
@@ -362,8 +362,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
         ArrowType arrowType =
             new ArrowType.Decimal(
                 ((DecimalVector) vector).getPrecision(),
-                ((DecimalVector) vector).getScale(),
-                DECIMAL_BIT_WIDTH);
+                ((DecimalVector) vector).getScale()); // ARROW won't work
         FieldType fieldType =
             new FieldType(
                 vector.getField().isNullable(), arrowType, null, vector.getField().getMetadata());
