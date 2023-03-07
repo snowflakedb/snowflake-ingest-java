@@ -50,12 +50,12 @@ project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.x
 echo "[Info] Project version: $project_version"
 $THIS_DIR/scripts/update_project_version.py pom.xml ${project_version}-unshaded > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy versions:set -DnewVersion=${project_version}-unshaded
+mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy versions:set -DnewVersion=$project_version-unshaded
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
-    -DserverId=$MVN_REPOSITORY_ID \
+    -DserverId=$MVN_REPOSITORY_ID  -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded \
     -DnexusUrl=https://oss.sonatype.org/ | grep netsnowflake | awk '{print $2}')
 IFS=" "
 if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
@@ -67,13 +67,14 @@ if ! mvn ${MVN_OPTIONS[@]} \
     -DserverId=$MVN_REPOSITORY_ID \
     -DnexusUrl=https://oss.sonatype.org/ \
     -DstagingRepositoryId=$snowflake_repositories \
+    -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded \
     -DstagingDescription="Automated Close"; then
     echo "[ERROR] Failed to close. Fix the errors and try this script again"
     mvn ${MVN_OPTIONS[@]} \
         nexus-staging:rc-drop \
         -DserverId=$MVN_REPOSITORY_ID \
         -DnexusUrl=https://oss.sonatype.org/ \
-        -DstagingRepositoryId=$snowflake_repositories \
+        -DstagingRepositoryId=$snowflake_repositories -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded \
         -DstagingDescription="Failed to close. Dropping..."
 fi
 
@@ -81,7 +82,7 @@ mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
     -DserverId=$MVN_REPOSITORY_ID \
     -DnexusUrl=https://oss.sonatype.org/ \
-    -DstagingRepositoryId=$snowflake_repositories \
+    -DstagingRepositoryId=$snowflake_repositories -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded \
     -DstagingDescription="Automated Release"
 
 rm $OSSRH_DEPLOY_SETTINGS_XML
