@@ -39,6 +39,6 @@ public class BinaryStringUtils {
       }
     }
 
-    return Hex.encodeHexString(ByteBuffer.wrap(result, 0, MAX_LOB_LEN));
+    return Hex.encodeHexString(ByteBuffer.wrap(result, 0, MAX_LOB_LEN).array());
   }
 }

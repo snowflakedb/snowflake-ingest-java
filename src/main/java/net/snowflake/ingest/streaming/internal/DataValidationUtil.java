@@ -591,7 +591,7 @@ class DataValidationUtil {
     } else if (input instanceof String) {
       try {
         String stringInput = ((String) input).trim();
-        output = Hex.decodeHex(stringInput);
+        output = Hex.decodeHex(stringInput.toCharArray());
       } catch (DecoderException e) {
         throw valueFormatNotAllowedException(columnName, input, "BINARY", "Not a valid hex string");
       }
