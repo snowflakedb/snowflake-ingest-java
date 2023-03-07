@@ -1,7 +1,5 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.ArrowRowBuffer.DECIMAL_BIT_WIDTH;
-
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
@@ -148,8 +146,7 @@ public class ArrowBufferTest {
 
     Field result = this.rowBufferOnErrorContinue.buildField(testCol);
 
-    ArrowType expectedType =
-        new ArrowType.Decimal(testCol.getPrecision(), testCol.getScale(), DECIMAL_BIT_WIDTH);
+    ArrowType expectedType = new ArrowType.Decimal(testCol.getPrecision(), testCol.getScale());
 
     Assert.assertEquals("TESTCOL", result.getName());
     Assert.assertEquals(result.getFieldType().getType(), expectedType);

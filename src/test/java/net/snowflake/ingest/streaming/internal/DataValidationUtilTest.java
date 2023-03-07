@@ -773,11 +773,11 @@ public class DataValidationUtilTest {
         new byte[] {-1, 0, 1},
         validateAndParseBinary("COL", new byte[] {-1, 0, 1}, Optional.empty()));
     assertArrayEquals(
-        Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
+        Hex.decodeHex("1234567890abcdef".toCharArray()), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL", "1234567890abcdef", Optional.empty())); // pragma: allowlist secret NOT A SECRET
     assertArrayEquals(
-        Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
+        Hex.decodeHex("1234567890abcdef".toCharArray()), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL",
             "  1234567890abcdef \t\n",

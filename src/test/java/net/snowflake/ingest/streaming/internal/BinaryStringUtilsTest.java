@@ -22,31 +22,35 @@ public class BinaryStringUtilsTest {
     Assert.assertEquals("", truncateBytesAsHex(new byte[0], true));
 
     // Test basic case
-    Assert.assertEquals("aa", truncateBytesAsHex(Hex.decodeHex("aa"), false));
-    Assert.assertEquals("aa", truncateBytesAsHex(Hex.decodeHex("aa"), true));
+    Assert.assertEquals("aa", truncateBytesAsHex(Hex.decodeHex("aa".toCharArray()), false));
+    Assert.assertEquals("aa", truncateBytesAsHex(Hex.decodeHex("aa".toCharArray()), true));
 
     // Test exactly 32 bytes
     Assert.assertEquals(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         truncateBytesAsHex(
-            Hex.decodeHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            Hex.decodeHex(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".toCharArray()),
             false));
     Assert.assertEquals(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         truncateBytesAsHex(
-            Hex.decodeHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            Hex.decodeHex(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".toCharArray()),
             true));
 
     Assert.assertEquals(
         "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         truncateBytesAsHex(
-            Hex.decodeHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+            Hex.decodeHex(
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".toCharArray()),
             false));
 
     Assert.assertEquals(
         "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         truncateBytesAsHex(
-            Hex.decodeHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+            Hex.decodeHex(
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".toCharArray()),
             true));
 
     // Test 1 truncate up
@@ -54,26 +58,32 @@ public class BinaryStringUtilsTest {
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         truncateBytesAsHex(
             Hex.decodeHex(
-                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    .toCharArray()),
             false));
 
     Assert.assertEquals(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
         truncateBytesAsHex(
             Hex.decodeHex(
-                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    .toCharArray()),
             true));
 
     // Test one overflow
     Assert.assertEquals(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffaaff",
         truncateBytesAsHex(
-            Hex.decodeHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffaaffffffff"),
+            Hex.decodeHex(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffaaffffffff"
+                    .toCharArray()),
             false));
     Assert.assertEquals(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffab00",
         truncateBytesAsHex(
-            Hex.decodeHex("aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffaaffffffff"),
+            Hex.decodeHex(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffaaffffffff"
+                    .toCharArray()),
             true));
 
     // Test many overflow
@@ -81,13 +91,15 @@ public class BinaryStringUtilsTest {
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffffff",
         truncateBytesAsHex(
             Hex.decodeHex(
-                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                    .toCharArray()),
             false));
     Assert.assertEquals(
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaab00000000000000000000000000000000000",
         truncateBytesAsHex(
             Hex.decodeHex(
-                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaafffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                    .toCharArray()),
             true));
 
     // Test infinity
@@ -95,13 +107,15 @@ public class BinaryStringUtilsTest {
         "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         truncateBytesAsHex(
             Hex.decodeHex(
-                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcccccccccccc"),
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcccccccccccc"
+                    .toCharArray()),
             false));
     Assert.assertEquals(
         "Z",
         truncateBytesAsHex(
             Hex.decodeHex(
-                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcccccccccccc"),
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffcccccccccccc"
+                    .toCharArray()),
             true));
   }
 }
