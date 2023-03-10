@@ -48,7 +48,7 @@ MVN_OPTIONS+=(
 echo "[Info] Sign unshaded package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 echo "[Info] Project version: $project_version"
-$THIS_DIR/scripts/update_project_version.py pom.xml ${project_version}-unshaded > generated_public_pom.xml
+$THIS_DIR/scripts/update_project_version.py pom.xml ${project_version} > generated_public_pom.xml
 
 mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy 
 
