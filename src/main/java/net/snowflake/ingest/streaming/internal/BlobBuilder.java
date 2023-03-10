@@ -29,11 +29,11 @@ import java.util.zip.GZIPOutputStream;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.xml.bind.DatatypeConverter;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import org.apache.commons.codec.binary.Hex;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -77,15 +77,15 @@ class BlobBuilder {
 
     // TODO: channels with different schema can't be combined even if they belongs to same table
     for (List<ChannelData<T>> channelsDataPerTable : blobData) {
-      ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
       ChannelFlushContext firstChannelFlushContext =
           channelsDataPerTable.get(0).getChannelContext();
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
-      Flusher.SerializationResult result =
-          flusher.serialize(channelsDataPerTable, chunkData, filePath);
+      Flusher.SerializationResult serializedChunk =
+          flusher.serialize(channelsDataPerTable, filePath);
 
-      if (!result.channelsMetadataList.isEmpty()) {
+      if (!serializedChunk.channelsMetadataList.isEmpty()) {
+        ByteArrayOutputStream chunkData = serializedChunk.chunkData;
         Pair<byte[], Integer> compressionResult =
             compressIfNeededAndPadChunk(
                 filePath,
@@ -123,12 +123,14 @@ class BlobBuilder {
                 // The compressedChunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
                 .setChunkLength(compressedChunkLength)
-                .setChannelList(result.channelsMetadataList)
+                .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
-                        result.rowCount, result.columnEpStatsMapCombined))
+                        serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
+                .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
+                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
                 .build();
 
         // Add chunk metadata and data to the list
@@ -143,7 +145,7 @@ class BlobBuilder {
                 + " bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
-            result.rowCount,
+            serializedChunk.rowCount,
             startOffset,
             chunkData.size(),
             compressedChunkLength,
@@ -317,7 +319,7 @@ class BlobBuilder {
         MessageDigest.getInstance("MD5");
     md.update(data, 0, length);
     byte[] digest = md.digest();
-    return DatatypeConverter.printHexBinary(digest).toLowerCase();
+    return Hex.encodeHexString(digest);
   }
 
   /** Blob data to store in a file and register by server side. */

@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.connection;
 
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
+
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Snapshot;
@@ -88,6 +90,7 @@ public class TelemetryService {
   public void reportClientFailure(String summary, String exception) {
     ObjectNode msg = MAPPER.createObjectNode();
     msg.put("summary", summary);
+    msg.put("client_version", DEFAULT_VERSION);
     msg.put("exception", exception);
     send(TelemetryType.STREAMING_INGEST_CLIENT_FAILURE, msg);
   }

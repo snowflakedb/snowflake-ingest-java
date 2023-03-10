@@ -54,6 +54,11 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({TestUtils.class, HttpUtil.class, SnowflakeFileTransferAgent.class})
 public class StreamingIngestStageTest {
+
+  private final String prefix = "EXAMPLE_PREFIX";
+
+  private final long deploymentId = 123;
+
   private ObjectMapper mapper = new ObjectMapper();
 
   final String exampleRemoteMeta =
@@ -78,8 +83,13 @@ public class StreamingIngestStageTest {
 
   String exampleRemoteMetaResponse =
       "{\"src_locations\": [\"foo/\"],"
+          + " \"deployment_id\": "
+          + deploymentId
+          + ","
           + " \"status_code\": 0, \"message\": \"Success\", \"prefix\":"
-          + " \"EXAMPLE_PREFIX\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
+          + " \""
+          + prefix
+          + "\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
           + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
           + " \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true,"
           + " \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
@@ -279,6 +289,7 @@ public class StreamingIngestStageTest {
         "foo/streaming_ingest/", metadataWithAge.fileTransferMetadata.getStageInfo().getLocation());
     Assert.assertEquals(
         "placeholder", metadataWithAge.fileTransferMetadata.getPresignedUrlFileName());
+    Assert.assertEquals(prefix + "_" + deploymentId, stage.getClientPrefix());
   }
 
   @Test

@@ -25,6 +25,8 @@ public class Constants {
   public static final String PRIVATE_KEY = "private_key";
   public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
   public static final String JDBC_PRIVATE_KEY = "privateKey";
+  public static final String PRIMARY_FILE_ID_KEY =
+      "primaryFileId"; // Don't change, should match Parquet Scanner
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
   public static final long RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST =
       10L; // Don't change, should match server side
@@ -32,8 +34,8 @@ public class Constants {
       7L; // Don't change, should match server side
   public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC = 5;
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 60;
-  public static final long MAX_BLOB_SIZE_IN_BYTES = 512000000L;
-  public static final long MAX_CHUNK_SIZE_IN_BYTES = 32000000L;
+  public static final long MAX_BLOB_SIZE_IN_BYTES = 256000000L;
+  public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
   public static final int BLOB_VERSION_SIZE_IN_BYTES = 1;
   public static final int BLOB_FILE_SIZE_SIZE_IN_BYTES = 8;
@@ -50,6 +52,7 @@ public class Constants {
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
   public static final int LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES = 100 * 1024 * 1024;
+  public static final long EP_NDV_UNKNOWN = -1L;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";

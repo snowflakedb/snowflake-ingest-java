@@ -9,9 +9,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -53,13 +55,14 @@ public abstract class AbstractDataTypeTest {
   protected Connection conn;
   private String databaseName;
 
+  /**
+   * Default timezone for newly created channels. If empty, the test will not explicitly set default
+   * timezone in the channel builder.
+   */
+  private Optional<ZoneId> defaultTimezone = Optional.empty();
+
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
-
-  protected String randomString() {
-    return UUID.randomUUID().toString().replace("-", "_");
-  }
-
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private final Constants.BdecVersion bdecVersion;
@@ -71,22 +74,13 @@ public abstract class AbstractDataTypeTest {
 
   @Before
   public void before() throws Exception {
-    databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", randomString());
+    databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
     conn = TestUtils.getConnection(true);
     conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
     conn.createStatement().execute(String.format("use database %s;", databaseName));
     conn.createStatement().execute(String.format("use schema %s;", schemaName));
 
-    // Set to a random time zone not to interfere with any of the tests
-    conn.createStatement().execute("alter session set timezone = 'America/New_York';");
-
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
-
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-      // TODO: encryption and interleaved mode are not yet supported by server side's Parquet
-      // scanner if local file cache is enabled (SNOW-656500)
-      conn.createStatement().execute("alter session set disable_parquet_cache=true;");
-    }
 
     Properties props = TestUtils.getProperties(bdecVersion);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
@@ -97,6 +91,7 @@ public abstract class AbstractDataTypeTest {
 
   @After
   public void after() throws Exception {
+    this.defaultTimezone = Optional.empty();
     conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
     if (client != null) {
       client.close();
@@ -106,16 +101,12 @@ public abstract class AbstractDataTypeTest {
     }
   }
 
-  protected String createTable(String dataType) throws SQLException {
-    String tableName =
-        String.format("test_%s_%s", dataType, UUID.randomUUID())
-            .replace('-', '_')
-            .replace(' ', '_')
-            .replace('(', '_')
-            .replace(')', '_')
-            .replace(',', '_');
+  void setChannelDefaultTimezone(ZoneId defaultTimezone) {
+    this.defaultTimezone = Optional.of(defaultTimezone);
+  }
 
-    //    System.out.printf("Creating table %s.%s.%s%n", databaseName, schemaName, tableName);
+  protected String createTable(String dataType) throws SQLException {
+    String tableName = getRandomIdentifier();
     conn.createStatement()
         .execute(
             String.format(
@@ -124,23 +115,28 @@ public abstract class AbstractDataTypeTest {
     return tableName;
   }
 
+  protected String getRandomIdentifier() {
+    return String.format("test_%s", UUID.randomUUID()).replace('-', '_');
+  }
+
   protected SnowflakeStreamingIngestChannel openChannel(String tableName) {
     return openChannel(tableName, OpenChannelRequest.OnErrorOption.ABORT);
   }
 
   protected SnowflakeStreamingIngestChannel openChannel(
       String tableName, OpenChannelRequest.OnErrorOption onErrorOption) {
-    OpenChannelRequest openChannelRequest =
+    OpenChannelRequest.OpenChannelRequestBuilder requestBuilder =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(databaseName)
             .setSchemaName(SCHEMA_NAME)
             .setTableName(tableName)
-            .setOnErrorOption(onErrorOption)
-            .build();
+            .setOnErrorOption(onErrorOption);
+    defaultTimezone.ifPresent(requestBuilder::setDefaultTimezone);
+    OpenChannelRequest openChannelRequest = requestBuilder.build();
     return client.openChannel(openChannelRequest);
   }
 
-  private Map<String, Object> createStreamingIngestRow(Object value) {
+  protected Map<String, Object> createStreamingIngestRow(Object value) {
     Map<String, Object> row = new HashMap<>();
     row.put(SOURCE_COLUMN_NAME, SOURCE_STREAMING_INGEST);
     row.put(VALUE_COLUMN_NAME, value);
@@ -191,6 +187,15 @@ public abstract class AbstractDataTypeTest {
         x ->
             (x instanceof SFException
                 && x.getMessage().contains("The given row cannot be converted to Arrow format")));
+  }
+
+  /**
+   * Simplified version, which does not insert using JDBC. Useful for testing non-JDBC types like
+   * BigInteger, java.time.* types, etc.
+   */
+  <VALUE> void testIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
+      throws Exception {
+    ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider);
   }
 
   /**
@@ -304,6 +309,7 @@ public abstract class AbstractDataTypeTest {
     Assert.assertTrue(resultSet.next());
     int count = resultSet.getInt(1);
     Assert.assertEquals(insertAlsoWithJdbc ? 2 : 1, count);
+    migrateTable(tableName); // migration should always succeed
   }
 
   <STREAMING_INGEST_WRITE> void assertVariant(
@@ -335,7 +341,35 @@ public abstract class AbstractDataTypeTest {
     }
 
     Assert.assertEquals(1, counter);
-    Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+    if (expectedValue == null) {
+      Assert.assertNull(value);
+    } else {
+      Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+    }
     Assert.assertEquals(expectedType, typeof);
+    migrateTable(tableName); // migration should always succeed
+  }
+
+  protected void migrateTable(String tableName) throws SQLException {
+    conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
+  }
+
+  /**
+   * Ingest multiple values, wait for the latest offset to be committed, migrate the table and
+   * assert no errors have been thrown.
+   */
+  @SafeVarargs
+  protected final <STREAMING_INGEST_WRITE> void ingestManyAndMigrate(
+      String datatype, final STREAMING_INGEST_WRITE... values) throws Exception {
+    String tableName = createTable(datatype);
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    String offsetToken = null;
+    for (int i = 0; i < values.length; i++) {
+      offsetToken = String.format("offsetToken%d", i);
+      channel.insertRow(createStreamingIngestRow(values[i]), offsetToken);
+    }
+
+    TestUtils.waitForOffset(channel, offsetToken);
+    migrateTable(tableName); // migration should always succeed
   }
 }

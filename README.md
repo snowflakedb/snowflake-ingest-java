@@ -9,7 +9,7 @@ The Snowflake Ingest Service SDK allows users to ingest files into their
 Snowflake data warehouse in a programmatic fashion via key-pair
 authentication. Currently, we support ingestion through the following APIs:
 1. [Snowpipe](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-gs.html#client-requirement-java-or-python-sdk)
-2. [Snowpipe Streaming](https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html) - Under Private Preview
+2. [Snowpipe Streaming](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview) - Under Public Preview
 
 # Prerequisites
 
@@ -118,7 +118,7 @@ you would need to remove the following scope limits in pom.xml
 -   Use an unencrypted version(Only for testing) of private key while generating keys(private and public pair) using OpenSSL.
 
     -   Here is the link for documentation [Key Pair
-            Generator](https://docs.snowflake.net/manuals/user-guide/python-connector-example.html#using-key-pair-authentication)
+            Generator](https://docs.snowflake.com/en/user-guide/key-pair-auth.html)
 
 # Code style
 

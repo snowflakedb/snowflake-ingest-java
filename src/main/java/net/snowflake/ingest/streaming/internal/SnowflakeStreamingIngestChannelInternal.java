@@ -11,7 +11,11 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +26,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
@@ -49,7 +54,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // Reference to the client that owns this channel
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
-  // state of the channel that will be shared with its underlying buffer
+  // State of the channel that will be shared with its underlying buffer
   private final ChannelRuntimeState channelState;
 
   /**
@@ -75,7 +80,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       SnowflakeStreamingIngestClientInternal<T> client,
       String encryptionKey,
       Long encryptionKeyId,
-      OpenChannelRequest.OnErrorOption onErrorOption) {
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneOffset defaultTimezone) {
     this(
         name,
         dbName,
@@ -88,6 +94,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKey,
         encryptionKeyId,
         onErrorOption,
+        defaultTimezone,
         client.getParameterProvider().getBlobFormatVersion(),
         new RootAllocator());
   }
@@ -105,6 +112,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       String encryptionKey,
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneId defaultTimezone,
       Constants.BdecVersion bdecVersion,
       BufferAllocator allocator) {
     this.isClosed = false;
@@ -116,11 +124,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     this.rowBuffer =
         AbstractRowBuffer.createRowBuffer(
             onErrorOption,
+            defaultTimezone,
             allocator,
             bdecVersion,
             getFullyQualifiedName(),
             this::collectRowSize,
-            channelState);
+            channelState,
+            false,
+            owningClient != null
+                ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
+                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
@@ -186,10 +199,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   /**
    * Get all the data needed to build the blob during flush
    *
+   * @param filePath the name of the file the data will be written in
    * @return a ChannelData object
    */
-  ChannelData<T> getData() {
-    ChannelData<T> data = this.rowBuffer.flush();
+  ChannelData<T> getData(final String filePath) {
+    ChannelData<T> data = this.rowBuffer.flush(filePath);
     if (data != null) {
       data.setChannelContext(channelFlushContext);
     }
@@ -341,7 +355,14 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       throw new SFException(ErrorCode.CLOSED_CHANNEL, getFullyQualifiedName());
     }
 
-    InsertValidationResponse response = this.rowBuffer.insertRows(rows, offsetToken);
+    // We create a shallow copy to protect against concurrent addition/removal of columns, which can
+    // lead to double counting of null values, for example. Individual mutable values may still be
+    // concurrently modified (e.g. byte[]). Before validation and EP calculation, we must make sure
+    // that defensive copies of all mutable objects are created.
+    final List<Map<String, Object>> rowsCopy = new LinkedList<>();
+    rows.forEach(r -> rowsCopy.add(new HashMap<>(r)));
+
+    InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only

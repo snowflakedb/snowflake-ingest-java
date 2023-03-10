@@ -117,4 +117,9 @@ public class StreamingIngestUtils {
     } while (retries <= MAX_STREAMING_INGEST_API_CHANNEL_RETRY);
     return response;
   }
+
+  public static String getShortname(final String fullname) {
+    final String[] parts = fullname.split("/");
+    return parts[parts.length - 1];
+  }
 }
