@@ -50,7 +50,7 @@ project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.x
 echo "[Info] Project version: $project_version"
 $THIS_DIR/scripts/update_project_version.py pom.xml ${project_version}-unshaded > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true
+mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy 
 
 # echo "[INFO] Close and Release"
 # snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \

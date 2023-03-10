@@ -7,7 +7,7 @@
     <!-- Arifact name and version information -->
     <groupId>net.snowflake</groupId>
     <artifactId>snowflake-ingest-sdk</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.0-unshaded</version>
     <packaging>jar</packaging>
     <name>Snowflake Ingest SDK</name>
     <description>Snowflake Ingest SDK</description>
@@ -537,6 +537,8 @@
                                     <repositoryId>ossrh</repositoryId>
                                     <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
                                     <pomFile>generated_public_pom.xml</pomFile>
+                                    <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
+                                    <sources>target/${project.artifactId}-sources.jar</sources>
                                     <keyname>${env.GPG_KEY_ID}</keyname>
                                     <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
                                 </configuration>
