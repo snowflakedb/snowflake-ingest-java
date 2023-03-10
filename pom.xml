@@ -537,8 +537,6 @@
                                     <repositoryId>ossrh</repositoryId>
                                     <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
                                     <pomFile>generated_public_pom.xml</pomFile>
-                                    <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
-                                    <sources>target/${project.artifactId}-sources.jar</sources>
                                     <keyname>${env.GPG_KEY_ID}</keyname>
                                     <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
                                 </configuration>
