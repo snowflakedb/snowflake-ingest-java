@@ -26,14 +26,6 @@ class EpInfo {
     for (Map.Entry<String, FileColumnProperties> entry : columnEps.entrySet()) {
       String colName = entry.getKey();
       FileColumnProperties colEp = entry.getValue();
-      // Make sure the null count should always smaller than the total row count
-      if (colEp.getNullCount() > rowCount) {
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR,
-            String.format(
-                "Null count bigger than total row count on col=%s, nullCount=%s, rowCount=%s",
-                colName, colEp.getNullCount(), rowCount));
-      }
 
       // Make sure the NDV should always be -1
       if (colEp.getDistinctValues() != EP_NDV_UNKNOWN) {

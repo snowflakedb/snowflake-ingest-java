@@ -578,31 +578,6 @@ public class RowBufferTest {
   }
 
   @Test
-  public void testInvalidEPInfo() {
-    Map<String, RowBufferStats> colStats = new HashMap<>();
-
-    RowBufferStats stats1 = new RowBufferStats("intColumn");
-    stats1.addIntValue(BigInteger.valueOf(2));
-    stats1.addIntValue(BigInteger.valueOf(10));
-    stats1.addIntValue(BigInteger.valueOf(1));
-
-    RowBufferStats stats2 = new RowBufferStats("strColumn");
-    stats2.addStrValue("alice");
-    stats2.incCurrentNullCount();
-    stats2.incCurrentNullCount();
-
-    colStats.put("intColumn", stats1);
-    colStats.put("strColumn", stats2);
-
-    try {
-      AbstractRowBuffer.buildEpInfoFromStats(1, colStats);
-      Assert.fail("should fail when row count is smaller than null count.");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
-    }
-  }
-
-  @Test
   public void testE2E() {
     testE2EHelper(this.rowBufferOnErrorAbort);
     testE2EHelper(this.rowBufferOnErrorContinue);
