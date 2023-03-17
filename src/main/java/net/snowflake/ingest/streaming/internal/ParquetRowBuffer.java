@@ -90,9 +90,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     metadata.clear();
     metadata.put("sfVer", "1,1");
     List<Type> parquetTypes = new ArrayList<>();
-    // Snowflake column id that corresponds to the order in 'columns' received from server
-    // id is required to pack column metadata for the server scanner, e.g. decimal scale and
-    // precision
     int id = 1;
     for (ColumnMetadata column : columns) {
       validateColumnCollation(column);
