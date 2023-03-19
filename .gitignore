@@ -1,11 +1,12 @@
+.cache/
 .DS_Store
-*.iml
 .idea
-target/
+*.iml
+*.log
+dependency-reduced-pom.xml
 profile.json
 profile.properties
-*.log
 src/main/resources/log4j.properties
 src/test/resources/log4j.properties
+target/
 testOutput/
-.cache/
