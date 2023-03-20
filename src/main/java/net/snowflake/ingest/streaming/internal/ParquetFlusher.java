@@ -51,7 +51,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
     String firstChannelFullyQualifiedTableName = null;
-    Map<String, RowBufferStats> columnEpStatsMapCombined = null;
+    Map<ColumnInternalName, RowBufferStats> columnEpStatsMapCombined = null;
     BdecParquetWriter mergedChannelWriter = null;
     ByteArrayOutputStream mergedChunkData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
@@ -126,7 +126,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
     String firstChannelFullyQualifiedTableName = null;
-    Map<String, RowBufferStats> columnEpStatsMapCombined = null;
+    Map<ColumnInternalName, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
     BdecParquetWriter parquetWriter;
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();

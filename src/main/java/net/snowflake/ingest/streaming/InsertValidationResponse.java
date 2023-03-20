@@ -6,6 +6,9 @@ package net.snowflake.ingest.streaming;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import net.snowflake.ingest.streaming.internal.ColumnDisplayName;
 import net.snowflake.ingest.utils.SFException;
 
 /**
@@ -107,8 +110,8 @@ public class InsertValidationResponse {
     }
 
     /** Set the extra column names in the input row compared with the table schema */
-    public void setExtraColNames(List<String> extraColNames) {
-      this.extraColNames = extraColNames;
+    public void setExtraColNames(List<ColumnDisplayName> extraColNames) {
+      this.extraColNames = extraColNames.stream().map(ColumnDisplayName::getDisplayName).collect(Collectors.toList());
     }
 
     /** Get the list of extra column names in the input row compared with the table schema */
@@ -117,8 +120,8 @@ public class InsertValidationResponse {
     }
 
     /** Set the missing non-nullable column names in the input row compared with the table schema */
-    public void setMissingNotNullColNames(List<String> missingNotNullColNames) {
-      this.missingNotNullColNames = missingNotNullColNames;
+    public void setMissingNotNullColNames(List<ColumnDisplayName> missingNotNullColNames) {
+      this.missingNotNullColNames = missingNotNullColNames.stream().map(ColumnDisplayName::getDisplayName).collect(Collectors.toList());
     }
 
     /**

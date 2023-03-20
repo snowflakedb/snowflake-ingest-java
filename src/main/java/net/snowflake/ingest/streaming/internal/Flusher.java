@@ -32,14 +32,14 @@ public interface Flusher<T> {
   /** Holds result of the buffered rows conversion: channel metadata and stats. */
   class SerializationResult {
     final List<ChannelMetadata> channelsMetadataList;
-    final Map<String, RowBufferStats> columnEpStatsMapCombined;
+    final Map<ColumnInternalName, RowBufferStats> columnEpStatsMapCombined;
     final long rowCount;
     final ByteArrayOutputStream chunkData;
     final Pair<Long, Long> chunkMinMaxInsertTimeInMs;
 
     public SerializationResult(
         List<ChannelMetadata> channelsMetadataList,
-        Map<String, RowBufferStats> columnEpStatsMapCombined,
+        Map<ColumnInternalName, RowBufferStats> columnEpStatsMapCombined,
         long rowCount,
         ByteArrayOutputStream chunkData,
         Pair<Long, Long> chunkMinMaxInsertTimeInMs) {

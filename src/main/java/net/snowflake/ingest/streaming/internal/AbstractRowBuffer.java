@@ -138,10 +138,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   // Map the column name to the stats
-  @VisibleForTesting Map<String, RowBufferStats> statsMap;
+  @VisibleForTesting Map<ColumnInternalName, RowBufferStats> statsMap;
 
   // Temp stats map to use until all the rows are validated
-  @VisibleForTesting Map<String, RowBufferStats> tempStatsMap;
+  @VisibleForTesting Map<ColumnInternalName, RowBufferStats> tempStatsMap;
 
   // Lock used to protect the buffers from concurrent read/write
   private final Lock flushLock;
@@ -153,7 +153,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   private volatile float bufferSize;
 
   // Names of non-nullable columns
-  private final Set<String> nonNullableFieldNames;
+  private final Set<ColumnInternalName> nonNullableFieldNames;
 
   // Buffer's channel fully qualified name with database, schema and table
   final String channelFullyQualifiedName;
@@ -201,7 +201,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    *
    * @param nonNullableFieldName non-nullable filed name
    */
-  void addNonNullableFieldName(String nonNullableFieldName) {
+  void addNonNullableFieldName(ColumnInternalName nonNullableFieldName) {
     nonNullableFieldNames.add(nonNullableFieldName);
   }
 
@@ -237,16 +237,16 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param error the insert error that we return to the customer
    * @return the set of input column names
    */
-  Set<String> verifyInputColumns(
+  Set<ColumnInternalName> verifyInputColumns(
       Map<String, Object> row, InsertValidationResponse.InsertError error) {
     // Map of unquoted column name -> original column name
-    Map<String, String> inputColNamesMap =
+    Map<ColumnInternalName, ColumnDisplayName> inputColNamesMap =
         row.keySet().stream()
-            .collect(Collectors.toMap(LiteralQuoteUtils::unquoteColumnName, value -> value));
+            .collect(Collectors.toMap(ColumnInternalName::fromDisplayName, ColumnDisplayName::new));
 
     // Check for extra columns in the row
-    List<String> extraCols = new ArrayList<>();
-    for (String columnName : inputColNamesMap.keySet()) {
+    List<ColumnDisplayName> extraCols = new ArrayList<>();
+    for (ColumnInternalName columnName : inputColNamesMap.keySet()) {
       if (!hasColumn(columnName)) {
         extraCols.add(inputColNamesMap.get(columnName));
       }
@@ -263,8 +263,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     }
 
     // Check for missing columns in the row
-    List<String> missingCols = new ArrayList<>();
-    for (String columnName : this.nonNullableFieldNames) {
+    List<ColumnDisplayName> missingCols = new ArrayList<>();
+    for (ColumnInternalName columnName : this.nonNullableFieldNames) {
       if (!inputColNamesMap.containsKey(columnName)) {
         missingCols.add(statsMap.get(columnName).getColumnDisplayName());
       }
@@ -308,7 +308,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           InsertValidationResponse.InsertError error =
               new InsertValidationResponse.InsertError(row, rowIndex);
           try {
-            Set<String> inputColumnNames = verifyInputColumns(row, error);
+            Set<ColumnInternalName> inputColumnNames = verifyInputColumns(row, error);
             rowsSizeInBytes += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
             this.rowCount++;
           } catch (SFException e) {
@@ -329,7 +329,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         float tempRowsSizeInBytes = 0F;
         int tempRowCount = 0;
         for (Map<String, Object> row : rows) {
-          Set<String> inputColumnNames = verifyInputColumns(row, null);
+          Set<ColumnInternalName> inputColumnNames = verifyInputColumns(row, null);
           tempRowsSizeInBytes += addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames);
           tempRowCount++;
         }
@@ -376,7 +376,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       float oldBufferSize = 0F;
       long oldRowSequencer = 0;
       String oldOffsetToken = null;
-      Map<String, RowBufferStats> oldColumnEps = null;
+      Map<ColumnInternalName, RowBufferStats> oldColumnEps = null;
       Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
 
       logger.logDebug(
@@ -425,7 +425,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   /** Whether row has a column with a given name. */
-  abstract boolean hasColumn(String name);
+  abstract boolean hasColumn(ColumnInternalName name);
 
   /**
    * Add an input row to the buffer.
@@ -439,8 +439,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   abstract float addRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames);
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> formattedInputColumnNames);
 
   /**
    * Add an input row to the temporary row buffer.
@@ -457,8 +457,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   abstract float addTempRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames);
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> formattedInputColumnNames);
 
   /** Move rows from the temporary buffer to the current row buffer. */
   abstract void moveTempRowsToActualBuffer(int tempRowCount);
@@ -533,13 +533,13 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param colStats: map of column name to RowBufferStats
    * @return the EPs built from column stats
    */
-  static EpInfo buildEpInfoFromStats(long rowCount, Map<String, RowBufferStats> colStats) {
+  static EpInfo buildEpInfoFromStats(long rowCount, Map<ColumnInternalName, RowBufferStats> colStats) {
     EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
-    for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
+    for (Map.Entry<ColumnInternalName, RowBufferStats> colStat : colStats.entrySet()) {
       RowBufferStats stat = colStat.getValue();
       FileColumnProperties dto = new FileColumnProperties(stat);
-      String colName = colStat.getValue().getColumnDisplayName();
-      epInfo.getColumnEps().put(colName, dto);
+      ColumnDisplayName colName = colStat.getValue().getColumnDisplayName();
+      epInfo.getColumnEps().put(colName.getDisplayName(), dto);
     }
     epInfo.verifyEpInfo();
     return epInfo;

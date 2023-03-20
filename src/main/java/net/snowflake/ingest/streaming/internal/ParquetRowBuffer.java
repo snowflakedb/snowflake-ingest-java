@@ -41,7 +41,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private static final String PARQUET_MESSAGE_TYPE_NAME = "bdec";
 
-  private final Map<String, Pair<ColumnMetadata, Integer>> fieldIndex;
+  private final Map<ColumnInternalName, Pair<ColumnMetadata, Integer>> fieldIndex;
 
   /* map that contains metadata like typeinfo for columns and other information needed by the server scanner */
   private final Map<String, String> metadata;
@@ -95,21 +95,23 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     // precision
     int id = 1;
     for (ColumnMetadata column : columns) {
+      ColumnDisplayName columnDisplayName = new ColumnDisplayName(column.getName());
+      ColumnInternalName columnInternalName = columnDisplayName.toInternalName();
       validateColumnCollation(column);
       ParquetTypeGenerator.ParquetTypeInfo typeInfo =
           ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
       parquetTypes.add(typeInfo.getParquetType());
       this.metadata.putAll(typeInfo.getMetadata());
-      fieldIndex.put(column.getInternalName(), new Pair<>(column, parquetTypes.size() - 1));
+      fieldIndex.put(columnInternalName, new Pair<>(column, parquetTypes.size() - 1));
       if (!column.getNullable()) {
-        addNonNullableFieldName(column.getInternalName());
+        addNonNullableFieldName(columnInternalName);
       }
       this.statsMap.put(
-          column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
+          columnInternalName, new RowBufferStats(columnDisplayName, column.getCollation()));
 
       if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
         this.tempStatsMap.put(
-            column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
+            columnInternalName, new RowBufferStats(columnDisplayName, column.getCollation()));
       }
 
       id++;
@@ -136,7 +138,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   @Override
-  boolean hasColumn(String name) {
+  boolean hasColumn(ColumnInternalName name) {
     return fieldIndex.containsKey(name);
   }
 
@@ -144,8 +146,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   float addRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> formattedInputColumnNames) {
     return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
   }
 
@@ -161,8 +163,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   float addTempRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> formattedInputColumnNames) {
     return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
   }
 
@@ -178,17 +180,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private float addRow(
       Map<String, Object> row,
       Consumer<List<Object>> out,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> inputColumnNames) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
       Object value = entry.getValue();
-      String columnName = LiteralQuoteUtils.unquoteColumnName(key);
-      int colIndex = fieldIndex.get(columnName).getSecond();
-      RowBufferStats stats = statsMap.get(columnName);
-      ColumnMetadata column = fieldIndex.get(columnName).getFirst();
+      ColumnInternalName columnInternalName = new ColumnUserInputName(key).toInternalName();
+      int colIndex = fieldIndex.get(columnInternalName).getSecond();
+      RowBufferStats stats = statsMap.get(columnInternalName);
+      ColumnMetadata column = fieldIndex.get(columnInternalName).getFirst();
       ColumnDescriptor columnDescriptor = schema.getColumns().get(colIndex);
       PrimitiveType.PrimitiveTypeName typeName =
           columnDescriptor.getPrimitiveType().getPrimitiveTypeName();
@@ -200,8 +202,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     }
     out.accept(Arrays.asList(indexedRow));
 
-    for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
-      statsMap.get(columnName).incCurrentNullCount();
+    for (ColumnInternalName columnInternalName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
+      statsMap.get(columnInternalName).incCurrentNullCount();
     }
     return size;
   }

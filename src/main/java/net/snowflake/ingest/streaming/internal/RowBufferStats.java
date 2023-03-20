@@ -26,16 +26,16 @@ class RowBufferStats {
   private long currentMaxLength;
   private final String collationDefinitionString;
   /** Display name is required for the registration endpoint */
-  private final String columnDisplayName;
+  private final ColumnDisplayName columnDisplayName;
 
   /** Creates empty stats */
-  RowBufferStats(String columnDisplayName, String collationDefinitionString) {
+  RowBufferStats(ColumnDisplayName columnDisplayName, String collationDefinitionString) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
     reset();
   }
 
-  RowBufferStats(String columnDisplayName) {
+  RowBufferStats(ColumnDisplayName columnDisplayName) {
     this(columnDisplayName, null);
   }
 
@@ -200,7 +200,7 @@ class RowBufferStats {
     return collationDefinitionString;
   }
 
-  String getColumnDisplayName() {
+  ColumnDisplayName getColumnDisplayName() {
     return columnDisplayName;
   }
 

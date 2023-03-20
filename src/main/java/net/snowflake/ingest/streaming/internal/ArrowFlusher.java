@@ -38,7 +38,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
     ArrowWriter arrowWriter = null;
     VectorLoader loader = null;
     String firstChannelFullyQualifiedTableName = null;
-    Map<String, RowBufferStats> columnEpStatsMapCombined = null;
+    Map<ColumnInternalName, RowBufferStats> columnEpStatsMapCombined = null;
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
     try {

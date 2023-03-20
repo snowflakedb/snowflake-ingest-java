@@ -44,6 +44,7 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.util.Text;
 import org.apache.arrow.vector.util.TransferPair;
+import org.apache.parquet.filter2.predicate.Operators;
 
 /**
  * The buffer in the Streaming Ingest channel that holds the un-flushed rows, these rows will be
@@ -76,7 +77,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   @VisibleForTesting VectorSchemaRoot tempVectorsRoot;
 
   // Map the column name to Arrow column field
-  private final Map<String, Field> fields;
+  private final Map<ColumnInternalName, Field> fields;
 
   /** Construct a ArrowRowBuffer object. */
   ArrowRowBuffer(
@@ -107,22 +108,24 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     List<FieldVector> tempVectors = new ArrayList<>();
 
     for (ColumnMetadata column : columns) {
+      ColumnDisplayName columnDisplayName = new ColumnDisplayName(column.getName());
+      ColumnInternalName columnInternalName = columnDisplayName.toInternalName();
       validateColumnCollation(column);
       Field field = buildField(column);
       FieldVector vector = field.createVector(this.allocator);
       if (!field.isNullable()) {
-        addNonNullableFieldName(field.getName());
+        addNonNullableFieldName(columnInternalName);
       }
-      this.fields.put(column.getInternalName(), field);
+      this.fields.put(columnInternalName, field);
       vectors.add(vector);
       this.statsMap.put(
-          column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
+          columnInternalName, new RowBufferStats(columnDisplayName, column.getCollation()));
 
       if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
         FieldVector tempVector = field.createVector(this.allocator);
         tempVectors.add(tempVector);
         this.tempStatsMap.put(
-            column.getInternalName(), new RowBufferStats(column.getName(), column.getCollation()));
+            columnInternalName, new RowBufferStats(columnDisplayName, column.getCollation()));
       }
     }
 
@@ -384,7 +387,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   }
 
   @Override
-  boolean hasColumn(String name) {
+  boolean hasColumn(ColumnInternalName name) {
     return this.fields.get(name) != null;
   }
 
@@ -392,8 +395,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   float addRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> formattedInputColumnNames) {
     return convertRowToArrow(row, vectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
   }
 
@@ -401,8 +404,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   float addTempRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> formattedInputColumnNames) {
     return convertRowToArrow(
         row, tempVectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
   }
@@ -421,13 +424,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       Map<String, Object> row,
       VectorSchemaRoot sourceVectors,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+      Map<ColumnInternalName, RowBufferStats> statsMap,
+      Set<ColumnInternalName> inputColumnNames) {
     // Insert values to the corresponding arrow buffers
     float rowBufferSize = 0F;
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
-      String columnName = LiteralQuoteUtils.unquoteColumnName(entry.getKey());
+      ColumnInternalName columnName = new ColumnUserInputName(entry.getKey()).toInternalName();
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
@@ -717,7 +720,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     }
 
     // Insert nulls to the columns that doesn't show up in the input
-    for (String columnName : Sets.difference(this.fields.keySet(), inputColumnNames)) {
+    for (ColumnInternalName columnName : Sets.difference(this.fields.keySet(), inputColumnNames)) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
       insertNull(
           sourceVectors.getVector(this.fields.get(columnName)),

@@ -23,7 +23,7 @@ class ChannelData<T> {
   private T vectors;
   private float bufferSize;
   private int rowCount;
-  private Map<String, RowBufferStats> columnEps;
+  private Map<ColumnInternalName, RowBufferStats> columnEps;
   private Pair<Long, Long> minMaxInsertTimeInMs;
   private ChannelFlushContext channelFlushContext;
   private Supplier<Flusher<T>> flusherFactory;
@@ -38,8 +38,8 @@ class ChannelData<T> {
    * @param right Map of column name to RowBufferStats
    * @return Map of column name to the combined RowBufferStats of left and right for the column
    */
-  public static Map<String, RowBufferStats> getCombinedColumnStatsMap(
-      Map<String, RowBufferStats> left, Map<String, RowBufferStats> right) {
+  public static Map<ColumnInternalName, RowBufferStats> getCombinedColumnStatsMap(
+      Map<ColumnInternalName, RowBufferStats> left, Map<ColumnInternalName, RowBufferStats> right) {
     if (left == null || right == null) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "null column stats");
     }
@@ -53,9 +53,9 @@ class ChannelData<T> {
               left.size(), right.size(), left.keySet(), right.keySet()));
     }
 
-    Map<String, RowBufferStats> result = new HashMap<>();
+    Map<ColumnInternalName, RowBufferStats> result = new HashMap<>();
     try {
-      for (String key : left.keySet()) {
+      for (ColumnInternalName key : left.keySet()) {
         RowBufferStats leftStats = left.get(key);
         RowBufferStats rightStats = right.get(key);
         result.put(key, RowBufferStats.getCombinedStats(leftStats, rightStats));
@@ -78,11 +78,11 @@ class ChannelData<T> {
         Math.min(left.getFirst(), right.getFirst()), Math.max(left.getSecond(), right.getSecond()));
   }
 
-  public Map<String, RowBufferStats> getColumnEps() {
+  public Map<ColumnInternalName, RowBufferStats> getColumnEps() {
     return columnEps;
   }
 
-  public void setColumnEps(Map<String, RowBufferStats> columnEps) {
+  public void setColumnEps(Map<ColumnInternalName, RowBufferStats> columnEps) {
     this.columnEps = columnEps;
   }
 
