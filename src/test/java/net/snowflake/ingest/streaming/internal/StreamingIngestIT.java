@@ -243,7 +243,13 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel[] channels =
         new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
-    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_TABLE_PREFIX + i, "CHANNEL"));
+    iter.accept(
+        i ->
+            channels[i - 1] =
+                openChannel(
+                    INTERLEAVED_TABLE_PREFIX + i,
+                    "CHANNEL",
+                    OpenChannelRequest.OnErrorOption.ABORT));
 
     iter.accept(
         i ->
@@ -267,7 +273,13 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel[] channels =
         new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
-    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_CHANNEL_TABLE, "CHANNEL_" + i));
+    iter.accept(
+        i ->
+            channels[i - 1] =
+                openChannel(
+                    INTERLEAVED_CHANNEL_TABLE,
+                    "CHANNEL_" + i,
+                    OpenChannelRequest.OnErrorOption.ABORT));
 
     iter.accept(
         i ->
@@ -923,7 +935,8 @@ public class StreamingIngestIT {
         .createStatement()
         .execute(
             String.format("create or replace table %s(c1 varchar(1), c2 varchar(1));", tableName));
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName, "channel1");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, "channel1", OpenChannelRequest.OnErrorOption.CONTINUE);
 
     // Row will be ingested
     Map<String, Object> row = new LinkedHashMap<>();
@@ -1111,7 +1124,8 @@ public class StreamingIngestIT {
     final int startIndex = (channelNum - 1) * numberOfRows;
 
     // ingest rows
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName, channelName);
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, channelName, OpenChannelRequest.OnErrorOption.ABORT);
     for (int i = 0; i < numberOfRows; i++) {
       Map<String, Object> row = new HashMap<>();
       for (int col : columnIndexes) {
@@ -1185,13 +1199,14 @@ public class StreamingIngestIT {
     }
   }
 
-  private SnowflakeStreamingIngestChannel openChannel(String tableName, String channelName) {
+  private SnowflakeStreamingIngestChannel openChannel(
+      String tableName, String channelName, OpenChannelRequest.OnErrorOption onErrorOption) {
     OpenChannelRequest request =
         OpenChannelRequest.builder(channelName)
             .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(tableName)
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+            .setOnErrorOption(onErrorOption)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -1299,7 +1314,8 @@ public class StreamingIngestIT {
       throw new RuntimeException("Cannot create table " + tableName, e);
     }
 
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName, "CHANNEL");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, "CHANNEL", OpenChannelRequest.OnErrorOption.ABORT);
 
     Map<String, Object> negRow = getNegRow();
     verifyInsertValidationResponse(channel.insertRow(negRow, Integer.toString(0)));
