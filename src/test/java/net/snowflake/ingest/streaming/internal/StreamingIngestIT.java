@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -913,6 +914,49 @@ public class StreamingIngestIT {
     for (int idx = 1; idx < 18; idx++) {
       Assert.assertNull(result.getObject(idx));
     }
+  }
+
+  @Test
+  public void testFailureHalfwayThroughRowProcessing() throws Exception {
+    String tableName = "failure_halfway_through_table";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format("create or replace table %s(c1 varchar(1), c2 varchar(1));", tableName));
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName, "channel1");
+
+    // Row will be ingested
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", "b");
+    channel.insertRow(row, "offset0");
+
+    // Row will not be ingested, its contribution to nullCount and other statistics should be
+    // discarded
+    row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", "qa");
+    channel.insertRow(row, "offset1");
+
+    // Row will be ingested
+    row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", null);
+    channel.insertRow(row, "offset2");
+
+    TestUtils.waitForOffset(channel, "offset2");
+
+    jdbcConnection.createStatement().execute(String.format("alter table %s migrate;", tableName));
+
+    ResultSet rs =
+        jdbcConnection.createStatement().executeQuery(String.format("select * from %s", tableName));
+    rs.next();
+    Assert.assertEquals(null, rs.getString(1));
+    Assert.assertEquals("b", rs.getString(2));
+
+    rs.next();
+    Assert.assertEquals(null, rs.getString(1));
+    Assert.assertEquals(null, rs.getString(2));
   }
 
   @Test
