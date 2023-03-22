@@ -32,7 +32,7 @@ jobs:
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
         if: ${{ matrix.os == 'windows-2022' }}
-        run: gpg --quiet --batch --yes --decrypt --passphrase="$DECRYPTION_PASSPHRASE" --output profile.json ./profile.json.gpg
+        run: gpg --quiet --batch --yes --decrypt --passphrase="${env:DECRYPTION_PASSPHRASE}" --output profile.json ./profile.json.gpg
 
 #      - name: Unit & Integration Test
 #        env:
@@ -44,4 +44,5 @@ jobs:
 #          ./scripts/run_gh_actions.sh
 
       - name: Code Coverage
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
         uses: codecov/codecov-action@v1
