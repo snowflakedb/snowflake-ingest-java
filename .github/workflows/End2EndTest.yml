@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         java: [ 8 ]
-        os: [windows-2022]
+        os: [ windows-2022 ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Code
@@ -24,14 +24,14 @@ jobs:
       - name: Decrypt profile.json (Linux/Mac)
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
-        if: ${{ matrix.os != 'windows-latest' }}
+        if: ${{ matrix.os != 'windows-2022' }}
         run: |
           ./scripts/decrypt_secret.sh
 
       - name: Decrypt profile.json (Windows)
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
-        if: ${{ matrix.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-2022' }}
         run: gpg --quiet --batch --yes --decrypt --passphrase="$DECRYPTION_PASSPHRASE" --output profile.json ./profile.json.gpg
 
 #      - name: Unit & Integration Test
