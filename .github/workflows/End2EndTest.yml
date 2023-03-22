@@ -34,14 +34,10 @@ jobs:
         if: ${{ matrix.os == 'windows-2022' }}
         run: gpg --quiet --batch --yes --decrypt --passphrase="${env:DECRYPTION_PASSPHRASE}" --output profile.json ./profile.json.gpg
 
-#      - name: Unit & Integration Test
-#        env:
-#          JACOCO_COVERAGE: true
-#          WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
-#        continue-on-error: false
-#        if: ${{ matrix.os == 'windows-latest' }} # todo Remove
-#        run: |
-#          ./scripts/run_gh_actions.sh
+      - name: Unit & Integration Test (Windows)
+        continue-on-error: false
+        if: ${{ matrix.os == 'windows-latest' }} # todo Remove
+        run: mvn -DghActionsIT verify --batch-mode
 
       - name: Code Coverage
         if: ${{ matrix.os == 'ubuntu-20.04' }}
