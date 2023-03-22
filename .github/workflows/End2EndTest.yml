@@ -37,7 +37,7 @@ jobs:
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         if: ${{ matrix.os == 'windows-2022' }} # todo Remove
-        run: mvn -DghActionsIT verify --batch-mode
+        run: mvn -DghActionsIT -Dfile.encoding=UTF8 verify --batch-mode
 
       - name: Code Coverage
         if: ${{ matrix.os == 'ubuntu-20.04' }}
