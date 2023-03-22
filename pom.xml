@@ -135,6 +135,56 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-dependency-plugin</artifactId>
+              <version>3.3.0</version>
+              <executions>
+                <execution>
+                  <id>analyze</id>
+                  <goals>
+                    <goal>analyze-only</goal>
+                  </goals>
+                  <configuration>
+                    <failOnWarning>true</failOnWarning>
+                    <ignoreNonCompile>true</ignoreNonCompile>
+                    <ignoredUnusedDeclaredDependencies>
+                      <ignoredUnusedDeclaredDependency>com.fasterxml.woodstox:woodstox-core</ignoredUnusedDeclaredDependency>
+                      <ignoredUnusedDeclaredDependency>commons-io:commons-io</ignoredUnusedDeclaredDependency>
+                      <ignoredUnusedDeclaredDependency>commons-logging:commons-logging</ignoredUnusedDeclaredDependency>
+                    </ignoredUnusedDeclaredDependencies>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+            <!--
+            <plugin>
+              <groupId>com.github.ekryd.sortpom</groupId>
+              <artifactId>sortpom-maven-plugin</artifactId>
+              <version>3.0.1</version>
+              <configuration>
+                <createBackupFile>false</createBackupFile>
+               <expandEmptyElements>false</expandEmptyElements>
+               <indentSchemaLocation>true</indentSchemaLocation>
+               <sortDependencies>scope,groupId,artifactId</sortDependencies>
+               <sortDependencyExclusions>groupId,artifactId</sortDependencyExclusions>
+               <sortExecutions>true</sortExecutions>
+               <sortModules>true</sortModules>
+               <sortPlugins>groupId,artifactId</sortPlugins>
+               <sortProperties>true</sortProperties>
+               <verifyFail>stop</verifyFail>
+               <verifyFailOn>strict</verifyFailOn>
+             </configuration>
+             <executions>
+               <execution>
+                 <goals>
+                   <goal>verify</goal>
+                 </goals>
+                 <phase>validate</phase>
+               </execution>
+             </executions>
+           </plugin>
+           -->
         </plugins>
 
         <!-- disable default maven deploy plugin since we are using gpg:sign-and-deploy-file -->
@@ -225,6 +275,12 @@
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.21</version>
             <scope>test</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- JUnit so that we can make some basic unit tests -->
@@ -239,6 +295,12 @@
             <artifactId>powermock-module-junit4</artifactId>
             <version>2.0.2</version>
             <scope>test</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
@@ -251,12 +313,32 @@
             <artifactId>powermock-api-mockito2</artifactId>
             <version>2.0.2</version>
             <scope>test</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
             <artifactId>powermock-core</artifactId>
             <version>2.0.2</version>
             <scope>test</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>org.objenesis</groupId>
+                <artifactId>objenesis</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy-agent</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Apache Arrow -->
@@ -264,12 +346,36 @@
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-vector</artifactId>
             <version>${arrow.version}</version>
+            <exclusions>
+              <exclusion>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-memory-netty</artifactId>
             <version>${arrow.version}</version>
             <scope>runtime</scope>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop -->
@@ -278,53 +384,17 @@
             <artifactId>parquet-hadoop</artifactId>
             <version>1.12.3</version>
             <exclusions>
-                <exclusion>
-                    <groupId>javax.annotation</groupId>
-                    <artifactId>javax.annotation-api</artifactId>
-                </exclusion>
+              <exclusion>
+                  <groupId>javax.annotation</groupId>
+                  <artifactId>javax.annotation-api</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
             </exclusions>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-mapreduce-client-core</artifactId>
-            <version>${hadoop.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-yarn-common</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-hdfs-client</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.protobuf</groupId>
-                    <artifactId>protobuf-java</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.avro</groupId>
-                    <artifactId>avro</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.google.inject.extensions</groupId>
-                    <artifactId>guice-servlet</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.eclipse.jetty.websocket</groupId>
-                    <artifactId>websocket-client</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-reload4j</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
@@ -402,6 +472,38 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-reload4j</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.xerial.snappy</groupId>
+                    <artifactId>snappy-java</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.commons</groupId>
+                    <artifactId>commons-lang3</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-codec</groupId>
+                    <artifactId>commons-codec</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -410,6 +512,12 @@
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-core</artifactId>
             <version>4.1.22</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-jvm -->
@@ -417,13 +525,122 @@
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jvm</artifactId>
             <version>4.1.22</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-jmx -->
         <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-jmx</artifactId>
-            <version>4.2.3</version>
+            <version>4.1.22</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-common</artifactId>
+            <version>1.12.3</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.14.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.14.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-common</artifactId>
+            <version>4.1.82.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.15</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-core</artifactId>
+            <version>10.0.0</version>
+            <exclusions>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.parquet</groupId>
+            <artifactId>parquet-column</artifactId>
+            <version>1.12.3</version>
+            <exclusions>
+              <exclusion>
+                  <groupId>org.slf4j</groupId>
+                  <artifactId>slf4j-api</artifactId>
+              </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId> org.hamcrest</groupId>
+            <artifactId>hamcrest-core</artifactId>
+            <version>1.3</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>31.1-jre</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.woodstox</groupId>
+            <artifactId>woodstox-core</artifactId>
+            <version>5.3.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.codehaus.woodstox</groupId>
+                    <artifactId>stax2-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.8.0</version>
         </dependency>
     </dependencies>
 
@@ -632,6 +849,100 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <profile>
+          <id>run-enforcer</id>
+            <activation>
+              <activeByDefault>false</activeByDefault>
+            </activation>
+          <build>
+            <plugins>
+              <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.0.0-M3</version>
+                <dependencies>
+                  <dependency>
+                    <groupId>com.google.cloud.tools</groupId>
+                    <artifactId>linkage-checker-enforcer-rules</artifactId>
+                    <version>1.5.12</version>
+                  </dependency>
+                  <dependency>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>extra-enforcer-rules</artifactId>
+                    <version>1.3</version>
+                    <exclusions>
+                      <exclusion>
+                        <groupId>org.eclipse.aether</groupId>
+                        <artifactId>aether-util</artifactId>
+                      </exclusion>
+                    </exclusions>
+                  </dependency>
+                </dependencies>
+                <executions>
+                  <execution>
+                    <id>enforce-best-practices</id>
+                    <goals>
+                      <goal>enforce</goal>
+                    </goals>
+                    <configuration>
+                      <rules>
+                        <banDuplicateClasses>
+                          <findAllDuplicates>true</findAllDuplicates>
+                          <ignoreWhenIdentical>true</ignoreWhenIdentical>
+                          <ignoreClasses>
+                            <!-- <ignoreClass>com.snowflake.jmh.*</ignoreClass> -->
+                          </ignoreClasses>
+                        </banDuplicateClasses>
+                        <banDuplicatePomDependencyVersions/>
+                        <bannedDependencies>
+                          <excludes>
+                            <!-- <exclude>org.bouncycastle:bcprov-jdk15on</exclude> -->
+                          </excludes>
+                        </bannedDependencies>
+                        <dependencyConvergence/>
+                        <requireUpperBoundDeps/>
+                      </rules>
+                    </configuration>
+                  </execution>
+                  <execution>
+                    <id>enforce-maven</id>
+                    <goals>
+                      <goal>enforce</goal>
+                    </goals>
+                    <configuration>
+                      <rules>
+                        <requireMavenVersion>
+                        <version>3.5</version>
+                        </requireMavenVersion>
+                      </rules>
+                    </configuration>
+                  </execution>
+                  <execution>
+                    <id>enforce-linkage-checker</id>
+                    <goals>
+                      <goal>enforce</goal>
+                    </goals>
+                    <phase>verify</phase>
+                    <configuration>
+                      <rules>
+                        <LinkageCheckerRule implementation="com.google.cloud.tools.dependencies.enforcer.LinkageCheckerRule">
+                          <reportOnlyReachable>true</reportOnlyReachable>
+                          <!-- <exclusionFile>${basedir}/linkage-checker-exclusion-rules.xml</exclusionFile> -->
+                        </LinkageCheckerRule>
+                        <bannedDependencies>
+                          <excludes>
+                            <!-- JUnit 4 is not allowed on the classpath to prevent its accidental use -->
+                            <!-- <exclude>junit:junit</exclude> -->
+                          </excludes>
+                        </bannedDependencies>
+                      </rules>
+                    </configuration>
+                  </execution>
+                </executions>
+              </plugin>
+            </plugins>
+          </build>
         </profile>
     </profiles>
 
