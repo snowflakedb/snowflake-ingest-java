@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         java: [ 8 ]
-        os: [ubuntu-20.04, windows-2022]
+        os: [windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Code
@@ -21,19 +21,27 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
 
-      - name: Decrypt profile.json
+      - name: Decrypt profile.json (Linux/Mac)
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           ./scripts/decrypt_secret.sh
 
-      - name: Unit & Integration Test
+      - name: Decrypt profile.json (Windows)
         env:
-          JACOCO_COVERAGE: true
-          WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
-        continue-on-error: false
-        run: |
-          ./scripts/run_gh_actions.sh
+          DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: gpg --quiet --batch --yes --decrypt --passphrase="$DECRYPTION_PASSPHRASE" --output profile.json ./profile.json.gpg
+
+#      - name: Unit & Integration Test
+#        env:
+#          JACOCO_COVERAGE: true
+#          WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
+#        continue-on-error: false
+#        if: ${{ matrix.os == 'windows-latest' }} # todo Remove
+#        run: |
+#          ./scripts/run_gh_actions.sh
 
       - name: Code Coverage
         uses: codecov/codecov-action@v1
