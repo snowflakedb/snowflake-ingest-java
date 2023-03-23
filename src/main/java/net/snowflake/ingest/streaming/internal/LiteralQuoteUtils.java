@@ -6,8 +6,6 @@ package net.snowflake.ingest.streaming.internal;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ExecutionException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -23,16 +21,12 @@ class LiteralQuoteUtils {
   /** Maximum number of unquoted column names to store in cache */
   static final int UNQUOTED_COLUMN_NAME_CACHE_MAX_SIZE = 30000;
 
-  /** Expiration policy for the cache of unquoted column names */
-  static final Duration UNQUOTED_COLUMN_NAME_CACHE_EXPIRATION = Duration.of(5, ChronoUnit.MINUTES);
-
   /** Cache storing unquoted column names */
   private static final LoadingCache<String, String> unquotedColumnNamesCache;
 
   static {
     unquotedColumnNamesCache =
         CacheBuilder.newBuilder()
-            .expireAfterAccess(UNQUOTED_COLUMN_NAME_CACHE_EXPIRATION)
             .maximumSize(UNQUOTED_COLUMN_NAME_CACHE_MAX_SIZE)
             .build(
                 new CacheLoader<String, String>() {
@@ -48,15 +42,11 @@ class LiteralQuoteUtils {
    * expensive. If not, it unquotes directly, otherwise it return a value from a loading cache.
    */
   static String unquoteColumnName(String columnName) {
-    if (isUnquotingExpensive(columnName)) {
-      try {
-        return unquotedColumnNamesCache.get(columnName);
-      } catch (ExecutionException e) {
-        throw new SFException(
-            e, ErrorCode.INTERNAL_ERROR, "Exception thrown while unquoting column name");
-      }
-    } else {
-      return unquoteColumnNameInternal(columnName);
+    try {
+      return unquotedColumnNamesCache.get(columnName);
+    } catch (ExecutionException e) {
+      throw new SFException(
+          e, ErrorCode.INTERNAL_ERROR, "Exception thrown while unquoting column name");
     }
   }
 
@@ -110,15 +100,5 @@ class LiteralQuoteUtils {
       }
       return columnName.toUpperCase();
     }
-  }
-
-  /**
-   * Returns if unquoting of the column name would be an expensive operation, i.e. it would involve
-   * non-constant time string operations like .contains() or .replace(). If yes, the result will be
-   * cached, otherwise it is faster to just calculate it again.
-   */
-  private static boolean isUnquotingExpensive(String columnName) {
-    int length = columnName.length();
-    return columnName.charAt(0) == '"' && length >= 2 && columnName.charAt(length - 1) == '"';
   }
 }
