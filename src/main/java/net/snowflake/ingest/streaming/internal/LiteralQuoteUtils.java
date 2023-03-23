@@ -43,12 +43,20 @@ class LiteralQuoteUtils {
                 });
   }
 
+  /**
+   * Unquote column name expected to be used from the outside. It decides is unquoting would be
+   * expensive. If not, it unquotes directly, otherwise it return a value from a loading cache.
+   */
   static String unquoteColumnName(String columnName) {
-    try {
-      return unquotedColumnNamesCache.get(columnName);
-    } catch (ExecutionException e) {
-      throw new SFException(
-          e, ErrorCode.INTERNAL_ERROR, "Exception thrown while unquoting column name");
+    if (isUnquotingExpensive(columnName)) {
+      try {
+        return unquotedColumnNamesCache.get(columnName);
+      } catch (ExecutionException e) {
+        throw new SFException(
+            e, ErrorCode.INTERNAL_ERROR, "Exception thrown while unquoting column name");
+      }
+    } else {
+      return unquoteColumnNameInternal(columnName);
     }
   }
 
@@ -102,5 +110,15 @@ class LiteralQuoteUtils {
       }
       return columnName.toUpperCase();
     }
+  }
+
+  /**
+   * Returns if unquoting of the column name would be an expensive operation, i.e. it would involve
+   * non-constant time string operations like .contains() or .replace(). If yes, the result will be
+   * cached, otherwise it is faster to just calculate it again.
+   */
+  private static boolean isUnquotingExpensive(String columnName) {
+    int length = columnName.length();
+    return columnName.charAt(0) == '"' && length >= 2 && columnName.charAt(length - 1) == '"';
   }
 }
