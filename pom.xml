@@ -208,7 +208,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.14.0-rc1</version>
+            <version>2.14.0</version>
         </dependency>
 
         <!-- SLF4J api that a client can shim in later -->
@@ -333,6 +333,10 @@
                 <exclusion>
                     <groupId>com.github.spotbugs</groupId>
                     <artifactId>spotbugs-annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>nimbus-jose-jwt</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>com.sun.jersey</groupId>

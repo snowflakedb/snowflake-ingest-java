@@ -917,7 +917,7 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type TIME: Not a valid time, see"
-            + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
+            + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
             + " for the list of supported formats",
         () -> validateAndParseTime("COL", "abc", 10));
 
@@ -932,8 +932,8 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type DATE: Not a valid value, see"
-            + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html for the list of"
-            + " supported formats",
+            + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
+            + " the list of supported formats",
         () -> validateAndParseDate("COL", "abc"));
 
     // TIMESTAMP_NTZ
@@ -947,8 +947,8 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type TIMESTAMP: Not a valid value, see"
-            + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html for the list of"
-            + " supported formats",
+            + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
+            + " the list of supported formats",
         () -> validateAndParseTimestamp("COL", "abc", 3, UTC, true));
 
     // TIMESTAMP_LTZ
@@ -962,8 +962,8 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type TIMESTAMP: Not a valid value, see"
-            + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html for the list of"
-            + " supported formats",
+            + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
+            + " the list of supported formats",
         () -> validateAndParseTimestamp("COL", "abc", 3, UTC, false));
 
     // TIMESTAMP_TZ
@@ -977,8 +977,8 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_ROW,
         "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
             + " Snowflake column COL of type TIMESTAMP: Not a valid value, see"
-            + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html for the list of"
-            + " supported formats",
+            + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
+            + " the list of supported formats",
         () -> validateAndParseTimestamp("COL", "abc", 3, UTC, false));
 
     // NUMBER

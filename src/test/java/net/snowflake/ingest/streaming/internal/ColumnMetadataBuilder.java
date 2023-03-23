@@ -17,6 +17,8 @@ public class ColumnMetadataBuilder {
   private boolean nullable;
   private String collation;
 
+  private Integer ordinal;
+
   /**
    * Returns a new ColumnMetadata builder
    *
@@ -143,6 +145,17 @@ public class ColumnMetadataBuilder {
   }
 
   /**
+   * Set column ordinal
+   *
+   * @param ordinal ordinal
+   * @return columnMetadataBuilder object
+   */
+  public ColumnMetadataBuilder ordinal(int ordinal) {
+    this.ordinal = ordinal;
+    return this;
+  }
+
+  /**
    * Build a columnMetadata object from the set values
    *
    * @return columnMetadata object
@@ -159,6 +172,7 @@ public class ColumnMetadataBuilder {
     colMetadata.setScale(scale);
     colMetadata.setPrecision(precision);
     colMetadata.setCollation(collation);
+    colMetadata.setOrdinal(ordinal);
     return colMetadata;
   }
 }

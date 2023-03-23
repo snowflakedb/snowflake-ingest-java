@@ -154,14 +154,12 @@ final class SecurityManager implements AutoCloseable {
     // create our JWT claim builder object
     JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder();
 
-    // set the subject to the fully qualified username
+    // get the subject to the fully qualified username
     String subject = String.format("%s.%s", account, user);
-    LOGGER.info("Creating Token with subject {}", subject);
 
-    // set the issuer
+    // get the issuer
     String publicKeyFPInJwt = calculatePublicKeyFp(keyPair);
     String issuer = String.format("%s.%s.%s", account, user, publicKeyFPInJwt);
-    LOGGER.info("Creating Token with issuer {}", issuer);
 
     // iat set to now
     Date iat = new Date(System.currentTimeMillis());
@@ -172,6 +170,7 @@ final class SecurityManager implements AutoCloseable {
     // build claim set
     JWTClaimsSet claimsSet =
         builder.issuer(issuer).subject(subject).issueTime(iat).expirationTime(exp).build();
+    LOGGER.debug("Creating new JWT with subject {} and issuer {}...", subject, issuer);
 
     SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claimsSet);
 
@@ -188,7 +187,7 @@ final class SecurityManager implements AutoCloseable {
     }
 
     // atomically update the string
-    LOGGER.info("Created new JWT");
+    LOGGER.info("Successfully created new JWT");
     token.set(newToken);
 
     // Refresh the token used in the telemetry service as well
