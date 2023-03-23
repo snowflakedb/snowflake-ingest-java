@@ -379,8 +379,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       Map<String, RowBufferStats> oldColumnEps = null;
       Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
 
-      logger.logDebug(
-          "Arrow buffer flush about to take lock on channel={}", channelFullyQualifiedName);
+      logger.logDebug("Buffer flush about to take lock on channel={}", channelFullyQualifiedName);
 
       this.flushLock.lock();
       try {
@@ -403,7 +402,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       }
 
       logger.logDebug(
-          "Arrow buffer flush released lock on channel={}, rowCount={}, bufferSize={}",
+          "Buffer flush released lock on channel={}, rowCount={}, bufferSize={}",
           channelFullyQualifiedName,
           oldRowCount,
           oldBufferSize);
