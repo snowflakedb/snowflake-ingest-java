@@ -730,8 +730,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     }
 
     // All input values passed validation, iterate over the columns again and combine their existing
-    // statistics
-    // with the forked statistics for the current row.
+    // statistics with the forked statistics for the current row.
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
       String columnName = LiteralQuoteUtils.unquoteColumnName(key);
