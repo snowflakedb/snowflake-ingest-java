@@ -36,101 +36,157 @@
   <!-- Set our Language Level to Java 8 -->
   <properties>
     <arrow.version>10.0.0</arrow.version>
+    <codehaus.version>1.9.13</codehaus.version>
+    <commonscodec.version>1.15</commonscodec.version>
+    <commonscollections.version>3.2.2</commonscollections.version>
+    <commonscompress.version>1.21</commonscompress.version>
+    <commonsio.version>2.8.0</commonsio.version>
+    <commonslang3.version>3.12.0</commonslang3.version>
+    <commonslogging.version>1.2</commonslogging.version>
+    <fasterxml.version>2.14.0</fasterxml.version>
+    <guava.version>31.1-jre</guava.version>
     <hadoop.version>3.3.4</hadoop.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.5</jacoco.version>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <netty.version>4.1.82.Final</netty.version>
+    <nimbusds.version>9.9.3</nimbusds.version>
+    <objenesis.version>3.1</objenesis.version>
+    <parquet.version>1.12.3</parquet.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
+    <slf4j.version>1.7.36</slf4j.version>
+    <snappy.version>1.1.8.3</snappy.version>
+    <snowjdbc.version>3.13.15</snowjdbc.version>
+    <yetus.version>0.13.0</yetus.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>ch.qos.reload4j</groupId>
-        <artifactId>reload4j</artifactId>
-        <version>1.2.22</version>
-      </dependency>
-      <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-annotations</artifactId>
-        <version>2.14.0</version>
-      </dependency>
-      <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-core</artifactId>
-        <version>2.14.0</version>
-      </dependency>
-      <!-- Jackson Databind api -->
-      <dependency>
-        <groupId>com.fasterxml.jackson.core</groupId>
-        <artifactId>jackson-databind</artifactId>
-        <version>2.14.0</version>
+        <groupId>com.fasterxml.jackson</groupId>
+        <artifactId>jackson-bom</artifactId>
+        <version>${fasterxml.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>31.1-jre</version>
+        <version>${guava.version}</version>
       </dependency>
       <dependency>
         <groupId>com.nimbusds</groupId>
         <artifactId>nimbus-jose-jwt</artifactId>
-        <version>9.9.3</version>
+        <version>${nimbusds.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-codec</groupId>
         <artifactId>commons-codec</artifactId>
-        <version>1.15</version>
+        <version>${commonscodec.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-collections</groupId>
+        <artifactId>commons-collections</artifactId>
+        <version>${commonscollections.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-io</groupId>
         <artifactId>commons-io</artifactId>
-        <version>2.8.0</version>
+        <version>${commonsio.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-logging</groupId>
         <artifactId>commons-logging</artifactId>
-        <version>1.2</version>
+        <version>${commonslogging.version}</version>
       </dependency>
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-buffer</artifactId>
-        <version>4.1.82.Final</version>
+        <version>${netty.version}</version>
       </dependency>
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-common</artifactId>
-        <version>4.1.82.Final</version>
+        <version>${netty.version}</version>
       </dependency>
       <dependency>
         <groupId>net.snowflake</groupId>
         <artifactId>snowflake-jdbc</artifactId>
-        <version>3.13.15</version>
+        <version>${snowjdbc.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-compress</artifactId>
-        <version>1.21</version>
+        <version>${commonscompress.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
-        <version>3.12.0</version>
+        <version>${commonslang3.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-common</artifactId>
+        <version>${hadoop.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>reload4j</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.activation</groupId>
+            <artifactId>activation</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-reload4j</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-column</artifactId>
+        <version>${parquet.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-common</artifactId>
+        <version>${parquet.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-hadoop</artifactId>
+        <version>${parquet.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.yetus</groupId>
         <artifactId>audience-annotations</artifactId>
-        <version>0.13.0</version>
+        <version>${yetus.version}</version>
       </dependency>
       <dependency>
         <groupId>org.codehaus.jackson</groupId>
         <artifactId>jackson-core-asl</artifactId>
-        <version>1.9.13</version>
+        <version>${codehaus.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-jaxrs</artifactId>
+        <version>${codehaus.version}</version>
       </dependency>
       <dependency>
         <groupId>org.codehaus.jackson</groupId>
         <artifactId>jackson-mapper-asl</artifactId>
-        <version>1.9.13</version>
+        <version>${codehaus.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.jackson</groupId>
+        <artifactId>jackson-xc</artifactId>
+        <version>${codehaus.version}</version>
       </dependency>
       <dependency>
         <groupId>org.codehaus.woodstox</groupId>
@@ -140,24 +196,18 @@
       <dependency>
         <groupId>org.objenesis</groupId>
         <artifactId>objenesis</artifactId>
-        <version>3.1</version>
+        <version>${objenesis.version}</version>
       </dependency>
       <!-- SLF4J api that a client can shim in later -->
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.36</version>
-      </dependency>
-      <!-- JDK logger backend for logging tests -->
-      <dependency>
-        <groupId>org.slf4j</groupId>
-        <artifactId>slf4j-simple</artifactId>
-        <version>1.7.36</version>
+        <version>${slf4j.version}</version>
       </dependency>
       <dependency>
         <groupId>org.xerial.snappy</groupId>
         <artifactId>snappy-java</artifactId>
-        <version>1.1.8.3</version>
+        <version>${snappy.version}</version>
       </dependency>
 
       <!-- JUnit so that we can make some basic unit tests -->
@@ -252,58 +302,43 @@
       <groupId>net.bytebuddy</groupId>
       <artifactId>byte-buddy-agent</artifactId>
     </dependency>
-
     <!-- Snowflake JDBC used to connect to the service-->
     <dependency>
       <groupId>net.snowflake</groupId>
       <artifactId>snowflake-jdbc</artifactId>
     </dependency>
+    <!-- Apache Arrow -->
     <dependency>
       <groupId>org.apache.arrow</groupId>
       <artifactId>arrow-memory-core</artifactId>
       <version>${arrow.version}</version>
     </dependency>
-
-    <!-- Apache Arrow -->
     <dependency>
       <groupId>org.apache.arrow</groupId>
       <artifactId>arrow-vector</artifactId>
       <version>${arrow.version}</version>
     </dependency>
-
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
-      <version>${hadoop.version}</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop -->
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.12.3</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.12.3</version>
     </dependency>
-
-    <!-- https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop -->
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.12.3</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-netty</artifactId>
-      <version>${arrow.version}</version>
-      <scope>runtime</scope>
-    </dependency>
-
     <!-- JUnit so that we can make some basic unit tests -->
     <dependency>
       <groupId>junit</groupId>
@@ -502,36 +537,6 @@
             <configuration>
               <rules>
                 <banDuplicateClasses>
-                  <dependencies>
-                    <dependency>
-                      <groupId>log4j</groupId>
-                      <artifactId>log4j</artifactId>
-                      <ignoreClasses>
-                        <ignoreClass>*</ignoreClass>
-                      </ignoreClasses>
-                    </dependency>
-                    <dependency>
-                      <groupId>javax.activation</groupId>
-                      <artifactId>activation</artifactId>
-                      <ignoreClasses>
-                        <ignoreClass>*</ignoreClass>
-                      </ignoreClasses>
-                    </dependency>
-                    <dependency>
-                      <groupId>org.slf4j</groupId>
-                      <artifactId>slf4j-simple</artifactId>
-                      <ignoreClasses>
-                        <ignoreClass>*</ignoreClass>
-                      </ignoreClasses>
-                    </dependency>
-                    <dependency>
-                      <groupId>org.slf4j</groupId>
-                      <artifactId>slf4j-reload4j</artifactId>
-                      <ignoreClasses>
-                        <ignoreClass>*</ignoreClass>
-                      </ignoreClasses>
-                    </dependency>
-                  </dependencies>
                   <findAllDuplicates>true</findAllDuplicates>
                   <ignoreWhenIdentical>true</ignoreWhenIdentical>
                 </banDuplicateClasses>
