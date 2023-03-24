@@ -29,13 +29,10 @@ public class TPCDSIngestion {
     private static final String originalDatabase = "benchmark_db";
     private static final String originalSchema = "tpcds_sf1";
 
-    private static int batchSize = 10000;
+    private static int batchSize = 40000;
 
     public static void main(String[] args) throws Exception {
         Properties props = Util.getProperties(Constants.BdecVersion.THREE);
-
-
-        int cores = Runtime.getRuntime().availableProcessors();
 
         // Create a streaming ingest client
         SnowflakeStreamingIngestClientInternal client =
@@ -75,7 +72,7 @@ public class TPCDSIngestion {
                             originalDatabase, originalSchema, table));
                     List rows = Util.resultSetToArrayListAndIngestInBatches(result, batchSize, channel, originalCount);
 
-                    Util.verifyInsertValidationResponse(channel.insertRows(rows, String.valueOf(originalCount)));
+                    Util.resultSetToArrayListAndIngestInBatches(result, batchSize, channel, originalCount);
 
                     Util.waitChannelFlushed(channel, (int) originalCount);
                     channel.close();
