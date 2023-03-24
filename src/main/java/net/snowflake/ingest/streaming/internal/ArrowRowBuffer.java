@@ -427,9 +427,15 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
     float rowBufferSize = 0F;
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
+
+    // We need to iterate twice over the row and over unquoted names, we store the value to avoid
+    // re-computation
+    Map<String, String> userInputToUnquotedColumnNameMap = new HashMap<>();
+
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
       String columnName = LiteralQuoteUtils.unquoteColumnName(entry.getKey());
+      userInputToUnquotedColumnNameMap.put(entry.getKey(), columnName);
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
@@ -731,14 +737,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // All input values passed validation, iterate over the columns again and combine their existing
     // statistics with the forked statistics for the current row.
-    for (Map.Entry<String, Object> entry : row.entrySet()) {
-      String key = entry.getKey();
-      String columnName = LiteralQuoteUtils.unquoteColumnName(key);
+    for (String userInputColumnName : row.keySet()) {
+      String columnName = userInputToUnquotedColumnNameMap.get(userInputColumnName);
       RowBufferStats stats = statsMap.get(columnName);
       RowBufferStats forkedStats = forkedStatsMap.get(columnName);
       statsMap.put(columnName, RowBufferStats.getCombinedStats(stats, forkedStats));
     }
-
     // Insert nulls to the columns that doesn't show up in the input
     for (String columnName : Sets.difference(this.fields.keySet(), inputColumnNames)) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
