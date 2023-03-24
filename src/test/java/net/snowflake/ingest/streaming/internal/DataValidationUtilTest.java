@@ -586,21 +586,21 @@ public class DataValidationUtilTest {
     m.put("a", new String(stringContent));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: {\"a\":\"ČČČČČČČČČČČČČČ.... Value"
-            + " cannot be ingested into Snowflake column COL of type VARIANT: Variant too long:"
-            + " length=18874376 maxLength=16777152",
+        "The given row cannot be converted to the internal format: {\"a\":\"ČČČČČČČČČČČČČČ...."
+            + " Value cannot be ingested into Snowflake column COL of type VARIANT: Variant too"
+            + " long: length=18874376 maxLength=16777152",
         () -> validateAndParseVariant("COL", m));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: [{\"a\":\"ČČČČČČČČČČČČČ.... Value"
-            + " cannot be ingested into Snowflake column COL of type ARRAY: Array too large."
+        "The given row cannot be converted to the internal format: [{\"a\":\"ČČČČČČČČČČČČČ...."
+            + " Value cannot be ingested into Snowflake column COL of type ARRAY: Array too large."
             + " length=18874378 maxLength=16777152",
         () -> validateAndParseArray("COL", m));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: {\"a\":\"ČČČČČČČČČČČČČČ.... Value"
-            + " cannot be ingested into Snowflake column COL of type OBJECT: Object too large."
-            + " length=18874376 maxLength=16777152",
+        "The given row cannot be converted to the internal format: {\"a\":\"ČČČČČČČČČČČČČČ...."
+            + " Value cannot be ingested into Snowflake column COL of type OBJECT: Object too"
+            + " large. length=18874376 maxLength=16777152",
         () -> validateAndParseObject("COL", m));
   }
 
@@ -894,14 +894,14 @@ public class DataValidationUtilTest {
     // BOOLEAN
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type BOOLEAN. Allowed Java types: boolean,"
-            + " Number, String",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type BOOLEAN. Allowed Java types:"
+            + " boolean, Number, String",
         () -> validateAndParseBoolean("COL", new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type BOOLEAN: Not a valid boolean, see"
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type BOOLEAN: Not a valid boolean, see"
             + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
             + " for the list of supported formats",
         () -> validateAndParseBoolean("COL", "abc"));
@@ -909,29 +909,29 @@ public class DataValidationUtilTest {
     // TIME
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type TIME. Allowed Java types: String,"
-            + " LocalTime, OffsetTime",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type TIME. Allowed Java types:"
+            + " String, LocalTime, OffsetTime",
         () -> validateAndParseTime("COL", new Object(), 10));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type TIME: Not a valid time, see"
-            + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
-            + " for the list of supported formats",
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type TIME: Not a valid time, see"
+            + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
+            + " the list of supported formats",
         () -> validateAndParseTime("COL", "abc", 10));
 
     // DATE
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type DATE. Allowed Java types: String,"
-            + " LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type DATE. Allowed Java types:"
+            + " String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
         () -> validateAndParseDate("COL", new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type DATE: Not a valid value, see"
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type DATE: Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
         () -> validateAndParseDate("COL", "abc"));
@@ -939,14 +939,14 @@ public class DataValidationUtilTest {
     // TIMESTAMP_NTZ
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
             + " String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
         () -> validateAndParseTimestamp("COL", new Object(), 3, UTC, true));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type TIMESTAMP: Not a valid value, see"
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type TIMESTAMP: Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
         () -> validateAndParseTimestamp("COL", "abc", 3, UTC, true));
@@ -954,14 +954,14 @@ public class DataValidationUtilTest {
     // TIMESTAMP_LTZ
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
             + " String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
         () -> validateAndParseTimestamp("COL", new Object(), 3, UTC, false));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type TIMESTAMP: Not a valid value, see"
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type TIMESTAMP: Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
         () -> validateAndParseTimestamp("COL", "abc", 3, UTC, false));
@@ -969,14 +969,14 @@ public class DataValidationUtilTest {
     // TIMESTAMP_TZ
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP. Allowed Java types:"
             + " String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
         () -> validateAndParseTimestamp("COL", new Object(), 3, UTC, false));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type TIMESTAMP: Not a valid value, see"
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type TIMESTAMP: Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
         () -> validateAndParseTimestamp("COL", "abc", 3, UTC, false));
@@ -984,98 +984,102 @@ public class DataValidationUtilTest {
     // NUMBER
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type NUMBER. Allowed Java types: int,"
-            + " long, byte, short, float, double, BigDecimal, BigInteger, String",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type NUMBER. Allowed Java types:"
+            + " int, long, byte, short, float, double, BigDecimal, BigInteger, String",
         () -> validateAndParseBigDecimal("COL", new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type NUMBER: Not a valid number",
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type NUMBER: Not a valid number",
         () -> validateAndParseBigDecimal("COL", "abc"));
 
     // REAL
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type REAL. Allowed Java types: Number,"
-            + " String",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type REAL. Allowed Java types:"
+            + " Number, String",
         () -> validateAndParseReal("COL", new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type REAL: Not a valid decimal number",
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type REAL: Not a valid decimal number",
         () -> validateAndParseReal("COL", "abc"));
 
     // STRING
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type STRING. Allowed Java types: String,"
-            + " Number, boolean, char",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type STRING. Allowed Java types:"
+            + " String, Number, boolean, char",
         () -> validateAndParseString("COL", new Object(), Optional.empty()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: abc. Value cannot be ingested into"
-            + " Snowflake column COL of type STRING: String too long: length=3 characters"
+        "The given row cannot be converted to the internal format: abc. Value cannot be ingested"
+            + " into Snowflake column COL of type STRING: String too long: length=3 characters"
             + " maxLength=2 characters",
         () -> validateAndParseString("COL", "abc", Optional.of(2)));
 
     // BINARY
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type BINARY. Allowed Java types: byte[],"
-            + " String",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type BINARY. Allowed Java types:"
+            + " byte[], String",
         () -> validateAndParseBinary("COL", new Object(), Optional.empty()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: byte[2]. Value cannot be ingested into"
-            + " Snowflake column COL of type BINARY: Binary too long: length=2 maxLength=1",
+        "The given row cannot be converted to the internal format: byte[2]. Value cannot be"
+            + " ingested into Snowflake column COL of type BINARY: Binary too long: length=2"
+            + " maxLength=1",
         () -> validateAndParseBinary("COL", new byte[] {1, 2}, Optional.of(1)));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: ghi. Value cannot be ingested into"
-            + " Snowflake column COL of type BINARY: Not a valid hex string",
+        "The given row cannot be converted to the internal format: ghi. Value cannot be ingested"
+            + " into Snowflake column COL of type BINARY: Not a valid hex string",
         () -> validateAndParseBinary("COL", "ghi", Optional.empty()));
 
     // VARIANT
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type VARIANT. Allowed Java types: String,"
-            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>, T[]",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type VARIANT. Allowed Java types:"
+            + " String, Primitive data types and their arrays, java.time.*, List<T>, Map<String,"
+            + " T>, T[]",
         () -> validateAndParseVariant("COL", new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: ][. Value cannot be ingested into"
-            + " Snowflake column COL of type VARIANT: Not a valid JSON",
+        "The given row cannot be converted to the internal format: ][. Value cannot be ingested"
+            + " into Snowflake column COL of type VARIANT: Not a valid JSON",
         () -> validateAndParseVariant("COL", "]["));
 
     // ARRAY
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type ARRAY. Allowed Java types: String,"
-            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>, T[]",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type ARRAY. Allowed Java types:"
+            + " String, Primitive data types and their arrays, java.time.*, List<T>, Map<String,"
+            + " T>, T[]",
         () -> validateAndParseArray("COL", new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: ][. Value cannot be ingested into"
-            + " Snowflake column COL of type ARRAY: Not a valid JSON",
+        "The given row cannot be converted to the internal format: ][. Value cannot be ingested"
+            + " into Snowflake column COL of type ARRAY: Not a valid JSON",
         () -> validateAndParseArray("COL", "]["));
 
     // OBJECT
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: Object of type java.lang.Object cannot"
-            + " be ingested into Snowflake column COL of type OBJECT. Allowed Java types: String,"
-            + " Primitive data types and their arrays, java.time.*, List<T>, Map<String, T>, T[]",
+        "The given row cannot be converted to the internal format: Object of type java.lang.Object"
+            + " cannot be ingested into Snowflake column COL of type OBJECT. Allowed Java types:"
+            + " String, Primitive data types and their arrays, java.time.*, List<T>, Map<String,"
+            + " T>, T[]",
         () -> validateAndParseObject("COL", new Object()));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_ROW,
-        "The given row cannot be converted to Arrow format: }{. Value cannot be ingested into"
-            + " Snowflake column COL of type OBJECT: Not a valid JSON",
+        "The given row cannot be converted to the internal format: }{. Value cannot be ingested"
+            + " into Snowflake column COL of type OBJECT: Not a valid JSON",
         () -> validateAndParseObject("COL", "}{"));
   }
 

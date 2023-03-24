@@ -186,7 +186,8 @@ public abstract class AbstractDataTypeTest {
         value,
         x ->
             (x instanceof SFException
-                && x.getMessage().contains("The given row cannot be converted to Arrow format")));
+                && x.getMessage()
+                    .contains("The given row cannot be converted to the internal format")));
   }
 
   /**
