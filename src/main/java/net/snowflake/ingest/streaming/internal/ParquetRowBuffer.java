@@ -16,7 +16,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -138,12 +137,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   @Override
-  float addRow(
-      Map<String, Object> row,
-      int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
+  float addRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap) {
+    return addRowInternal(row, this::writeRow, statsMap);
   }
 
   void writeRow(List<Object> row) {
@@ -155,12 +150,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   @Override
-  float addTempRow(
-      Map<String, Object> row,
-      int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
+  float addTempRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap) {
+    return addRowInternal(row, this::writeRow, statsMap);
   }
 
   /**
@@ -169,29 +160,19 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
    * @param row row to add
    * @param out internal buffer to add to
    * @param statsMap column stats map
-   * @param inputColumnNames list of input column names after formatting
    * @return row size
    */
-  private float addRow(
-      Map<String, Object> row,
-      Consumer<List<Object>> out,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+  private float addRowInternal(
+      Map<String, Object> row, Consumer<List<Object>> out, Map<String, RowBufferStats> statsMap) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
 
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
 
-    // We need to iterate twice over the row and over unquoted names, we store the value to avoid
-    // re-computation
-    Map<String, String> userInputToUnquotedColumnNameMap = new HashMap<>();
-
     for (Map.Entry<String, Object> entry : row.entrySet()) {
-      String key = entry.getKey();
+      String columnName = entry.getKey();
       Object value = entry.getValue();
-      String columnName = LiteralQuoteUtils.unquoteColumnName(key);
-      userInputToUnquotedColumnNameMap.put(key, columnName);
       int colIndex = fieldIndex.get(columnName).getSecond();
       RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
       forkedStatsMap.put(columnName, forkedStats);
@@ -209,15 +190,14 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     // All input values passed validation, iterate over the columns again and combine their existing
     // statistics with the forked statistics for the current row.
-    for (String userInputColumnName : row.keySet()) {
-      String columnName = userInputToUnquotedColumnNameMap.get(userInputColumnName);
+    for (String columnName : row.keySet()) {
       RowBufferStats stats = statsMap.get(columnName);
       RowBufferStats forkedStats = forkedStatsMap.get(columnName);
       statsMap.put(columnName, RowBufferStats.getCombinedStats(stats, forkedStats));
     }
 
     // Increment null count for column missing in the input map
-    for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
+    for (String columnName : Sets.difference(this.fieldIndex.keySet(), row.keySet())) {
       statsMap.get(columnName).incCurrentNullCount();
     }
     return size;

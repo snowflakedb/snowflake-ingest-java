@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -389,22 +388,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   }
 
   @Override
-  float addRow(
-      Map<String, Object> row,
-      int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return convertRowToArrow(row, vectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
+  float addRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap) {
+    return convertRowToArrow(row, vectorsRoot, curRowIndex, statsMap);
   }
 
   @Override
-  float addTempRow(
-      Map<String, Object> row,
-      int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return convertRowToArrow(
-        row, tempVectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
+  float addTempRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap) {
+    return convertRowToArrow(row, tempVectorsRoot, curRowIndex, statsMap);
   }
 
   /**
@@ -414,28 +404,21 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
    * @param sourceVectors vectors (buffers) that hold the row
    * @param curRowIndex current row index to use
    * @param statsMap column stats map
-   * @param inputColumnNames list of input column names after formatting
    * @return row size
    */
   private float convertRowToArrow(
       Map<String, Object> row,
       VectorSchemaRoot sourceVectors,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+      Map<String, RowBufferStats> statsMap) {
     // Insert values to the corresponding arrow buffers
     float rowBufferSize = 0F;
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
 
-    // We need to iterate twice over the row and over unquoted names, we store the value to avoid
-    // re-computation
-    Map<String, String> userInputToUnquotedColumnNameMap = new HashMap<>();
-
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
-      String columnName = LiteralQuoteUtils.unquoteColumnName(entry.getKey());
-      userInputToUnquotedColumnNameMap.put(entry.getKey(), columnName);
+      String columnName = entry.getKey();
       Object value = entry.getValue();
       Field field = this.fields.get(columnName);
       Utils.assertNotNull("Arrow column field", field);
@@ -737,14 +720,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
 
     // All input values passed validation, iterate over the columns again and combine their existing
     // statistics with the forked statistics for the current row.
-    for (String userInputColumnName : row.keySet()) {
-      String columnName = userInputToUnquotedColumnNameMap.get(userInputColumnName);
+    for (String columnName : row.keySet()) {
       RowBufferStats stats = statsMap.get(columnName);
       RowBufferStats forkedStats = forkedStatsMap.get(columnName);
       statsMap.put(columnName, RowBufferStats.getCombinedStats(stats, forkedStats));
     }
     // Insert nulls to the columns that doesn't show up in the input
-    for (String columnName : Sets.difference(this.fields.keySet(), inputColumnNames)) {
+    for (String columnName : Sets.difference(this.fields.keySet(), row.keySet())) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
       insertNull(
           sourceVectors.getVector(this.fields.get(columnName)),

@@ -232,13 +232,13 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * Verify that the input row columns are all valid.
    *
    * <p>Checks that the columns, specified in the row, are present in the table and values for all
-   * non-nullable columns are specified.
+   * non-nullable columns are specified. It also changes the input row by unquoting input column names
    *
    * @param row the input row
    * @param error the insert error that we return to the customer
    * @return the set of input column names
    */
-  Set<String> verifyInputColumns(
+  void verifyAndUnquoteInputColumns(
       Map<String, Object> row, InsertValidationResponse.InsertError error) {
     // Map of unquoted column name -> original column name
     Map<String, String> inputColNamesMap =
@@ -251,6 +251,17 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       if (!hasColumn(columnName)) {
         extraCols.add(inputColNamesMap.get(columnName));
       }
+    }
+
+    /**
+     * In-place replace all items in the input map => column names are replaced with unquoted column names
+     */
+    for (Map.Entry<String, String> entry : inputColNamesMap.entrySet()) {
+      String unquotedColName = entry.getKey();
+      String userInputColName = entry.getValue();
+      
+      Object value = row.remove(userInputColName);
+      row.put(unquotedColName, value);
     }
 
     if (!extraCols.isEmpty()) {
@@ -280,8 +291,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           "Missing columns: " + missingCols,
           "Values for all non-nullable columns must be specified.");
     }
-
-    return inputColNamesMap.keySet();
   }
 
   /**
@@ -309,8 +318,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           InsertValidationResponse.InsertError error =
               new InsertValidationResponse.InsertError(row, rowIndex);
           try {
-            Set<String> inputColumnNames = verifyInputColumns(row, error);
-            rowsSizeInBytes += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
+            verifyAndUnquoteInputColumns(row, error);
+            rowsSizeInBytes += addRow(row, this.rowCount, this.statsMap);
             this.rowCount++;
           } catch (SFException e) {
             error.setException(e);
@@ -330,8 +339,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         float tempRowsSizeInBytes = 0F;
         int tempRowCount = 0;
         for (Map<String, Object> row : rows) {
-          Set<String> inputColumnNames = verifyInputColumns(row, null);
-          tempRowsSizeInBytes += addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames);
+          verifyAndUnquoteInputColumns(row, null);
+          tempRowsSizeInBytes += addTempRow(row, tempRowCount, this.tempStatsMap);
           tempRowCount++;
         }
 
@@ -433,14 +442,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param row input row
    * @param curRowIndex current row index to use
    * @param statsMap column stats map
-   * @param formattedInputColumnNames list of input column names after formatting
    * @return row size
    */
-  abstract float addRow(
-      Map<String, Object> row,
-      int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames);
+  abstract float addRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap);
 
   /**
    * Add an input row to the temporary row buffer.
@@ -451,14 +455,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param row input row
    * @param curRowIndex current row index to use
    * @param statsMap column stats map
-   * @param formattedInputColumnNames list of input column names after formatting
    * @return row size
    */
-  abstract float addTempRow(
-      Map<String, Object> row,
-      int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames);
+  abstract float addTempRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap);
 
   /** Move rows from the temporary buffer to the current row buffer. */
   abstract void moveTempRowsToActualBuffer(int tempRowCount);
