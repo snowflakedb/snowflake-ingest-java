@@ -32,7 +32,8 @@ import org.apache.arrow.util.VisibleForTesting;
  * un-flushed rows, these rows will be converted to the underlying format implementation for faster
  * processing
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot})
+ * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or Parquet
+ *     {@link ParquetChunkData})
  */
 abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   private static final Logging logger = new Logging(AbstractRowBuffer.class);
@@ -526,7 +527,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   /**
    * Given a set of col names to stats, build the right ep info
    *
-   * @param rowCount: count of rows in the given arrow buffer
+   * @param rowCount: count of rows in the given buffer
    * @param colStats: map of column name to RowBufferStats
    * @return the EPs built from column stats
    */

@@ -48,8 +48,8 @@ import org.apache.commons.codec.binary.Hex;
  *   <li>variable size chunks metadata in json format
  * </ul>
  *
- * <p>After the metadata, it will be one or more chunks of variable size Arrow data, and each chunk
- * will be encrypted and compressed separately.
+ * <p>After the metadata, it will be one or more chunks of variable size Arrow/Parquet data, and
+ * each chunk will be encrypted and compressed separately.
  */
 class BlobBuilder {
 
@@ -209,7 +209,8 @@ class BlobBuilder {
 
   /**
    * Gzip compress the given chunk data if required by the given write mode and pads the compressed
-   * data for encryption.
+   * data for encryption. Only for Arrow. For Parquet the compression is done in the Parquet
+   * library.
    *
    * @param filePath blob file full path
    * @param chunkData uncompressed chunk data
@@ -280,11 +281,11 @@ class BlobBuilder {
       blob.write(toByteArray(chunkMetadataListInBytes.length));
       blob.write(chunkMetadataListInBytes);
     }
-    for (byte[] arrowData : chunksDataList) {
-      blob.write(arrowData);
+    for (byte[] chunkData : chunksDataList) {
+      blob.write(chunkData);
     }
 
-    // We need to update the start offset for the EP and Arrow data in the request since
+    // We need to update the start offset for the EP and Arrow/Parquet data in the request since
     // some metadata was added at the beginning
     for (ChunkMetadata chunkMetadata : chunksMetadataList) {
       chunkMetadata.advanceStartOffset(metadataSize);
