@@ -473,9 +473,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   void reset() {
     this.rowCount = 0;
     this.bufferSize = 0F;
-    this.statsMap.replaceAll(
-        (key, value) ->
-            new RowBufferStats(value.getColumnDisplayName(), value.getCollationDefinitionString()));
+    this.statsMap.replaceAll((key, value) -> value.forkEmpty());
   }
 
   /**
