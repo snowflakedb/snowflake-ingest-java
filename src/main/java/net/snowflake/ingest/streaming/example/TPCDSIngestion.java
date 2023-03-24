@@ -47,51 +47,43 @@ public class TPCDSIngestion {
 
             int numTables = tables.length; // 1 channel per table
 
-            ExecutorService ingestionThreadPool = Executors.newFixedThreadPool(cores);
-            CompletableFuture[] ingestionFutures = new CompletableFuture[numTables];
             List<SnowflakeStreamingIngestChannel> channelList = new ArrayList<>();
             for (int i = 0; i < numTables; i++) {
-                int finalI = i;
                 final String channelName = "CHANNEL" + i;
-                final String table = tables[finalI];
-                ingestionFutures[i] =
-                        CompletableFuture.runAsync(
-                                () -> {
-                                    SnowflakeStreamingIngestChannel channel = Util.openChannel(props.getProperty("database"), props.getProperty("schema"), table, channelName, client);
-                                    channelList.add(channel);
-                                    Connection jdbcConnection;
-                                    ResultSet result;
-                                        // query table
-                                    try {
-                                        jdbcConnection = Util.getConnection();
-                                        jdbcConnection
-                                                .createStatement()
-                                                .execute(String.format("use warehouse %s", Util.getWarehouse()));
+                final String table = tables[i];
+                SnowflakeStreamingIngestChannel channel = Util.openChannel(props.getProperty("database"), props.getProperty("schema"), table, channelName, client);
+                channelList.add(channel);
+                Connection jdbcConnection;
+                ResultSet result;
+                    // query table
+                try {
+                    jdbcConnection = Util.getConnection();
+                    jdbcConnection
+                            .createStatement()
+                            .execute(String.format("use warehouse %s", Util.getWarehouse()));
 
 
-                                        result = jdbcConnection.createStatement().executeQuery(
-                                        String.format(
-                                                "select count(*) from %s.%s.%s",
-                                                originalDatabase, originalSchema, table));
-                                        result.next();
-                                        long originalCount = result.getLong(1);
-                                        result = jdbcConnection.createStatement().executeQuery(
-                                        String.format(
-                                                "select * from %s.%s.%s",
-                                                originalDatabase, originalSchema, table));
-                                        Util.resultSetToArrayListAndIngestInBatches(result, batchSize, channel, originalCount);
+                    result = jdbcConnection.createStatement().executeQuery(
+                    String.format(
+                            "select count(*) from %s.%s.%s",
+                            originalDatabase, originalSchema, table));
+                    result.next();
+                    long originalCount = result.getLong(1);
+                    result = jdbcConnection.createStatement().executeQuery(
+                    String.format(
+                            "select * from %s.%s.%s",
+                            originalDatabase, originalSchema, table));
+                    List rows = Util.resultSetToArrayListAndIngestInBatches(result, batchSize, channel, originalCount);
 
-                                        Util.waitChannelFlushed(channel, (int) originalCount);
-                                        channel.close();
-                                    } catch (Exception e) {
-                                        throw new RuntimeException(e);
-                                    }
-                                },
-                                ingestionThreadPool);
+                    Util.verifyInsertValidationResponse(channel.insertRows(rows, String.valueOf(originalCount)));
+
+                    Util.waitChannelFlushed(channel, (int) originalCount);
+                    channel.close();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
             }
-            CompletableFuture joined = CompletableFuture.allOf(ingestionFutures);
-            joined.get();
-            ingestionThreadPool.shutdown();
             client.close();
 
             // verify results

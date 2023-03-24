@@ -150,12 +150,6 @@ public class Util {
         row.put(md.getColumnName(i), val);
       }
       batchedRows.add(row);
-      if(ctr % batchSize == 0 || ctr == totalCount - 1) {
-        // ingest
-        Util.verifyInsertValidationResponse(channel.insertRows(batchedRows, String.valueOf(ctr)));
-        batchedRows.clear();
-      }
-      ctr++;
     }
     return batchedRows;
   }
