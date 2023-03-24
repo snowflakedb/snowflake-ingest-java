@@ -46,7 +46,9 @@ class LiteralQuoteUtils {
       return unquotedColumnNamesCache.get(columnName);
     } catch (ExecutionException e) {
       throw new SFException(
-          e, ErrorCode.INTERNAL_ERROR, String.format("Exception thrown while unquoting column name %s", columnName));
+          e,
+          ErrorCode.INTERNAL_ERROR,
+          String.format("Exception thrown while unquoting column name %s", columnName));
     }
   }
 
