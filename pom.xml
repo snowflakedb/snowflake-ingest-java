@@ -547,10 +547,7 @@
                   <ignoreWhenIdentical>true</ignoreWhenIdentical>
                 </banDuplicateClasses>
                 <banDuplicatePomDependencyVersions/>
-                <bannedDependencies>
-                  <excludes>
-                  </excludes>
-                </bannedDependencies>
+                <bannedDependencies/>
                 <dependencyConvergence/>
                 <requireUpperBoundDeps/>
               </rules>
