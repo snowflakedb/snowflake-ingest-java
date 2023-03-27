@@ -232,7 +232,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * Verify that the input row columns are all valid.
    *
    * <p>Checks that the columns, specified in the row, are present in the table and values for all
-   * non-nullable columns are specified. It also changes the input row by unquoting input column names
+   * non-nullable columns are specified. It also changes the input row by unquoting input column
+   * names
    *
    * @param row the input row
    * @param error the insert error that we return to the customer
@@ -254,12 +255,13 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     }
 
     /**
-     * In-place replace all items in the input map => column names are replaced with unquoted column names
+     * In-place replace all items in the input map => column names are replaced with unquoted column
+     * names
      */
     for (Map.Entry<String, String> entry : inputColNamesMap.entrySet()) {
       String unquotedColName = entry.getKey();
       String userInputColName = entry.getValue();
-      
+
       Object value = row.remove(userInputColName);
       row.put(unquotedColName, value);
     }
@@ -444,7 +446,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param statsMap column stats map
    * @return row size
    */
-  abstract float addRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap);
+  abstract float addRow(
+      Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap);
 
   /**
    * Add an input row to the temporary row buffer.
@@ -457,7 +460,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param statsMap column stats map
    * @return row size
    */
-  abstract float addTempRow(Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap);
+  abstract float addTempRow(
+      Map<String, Object> row, int curRowIndex, Map<String, RowBufferStats> statsMap);
 
   /** Move rows from the temporary buffer to the current row buffer. */
   abstract void moveTempRowsToActualBuffer(int tempRowCount);
