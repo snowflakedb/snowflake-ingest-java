@@ -23,6 +23,5 @@
     <Source><Package name="net.snowflake.client.jdbc.internal"/></Source>
     <Reason>Unknown: Likely the referenced class is not used in the jdbc package</Reason>
   </LinkageError>
-
 </LinkageCheckerFilter>
 

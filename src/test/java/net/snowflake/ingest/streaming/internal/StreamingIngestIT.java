@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -242,7 +243,13 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel[] channels =
         new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
-    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_TABLE_PREFIX + i, "CHANNEL"));
+    iter.accept(
+        i ->
+            channels[i - 1] =
+                openChannel(
+                    INTERLEAVED_TABLE_PREFIX + i,
+                    "CHANNEL",
+                    OpenChannelRequest.OnErrorOption.ABORT));
 
     iter.accept(
         i ->
@@ -266,7 +273,13 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel[] channels =
         new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
-    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_CHANNEL_TABLE, "CHANNEL_" + i));
+    iter.accept(
+        i ->
+            channels[i - 1] =
+                openChannel(
+                    INTERLEAVED_CHANNEL_TABLE,
+                    "CHANNEL_" + i,
+                    OpenChannelRequest.OnErrorOption.ABORT));
 
     iter.accept(
         i ->
@@ -916,6 +929,50 @@ public class StreamingIngestIT {
   }
 
   @Test
+  public void testFailureHalfwayThroughRowProcessing() throws Exception {
+    String tableName = "failure_halfway_through_table";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format("create or replace table %s(c1 varchar(1), c2 varchar(1));", tableName));
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, "channel1", OpenChannelRequest.OnErrorOption.CONTINUE);
+
+    // Row will be ingested
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", "b");
+    channel.insertRow(row, "offset0");
+
+    // Row will not be ingested, its contribution to nullCount and other statistics should be
+    // discarded
+    row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", "qa");
+    channel.insertRow(row, "offset1");
+
+    // Row will be ingested
+    row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", null);
+    channel.insertRow(row, "offset2");
+
+    TestUtils.waitForOffset(channel, "offset2");
+
+    jdbcConnection.createStatement().execute(String.format("alter table %s migrate;", tableName));
+
+    ResultSet rs =
+        jdbcConnection.createStatement().executeQuery(String.format("select * from %s", tableName));
+    rs.next();
+    Assert.assertEquals(null, rs.getString(1));
+    Assert.assertEquals("b", rs.getString(2));
+
+    rs.next();
+    Assert.assertEquals(null, rs.getString(1));
+    Assert.assertEquals(null, rs.getString(2));
+  }
+
+  @Test
   public void testColumnNameQuotes() throws Exception {
     final String tableName = "T_COLUMN_WITH_QUOTES";
     final String unquotedColumn = "c1"; // user name <C1>
@@ -1067,7 +1124,8 @@ public class StreamingIngestIT {
     final int startIndex = (channelNum - 1) * numberOfRows;
 
     // ingest rows
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName, channelName);
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, channelName, OpenChannelRequest.OnErrorOption.ABORT);
     for (int i = 0; i < numberOfRows; i++) {
       Map<String, Object> row = new HashMap<>();
       for (int col : columnIndexes) {
@@ -1141,13 +1199,14 @@ public class StreamingIngestIT {
     }
   }
 
-  private SnowflakeStreamingIngestChannel openChannel(String tableName, String channelName) {
+  private SnowflakeStreamingIngestChannel openChannel(
+      String tableName, String channelName, OpenChannelRequest.OnErrorOption onErrorOption) {
     OpenChannelRequest request =
         OpenChannelRequest.builder(channelName)
             .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(tableName)
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+            .setOnErrorOption(onErrorOption)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -1255,7 +1314,8 @@ public class StreamingIngestIT {
       throw new RuntimeException("Cannot create table " + tableName, e);
     }
 
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName, "CHANNEL");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, "CHANNEL", OpenChannelRequest.OnErrorOption.ABORT);
 
     Map<String, Object> negRow = getNegRow();
     verifyInsertValidationResponse(channel.insertRow(negRow, Integer.toString(0)));
