@@ -54,6 +54,7 @@
     <nimbusds.version>9.9.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.12.3</parquet.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.8.3</snappy.version>
@@ -630,26 +631,38 @@
           </excludes>
         </configuration>
       </plugin>
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>check-shaded-content</id>
-            <goals>
-              <goal>exec</goal>
-            </goals>
-            <phase>verify</phase>
-            <configuration>
-              <executable>${basedir}/scripts/check_content.sh</executable>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
   </build>
 
   <profiles>
+    <profile>
+      <id>checkShadedContent</id>
+      <activation>
+        <os>
+          <family>!Windows</family>
+        </os>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>check-shaded-content</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>verify</phase>
+                <configuration>
+                  <executable>${basedir}/scripts/check_content.sh</executable>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <profile>
       <id>shadeDep</id>
       <activation>

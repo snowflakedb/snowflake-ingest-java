@@ -287,8 +287,11 @@ public class StreamingIngestStageTest {
         StageInfo.StageType.S3, metadataWithAge.fileTransferMetadata.getStageInfo().getStageType());
     Assert.assertEquals(
         "foo/streaming_ingest/", metadataWithAge.fileTransferMetadata.getStageInfo().getLocation());
+    // Here we need to compare paths and not just strings because on windows, due to how JDBC driver
+    // works with path separators, presignedUrlFileName is absolute, but on Linux it is relative
     Assert.assertEquals(
-        "placeholder", metadataWithAge.fileTransferMetadata.getPresignedUrlFileName());
+        Paths.get("placeholder").toAbsolutePath(),
+        Paths.get(metadataWithAge.fileTransferMetadata.getPresignedUrlFileName()).toAbsolutePath());
     Assert.assertEquals(prefix + "_" + deploymentId, stage.getClientPrefix());
   }
 
