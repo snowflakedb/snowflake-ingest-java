@@ -14,7 +14,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -360,7 +360,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // concurrently modified (e.g. byte[]). Before validation and EP calculation, we must make sure
     // that defensive copies of all mutable objects are created.
     final List<Map<String, Object>> rowsCopy = new LinkedList<>();
-    rows.forEach(r -> rowsCopy.add(new HashMap<>(r)));
+    rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
 
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 

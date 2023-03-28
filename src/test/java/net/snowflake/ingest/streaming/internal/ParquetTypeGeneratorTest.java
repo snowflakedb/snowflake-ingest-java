@@ -8,11 +8,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class ParquetTypeGeneratorTest {
+  private static final int COL_ORDINAL = 11;
 
   @Test
   public void buildFieldFixedSB1() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("FIXED")
             .physicalType("SB1")
             .nullable(true)
@@ -20,10 +21,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
         .expectedLogicalTypeAnnotation(
@@ -39,7 +39,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldFixedSB2() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("FIXED")
             .physicalType("SB2")
             .nullable(false)
@@ -47,10 +47,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
         .expectedLogicalTypeAnnotation(
@@ -66,7 +65,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldFixedSB4() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("FIXED")
             .physicalType("SB4")
             .nullable(true)
@@ -74,10 +73,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
         .expectedLogicalTypeAnnotation(
@@ -93,7 +91,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldFixedSB8() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("FIXED")
             .physicalType("SB8")
             .nullable(true)
@@ -101,10 +99,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
         .expectedLogicalTypeAnnotation(
@@ -120,7 +117,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldFixedSB16() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("FIXED")
             .physicalType("SB16")
             .nullable(true)
@@ -128,10 +125,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(16)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
         .expectedLogicalTypeAnnotation(
@@ -147,7 +143,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldLobVariant() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("VARIANT")
             .physicalType("LOB")
             .nullable(true)
@@ -155,10 +151,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.stringType())
@@ -169,13 +164,13 @@ public class ParquetTypeGeneratorTest {
                 + AbstractRowBuffer.ColumnPhysicalType.LOB.getOrdinal())
         .assertMatches();
 
-    Assert.assertEquals("1", typeInfo.getMetadata().get(0 + ":obj_enc"));
+    Assert.assertEquals("1", typeInfo.getMetadata().get(COL_ORDINAL + ":obj_enc"));
   }
 
   @Test
   public void buildFieldTimestampNtzSB8() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("TIMESTAMP_NTZ")
             .physicalType("SB8")
             .nullable(true)
@@ -183,10 +178,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(testCol.getScale(), 18))
@@ -201,7 +195,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldTimestampNtzSB16() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("TIMESTAMP_NTZ")
             .physicalType("SB16")
             .nullable(true)
@@ -209,10 +203,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(16)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(testCol.getScale(), 38))
@@ -227,7 +220,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldTimestampTzSB8() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("TIMESTAMP_TZ")
             .physicalType("SB8")
             .nullable(true)
@@ -235,10 +228,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(testCol.getScale(), 18))
@@ -253,7 +245,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldTimestampTzSB16() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("TIMESTAMP_TZ")
             .physicalType("SB16")
             .nullable(true)
@@ -261,10 +253,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(16)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(testCol.getScale(), 38))
@@ -279,7 +270,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldDate() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("DATE")
             .physicalType("SB8")
             .nullable(true)
@@ -287,10 +278,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.dateType())
@@ -305,7 +295,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldTimeSB4() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("TIME")
             .physicalType("SB4")
             .nullable(true)
@@ -313,10 +303,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(4)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(testCol.getScale(), 9))
@@ -331,7 +320,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldTimeSB8() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("TIME")
             .physicalType("SB8")
             .nullable(true)
@@ -339,10 +328,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(8)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
         .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(testCol.getScale(), 18))
@@ -357,7 +345,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldBoolean() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("BOOLEAN")
             .physicalType("BINARY")
             .nullable(true)
@@ -365,10 +353,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BOOLEAN)
         .expectedLogicalTypeAnnotation(null)
@@ -383,7 +370,7 @@ public class ParquetTypeGeneratorTest {
   @Test
   public void buildFieldRealSB16() {
     ColumnMetadata testCol =
-        ColumnMetadataBuilder.newBuilder()
+        createColumnMetadataBuilder()
             .logicalType("REAL")
             .physicalType("SB16")
             .nullable(true)
@@ -391,10 +378,9 @@ public class ParquetTypeGeneratorTest {
 
     ParquetTypeGenerator.ParquetTypeInfo typeInfo =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
-    ParquetTypeInfoAssertionBuilder.newBuilder()
+    createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
-        .expectedFieldId(0)
         .expectedTypeLength(0)
         .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.DOUBLE)
         .expectedLogicalTypeAnnotation(null)
@@ -476,5 +462,13 @@ public class ParquetTypeGeneratorTest {
       Assert.assertEquals(repetition, type.getRepetition());
       Assert.assertEquals(colMetadata, metadata.get(type.getId().toString()));
     }
+  }
+
+  private static ColumnMetadataBuilder createColumnMetadataBuilder() {
+    return ColumnMetadataBuilder.newBuilder().ordinal(COL_ORDINAL);
+  }
+
+  private static ParquetTypeInfoAssertionBuilder createParquetTypeInfoAssertionBuilder() {
+    return ParquetTypeInfoAssertionBuilder.newBuilder().expectedFieldId(COL_ORDINAL);
   }
 }
