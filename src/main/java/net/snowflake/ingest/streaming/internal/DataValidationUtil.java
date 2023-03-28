@@ -91,14 +91,6 @@ class DataValidationUtil {
   }
 
   /**
-   * Creates a new SnowflakeDateTimeFormat. In order to avoid SnowflakeDateTimeFormat's
-   * synchronization blocks, we create a new instance when needed instead of sharing one instance.
-   */
-  private static SnowflakeDateTimeFormat createDateTimeFormatter() {
-    return SnowflakeDateTimeFormat.fromSqlFormat("auto");
-  }
-
-  /**
    * Validates and parses input as JSON. All types in the object tree must be valid variant types,
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
@@ -351,7 +343,7 @@ class DataValidationUtil {
     }
 
     if (input instanceof String) {
-      String stringInput = (String) input;
+      String stringInput = ((String) input).trim();
       {
         // First, try to parse ZonedDateTime
         ZonedDateTime zoned = catchParsingError(() -> ZonedDateTime.parse(stringInput));
@@ -394,13 +386,12 @@ class DataValidationUtil {
       }
 
       // Couldn't parse anything, throw an exception
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input.toString(),
           typeName,
           "Not a valid value, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
               + " for the list of supported formats");
     }
 
@@ -540,7 +531,8 @@ class DataValidationUtil {
       return BigDecimal.valueOf(((Number) input).doubleValue());
     } else if (input instanceof String) {
       try {
-        return new BigDecimal((String) input);
+        final String stringInput = ((String) input).trim();
+        return new BigDecimal(stringInput);
       } catch (NumberFormatException e) {
         throw valueFormatNotAllowedException(columnName, input, "NUMBER", "Not a valid number");
       }
@@ -590,10 +582,16 @@ class DataValidationUtil {
       String columnName, Object input, Optional<Integer> maxLengthOptional) {
     byte[] output;
     if (input instanceof byte[]) {
-      output = (byte[]) input;
+      // byte[] is a mutable object, we need to create a defensive copy to protect against
+      // concurrent modifications of the array, which could lead to mismatch between data
+      // and metadata
+      byte[] originalInputArray = (byte[]) input;
+      output = new byte[originalInputArray.length];
+      System.arraycopy(originalInputArray, 0, output, 0, originalInputArray.length);
     } else if (input instanceof String) {
       try {
-        output = Hex.decodeHex((String) input);
+        String stringInput = ((String) input).trim();
+        output = Hex.decodeHex(stringInput);
       } catch (DecoderException e) {
         throw valueFormatNotAllowedException(columnName, input, "BINARY", "Not a valid hex string");
       }
@@ -630,7 +628,7 @@ class DataValidationUtil {
     } else if (input instanceof OffsetTime) {
       return validateAndParseTime(columnName, ((OffsetTime) input).toLocalTime(), scale);
     } else if (input instanceof String) {
-      String stringInput = (String) input;
+      String stringInput = ((String) input).trim();
       {
         // First, try to parse LocalTime
         LocalTime localTime = catchParsingError(() -> LocalTime.parse(stringInput));
@@ -658,13 +656,12 @@ class DataValidationUtil {
         }
       }
 
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
           input,
           "TIME",
           "Not a valid time, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
               + " for the list of supported formats");
 
     } else {
@@ -715,7 +712,7 @@ class DataValidationUtil {
     } else if (input instanceof Number) {
       return ((Number) input).doubleValue();
     } else if (input instanceof String) {
-      String stringInput = (String) input;
+      String stringInput = ((String) input).trim();
       try {
         return Double.parseDouble(stringInput);
       } catch (NumberFormatException err) {
@@ -779,8 +776,8 @@ class DataValidationUtil {
       Sets.newHashSet("1", "0", "yes", "no", "y", "n", "t", "f", "true", "false", "on", "off");
 
   private static boolean convertStringToBoolean(String columnName, String value) {
-    String lowerCasedValue = value.toLowerCase();
-    if (!allowedBooleanStringsLowerCased.contains(lowerCasedValue)) {
+    String normalizedInput = value.toLowerCase().trim();
+    if (!allowedBooleanStringsLowerCased.contains(normalizedInput)) {
       throw valueFormatNotAllowedException(
           columnName,
           value,
@@ -789,12 +786,12 @@ class DataValidationUtil {
               + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
               + " for the list of supported formats");
     }
-    return "1".equals(lowerCasedValue)
-        || "yes".equals(lowerCasedValue)
-        || "y".equals(lowerCasedValue)
-        || "t".equals(lowerCasedValue)
-        || "true".equals(lowerCasedValue)
-        || "on".equals(lowerCasedValue);
+    return "1".equals(normalizedInput)
+        || "yes".equals(normalizedInput)
+        || "y".equals(normalizedInput)
+        || "t".equals(normalizedInput)
+        || "true".equals(normalizedInput)
+        || "on".equals(normalizedInput);
   }
 
   /**
