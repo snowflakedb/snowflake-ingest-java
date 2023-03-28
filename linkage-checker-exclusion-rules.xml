@@ -1,0 +1,27 @@
+<LinkageCheckerFilter>
+  <LinkageError>
+    <Source><Package name="com.nimbusds.jose"/></Source>
+    <Reason>Optional</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="org.conscrypt"/></Target>
+    <Reason>Optional</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="com.sun.jna"/></Target>
+    <Reason>Optional</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="org.tukaani.xz"/></Target>
+    <Reason>Optional</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="org.apache.hadoop.mapred"/></Source>
+    <Reason>Conflict due to parquet-hadoop uses provided scope of hadoo-common</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.client.jdbc.internal"/></Source>
+    <Reason>Unknown: Likely the referenced class is not used in the jdbc package</Reason>
+  </LinkageError>
+</LinkageCheckerFilter>
+

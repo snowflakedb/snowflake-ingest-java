@@ -50,6 +50,11 @@ class RowBufferStats {
     this.currentMaxLength = 0;
   }
 
+  /** Create new statistics for the same column, with all calculated values set to empty */
+  RowBufferStats forkEmpty() {
+    return new RowBufferStats(this.getColumnDisplayName(), this.getCollationDefinitionString());
+  }
+
   // TODO performance test this vs in place update
   static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
     if (!Objects.equals(left.getCollationDefinitionString(), right.collationDefinitionString)) {

@@ -22,6 +22,12 @@ class ColumnMetadata {
   private boolean nullable;
   private String collation;
 
+  /**
+   * The column ordinal is an internal id of the column used by server scanner for the column
+   * identification.
+   */
+  private Integer ordinal;
+
   @JsonProperty("name")
   void setName(String name) {
     this.name = name;
@@ -111,6 +117,15 @@ class ColumnMetadata {
 
   boolean getNullable() {
     return this.nullable;
+  }
+
+  @JsonProperty("ordinal")
+  void setOrdinal(Integer ordinal) {
+    this.ordinal = ordinal;
+  }
+
+  public Integer getOrdinal() {
+    return ordinal;
   }
 
   String getInternalName() {

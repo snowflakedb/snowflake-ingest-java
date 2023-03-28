@@ -90,9 +90,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     metadata.clear();
     metadata.put("sfVer", "1,1");
     List<Type> parquetTypes = new ArrayList<>();
-    // Snowflake column id that corresponds to the order in 'columns' received from server
-    // id is required to pack column metadata for the server scanner, e.g. decimal scale and
-    // precision
     int id = 1;
     for (ColumnMetadata column : columns) {
       validateColumnCollation(column);
@@ -182,24 +179,44 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Set<String> inputColumnNames) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
+
+    // Create new empty stats just for the current row.
+    Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
+
+    // We need to iterate twice over the row and over unquoted names, we store the value to avoid
+    // re-computation
+    Map<String, String> userInputToUnquotedColumnNameMap = new HashMap<>();
+
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
       Object value = entry.getValue();
       String columnName = LiteralQuoteUtils.unquoteColumnName(key);
+      userInputToUnquotedColumnNameMap.put(key, columnName);
       int colIndex = fieldIndex.get(columnName).getSecond();
-      RowBufferStats stats = statsMap.get(columnName);
+      RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
+      forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = fieldIndex.get(columnName).getFirst();
       ColumnDescriptor columnDescriptor = schema.getColumns().get(colIndex);
       PrimitiveType.PrimitiveTypeName typeName =
           columnDescriptor.getPrimitiveType().getPrimitiveTypeName();
       ParquetValueParser.ParquetBufferValue valueWithSize =
           ParquetValueParser.parseColumnValueToParquet(
-              value, column, typeName, stats, defaultTimezone);
+              value, column, typeName, forkedStats, defaultTimezone);
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
     out.accept(Arrays.asList(indexedRow));
 
+    // All input values passed validation, iterate over the columns again and combine their existing
+    // statistics with the forked statistics for the current row.
+    for (String userInputColumnName : row.keySet()) {
+      String columnName = userInputToUnquotedColumnNameMap.get(userInputColumnName);
+      RowBufferStats stats = statsMap.get(columnName);
+      RowBufferStats forkedStats = forkedStatsMap.get(columnName);
+      statsMap.put(columnName, RowBufferStats.getCombinedStats(stats, forkedStats));
+    }
+
+    // Increment null count for column missing in the input map
     for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
       statsMap.get(columnName).incCurrentNullCount();
     }
