@@ -317,6 +317,7 @@ public class RowBufferTest {
     InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
     Assert.assertFalse(response.hasErrors());
 
+    row = new HashMap<>();
     row.put("colTinyInt", (byte) 1);
     row.put("\"colTinyInt\"", (byte) 1);
     row.put("colSmallInt", (short) 2);
