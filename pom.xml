@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <!-- Arifact name and version information -->
@@ -35,7 +35,6 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <arrow.version>10.0.0</arrow.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
@@ -55,6 +54,7 @@
     <nimbusds.version>9.9.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.12.3</parquet.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.8.3</snappy.version>
