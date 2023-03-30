@@ -8,10 +8,6 @@
     <Reason>Optional</Reason>
   </LinkageError>
   <LinkageError>
-    <Target><Package name="com.google.crypto.tink.subtle.X25519"/></Target>
-    <Reason>Optional</Reason>
-  </LinkageError>
-  <LinkageError>
     <Target><Package name="com.google.crypto.tink.subtle"/></Target>
     <Reason>Optional</Reason>
   </LinkageError>
@@ -32,7 +28,7 @@
     <Reason>Unknown: Likely the referenced class is not used in the jdbc package</Reason>
   </LinkageError>
   <LinkageError>
-    <Source><Package name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto.impl.LegacyAESGCM"/></Source>
+    <Source><Class name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto.impl.LegacyAESGCM"/></Source>
     <Reason>Not Used, appears to be Legacy</Reason>
   </LinkageError>
   <LinkageError>
@@ -40,15 +36,11 @@
     <Reason>Not Used</Reason>
   </LinkageError>
   <LinkageError>
-    <Source><Package name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton"/></Source>
+    <Source><Package name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto.bc"/></Source>
     <Reason>Not Used</Reason>
   </LinkageError>
   <LinkageError>
-    <Source><Package name="net.snowflake.ingest.internal.com.nimbusds.jose.util.X509CertChainUtils"/></Source>
-    <Reason>Not Used</Reason>
-  </LinkageError>
-  <LinkageError>
-    <Source><Package name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto.bc.BouncyCastleFIPSProviderSingleton"/></Source>
+    <Source><Class name="net.snowflake.ingest.internal.com.nimbusds.jose.util.X509CertChainUtils"/></Source>
     <Reason>Not Used</Reason>
   </LinkageError>
 </LinkageCheckerFilter>
