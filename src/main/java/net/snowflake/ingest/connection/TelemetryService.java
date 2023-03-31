@@ -4,19 +4,22 @@
 
 package net.snowflake.ingest.connection;
 
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
-
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
-import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.client.jdbc.telemetry.TelemetryClient;
 import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
+import net.snowflake.ingest.streaming.internal.BlobMetadata;
 import net.snowflake.ingest.utils.Logging;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
 
 /**
  * Telemetry service to collect logs in the SDK and send them to Snowflake through the JDBC client
@@ -28,7 +31,8 @@ public class TelemetryService {
     STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_ms"),
     STREAMING_INGEST_CLIENT_FAILURE("streaming_ingest_client_failure"),
     STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC("streaming_ingest_throughput_bytes_per_sec"),
-    STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage");
+    STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage"),
+    STREAMING_INGEST_ALL_BLOB_LATENCIES("streaming_ingest_all_blob_latencies");
 
     private final String name;
 
@@ -53,6 +57,11 @@ public class TelemetryService {
   private static final String MEDIAN = "median";
   private static final String MEAN = "mean";
   private static final String PERCENTILE99TH = "99thPercentile";
+  private static final String BUILD_LATENCY_MS = "build_latency_ms";
+  private static final String FLUSH_LATENCY_MS = "flush_latency_ms";
+  private static final String REGISTER_LATENCY_MS = "register_latency_ms";
+  private static final String UPLOAD_LATENCY_MS = "upload_latency_ms";
+  private static final String IS_VALID_BLOBS = "is_valid_blobs";
   private final TelemetryClient telemetry;
   private final String clientName;
 
@@ -73,7 +82,8 @@ public class TelemetryService {
     this.telemetry.close();
   }
 
-  /** Report the Streaming Ingest latency metrics */
+  /** Reports aggregated the Streaming Ingest latency metrics */
+  // TODO @rcheng question - can I rename the telemetry method and type to reportAggregatedLatencyInSec?
   public void reportLatencyInSec(
       Timer buildLatency, Timer uploadLatency, Timer registerLatency, Timer flushLatency) {
     if (flushLatency.getCount() > 0) {
@@ -84,6 +94,14 @@ public class TelemetryService {
       msg.set("flush_latency_ms", buildMsgFromTimer(flushLatency));
       send(TelemetryType.STREAMING_INGEST_LATENCY_IN_SEC, msg);
     }
+  }
+
+  // TODO @rcheng question - is it useful to report all the blob metadata here, or just latencies?
+  public void reportAllBlobLatenciesInSec(List<BlobMetadata> blobs, boolean isValid) {
+    ObjectNode msg = MAPPER.createObjectNode();
+    msg.put(IS_VALID_BLOBS, isValid);
+    blobs.forEach(blob -> msg.set(blob.getPath(), this.buildLatenciesFromBlob(blob)));
+    send(TelemetryType.STREAMING_INGEST_ALL_BLOB_LATENCIES, msg);
   }
 
   /** Report the Streaming Ingest failure metrics */
@@ -144,6 +162,15 @@ public class TelemetryService {
     msg.put(MEDIAN, TimeUnit.NANOSECONDS.toMillis((long) buildSnapshot.getMedian()));
     msg.put(
         PERCENTILE99TH, TimeUnit.NANOSECONDS.toMillis((long) buildSnapshot.get99thPercentile()));
+    return msg;
+  }
+
+  private ObjectNode buildLatenciesFromBlob(BlobMetadata blob) {
+    ObjectNode msg = MAPPER.createObjectNode();
+    msg.put(BUILD_LATENCY_MS, blob.getBuildLatencyMs());
+    msg.put(FLUSH_LATENCY_MS, blob.getFlushLatencyMs());
+    msg.put(REGISTER_LATENCY_MS, blob.getRegisterLatencyMs());
+    msg.put(UPLOAD_LATENCY_MS, blob.getUploadLatencyMs());
     return msg;
   }
 

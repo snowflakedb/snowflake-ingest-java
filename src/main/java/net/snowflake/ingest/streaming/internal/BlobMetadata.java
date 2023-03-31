@@ -6,16 +6,25 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.List;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 
+import java.util.List;
+
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
-class BlobMetadata {
+public class BlobMetadata {
+  public static final long DEFAULT_LATENCY_MS = -1;
+
   private final String path;
   private final String md5;
   private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
+
+  // latency stats, default to -1
+  private long buildLatencyMs = DEFAULT_LATENCY_MS;
+  private long uploadLatencyMs = DEFAULT_LATENCY_MS;
+  private long registerLatencyMs = DEFAULT_LATENCY_MS;
+  private long flushLatencyMs = DEFAULT_LATENCY_MS;
 
   BlobMetadata(String path, String md5, List<ChunkMetadata> chunks) {
     this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks);
@@ -35,7 +44,7 @@ class BlobMetadata {
   }
 
   @JsonProperty("path")
-  String getPath() {
+  public String getPath() {
     return this.path;
   }
 
@@ -52,6 +61,39 @@ class BlobMetadata {
   @JsonProperty("bdec_version")
   byte getVersionByte() {
     return bdecVersion.toByte();
+  }
+
+  // TODO: @rcheng question - do these need @jsonproperties?
+  public long getBuildLatencyMs() {
+    return this.buildLatencyMs;
+  }
+
+  public long getFlushLatencyMs() {
+    return this.flushLatencyMs;
+  }
+
+  public long getRegisterLatencyMs() {
+    return this.registerLatencyMs;
+  }
+
+  public long getUploadLatencyMs() {
+    return this.uploadLatencyMs;
+  }
+
+  void setBuildLatencyMs(long buildLatencyMs) {
+    this.buildLatencyMs = buildLatencyMs;
+  }
+
+  void setUploadLatencyMs(long uploadLatencyMs) {
+    this.uploadLatencyMs = uploadLatencyMs;
+  }
+
+  void setRegisterLatencyMs(long registerLatencyMs) {
+    this.registerLatencyMs = registerLatencyMs;
+  }
+
+  void setFlushLatencyMs(long flushLatencyMs) {
+    this.flushLatencyMs = flushLatencyMs;
   }
 
   /** Create {@link BlobMetadata}. */

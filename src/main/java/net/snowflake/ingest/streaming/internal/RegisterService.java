@@ -4,10 +4,12 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
-
 import com.codahale.metrics.Timer;
+import net.snowflake.ingest.connection.TelemetryService;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.Utils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +19,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.Utils;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 /**
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
@@ -78,11 +80,12 @@ class RegisterService<T> {
    * Register the blobs to Snowflake. This method is called serially from a single thread to ensure
    * the ordering is maintained across independent blobs in the same channel.
    *
-   * @param latencyTimerContextMap the map that stores the latency timer for each blob
+   * @param flushLatencyTimerContextMap the map that stores the flush latency timer for each blob
    * @return a list of blob names that have errors during registration
    */
-  List<FlushService.BlobData<T>> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap) {
+  List<FlushService.BlobData<T>> registerBlobs(Map<String, Timer.Context> flushLatencyTimerContextMap) {
     List<FlushService.BlobData<T>> errorBlobs = new ArrayList<>();
+    TelemetryService telemetryService = this.owningClient.getTelemetryService();
     if (!this.blobsList.isEmpty()) {
       // Will skip and try again later if someone else is holding the lock
       if (this.blobsListLock.tryLock()) {
@@ -171,10 +174,9 @@ class RegisterService<T> {
                       e.getCause() == null ? null : e.getCause().getMessage(),
                       getStackTrace(e.getCause()));
               logger.logError(errorMessage);
-              if (this.owningClient.getTelemetryService() != null) {
-                this.owningClient
-                    .getTelemetryService()
-                    .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+              // TODO: @rcheng question - should i try another telemetryservice get here?
+              if (telemetryService != null) {
+                telemetryService.reportClientFailure(this.getClass().getSimpleName(), errorMessage);
               }
               this.owningClient
                   .getFlushService()
@@ -200,20 +202,25 @@ class RegisterService<T> {
             this.owningClient.registerBlobs(blobs);
 
             if (registerContext != null) {
-              registerContext.stop();
+              long allBlobRegisterLatencyMs = registerContext.stop();
               blobs.forEach(
                   blob ->
-                      latencyTimerContextMap.computeIfPresent(
+                      flushLatencyTimerContextMap.computeIfPresent(
                           blob.getPath(),
                           (k, v) -> {
-                            v.stop();
+                            long flushLatency = v.stop();
+                            blob.setFlushLatencyMs(flushLatency);
+                            blob.setRegisterLatencyMs(allBlobRegisterLatencyMs);
                             return null;
                           }));
             }
           }
+
+          telemetryService.reportAllBlobLatenciesInSec(blobs, true);
         }
       }
     }
+    // TODO @rcheng question - do we want whatever latencies we can get from error blobs too?
     return errorBlobs;
   }
 

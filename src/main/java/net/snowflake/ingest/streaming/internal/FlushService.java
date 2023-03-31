@@ -4,14 +4,21 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
-
 import com.codahale.metrics.Timer;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.util.VisibleForTesting;
+import org.apache.arrow.vector.VectorSchemaRoot;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -35,19 +42,13 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -118,7 +119,7 @@ class FlushService<T> {
   private final boolean isTestMode;
 
   // A map which stores the timer for each blob in order to capture the flush latency
-  private final Map<String, Timer.Context> latencyTimerContextMap;
+  private final Map<String, Timer.Context> flushLatencyTimerContextMap;
 
   // blob file version
   private final Constants.BdecVersion bdecVersion;
@@ -143,7 +144,7 @@ class FlushService<T> {
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
-    this.latencyTimerContextMap = new ConcurrentHashMap<>();
+    this.flushLatencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
     createWorkers();
   }
@@ -176,7 +177,7 @@ class FlushService<T> {
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
-    this.latencyTimerContextMap = new HashMap<>();
+    this.flushLatencyTimerContextMap = new HashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
     createWorkers();
   }
@@ -243,7 +244,7 @@ class FlushService<T> {
    */
   private CompletableFuture<Void> registerFuture() {
     return CompletableFuture.runAsync(
-        () -> this.registerService.registerBlobs(latencyTimerContextMap), this.registerWorker);
+        () -> this.registerService.registerBlobs(flushLatencyTimerContextMap), this.registerWorker);
   }
 
   /**
@@ -414,7 +415,7 @@ class FlushService<T> {
         this.counter.decrementAndGet();
       } else {
         if (this.owningClient.flushLatency != null) {
-          latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
+          flushLatencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
         }
         blobs.add(
             new Pair<>(
@@ -484,13 +485,18 @@ class FlushService<T> {
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
+    long blobBuildLatencyMs = BlobMetadata.DEFAULT_LATENCY_MS;
 
     // Construct the blob along with the metadata of the blob
     BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
     if (buildContext != null) {
-      buildContext.stop();
+      blobBuildLatencyMs = buildContext.stop();
     }
-    return upload(filePath, blob.blobBytes, blob.chunksMetadataList);
+
+    BlobMetadata uploadedBlob = upload(filePath, blob.blobBytes, blob.chunksMetadataList);
+    uploadedBlob.setBuildLatencyMs(blobBuildLatencyMs);
+
+    return uploadedBlob;
   }
 
   /**
@@ -507,11 +513,12 @@ class FlushService<T> {
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
+    long blobUploadLatencyMs = BlobMetadata.DEFAULT_LATENCY_MS;
 
     this.targetStage.put(filePath, blob);
 
     if (uploadContext != null) {
-      uploadContext.stop();
+      blobUploadLatencyMs = uploadContext.stop();
       this.owningClient.uploadThroughput.mark(blob.length);
       this.owningClient.blobSizeHistogram.update(blob.length);
       this.owningClient.blobRowCountHistogram.update(
@@ -524,8 +531,11 @@ class FlushService<T> {
         blob.length,
         System.currentTimeMillis() - startTime);
 
-    return BlobMetadata.createBlobMetadata(
+    BlobMetadata blobMetadata = BlobMetadata.createBlobMetadata(
         filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
+    blobMetadata.setUploadLatencyMs(blobUploadLatencyMs);
+
+    return blobMetadata;
   }
 
   /**
