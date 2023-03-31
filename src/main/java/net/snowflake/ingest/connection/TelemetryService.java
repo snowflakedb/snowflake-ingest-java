@@ -4,10 +4,14 @@
 
 package net.snowflake.ingest.connection;
 
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
+
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
@@ -15,11 +19,6 @@ import net.snowflake.client.jdbc.telemetry.TelemetryClient;
 import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
 import net.snowflake.ingest.streaming.internal.BlobMetadata;
 import net.snowflake.ingest.utils.Logging;
-
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
 
 /**
  * Telemetry service to collect logs in the SDK and send them to Snowflake through the JDBC client
@@ -83,7 +82,8 @@ public class TelemetryService {
   }
 
   /** Reports aggregated the Streaming Ingest latency metrics */
-  // TODO @rcheng question - can I rename the telemetry method and type to reportAggregatedLatencyInSec?
+  // TODO @rcheng question - can I rename the telemetry method and type to
+  // reportAggregatedLatencyInSec?
   public void reportLatencyInSec(
       Timer buildLatency, Timer uploadLatency, Timer registerLatency, Timer flushLatency) {
     if (flushLatency.getCount() > 0) {
