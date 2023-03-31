@@ -47,7 +47,7 @@ public class ParameterProvider {
    * Constructor. Takes properties from profile file and properties from client constructor and
    * resolves final parameter value
    *
-   * @param parameterOverrides Map<String, Object> of parameter name -> value
+   * @param parameterOverrides Map of parameter name to value
    * @param props Properties from profile file
    */
   public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
