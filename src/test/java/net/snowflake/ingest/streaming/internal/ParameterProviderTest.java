@@ -16,6 +16,7 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS, 7L);
     parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 10);
     parameterMap.put(ParameterProvider.BLOB_UPLOAD_MAX_RETRY_COUNT, 100);
@@ -25,6 +26,7 @@ public class ParameterProviderTest {
     Assert.assertEquals(3L, parameterProvider.getBufferFlushIntervalInMs());
     Assert.assertEquals(4L, parameterProvider.getBufferFlushCheckIntervalInMs());
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
+    Assert.assertEquals(1024, parameterProvider.getInsertThrottleThresholdInBytes());
     Assert.assertEquals(7L, parameterProvider.getInsertThrottleIntervalInMs());
     Assert.assertEquals(10, parameterProvider.getIOTimeCpuRatio());
     Assert.assertEquals(100, parameterProvider.getBlobUploadMaxRetryCount());
@@ -37,11 +39,13 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, null);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
+    Assert.assertEquals(1024, parameterProvider.getInsertThrottleThresholdInBytes());
     Assert.assertEquals(
         ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getInsertThrottleIntervalInMs());
@@ -53,11 +57,13 @@ public class ParameterProviderTest {
     props.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
     props.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
     props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
+    props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
     ParameterProvider parameterProvider = new ParameterProvider(null, props);
 
     Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
+    Assert.assertEquals(1024, parameterProvider.getInsertThrottleThresholdInBytes());
     Assert.assertEquals(
         ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getInsertThrottleIntervalInMs());
@@ -77,6 +83,9 @@ public class ParameterProviderTest {
         ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT,
         parameterProvider.getInsertThrottleThresholdInPercentage());
     Assert.assertEquals(
+        ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT,
+        parameterProvider.getInsertThrottleThresholdInBytes());
+    Assert.assertEquals(
         ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getInsertThrottleIntervalInMs());
   }
@@ -94,6 +103,9 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT,
         parameterProvider.getInsertThrottleThresholdInPercentage());
+    Assert.assertEquals(
+        ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT,
+        parameterProvider.getInsertThrottleThresholdInBytes());
     Assert.assertEquals(
         ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getInsertThrottleIntervalInMs());
