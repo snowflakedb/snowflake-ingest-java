@@ -4,11 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.codahale.metrics.Timer;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.Utils;
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
+import com.codahale.metrics.Timer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +17,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.Utils;
 
 /**
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
@@ -83,7 +82,8 @@ class RegisterService<T> {
    * @param flushJobStartTime When the flush job began
    * @return a list of blob names that have errors during registration
    */
-  List<FlushService.BlobData<T>> registerBlobs(Map<String, Timer.Context> latencyTimerContextMap, long flushJobStartTime) {
+  List<FlushService.BlobData<T>> registerBlobs(
+      Map<String, Timer.Context> latencyTimerContextMap, long flushJobStartTime) {
     List<FlushService.BlobData<T>> errorBlobs = new ArrayList<>();
     if (!this.blobsList.isEmpty()) {
       // Will skip and try again later if someone else is holding the lock

@@ -4,21 +4,14 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.codahale.metrics.Timer;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
+import com.codahale.metrics.Timer;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -42,13 +35,19 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.util.VisibleForTesting;
+import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -239,13 +238,14 @@ class FlushService<T> {
 
   /**
    * Registers blobs with Snowflake
-   * @param flushJobStartTime When the flush job began
    *
+   * @param flushJobStartTime When the flush job began
    * @return
    */
   private CompletableFuture<Void> registerFuture(long flushJobStartTime) {
     return CompletableFuture.runAsync(
-        () -> this.registerService.registerBlobs(latencyTimerContextMap, flushJobStartTime), this.registerWorker);
+        () -> this.registerService.registerBlobs(latencyTimerContextMap, flushJobStartTime),
+        this.registerWorker);
   }
 
   /**
@@ -492,9 +492,10 @@ class FlushService<T> {
     // Construct the blob along with the metadata of the blob
     BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
 
-    return buildContext != null ?
-      upload(filePath, blob.blobBytes, blob.chunksMetadataList, buildContext.stop()) :
-      upload(filePath, blob.blobBytes, blob.chunksMetadataList, BlobMetadata.DEFAULT_BLOB_LATENCY);
+    return buildContext != null
+        ? upload(filePath, blob.blobBytes, blob.chunksMetadataList, buildContext.stop())
+        : upload(
+            filePath, blob.blobBytes, blob.chunksMetadataList, BlobMetadata.DEFAULT_BLOB_LATENCY);
   }
 
   /**
@@ -506,7 +507,8 @@ class FlushService<T> {
    * @param buildLatencyMs the build latency for the blob
    * @return BlobMetadata object used to create the register blob request
    */
-  BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata, long buildLatencyMs)
+  BlobMetadata upload(
+      String filePath, byte[] blob, List<ChunkMetadata> metadata, long buildLatencyMs)
       throws NoSuchAlgorithmException {
     logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
     long startTime = System.currentTimeMillis();
@@ -517,10 +519,10 @@ class FlushService<T> {
     this.targetStage.put(filePath, blob);
 
     logger.logInfo(
-            "Finish uploading file={}, size={}, timeInMillis={}",
-            filePath,
-            blob.length,
-            System.currentTimeMillis() - startTime);
+        "Finish uploading file={}, size={}, timeInMillis={}",
+        filePath,
+        blob.length,
+        System.currentTimeMillis() - startTime);
 
     if (uploadContext != null) {
       uploadLatencyMs = uploadContext.stop();
@@ -531,7 +533,12 @@ class FlushService<T> {
     }
 
     return BlobMetadata.createBlobMetadata(
-        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, buildLatencyMs, uploadLatencyMs);
+        filePath,
+        BlobBuilder.computeMD5(blob),
+        bdecVersion,
+        metadata,
+        buildLatencyMs,
+        uploadLatencyMs);
   }
 
   /**
