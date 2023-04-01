@@ -4,6 +4,57 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
+import com.codahale.metrics.Slf4jReporter;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.jmx.JmxReporter;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.connection.TelemetryService;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.HttpUtil;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
+
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import java.io.IOException;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
@@ -25,56 +76,6 @@ import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_JVM_MEMORY
 import static net.snowflake.ingest.utils.Constants.SNOWPIPE_STREAMING_SHARED_METRICS_REGISTRY;
 import static net.snowflake.ingest.utils.Constants.STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC;
 import static net.snowflake.ingest.utils.Constants.USER;
-
-import com.codahale.metrics.Histogram;
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.SharedMetricRegistries;
-import com.codahale.metrics.Slf4jReporter;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.jmx.JmxReporter;
-import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
-import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.ingest.connection.IngestResponseException;
-import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.TelemetryService;
-import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.HttpUtil;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.ParameterProvider;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -404,9 +405,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * Register the uploaded blobs to a Snowflake table
    *
    * @param blobs list of uploaded blobs
+   * @param flushJobStartTime When the flush job began
    */
-  void registerBlobs(List<BlobMetadata> blobs) {
-    this.registerBlobs(blobs, 0);
+  void registerBlobs(List<BlobMetadata> blobs, long flushJobStartTime) {
+    this.registerBlobs(blobs, 0, flushJobStartTime);
   }
 
   /**
@@ -414,8 +416,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    *
    * @param blobs list of uploaded blobs
    * @param executionCount Number of times this call has been attempted, used to track retries
+   * @param flushJobStartTime When the flush job began
    */
-  void registerBlobs(List<BlobMetadata> blobs, final int executionCount) {
+  void registerBlobs(List<BlobMetadata> blobs, final int executionCount, long flushJobStartTime) {
     logger.logInfo(
         "Register blob request preparing for blob={}, client={}, executionCount={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
@@ -429,6 +432,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
       payload.put("blobs", blobs);
       payload.put("role", this.role);
+      payload.put("flush_start_timestamp", flushJobStartTime);
+      payload.put("register_start_timestamp", System.currentTimeMillis());
 
       response =
           executeWithRetries(
@@ -520,7 +525,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to retry queue full chunks");
       }
       sleepForRetry(executionCount);
-      this.registerBlobs(retryBlobs, executionCount + 1);
+      this.registerBlobs(retryBlobs, executionCount + 1, flushJobStartTime);
     }
   }
 
@@ -572,7 +577,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                     blobMetadata.getPath(),
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),
-                    relevantChunks));
+                    relevantChunks,
+                    blobMetadata.getBuildLatencyMs(),
+                    blobMetadata.getUploadLatencyMs()));
           }
         });
 
