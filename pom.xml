@@ -51,6 +51,7 @@
     <jacoco.version>0.8.5</jacoco.version>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <net.minidev.version>2.4.9</net.minidev.version>
     <netty.version>4.1.82.Final</netty.version>
     <nimbusds.version>9.9.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
@@ -111,6 +112,11 @@
         <groupId>io.netty</groupId>
         <artifactId>netty-common</artifactId>
         <version>${netty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+        <version>${net.minidev.version}</version>
       </dependency>
       <dependency>
         <groupId>net.snowflake</groupId>
