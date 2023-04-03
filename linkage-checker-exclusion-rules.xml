@@ -24,8 +24,20 @@
     <Reason>Conflict due to parquet-hadoop uses provided scope of hadoo-common</Reason>
   </LinkageError>
   <LinkageError>
+    <Target><Package name="org.apache.hadoop.security.authentication"/></Target>
+    <Reason>We do not need hadoop authentication</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="org.apache.hadoop.util.PlatformName"/></Target>
+    <Reason>Relates to security/SSL pulled in by hadoop-auth, not used</Reason>
+  </LinkageError>
+  <LinkageError>
     <Target><Package name="net.snowflake.ingest.internal.apache.hadoop.mapreduce"/></Target>
     <Reason>There is no way we use mapreduce in this SDK</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.apache.hadoop.zookeeper"/></Target>
+    <Reason>There is no way we use Zookeeper in this SDK</Reason>
   </LinkageError>
   <LinkageError>
     <Source><Package name="net.snowflake.client.jdbc.internal"/></Source>
@@ -132,6 +144,14 @@
     <Reason>Not Used</Reason>
   </LinkageError>
   <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.apache.zookeeper"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="org.apache.zookeeper"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
     <Target><Package name="net.snowflake.ingest.internal.fasterxml.jackson.jaxrs"/></Target>
     <Reason>Not Used</Reason>
   </LinkageError>
@@ -184,7 +204,19 @@
     <Reason>Not Used</Reason>
   </LinkageError>
   <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.commons.compress.harmony"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
     <Target><Package name="net.snowflake.ingest.internal.apache.hadoop.mapred"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.apache.hadoop.security"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.net.objectweb"/></Target>
     <Reason>Not Used</Reason>
   </LinkageError>
   <LinkageError>
@@ -218,5 +250,29 @@
   <LinkageError>
     <Target><Class name="com.sun.msv.reader.trex.ng.RELAXNGReader"/></Target>
     <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.log"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="org.apache.hadoop.log.LogLevel"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="org.apache.hadoop.log.metrics.EventCounter"/></Source>
+    <Reason></Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="org.apache.hadoop.log.metrics.Log4Json"/></Source>
+    <Reason></Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="org.apache.log4j"/></Target>
+    <Reason></Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.apache.log4j"/></Target>
+    <Reason></Reason>
   </LinkageError>
 </LinkageCheckerFilter>
