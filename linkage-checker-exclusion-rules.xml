@@ -24,11 +24,15 @@
     <Reason>Conflict due to parquet-hadoop uses provided scope of hadoo-common</Reason>
   </LinkageError>
   <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.apache.hadoop.mapreduce"/></Target>
+    <Reason>There is no way we use mapreduce in this SDK</Reason>
+  </LinkageError>
+  <LinkageError>
     <Source><Package name="net.snowflake.client.jdbc.internal"/></Source>
     <Reason>Unknown: Likely the referenced class is not used in the jdbc package</Reason>
   </LinkageError>
   <LinkageError>
-    <Source><Class name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto.impl.LegacyAESGCM"/></Source>
+    <Source><Package name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto"/></Source>
     <Reason>Not Used, appears to be Legacy</Reason>
   </LinkageError>
   <LinkageError>
@@ -36,12 +40,183 @@
     <Reason>Not Used</Reason>
   </LinkageError>
   <LinkageError>
-    <Source><Package name="net.snowflake.ingest.internal.com.nimbusds.jose.crypto.bc"/></Source>
-    <Reason>Not Used</Reason>
-  </LinkageError>
-  <LinkageError>
     <Source><Class name="net.snowflake.ingest.internal.com.nimbusds.jose.util.X509CertChainUtils"/></Source>
     <Reason>Not Used</Reason>
   </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.commons.configuration2"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.metrics2"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.fs"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.fs"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="net.snowflake.ingest.internal.apache.hadoop.crypto.key.KeyShell "/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.security"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.ipc"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.net"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="net.snowflake.ingest.internal.apache.conf.StorageSize"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="net.snowflake.ingest.internal.apache.commons.text.lookup.DateStringLookup"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.commons.lang3"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.classification"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.yetus"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="net.snowflake.ingest.internal.apache.commons.lang3.time.FastDateFormat"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.hadoop.io.nativeio"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="net.snowflake.ingest.internal.apache.commons.text"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="net.snowflake.ingest.internal.apache.commons.lang3.SystemUtils"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="net.snowflake.ingest.internal.apache.commons.lang3.StringUtils"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="net.snowflake.ingest.internal.apache.commons.lang3.builder.EqualsBuilder"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="net.snowflake.ingest.internal.apache.commons.lang3.builder.HashCodeBuilder"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="javax.activation.MimetypesFileTypeMap"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="org.eclipse.jetty"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.fasterxml.jackson.jaxrs"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="com.sun.jersey.json.impl.MoxyXmlStructure"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="com.sun.xml.bind.v2.runtime.output"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Package name="com.sun.xml.bind.v2.runtime.unmarshaller"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="net.snowflake.ingest.internal.apache.commons.logging.impl.LogKitLogger"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="org.joda.time.DateMidnight"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="org.joda.time.DateMidnight"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="org.codehaus.jackson.map.ext.JodaSerializers"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="org.codehaus.jackson.map.ext.JodaDeserializers"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="net.snowflake.ingest.internal.com.nimbusds.jwt.ReadOnlyJWTClaimsSet"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="jcraft.jsch.jcraft.Compression"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="org.brotli.dec.BrotliInputStream"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Source><Class name="com.ctc.wstx.msv.GenericMsvValidator"/></Source>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="net.snowflake.ingest.internal.apache.hadoop.mapred"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Package name="com.sun.msv.verifier.regexp.xmlschema"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="com.sun.javadoc.DocErrorReporter"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="com.sun.msv.reader.xmlschema.XMLSchemaReader"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="com.sun.msv.verifier.regexp.xmlschema.XSREDocDecl"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="com.sun.msv.reader.util.IgnoreController"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="com.jcraft.jzlib.ZStream"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="com.sun.msv.verifier.regexp.REDocumentDeclaration"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
+  <LinkageError>
+    <Target><Class name="com.sun.msv.reader.trex.ng.RELAXNGReader"/></Target>
+    <Reason>Not Used</Reason>
+  </LinkageError>
 </LinkageCheckerFilter>
-
