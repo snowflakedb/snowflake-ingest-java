@@ -130,7 +130,6 @@ public class RowBufferTest {
         "test.buffer",
         rs -> {},
         initialState,
-        true,
         enableParquetMemoryOptimization);
   }
 
