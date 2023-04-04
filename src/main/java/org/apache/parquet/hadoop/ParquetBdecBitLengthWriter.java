@@ -22,6 +22,7 @@ public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
     public ParquetBdecBitLengthWriter(BufferAllocator allocator) {
         super(allocator);
         this.bufferedValues = 0;
+        reset();
     }
 
     @Override
