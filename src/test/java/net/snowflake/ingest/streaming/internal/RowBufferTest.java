@@ -38,13 +38,13 @@ public class RowBufferTest {
   }
 
   private final Constants.BdecVersion bdecVersion;
-  private final boolean enableParquetMemoryOptimization;
+  private final ParquetRowBuffer.BufferingType parquetBufferingType;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
 
   public RowBufferTest(@SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
     this.bdecVersion = bdecVersion;
-    this.enableParquetMemoryOptimization = false;
+    this.parquetBufferingType = ParquetRowBuffer.BufferingType.HEAP;
   }
 
   @Before
@@ -129,7 +129,7 @@ public class RowBufferTest {
         rs -> {},
         initialState,
         true,
-        enableParquetMemoryOptimization);
+        parquetBufferingType);
   }
 
   @Test

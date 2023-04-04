@@ -1,5 +1,8 @@
 package net.snowflake.ingest.utils;
 
+import net.snowflake.ingest.streaming.internal.ParquetRowBuffer;
+import net.snowflake.ingest.streaming.internal.ParquetRowBuffer.BufferingType;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -24,6 +27,9 @@ public class ParameterProvider {
   public static final String ENABLE_PARQUET_INTERNAL_BUFFERING =
       "ENABLE_PARQUET_INTERNAL_BUFFERING".toLowerCase();
 
+  public static final String PARQUET_INTERNAL_BUFFERING_TYPE =
+          "PARQUET_INTERNAL_BUFFERING_TYPE".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
@@ -39,6 +45,8 @@ public class ParameterProvider {
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
   public static final boolean ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT = false;
+
+  public static final BufferingType PARQUET_INTERNAL_BUFFERING_TYPE_DEFAULT = BufferingType.PARQUET_BUFFERS;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -126,6 +134,12 @@ public class ParameterProvider {
         ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
         parameterOverrides,
         props);
+
+    this.updateValue(
+            PARQUET_INTERNAL_BUFFERING_TYPE,
+            PARQUET_INTERNAL_BUFFERING_TYPE_DEFAULT,
+            parameterOverrides,
+            props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -238,6 +252,13 @@ public class ParameterProvider {
         this.parameterMap.getOrDefault(
             ENABLE_PARQUET_INTERNAL_BUFFERING, ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
+  }
+
+  public BufferingType getParquetInternalBufferingType() {
+    Object val =
+            this.parameterMap.getOrDefault(
+                    PARQUET_INTERNAL_BUFFERING_TYPE, PARQUET_INTERNAL_BUFFERING_TYPE_DEFAULT);
+    return (val instanceof String) ? BufferingType.valueOf((String) val) : (BufferingType) val;
   }
 
   @Override

@@ -13,6 +13,9 @@ import javax.annotation.Nullable;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.parquet.column.impl.EmptyParquetBdecColumnWriter;
+import org.apache.parquet.column.impl.ParquetBdecColumnWriter;
+import org.apache.parquet.column.impl.ParquetBdecColumnWriterImpl;
 import org.apache.parquet.schema.PrimitiveType;
 
 /** Parses a user column value into Parquet internal representation for buffering. */
@@ -68,6 +71,16 @@ class ParquetValueParser {
     }
   }
 
+  static ParquetBufferValue parseColumnValueToParquet(
+          Object value,
+          ColumnMetadata columnMetadata,
+          PrimitiveType.PrimitiveTypeName typeName,
+          RowBufferStats stats,
+          ZoneId defaultTimezone) {
+    return parseColumnValueToParquet(
+            value, columnMetadata, typeName, stats, defaultTimezone, EmptyParquetBdecColumnWriter.INSTANCE);
+  }
+
   /**
    * Parses a user column value into Parquet internal representation for buffering.
    *
@@ -82,7 +95,8 @@ class ParquetValueParser {
       ColumnMetadata columnMetadata,
       PrimitiveType.PrimitiveTypeName typeName,
       RowBufferStats stats,
-      ZoneId defaultTimezone) {
+      ZoneId defaultTimezone,
+      ParquetBdecColumnWriter columnWriter) {
     Utils.assertNotNull("Parquet column stats", stats);
     float estimatedParquetSize = 0F;
     estimatedParquetSize += DEFINITION_LEVEL_ENCODING_BYTE_LEN;
@@ -96,6 +110,7 @@ class ParquetValueParser {
           int intValue =
               DataValidationUtil.validateAndParseBoolean(columnMetadata.getName(), value);
           value = intValue > 0;
+          columnWriter.write(intValue > 0);
           stats.addIntValue(BigInteger.valueOf(intValue));
           estimatedParquetSize += BIT_ENCODING_BYTE_LEN;
           break;
@@ -108,6 +123,7 @@ class ParquetValueParser {
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType);
+          columnWriter.write(intVal);
           value = intVal;
           stats.addIntValue(BigInteger.valueOf(intVal));
           estimatedParquetSize += 4;
@@ -123,6 +139,7 @@ class ParquetValueParser {
                   physicalType,
                   defaultTimezone);
           value = longValue;
+          columnWriter.write(longValue);
           stats.addIntValue(BigInteger.valueOf(longValue));
           estimatedParquetSize += 8;
           break;
@@ -130,17 +147,21 @@ class ParquetValueParser {
           double doubleValue =
               DataValidationUtil.validateAndParseReal(columnMetadata.getName(), value);
           value = doubleValue;
+          columnWriter.write(doubleValue);
           stats.addRealValue(doubleValue);
           estimatedParquetSize += 8;
           break;
         case BINARY:
           int length = 0;
           if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
-            value = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
+            byte[] bytes = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
+            value = bytes;
+            columnWriter.write(bytes);
             length = ((byte[]) value).length;
           } else {
             String str = getBinaryValue(value, stats, columnMetadata);
             value = str;
+            columnWriter.write(str);
             if (str != null) {
               length = str.getBytes().length;
             }
@@ -174,6 +195,7 @@ class ParquetValueParser {
         throw new SFException(
             ErrorCode.INVALID_ROW, columnMetadata.getName(), "Passed null to non nullable field");
       }
+      columnWriter.writeNull();
       stats.incCurrentNullCount();
     }
 

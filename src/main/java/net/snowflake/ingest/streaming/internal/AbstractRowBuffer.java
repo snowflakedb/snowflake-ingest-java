@@ -553,7 +553,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
       boolean bufferForTests,
-      boolean enableParquetMemoryOptimization) {
+      ParquetRowBuffer.BufferingType parquetBufferingType) {
     switch (bdecVersion) {
       case ONE:
         //noinspection unchecked
@@ -576,7 +576,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 rowSizeMetric,
                 channelRuntimeState,
                 bufferForTests,
-                enableParquetMemoryOptimization);
+                parquetBufferingType);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
