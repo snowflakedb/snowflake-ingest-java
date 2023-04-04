@@ -4,6 +4,9 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.io.ParquetEncodingException;
+
+import java.io.IOException;
 
 public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
     private boolean previousValue;
@@ -71,7 +74,7 @@ public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
 
         // We have not seen enough repeats to justify an rle-run yet,
         // so buffer this value in case we decide to write a bit-packed-run
-        bufferedValues = (byte)(value ? bufferedValues & (1 << numBufferedValues) : bufferedValues & ~(1 << numBufferedValues));
+        bufferedValues = (byte)(value ? bufferedValues | (1 << numBufferedValues) : bufferedValues & ~(1 << numBufferedValues));
         ++numBufferedValues;
 
         if (numBufferedValues == 8) {
@@ -92,8 +95,8 @@ public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
         if (bitPackedRunHeaderPointer == -1) {
             // this is a new bit-packed-run, allocate a byte for the header
             // and keep a "pointer" to it so that it can be mutated later
-            writeByteInternal((byte)0); // write a sentinel value
             bitPackedRunHeaderPointer = valueBuffer.writerIndex();
+            writeByteInternal((byte)0); // write a sentinel value
         }
 
         writeByteInternal(bufferedValues);
@@ -137,7 +140,7 @@ public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
         // write the rle-header (lsb of 0 signifies a rle run)
         writeUnsignedVarInt(repeatCount << 1);
         // write the repeated-value
-        writeIntInternal((previousValue ? 1 : 0) & 0xFF);
+        writeByteInternal((byte) ((previousValue ? 1 : 0) & 0xFF));
 
         // reset the repeat count
         repeatCount = 0;
@@ -148,10 +151,10 @@ public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
 
     private void writeUnsignedVarInt(int value) {
         while ((value & 0xFFFFFF80) != 0L) {
-            writeIntInternal((value & 0x7F) | 0x80);
+            writeByteInternal((byte) ((value & 0x7F) | 0x80));
             value >>>= 7;
         }
-        writeIntInternal(value & 0x7F);
+        writeByteInternal((byte) (value & 0x7F));
     }
 
     private void writeByteInternal(byte b) {
@@ -168,14 +171,12 @@ public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
 
     @Override
     public BytesInput getBytes() {
-        Preconditions.checkArgument(!toBytesCalled,
-                "You cannot call toBytes() more than once without calling reset()");
-
         // write anything that is buffered / queued up for an rle-run
         if (repeatCount >= 8) {
             writeRleRun();
         } else if(numBufferedValues > 0) {
-            bufferedValues = 0;
+            // clear not buffered values
+            bufferedValues &= (byte)((0xFF) >> (8 - numBufferedValues));
             writeOrAppendBitPackedRun();
             endPreviousBitPackedRun();
         } else {
@@ -183,7 +184,9 @@ public class ParquetBdecBitLengthWriter extends ParquetBdecValueWriter {
         }
 
         toBytesCalled = true;
-        return super.getBytes();
+        // prepend the length of the column
+        BytesInput rle = super.getBytes();
+        return BytesInput.concat(BytesInput.fromInt(Math.toIntExact(rle.size())), rle);
     }
 
     @Override

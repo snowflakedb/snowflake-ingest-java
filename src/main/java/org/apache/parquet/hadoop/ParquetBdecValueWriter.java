@@ -70,6 +70,7 @@ public class ParquetBdecValueWriter extends ValuesWriter {
 
             final ArrowBuf newBuf = allocator.buffer(newAllocationSize);
             newBuf.setBytes(0, valueBuffer, 0, valueBuffer.capacity());
+            newBuf.writerIndex(valueBuffer.writerIndex());
             valueBuffer.getReferenceManager().release();
             valueBuffer = newBuf;
         }

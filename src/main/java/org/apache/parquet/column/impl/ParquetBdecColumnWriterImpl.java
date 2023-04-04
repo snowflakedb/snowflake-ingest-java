@@ -5,6 +5,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
+import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.hadoop.ParquetBdecBitLengthWriter;
 import org.apache.parquet.hadoop.ParquetBdecPlainValueWriter;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -19,28 +20,29 @@ import static org.apache.parquet.bytes.BytesInput.concat;
 public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
     private static final Logger LOG = LoggerFactory.getLogger(ParquetBdecColumnWriterImpl.class);
 
-    // By default, Debugging disabled this way (using the "if (DEBUG)" IN the methods) to allow
+    // By default, Debugging disabled this way (using the "//if (DEBUG)" IN the methods) to allow
     // the java compiler (not the JIT) to remove the unused statements during build time.
     private static final boolean DEBUG = false;
 
     private Statistics<?> statistics;
     final ColumnDescriptor path;
     final PageWriter pageWriter;
-    private final ParquetBdecBitLengthWriter repetitionLevelColumn;
-    private final ParquetBdecBitLengthWriter definitionLevelColumn;
+    private final ValuesWriter repetitionLevelColumn;
+    private final ValuesWriter definitionLevelColumn;
     private final ParquetBdecPlainValueWriter dataColumn;
     private int valueCount;
 
     private int pageRowCount;
 
-    public ParquetBdecColumnWriterImpl(ColumnDescriptor path, PageWriter pageWriter,
+    public ParquetBdecColumnWriterImpl(ColumnDescriptor path,
+                                       PageWriter pageWriter,
                                        BufferAllocator allocator) {
         this.path = path;
         this.pageWriter = pageWriter;
         resetStatistics();
 
-        this.repetitionLevelColumn = new ParquetBdecBitLengthWriter(allocator);
-        this.definitionLevelColumn = new ParquetBdecBitLengthWriter(allocator);
+        this.repetitionLevelColumn = path.getMaxRepetitionLevel() == 0 ? new DevNullValuesWriter() : new ParquetBdecBitLengthWriter(allocator);
+        this.definitionLevelColumn = path.getMaxDefinitionLevel() == 0 ? new DevNullValuesWriter() : new ParquetBdecBitLengthWriter(allocator);
         this.dataColumn = new ParquetBdecPlainValueWriter(allocator);
     }
 
@@ -57,7 +59,7 @@ public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
      */
     @Override
     public void writeNull() {
-        repetitionLevelColumn.writeBoolean(false);
+        //repetitionLevelColumn.writeBoolean(false);
         definitionLevelColumn.writeBoolean(false);
         ++pageRowCount;
         //statistics.incrementNumNulls();
@@ -85,10 +87,10 @@ public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
      */
     @Override
     public void write(double value) {
-        if (DEBUG)
-            log(value);
-        repetitionLevelColumn.writeBoolean(false);
-        definitionLevelColumn.writeBoolean(true);
+        //if (DEBUG)
+            //log(value);
+        //repetitionLevelColumn.writeBoolean(false);
+        //definitionLevelColumn.writeBoolean(true);
         ++pageRowCount;
         dataColumn.writeDouble(value);
         //statistics.updateStats(value);
@@ -100,10 +102,10 @@ public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
      */
     @Override
     public void write(float value) {
-        if (DEBUG)
-            log(value);
-        repetitionLevelColumn.writeBoolean(false);
-        definitionLevelColumn.writeBoolean(true);
+        //if (DEBUG)
+            //log(value);
+        //repetitionLevelColumn.writeBoolean(false);
+        //definitionLevelColumn.writeBoolean(true);
         ++pageRowCount;
         dataColumn.writeFloat(value);
         //statistics.updateStats(value);
@@ -112,13 +114,13 @@ public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
 
     @Override
     public void write(byte[] value) {
-        if (DEBUG)
-            log(value);
-        repetitionLevelColumn.writeBoolean(false);
-        definitionLevelColumn.writeBoolean(true);
+        //if (DEBUG)
+            //log(value);
+        //repetitionLevelColumn.writeBoolean(false);
+        //definitionLevelColumn.writeBoolean(true);
         ++pageRowCount;
         dataColumn.writeBytes(value);
-        //statistics.updateStats(value);
+        //statistics.updateStats(Binary.fromConstantByteArray(value));
         ++valueCount;
     }
 
@@ -132,10 +134,10 @@ public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
      */
     @Override
     public void write(boolean value) {
-        if (DEBUG)
-            log(value);
-        repetitionLevelColumn.writeBoolean(false);
-        definitionLevelColumn.writeBoolean(true);
+        //if (DEBUG)
+            //log(value);
+        //repetitionLevelColumn.writeBoolean(false);
+        //definitionLevelColumn.writeBoolean(true);
         ++pageRowCount;
         dataColumn.writeBoolean(value);
         //statistics.updateStats(value);
@@ -147,10 +149,10 @@ public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
      */
     @Override
     public void write(int value) {
-        if (DEBUG)
-            log(value);
-        repetitionLevelColumn.writeBoolean(false);
-        definitionLevelColumn.writeBoolean(true);
+        //if (DEBUG)
+            //log(value);
+        //repetitionLevelColumn.writeBoolean(false);
+        //definitionLevelColumn.writeBoolean(true);
         ++pageRowCount;
         dataColumn.writeInteger(value);
         //statistics.updateStats(value);
@@ -162,10 +164,10 @@ public class ParquetBdecColumnWriterImpl implements ParquetBdecColumnWriter {
      */
     @Override
     public void write(long value) {
-        if (DEBUG)
-            log(value);
-        repetitionLevelColumn.writeBoolean(false);
-        definitionLevelColumn.writeBoolean(true);
+        //if (DEBUG)
+            //log(value);
+        //repetitionLevelColumn.writeBoolean(false);
+        //definitionLevelColumn.writeBoolean(true);
         ++pageRowCount;
         dataColumn.writeLong(value);
         //statistics.updateStats(value);

@@ -22,40 +22,40 @@ public class ParquetBdecPlainValueWriter extends ParquetBdecValueWriter {
 
     @Override
     public void writeBoolean(boolean v) {
-        int dataLength = LEN_BYTE_WIDTH + 1;
-        handleSafe(valueBuffer.writerIndex(), dataLength);
-        BitVectorHelper.setBit(valueBuffer, index);
+        handleSafe(valueBuffer.writerIndex(), 1);
+        if (v) {
+            BitVectorHelper.setBit(valueBuffer, index);
+        } else {
+            BitVectorHelper.unsetBit(valueBuffer, index);
+        }
+        valueBuffer.writerIndex((index / 8) + 1);
         index++;
     }
 
     @Override
     public void writeInteger(int v) {
-        int dataLength = LEN_BYTE_WIDTH + Integer.BYTES;
-        handleSafe(valueBuffer.writerIndex(), dataLength);
+        handleSafe(valueBuffer.writerIndex(), Integer.BYTES);
         valueBuffer.writeInt(v);
         index++;
     }
 
     @Override
     public void writeLong(long v) {
-        int dataLength = LEN_BYTE_WIDTH + Long.BYTES;
-        handleSafe(valueBuffer.writerIndex(), dataLength);
+        handleSafe(valueBuffer.writerIndex(), Long.BYTES);
         valueBuffer.writeLong(v);
         index++;
     }
 
     @Override
     public void writeDouble(double v) {
-        int dataLength = LEN_BYTE_WIDTH + Double.BYTES;
-        handleSafe(valueBuffer.writerIndex(), dataLength);
+        handleSafe(valueBuffer.writerIndex(), Double.BYTES);
         valueBuffer.writeDouble(v);
         index++;
     }
 
     @Override
     public void writeFloat(float v) {
-        int dataLength = LEN_BYTE_WIDTH + Float.BYTES;
-        handleSafe(valueBuffer.writerIndex(), dataLength);
+        handleSafe(valueBuffer.writerIndex(), Float.BYTES);
         valueBuffer.writeFloat(v);
         index++;
     }
