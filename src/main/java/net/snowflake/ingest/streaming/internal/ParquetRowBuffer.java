@@ -23,10 +23,8 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -37,11 +35,9 @@ import org.apache.parquet.schema.Type;
  * converted to Parquet format for faster processing
  */
 public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
-  private static final Logging logger = new Logging(ParquetRowBuffer.class);
-
   private static final String PARQUET_MESSAGE_TYPE_NAME = "bdec";
 
-  private final Map<String, Pair<ColumnMetadata, Integer>> fieldIndex;
+  private final Map<String, ParquetColumn> fieldIndex;
 
   /* map that contains metadata like typeinfo for columns and other information needed by the server scanner */
   private final Map<String, String> metadata;
@@ -56,7 +52,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private final String channelName;
 
   private MessageType schema;
-  private final boolean bufferForTests;
   private final boolean enableParquetInternalBuffering;
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
@@ -66,7 +61,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean bufferForTests,
       boolean enableParquetInternalBuffering) {
     super(
         onErrorOption,
@@ -80,7 +74,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     data = new ArrayList<>();
     tempData = new ArrayList<>();
     channelName = fullyQualifiedChannelName;
-    this.bufferForTests = bufferForTests;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
   }
 
@@ -97,7 +90,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
           ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
       parquetTypes.add(typeInfo.getParquetType());
       this.metadata.putAll(typeInfo.getMetadata());
-      fieldIndex.put(column.getInternalName(), new Pair<>(column, parquetTypes.size() - 1));
+      fieldIndex.put(column.getInternalName(), new ParquetColumn(column, parquetTypes.size() - 1, typeInfo.getParquetType().asPrimitiveType().getPrimitiveTypeName()));
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
@@ -192,16 +185,13 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Object value = entry.getValue();
       String columnName = LiteralQuoteUtils.unquoteColumnName(key);
       userInputToUnquotedColumnNameMap.put(key, columnName);
-      int colIndex = fieldIndex.get(columnName).getSecond();
+      ParquetColumn parquetColumn = fieldIndex.get(columnName);
+      int colIndex = parquetColumn.index;
       RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
       forkedStatsMap.put(columnName, forkedStats);
-      ColumnMetadata column = fieldIndex.get(columnName).getFirst();
-      ColumnDescriptor columnDescriptor = schema.getColumns().get(colIndex);
-      PrimitiveType.PrimitiveTypeName typeName =
-          columnDescriptor.getPrimitiveType().getPrimitiveTypeName();
-      ParquetValueParser.ParquetBufferValue valueWithSize =
-          ParquetValueParser.parseColumnValueToParquet(
-              value, column, typeName, forkedStats, defaultTimezone);
+      ColumnMetadata column = parquetColumn.columnMetadata;
+      ParquetValueParser.ParquetBufferValue valueWithSize = ParquetValueParser.parseColumnValueToParquet(
+              value, column, parquetColumn.type, forkedStats, defaultTimezone);
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
@@ -260,9 +250,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     if (data == null) {
       return null;
     }
-    int colIndex = fieldIndex.get(column).getSecond();
+    int colIndex = fieldIndex.get(column).index;
     Object value = data.get(index).get(colIndex);
-    ColumnMetadata columnMetadata = fieldIndex.get(column).getFirst();
+    ColumnMetadata columnMetadata = fieldIndex.get(column).columnMetadata;
     String physicalTypeStr = columnMetadata.getPhysicalType();
     ColumnPhysicalType physicalType = ColumnPhysicalType.valueOf(physicalTypeStr);
     String logicalTypeStr = columnMetadata.getLogicalType();
@@ -312,5 +302,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   @Override
   public Flusher<ParquetChunkData> createFlusher() {
     return new ParquetFlusher(schema, enableParquetInternalBuffering);
+  }
+
+  private static class ParquetColumn {
+    final ColumnMetadata columnMetadata;
+    final int index;
+    final PrimitiveType.PrimitiveTypeName type;
+
+    private ParquetColumn(ColumnMetadata columnMetadata, int index, PrimitiveType.PrimitiveTypeName type) {
+      this.columnMetadata = columnMetadata;
+      this.index = index;
+      this.type = type;
+    }
   }
 }
