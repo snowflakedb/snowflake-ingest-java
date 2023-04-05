@@ -4,24 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
-import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
-import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
-import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
-import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
@@ -40,6 +22,25 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
+
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
+import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
+import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
+import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
@@ -396,7 +397,7 @@ class StreamingIngestStage {
 
     InputStream input = new ByteArrayInputStream(data);
     try {
-      String stageLocation = this.fileTransferMetadataWithAge.localLocation;
+      String stageLocation =  this.fileTransferMetadataWithAge.localLocation; 
       File destFile = Paths.get(stageLocation, fullFilePath).toFile();
       FileUtils.copyInputStreamToFile(input, destFile);
     } catch (Exception ex) {

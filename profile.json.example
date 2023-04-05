@@ -1,15 +1,15 @@
 {
-  "user": "user name",
-  "url": "https://account_name.snowflakecomputing.com:443",
-  "account": "account_name",
-  "private_key": "PEM Private Key",
-  "port": 443,
-  "host": "account_name.snowflakecomputing.com",
-  "schema": "schema",
+  "user": "admin",
+  "url": "http://snowflake.dev.local:8082/",
+  "account": "snowflake",
+  "private_key": "MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCsFG3wgtImSV01sl3dbvNotwPTbFiOWz/W1zo/exO840uNyI1VYQ++Dzfxw5Vpp7KwELmPD8xZC0S4FmfYxSJa293qHDYM5sVnH4VYl/Jx5y8rubL9Ye1KQGgW7+uW7O/vgUzlwakMnwVd6Yrr9mPM1HF/E6uTPppi9sTgiylOwZb5CKoctXmZyi3oemotK7r797id+612HSNPxgmrdp6Sj7ckDDABnchTe8JqDTcAlupJApZCUSywZg15LB/lBiGJrGFp0MaxtrvZl1sr+OEqCflKyiRsjvVRnF9YOHu2Msa6FG3/xcUTkNDK4wwiqSgzfhM2qQpwN6nD8IahPpAdAgMBAAECggEABTI8u6WHqQZQHT38naIrEX9tSyYbankQ7XDkXmReDTcj4e0rb2eV7RxSiSdpzJ32xGBM6igE+K9hbNmoWyBg0DOReO9PJoaVcW6/PRShipT7lKtv3zzkyHg3bHHkQFN5T1ctNkbpzurCY7qYqlVvYBEOOFMkvDaIvPJMsaciITGkqtK8nI64BMKH2zR8pZt4ZgIczN5PojXjbhqubWnaIWEle+AOV08BQJoH/63nxZj6uKq8UnER0jPp2Hz/+bHFPv6McYrweo+VFI6OaLTAWk8UKGqoMVkJISaDb/uBiM6vISEJkLKqRE1zeaz+cBWQSy0fCDmgAmGKybq8xpvWdQKBgQDV42p6CESyyriWS7U2iQ+cP/W4NOEfQCS0BZ1ss5rrrDAKK2lxUgNdQiwfmH1V801dNaLosvb+0UtNQQI6kG47BneFvw/1OT/2CE0GqAO7HvY3qIgy/+WaICZEUVV0mE82+irX0Wi0SusBx1qVtkOe/orjU/JdlaRtSVhkYF+GFwKBgQDN9b5Xfv0vZdRTeYpc5Oc2NzhbWhVyEpaOmGfuEEVQbaWL+2lpQyf+MuhUmCOtX3ZEjSuMSr3hYrI5Hg2iwB95wK2fPrCELdD7WpYjdGnzlfO+mDEMM3SlSpphEy7k7PaV2onmrRrWtMNUwPtyiFZ7RRDpmWlrAnm7FeK1Sfnv6wKBgGexJMGcmJGFLg/PDD8wG11ItLtlB267DhAoWLWGLSjsBS4o9al2dSMVHYcDyl+M4Ii7pArkGFJY7QS663Ww53++FtvEUNw1sQh55b3AXm6tB/jbv4vZ+1nJFEQymhc4b87bYUHXx8cAOwZVu1ixT/8YsASdgfZUwa4pzKx8/FJpAoGBAIp77Aok5tSR4ZxnIrOnbhe0NX6nKbhT60viCi+2XQThVOi0mYIfl6qCTFllGsgeYgVh7qAcOWRs2m0xWfXOvNs+xP9IRaP6soPvuvgH9J3Ge+fxqTkM+CeT7A3NukBPXNYR5ZtnVZ58WMKKKAgwyAWGwQJxFsLPHU7APnmrThUVAoGBAM8MUDbaWWITWjQmdx44spukPJ/tt5bPMocarJbb9htPLgqZtpun+uHoBRjbSweJf1jDe/mKTgClR93ZjZG69TnbGQwrKnxZv1Hn1NY7kUnPb+uYs4miGr9tjQ48xAOlcyzfrU1UPXWlWkDFN9GicaNasa11F3npvf8MUBI8d8So",
+  "port": 8082,
+  "host": "snowflake.dev.local",
+  "schema": "PUBLIC",
   "scheme": "https",
-  "database": "database_name",
-  "connect_string": "jdbc:snowflake://account_name.snowflakecomputing.com:443",
+  "database": "REPLICATION",
+  "connect_string": "jdbc:snowflake://snowflake.dev.local:8082",
   "ssl": "on",
-  "warehouse": "warehouse_name",
-  "role": "role_name"
+  "warehouse": "compute_service_warehouse",
+  "role": "accountadmin"
 }

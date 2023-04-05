@@ -6,17 +6,18 @@ package net.snowflake.ingest.streaming.example;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
-import net.snowflake.ingest.streaming.InsertValidationResponse;
-import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 
 /**
  * Example on how to use the Streaming Ingest client APIs.
@@ -27,8 +28,9 @@ public class SnowflakeStreamingIngestExample {
   // Please follow the example in profile_streaming.json.example to see the required properties, or
   // if you have already set up profile.json with Snowpipe before, all you need is to add the "role"
   // property.
-  private static String PROFILE_PATH = "profile.json";
+  private static String PROFILE_PATH = "profile.json.example";
   private static final ObjectMapper mapper = new ObjectMapper();
+  private static final String TABLE_NAME = "revi_ingest_1";
 
   public static void main(String[] args) throws Exception {
     Properties props = new Properties();
@@ -47,10 +49,10 @@ public class SnowflakeStreamingIngestExample {
       // db/schema/table needs to be present
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
-          OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE")
-              .setSchemaName("MY_SCHEMA")
-              .setTableName("MY_TABLE")
+          OpenChannelRequest.builder("revi_channel")
+              .setDBName(props.getProperty("database"))
+              .setSchemaName(props.getProperty("schema"))
+              .setTableName(TABLE_NAME)
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
               .build();
@@ -78,7 +80,7 @@ public class SnowflakeStreamingIngestExample {
       // If needed, you can check the offset_token registered in Snowflake to make sure everything
       // is committed
       final int expectedOffsetTokenInSnowflake = totalRowsInTable - 1; // 0 based offset_token
-      final int maxRetries = 10;
+      final int maxRetries = 5;
       int retryCount = 0;
 
       do {
