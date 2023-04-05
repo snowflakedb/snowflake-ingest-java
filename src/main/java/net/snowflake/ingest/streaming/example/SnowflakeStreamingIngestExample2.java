@@ -41,7 +41,7 @@ public class SnowflakeStreamingIngestExample2 {
   // Below are the seeting which we can control.
 
   /** Indicates how many columns are required for the table */
-  private static final int nDataCols = 10;
+  private static final int nDataCols = 30;
   // Col len must be at least 30
   /** Indicates column length */
   private static final int dataColLen = 100;
