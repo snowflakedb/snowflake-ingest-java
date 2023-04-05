@@ -130,7 +130,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
-            false,
             owningClient != null
                 ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
                 : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
