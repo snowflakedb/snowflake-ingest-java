@@ -506,7 +506,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                       value,
                       Optional.ofNullable(maxLengthString).map(Integer::parseInt));
               Text text = new Text(str);
-              ((VarCharVector) vector).setSafe(curRowIndex, text);
+              // ((VarCharVector) vector).setSafe(curRowIndex, text);
               forkedStats.addStrValue(str);
               rowBufferSize += text.getBytes().length;
               break;
