@@ -6,7 +6,6 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
 import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
@@ -17,11 +16,8 @@ import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -34,7 +30,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -43,7 +38,6 @@ import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFa
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.util.VisibleForTesting;
@@ -333,105 +327,108 @@ class FlushService<T> {
    * off a build blob work when certain size has reached or we have reached the end
    */
   void distributeFlushTasks() {
-    Iterator<
-            Map.Entry<
-                String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
-        itr = this.channelCache.iterator();
-    List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
+    //    Iterator<
+    //            Map.Entry<
+    //                String, ConcurrentHashMap<String,
+    // SnowflakeStreamingIngestChannelInternal<T>>>>
+    //        itr = this.channelCache.iterator();
+    //    List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
+    //
+    //    while (itr.hasNext()) {
+    //      List<List<ChannelData<T>>> blobData = new ArrayList<>();
+    //      AtomicReference<Float> totalBufferSizeInBytes = new AtomicReference<>((float) 0);
+    //
+    //      final String filePath = getFilePath(this.targetStage.getClientPrefix());
+    //
+    //      // Distribute work at table level, create a new blob if reaching the blob size limit
+    //      while (itr.hasNext() && totalBufferSizeInBytes.get() <= MAX_BLOB_SIZE_IN_BYTES) {
+    //        ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
+    //            itr.next().getValue();
+    //        List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new
+    // ArrayList<>());
+    //        // Use parallel stream since getData could be the performance bottleneck when we have
+    // a high
+    //        // number of channels
+    //        table.values().parallelStream()
+    //            .forEach(
+    //                channel -> {
+    //                  if (channel.isValid()) {
+    //                    ChannelData<T> data = channel.getData(filePath);
+    //                    if (data != null) {
+    //                      channelsDataPerTable.add(data);
+    //                      totalBufferSizeInBytes.updateAndGet(v -> v + data.getBufferSize());
+    //                    }
+    //                  }
+    //                });
+    //        if (!channelsDataPerTable.isEmpty()) {
+    //          blobData.add(channelsDataPerTable);
+    //        }
+    //      }
 
-    while (itr.hasNext()) {
-      List<List<ChannelData<T>>> blobData = new ArrayList<>();
-      AtomicReference<Float> totalBufferSizeInBytes = new AtomicReference<>((float) 0);
-
-      final String filePath = getFilePath(this.targetStage.getClientPrefix());
-
-      // Distribute work at table level, create a new blob if reaching the blob size limit
-      while (itr.hasNext() && totalBufferSizeInBytes.get() <= MAX_BLOB_SIZE_IN_BYTES) {
-        ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
-            itr.next().getValue();
-        List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
-        // Use parallel stream since getData could be the performance bottleneck when we have a high
-        // number of channels
-        table.values().parallelStream()
-            .forEach(
-                channel -> {
-                  if (channel.isValid()) {
-                    ChannelData<T> data = channel.getData(filePath);
-                    if (data != null) {
-                      channelsDataPerTable.add(data);
-                      totalBufferSizeInBytes.updateAndGet(v -> v + data.getBufferSize());
-                    }
-                  }
-                });
-        if (!channelsDataPerTable.isEmpty()) {
-          blobData.add(channelsDataPerTable);
-        }
-      }
-
-      //      // Kick off a build job
-      //      if (blobData.isEmpty()) {
-      //        // we decrement the counter so that we do not have gaps in the filenames created by
-      // this
-      //        // client. See method getFilePath() below.
-      //        this.counter.decrementAndGet();
-      //      } else {
-      //        if (this.owningClient.flushLatency != null) {
-      //          latencyTimerContextMap.putIfAbsent(filePath,
-      // this.owningClient.flushLatency.time());
-      //        }
-      //        blobs.add(
-      //            new Pair<>(
-      //                new BlobData<>(filePath, blobData),
-      //                CompletableFuture.supplyAsync(
-      //                    () -> {
-      //                      try {
-      //                        return buildAndUpload(filePath, blobData);
-      //                      } catch (Throwable e) {
-      //                        Throwable ex = e.getCause() == null ? e : e.getCause();
-      //                        String errorMessage =
-      //                            String.format(
-      //                                "Building blob failed, client=%s, file=%s, exception=%s,"
-      //                                    + " detail=%s, trace=%s, all channels in the blob will
-      // be"
-      //                                    + " invalidated",
-      //                                this.owningClient.getName(),
-      //                                filePath,
-      //                                ex,
-      //                                ex.getMessage(),
-      //                                getStackTrace(ex));
-      //                        logger.logError(errorMessage);
-      //                        if (this.owningClient.getTelemetryService() != null) {
-      //                          this.owningClient
-      //                              .getTelemetryService()
-      //                              .reportClientFailure(this.getClass().getSimpleName(),
-      // errorMessage);
-      //                        }
-      //
-      //                        if (e instanceof IOException) {
-      //                          invalidateAllChannelsInBlob(blobData);
-      //                          return null;
-      //                        } else if (e instanceof NoSuchAlgorithmException) {
-      //                          throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
-      //                        } else if (e instanceof InvalidAlgorithmParameterException
-      //                            | e instanceof NoSuchPaddingException
-      //                            | e instanceof IllegalBlockSizeException
-      //                            | e instanceof BadPaddingException
-      //                            | e instanceof InvalidKeyException) {
-      //                          throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
-      //                        } else {
-      //                          throw new SFException(e, ErrorCode.INTERNAL_ERROR,
-      // e.getMessage());
-      //                        }
-      //                      }
-      //                    },
-      //                    this.buildUploadWorkers)));
-      //        logger.logInfo(
-      //            "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
-      //            this.owningClient.getName(),
-      //            filePath,
-      //            this.buildUploadWorkers.toString());
-      //      }
-    }
+    //      // Kick off a build job
+    //      if (blobData.isEmpty()) {
+    //        // we decrement the counter so that we do not have gaps in the filenames created by
+    // this
+    //        // client. See method getFilePath() below.
+    //        this.counter.decrementAndGet();
+    //      } else {
+    //        if (this.owningClient.flushLatency != null) {
+    //          latencyTimerContextMap.putIfAbsent(filePath,
+    // this.owningClient.flushLatency.time());
+    //        }
+    //        blobs.add(
+    //            new Pair<>(
+    //                new BlobData<>(filePath, blobData),
+    //                CompletableFuture.supplyAsync(
+    //                    () -> {
+    //                      try {
+    //                        return buildAndUpload(filePath, blobData);
+    //                      } catch (Throwable e) {
+    //                        Throwable ex = e.getCause() == null ? e : e.getCause();
+    //                        String errorMessage =
+    //                            String.format(
+    //                                "Building blob failed, client=%s, file=%s, exception=%s,"
+    //                                    + " detail=%s, trace=%s, all channels in the blob will
+    // be"
+    //                                    + " invalidated",
+    //                                this.owningClient.getName(),
+    //                                filePath,
+    //                                ex,
+    //                                ex.getMessage(),
+    //                                getStackTrace(ex));
+    //                        logger.logError(errorMessage);
+    //                        if (this.owningClient.getTelemetryService() != null) {
+    //                          this.owningClient
+    //                              .getTelemetryService()
+    //                              .reportClientFailure(this.getClass().getSimpleName(),
+    // errorMessage);
+    //                        }
+    //
+    //                        if (e instanceof IOException) {
+    //                          invalidateAllChannelsInBlob(blobData);
+    //                          return null;
+    //                        } else if (e instanceof NoSuchAlgorithmException) {
+    //                          throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
+    //                        } else if (e instanceof InvalidAlgorithmParameterException
+    //                            | e instanceof NoSuchPaddingException
+    //                            | e instanceof IllegalBlockSizeException
+    //                            | e instanceof BadPaddingException
+    //                            | e instanceof InvalidKeyException) {
+    //                          throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+    //                        } else {
+    //                          throw new SFException(e, ErrorCode.INTERNAL_ERROR,
+    // e.getMessage());
+    //                        }
+    //                      }
+    //                    },
+    //                    this.buildUploadWorkers)));
+    //        logger.logInfo(
+    //            "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
+    //            this.owningClient.getName(),
+    //            filePath,
+    //            this.buildUploadWorkers.toString());
+    //      }
+    // }
 
     // Add the flush task futures to the register service
     // this.registerService.addBlobs(blobs);
