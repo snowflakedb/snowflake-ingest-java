@@ -430,6 +430,14 @@
             <artifactId>metrics-jmx</artifactId>
             <version>4.2.3</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine -->
+        <!-- We need to use 2.x version, which is compatible with Java 8 -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>2.9.3</version>
+        </dependency>
     </dependencies>
 
     <profiles>
