@@ -348,6 +348,7 @@ class FlushService<T> {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
+
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
       while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
