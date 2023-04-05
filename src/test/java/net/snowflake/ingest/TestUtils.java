@@ -1,14 +1,19 @@
 package net.snowflake.ingest;
 
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
-import net.snowflake.ingest.streaming.InsertValidationResponse;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.commons.codec.binary.Base64;
-import org.junit.Assert;
+import static net.snowflake.ingest.utils.Constants.ACCOUNT;
+import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
+import static net.snowflake.ingest.utils.Constants.CONNECT_STRING;
+import static net.snowflake.ingest.utils.Constants.DATABASE;
+import static net.snowflake.ingest.utils.Constants.HOST;
+import static net.snowflake.ingest.utils.Constants.PORT;
+import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.Constants.SCHEMA;
+import static net.snowflake.ingest.utils.Constants.SCHEME;
+import static net.snowflake.ingest.utils.Constants.SSL;
+import static net.snowflake.ingest.utils.Constants.USER;
+import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
+import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -33,21 +38,15 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.Supplier;
-
-import static net.snowflake.ingest.utils.Constants.ACCOUNT;
-import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
-import static net.snowflake.ingest.utils.Constants.CONNECT_STRING;
-import static net.snowflake.ingest.utils.Constants.DATABASE;
-import static net.snowflake.ingest.utils.Constants.HOST;
-import static net.snowflake.ingest.utils.Constants.PORT;
-import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.ROLE;
-import static net.snowflake.ingest.utils.Constants.SCHEMA;
-import static net.snowflake.ingest.utils.Constants.SCHEME;
-import static net.snowflake.ingest.utils.Constants.SSL;
-import static net.snowflake.ingest.utils.Constants.USER;
-import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
-import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.commons.codec.binary.Base64;
+import org.junit.Assert;
 
 public class TestUtils {
   // profile path, follow readme for the format
