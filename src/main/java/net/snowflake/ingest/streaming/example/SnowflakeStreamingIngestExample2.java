@@ -231,42 +231,36 @@ public class SnowflakeStreamingIngestExample2 {
 
         System.out.println("aaaaaaaaa Elapsed Time in Seconds: " + watch.now(TimeUnit.SECONDS));
 
-        //        // If needed, you can check the offset_token registered in Snowflake to make sure
-        // everything
-        //        // is committed
-        //        final String expectedOffsetTokenInSnowflake = String.valueOf(numRows);
-        //        final int maxRetries = 60;
-        //        int retryCount = 0;
-        //
-        //        do {
-        //          String offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
-        //          System.out.println(
-        //
-        // "==============================================================================");
-        //          System.out.println(
-        //              "+++++++++++++++++++++++++++++++++++++++++  CURRENT OFFSET IS "
-        //                  + offsetTokenFromSnowflake);
-        //          System.out.println(
-        //
-        // "==============================================================================");
-        //          if (offsetTokenFromSnowflake != null
-        //              &&
-        // offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {
-        //            System.out.println(
-        //
-        // "==============================================================================");
-        //            System.out.println(
-        //                "+++++++++++++++++++++++++++++++++++++++++  SUCCESSFULLY inserted "
-        //                    + numRows
-        //                    + " rows");
-        //            System.out.println(
-        //
-        // "==============================================================================");
-        //            break;
-        //          }
-        //
-        //          retryCount++;
-        //        } while (true);
+        // If needed, you can check the offset_token registered in Snowflake to make sure everything
+        // is committed
+        final String expectedOffsetTokenInSnowflake = String.valueOf(numRows);
+        final int maxRetries = 60;
+        int retryCount = 0;
+
+        do {
+          String offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
+          System.out.println(
+              "==============================================================================");
+          System.out.println(
+              "+++++++++++++++++++++++++++++++++++++++++  CURRENT OFFSET IS "
+                  + offsetTokenFromSnowflake);
+          System.out.println(
+              "==============================================================================");
+          if (offsetTokenFromSnowflake != null
+              && offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {
+            System.out.println(
+                "==============================================================================");
+            System.out.println(
+                "+++++++++++++++++++++++++++++++++++++++++  SUCCESSFULLY inserted "
+                    + numRows
+                    + " rows");
+            System.out.println(
+                "==============================================================================");
+            break;
+          }
+
+          retryCount++;
+        } while (true);
         watch.stop();
         System.out.println("aaaaaaaaa Elapsed Time in Seconds: " + watch.now(TimeUnit.SECONDS));
       }

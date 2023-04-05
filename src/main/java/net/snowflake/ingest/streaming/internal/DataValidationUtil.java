@@ -13,10 +13,6 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -846,14 +842,9 @@ class DataValidationUtil {
    * UTF-16 surrogate, for example.
    */
   private static void verifyValidUtf8(String input, String columnName, String dataType) {
-    CharsetEncoder charsetEncoder =
-        StandardCharsets.UTF_8
-            .newEncoder()
-            .onMalformedInput(CodingErrorAction.REPORT)
-            .onUnmappableCharacter(CodingErrorAction.REPORT);
-    try {
-      charsetEncoder.encode(CharBuffer.wrap(input));
-    } catch (CharacterCodingException e) {
+    byte[] bytes = input.getBytes(StandardCharsets.UTF_8);
+    String roundTripStr = new String(bytes, StandardCharsets.UTF_8);
+    if (!input.equals(roundTripStr)) {
       throw valueFormatNotAllowedException(columnName, input, dataType, "Invalid Unicode string");
     }
   }
