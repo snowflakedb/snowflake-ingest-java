@@ -399,6 +399,7 @@ class StreamingIngestStage {
       String stageLocation = this.fileTransferMetadataWithAge.localLocation;
       File destFile = Paths.get(stageLocation, fullFilePath).toFile();
       FileUtils.copyInputStreamToFile(input, destFile);
+      System.out.println("Filename: " + destFile); // TODO @rcheng - remove this before merge
     } catch (Exception ex) {
       throw new SFException(ex, ErrorCode.BLOB_UPLOAD_FAILURE);
     }
