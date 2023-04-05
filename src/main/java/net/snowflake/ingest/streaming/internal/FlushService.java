@@ -368,68 +368,73 @@ class FlushService<T> {
         }
       }
 
-      // Kick off a build job
-      if (blobData.isEmpty()) {
-        // we decrement the counter so that we do not have gaps in the filenames created by this
-        // client. See method getFilePath() below.
-        this.counter.decrementAndGet();
-      } else {
-        if (this.owningClient.flushLatency != null) {
-          latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
-        }
-        blobs.add(
-            new Pair<>(
-                new BlobData<>(filePath, blobData),
-                CompletableFuture.supplyAsync(
-                    () -> {
-                      try {
-                        return buildAndUpload(filePath, blobData);
-                      } catch (Throwable e) {
-                        Throwable ex = e.getCause() == null ? e : e.getCause();
-                        String errorMessage =
-                            String.format(
-                                "Building blob failed, client=%s, file=%s, exception=%s,"
-                                    + " detail=%s, trace=%s, all channels in the blob will be"
-                                    + " invalidated",
-                                this.owningClient.getName(),
-                                filePath,
-                                ex,
-                                ex.getMessage(),
-                                getStackTrace(ex));
-                        logger.logError(errorMessage);
-                        if (this.owningClient.getTelemetryService() != null) {
-                          this.owningClient
-                              .getTelemetryService()
-                              .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
-                        }
-
-                        if (e instanceof IOException) {
-                          invalidateAllChannelsInBlob(blobData);
-                          return null;
-                        } else if (e instanceof NoSuchAlgorithmException) {
-                          throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
-                        } else if (e instanceof InvalidAlgorithmParameterException
-                            | e instanceof NoSuchPaddingException
-                            | e instanceof IllegalBlockSizeException
-                            | e instanceof BadPaddingException
-                            | e instanceof InvalidKeyException) {
-                          throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
-                        } else {
-                          throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
-                        }
-                      }
-                    },
-                    this.buildUploadWorkers)));
-        logger.logInfo(
-            "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
-            this.owningClient.getName(),
-            filePath,
-            this.buildUploadWorkers.toString());
-      }
+      //      // Kick off a build job
+      //      if (blobData.isEmpty()) {
+      //        // we decrement the counter so that we do not have gaps in the filenames created by
+      // this
+      //        // client. See method getFilePath() below.
+      //        this.counter.decrementAndGet();
+      //      } else {
+      //        if (this.owningClient.flushLatency != null) {
+      //          latencyTimerContextMap.putIfAbsent(filePath,
+      // this.owningClient.flushLatency.time());
+      //        }
+      //        blobs.add(
+      //            new Pair<>(
+      //                new BlobData<>(filePath, blobData),
+      //                CompletableFuture.supplyAsync(
+      //                    () -> {
+      //                      try {
+      //                        return buildAndUpload(filePath, blobData);
+      //                      } catch (Throwable e) {
+      //                        Throwable ex = e.getCause() == null ? e : e.getCause();
+      //                        String errorMessage =
+      //                            String.format(
+      //                                "Building blob failed, client=%s, file=%s, exception=%s,"
+      //                                    + " detail=%s, trace=%s, all channels in the blob will
+      // be"
+      //                                    + " invalidated",
+      //                                this.owningClient.getName(),
+      //                                filePath,
+      //                                ex,
+      //                                ex.getMessage(),
+      //                                getStackTrace(ex));
+      //                        logger.logError(errorMessage);
+      //                        if (this.owningClient.getTelemetryService() != null) {
+      //                          this.owningClient
+      //                              .getTelemetryService()
+      //                              .reportClientFailure(this.getClass().getSimpleName(),
+      // errorMessage);
+      //                        }
+      //
+      //                        if (e instanceof IOException) {
+      //                          invalidateAllChannelsInBlob(blobData);
+      //                          return null;
+      //                        } else if (e instanceof NoSuchAlgorithmException) {
+      //                          throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
+      //                        } else if (e instanceof InvalidAlgorithmParameterException
+      //                            | e instanceof NoSuchPaddingException
+      //                            | e instanceof IllegalBlockSizeException
+      //                            | e instanceof BadPaddingException
+      //                            | e instanceof InvalidKeyException) {
+      //                          throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+      //                        } else {
+      //                          throw new SFException(e, ErrorCode.INTERNAL_ERROR,
+      // e.getMessage());
+      //                        }
+      //                      }
+      //                    },
+      //                    this.buildUploadWorkers)));
+      //        logger.logInfo(
+      //            "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
+      //            this.owningClient.getName(),
+      //            filePath,
+      //            this.buildUploadWorkers.toString());
+      //      }
     }
 
     // Add the flush task futures to the register service
-    this.registerService.addBlobs(blobs);
+    // this.registerService.addBlobs(blobs);
   }
 
   /**
