@@ -429,7 +429,7 @@ class FlushService<T> {
     }
 
     // Add the flush task futures to the register service
-    // this.registerService.addBlobs(blobs);
+    this.registerService.addBlobs(blobs);
   }
 
   /**
