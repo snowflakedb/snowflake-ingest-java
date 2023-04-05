@@ -210,6 +210,11 @@
         <version>${codehaus.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.codehaus.jettison</groupId>
+        <artifactId>jettison</artifactId>
+        <version>1.5.1</version>
+      </dependency>
+      <dependency>
         <groupId>org.codehaus.woodstox</groupId>
         <artifactId>stax2-api</artifactId>
         <version>4.2.1</version>
