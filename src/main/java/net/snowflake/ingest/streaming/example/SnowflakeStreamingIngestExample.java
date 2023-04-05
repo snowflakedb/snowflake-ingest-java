@@ -28,7 +28,7 @@ public class SnowflakeStreamingIngestExample {
   // Please follow the example in profile_streaming.json.example to see the required properties, or
   // if you have already set up profile.json with Snowpipe before, all you need is to add the "role"
   // property.
-  private static String PROFILE_PATH = "/home/rcheng/tmp/profile.json.example";
+  private static String PROFILE_PATH = "profile.json";
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final String TABLE_NAME = "revi_ingest_1";
 
