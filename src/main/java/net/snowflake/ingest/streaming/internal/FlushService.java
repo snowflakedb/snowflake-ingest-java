@@ -494,7 +494,11 @@ class FlushService<T> {
     BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
 
     return buildContext != null
-        ? upload(filePath, blob.blobBytes, blob.chunksMetadataList, buildContext.stop())
+        ? upload(
+            filePath,
+            blob.blobBytes,
+            blob.chunksMetadataList,
+            TimeUnit.NANOSECONDS.toMillis(buildContext.stop()))
         : upload(
             filePath, blob.blobBytes, blob.chunksMetadataList, BlobMetadata.DEFAULT_BLOB_LATENCY);
   }
@@ -526,7 +530,7 @@ class FlushService<T> {
         System.currentTimeMillis() - startTime);
 
     if (uploadContext != null) {
-      uploadLatencyMs = uploadContext.stop();
+      uploadLatencyMs = TimeUnit.NANOSECONDS.toMillis(uploadContext.stop());
       this.owningClient.uploadThroughput.mark(blob.length);
       this.owningClient.blobSizeHistogram.update(blob.length);
       this.owningClient.blobRowCountHistogram.update(
