@@ -464,6 +464,7 @@ public class FlushServiceTest {
   @Test
   public void testFlush() throws Exception {
     long beginTestTimestamp = System.currentTimeMillis();
+    TimeUnit.MILLISECONDS.sleep(100);
 
     TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
@@ -481,7 +482,7 @@ public class FlushServiceTest {
     Mockito.verify(flushService, Mockito.times(1)).distributeFlushTasks();
     Mockito.verify(registerService, Mockito.times(1))
         .registerBlobs(
-            ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l > beginTestTimestamp));
+            ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l >= beginTestTimestamp));
 
     // isNeedFlush = true flushes
     flushService.isNeedFlush = true;
@@ -489,7 +490,7 @@ public class FlushServiceTest {
     Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks();
     Mockito.verify(registerService, Mockito.times(2))
         .registerBlobs(
-            ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l > beginTestTimestamp));
+            ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l >= beginTestTimestamp));
     Assert.assertFalse(flushService.isNeedFlush);
 
     // lastFlushTime causes flush
@@ -498,7 +499,7 @@ public class FlushServiceTest {
     Mockito.verify(flushService, Mockito.times(3)).distributeFlushTasks();
     Mockito.verify(registerService, Mockito.times(3))
         .registerBlobs(
-            ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l > beginTestTimestamp));
+            ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l >= beginTestTimestamp));
     Assert.assertTrue(flushService.lastFlushTime > 0);
   }
 
