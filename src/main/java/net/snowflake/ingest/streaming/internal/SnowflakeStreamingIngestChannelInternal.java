@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
@@ -428,6 +427,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   /** Check whether we have a low runtime memory condition */
   private boolean hasLowRuntimeMemory(Runtime runtime) {
+    int insertThrottleThresholdInBytes =
+        this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
     int insertThrottleThresholdInPercentage =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
     long maxMemoryLimitInBytes =
@@ -438,7 +439,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             : maxMemoryLimitInBytes;
     long freeMemory = runtime.freeMemory() + (runtime.maxMemory() - runtime.totalMemory());
     boolean hasLowRuntimeMemory =
-        freeMemory < LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES
+        freeMemory < insertThrottleThresholdInBytes
             && freeMemory * 100 / maxMemory < insertThrottleThresholdInPercentage;
     if (hasLowRuntimeMemory) {
       logger.logWarn(

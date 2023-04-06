@@ -132,7 +132,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   Timer uploadLatency; // Latency for uploading a blob
   Timer registerLatency; // Latency for registering a blob
   Meter uploadThroughput; // Throughput for uploading blobs
-  Meter inputThroughput; // Throughput for inserting into the Arrow buffer
+  Meter inputThroughput; // Throughput for inserting into the internal buffer
 
   // JVM and thread related metrics
   MetricRegistry jvmMemoryAndThreadMetrics;

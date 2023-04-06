@@ -17,7 +17,7 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
  */
 interface RowBuffer<T> {
   /**
-   * Setup the column fields and vectors using the column metadata from the server
+   * Set up the column fields and vectors using the column metadata from the server
    *
    * @param columns list of column metadata
    */
