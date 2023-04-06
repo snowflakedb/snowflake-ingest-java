@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -643,8 +644,8 @@ public class FlushServiceTest {
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
 
     Assert.assertEquals(BlobBuilder.computeMD5(blobCaptor.getValue()), blobMetadata.getMD5());
-    Assert.assertEquals(blobMetadata.getBuildLatencyMs(), expectedBuildLatencyMs);
-    Assert.assertEquals(blobMetadata.getUploadLatencyMs(), expectedUploadLatencyMs);
+    Assert.assertEquals(expectedBuildLatencyMs, blobMetadata.getBuildLatencyMs());
+    Assert.assertEquals(expectedUploadLatencyMs, blobMetadata.getUploadLatencyMs());
 
     Assert.assertEquals(
         expectedChunkEpInfo.getRowCount(), metadataResult.getEpInfo().getRowCount());
@@ -913,7 +914,7 @@ public class FlushServiceTest {
 
   private Timer setupTimer(long expectedLatencyMs) {
     Timer.Context timerContext = Mockito.mock(Timer.Context.class);
-    Mockito.when(timerContext.stop()).thenReturn(expectedLatencyMs);
+    Mockito.when(timerContext.stop()).thenReturn(TimeUnit.MILLISECONDS.toNanos(expectedLatencyMs));
     Timer timer = Mockito.mock(Timer.class);
     Mockito.when(timer.time()).thenReturn(timerContext);
 
