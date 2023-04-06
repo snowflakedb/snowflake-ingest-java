@@ -865,7 +865,8 @@ public class SnowflakeStreamingIngestClientTest {
     client.getChannelCache().addChannel(channel4);
     client.registerBlobs(blobs, flushTimestamp);
     Mockito.verify(requestBuilder, Mockito.times(MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1))
-        .generateStreamingIngestPostRequest(Mockito.contains(flushTimestamp + ""), Mockito.any(), Mockito.any());
+        .generateStreamingIngestPostRequest(
+            Mockito.contains(flushTimestamp + ""), Mockito.any(), Mockito.any());
     Assert.assertFalse(channel1.isValid());
     Assert.assertFalse(channel2.isValid());
   }
@@ -981,7 +982,8 @@ public class SnowflakeStreamingIngestClientTest {
 
     client.registerBlobs(blobs, flushTimestamp);
     Mockito.verify(requestBuilder, Mockito.times(2))
-        .generateStreamingIngestPostRequest(Mockito.contains(flushTimestamp + ""), Mockito.any(), Mockito.any());
+        .generateStreamingIngestPostRequest(
+            Mockito.contains(flushTimestamp + ""), Mockito.any(), Mockito.any());
     Assert.assertTrue(channel1.isValid());
     Assert.assertTrue(channel2.isValid());
   }

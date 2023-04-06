@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
-
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
@@ -37,8 +36,10 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -121,7 +122,13 @@ public class StreamingIngestIT {
   public void testSimpleIngest() throws Exception {
     // TODO @rcheng - dont want to change factory, so inject
     RequestBuilder requestBuilder =
-            Mockito.spy(new RequestBuilder(new SnowflakeURL(TestUtils.getAccountURL()), TestUtils.getUser(), TestUtils.getKeyPair(), HttpUtil.getHttpClient(), "testrequestbuilder"));
+        Mockito.spy(
+            new RequestBuilder(
+                new SnowflakeURL(TestUtils.getAccountURL()),
+                TestUtils.getUser(),
+                TestUtils.getKeyPair(),
+                HttpUtil.getHttpClient(),
+                "testrequestbuilder"));
     client.injectRequestBuilder(requestBuilder);
 
     OpenChannelRequest request1 =
@@ -144,9 +151,12 @@ public class StreamingIngestIT {
     channel1.close().get();
 
     // verify expected request sent to server
-    String[] expectedPayloadParams = { "request_id", "blobs", "role", "flush_start_timestamp", "register_start_timestamp" };
+    String[] expectedPayloadParams = {
+      "request_id", "blobs", "role", "flush_start_timestamp", "register_start_timestamp"
+    };
     for (String expectedParam : expectedPayloadParams) {
-      Mockito.verify(requestBuilder).generateStreamingIngestPostRequest(
+      Mockito.verify(requestBuilder)
+          .generateStreamingIngestPostRequest(
               ArgumentMatchers.contains(expectedParam),
               ArgumentMatchers.refEq(REGISTER_BLOB_ENDPOINT),
               ArgumentMatchers.refEq("register blob"));

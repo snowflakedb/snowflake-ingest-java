@@ -52,7 +52,13 @@ public class StreamingIngestUtils {
       RequestBuilder requestBuilder)
       throws IOException, IngestResponseException {
     return executeWithRetries(
-        targetClass, endpoint, getPayloadAsStr(payload, message), message, apiName, httpClient, requestBuilder);
+        targetClass,
+        endpoint,
+        getPayloadAsStr(payload, message),
+        message,
+        apiName,
+        httpClient,
+        requestBuilder);
   }
 
   static <T extends StreamingIngestResponse> T executeWithRetries(
