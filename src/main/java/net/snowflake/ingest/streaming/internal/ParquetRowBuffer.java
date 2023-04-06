@@ -156,6 +156,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     }
   }
 
+  void writeTempRow(List<Object> row) {
+    tempData.add(row);
+  }
+
   @Override
   float addTempRow(
       Map<String, Object> row,
@@ -164,7 +168,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Set<String> formattedInputColumnNames,
       long insertRowIndex) {
     return addRow(
-        row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
+        row, curRowIndex, this::writeTempRow, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   /**
