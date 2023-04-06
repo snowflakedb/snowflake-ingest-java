@@ -134,12 +134,13 @@ class FlushService<T> {
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
       StreamingIngestStage targetStage, // For testing
+      RegisterService registerService,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
     this.targetStage = targetStage;
     this.counter = new AtomicLong(0);
-    this.registerService = new RegisterService<>(client, isTestMode);
+    this.registerService = registerService;
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;

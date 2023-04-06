@@ -27,7 +27,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
-import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import net.snowflake.ingest.TestUtils;
@@ -36,7 +35,10 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
-import net.snowflake.ingest.utils.*;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,7 +46,6 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 

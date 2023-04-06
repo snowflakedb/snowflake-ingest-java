@@ -54,6 +54,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -92,6 +93,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
+    RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
@@ -103,7 +105,8 @@ public class FlushServiceTest {
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
-      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, false));
+      registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
+      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, registerService, false));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -460,28 +463,35 @@ public class FlushServiceTest {
 
   @Test
   public void testFlush() throws Exception {
+    long beginTestTimestamp = System.currentTimeMillis();
+
     TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
+    RegisterService<?> registerService = testContext.registerService;
 
     // Nothing to flush
     flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(0)).distributeFlushTasks();
+    Mockito.verify(registerService, Mockito.times(0)).registerBlobs(ArgumentMatchers.anyMap(), ArgumentMatchers.anyLong());
 
     // Force = true flushes
     flushService.flush(true).get();
     Mockito.verify(flushService).distributeFlushTasks();
     Mockito.verify(flushService, Mockito.times(1)).distributeFlushTasks();
+    Mockito.verify(registerService, Mockito.times(1)).registerBlobs(ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l > beginTestTimestamp));
 
     // isNeedFlush = true flushes
     flushService.isNeedFlush = true;
     flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks();
+    Mockito.verify(registerService, Mockito.times(2)).registerBlobs(ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l > beginTestTimestamp));
     Assert.assertFalse(flushService.isNeedFlush);
 
     // lastFlushTime causes flush
     flushService.lastFlushTime = 0;
     flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(3)).distributeFlushTasks();
+    Mockito.verify(registerService, Mockito.times(3)).registerBlobs(ArgumentMatchers.anyMap(), ArgumentMatchers.longThat(l -> l > beginTestTimestamp));
     Assert.assertTrue(flushService.lastFlushTime > 0);
   }
 
@@ -755,7 +765,7 @@ public class FlushServiceTest {
     StreamingIngestStage stage = Mockito.mock(StreamingIngestStage.class);
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     FlushService<StubChunkData> flushService =
-        new FlushService<>(client, channelCache, stage, false);
+        new FlushService<>(client, channelCache, stage, new RegisterService(client, client.isTestMode()), false);
     flushService.invalidateAllChannelsInBlob(blobData);
 
     Assert.assertFalse(channel1.isValid());
