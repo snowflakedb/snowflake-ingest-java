@@ -101,7 +101,7 @@ class DataValidationUtil {
       try {
         return objectMapper.readTree(stringInput);
       } catch (JsonProcessingException e) {
-        throw valueFormatNotAllowedException(columnName, input, snowflakeType, "Not a valid JSON");
+        throw valueFormatNotAllowedException(columnName, snowflakeType, "Not a valid JSON");
       }
     } else if (isAllowedSemiStructuredType(input)) {
       return objectMapper.valueToTree(input);
@@ -141,7 +141,6 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          output,
           "VARIANT",
           String.format(
               "Variant too long: length=%d maxLength=%d",
@@ -274,7 +273,6 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          output,
           "ARRAY",
           String.format(
               "Array too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH));
@@ -293,7 +291,7 @@ class DataValidationUtil {
   static String validateAndParseObject(String columnName, Object input) {
     JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(columnName, input, "OBJECT");
     if (!jsonNode.isObject()) {
-      throw valueFormatNotAllowedException(columnName, jsonNode, "OBJECT", "Not an object");
+      throw valueFormatNotAllowedException(columnName, "OBJECT", "Not an object");
     }
 
     String output = jsonNode.toString();
@@ -302,7 +300,6 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          output,
           "OBJECT",
           String.format(
               "Object too large. length=%d maxLength=%d",
@@ -384,7 +381,6 @@ class DataValidationUtil {
       // Couldn't parse anything, throw an exception
       throw valueFormatNotAllowedException(
           columnName,
-          input.toString(),
           typeName,
           "Not a valid value, see"
               + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
@@ -479,7 +475,6 @@ class DataValidationUtil {
     if (utf8Bytes.length > BYTES_16_MB) {
       throw valueFormatNotAllowedException(
           columnName,
-          input,
           "STRING",
           String.format(
               "String too long: length=%d bytes maxLength=%d bytes",
@@ -494,7 +489,6 @@ class DataValidationUtil {
           if (actualCharacters > maxAllowedCharacters) {
             throw valueFormatNotAllowedException(
                 columnName,
-                input,
                 "STRING",
                 String.format(
                     "String too long: length=%d characters maxLength=%d characters",
@@ -530,7 +524,7 @@ class DataValidationUtil {
         final String stringInput = ((String) input).trim();
         return new BigDecimal(stringInput);
       } catch (NumberFormatException e) {
-        throw valueFormatNotAllowedException(columnName, input, "NUMBER", "Not a valid number");
+        throw valueFormatNotAllowedException(columnName, "NUMBER", "Not a valid number");
       }
     } else {
       throw typeNotAllowedException(
@@ -589,7 +583,7 @@ class DataValidationUtil {
         String stringInput = ((String) input).trim();
         output = Hex.decodeHex(stringInput);
       } catch (DecoderException e) {
-        throw valueFormatNotAllowedException(columnName, input, "BINARY", "Not a valid hex string");
+        throw valueFormatNotAllowedException(columnName, "BINARY", "Not a valid hex string");
       }
     } else {
       throw typeNotAllowedException(
@@ -600,7 +594,6 @@ class DataValidationUtil {
     if (output.length > maxLength) {
       throw valueFormatNotAllowedException(
           columnName,
-          String.format("byte[%d]", output.length),
           "BINARY",
           String.format("Binary too long: length=%d maxLength=%d", output.length, maxLength));
     }
@@ -654,7 +647,6 @@ class DataValidationUtil {
 
       throw valueFormatNotAllowedException(
           columnName,
-          input,
           "TIME",
           "Not a valid time, see"
               + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
@@ -721,8 +713,7 @@ class DataValidationUtil {
           case "-inf":
             return Double.NEGATIVE_INFINITY;
           default:
-            throw valueFormatNotAllowedException(
-                columnName, input, "REAL", "Not a valid decimal number");
+            throw valueFormatNotAllowedException(columnName, "REAL", "Not a valid decimal number");
         }
       }
     }
@@ -776,7 +767,6 @@ class DataValidationUtil {
     if (!allowedBooleanStringsLowerCased.contains(normalizedInput)) {
       throw valueFormatNotAllowedException(
           columnName,
-          value,
           "BOOLEAN",
           "Not a valid boolean, see"
               + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
@@ -812,29 +802,20 @@ class DataValidationUtil {
    * Create exception when the Java type is correct, but the value is invalid (e.g. boolean cannot
    * be parsed from a string)
    *
-   * @param value Invalid value causing the exception
+   * <p>Note: Do not log actual Object Value
+   *
+   * @param columnName Column Name
    * @param snowflakeType Snowflake column type
+   * @param reason Reason why value format is not allowed.
+   * @return SFException is thrown
    */
   private static SFException valueFormatNotAllowedException(
-      String columnName, Object value, String snowflakeType, String reason) {
+      String columnName, String snowflakeType, String reason) {
     return new SFException(
         ErrorCode.INVALID_ROW,
-        sanitizeValueForExceptionMessage(value),
         String.format(
             "Value cannot be ingested into Snowflake column %s of type %s: %s",
             columnName, snowflakeType, reason));
-  }
-
-  /**
-   * Before passing a value to an exception string, we should limit how many characters are
-   * displayed. Important especially for "value exceeds max column size" exceptions.
-   *
-   * @param value Value to adapt for exception message
-   */
-  private static String sanitizeValueForExceptionMessage(Object value) {
-    int maxSize = 20;
-    String valueString = value.toString();
-    return valueString.length() <= maxSize ? valueString : valueString.substring(0, 20) + "...";
   }
 
   /**
@@ -845,7 +826,7 @@ class DataValidationUtil {
     String roundTripStr =
         new String(input.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
     if (!input.equals(roundTripStr)) {
-      throw valueFormatNotAllowedException(columnName, input, dataType, "Invalid Unicode string");
+      throw valueFormatNotAllowedException(columnName, dataType, "Invalid Unicode string");
     }
   }
 }
