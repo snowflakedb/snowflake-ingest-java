@@ -452,7 +452,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             int columnScale = getColumnScale(field.getMetadata());
             BigDecimal inputAsBigDecimal =
                 DataValidationUtil.validateAndParseBigDecimal(
-                    forkedStats.getColumnDisplayName(), value, 0);
+                    forkedStats.getColumnDisplayName(), value, curRowIndex);
             // vector.setSafe requires the BigDecimal input scale explicitly match its scale
             inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
@@ -511,7 +511,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseObject(
-                      forkedStats.getColumnDisplayName(), value, 0);
+                      forkedStats.getColumnDisplayName(), value, curRowIndex);
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               rowBufferSize += text.getBytes().length;
@@ -656,7 +656,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               // Expect days past the epoch
               int intValue =
                   DataValidationUtil.validateAndParseDate(
-                      forkedStats.getColumnDisplayName(), value, 0);
+                      forkedStats.getColumnDisplayName(), value, curRowIndex);
               dateDayVector.setSafe(curRowIndex, intValue);
               forkedStats.addIntValue(BigInteger.valueOf(intValue));
               rowBufferSize += 4;
