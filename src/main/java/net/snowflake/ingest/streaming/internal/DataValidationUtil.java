@@ -97,6 +97,7 @@ class DataValidationUtil {
       String columnName, Object input, String snowflakeType) {
     if (input instanceof String) {
       String stringInput = (String) input;
+      verifyValidUtf8(stringInput, columnName, snowflakeType);
       try {
         return objectMapper.readTree(stringInput);
       } catch (JsonProcessingException e) {
@@ -460,6 +461,7 @@ class DataValidationUtil {
     String output;
     if (input instanceof String) {
       output = (String) input;
+      verifyValidUtf8(output, columnName, "STRING");
     } else if (input instanceof Number) {
       output = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString();
     } else if (input instanceof Boolean || input instanceof Character) {
@@ -833,5 +835,17 @@ class DataValidationUtil {
     int maxSize = 20;
     String valueString = value.toString();
     return valueString.length() <= maxSize ? valueString : valueString.substring(0, 20) + "...";
+  }
+
+  /**
+   * Validates that a string is valid UTF-8 string. It catches situations like unmatched high/low
+   * UTF-16 surrogate, for example.
+   */
+  private static void verifyValidUtf8(String input, String columnName, String dataType) {
+    String roundTripStr =
+        new String(input.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
+    if (!input.equals(roundTripStr)) {
+      throw valueFormatNotAllowedException(columnName, input, dataType, "Invalid Unicode string");
+    }
   }
 }
