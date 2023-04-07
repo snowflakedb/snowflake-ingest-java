@@ -143,7 +143,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames) {
-    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
+    return addRow(row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames);
   }
 
   void writeRow(List<Object> row) {
@@ -160,13 +160,14 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames) {
-    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
+    return addRow(row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames);
   }
 
   /**
    * Adds a row to the parquet buffer.
    *
    * @param row row to add
+   * @param curRowIndex current row index
    * @param out internal buffer to add to
    * @param statsMap column stats map
    * @param inputColumnNames list of input column names after formatting
@@ -174,6 +175,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
    */
   private float addRow(
       Map<String, Object> row,
+      int curRowIndex,
       Consumer<List<Object>> out,
       Map<String, RowBufferStats> statsMap,
       Set<String> inputColumnNames) {
@@ -196,7 +198,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
           columnDescriptor.getPrimitiveType().getPrimitiveTypeName();
       ParquetValueParser.ParquetBufferValue valueWithSize =
           ParquetValueParser.parseColumnValueToParquet(
-              value, column, typeName, forkedStats, defaultTimezone);
+              value, column, typeName, forkedStats, defaultTimezone, curRowIndex);
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }

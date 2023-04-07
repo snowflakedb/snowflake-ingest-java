@@ -452,7 +452,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             int columnScale = getColumnScale(field.getMetadata());
             BigDecimal inputAsBigDecimal =
                 DataValidationUtil.validateAndParseBigDecimal(
-                    forkedStats.getColumnDisplayName(), value);
+                    forkedStats.getColumnDisplayName(), value, 0);
             // vector.setSafe requires the BigDecimal input scale explicitly match its scale
             inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
@@ -499,7 +499,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   DataValidationUtil.validateAndParseString(
                       forkedStats.getColumnDisplayName(),
                       value,
-                      Optional.ofNullable(maxLengthString).map(Integer::parseInt));
+                      Optional.ofNullable(maxLengthString).map(Integer::parseInt),
+                      curRowIndex);
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               forkedStats.addStrValue(str);
@@ -510,7 +511,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseObject(
-                      forkedStats.getColumnDisplayName(), value);
+                      forkedStats.getColumnDisplayName(), value, 0);
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               rowBufferSize += text.getBytes().length;
@@ -520,7 +521,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseArray(
-                      forkedStats.getColumnDisplayName(), value);
+                      forkedStats.getColumnDisplayName(), value, curRowIndex);
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(curRowIndex, text);
               rowBufferSize += text.getBytes().length;
@@ -530,7 +531,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               String str =
                   DataValidationUtil.validateAndParseVariant(
-                      forkedStats.getColumnDisplayName(), value);
+                      forkedStats.getColumnDisplayName(), value, curRowIndex);
               if (str != null) {
                 Text text = new Text(str);
                 ((VarCharVector) vector).setSafe(curRowIndex, text);
@@ -554,7 +555,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          trimTimezone);
+                          trimTimezone,
+                          curRowIndex);
                   BigInteger timestampBinary = timestampWrapper.toBinary(false);
                   bigIntVector.setSafe(curRowIndex, timestampBinary.longValue());
                   forkedStats.addIntValue(timestampBinary);
@@ -577,7 +579,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          trimTimezone);
+                          trimTimezone,
+                          curRowIndex);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   rowBufferSize += 12;
@@ -606,7 +609,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          false);
+                          false,
+                          curRowIndex);
                   epochVector.setSafe(
                       curRowIndex, timestampWrapper.toBinary(false).longValueExact());
                   timezoneVector.setSafe(curRowIndex, timestampWrapper.getTimeZoneIndex());
@@ -632,7 +636,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          false);
+                          false,
+                          curRowIndex);
                   epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
                   fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
                   timezoneVector.setSafe(curRowIndex, timestampWrapper.getTimeZoneIndex());
@@ -651,7 +656,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               // Expect days past the epoch
               int intValue =
                   DataValidationUtil.validateAndParseDate(
-                      forkedStats.getColumnDisplayName(), value);
+                      forkedStats.getColumnDisplayName(), value, 0);
               dateDayVector.setSafe(curRowIndex, intValue);
               forkedStats.addIntValue(BigInteger.valueOf(intValue));
               rowBufferSize += 4;
@@ -665,7 +670,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                       DataValidationUtil.validateAndParseTime(
                           forkedStats.getColumnDisplayName(),
                           value,
-                          getColumnScale(field.getMetadata()));
+                          getColumnScale(field.getMetadata()),
+                          curRowIndex);
                   ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
                   forkedStats.addIntValue(timeInScale);
                   rowBufferSize += 4;
@@ -677,7 +683,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                       DataValidationUtil.validateAndParseTime(
                           forkedStats.getColumnDisplayName(),
                           value,
-                          getColumnScale(field.getMetadata()));
+                          getColumnScale(field.getMetadata()),
+                          curRowIndex);
                   ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
                   forkedStats.addIntValue(timeInScale);
                   rowBufferSize += 8;
@@ -691,7 +698,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             {
               int intValue =
                   DataValidationUtil.validateAndParseBoolean(
-                      forkedStats.getColumnDisplayName(), value);
+                      forkedStats.getColumnDisplayName(), value, curRowIndex);
               ((BitVector) vector).setSafe(curRowIndex, intValue);
               rowBufferSize += 0.125;
               forkedStats.addIntValue(BigInteger.valueOf(intValue));
@@ -703,14 +710,16 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                 DataValidationUtil.validateAndParseBinary(
                     forkedStats.getColumnDisplayName(),
                     value,
-                    Optional.ofNullable(maxLengthString).map(Integer::parseInt));
+                    Optional.ofNullable(maxLengthString).map(Integer::parseInt),
+                    curRowIndex);
             ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
             forkedStats.addBinaryValue(bytes);
             rowBufferSize += bytes.length;
             break;
           case REAL:
             double doubleValue =
-                DataValidationUtil.validateAndParseReal(forkedStats.getColumnDisplayName(), value);
+                DataValidationUtil.validateAndParseReal(
+                    forkedStats.getColumnDisplayName(), value, curRowIndex);
             ((Float8Vector) vector).setSafe(curRowIndex, doubleValue);
             forkedStats.addRealValue(doubleValue);
             rowBufferSize += 8;
