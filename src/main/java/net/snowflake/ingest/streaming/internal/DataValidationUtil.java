@@ -791,14 +791,15 @@ class DataValidationUtil {
         curRowIndex);
   }
 
-  static void checkValueInRange(BigDecimal bigDecimalValue, int scale, int precision) {
+  static void checkValueInRange(
+      BigDecimal bigDecimalValue, int scale, int precision, final int curRowIndex) {
     if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
       throw new SFException(
           ErrorCode.INVALID_TYPE_ROW,
-          bigDecimalValue,
           String.format(
-              "Number out of representable exclusive range of (-1e%s..1e%s)",
-              precision - scale, precision - scale));
+              "Number out of representable exclusive range of (-1e%s..1e%s), Row Index:%s",
+              precision - scale, precision - scale),
+          curRowIndex);
     }
   }
 

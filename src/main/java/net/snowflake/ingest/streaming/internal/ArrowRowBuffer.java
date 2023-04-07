@@ -456,7 +456,8 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             // vector.setSafe requires the BigDecimal input scale explicitly match its scale
             inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
-            DataValidationUtil.checkValueInRange(inputAsBigDecimal, columnScale, columnPrecision);
+            DataValidationUtil.checkValueInRange(
+                inputAsBigDecimal, columnScale, columnPrecision, curRowIndex);
 
             if (columnScale != 0 || physicalType == ColumnPhysicalType.SB16) {
               ((DecimalVector) vector).setSafe(curRowIndex, inputAsBigDecimal);

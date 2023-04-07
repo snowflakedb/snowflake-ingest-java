@@ -221,7 +221,7 @@ class ParquetValueParser {
         BigDecimal bigDecimalValue =
             DataValidationUtil.validateAndParseBigDecimal(columnName, value, curRowIndex);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, curRowIndex);
         intVal = bigDecimalValue.intValue();
         break;
       default:
@@ -277,7 +277,7 @@ class ParquetValueParser {
         BigDecimal bigDecimalValue =
             DataValidationUtil.validateAndParseBigDecimal(columnName, value, curRowIndex);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, curRowIndex);
         longValue = bigDecimalValue.longValue();
         break;
       default:
@@ -321,7 +321,7 @@ class ParquetValueParser {
             DataValidationUtil.validateAndParseBigDecimal(columnName, value, curRowIndex);
         // explicitly match the BigDecimal input scale with the Snowflake data type scale
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, curRowIndex);
         return bigDecimalValue.unscaledValue();
       default:
         throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
