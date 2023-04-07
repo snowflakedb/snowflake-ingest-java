@@ -27,7 +27,7 @@ public class SnowflakeStreamingIngestExample {
   // Please follow the example in profile_streaming.json.example to see the required properties, or
   // if you have already set up profile.json with Snowpipe before, all you need is to add the "role"
   // property.
-  private static String PROFILE_PATH = "profile.json";
+  private static String PROFILE_PATH = "profile_streaming_qa4.json";
   private static final ObjectMapper mapper = new ObjectMapper();
 
   public static void main(String[] args) throws Exception {
@@ -47,19 +47,29 @@ public class SnowflakeStreamingIngestExample {
       // db/schema/table needs to be present
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
-          OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE")
-              .setSchemaName("MY_SCHEMA")
-              .setTableName("MY_TABLE")
+          OpenChannelRequest.builder("MY_CHANNEL_1")
+              .setDBName("streaming_repl_demo_db")
+              .setSchemaName("streaming_repl_demo_sc")
+              .setTableName("STREAMING_TABLE")
+              .setOnErrorOption(
+                  OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
+              .build();
+
+      OpenChannelRequest request2 =
+          OpenChannelRequest.builder("MY_CHANNEL_2")
+              .setDBName("streaming_repl_demo_db")
+              .setSchemaName("streaming_repl_demo_sc")
+              .setTableName("STREAMING_TABLE")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
               .build();
 
       // Open a streaming ingest channel from the given client
       SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+      SnowflakeStreamingIngestChannel channel2 = client.openChannel(request2);
 
       // Insert rows into the channel (Using insertRows API)
-      final int totalRowsInTable = 1000;
+      final int totalRowsInTable = 50;
       for (int val = 0; val < totalRowsInTable; val++) {
         Map<String, Object> row = new HashMap<>();
 
@@ -68,6 +78,13 @@ public class SnowflakeStreamingIngestExample {
 
         // Insert the row with the current offset_token
         InsertValidationResponse response = channel1.insertRow(row, String.valueOf(val));
+        InsertValidationResponse response2 = channel2.insertRow(row, String.valueOf(val));
+        Thread.sleep(50);
+        System.out.println(val);
+        if (val % 50 == 0) {
+          System.out.println("Channel1:" + channel1.getLatestCommittedOffsetToken());
+          System.out.println("Channel2:" + channel2.getLatestCommittedOffsetToken());
+        }
         if (response.hasErrors()) {
           // Simply throw if there is an exception, or you can do whatever you want with the
           // erroneous row
@@ -94,6 +111,7 @@ public class SnowflakeStreamingIngestExample {
       // Close the channel, the function internally will make sure everything is committed (or throw
       // an exception if there is any issue)
       channel1.close().get();
+      channel2.close().get();
     }
   }
 }

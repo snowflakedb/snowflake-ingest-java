@@ -815,13 +815,13 @@ public class StreamingIngestIT {
       channel.insertRow(row3, "3");
       Assert.fail("insert should fail");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_TYPE_ROW.getMessageCode(), e.getVendorCode());
     }
     try {
       channel.insertRows(Arrays.asList(row1, row2, row3), "6");
       Assert.fail("insert should fail");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_TYPE_ROW.getMessageCode(), e.getVendorCode());
     }
     Map<String, Object> row7 = new HashMap<>();
     row7.put("c1", 7);

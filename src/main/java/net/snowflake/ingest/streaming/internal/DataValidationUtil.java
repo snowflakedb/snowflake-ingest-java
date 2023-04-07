@@ -751,7 +751,7 @@ class DataValidationUtil {
   static void checkValueInRange(BigDecimal bigDecimalValue, int scale, int precision) {
     if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
       throw new SFException(
-          ErrorCode.INVALID_ROW,
+          ErrorCode.INVALID_TYPE_ROW,
           bigDecimalValue,
           String.format(
               "Number out of representable exclusive range of (-1e%s..1e%s)",
@@ -790,7 +790,7 @@ class DataValidationUtil {
   private static SFException typeNotAllowedException(
       String columnName, Class<?> javaType, String snowflakeType, String[] allowedJavaTypes) {
     return new SFException(
-        ErrorCode.INVALID_ROW,
+        ErrorCode.INVALID_TYPE_ROW,
         String.format(
             "Object of type %s cannot be ingested into Snowflake column %s of type %s",
             javaType.getName(), columnName, snowflakeType),
@@ -812,7 +812,7 @@ class DataValidationUtil {
   private static SFException valueFormatNotAllowedException(
       String columnName, String snowflakeType, String reason) {
     return new SFException(
-        ErrorCode.INVALID_ROW,
+        ErrorCode.INVALID_VALUE_ROW,
         String.format(
             "Value cannot be ingested into Snowflake column %s of type %s: %s",
             columnName, snowflakeType, reason));

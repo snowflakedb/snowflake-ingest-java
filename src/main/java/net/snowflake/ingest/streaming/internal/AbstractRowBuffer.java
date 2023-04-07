@@ -258,7 +258,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         error.setExtraColNames(extraCols);
       }
       throw new SFException(
-          ErrorCode.INVALID_ROW,
+          ErrorCode.INVALID_TYPE_ROW,
           "Extra columns: " + extraCols,
           "Columns not present in the table shouldn't be specified.");
     }
@@ -276,7 +276,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         error.setMissingNotNullColNames(missingCols);
       }
       throw new SFException(
-          ErrorCode.INVALID_ROW,
+          ErrorCode.INVALID_TYPE_ROW,
           "Missing columns: " + missingCols,
           "Values for all non-nullable columns must be specified.");
     }
