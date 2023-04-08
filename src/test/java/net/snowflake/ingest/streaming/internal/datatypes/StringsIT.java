@@ -217,7 +217,7 @@ public class StringsIT extends AbstractDataTypeTest {
       openChannel(tableName);
       Assert.fail("Opening a channel shouldn't have succeeded");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.OPEN_CHANNEL_FAILURE.getMessageCode(), e.getVendorCode());
     }
   }
 }
