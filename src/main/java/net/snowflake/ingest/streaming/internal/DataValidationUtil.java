@@ -798,8 +798,7 @@ class DataValidationUtil {
           ErrorCode.INVALID_TYPE_ROW,
           String.format(
               "Number out of representable exclusive range of (-1e%s..1e%s), Row Index:%s",
-              precision - scale, precision - scale),
-          curRowIndex);
+              precision - scale, precision - scale, curRowIndex));
     }
   }
 
