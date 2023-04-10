@@ -1314,7 +1314,7 @@ public class RowBufferTest {
     InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals(1, innerBuffer.rowCount);
+    Assert.assertEquals(1, innerBuffer.bufferRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1328,7 +1328,7 @@ public class RowBufferTest {
     response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(2, innerBuffer.bufferRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1345,7 +1345,7 @@ public class RowBufferTest {
       Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
     }
 
-    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(2, innerBuffer.bufferRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1357,7 +1357,7 @@ public class RowBufferTest {
     row3.put("COLDECIMAL", 3);
     response = innerBuffer.insertRows(Collections.singletonList(row3), "3");
     Assert.assertFalse(response.hasErrors());
-    Assert.assertEquals(3, innerBuffer.rowCount);
+    Assert.assertEquals(3, innerBuffer.bufferRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1368,7 +1368,7 @@ public class RowBufferTest {
 
     ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, data.getRowCount());
-    Assert.assertEquals(0, innerBuffer.rowCount);
+    Assert.assertEquals(0, innerBuffer.bufferRowCount);
   }
 
   @Test

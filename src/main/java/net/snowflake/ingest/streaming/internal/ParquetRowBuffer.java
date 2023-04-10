@@ -246,7 +246,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     if (!enableParquetInternalBuffering) {
       data.forEach(r -> oldData.add(new ArrayList<>(r)));
     }
-    return rowCount <= 0
+    return bufferRowCount <= 0
         ? Optional.empty()
         : Optional.of(new ParquetChunkData(oldData, bdecParquetWriter, fileOutput, metadata));
   }

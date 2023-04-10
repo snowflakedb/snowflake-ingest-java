@@ -335,7 +335,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       FieldVector from = this.tempVectorsRoot.getVector(field);
       FieldVector to = this.vectorsRoot.getVector(field);
       for (int rowIdx = 0; rowIdx < tempRowCount; rowIdx++) {
-        to.copyFromSafe(rowIdx, this.rowCount + rowIdx, from);
+        to.copyFromSafe(rowIdx, this.bufferRowCount + rowIdx, from);
       }
     }
   }
@@ -354,7 +354,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   Optional<VectorSchemaRoot> getSnapshot(final String filePath) {
     List<FieldVector> oldVectors = new ArrayList<>();
     for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
-      vector.setValueCount(this.rowCount);
+      vector.setValueCount(this.bufferRowCount);
       if (vector instanceof DecimalVector) {
         // DecimalVectors do not transfer FieldType metadata when using
         // vector.getTransferPair. We need to explicitly create the new vector to transfer to
@@ -379,7 +379,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       }
     }
     VectorSchemaRoot root = new VectorSchemaRoot(oldVectors);
-    root.setRowCount(this.rowCount);
+    root.setRowCount(this.bufferRowCount);
     return oldVectors.isEmpty() ? Optional.empty() : Optional.of(root);
   }
 

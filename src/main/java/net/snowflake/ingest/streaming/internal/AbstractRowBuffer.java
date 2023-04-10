@@ -148,7 +148,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   private final Lock flushLock;
 
   // Current row count
-  @VisibleForTesting volatile int rowCount;
+  @VisibleForTesting volatile int bufferRowCount;
 
   // Current buffer size
   private volatile float bufferSize;
@@ -188,7 +188,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.allocator = allocator;
     this.nonNullableFieldNames = new HashSet<>();
     this.flushLock = new ReentrantLock();
-    this.rowCount = 0;
+    this.bufferRowCount = 0;
     this.bufferSize = 0F;
 
     // Initialize empty stats
@@ -301,7 +301,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     InsertValidationResponse response = new InsertValidationResponse();
     this.flushLock.lock();
     try {
-      this.channelState.updateInsertStats(System.currentTimeMillis(), this.rowCount);
+      this.channelState.updateInsertStats(System.currentTimeMillis(), this.bufferRowCount);
       if (onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
         // Used to map incoming row(nth row) to InsertError(for nth row) in response
         long rowIndex = 0;
@@ -310,8 +310,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               new InsertValidationResponse.InsertError(row, rowIndex);
           try {
             Set<String> inputColumnNames = verifyInputColumns(row, error);
-            rowsSizeInBytes += addRow(row, this.rowCount, this.statsMap, inputColumnNames);
-            this.rowCount++;
+            rowsSizeInBytes += addRow(row, this.bufferRowCount, this.statsMap, inputColumnNames);
+            this.bufferRowCount++;
           } catch (SFException e) {
             error.setException(e);
             response.addError(error);
@@ -321,7 +321,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
             response.addError(error);
           }
           rowIndex++;
-          if (this.rowCount == Integer.MAX_VALUE) {
+          if (this.bufferRowCount == Integer.MAX_VALUE) {
             throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
           }
         }
@@ -338,10 +338,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         moveTempRowsToActualBuffer(tempRowCount);
 
         rowsSizeInBytes = tempRowsSizeInBytes;
-        if ((long) this.rowCount + tempRowCount >= Integer.MAX_VALUE) {
+        if ((long) this.bufferRowCount + tempRowCount >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
         }
-        this.rowCount += tempRowCount;
+        this.bufferRowCount += tempRowCount;
         this.statsMap.forEach(
             (colName, stats) ->
                 this.statsMap.put(
@@ -371,7 +371,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   @Override
   public ChannelData<T> flush(final String filePath) {
     logger.logDebug("Start get data for channel={}", channelFullyQualifiedName);
-    if (this.rowCount > 0) {
+    if (this.bufferRowCount > 0) {
       Optional<T> oldData = Optional.empty();
       int oldRowCount = 0;
       float oldBufferSize = 0F;
@@ -384,10 +384,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
       this.flushLock.lock();
       try {
-        if (this.rowCount > 0) {
+        if (this.bufferRowCount > 0) {
           // Transfer the ownership of the vectors
           oldData = getSnapshot(filePath);
-          oldRowCount = this.rowCount;
+          oldRowCount = this.bufferRowCount;
           oldBufferSize = this.bufferSize;
           oldRowSequencer = this.channelState.incrementAndGetRowSequencer();
           oldOffsetToken = this.channelState.getOffsetToken();
@@ -471,7 +471,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   /** Reset the variables after each flush. Note that the caller needs to handle synchronization. */
   void reset() {
-    this.rowCount = 0;
+    this.bufferRowCount = 0;
     this.bufferSize = 0F;
     this.statsMap.replaceAll((key, value) -> value.forkEmpty());
   }
