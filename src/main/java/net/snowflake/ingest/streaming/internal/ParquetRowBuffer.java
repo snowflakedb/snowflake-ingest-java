@@ -183,15 +183,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
 
-    // We need to iterate twice over the row and over unquoted names, we store the value to avoid
-    // re-computation
-    Map<String, String> userInputToUnquotedColumnNameMap = new HashMap<>();
-
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
       Object value = entry.getValue();
       String columnName = LiteralQuoteUtils.unquoteColumnName(key);
-      userInputToUnquotedColumnNameMap.put(key, columnName);
       int colIndex = fieldIndex.get(columnName).getSecond();
       RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
       forkedStatsMap.put(columnName, forkedStats);
@@ -209,11 +204,11 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     // All input values passed validation, iterate over the columns again and combine their existing
     // statistics with the forked statistics for the current row.
-    for (String userInputColumnName : row.keySet()) {
-      String columnName = userInputToUnquotedColumnNameMap.get(userInputColumnName);
-      RowBufferStats stats = statsMap.get(columnName);
-      RowBufferStats forkedStats = forkedStatsMap.get(columnName);
-      statsMap.put(columnName, RowBufferStats.getCombinedStats(stats, forkedStats));
+    for (Map.Entry<String, RowBufferStats> forkedColStats : forkedStatsMap.entrySet()) {
+      String columnName = forkedColStats.getKey();
+      statsMap.put(
+          columnName,
+          RowBufferStats.getCombinedStats(statsMap.get(columnName), forkedColStats.getValue()));
     }
 
     // Increment null count for column missing in the input map
