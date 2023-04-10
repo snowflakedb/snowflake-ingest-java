@@ -140,10 +140,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   @Override
   float addRow(
       Map<String, Object> row,
-      int curRowIndex,
+      int bufferedRowIndex,
       Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return addRow(row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames);
+      Set<String> formattedInputColumnNames,
+      final long insertRowIndex) {
+    return addRow(
+        row, bufferedRowIndex, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   void writeRow(List<Object> row) {
@@ -159,8 +161,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Map<String, Object> row,
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return addRow(row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames);
+      Set<String> formattedInputColumnNames,
+      long insertRowIndex) {
+    return addRow(
+        row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   /**
@@ -178,7 +182,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int curRowIndex,
       Consumer<List<Object>> out,
       Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+      Set<String> inputColumnNames,
+      final long insertRowIndex) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
 
@@ -246,7 +251,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     if (!enableParquetInternalBuffering) {
       data.forEach(r -> oldData.add(new ArrayList<>(r)));
     }
-    return bufferRowCount <= 0
+    return bufferedRowCount <= 0
         ? Optional.empty()
         : Optional.of(new ParquetChunkData(oldData, bdecParquetWriter, fileOutput, metadata));
   }
