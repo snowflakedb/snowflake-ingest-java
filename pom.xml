@@ -51,6 +51,7 @@
     <jacoco.version>0.8.5</jacoco.version>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <net.minidev.version>2.4.9</net.minidev.version>
     <netty.version>4.1.82.Final</netty.version>
     <nimbusds.version>9.9.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
@@ -113,6 +114,11 @@
         <version>${netty.version}</version>
       </dependency>
       <dependency>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+        <version>${net.minidev.version}</version>
+      </dependency>
+      <dependency>
         <groupId>net.snowflake</groupId>
         <artifactId>snowflake-jdbc</artifactId>
         <version>${snowjdbc.version}</version>
@@ -144,6 +150,14 @@
           <exclusion>
             <groupId>javax.activation</groupId>
             <artifactId>activation</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-auth</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.slf4j</groupId>
@@ -194,6 +208,11 @@
         <groupId>org.codehaus.jackson</groupId>
         <artifactId>jackson-xc</artifactId>
         <version>${codehaus.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.jettison</groupId>
+        <artifactId>jettison</artifactId>
+        <version>1.5.4</version>
       </dependency>
       <dependency>
         <groupId>org.codehaus.woodstox</groupId>

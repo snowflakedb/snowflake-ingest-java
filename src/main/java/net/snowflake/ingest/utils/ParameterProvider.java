@@ -14,6 +14,9 @@ public class ParameterProvider {
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_INTERVAL_IN_MILLIS".toLowerCase();
   public static final String INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE =
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE".toLowerCase();
+  public static final String INSERT_THROTTLE_THRESHOLD_IN_BYTES =
+      "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_BYTES".toLowerCase();
+
   public static final String ENABLE_SNOWPIPE_STREAMING_METRICS =
       "ENABLE_SNOWPIPE_STREAMING_JMX_METRICS".toLowerCase();
   public static final String BLOB_FORMAT_VERSION = "BLOB_FORMAT_VERSION".toLowerCase();
@@ -29,6 +32,7 @@ public class ParameterProvider {
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final int INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
+  public static final int INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT = 200 * 1024 * 1024; // 200MB
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
   public static final Constants.BdecVersion BLOB_FORMAT_VERSION_DEFAULT =
       Constants.BdecVersion.THREE;
@@ -47,7 +51,7 @@ public class ParameterProvider {
    * Constructor. Takes properties from profile file and properties from client constructor and
    * resolves final parameter value
    *
-   * @param parameterOverrides Map<String, Object> of parameter name -> value
+   * @param parameterOverrides Map of parameter name to value
    * @param props Properties from profile file
    */
   public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
@@ -98,6 +102,12 @@ public class ParameterProvider {
     this.updateValue(
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE,
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT,
+        parameterOverrides,
+        props);
+
+    this.updateValue(
+        INSERT_THROTTLE_THRESHOLD_IN_BYTES,
+        INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT,
         parameterOverrides,
         props);
 
@@ -167,6 +177,17 @@ public class ParameterProvider {
         this.parameterMap.getOrDefault(
             INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE,
             INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT);
+    if (val instanceof String) {
+      return Integer.parseInt(val.toString());
+    }
+    return (int) val;
+  }
+
+  /** @return Absolute size in bytes of free total memory at which we throttle row inserts */
+  public int getInsertThrottleThresholdInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            INSERT_THROTTLE_THRESHOLD_IN_BYTES, INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT);
     if (val instanceof String) {
       return Integer.parseInt(val.toString());
     }
