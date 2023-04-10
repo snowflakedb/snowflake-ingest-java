@@ -657,13 +657,13 @@ public class RowBufferTest {
           innerBuffer.insertRows(Collections.singletonList(row), null);
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
-          ErrorCode.INVALID_TYPE_ROW.getMessageCode(),
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row), null);
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_TYPE_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -979,13 +979,13 @@ public class RowBufferTest {
       response = innerBuffer.insertRows(Collections.singletonList(row), "1");
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
-          ErrorCode.INVALID_TYPE_ROW.getMessageCode(),
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row), "1");
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_TYPE_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -1027,14 +1027,14 @@ public class RowBufferTest {
       Assert.assertTrue(response.hasErrors());
       InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
       Assert.assertEquals(
-          ErrorCode.INVALID_TYPE_ROW.getMessageCode(), error.getException().getVendorCode());
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), error.getException().getVendorCode());
       Assert.assertEquals(
           Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row2), "2");
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_TYPE_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -1060,7 +1060,7 @@ public class RowBufferTest {
     Assert.assertTrue(response.hasErrors());
     InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
-        ErrorCode.INVALID_TYPE_ROW.getMessageCode(), error.getException().getVendorCode());
+        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), error.getException().getVendorCode());
     Assert.assertEquals(Arrays.asList("COLBOOLEAN3", "COLBOOLEAN2"), error.getExtraColNames());
   }
 
@@ -1342,7 +1342,7 @@ public class RowBufferTest {
     try {
       innerBuffer.insertRows(Collections.singletonList(row3), "3");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_TYPE_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
     }
 
     Assert.assertEquals(2, innerBuffer.rowCount);

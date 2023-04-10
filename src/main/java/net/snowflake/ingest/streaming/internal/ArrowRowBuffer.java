@@ -733,7 +733,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       if (value == null || isParsedValueNull) {
         if (!field.getFieldType().isNullable()) {
           throw new SFException(
-              ErrorCode.INVALID_TYPE_ROW, columnName, "Passed null to non nullable field");
+              ErrorCode.INVALID_FORMAT_ROW, columnName, "Passed null to non nullable field");
         } else {
           insertNull(vector, forkedStats, curRowIndex);
         }

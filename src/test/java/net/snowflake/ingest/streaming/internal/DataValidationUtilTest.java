@@ -119,23 +119,26 @@ public class DataValidationUtilTest {
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseDate("COL", "20:57:01", 0));
 
     // Test forbidden values
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", new Object(), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", LocalTime.now(), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", OffsetTime.now(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", new Object(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", new java.util.Date(), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", false, 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", LocalTime.now(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", OffsetTime.now(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", new java.util.Date(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", false, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseDate("COL", "", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseDate("COL", "foo", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseDate("COL", "1.0", 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", 'c', 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", 1, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", 1L, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", 1.25, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", 'c', 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", 1, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", 1L, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", 1.25, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", BigInteger.valueOf(1), 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", BigInteger.valueOf(1), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseDate("COL", BigDecimal.valueOf(1.25), 0));
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseDate("COL", BigDecimal.valueOf(1.25), 0));
   }
 
   @Test
@@ -203,37 +206,40 @@ public class DataValidationUtilTest {
 
     // Test forbidden values
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", LocalDate.now(), 3, 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", LocalDate.now(), 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", LocalDateTime.now(), 3, 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", LocalDateTime.now(), 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", OffsetDateTime.now(), 3, 0));
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseTime("COL", OffsetDateTime.now(), 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", ZonedDateTime.now(), 3, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", Instant.now(), 3, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", new Date(), 3, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", 1.5f, 3, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", 1.5, 3, 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", ZonedDateTime.now(), 3, 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", Instant.now(), 3, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", new Date(), 3, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", 1.5f, 3, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", 1.5, 3, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseTime("COL", "1.5", 3, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseTime("COL", "1.0", 3, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", new Object(), 3, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", false, 3, 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", new Object(), 3, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", false, 3, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseTime("COL", "", 3, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseTime("COL", "foo", 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTime("COL", java.sql.Time.valueOf("20:57:00"), 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTime("COL", java.sql.Date.valueOf("2010-11-03"), 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTime("COL", java.sql.Timestamp.valueOf("2010-11-03 20:57:00"), 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", BigInteger.ZERO, 3, 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", BigInteger.ZERO, 3, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", BigDecimal.ZERO, 3, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTime("COL", 'c', 3, 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", BigDecimal.ZERO, 3, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseTime("COL", 'c', 3, 0));
   }
 
   @Test
@@ -258,18 +264,20 @@ public class DataValidationUtilTest {
 
     // Test forbidden values
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTimestamp("COL", LocalTime.now(), 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTimestamp("COL", OffsetTime.now(), 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTimestamp("COL", new Date(), 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTimestamp("COL", 1.5f, 3, UTC, false, 0));
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseTimestamp("COL", 1.5f, 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTimestamp("COL", 1.5, 3, UTC, false, 0));
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseTimestamp("COL", 1.5, 3, UTC, false, 0));
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseTimestamp("COL", "1.5", 3, UTC, false, 0));
@@ -277,10 +285,10 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseTimestamp("COL", "1.0", 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTimestamp("COL", new Object(), 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTimestamp("COL", false, 3, UTC, false, 0));
     expectError(
         ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseTimestamp("COL", "", 3, UTC, false, 0));
@@ -288,27 +296,28 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseTimestamp("COL", "foo", 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseTimestamp("COL", java.sql.Time.valueOf("20:57:00"), 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseTimestamp(
                 "COL", java.sql.Date.valueOf("2010-11-03"), 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseTimestamp(
                 "COL", java.sql.Timestamp.valueOf("2010-11-03 20:57:00"), 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTimestamp("COL", BigInteger.ZERO, 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseTimestamp("COL", BigDecimal.ZERO, 3, UTC, false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseTimestamp("COL", 'c', 3, UTC, false, 0));
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseTimestamp("COL", 'c', 3, UTC, false, 0));
   }
 
   @Test
@@ -363,13 +372,13 @@ public class DataValidationUtilTest {
     // Test forbidden values
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBigDecimal("COL", "honk", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBigDecimal("COL", "0x22", 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBigDecimal("COL", true, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBigDecimal("COL", false, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBigDecimal("COL", true, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBigDecimal("COL", false, 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBigDecimal("COL", new Object(), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBigDecimal("COL", 'a', 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBigDecimal("COL", new Object(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBigDecimal("COL", 'a', 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBigDecimal("COL", new byte[4], 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBigDecimal("COL", new byte[4], 0));
   }
 
   @Test
@@ -417,13 +426,13 @@ public class DataValidationUtilTest {
 
     // Test unsupported values
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseString("COL", new Object(), Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseString("COL", new byte[] {}, Optional.of(4), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseString("COL", new char[] {}, Optional.of(4), 0));
   }
 
@@ -471,25 +480,26 @@ public class DataValidationUtilTest {
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "{null}", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "}{", 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseVariant("COL", readTree("{}"), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseVariant("COL", new Object(), 0));
-    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "foo", 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseVariant("COL", new Date(), 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", readTree("{}"), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", new Object(), 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "foo", 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", new Date(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseVariant("COL", Collections.singletonList(new Object()), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseVariant(
                 "COL",
                 Collections.singletonList(Collections.singletonMap("foo", new Object())),
                 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseVariant("COL", Collections.singletonMap(new Object(), "foo"), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseVariant("COL", Collections.singletonMap("foo", new Object()), 0));
   }
 
@@ -535,26 +545,27 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseArray("COL", "\"foo\uD800bar\"", 0));
 
     // Test forbidden values
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseArray("COL", readTree("[]"), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseArray("COL", new Object(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArray("COL", readTree("[]"), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArray("COL", new Object(), 0));
     expectError(
         ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseArray("COL", "foo", 0)); // invalid JSO)N
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseArray("COL", new Date(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArray("COL", new Date(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseArray("COL", Collections.singletonList(new Object()), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseArray(
                 "COL",
                 Collections.singletonList(Collections.singletonMap("foo", new Object())),
                 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseArray("COL", Collections.singletonMap(new Object(), "foo"), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseArray("COL", Collections.singletonMap("foo", new Object()), 0));
   }
 
@@ -591,30 +602,31 @@ public class DataValidationUtilTest {
         () -> validateAndParseObject("COL", "{\"foo\": \"foo\uD800bar\"}", 0));
 
     // Test forbidden values
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseObject("COL", readTree("{}"), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObject("COL", readTree("{}"), 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", "[]", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", "1", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", 1, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", 1.5, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", false, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseObject("COL", new Object(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObject("COL", new Object(), 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", "foo", 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseObject("COL", new Date(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObject("COL", new Date(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseObject("COL", Collections.singletonList(new Object()), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseObject(
                 "COL",
                 Collections.singletonList(Collections.singletonMap("foo", new Object())),
                 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseObject("COL", Collections.singletonMap(new Object(), "foo"), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseObject("COL", Collections.singletonMap("foo", new Object()), 0));
   }
 
@@ -874,24 +886,25 @@ public class DataValidationUtilTest {
     expectError(
         ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBinary("COL", "c", Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseBinary(
                 "COL", Arrays.asList((byte) 1, (byte) 2, (byte) 3), Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBinary("COL", 1, Optional.empty(), 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBinary("COL", 1, Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBinary("COL", 12, Optional.empty(), 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBinary("COL", 12, Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBinary("COL", 1.5, Optional.empty(), 0));
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseBinary("COL", 1.5, Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseBinary("COL", BigInteger.ONE, Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseBinary("COL", false, Optional.empty(), 0));
     expectError(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseBinary("COL", new Object(), Optional.empty(), 0));
   }
 
@@ -915,10 +928,10 @@ public class DataValidationUtilTest {
 
     // Test forbidden values
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseReal("COL", "foo", 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseReal("COL", 'c', 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseReal("COL", new Object(), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseReal("COL", false, 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseReal("COL", true, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseReal("COL", 'c', 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseReal("COL", new Object(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseReal("COL", false, 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseReal("COL", true, 0));
   }
 
   @Test
@@ -951,10 +964,12 @@ public class DataValidationUtilTest {
     }
 
     // Test forbidden values
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBoolean("COL", new Object(), 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBoolean("COL", 't', 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBoolean("COL", 'f', 0));
-    expectError(ErrorCode.INVALID_TYPE_ROW, () -> validateAndParseBoolean("COL", new int[] {}, 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBoolean("COL", new Object(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBoolean("COL", 't', 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBoolean("COL", 'f', 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBoolean("COL", new int[] {}, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBoolean("COL", "foobar", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBoolean("COL", "", 0));
   }
@@ -967,7 +982,7 @@ public class DataValidationUtilTest {
   public void testExceptionMessages() {
     // BOOLEAN
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type BOOLEAN, Row Index:0. Allowed"
             + " Java types: boolean, Number, String",
@@ -983,7 +998,7 @@ public class DataValidationUtilTest {
 
     // TIME
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type TIME, Row Index:0. Allowed"
             + " Java types: String, LocalTime, OffsetTime",
@@ -999,7 +1014,7 @@ public class DataValidationUtilTest {
 
     // DATE
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type DATE, Row Index:0. Allowed"
             + " Java types: String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
@@ -1015,7 +1030,7 @@ public class DataValidationUtilTest {
 
     // TIMESTAMP_NTZ
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0."
             + " Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime,"
@@ -1032,7 +1047,7 @@ public class DataValidationUtilTest {
 
     // TIMESTAMP_LTZ
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0."
             + " Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime,"
@@ -1049,7 +1064,7 @@ public class DataValidationUtilTest {
 
     // TIMESTAMP_TZ
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0."
             + " Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime,"
@@ -1066,7 +1081,7 @@ public class DataValidationUtilTest {
 
     // NUMBER
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type NUMBER, Row Index:0. Allowed"
             + " Java types: int, long, byte, short, float, double, BigDecimal, BigInteger, String",
@@ -1080,7 +1095,7 @@ public class DataValidationUtilTest {
 
     // REAL
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type REAL, Row Index:0. Allowed"
             + " Java types: Number, String",
@@ -1094,7 +1109,7 @@ public class DataValidationUtilTest {
 
     // STRING
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type STRING, Row Index:0. Allowed"
             + " Java types: String, Number, boolean, char",
@@ -1108,7 +1123,7 @@ public class DataValidationUtilTest {
 
     // BINARY
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type BINARY, Row Index:0. Allowed"
             + " Java types: byte[], String",
@@ -1128,7 +1143,7 @@ public class DataValidationUtilTest {
 
     // VARIANT
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type VARIANT, Row Index:0. Allowed"
             + " Java types: String, Primitive data types and their arrays, java.time.*, List<T>,"
@@ -1143,7 +1158,7 @@ public class DataValidationUtilTest {
 
     // ARRAY
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type ARRAY, Row Index:0. Allowed"
             + " Java types: String, Primitive data types and their arrays, java.time.*, List<T>,"
@@ -1158,7 +1173,7 @@ public class DataValidationUtilTest {
 
     // OBJECT
     expectErrorCodeAndMessage(
-        ErrorCode.INVALID_TYPE_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type OBJECT, Row Index:0. Allowed"
             + " Java types: String, Primitive data types and their arrays, java.time.*, List<T>,"
