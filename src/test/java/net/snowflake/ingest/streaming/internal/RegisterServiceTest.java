@@ -1,9 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.ingest.utils.Pair;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,8 +9,10 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import net.snowflake.ingest.utils.Pair;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class RegisterServiceTest {
 

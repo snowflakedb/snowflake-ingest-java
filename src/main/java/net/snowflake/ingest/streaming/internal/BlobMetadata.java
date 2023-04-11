@@ -6,10 +6,9 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
-
-import java.util.List;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
@@ -21,12 +20,7 @@ class BlobMetadata {
 
   // used for testing only
   BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobLatencies blobLatencies) {
-    this(
-        path,
-        md5,
-        ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT,
-        chunks,
-        blobLatencies);
+    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, blobLatencies);
   }
 
   BlobMetadata(
@@ -68,7 +62,9 @@ class BlobMetadata {
   }
 
   @JsonProperty("blob_latencies")
-  BlobLatencies getBlobLatencies() { return this.blobLatencies; }
+  BlobLatencies getBlobLatencies() {
+    return this.blobLatencies;
+  }
 
   /** Create {@link BlobMetadata}. */
   static BlobMetadata createBlobMetadata(
@@ -79,6 +75,4 @@ class BlobMetadata {
       BlobLatencies blobLatencies) {
     return new BlobMetadata(path, md5, bdecVersion, chunks, blobLatencies);
   }
-
-
 }
