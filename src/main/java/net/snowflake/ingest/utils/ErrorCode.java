@@ -9,7 +9,7 @@ public enum ErrorCode {
   INTERNAL_ERROR("0001"),
   NULL_VALUE("0002"),
   NULL_OR_EMPTY_STRING("0003"),
-  INVALID_ROW("0004"),
+  INVALID_FORMAT_ROW("0004"),
   UNKNOWN_DATA_TYPE("0005"),
   REGISTER_BLOB_FAILURE("0006"),
   OPEN_CHANNEL_FAILURE("0007"),
@@ -34,7 +34,8 @@ public enum ErrorCode {
   INVALID_COLLATION_STRING("0026"),
   ENCRYPTION_FAILURE("0027"),
   CHANNEL_STATUS_INVALID("0028"),
-  UNSUPPORTED_DATA_TYPE("0029");
+  UNSUPPORTED_DATA_TYPE("0029"),
+  INVALID_VALUE_ROW("0030");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 
