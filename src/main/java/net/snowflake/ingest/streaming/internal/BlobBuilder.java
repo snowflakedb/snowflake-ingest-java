@@ -4,18 +4,17 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
-import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
-import static net.snowflake.ingest.utils.Utils.toByteArray;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.Cryptor;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import org.apache.commons.codec.binary.Hex;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -26,14 +25,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
 import java.util.zip.GZIPOutputStream;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.Cryptor;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import org.apache.commons.codec.binary.Hex;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
+import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
+import static net.snowflake.ingest.utils.Utils.toByteArray;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -157,7 +158,7 @@ class BlobBuilder {
     // Build blob file bytes
     byte[] blobBytes =
         buildBlob(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
-    return new Blob(blobBytes, chunksMetadataList);
+    return new Blob(blobBytes, chunksMetadataList, new BlobLatencies());
   }
 
   /**
@@ -327,10 +328,12 @@ class BlobBuilder {
   static class Blob {
     final byte[] blobBytes;
     final List<ChunkMetadata> chunksMetadataList;
+    final BlobLatencies blobLatencies;
 
-    Blob(byte[] blobBytes, List<ChunkMetadata> chunksMetadataList) {
+    Blob(byte[] blobBytes, List<ChunkMetadata> chunksMetadataList, BlobLatencies blobLatencies) {
       this.blobBytes = blobBytes;
       this.chunksMetadataList = chunksMetadataList;
+      this.blobLatencies = blobLatencies;
     }
   }
 }

@@ -6,32 +6,27 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.List;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 
+import java.util.List;
+
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
-  public static final long DEFAULT_BLOB_LATENCY = -1;
-
   private final String path;
   private final String md5;
   private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
-
-  // latencies
-  private final long buildLatencyMs;
-  private final long uploadLatencyMs;
+  private final BlobLatencies blobLatencies;
 
   // used for testing only
-  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks) {
+  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobLatencies blobLatencies) {
     this(
         path,
         md5,
         ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT,
         chunks,
-        DEFAULT_BLOB_LATENCY,
-        DEFAULT_BLOB_LATENCY);
+        blobLatencies);
   }
 
   BlobMetadata(
@@ -39,15 +34,12 @@ class BlobMetadata {
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      long buildLatencyMs,
-      long uploadLatencyMs) {
+      BlobLatencies blobLatencies) {
     this.path = path;
     this.md5 = md5;
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
-
-    this.buildLatencyMs = buildLatencyMs;
-    this.uploadLatencyMs = uploadLatencyMs;
+    this.blobLatencies = blobLatencies;
   }
 
   @JsonIgnore
@@ -75,15 +67,8 @@ class BlobMetadata {
     return bdecVersion.toByte();
   }
 
-  @JsonProperty("build_latency_ms")
-  long getBuildLatencyMs() {
-    return this.buildLatencyMs;
-  }
-
-  @JsonProperty("upload_latency_ms")
-  long getUploadLatencyMs() {
-    return this.uploadLatencyMs;
-  }
+  @JsonProperty("blob_latencies")
+  BlobLatencies getBlobLatencies() { return this.blobLatencies; }
 
   /** Create {@link BlobMetadata}. */
   static BlobMetadata createBlobMetadata(
@@ -91,8 +76,9 @@ class BlobMetadata {
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      long buildLatencyMs,
-      long uploadLatencyMs) {
-    return new BlobMetadata(path, md5, bdecVersion, chunks, buildLatencyMs, uploadLatencyMs);
+      BlobLatencies blobLatencies) {
+    return new BlobMetadata(path, md5, bdecVersion, chunks, blobLatencies);
   }
+
+
 }

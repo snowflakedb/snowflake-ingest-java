@@ -1,6 +1,9 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import net.snowflake.ingest.utils.Pair;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,10 +12,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import net.snowflake.ingest.utils.Pair;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
 public class RegisterServiceTest {
 
@@ -23,7 +24,7 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
         new Pair<>(
             new FlushService.BlobData<>("test", null),
-            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
+            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, null)));
     rs.addBlobs(Collections.singletonList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
     List<FlushService.BlobData<StubChunkData>> errorBlobs =
@@ -50,7 +51,7 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>(
             new FlushService.BlobData<>("success", new ArrayList<>()),
-            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
+            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, null)));
     CompletableFuture future = new CompletableFuture();
     future.completeExceptionally(new TimeoutException());
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture2 =
@@ -79,7 +80,7 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
         new Pair<>(
             new FlushService.BlobData<>("success", new ArrayList<>()),
-            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null)));
+            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, null)));
     CompletableFuture future = new CompletableFuture();
     future.thenRunAsync(
         () -> {
