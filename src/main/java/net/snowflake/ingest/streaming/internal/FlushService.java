@@ -4,14 +4,21 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
-
 import com.codahale.metrics.Timer;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.util.VisibleForTesting;
+import org.apache.arrow.vector.VectorSchemaRoot;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -35,19 +42,13 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -239,12 +240,11 @@ class FlushService<T> {
   /**
    * Registers blobs with Snowflake
    *
-   * @param flushJobStartTime When the flush job began
    * @return
    */
-  private CompletableFuture<Void> registerFuture(long flushJobStartTime) {
+  private CompletableFuture<Void> registerFuture() {
     return CompletableFuture.runAsync(
-        () -> this.registerService.registerBlobs(latencyTimerContextMap, flushJobStartTime),
+        () -> this.registerService.registerBlobs(latencyTimerContextMap),
         this.registerWorker);
   }
 
@@ -260,7 +260,6 @@ class FlushService<T> {
    */
   CompletableFuture<Void> flush(boolean isForce) {
     long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
-    long flushJobStartTime = System.currentTimeMillis();
 
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
@@ -271,7 +270,7 @@ class FlushService<T> {
 
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
-          .thenCompose((v) -> this.registerFuture(flushJobStartTime));
+          .thenCompose((v) -> this.registerFuture());
     }
     return this.statsFuture();
   }
@@ -348,6 +347,7 @@ class FlushService<T> {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
+
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
       while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
@@ -511,7 +511,6 @@ class FlushService<T> {
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-
     this.targetStage.put(filePath, blob);
 
     logger.logInfo(

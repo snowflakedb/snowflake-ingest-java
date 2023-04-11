@@ -51,14 +51,14 @@ public class StreamingIngestUtils {
       CloseableHttpClient httpClient,
       RequestBuilder requestBuilder)
       throws IOException, IngestResponseException {
-    String payloadInString;
-    try {
-      payloadInString = objectMapper.writeValueAsString(payload);
-    } catch (JsonProcessingException e) {
-      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
-    }
     return executeWithRetries(
-        targetClass, endpoint, payloadInString, message, apiName, httpClient, requestBuilder);
+        targetClass,
+        endpoint,
+        getPayloadAsStr(payload, message),
+        message,
+        apiName,
+        httpClient,
+        requestBuilder);
   }
 
   static <T extends StreamingIngestResponse> T executeWithRetries(
@@ -121,5 +121,13 @@ public class StreamingIngestUtils {
   public static String getShortname(final String fullname) {
     final String[] parts = fullname.split("/");
     return parts[parts.length - 1];
+  }
+
+  public static String getPayloadAsStr(Map<Object, Object> payload, String message) {
+    try {
+      return objectMapper.writeValueAsString(payload);
+    } catch (JsonProcessingException e) {
+      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
+    }
   }
 }

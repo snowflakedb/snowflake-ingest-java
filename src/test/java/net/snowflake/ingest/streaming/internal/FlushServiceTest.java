@@ -1,14 +1,31 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
-import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
-
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.Cryptor;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.VectorSchemaRoot;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -32,27 +49,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
-import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.Cryptor;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.ParameterProvider;
-import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.vector.VectorSchemaRoot;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
+import java.util.concurrent.TimeUnit;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
+import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
 
 @RunWith(Parameterized.class)
 public class FlushServiceTest {
@@ -88,6 +93,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
+    RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
@@ -99,7 +105,9 @@ public class FlushServiceTest {
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
-      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, false));
+      registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
+      flushService =
+          Mockito.spy(new FlushService<>(client, channelCache, stage, false));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -515,6 +523,9 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildAndUpload() throws Exception {
+    long expectedBuildLatencyMs = 100;
+    long expectedUploadLatencyMs = 200;
+
     TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
@@ -562,6 +573,15 @@ public class FlushServiceTest {
     channel1Data.setBufferSize(100);
     channel2Data.setRowSequencer(10L);
     channel2Data.setBufferSize(100);
+
+    // set client timers
+
+    SnowflakeStreamingIngestClientInternal client = testContext.client;
+    client.buildLatency = this.setupTimer(expectedBuildLatencyMs);
+    client.uploadLatency = this.setupTimer(expectedUploadLatencyMs);
+    client.uploadThroughput = Mockito.mock(Meter.class);
+    client.blobSizeHistogram = Mockito.mock(Histogram.class);
+    client.blobRowCountHistogram = Mockito.mock(Histogram.class);
 
     BlobMetadata blobMetadata = testContext.buildAndUpload();
 
@@ -611,6 +631,8 @@ public class FlushServiceTest {
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
 
     Assert.assertEquals(BlobBuilder.computeMD5(blobCaptor.getValue()), blobMetadata.getMD5());
+    Assert.assertEquals(expectedBuildLatencyMs, blobMetadata.getBlobLatencies().getBuildLatencyMs());
+    Assert.assertEquals(expectedUploadLatencyMs, blobMetadata.getBlobLatencies().getUploadLatencyMs());
 
     Assert.assertEquals(
         expectedChunkEpInfo.getRowCount(), metadataResult.getEpInfo().getRowCount());
@@ -741,7 +763,8 @@ public class FlushServiceTest {
     StreamingIngestStage stage = Mockito.mock(StreamingIngestStage.class);
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     FlushService<StubChunkData> flushService =
-        new FlushService<>(client, channelCache, stage, false);
+        new FlushService<>(
+            client, channelCache, stage, false);
     flushService.invalidateAllChannelsInBlob(blobData);
 
     Assert.assertFalse(channel1.isValid());
@@ -874,5 +897,14 @@ public class FlushServiceTest {
     byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier, 0);
 
     Assert.assertArrayEquals(data, decryptedData);
+  }
+
+  private Timer setupTimer(long expectedLatencyMs) {
+    Timer.Context timerContext = Mockito.mock(Timer.Context.class);
+    Mockito.when(timerContext.stop()).thenReturn(TimeUnit.MILLISECONDS.toNanos(expectedLatencyMs));
+    Timer timer = Mockito.mock(Timer.class);
+    Mockito.when(timer.time()).thenReturn(timerContext);
+
+    return timer;
   }
 }

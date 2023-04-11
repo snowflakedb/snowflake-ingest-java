@@ -1,6 +1,9 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import net.snowflake.ingest.utils.Pair;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,10 +12,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import net.snowflake.ingest.utils.Pair;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 
 public class RegisterServiceTest {
 
@@ -27,7 +28,7 @@ public class RegisterServiceTest {
     rs.addBlobs(Collections.singletonList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
     List<FlushService.BlobData<StubChunkData>> errorBlobs =
-        rs.registerBlobs(null, System.currentTimeMillis());
+        rs.registerBlobs(null);
     Assert.assertEquals(0, rs.getBlobsList().size());
     Assert.assertEquals(0, errorBlobs.size());
   }
@@ -59,7 +60,7 @@ public class RegisterServiceTest {
     Assert.assertEquals(2, rs.getBlobsList().size());
     try {
       List<FlushService.BlobData<StubChunkData>> errorBlobs =
-          rs.registerBlobs(null, System.currentTimeMillis());
+          rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
@@ -96,7 +97,7 @@ public class RegisterServiceTest {
     Assert.assertEquals(2, rs.getBlobsList().size());
     try {
       List<FlushService.BlobData<StubChunkData>> errorBlobs =
-          rs.registerBlobs(null, System.currentTimeMillis());
+          rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
@@ -119,7 +120,7 @@ public class RegisterServiceTest {
     Assert.assertEquals(1, rs.getBlobsList().size());
     try {
       List<FlushService.BlobData<StubChunkData>> errorBlobs =
-          rs.registerBlobs(null, System.currentTimeMillis());
+          rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());

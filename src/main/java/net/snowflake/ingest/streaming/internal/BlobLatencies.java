@@ -7,6 +7,8 @@ package net.snowflake.ingest.streaming.internal;
 import com.codahale.metrics.Timer;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.concurrent.TimeUnit;
+
 /** Latency information for a blob */
 class BlobLatencies {
   public static final long DEFAULT_BLOB_LATENCY = -1;
@@ -47,13 +49,13 @@ class BlobLatencies {
 
   void setBuildLatencyMs(Timer.Context buildLatencyContext) {
     if (buildLatencyContext != null) {
-      this.buildLatencyMs = buildLatencyContext.stop();
+      this.buildLatencyMs = TimeUnit.NANOSECONDS.toMillis(buildLatencyContext.stop());
     }
   }
 
   void setUploadLatencyMs(Timer.Context uploadLatencyContext) {
     if (uploadLatencyContext != null) {
-      this.uploadLatencyMs = uploadLatencyContext.stop();
+      this.uploadLatencyMs = TimeUnit.NANOSECONDS.toMillis(uploadLatencyContext.stop());
     }
   }
 
