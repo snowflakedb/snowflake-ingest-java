@@ -1498,4 +1498,56 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(5, result.getRowCount());
   }
+
+  @Test
+  public void testOnErrorAbortRowsWithError() {
+    AbstractRowBuffer<?> innerBufferOnErrorContinue =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    AbstractRowBuffer<?> innerBufferOnErrorAbort =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+
+    ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setName("COLCHAR");
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14);
+    colChar.setLength(11);
+    colChar.setScale(0);
+
+    innerBufferOnErrorContinue.setupSchema(Collections.singletonList(colChar));
+    innerBufferOnErrorAbort.setupSchema(Collections.singletonList(colChar));
+
+    List<Map<String, Object>> rows = new ArrayList<>();
+    Map<String, Object> row0 = new HashMap<>();
+    row0.put("colChar", "a");
+
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("colChar", "1111111111111111111111"); // too big
+
+    rows.add(row0);
+    rows.add(row1);
+
+    InsertValidationResponse response = innerBufferOnErrorContinue.insertRows(rows, "1");
+    Assert.assertTrue(response.hasErrors());
+
+    Assert.assertThrows(
+        SFException.class,
+        () -> {
+          innerBufferOnErrorAbort.insertRows(rows, "1");
+        });
+
+    Assert.assertEquals(1, innerBufferOnErrorContinue.bufferedRowCount);
+    Assert.assertEquals(0, innerBufferOnErrorAbort.bufferedRowCount);
+    Assert.assertEquals(
+        "a",
+        innerBufferOnErrorContinue.getVectorValueAt(
+            "COLCHAR", 0)); // only first row is in the buffer
+    Assert.assertThrows(
+        IndexOutOfBoundsException.class,
+        () -> {
+          innerBufferOnErrorAbort.getVectorValueAt(
+              "COLCHAR", 0); // neither of the rows were copied from the temp buffer
+        });
+  }
 }
