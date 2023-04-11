@@ -990,8 +990,8 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type BOOLEAN, Row Index: 0,"
-            + " reason: Not a valid boolean, see"
+            + " cannot be ingested into Snowflake column COL of type BOOLEAN, Row Index: 0, reason:"
+            + " Not a valid boolean, see"
             + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
             + " for the list of supported formats",
         () -> validateAndParseBoolean("COL", "abc", 0));
