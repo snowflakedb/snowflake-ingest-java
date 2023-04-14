@@ -571,6 +571,7 @@ public class SnowflakeStreamingIngestChannelTest {
       Assert.fail("the insert should be throttled.");
     } catch (TimeoutException ignored) {
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail("unexpected exception encountered.");
     }
 
@@ -580,6 +581,7 @@ public class SnowflakeStreamingIngestChannelTest {
     try {
       future.get(5L, TimeUnit.SECONDS);
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail("unexpected exception encountered.");
     }
   }

@@ -51,7 +51,6 @@ public class Constants {
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
-  public static final int LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES = 100 * 1024 * 1024;
   public static final long EP_NDV_UNKNOWN = -1L;
 
   // Channel level constants

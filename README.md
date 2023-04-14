@@ -9,7 +9,7 @@ The Snowflake Ingest Service SDK allows users to ingest files into their
 Snowflake data warehouse in a programmatic fashion via key-pair
 authentication. Currently, we support ingestion through the following APIs:
 1. [Snowpipe](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-gs.html#client-requirement-java-or-python-sdk)
-2. [Snowpipe Streaming](https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html) - Under Private Preview
+2. [Snowpipe Streaming](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview) - Under Public Preview
 
 # Prerequisites
 

@@ -3,6 +3,8 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 import static net.snowflake.ingest.utils.Constants.ROLE;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -15,6 +17,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -39,6 +42,7 @@ import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -182,6 +186,7 @@ public class StreamingIngestIT {
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 30L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 50L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 1);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS, 1L);
     parameterMap.put(ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS, true);
     parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 1);
@@ -239,7 +244,13 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel[] channels =
         new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
-    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_TABLE_PREFIX + i, "CHANNEL"));
+    iter.accept(
+        i ->
+            channels[i - 1] =
+                openChannel(
+                    INTERLEAVED_TABLE_PREFIX + i,
+                    "CHANNEL",
+                    OpenChannelRequest.OnErrorOption.ABORT));
 
     iter.accept(
         i ->
@@ -263,7 +274,13 @@ public class StreamingIngestIT {
 
     SnowflakeStreamingIngestChannel[] channels =
         new SnowflakeStreamingIngestChannel[INTERLEAVED_CHANNEL_NUMBER];
-    iter.accept(i -> channels[i - 1] = openChannel(INTERLEAVED_CHANNEL_TABLE, "CHANNEL_" + i));
+    iter.accept(
+        i ->
+            channels[i - 1] =
+                openChannel(
+                    INTERLEAVED_CHANNEL_TABLE,
+                    "CHANNEL_" + i,
+                    OpenChannelRequest.OnErrorOption.ABORT));
 
     iter.accept(
         i ->
@@ -798,13 +815,13 @@ public class StreamingIngestIT {
       channel.insertRow(row3, "3");
       Assert.fail("insert should fail");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), e.getVendorCode());
     }
     try {
       channel.insertRows(Arrays.asList(row1, row2, row3), "6");
       Assert.fail("insert should fail");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), e.getVendorCode());
     }
     Map<String, Object> row7 = new HashMap<>();
     row7.put("c1", 7);
@@ -913,6 +930,50 @@ public class StreamingIngestIT {
   }
 
   @Test
+  public void testFailureHalfwayThroughRowProcessing() throws Exception {
+    String tableName = "failure_halfway_through_table";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format("create or replace table %s(c1 varchar(1), c2 varchar(1));", tableName));
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, "channel1", OpenChannelRequest.OnErrorOption.CONTINUE);
+
+    // Row will be ingested
+    Map<String, Object> row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", "b");
+    channel.insertRow(row, "offset0");
+
+    // Row will not be ingested, its contribution to nullCount and other statistics should be
+    // discarded
+    row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", "qa");
+    channel.insertRow(row, "offset1");
+
+    // Row will be ingested
+    row = new LinkedHashMap<>();
+    row.put("c1", null);
+    row.put("c2", null);
+    channel.insertRow(row, "offset2");
+
+    TestUtils.waitForOffset(channel, "offset2");
+
+    jdbcConnection.createStatement().execute(String.format("alter table %s migrate;", tableName));
+
+    ResultSet rs =
+        jdbcConnection.createStatement().executeQuery(String.format("select * from %s", tableName));
+    rs.next();
+    Assert.assertEquals(null, rs.getString(1));
+    Assert.assertEquals("b", rs.getString(2));
+
+    rs.next();
+    Assert.assertEquals(null, rs.getString(1));
+    Assert.assertEquals(null, rs.getString(2));
+  }
+
+  @Test
   public void testColumnNameQuotes() throws Exception {
     final String tableName = "T_COLUMN_WITH_QUOTES";
     final String unquotedColumn = "c1"; // user name <C1>
@@ -994,6 +1055,132 @@ public class StreamingIngestIT {
     Assert.fail("Row sequencer not updated before timeout");
   }
 
+  @Ignore
+  @Test
+  public void testTableColumnEvolution() throws Exception {
+    final int rowNum = 100;
+    final String tableName = TEST_TABLE + "_TEST_COL_EVOL";
+    final String tableFullName = String.format("%s.%s.%s", testDb, TEST_SCHEMA, tableName);
+    final String streamName =
+        String.format("%s.%s.%s", testDb, TEST_SCHEMA, "STREAM_TEST_COL_EVOL");
+
+    executeQuery("create or replace table %s (c1 varchar, c2 varchar, c3 varchar);", tableName);
+    int channelNum = 1;
+
+    // insert first 3 columns
+    ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(1, 2, 3), rowNum);
+    channelNum++;
+
+    // add one column
+    executeQuery(String.format("alter table %s add column c4 varchar;", tableFullName));
+    ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(1, 2, 3, 4), rowNum);
+    channelNum++;
+
+    // remove first column
+    executeQuery(String.format("alter table %s drop column c1;", tableFullName));
+    ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(2, 3, 4), rowNum);
+    channelNum++;
+
+    // remove last column
+    executeQuery(String.format("alter table %s drop column c4;", tableFullName));
+    ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(2, 3), rowNum);
+    channelNum++;
+
+    // add last column
+    executeQuery(String.format("alter table %s add column c5 varchar;", tableFullName));
+    ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(2, 3, 5), rowNum);
+    channelNum++;
+
+    // create stream on table to append change tracking columns
+    executeQuery(String.format("create or replace stream %s on table %s;", streamName, tableName));
+    ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(2, 3, 5), rowNum);
+    channelNum++;
+
+    // add one more column after change tracking columns
+    executeQuery(String.format("alter table %s add column c6 varchar;", tableFullName));
+    ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(2, 3, 5, 6), rowNum);
+  }
+
+  /**
+   * Ingests rows into a table and verifies them by querying the table.
+   *
+   * <p>The test opens channel 'channel<channelNum>' for ingestion.
+   *
+   * <p>Expected table schema is ('C<index1>' varchar, 'C<index2>' varchar) where indexes are from
+   * {@code columnIndexes}.
+   *
+   * <p>The ingested text values have the format: 'v<col_index1>_<row_index>'. The row index is from
+   * range [(channelNum - 1) * numberOfRows, numberOfRows].
+   *
+   * @param tableName table full name
+   * @param channelNum channel number to open
+   * @param columnIndexes indexes of columns to ingest
+   * @param numberOfRows to ingest
+   */
+  private void ingestByColIndexAndVerifyTable(
+      String tableName, int channelNum, List<Integer> columnIndexes, int numberOfRows)
+      throws InterruptedException, SQLException {
+    final String valueFormat = "v%01d_%03d";
+    final String channelName = "channel" + channelNum;
+    final int startIndex = (channelNum - 1) * numberOfRows;
+
+    // ingest rows
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, channelName, OpenChannelRequest.OnErrorOption.ABORT);
+    for (int i = 0; i < numberOfRows; i++) {
+      Map<String, Object> row = new HashMap<>();
+      for (int col : columnIndexes) {
+        String value = String.format(valueFormat, col, startIndex + i);
+        row.put("c" + col, value);
+      }
+      verifyInsertValidationResponse(channel.insertRow(row, Integer.toString(i)));
+    }
+    TestUtils.waitForOffset(channel, Integer.toString(numberOfRows - 1));
+    channel.close();
+
+    // query them and verify
+    int firstColNum = columnIndexes.get(0);
+    try (ResultSet result =
+        jdbcConnection
+            .createStatement()
+            .executeQuery(
+                String.format(
+                    "select * from %s.%s.%s where c%d >= 'v%01d_%03d' and c%d < 'v%01d_%03d' order"
+                        + " by c%d",
+                    testDb,
+                    TEST_SCHEMA,
+                    tableName,
+                    firstColNum,
+                    firstColNum,
+                    startIndex,
+                    firstColNum,
+                    firstColNum,
+                    startIndex + numberOfRows,
+                    firstColNum))) {
+      for (int i = 0; i < numberOfRows; i++) {
+        result.next();
+        for (int col : columnIndexes) {
+          String value = result.getString("C" + col);
+          String expectedValue = String.format(valueFormat, col, startIndex + i);
+          String errorMessage =
+              String.format(
+                  "Ingested value mismatch: table %s, startIndex %d, column %s, index %d",
+                  tableName, startIndex, "c" + col, i);
+          assertThat(errorMessage, value, is(expectedValue));
+        }
+      }
+    }
+  }
+
+  private void executeQuery(String sqlFmt, Object... args) {
+    String sql = String.format(sqlFmt, args);
+    try {
+      jdbcConnection.createStatement().executeQuery(sql);
+    } catch (SQLException e) {
+      throw new RuntimeException("SQL query failed : " + sql, e);
+    }
+  }
+
   /** Verify the insert validation response and throw the exception if needed */
   private void verifyInsertValidationResponse(InsertValidationResponse response) {
     if (response.hasErrors()) {
@@ -1013,13 +1200,14 @@ public class StreamingIngestIT {
     }
   }
 
-  private SnowflakeStreamingIngestChannel openChannel(String tableName, String channelName) {
+  private SnowflakeStreamingIngestChannel openChannel(
+      String tableName, String channelName, OpenChannelRequest.OnErrorOption onErrorOption) {
     OpenChannelRequest request =
         OpenChannelRequest.builder(channelName)
             .setDBName(testDb)
             .setSchemaName(TEST_SCHEMA)
             .setTableName(tableName)
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .setOnErrorOption(onErrorOption)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -1127,7 +1315,8 @@ public class StreamingIngestIT {
       throw new RuntimeException("Cannot create table " + tableName, e);
     }
 
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName, "CHANNEL");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, "CHANNEL", OpenChannelRequest.OnErrorOption.ABORT);
 
     Map<String, Object> negRow = getNegRow();
     verifyInsertValidationResponse(channel.insertRow(negRow, Integer.toString(0)));

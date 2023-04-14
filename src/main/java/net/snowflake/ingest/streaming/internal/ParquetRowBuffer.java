@@ -90,9 +90,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     metadata.clear();
     metadata.put("sfVer", "1,1");
     List<Type> parquetTypes = new ArrayList<>();
-    // Snowflake column id that corresponds to the order in 'columns' received from server
-    // id is required to pack column metadata for the server scanner, e.g. decimal scale and
-    // precision
     int id = 1;
     for (ColumnMetadata column : columns) {
       validateColumnCollation(column);
@@ -143,10 +140,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   @Override
   float addRow(
       Map<String, Object> row,
-      int curRowIndex,
+      int bufferedRowIndex,
       Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
+      Set<String> formattedInputColumnNames,
+      final long insertRowIndex) {
+    return addRow(
+        row, bufferedRowIndex, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   void writeRow(List<Object> row) {
@@ -162,14 +161,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Map<String, Object> row,
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames);
+      Set<String> formattedInputColumnNames,
+      long insertRowIndex) {
+    return addRow(
+        row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   /**
    * Adds a row to the parquet buffer.
    *
    * @param row row to add
+   * @param curRowIndex current row index
    * @param out internal buffer to add to
    * @param statsMap column stats map
    * @param inputColumnNames list of input column names after formatting
@@ -177,29 +179,46 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
    */
   private float addRow(
       Map<String, Object> row,
+      int curRowIndex,
       Consumer<List<Object>> out,
       Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+      Set<String> inputColumnNames,
+      final long insertRowIndex) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
+
+    // Create new empty stats just for the current row.
+    Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
+
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
       Object value = entry.getValue();
       String columnName = LiteralQuoteUtils.unquoteColumnName(key);
       int colIndex = fieldIndex.get(columnName).getSecond();
-      RowBufferStats stats = statsMap.get(columnName);
+      RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
+      forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = fieldIndex.get(columnName).getFirst();
       ColumnDescriptor columnDescriptor = schema.getColumns().get(colIndex);
       PrimitiveType.PrimitiveTypeName typeName =
           columnDescriptor.getPrimitiveType().getPrimitiveTypeName();
       ParquetValueParser.ParquetBufferValue valueWithSize =
           ParquetValueParser.parseColumnValueToParquet(
-              value, column, typeName, stats, defaultTimezone);
+              value, column, typeName, forkedStats, defaultTimezone, curRowIndex);
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
     out.accept(Arrays.asList(indexedRow));
 
+    // All input values passed validation, iterate over the columns again and combine their existing
+    // statistics with the forked statistics for the current row.
+    for (Map.Entry<String, RowBufferStats> forkedColStats : forkedStatsMap.entrySet()) {
+      String columnName = forkedColStats.getKey();
+      statsMap.put(
+          columnName,
+          RowBufferStats.getCombinedStats(statsMap.get(columnName), forkedColStats.getValue()));
+    }
+
+    // Increment null count for column missing in the input map
     for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
       statsMap.get(columnName).incCurrentNullCount();
     }
@@ -232,7 +251,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     if (!enableParquetInternalBuffering) {
       data.forEach(r -> oldData.add(new ArrayList<>(r)));
     }
-    return rowCount <= 0
+    return bufferedRowCount <= 0
         ? Optional.empty()
         : Optional.of(new ParquetChunkData(oldData, bdecParquetWriter, fileOutput, metadata));
   }
