@@ -164,7 +164,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Set<String> formattedInputColumnNames,
       long insertRowIndex) {
     return addRow(
-        row, curRowIndex, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
+        row, curRowIndex, tempData::add, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   /**
