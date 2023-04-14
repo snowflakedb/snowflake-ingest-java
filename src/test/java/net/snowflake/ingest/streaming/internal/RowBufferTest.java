@@ -19,6 +19,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.Assert;
 import org.junit.Before;
@@ -1518,36 +1519,51 @@ public class RowBufferTest {
     innerBufferOnErrorContinue.setupSchema(Collections.singletonList(colChar));
     innerBufferOnErrorAbort.setupSchema(Collections.singletonList(colChar));
 
-    List<Map<String, Object>> rows = new ArrayList<>();
-    Map<String, Object> row0 = new HashMap<>();
-    row0.put("colChar", "a");
+    // insert one valid row
+    List<Map<String, Object>> validRows = new ArrayList<>();
+    validRows.add(Collections.singletonMap("colChar", "a"));
 
-    Map<String, Object> row1 = new HashMap<>();
-    row1.put("colChar", "1111111111111111111111"); // too big
+    InsertValidationResponse response = innerBufferOnErrorContinue.insertRows(validRows, "1");
+    Assert.assertFalse(response.hasErrors());
+    response = innerBufferOnErrorAbort.insertRows(validRows, "1");
+    Assert.assertFalse(response.hasErrors());
 
-    rows.add(row0);
-    rows.add(row1);
+    // insert one valid and one invalid row
+    List<Map<String, Object>> mixedRows = new ArrayList<>();
+    mixedRows.add(Collections.singletonMap("colChar", "b"));
+    mixedRows.add(Collections.singletonMap("colChar", "1111111111111111111111")); // too big
 
-    InsertValidationResponse response = innerBufferOnErrorContinue.insertRows(rows, "1");
+    response = innerBufferOnErrorContinue.insertRows(mixedRows, "3");
     Assert.assertTrue(response.hasErrors());
 
     Assert.assertThrows(
-        SFException.class,
-        () -> {
-          innerBufferOnErrorAbort.insertRows(rows, "1");
-        });
+        SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "3"));
 
-    Assert.assertEquals(1, innerBufferOnErrorContinue.bufferedRowCount);
-    Assert.assertEquals(0, innerBufferOnErrorAbort.bufferedRowCount);
-    Assert.assertEquals(
-        "a",
-        innerBufferOnErrorContinue.getVectorValueAt(
-            "COLCHAR", 0)); // only first row is in the buffer
-    Assert.assertThrows(
-        IndexOutOfBoundsException.class,
-        () -> {
-          innerBufferOnErrorAbort.getVectorValueAt(
-              "COLCHAR", 0); // neither of the rows were copied from the temp buffer
-        });
+    if (bdecVersion == Constants.BdecVersion.THREE) {
+      List<List<Object>> snapshotContinue =
+          ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
+      // validRows and only the good row from mixedRows are in the buffer
+      Assert.assertEquals(2, snapshotContinue.size());
+      Assert.assertEquals(Arrays.asList("a"), snapshotContinue.get(0));
+      Assert.assertEquals(Arrays.asList("b"), snapshotContinue.get(1));
+
+      List<List<Object>> snapshotAbort =
+          ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
+      // only validRows and none of the mixedRows are in the buffer
+      Assert.assertEquals(1, snapshotAbort.size());
+      Assert.assertEquals(Arrays.asList("a"), snapshotAbort.get(0));
+    } else if (bdecVersion == Constants.BdecVersion.ONE) {
+      VectorSchemaRoot snapshotContinue =
+          ((VectorSchemaRoot) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get());
+      // validRows and only the good row from mixedRows are in the buffer
+      Assert.assertEquals(2, snapshotContinue.getRowCount());
+      Assert.assertEquals("[a, b]", snapshotContinue.getVector(0).toString());
+
+      VectorSchemaRoot snapshotAbort =
+          ((VectorSchemaRoot) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get());
+      // only validRows and none of the mixedRows are in the buffer
+      Assert.assertEquals(1, snapshotAbort.getRowCount());
+      Assert.assertEquals("[a]", snapshotAbort.getVector(0).toString());
+    }
   }
 }
