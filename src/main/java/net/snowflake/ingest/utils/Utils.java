@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.utils;
 
-import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Timer;
@@ -98,12 +97,14 @@ public class Utils {
     }
 
     if (!privateKeyPassphrase.isEmpty()) {
-      properties.put(JDBC_PRIVATE_KEY, parseEncryptedPrivateKey(privateKey, privateKeyPassphrase));
+      properties.put(
+          SFSessionProperty.PRIVATE_KEY.getPropertyKey(),
+          parseEncryptedPrivateKey(privateKey, privateKeyPassphrase));
     } else if (!privateKey.isEmpty()) {
-      properties.put(JDBC_PRIVATE_KEY, parsePrivateKey(privateKey));
+      properties.put(SFSessionProperty.PRIVATE_KEY.getPropertyKey(), parsePrivateKey(privateKey));
     }
 
-    if (!properties.containsKey(JDBC_PRIVATE_KEY)) {
+    if (!properties.containsKey(SFSessionProperty.PRIVATE_KEY.getPropertyKey())) {
       throw new SFException(ErrorCode.MISSING_CONFIG, "private_key");
     }
 

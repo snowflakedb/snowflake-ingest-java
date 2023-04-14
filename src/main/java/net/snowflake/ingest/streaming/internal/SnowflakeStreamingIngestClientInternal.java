@@ -13,7 +13,6 @@ import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
 import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
-import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
@@ -58,6 +57,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -177,7 +177,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       this.role = prop.getProperty(Constants.ROLE);
       try {
         KeyPair keyPair =
-            Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
+            Utils.createKeyPairFromPrivateKey(
+                (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
         this.requestBuilder =
             new RequestBuilder(
                 accountURL,
