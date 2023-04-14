@@ -26,6 +26,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
@@ -132,6 +133,14 @@ public class Utils {
     if (!properties.containsKey(Constants.ROLE)) {
       throw new SFException(ErrorCode.MISSING_CONFIG, "role");
     }
+
+    /**
+     * Behavior change in JDBC release 3.13.25
+     *
+     * @see <a href="https://community.snowflake.com/s/article/JDBC-Driver-Release-Notes">Snowflake
+     *     Documentation Release Notes </a>
+     */
+    properties.put(SFSessionProperty.ALLOW_UNDERSCORES_IN_HOST.getPropertyKey(), "true");
 
     return properties;
   }
