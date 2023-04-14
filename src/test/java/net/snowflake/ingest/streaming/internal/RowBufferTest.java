@@ -21,6 +21,7 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.NotImplementedException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -1539,31 +1540,42 @@ public class RowBufferTest {
     Assert.assertThrows(
         SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "3"));
 
+    switch (bdecVersion) {
+      case ONE:
+        VectorSchemaRoot snapshotContinueArrow =
+            ((VectorSchemaRoot) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get());
+        // validRows and only the good row from mixedRows are in the buffer
+        Assert.assertEquals(2, snapshotContinueArrow.getRowCount());
+        Assert.assertEquals("[a, b]", snapshotContinueArrow.getVector(0).toString());
+
+        VectorSchemaRoot snapshotAbortArrow =
+            ((VectorSchemaRoot) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get());
+        // only validRows and none of the mixedRows are in the buffer
+        Assert.assertEquals(1, snapshotAbortArrow.getRowCount());
+        Assert.assertEquals("[a]", snapshotAbortArrow.getVector(0).toString());
+        break;
+
+      case THREE:
+        List<List<Object>> snapshotContinueParquet =
+            ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
+        // validRows and only the good row from mixedRows are in the buffer
+        Assert.assertEquals(2, snapshotContinueParquet.size());
+        Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
+        Assert.assertEquals(Arrays.asList("b"), snapshotContinueParquet.get(1));
+
+        List<List<Object>> snapshotAbortParquet =
+            ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
+        // only validRows and none of the mixedRows are in the buffer
+        Assert.assertEquals(1, snapshotAbortParquet.size());
+        Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
+        break;
+      default:
+        throw new NotImplementedException("Unsupported version!");
+    }
     if (bdecVersion == Constants.BdecVersion.THREE) {
-      List<List<Object>> snapshotContinue =
-          ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
-      // validRows and only the good row from mixedRows are in the buffer
-      Assert.assertEquals(2, snapshotContinue.size());
-      Assert.assertEquals(Arrays.asList("a"), snapshotContinue.get(0));
-      Assert.assertEquals(Arrays.asList("b"), snapshotContinue.get(1));
 
-      List<List<Object>> snapshotAbort =
-          ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
-      // only validRows and none of the mixedRows are in the buffer
-      Assert.assertEquals(1, snapshotAbort.size());
-      Assert.assertEquals(Arrays.asList("a"), snapshotAbort.get(0));
     } else if (bdecVersion == Constants.BdecVersion.ONE) {
-      VectorSchemaRoot snapshotContinue =
-          ((VectorSchemaRoot) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get());
-      // validRows and only the good row from mixedRows are in the buffer
-      Assert.assertEquals(2, snapshotContinue.getRowCount());
-      Assert.assertEquals("[a, b]", snapshotContinue.getVector(0).toString());
 
-      VectorSchemaRoot snapshotAbort =
-          ((VectorSchemaRoot) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get());
-      // only validRows and none of the mixedRows are in the buffer
-      Assert.assertEquals(1, snapshotAbort.getRowCount());
-      Assert.assertEquals("[a]", snapshotAbort.getVector(0).toString());
     }
   }
 }
