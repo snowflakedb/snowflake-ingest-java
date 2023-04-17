@@ -3,10 +3,12 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_PASSWORD;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_USER;
+import static net.snowflake.ingest.utils.HttpUtil.NON_PROXY_HOSTS;
 import static net.snowflake.ingest.utils.HttpUtil.PROXY_HOST;
 import static net.snowflake.ingest.utils.HttpUtil.PROXY_PORT;
 import static net.snowflake.ingest.utils.HttpUtil.USE_PROXY;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
+import static net.snowflake.ingest.utils.HttpUtil.shouldBypassProxy;
 import static org.mockito.Mockito.times;
 
 import java.io.ByteArrayInputStream;
@@ -394,11 +396,13 @@ public class StreamingIngestStageTest {
     String oldProxyPort = System.getProperty(PROXY_PORT);
     String oldUser = System.getProperty(HTTP_PROXY_USER);
     String oldPassword = System.getProperty(HTTP_PROXY_PASSWORD);
+    String oldNonProxyHosts = System.getProperty(NON_PROXY_HOSTS);
 
     String proxyHost = "localhost";
     String proxyPort = "8080";
     String user = "admin";
     String password = "test";
+    String nonProxyHosts = "*.snowflakecomputing.com";
 
     try {
       // Test empty properties when USE_PROXY is NOT set;
@@ -410,6 +414,7 @@ public class StreamingIngestStageTest {
       System.setProperty(PROXY_PORT, proxyPort);
       System.setProperty(HTTP_PROXY_USER, user);
       System.setProperty(HTTP_PROXY_PASSWORD, password);
+      System.setProperty(NON_PROXY_HOSTS, nonProxyHosts);
 
       // Verify that properties are set
       props = generateProxyPropertiesForJDBC();
@@ -418,6 +423,8 @@ public class StreamingIngestStageTest {
       Assert.assertEquals(proxyPort, props.get(SFSessionProperty.PROXY_PORT.getPropertyKey()));
       Assert.assertEquals(user, props.get(SFSessionProperty.PROXY_USER.getPropertyKey()));
       Assert.assertEquals(password, props.get(SFSessionProperty.PROXY_PASSWORD.getPropertyKey()));
+      Assert.assertEquals(
+          nonProxyHosts, props.get(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey()));
     } finally {
       // Cleanup
       if (oldUseProxy != null) {
@@ -429,6 +436,44 @@ public class StreamingIngestStageTest {
         System.setProperty(HTTP_PROXY_USER, oldUser);
         System.setProperty(HTTP_PROXY_PASSWORD, oldPassword);
       }
+      if (oldNonProxyHosts != null) {
+        System.setProperty(NON_PROXY_HOSTS, oldNonProxyHosts);
+      }
+    }
+  }
+
+  @Test
+  public void testShouldBypassProxy() {
+    String oldNonProxyHosts = System.getProperty(NON_PROXY_HOSTS);
+    String accountName = "accountName12345";
+    String accountDashName = "account-name12345";
+    String accountUnderscoreName = "account_name12345";
+    String nonProxyHosts = "*.snowflakecomputing.com|localhost";
+
+    System.setProperty(NON_PROXY_HOSTS, nonProxyHosts);
+    Assert.assertTrue(shouldBypassProxy(accountName));
+    Assert.assertTrue(shouldBypassProxy(accountDashName));
+    Assert.assertTrue(shouldBypassProxy(accountUnderscoreName));
+
+    String accountNamePrivateLink = "accountName12345.privatelink";
+    nonProxyHosts = "*.privatelink.snowflakecomputing.com|localhost";
+    System.setProperty(NON_PROXY_HOSTS, nonProxyHosts);
+    Assert.assertTrue(shouldBypassProxy(accountNamePrivateLink));
+
+    // Previous tests should return false with the new nonProxyHosts value
+    Assert.assertFalse(shouldBypassProxy(accountName));
+    Assert.assertFalse(shouldBypassProxy(accountDashName));
+    Assert.assertFalse(shouldBypassProxy(accountUnderscoreName));
+
+    // All tests should return false after clearing the nonProxyHosts property
+    System.clearProperty(NON_PROXY_HOSTS);
+    Assert.assertFalse(shouldBypassProxy(accountName));
+    Assert.assertFalse(shouldBypassProxy(accountDashName));
+    Assert.assertFalse(shouldBypassProxy(accountUnderscoreName));
+    Assert.assertFalse(shouldBypassProxy(accountNamePrivateLink));
+
+    if (oldNonProxyHosts != null) {
+      System.setProperty(NON_PROXY_HOSTS, oldNonProxyHosts);
     }
   }
 }

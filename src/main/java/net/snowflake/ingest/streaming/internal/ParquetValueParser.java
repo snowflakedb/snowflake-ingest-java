@@ -75,6 +75,7 @@ class ParquetValueParser {
    * @param columnMetadata column metadata
    * @param typeName Parquet primitive type name
    * @param stats column stats to update
+   * @param curRowIndex Row index corresponding the row to parse
    * @return parsed value and byte size of Parquet internal representation
    */
   static ParquetBufferValue parseColumnValueToParquet(
@@ -82,7 +83,8 @@ class ParquetValueParser {
       ColumnMetadata columnMetadata,
       PrimitiveType.PrimitiveTypeName typeName,
       RowBufferStats stats,
-      ZoneId defaultTimezone) {
+      ZoneId defaultTimezone,
+      int curRowIndex) {
     Utils.assertNotNull("Parquet column stats", stats);
     float estimatedParquetSize = 0F;
     estimatedParquetSize += DEFINITION_LEVEL_ENCODING_BYTE_LEN;
@@ -94,7 +96,8 @@ class ParquetValueParser {
       switch (typeName) {
         case BOOLEAN:
           int intValue =
-              DataValidationUtil.validateAndParseBoolean(columnMetadata.getName(), value);
+              DataValidationUtil.validateAndParseBoolean(
+                  columnMetadata.getName(), value, curRowIndex);
           value = intValue > 0;
           stats.addIntValue(BigInteger.valueOf(intValue));
           estimatedParquetSize += BIT_ENCODING_BYTE_LEN;
@@ -107,7 +110,8 @@ class ParquetValueParser {
                   columnMetadata.getScale(),
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
-                  physicalType);
+                  physicalType,
+                  curRowIndex);
           value = intVal;
           stats.addIntValue(BigInteger.valueOf(intVal));
           estimatedParquetSize += 4;
@@ -121,14 +125,15 @@ class ParquetValueParser {
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType,
-                  defaultTimezone);
+                  defaultTimezone,
+                  curRowIndex);
           value = longValue;
           stats.addIntValue(BigInteger.valueOf(longValue));
           estimatedParquetSize += 8;
           break;
         case DOUBLE:
           double doubleValue =
-              DataValidationUtil.validateAndParseReal(columnMetadata.getName(), value);
+              DataValidationUtil.validateAndParseReal(columnMetadata.getName(), value, curRowIndex);
           value = doubleValue;
           stats.addRealValue(doubleValue);
           estimatedParquetSize += 8;
@@ -136,10 +141,10 @@ class ParquetValueParser {
         case BINARY:
           int length = 0;
           if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
-            value = getBinaryValueForLogicalBinary(value, stats, columnMetadata);
+            value = getBinaryValueForLogicalBinary(value, stats, columnMetadata, curRowIndex);
             length = ((byte[]) value).length;
           } else {
-            String str = getBinaryValue(value, stats, columnMetadata);
+            String str = getBinaryValue(value, stats, columnMetadata, curRowIndex);
             value = str;
             if (str != null) {
               length = str.getBytes().length;
@@ -159,7 +164,8 @@ class ParquetValueParser {
                   Optional.ofNullable(columnMetadata.getPrecision()).orElse(0),
                   logicalType,
                   physicalType,
-                  defaultTimezone);
+                  defaultTimezone,
+                  curRowIndex);
           stats.addIntValue(intRep);
           value = getSb16Bytes(intRep);
           estimatedParquetSize += 16;
@@ -172,7 +178,9 @@ class ParquetValueParser {
     if (value == null) {
       if (!columnMetadata.getNullable()) {
         throw new SFException(
-            ErrorCode.INVALID_ROW, columnMetadata.getName(), "Passed null to non nullable field");
+            ErrorCode.INVALID_FORMAT_ROW,
+            columnMetadata.getName(),
+            "Passed null to non nullable field");
       }
       stats.incCurrentNullCount();
     }
@@ -196,21 +204,24 @@ class ParquetValueParser {
       @Nullable Integer scale,
       Integer precision,
       AbstractRowBuffer.ColumnLogicalType logicalType,
-      AbstractRowBuffer.ColumnPhysicalType physicalType) {
+      AbstractRowBuffer.ColumnPhysicalType physicalType,
+      final int curRowIndex) {
     int intVal;
     switch (logicalType) {
       case DATE:
-        intVal = DataValidationUtil.validateAndParseDate(columnName, value);
+        intVal = DataValidationUtil.validateAndParseDate(columnName, value, curRowIndex);
         break;
       case TIME:
         Utils.assertNotNull("Unexpected null scale for TIME data type", scale);
-        intVal = DataValidationUtil.validateAndParseTime(columnName, value, scale).intValue();
+        intVal =
+            DataValidationUtil.validateAndParseTime(columnName, value, scale, curRowIndex)
+                .intValue();
         break;
       case FIXED:
         BigDecimal bigDecimalValue =
-            DataValidationUtil.validateAndParseBigDecimal(columnName, value);
+            DataValidationUtil.validateAndParseBigDecimal(columnName, value, curRowIndex);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, curRowIndex);
         intVal = bigDecimalValue.intValue();
         break;
       default:
@@ -236,34 +247,37 @@ class ParquetValueParser {
       int precision,
       AbstractRowBuffer.ColumnLogicalType logicalType,
       AbstractRowBuffer.ColumnPhysicalType physicalType,
-      ZoneId defaultTimezone) {
+      ZoneId defaultTimezone,
+      final int curRowIndex) {
     long longValue;
     switch (logicalType) {
       case TIME:
         Utils.assertNotNull("Unexpected null scale for TIME data type", scale);
-        longValue = DataValidationUtil.validateAndParseTime(columnName, value, scale).longValue();
+        longValue =
+            DataValidationUtil.validateAndParseTime(columnName, value, scale, curRowIndex)
+                .longValue();
         break;
       case TIMESTAMP_LTZ:
       case TIMESTAMP_NTZ:
         boolean trimTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
         longValue =
             DataValidationUtil.validateAndParseTimestamp(
-                    columnName, value, scale, defaultTimezone, trimTimezone)
+                    columnName, value, scale, defaultTimezone, trimTimezone, curRowIndex)
                 .toBinary(false)
                 .longValue();
         break;
       case TIMESTAMP_TZ:
         longValue =
             DataValidationUtil.validateAndParseTimestamp(
-                    columnName, value, scale, defaultTimezone, false)
+                    columnName, value, scale, defaultTimezone, false, curRowIndex)
                 .toBinary(true)
                 .longValue();
         break;
       case FIXED:
         BigDecimal bigDecimalValue =
-            DataValidationUtil.validateAndParseBigDecimal(columnName, value);
+            DataValidationUtil.validateAndParseBigDecimal(columnName, value, curRowIndex);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, curRowIndex);
         longValue = bigDecimalValue.longValue();
         break;
       default:
@@ -289,24 +303,25 @@ class ParquetValueParser {
       int precision,
       AbstractRowBuffer.ColumnLogicalType logicalType,
       AbstractRowBuffer.ColumnPhysicalType physicalType,
-      ZoneId defaultTimezone) {
+      ZoneId defaultTimezone,
+      final int curRowIndex) {
     switch (logicalType) {
       case TIMESTAMP_TZ:
         return DataValidationUtil.validateAndParseTimestamp(
-                columnName, value, scale, defaultTimezone, false)
+                columnName, value, scale, defaultTimezone, false, curRowIndex)
             .toBinary(true);
       case TIMESTAMP_LTZ:
       case TIMESTAMP_NTZ:
         boolean trimTimezone = logicalType == AbstractRowBuffer.ColumnLogicalType.TIMESTAMP_NTZ;
         return DataValidationUtil.validateAndParseTimestamp(
-                columnName, value, scale, defaultTimezone, trimTimezone)
+                columnName, value, scale, defaultTimezone, trimTimezone, curRowIndex)
             .toBinary(false);
       case FIXED:
         BigDecimal bigDecimalValue =
-            DataValidationUtil.validateAndParseBigDecimal(columnName, value);
+            DataValidationUtil.validateAndParseBigDecimal(columnName, value, curRowIndex);
         // explicitly match the BigDecimal input scale with the Snowflake data type scale
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision);
+        DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, curRowIndex);
         return bigDecimalValue.unscaledValue();
       default:
         throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
@@ -339,20 +354,26 @@ class ParquetValueParser {
    * @return string representation
    */
   private static String getBinaryValue(
-      Object value, RowBufferStats stats, ColumnMetadata columnMetadata) {
+      Object value, RowBufferStats stats, ColumnMetadata columnMetadata, final int curRowIndex) {
     AbstractRowBuffer.ColumnLogicalType logicalType =
         AbstractRowBuffer.ColumnLogicalType.valueOf(columnMetadata.getLogicalType());
     String str;
     if (logicalType.isObject()) {
       switch (logicalType) {
         case OBJECT:
-          str = DataValidationUtil.validateAndParseObject(columnMetadata.getName(), value);
+          str =
+              DataValidationUtil.validateAndParseObject(
+                  columnMetadata.getName(), value, curRowIndex);
           break;
         case VARIANT:
-          str = DataValidationUtil.validateAndParseVariant(columnMetadata.getName(), value);
+          str =
+              DataValidationUtil.validateAndParseVariant(
+                  columnMetadata.getName(), value, curRowIndex);
           break;
         case ARRAY:
-          str = DataValidationUtil.validateAndParseArray(columnMetadata.getName(), value);
+          str =
+              DataValidationUtil.validateAndParseArray(
+                  columnMetadata.getName(), value, curRowIndex);
           break;
         default:
           throw new SFException(
@@ -362,7 +383,10 @@ class ParquetValueParser {
       String maxLengthString = columnMetadata.getLength().toString();
       str =
           DataValidationUtil.validateAndParseString(
-              columnMetadata.getName(), value, Optional.of(maxLengthString).map(Integer::parseInt));
+              columnMetadata.getName(),
+              value,
+              Optional.of(maxLengthString).map(Integer::parseInt),
+              curRowIndex);
       stats.addStrValue(str);
     }
     return str;
@@ -376,11 +400,14 @@ class ParquetValueParser {
    * @return byte array representation
    */
   private static byte[] getBinaryValueForLogicalBinary(
-      Object value, RowBufferStats stats, ColumnMetadata columnMetadata) {
+      Object value, RowBufferStats stats, ColumnMetadata columnMetadata, final int curRowIndex) {
     String maxLengthString = columnMetadata.getByteLength().toString();
     byte[] bytes =
         DataValidationUtil.validateAndParseBinary(
-            columnMetadata.getName(), value, Optional.of(maxLengthString).map(Integer::parseInt));
+            columnMetadata.getName(),
+            value,
+            Optional.of(maxLengthString).map(Integer::parseInt),
+            curRowIndex);
     stats.addBinaryValue(bytes);
     return bytes;
   }

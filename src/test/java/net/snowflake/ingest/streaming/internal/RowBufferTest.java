@@ -19,7 +19,9 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.NotImplementedException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -128,7 +130,6 @@ public class RowBufferTest {
         "test.buffer",
         rs -> {},
         initialState,
-        true,
         enableParquetMemoryOptimization);
   }
 
@@ -330,14 +331,14 @@ public class RowBufferTest {
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(1, response.getErrorRowCount());
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(),
+          ErrorCode.INVALID_VALUE_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
       Assert.assertTrue(response.getInsertErrors().get(0).getMessage().contains("String too long"));
     } else {
       try {
         rowBuffer.insertRows(Collections.singletonList(row), null);
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -657,13 +658,13 @@ public class RowBufferTest {
           innerBuffer.insertRows(Collections.singletonList(row), null);
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(),
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row), null);
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -979,13 +980,13 @@ public class RowBufferTest {
       response = innerBuffer.insertRows(Collections.singletonList(row), "1");
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(),
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row), "1");
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -1027,14 +1028,14 @@ public class RowBufferTest {
       Assert.assertTrue(response.hasErrors());
       InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), error.getException().getVendorCode());
       Assert.assertEquals(
           Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row2), "2");
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -1060,7 +1061,7 @@ public class RowBufferTest {
     Assert.assertTrue(response.hasErrors());
     InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
+        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), error.getException().getVendorCode());
     Assert.assertEquals(Arrays.asList("COLBOOLEAN3", "COLBOOLEAN2"), error.getExtraColNames());
   }
 
@@ -1314,7 +1315,7 @@ public class RowBufferTest {
     InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals(1, innerBuffer.rowCount);
+    Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1328,7 +1329,7 @@ public class RowBufferTest {
     response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1342,10 +1343,10 @@ public class RowBufferTest {
     try {
       innerBuffer.insertRows(Collections.singletonList(row3), "3");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
     }
 
-    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1357,7 +1358,7 @@ public class RowBufferTest {
     row3.put("COLDECIMAL", 3);
     response = innerBuffer.insertRows(Collections.singletonList(row3), "3");
     Assert.assertFalse(response.hasErrors());
-    Assert.assertEquals(3, innerBuffer.rowCount);
+    Assert.assertEquals(3, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1368,7 +1369,7 @@ public class RowBufferTest {
 
     ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, data.getRowCount());
-    Assert.assertEquals(0, innerBuffer.rowCount);
+    Assert.assertEquals(0, innerBuffer.bufferedRowCount);
   }
 
   @Test
@@ -1497,5 +1498,83 @@ public class RowBufferTest {
     // Check stats generation
     ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(5, result.getRowCount());
+  }
+
+  @Test
+  public void testOnErrorAbortRowsWithError() {
+    AbstractRowBuffer<?> innerBufferOnErrorContinue =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    AbstractRowBuffer<?> innerBufferOnErrorAbort =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+
+    ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setName("COLCHAR");
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14);
+    colChar.setLength(11);
+    colChar.setScale(0);
+
+    innerBufferOnErrorContinue.setupSchema(Collections.singletonList(colChar));
+    innerBufferOnErrorAbort.setupSchema(Collections.singletonList(colChar));
+
+    // insert one valid row
+    List<Map<String, Object>> validRows = new ArrayList<>();
+    validRows.add(Collections.singletonMap("colChar", "a"));
+
+    InsertValidationResponse response = innerBufferOnErrorContinue.insertRows(validRows, "1");
+    Assert.assertFalse(response.hasErrors());
+    response = innerBufferOnErrorAbort.insertRows(validRows, "1");
+    Assert.assertFalse(response.hasErrors());
+
+    // insert one valid and one invalid row
+    List<Map<String, Object>> mixedRows = new ArrayList<>();
+    mixedRows.add(Collections.singletonMap("colChar", "b"));
+    mixedRows.add(Collections.singletonMap("colChar", "1111111111111111111111")); // too big
+
+    response = innerBufferOnErrorContinue.insertRows(mixedRows, "3");
+    Assert.assertTrue(response.hasErrors());
+
+    Assert.assertThrows(
+        SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "3"));
+
+    switch (bdecVersion) {
+      case ONE:
+        VectorSchemaRoot snapshotContinueArrow =
+            ((VectorSchemaRoot) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get());
+        // validRows and only the good row from mixedRows are in the buffer
+        Assert.assertEquals(2, snapshotContinueArrow.getRowCount());
+        Assert.assertEquals("[a, b]", snapshotContinueArrow.getVector(0).toString());
+
+        VectorSchemaRoot snapshotAbortArrow =
+            ((VectorSchemaRoot) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get());
+        // only validRows and none of the mixedRows are in the buffer
+        Assert.assertEquals(1, snapshotAbortArrow.getRowCount());
+        Assert.assertEquals("[a]", snapshotAbortArrow.getVector(0).toString());
+        break;
+
+      case THREE:
+        List<List<Object>> snapshotContinueParquet =
+            ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
+        // validRows and only the good row from mixedRows are in the buffer
+        Assert.assertEquals(2, snapshotContinueParquet.size());
+        Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
+        Assert.assertEquals(Arrays.asList("b"), snapshotContinueParquet.get(1));
+
+        List<List<Object>> snapshotAbortParquet =
+            ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
+        // only validRows and none of the mixedRows are in the buffer
+        Assert.assertEquals(1, snapshotAbortParquet.size());
+        Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
+        break;
+      default:
+        throw new NotImplementedException("Unsupported version!");
+    }
+    if (bdecVersion == Constants.BdecVersion.THREE) {
+
+    } else if (bdecVersion == Constants.BdecVersion.ONE) {
+
+    }
   }
 }
