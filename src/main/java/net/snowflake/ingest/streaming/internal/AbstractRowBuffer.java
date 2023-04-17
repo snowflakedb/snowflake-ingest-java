@@ -559,7 +559,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean bufferForTests,
       boolean enableParquetMemoryOptimization) {
     switch (bdecVersion) {
       case ONE:
@@ -582,7 +581,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 fullyQualifiedChannelName,
                 rowSizeMetric,
                 channelRuntimeState,
-                bufferForTests,
                 enableParquetMemoryOptimization);
       default:
         throw new SFException(
