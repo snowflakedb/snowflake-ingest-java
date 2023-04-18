@@ -139,7 +139,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
       final long insertRowIndex) {
-    return addRow(row, bufferedRowIndex, this::writeRow, statsMap, formattedInputColumnNames);
+    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   void writeRow(List<Object> row) {
@@ -157,25 +157,27 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
       long insertRowIndex) {
-    return addRow(row, curRowIndex, tempData::add, statsMap, formattedInputColumnNames);
+    return addRow(row, tempData::add, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   /**
    * Adds a row to the parquet buffer.
    *
    * @param row row to add
-   * @param curRowIndex current row index
    * @param out internal buffer to add to
    * @param statsMap column stats map
    * @param inputColumnNames list of input column names after formatting
+   * @param insertRowsCurrIndex Row index of the input Rows passed in {@link
+   *     net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel#insertRows(Iterable,
+   *     String)}
    * @return row size
    */
   private float addRow(
       Map<String, Object> row,
-      int curRowIndex,
       Consumer<List<Object>> out,
       Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+      Set<String> inputColumnNames,
+      long insertRowsCurrIndex) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
 
@@ -193,7 +195,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       ColumnMetadata column = parquetColumn.columnMetadata;
       ParquetValueParser.ParquetBufferValue valueWithSize =
           ParquetValueParser.parseColumnValueToParquet(
-              value, column, parquetColumn.type, forkedStats, defaultTimezone, curRowIndex);
+              value, column, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex);
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
