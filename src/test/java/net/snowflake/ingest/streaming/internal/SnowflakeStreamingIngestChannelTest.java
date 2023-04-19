@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
-import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
@@ -20,6 +19,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
@@ -251,7 +251,9 @@ public class SnowflakeStreamingIngestChannelTest {
     String urlStr = "https://sfctest0.snowflakecomputing.com:80";
     SnowflakeURL url = new SnowflakeURL(urlStr);
 
-    KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
+    KeyPair keyPair =
+        Utils.createKeyPairFromPrivateKey(
+            (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
     RequestBuilder requestBuilder =
         new RequestBuilder(url, prop.get(USER).toString(), keyPair, null, null);
 
@@ -571,6 +573,7 @@ public class SnowflakeStreamingIngestChannelTest {
       Assert.fail("the insert should be throttled.");
     } catch (TimeoutException ignored) {
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail("unexpected exception encountered.");
     }
 
@@ -580,6 +583,7 @@ public class SnowflakeStreamingIngestChannelTest {
     try {
       future.get(5L, TimeUnit.SECONDS);
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail("unexpected exception encountered.");
     }
   }
