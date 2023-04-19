@@ -1,13 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.util.Map;
-import java.util.function.Function;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
@@ -16,6 +10,13 @@ import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.function.Function;
+
+import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 
 public class StreamingIngestUtils {
 
@@ -51,14 +52,14 @@ public class StreamingIngestUtils {
       CloseableHttpClient httpClient,
       RequestBuilder requestBuilder)
       throws IOException, IngestResponseException {
+    String payloadInString;
+    try {
+      payloadInString = objectMapper.writeValueAsString(payload);
+    } catch (JsonProcessingException e) {
+      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
+    }
     return executeWithRetries(
-        targetClass,
-        endpoint,
-        getPayloadAsStr(payload, message),
-        message,
-        apiName,
-        httpClient,
-        requestBuilder);
+            targetClass, endpoint, payloadInString, message, apiName, httpClient, requestBuilder);
   }
 
   static <T extends StreamingIngestResponse> T executeWithRetries(
@@ -121,13 +122,5 @@ public class StreamingIngestUtils {
   public static String getShortname(final String fullname) {
     final String[] parts = fullname.split("/");
     return parts[parts.length - 1];
-  }
-
-  public static String getPayloadAsStr(Map<Object, Object> payload, String message) {
-    try {
-      return objectMapper.writeValueAsString(payload);
-    } catch (JsonProcessingException e) {
-      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
-    }
   }
 }

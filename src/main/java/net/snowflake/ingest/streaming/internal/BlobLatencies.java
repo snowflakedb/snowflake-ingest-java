@@ -10,59 +10,59 @@ import java.util.concurrent.TimeUnit;
 
 /** Latency information for a blob */
 class BlobLatencies {
-  public static final long DEFAULT_BLOB_LATENCY = -1;
+  public static final Long DEFAULT_BLOB_LATENCY = null;
 
-  private long buildLatencyMs;
-  private long uploadLatencyMs;
+  private Long buildDurationMs;
+  private Long uploadDurationMs;
 
-  private long flushStartTimestamp;
-  private long registerStartTimestamp;
+  private Long flushStartMs;
+  private Long registerStartMs;
 
   public BlobLatencies() {
-    this.buildLatencyMs = DEFAULT_BLOB_LATENCY;
-    this.uploadLatencyMs = DEFAULT_BLOB_LATENCY;
+    this.buildDurationMs = DEFAULT_BLOB_LATENCY;
+    this.uploadDurationMs = DEFAULT_BLOB_LATENCY;
 
-    this.flushStartTimestamp = DEFAULT_BLOB_LATENCY;
-    this.registerStartTimestamp = DEFAULT_BLOB_LATENCY;
+    this.flushStartMs = DEFAULT_BLOB_LATENCY;
+    this.registerStartMs = DEFAULT_BLOB_LATENCY;
   }
 
   @JsonProperty("build_latency_ms")
-  long getBuildLatencyMs() {
-    return this.buildLatencyMs;
+  long getBuildDurationMs() {
+    return this.buildDurationMs;
   }
 
   @JsonProperty("upload_latency_ms")
-  long getUploadLatencyMs() {
-    return this.uploadLatencyMs;
+  long getUploadDurationMs() {
+    return this.uploadDurationMs;
   }
 
   @JsonProperty("flush_start_timestamp")
-  long getFlushStartTimestamp() {
-    return this.flushStartTimestamp;
+  long getFlushStartMs() {
+    return this.flushStartMs;
   }
 
   @JsonProperty("register_start_timestamp")
-  long getRegisterStartTimestamp() {
-    return this.registerStartTimestamp;
+  long getRegisterStartMs() {
+    return this.registerStartMs;
   }
 
-  void setBuildLatencyMs(Timer.Context buildLatencyContext) {
+  void setBuildDurationMs(Timer.Context buildLatencyContext) {
     if (buildLatencyContext != null) {
-      this.buildLatencyMs = TimeUnit.NANOSECONDS.toMillis(buildLatencyContext.stop());
+      this.buildDurationMs = TimeUnit.NANOSECONDS.toMillis(buildLatencyContext.stop());
     }
   }
 
-  void setUploadLatencyMs(Timer.Context uploadLatencyContext) {
+  void setUploadDurationMs(Timer.Context uploadLatencyContext) {
     if (uploadLatencyContext != null) {
-      this.uploadLatencyMs = TimeUnit.NANOSECONDS.toMillis(uploadLatencyContext.stop());
+      this.uploadDurationMs = TimeUnit.NANOSECONDS.toMillis(uploadLatencyContext.stop());
     }
   }
 
-  void setFlushStartTimestamp(long flushStartTimestamp) {
-    this.flushStartTimestamp = flushStartTimestamp;
+  void setFlushStartMs(long flushStartMs) {
+    this.flushStartMs = flushStartMs;
   }
 
-  void setRegisterStartTimestamp(long registerStartTimestamp) {
-    this.registerStartTimestamp = registerStartTimestamp;
+  void setRegisterStartMs(long registerStartMs) {
+    this.registerStartMs = registerStartMs;
   }
 }
