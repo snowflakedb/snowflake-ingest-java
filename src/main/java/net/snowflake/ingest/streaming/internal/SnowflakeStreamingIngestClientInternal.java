@@ -194,7 +194,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       this.setupMetricsForClient();
     }
 
-    this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+    try {
+      this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+    } catch (Exception e) {
+      if (this.telemetryWorker != null) {
+        this.telemetryWorker.shutdown();
+      }
+      if (this.requestBuilder != null) {
+        this.requestBuilder.closeResources();
+      }
+      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
+      Utils.closeAllocator(this.allocator);
+      throw e;
+    }
 
     logger.logInfo(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
