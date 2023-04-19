@@ -101,8 +101,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Name of the client
   private final String name;
 
-  private String accountName;
-
   // Snowflake role for the client to use
   private String role;
 
@@ -167,7 +165,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
-    this.accountName = accountURL == null ? null : accountURL.getAccount();
+    String accountName = accountURL == null ? null : accountURL.getAccount();
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
     this.channelCache = new ChannelCache<>();
