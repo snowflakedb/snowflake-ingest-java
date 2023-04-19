@@ -1,4 +1,4 @@
-name: Snowpipe Java SDK Tests
+name: Snowpipe Java SDK Tests Against Azure Deployment
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: '**'
 
 jobs:
-  build:
+  build-azure:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -24,7 +24,7 @@ jobs:
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
         run: |
-          ./scripts/decrypt_secret.sh 'AWS'
+          ./scripts/decrypt_secret.sh 'AZURE'
 
       - name: Unit & Integration Test
         env:
@@ -36,22 +36,3 @@ jobs:
 
       - name: Code Coverage
         uses: codecov/codecov-action@v1
-  build-windows:
-    runs-on: windows-2022
-    strategy:
-      matrix:
-        java: [ 8 ]
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-      - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v1
-        with:
-          java-version: ${{ matrix.java }}
-      - name: Decrypt profile.json (Windows)
-        env:
-          DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
-        run: gpg --quiet --batch --yes --decrypt --passphrase="${env:DECRYPTION_PASSPHRASE}" --output profile.json ./profile.json.gpg
-      - name: Unit & Integration Test (Windows)
-        continue-on-error: false
-        run: mvn -DghActionsIT verify --batch-mode
