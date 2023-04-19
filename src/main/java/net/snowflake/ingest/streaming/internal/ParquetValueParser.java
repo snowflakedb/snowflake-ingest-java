@@ -199,7 +199,7 @@ class ParquetValueParser {
    * @param precision data type precision
    * @param logicalType Snowflake logical type
    * @param physicalType Snowflake physical type
-   * @param insertRowsCurrIndex
+   * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return parsed int32 value
    */
   private static int getInt32Value(
@@ -358,6 +358,7 @@ class ParquetValueParser {
    * @param value value to parse
    * @param stats column stats to update
    * @param columnMetadata column metadata
+   * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return string representation
    */
   private static String getBinaryValue(
