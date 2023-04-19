@@ -3,12 +3,8 @@
  */
 package net.snowflake.ingest.streaming.internal;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import java.util.concurrent.ExecutionException;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.SFException;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 
 /**
  * Util class to normalise literals to match server side metadata.
@@ -26,15 +22,9 @@ class LiteralQuoteUtils {
 
   static {
     unquotedColumnNamesCache =
-        CacheBuilder.newBuilder()
+        Caffeine.newBuilder()
             .maximumSize(UNQUOTED_COLUMN_NAME_CACHE_MAX_SIZE)
-            .build(
-                new CacheLoader<String, String>() {
-                  @Override
-                  public String load(String key) {
-                    return unquoteColumnNameInternal(key);
-                  }
-                });
+            .build(LiteralQuoteUtils::unquoteColumnNameInternal);
   }
 
   /**
@@ -42,14 +32,7 @@ class LiteralQuoteUtils {
    * expensive. If not, it unquotes directly, otherwise it return a value from a loading cache.
    */
   static String unquoteColumnName(String columnName) {
-    try {
-      return unquotedColumnNamesCache.get(columnName);
-    } catch (ExecutionException e) {
-      throw new SFException(
-          e,
-          ErrorCode.INTERNAL_ERROR,
-          String.format("Exception thrown while unquoting column name %s", columnName));
-    }
+    return unquotedColumnNamesCache.get(columnName);
   }
 
   /**
