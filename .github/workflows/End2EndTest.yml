@@ -40,11 +40,12 @@ jobs:
       - name: Code Coverage
         uses: codecov/codecov-action@v1
   build-windows:
-    name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud AWS
+    name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud {{ matrix.snowflake_cloud }}
     runs-on: windows-2022
     strategy:
       matrix:
         java: [ 8 ]
+        snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -52,10 +53,11 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      - name: Decrypt profile.json (Windows)
+      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
-        run: gpg --quiet --batch --yes --decrypt --passphrase="${env:DECRYPTION_PASSPHRASE}" --output profile.json ./profile.json.gpg
+        run: |
+          ./scripts/decrypt_secret.sh ${{ matrix.snowflake_cloud }}
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: mvn -DghActionsIT verify --batch-mode
