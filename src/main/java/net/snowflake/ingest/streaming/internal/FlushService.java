@@ -24,17 +24,18 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -319,7 +320,13 @@ class FlushService<T> {
                 * (1 + this.owningClient.getParameterProvider().getIOTimeCpuRatio()),
             MAX_THREAD_COUNT);
     this.buildUploadWorkers =
-        Executors.newFixedThreadPool(buildUploadThreadCount, buildUploadThreadFactory);
+        new ThreadPoolExecutor(
+            1,
+            buildUploadThreadCount,
+            60L,
+            TimeUnit.SECONDS,
+            new SynchronousQueue<Runnable>(),
+            buildUploadThreadFactory);
 
     logger.logInfo(
         "Create {} threads for build/upload blobs for client={}, total available processors={}",
@@ -338,33 +345,72 @@ class FlushService<T> {
                 String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
         itr = this.channelCache.iterator();
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
+    List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
 
-    while (itr.hasNext()) {
+    while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
-      AtomicReference<Float> totalBufferSizeInBytes = new AtomicReference<>((float) 0);
-
+      float totalBufferSizeInBytes = 0F;
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
 
-      // Distribute work at table level, create a new blob if reaching the blob size limit
-      while (itr.hasNext() && totalBufferSizeInBytes.get() <= MAX_BLOB_SIZE_IN_BYTES) {
-        ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
-            itr.next().getValue();
+      // Distribute work at table level, split the blob if reaching the blob size limit or the
+      // channel has different encryption key ids
+      while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
         List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
-        // Use parallel stream since getData could be the performance bottleneck when we have a high
-        // number of channels
-        table.values().parallelStream()
-            .forEach(
-                channel -> {
-                  if (channel.isValid()) {
-                    ChannelData<T> data = channel.getData(filePath);
-                    if (data != null) {
-                      channelsDataPerTable.add(data);
-                      totalBufferSizeInBytes.updateAndGet(v -> v + data.getBufferSize());
+        if (!leftoverChannelsDataPerTable.isEmpty()) {
+          channelsDataPerTable.addAll(leftoverChannelsDataPerTable);
+          leftoverChannelsDataPerTable.clear();
+        } else {
+          ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
+              itr.next().getValue();
+          // Use parallel stream since getData could be the performance bottleneck when we have a
+          // high number of channels
+          table.values().parallelStream()
+              .forEach(
+                  channel -> {
+                    if (channel.isValid()) {
+                      ChannelData<T> data = channel.getData(filePath);
+                      if (data != null) {
+                        channelsDataPerTable.add(data);
+                      }
                     }
-                  }
-                });
+                  });
+        }
+
         if (!channelsDataPerTable.isEmpty()) {
-          blobData.add(channelsDataPerTable);
+          int idx = 0;
+          while (idx < channelsDataPerTable.size()) {
+            ChannelData<T> channelData = channelsDataPerTable.get(idx);
+            // Stop processing the rest of channels if reaching the blob size limit or the channel
+            // has different encryption key ids
+            if (idx > 0
+                && (totalBufferSizeInBytes + channelData.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
+                    || !Objects.equals(
+                        channelData.getChannelContext().getEncryptionKeyId(),
+                        channelsDataPerTable
+                            .get(idx - 1)
+                            .getChannelContext()
+                            .getEncryptionKeyId()))) {
+              leftoverChannelsDataPerTable.addAll(
+                  channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
+              logger.logInfo(
+                  "Creation of another blob is needed because of blob size limit or different"
+                      + " encryption ids, client={}, table={},  size={}, encryptionId1={},"
+                      + " encryptionId2={}",
+                  this.owningClient.getName(),
+                  channelData.getChannelContext().getTableName(),
+                  totalBufferSizeInBytes + channelData.getBufferSize(),
+                  channelData.getChannelContext().getEncryptionKeyId(),
+                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId());
+              break;
+            }
+            totalBufferSizeInBytes += channelData.getBufferSize();
+            idx++;
+          }
+          // Add processed channels to the current blob, stop if we need to create a new blob
+          blobData.add(channelsDataPerTable.subList(0, idx));
+          if (idx != channelsDataPerTable.size()) {
+            break;
+          }
         }
       }
 
