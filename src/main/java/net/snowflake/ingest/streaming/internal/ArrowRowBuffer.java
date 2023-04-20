@@ -505,7 +505,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
           case TEXT:
             {
               String maxLengthString = field.getMetadata().get(COLUMN_CHAR_LENGTH);
-              String str =
+              byte[] str =
                   DataValidationUtil.validateAndParseString(
                       forkedStats.getColumnDisplayName(),
                       value,
@@ -513,13 +513,13 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                       insertRowsCurrIndex);
               Text text = new Text(str);
               ((VarCharVector) vector).setSafe(bufferedRowIndex, text);
-              forkedStats.addStrValue(str);
+              forkedStats.addBinaryValue(str);
               rowBufferSize += text.getBytes().length;
               break;
             }
           case OBJECT:
             {
-              String str =
+              byte[] str =
                   DataValidationUtil.validateAndParseObject(
                       forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
               Text text = new Text(str);
@@ -529,7 +529,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             }
           case ARRAY:
             {
-              String str =
+              byte[] str =
                   DataValidationUtil.validateAndParseArray(
                       forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
               Text text = new Text(str);
@@ -539,7 +539,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             }
           case VARIANT:
             {
-              String str =
+              byte[] str =
                   DataValidationUtil.validateAndParseVariant(
                       forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
               if (str != null) {
@@ -803,7 +803,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   @Override
   Object getVectorValueAt(String column, int index) {
     Object value = vectorsRoot.getVector(column).getObject(index);
-    return (value instanceof Text) ? new String(((Text) value).getBytes()) : value;
+    return (value instanceof Text) ? ((Text) value).getBytes() : value;
   }
 
   @VisibleForTesting

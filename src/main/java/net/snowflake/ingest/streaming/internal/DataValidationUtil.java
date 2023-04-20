@@ -97,7 +97,12 @@ class DataValidationUtil {
       String columnName, Object input, String snowflakeType, final long insertRowIndex) {
     if (input instanceof String) {
       String stringInput = (String) input;
-      verifyValidUtf8(stringInput, columnName, snowflakeType, insertRowIndex);
+      verifyValidUtf8(
+          stringInput,
+          stringInput.getBytes(StandardCharsets.UTF_8),
+          columnName,
+          snowflakeType,
+          insertRowIndex);
       try {
         return objectMapper.readTree(stringInput);
       } catch (JsonProcessingException e) {
@@ -131,7 +136,7 @@ class DataValidationUtil {
    * @param insertRowIndex
    * @return JSON string representing the input
    */
-  static String validateAndParseVariant(String columnName, Object input, long insertRowIndex) {
+  static byte[] validateAndParseVariant(String columnName, Object input, long insertRowIndex) {
     JsonNode node =
         validateAndParseSemiStructuredAsJsonTree(columnName, input, "VARIANT", insertRowIndex);
 
@@ -140,8 +145,8 @@ class DataValidationUtil {
       return null;
     }
 
-    String output = node.toString();
-    int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
+    byte[] output = node.toString().getBytes(StandardCharsets.UTF_8);
+    int stringLength = output.length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
@@ -264,7 +269,7 @@ class DataValidationUtil {
    * @param insertRowIndex
    * @return JSON array representing the input
    */
-  static String validateAndParseArray(String columnName, Object input, long insertRowIndex) {
+  static byte[] validateAndParseArray(String columnName, Object input, long insertRowIndex) {
     JsonNode jsonNode =
         validateAndParseSemiStructuredAsJsonTree(columnName, input, "ARRAY", insertRowIndex);
 
@@ -273,9 +278,9 @@ class DataValidationUtil {
       jsonNode = objectMapper.createArrayNode().add(jsonNode);
     }
 
-    String output = jsonNode.toString();
+    byte[] output = jsonNode.toString().getBytes(StandardCharsets.UTF_8);
     // Throw an exception if the size is too large
-    int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
+    int stringLength = output.length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
@@ -296,16 +301,16 @@ class DataValidationUtil {
    * @param insertRowIndex
    * @return JSON object representing the input
    */
-  static String validateAndParseObject(String columnName, Object input, long insertRowIndex) {
+  static byte[] validateAndParseObject(String columnName, Object input, long insertRowIndex) {
     JsonNode jsonNode =
         validateAndParseSemiStructuredAsJsonTree(columnName, input, "OBJECT", insertRowIndex);
     if (!jsonNode.isObject()) {
       throw valueFormatNotAllowedException(columnName, "OBJECT", "Not an object", insertRowIndex);
     }
 
-    String output = jsonNode.toString();
+    byte[] output = jsonNode.toString().getBytes(StandardCharsets.UTF_8);
     // Throw an exception if the size is too large
-    int stringLength = output.getBytes(StandardCharsets.UTF_8).length;
+    int stringLength = output.length;
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
@@ -474,16 +479,21 @@ class DataValidationUtil {
    *     (https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar)
    * @param insertRowIndex
    */
-  static String validateAndParseString(
+  static byte[] validateAndParseString(
       String columnName, Object input, Optional<Integer> maxLengthOptional, long insertRowIndex) {
-    String output;
+    // todo test that input map is not modified
+    String outputString;
+    byte[] outputBytes;
     if (input instanceof String) {
-      output = (String) input;
-      verifyValidUtf8(output, columnName, "STRING", insertRowIndex);
+      outputString = (String) input;
+      outputBytes = outputString.getBytes(StandardCharsets.UTF_8);
+      verifyValidUtf8(outputString, outputBytes, columnName, "STRING", insertRowIndex);
     } else if (input instanceof Number) {
-      output = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString();
+      outputString = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString();
+      outputBytes = outputString.getBytes(StandardCharsets.UTF_8);
     } else if (input instanceof Boolean || input instanceof Character) {
-      output = input.toString();
+      outputString = input.toString();
+      outputBytes = outputString.getBytes(StandardCharsets.UTF_8);
     } else {
       throw typeNotAllowedException(
           columnName,
@@ -492,15 +502,14 @@ class DataValidationUtil {
           new String[] {"String", "Number", "boolean", "char"},
           insertRowIndex);
     }
-    byte[] utf8Bytes = output.getBytes(StandardCharsets.UTF_8);
-
     // Strings can never be larger than 16MB
-    if (utf8Bytes.length > BYTES_16_MB) {
+    if (outputBytes.length > BYTES_16_MB) {
       throw valueFormatNotAllowedException(
           columnName,
           "STRING",
           String.format(
-              "String too long: length=%d bytes maxLength=%d bytes", utf8Bytes.length, BYTES_16_MB),
+              "String too long: length=%d bytes maxLength=%d bytes",
+              outputBytes.length, BYTES_16_MB),
           insertRowIndex);
     }
 
@@ -508,7 +517,7 @@ class DataValidationUtil {
     // not exceed this value
     maxLengthOptional.ifPresent(
         maxAllowedCharacters -> {
-          int actualCharacters = unicodeCharactersCount(output);
+          int actualCharacters = unicodeCharactersCount(outputString);
           if (actualCharacters > maxAllowedCharacters) {
             throw valueFormatNotAllowedException(
                 columnName,
@@ -519,7 +528,7 @@ class DataValidationUtil {
                 insertRowIndex);
           }
         });
-    return output;
+    return outputBytes;
   }
 
   /**
@@ -880,9 +889,12 @@ class DataValidationUtil {
    * UTF-16 surrogate, for example.
    */
   private static void verifyValidUtf8(
-      String input, String columnName, String dataType, final long insertRowIndex) {
-    String roundTripStr =
-        new String(input.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
+      String input,
+      byte[] inputAsUtf8Bytes,
+      String columnName,
+      String dataType,
+      final long insertRowIndex) {
+    String roundTripStr = new String(inputAsUtf8Bytes, StandardCharsets.UTF_8);
     if (!input.equals(roundTripStr)) {
       throw valueFormatNotAllowedException(
           columnName, dataType, "Invalid Unicode string", insertRowIndex);

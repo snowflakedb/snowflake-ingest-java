@@ -94,11 +94,11 @@ public class ChannelDataTest {
     rightStats1.addIntValue(new BigInteger("13"));
     rightStats1.addIntValue(new BigInteger("17"));
 
-    leftStats2.addStrValue("10");
-    leftStats2.addStrValue("15");
-    rightStats2.addStrValue("11");
-    rightStats2.addStrValue("13");
-    rightStats2.addStrValue("17");
+    leftStats2.addBinaryValue("10".getBytes(StandardCharsets.UTF_8));
+    leftStats2.addBinaryValue("15".getBytes(StandardCharsets.UTF_8));
+    rightStats2.addBinaryValue("11".getBytes(StandardCharsets.UTF_8));
+    rightStats2.addBinaryValue("13".getBytes(StandardCharsets.UTF_8));
+    rightStats2.addBinaryValue("17".getBytes(StandardCharsets.UTF_8));
 
     Map<String, RowBufferStats> result = ChannelData.getCombinedColumnStatsMap(left, right);
 

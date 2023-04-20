@@ -147,10 +147,10 @@ class ParquetValueParser {
                 getBinaryValueForLogicalBinary(value, stats, columnMetadata, insertRowsCurrIndex);
             length = ((byte[]) value).length;
           } else {
-            String str = getBinaryValue(value, stats, columnMetadata, insertRowsCurrIndex);
+            byte[] str = getBinaryValue(value, stats, columnMetadata, insertRowsCurrIndex);
             value = str;
             if (str != null) {
-              length = str.getBytes().length;
+              length = str.length;
             }
           }
           if (value != null) {
@@ -361,14 +361,14 @@ class ParquetValueParser {
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return string representation
    */
-  private static String getBinaryValue(
+  private static byte[] getBinaryValue(
       Object value,
       RowBufferStats stats,
       ColumnMetadata columnMetadata,
       final long insertRowsCurrIndex) {
     AbstractRowBuffer.ColumnLogicalType logicalType =
         AbstractRowBuffer.ColumnLogicalType.valueOf(columnMetadata.getLogicalType());
-    String str;
+    byte[] str;
     if (logicalType.isObject()) {
       switch (logicalType) {
         case OBJECT:
@@ -398,7 +398,7 @@ class ParquetValueParser {
               value,
               Optional.of(maxLengthString).map(Integer::parseInt),
               insertRowsCurrIndex);
-      stats.addStrValue(str);
+      stats.addBinaryValue(str);
     }
     return str;
   }

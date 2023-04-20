@@ -383,16 +383,21 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseString() {
-    assertEquals("honk", validateAndParseString("COL", "honk", Optional.empty(), 0));
+    assertArrayEquals(
+        "honk".getBytes(StandardCharsets.UTF_8),
+        validateAndParseString("COL", "honk", Optional.empty(), 0));
 
     // Check max byte length
     String maxString = buildString("a", BYTES_16_MB);
-    assertEquals(maxString, validateAndParseString("COL", maxString, Optional.empty(), 0));
+    assertArrayEquals(
+        maxString.getBytes(StandardCharsets.UTF_8),
+        validateAndParseString("COL", maxString, Optional.empty(), 0));
 
     // max byte length - 1 should also succeed
     String maxStringMinusOne = buildString("a", BYTES_16_MB - 1);
-    assertEquals(
-        maxStringMinusOne, validateAndParseString("COL", maxStringMinusOne, Optional.empty(), 0));
+    assertArrayEquals(
+        maxStringMinusOne.getBytes(StandardCharsets.UTF_8),
+        validateAndParseString("COL", maxStringMinusOne, Optional.empty(), 0));
 
     // max byte length + 1 should fail
     expectError(
@@ -400,10 +405,18 @@ public class DataValidationUtilTest {
         () -> validateAndParseString("COL", maxString + "a", Optional.empty(), 0));
 
     // Test that max character length validation counts characters and not bytes
-    assertEquals("a", validateAndParseString("COL", "a", Optional.of(1), 0));
-    assertEquals("č", validateAndParseString("COL", "č", Optional.of(1), 0));
-    assertEquals("❄", validateAndParseString("COL", "❄", Optional.of(1), 0));
-    assertEquals("🍞", validateAndParseString("COL", "🍞", Optional.of(1), 0));
+    assertArrayEquals(
+        "a".getBytes(StandardCharsets.UTF_8),
+        validateAndParseString("COL", "a", Optional.of(1), 0));
+    assertArrayEquals(
+        "č".getBytes(StandardCharsets.UTF_8),
+        validateAndParseString("COL", "č", Optional.of(1), 0));
+    assertArrayEquals(
+        "❄".getBytes(StandardCharsets.UTF_8),
+        validateAndParseString("COL", "❄", Optional.of(1), 0));
+    assertArrayEquals(
+        "🍞".getBytes(StandardCharsets.UTF_8),
+        validateAndParseString("COL", "🍞", Optional.of(1), 0));
 
     // Test max character length rejection
     expectError(
@@ -438,35 +451,52 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseVariant() throws Exception {
-    assertEquals("1", validateAndParseVariant("COL", 1, 0));
-    assertEquals("1", validateAndParseVariant("COL", "1", 0));
-    assertEquals("1", validateAndParseVariant("COL", "                          1   ", 0));
+    assertArrayEquals("1".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", 1, 0));
+    assertArrayEquals("1".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", "1", 0));
+    assertArrayEquals(
+        "1".getBytes(StandardCharsets.UTF_8),
+        validateAndParseVariant("COL", "                          1   ", 0));
     String stringVariant = "{\"key\":1}";
-    assertEquals(stringVariant, validateAndParseVariant("COL", stringVariant, 0));
-    assertEquals(stringVariant, validateAndParseVariant("COL", "  " + stringVariant + " \t\n", 0));
+    assertArrayEquals(
+        stringVariant.getBytes(StandardCharsets.UTF_8),
+        validateAndParseVariant("COL", stringVariant, 0));
+    assertArrayEquals(
+        stringVariant.getBytes(StandardCharsets.UTF_8),
+        validateAndParseVariant("COL", "  " + stringVariant + " \t\n", 0));
 
     // Test custom serializers
-    assertEquals(
-        "[-128,0,127]",
+    assertArrayEquals(
+        "[-128,0,127]".getBytes(StandardCharsets.UTF_8),
         validateAndParseVariant("COL", new byte[] {Byte.MIN_VALUE, 0, Byte.MAX_VALUE}, 0));
-    assertEquals(
-        "\"2022-09-28T03:04:12.123456789-07:00\"",
+    assertArrayEquals(
+        "\"2022-09-28T03:04:12.123456789-07:00\"".getBytes(StandardCharsets.UTF_8),
         validateAndParseVariant(
             "COL",
             ZonedDateTime.of(2022, 9, 28, 3, 4, 12, 123456789, ZoneId.of("America/Los_Angeles")),
             0));
 
     // Test valid JSON tokens
-    assertEquals("null", validateAndParseVariant("COL", null, 0));
-    assertEquals("null", validateAndParseVariant("COL", "null", 0));
-    assertEquals("true", validateAndParseVariant("COL", true, 0));
-    assertEquals("true", validateAndParseVariant("COL", "true", 0));
-    assertEquals("false", validateAndParseVariant("COL", false, 0));
-    assertEquals("false", validateAndParseVariant("COL", "false", 0));
-    assertEquals("{}", validateAndParseVariant("COL", "{}", 0));
-    assertEquals("[]", validateAndParseVariant("COL", "[]", 0));
-    assertEquals("[\"foo\",1,null]", validateAndParseVariant("COL", "[\"foo\",1,null]", 0));
-    assertEquals("\"\"", validateAndParseVariant("COL", "\"\"", 0));
+    assertArrayEquals(
+        "null".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", null, 0));
+    assertArrayEquals(
+        "null".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", "null", 0));
+    assertArrayEquals(
+        "true".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", true, 0));
+    assertArrayEquals(
+        "true".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", "true", 0));
+    assertArrayEquals(
+        "false".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", false, 0));
+    assertArrayEquals(
+        "false".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", "false", 0));
+    assertArrayEquals(
+        "{}".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", "{}", 0));
+    assertArrayEquals(
+        "[]".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", "[]", 0));
+    assertArrayEquals(
+        "[\"foo\",1,null]".getBytes(StandardCharsets.UTF_8),
+        validateAndParseVariant("COL", "[\"foo\",1,null]", 0));
+    assertArrayEquals(
+        "\"\"".getBytes(StandardCharsets.UTF_8), validateAndParseVariant("COL", "\"\"", 0));
 
     // Test missing values are null instead of empty string
     assertNull(validateAndParseVariant("COL", "", 0));
@@ -504,41 +534,62 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseArray() throws Exception {
-    assertEquals("[1]", validateAndParseArray("COL", 1, 0));
-    assertEquals("[1]", validateAndParseArray("COL", "1", 0));
-    assertEquals("[1]", validateAndParseArray("COL", "                          1   ", 0));
-    assertEquals("[1,2,3]", validateAndParseArray("COL", "[1, 2, 3]", 0));
-    assertEquals("[1,2,3]", validateAndParseArray("COL", "  [1, 2, 3] \t\n", 0));
+  public void testValidateAndParseArray() {
+    assertArrayEquals("[1]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", 1, 0));
+    assertArrayEquals("[1]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", "1", 0));
+    assertArrayEquals(
+        "[1]".getBytes(StandardCharsets.UTF_8),
+        validateAndParseArray("COL", "                          1   ", 0));
+    assertArrayEquals(
+        "[1,2,3]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", "[1, 2, 3]", 0));
+    assertArrayEquals(
+        "[1,2,3]".getBytes(StandardCharsets.UTF_8),
+        validateAndParseArray("COL", "  [1, 2, 3] \t\n", 0));
     int[] intArray = new int[] {1, 2, 3};
-    assertEquals("[1,2,3]", validateAndParseArray("COL", intArray, 0));
+    assertArrayEquals(
+        "[1,2,3]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", intArray, 0));
 
     String[] stringArray = new String[] {"a", "b", "c"};
-    assertEquals("[\"a\",\"b\",\"c\"]", validateAndParseArray("COL", stringArray, 0));
+    assertArrayEquals(
+        "[\"a\",\"b\",\"c\"]".getBytes(StandardCharsets.UTF_8),
+        validateAndParseArray("COL", stringArray, 0));
 
     Object[] objectArray = new Object[] {1, 2, 3};
-    assertEquals("[1,2,3]", validateAndParseArray("COL", objectArray, 0));
+    assertArrayEquals(
+        "[1,2,3]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", objectArray, 0));
 
     Object[] ObjectArrayWithNull = new Object[] {1, null, 3};
-    assertEquals("[1,null,3]", validateAndParseArray("COL", ObjectArrayWithNull, 0));
+    assertArrayEquals(
+        "[1,null,3]".getBytes(StandardCharsets.UTF_8),
+        validateAndParseArray("COL", ObjectArrayWithNull, 0));
 
     Object[][] nestedArray = new Object[][] {{1, 2, 3}, null, {4, 5, 6}};
-    assertEquals("[[1,2,3],null,[4,5,6]]", validateAndParseArray("COL", nestedArray, 0));
+    assertArrayEquals(
+        "[[1,2,3],null,[4,5,6]]".getBytes(StandardCharsets.UTF_8),
+        validateAndParseArray("COL", nestedArray, 0));
 
     List<Integer> intList = Arrays.asList(1, 2, 3);
-    assertEquals("[1,2,3]", validateAndParseArray("COL", intList, 0));
+    assertArrayEquals(
+        "[1,2,3]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", intList, 0));
 
     List<Object> objectList = Arrays.asList(1, 2, 3);
-    assertEquals("[1,2,3]", validateAndParseArray("COL", objectList, 0));
+    assertArrayEquals(
+        "[1,2,3]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", objectList, 0));
 
     List<Object> nestedList = Arrays.asList(Arrays.asList(1, 2, 3), 2, 3);
-    assertEquals("[[1,2,3],2,3]", validateAndParseArray("COL", nestedList, 0));
+    assertArrayEquals(
+        "[[1,2,3],2,3]".getBytes(StandardCharsets.UTF_8),
+        validateAndParseArray("COL", nestedList, 0));
 
     // Test null values
-    assertEquals("[null]", validateAndParseArray("COL", "", 0));
-    assertEquals("[null]", validateAndParseArray("COL", " ", 0));
-    assertEquals("[null]", validateAndParseArray("COL", "null", 0));
-    assertEquals("[null]", validateAndParseArray("COL", null, 0));
+    assertArrayEquals(
+        "[null]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", "", 0));
+    assertArrayEquals(
+        "[null]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", " ", 0));
+    assertArrayEquals(
+        "[null]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", "null", 0));
+    assertArrayEquals(
+        "[null]".getBytes(StandardCharsets.UTF_8), validateAndParseArray("COL", null, 0));
 
     // Test that invalid UTF-8 strings cannot be ingested
     expectError(
@@ -572,8 +623,12 @@ public class DataValidationUtilTest {
   @Test
   public void testValidateAndParseObject() throws Exception {
     String stringObject = "{\"key\":1}";
-    assertEquals(stringObject, validateAndParseObject("COL", stringObject, 0));
-    assertEquals(stringObject, validateAndParseObject("COL", "  " + stringObject + " \t\n", 0));
+    assertArrayEquals(
+        stringObject.getBytes(StandardCharsets.UTF_8),
+        validateAndParseObject("COL", stringObject, 0));
+    assertArrayEquals(
+        stringObject.getBytes(StandardCharsets.UTF_8),
+        validateAndParseObject("COL", "  " + stringObject + " \t\n", 0));
 
     String badObject = "foo";
     try {
@@ -845,7 +900,7 @@ public class DataValidationUtilTest {
         Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL",
-            "1234567890abcdef",
+            "1234567890abcdef", // pragma: allowlist secret NOT A SECRET
             Optional.empty(),
             0)); // pragma: allowlist secret NOT A SECRET
     assertArrayEquals(

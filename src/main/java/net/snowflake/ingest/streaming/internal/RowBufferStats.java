@@ -7,7 +7,6 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
 
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -104,10 +103,7 @@ class RowBufferStats {
     return combined;
   }
 
-  void addStrValue(String value) {
-    addBinaryValue(value.getBytes(StandardCharsets.UTF_8));
-  }
-
+  /** Add statistics for binary or varchar column */
   void addBinaryValue(byte[] valueBytes) {
     this.setCurrentMaxLength(valueBytes.length);
 

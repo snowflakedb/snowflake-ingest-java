@@ -8,7 +8,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -272,9 +271,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         value = new BigDecimal(new BigInteger((byte[]) value), columnMetadata.getScale());
       }
     }
-    if (logicalType == ColumnLogicalType.BINARY && value != null) {
-      value = value instanceof String ? ((String) value).getBytes(StandardCharsets.UTF_8) : value;
-    }
+
     return value;
   }
 

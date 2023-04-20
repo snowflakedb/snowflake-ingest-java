@@ -297,8 +297,8 @@ public class ParquetValueParserTest {
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
-        .expectedValueClass(String.class)
-        .expectedParsedValue(var)
+        .expectedValueClass(byte[].class)
+        .expectedParsedValue(var.getBytes(StandardCharsets.UTF_8))
         .expectedSize(
             BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
                 + var.getBytes().length
@@ -365,16 +365,16 @@ public class ParquetValueParserTest {
         ParquetValueParser.parseColumnValueToParquet(
             input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
-    String resultArray = "[{\"a\":\"1\",\"b\":\"2\",\"c\":\"3\"}]";
+    byte[] resultArray = "[{\"a\":\"1\",\"b\":\"2\",\"c\":\"3\"}]".getBytes(StandardCharsets.UTF_8);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
-        .expectedValueClass(String.class)
+        .expectedValueClass(byte[].class)
         .expectedParsedValue(resultArray)
         .expectedSize(
             BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
-                + resultArray.length()
+                + resultArray.length
                 + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(null)
         .assertMatches();
@@ -402,8 +402,8 @@ public class ParquetValueParserTest {
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
-        .expectedValueClass(String.class)
-        .expectedParsedValue(result)
+        .expectedValueClass(byte[].class)
+        .expectedParsedValue(result.getBytes(StandardCharsets.UTF_8))
         .expectedSize(
             BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
                 + result.length()
@@ -669,7 +669,7 @@ public class ParquetValueParserTest {
         Assert.assertArrayEquals((byte[]) minMaxStat, rowBufferStats.getCurrentMinStrValue());
         Assert.assertArrayEquals((byte[]) minMaxStat, rowBufferStats.getCurrentMaxStrValue());
         return;
-      } else if (valueClass.equals(String.class)) {
+      } else if (valueClass.equals(byte[].class)) {
         // String can have null min/max stats for variant data types
         Object min =
             rowBufferStats.getCurrentMinStrValue() != null

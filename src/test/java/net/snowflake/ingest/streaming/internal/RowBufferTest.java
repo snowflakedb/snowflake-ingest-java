@@ -536,8 +536,8 @@ public class RowBufferTest {
     stats1.addIntValue(BigInteger.valueOf(1));
 
     RowBufferStats stats2 = new RowBufferStats("strColumn");
-    stats2.addStrValue("alice");
-    stats2.addStrValue("bob");
+    stats2.addBinaryValue("alice".getBytes(StandardCharsets.UTF_8));
+    stats2.addBinaryValue("bob".getBytes(StandardCharsets.UTF_8));
     stats2.incCurrentNullCount();
 
     colStats.put("intColumn", stats1);
@@ -611,7 +611,7 @@ public class RowBufferTest {
     stats1.addIntValue(BigInteger.valueOf(1));
 
     RowBufferStats stats2 = new RowBufferStats("strColumn");
-    stats2.addStrValue("alice");
+    stats2.addBinaryValue("alice".getBytes(StandardCharsets.UTF_8));
     stats2.incCurrentNullCount();
     stats2.incCurrentNullCount();
 
@@ -651,7 +651,8 @@ public class RowBufferTest {
     Assert.assertEquals(3, rowBuffer.getVectorValueAt("COLINT", 0));
     Assert.assertEquals(4L, rowBuffer.getVectorValueAt("COLBIGINT", 0));
     Assert.assertEquals(new BigDecimal("4.00"), rowBuffer.getVectorValueAt("COLDECIMAL", 0));
-    Assert.assertEquals("2", rowBuffer.getVectorValueAt("COLCHAR", 0));
+    Assert.assertArrayEquals(
+        "2".getBytes(StandardCharsets.UTF_8), (byte[]) rowBuffer.getVectorValueAt("COLCHAR", 0));
   }
 
   @Test
@@ -1433,9 +1434,15 @@ public class RowBufferTest {
     // Check data was inserted into the buffer correctly
     Assert.assertNull(null, innerBuffer.getVectorValueAt("COLVARIANT", 0));
     Assert.assertNull(null, innerBuffer.getVectorValueAt("COLVARIANT", 1));
-    Assert.assertEquals("null", innerBuffer.getVectorValueAt("COLVARIANT", 2));
-    Assert.assertEquals("{\"key\":1}", innerBuffer.getVectorValueAt("COLVARIANT", 3));
-    Assert.assertEquals("3", innerBuffer.getVectorValueAt("COLVARIANT", 4));
+    Assert.assertArrayEquals(
+        "null".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLVARIANT", 2));
+    Assert.assertArrayEquals(
+        "{\"key\":1}".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLVARIANT", 3));
+    Assert.assertArrayEquals(
+        "3".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLVARIANT", 4));
 
     // Check stats generation
     ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
@@ -1467,7 +1474,9 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
-    Assert.assertEquals("{\"key\":1}", innerBuffer.getVectorValueAt("COLOBJECT", 0));
+    Assert.assertArrayEquals(
+        "{\"key\":1}".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLOBJECT", 0));
 
     // Check stats generation
     ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
@@ -1512,10 +1521,18 @@ public class RowBufferTest {
 
     // Check data was inserted into the buffer correctly
     Assert.assertNull(innerBuffer.getVectorValueAt("COLARRAY", 0));
-    Assert.assertEquals("[null]", innerBuffer.getVectorValueAt("COLARRAY", 1));
-    Assert.assertEquals("[null]", innerBuffer.getVectorValueAt("COLARRAY", 2));
-    Assert.assertEquals("[{\"key\":1}]", innerBuffer.getVectorValueAt("COLARRAY", 3));
-    Assert.assertEquals("[1,2,3]", innerBuffer.getVectorValueAt("COLARRAY", 4));
+    Assert.assertArrayEquals(
+        "[null]".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLARRAY", 1));
+    Assert.assertArrayEquals(
+        "[null]".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLARRAY", 2));
+    Assert.assertArrayEquals(
+        "[{\"key\":1}]".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLARRAY", 3));
+    Assert.assertArrayEquals(
+        "[1,2,3]".getBytes(StandardCharsets.UTF_8),
+        (byte[]) innerBuffer.getVectorValueAt("COLARRAY", 4));
 
     // Check stats generation
     ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
@@ -1581,22 +1598,23 @@ public class RowBufferTest {
             ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
         // validRows and only the good row from mixedRows are in the buffer
         Assert.assertEquals(2, snapshotContinueParquet.size());
-        Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
-        Assert.assertEquals(Arrays.asList("b"), snapshotContinueParquet.get(1));
+        Assert.assertEquals(1, snapshotContinueParquet.get(0).size());
+        Assert.assertEquals(1, snapshotContinueParquet.get(1).size());
+        Assert.assertArrayEquals(
+            "a".getBytes(StandardCharsets.UTF_8), (byte[]) snapshotContinueParquet.get(0).get(0));
+        Assert.assertArrayEquals(
+            "b".getBytes(StandardCharsets.UTF_8), (byte[]) snapshotContinueParquet.get(1).get(0));
 
         List<List<Object>> snapshotAbortParquet =
             ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
         // only validRows and none of the mixedRows are in the buffer
         Assert.assertEquals(1, snapshotAbortParquet.size());
-        Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
+        Assert.assertEquals(1, snapshotAbortParquet.get(0).size());
+        Assert.assertArrayEquals(
+            "a".getBytes(StandardCharsets.UTF_8), (byte[]) snapshotAbortParquet.get(0).get(0));
         break;
       default:
         throw new NotImplementedException("Unsupported version!");
-    }
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-
-    } else if (bdecVersion == Constants.BdecVersion.ONE) {
-
     }
   }
 }
