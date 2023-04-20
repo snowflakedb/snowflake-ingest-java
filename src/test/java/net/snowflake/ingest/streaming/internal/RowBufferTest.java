@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -281,7 +282,7 @@ public class RowBufferTest {
   }
 
   @Test
-  public void testRowIndexWithMultipleRowsWithErrorr() {
+  public void testRowIndexWithMultipleRowsWithError() {
     List<Map<String, Object>> rows = new ArrayList<>();
     Map<String, Object> row = new HashMap<>();
 
@@ -303,6 +304,27 @@ public class RowBufferTest {
     // second row out of the rows we sent was having bad data.
     // so InsertError corresponds to second row.
     Assert.assertEquals(1, response.getInsertErrors().get(0).getRowIndex());
+
+    Assert.assertTrue(response.getInsertErrors().get(0).getException() != null);
+
+    Assert.assertTrue(
+        Objects.equals(
+            response.getInsertErrors().get(0).getException().getVendorCode(),
+            ErrorCode.INVALID_VALUE_ROW.getMessageCode()));
+
+    Assert.assertEquals(1, response.getInsertErrors().get(0).getRowIndex());
+
+    Assert.assertTrue(
+        response
+            .getInsertErrors()
+            .get(0)
+            .getException()
+            .getMessage()
+            .equalsIgnoreCase(
+                "The given row cannot be converted to the internal format due to invalid value:"
+                    + " Value cannot be ingested into Snowflake column COLCHAR of type STRING, Row"
+                    + " Index: 1, reason: String too long: length=22 characters maxLength=11"
+                    + " characters"));
   }
 
   private void testStringLengthHelper(AbstractRowBuffer<?> rowBuffer) {
