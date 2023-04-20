@@ -40,7 +40,7 @@ jobs:
       - name: Code Coverage
         uses: codecov/codecov-action@v1
   build-windows:
-    name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud {{ matrix.snowflake_cloud }}
+    name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022
     strategy:
       matrix:
