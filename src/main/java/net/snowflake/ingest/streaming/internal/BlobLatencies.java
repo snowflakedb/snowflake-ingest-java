@@ -15,6 +15,7 @@ class BlobLatencies {
   private Long buildDurationMs;
   private Long uploadDurationMs;
 
+  // flush and register duration cannot be calculated in the client sdk we pass the start time because the end time is when the request hits the server
   private Long flushStartMs;
   private Long registerStartMs;
 
@@ -26,22 +27,22 @@ class BlobLatencies {
     this.registerStartMs = DEFAULT_BLOB_LATENCY;
   }
 
-  @JsonProperty("build_latency_ms")
+  @JsonProperty("build_duration_ms")
   long getBuildDurationMs() {
     return this.buildDurationMs;
   }
 
-  @JsonProperty("upload_latency_ms")
+  @JsonProperty("upload_duration_ms")
   long getUploadDurationMs() {
     return this.uploadDurationMs;
   }
 
-  @JsonProperty("flush_start_timestamp")
+  @JsonProperty("flush_start_ms")
   long getFlushStartMs() {
     return this.flushStartMs;
   }
 
-  @JsonProperty("register_start_timestamp")
+  @JsonProperty("register_start_ms")
   long getRegisterStartMs() {
     return this.registerStartMs;
   }
