@@ -15,7 +15,8 @@ class BlobLatencies {
   private Long buildDurationMs;
   private Long uploadDurationMs;
 
-  // flush and register duration cannot be calculated in the client sdk we pass the start time because the end time is when the request hits the server
+  // flush and register duration cannot be calculated in the client sdk we pass the start time
+  // because the end time is when the request hits the server
   private Long flushStartMs;
   private Long registerStartMs;
 
