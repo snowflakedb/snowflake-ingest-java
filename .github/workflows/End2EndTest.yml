@@ -43,6 +43,7 @@ jobs:
     name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022
     strategy:
+      fail-fast: false
       matrix:
         java: [ 8 ]
         snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
