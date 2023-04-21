@@ -54,11 +54,12 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows
+      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
+        shell: pwsh
         run: |
-          ./scripts/decrypt_secret.sh ${{ matrix.snowflake_cloud }}
+          ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: mvn -DghActionsIT verify --batch-mode
