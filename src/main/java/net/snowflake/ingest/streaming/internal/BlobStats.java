@@ -9,24 +9,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.concurrent.TimeUnit;
 
 /** Latency information for a blob */
-class BlobLatencies {
-  public static final Long DEFAULT_BLOB_LATENCY = null;
-
-  private Long buildDurationMs;
-  private Long uploadDurationMs;
+class BlobStats {
+  private long buildDurationMs;
+  private long uploadDurationMs;
 
   // flush and register duration cannot be calculated in the client sdk we pass the start time
   // because the end time is when the request hits the server
-  private Long flushStartMs;
-  private Long registerStartMs;
-
-  public BlobLatencies() {
-    this.buildDurationMs = DEFAULT_BLOB_LATENCY;
-    this.uploadDurationMs = DEFAULT_BLOB_LATENCY;
-
-    this.flushStartMs = DEFAULT_BLOB_LATENCY;
-    this.registerStartMs = DEFAULT_BLOB_LATENCY;
-  }
+  private long flushStartMs;
+  private long registerStartMs;
 
   @JsonProperty("build_duration_ms")
   long getBuildDurationMs() {

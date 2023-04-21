@@ -6,10 +6,11 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.List;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 import org.apache.arrow.util.VisibleForTesting;
+
+import java.util.List;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
@@ -17,12 +18,12 @@ class BlobMetadata {
   private final String md5;
   private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
-  private final BlobLatencies blobLatencies;
+  private final BlobStats blobStats;
 
   // used for testing only
   @VisibleForTesting
-  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobLatencies blobLatencies) {
-    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, blobLatencies);
+  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobStats blobStats) {
+    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, blobStats);
   }
 
   BlobMetadata(
@@ -30,12 +31,12 @@ class BlobMetadata {
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      BlobLatencies blobLatencies) {
+      BlobStats blobStats) {
     this.path = path;
     this.md5 = md5;
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
-    this.blobLatencies = blobLatencies;
+    this.blobStats = blobStats;
   }
 
   @JsonIgnore
@@ -63,9 +64,9 @@ class BlobMetadata {
     return bdecVersion.toByte();
   }
 
-  @JsonProperty("blob_latencies")
-  BlobLatencies getBlobLatencies() {
-    return this.blobLatencies;
+  @JsonProperty("blob_stats")
+  BlobStats getBlobStats() {
+    return this.blobStats;
   }
 
   /** Create {@link BlobMetadata}. */
@@ -74,7 +75,7 @@ class BlobMetadata {
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      BlobLatencies blobLatencies) {
-    return new BlobMetadata(path, md5, bdecVersion, chunks, blobLatencies);
+      BlobStats blobStats) {
+    return new BlobMetadata(path, md5, bdecVersion, chunks, blobStats);
   }
 }

@@ -584,7 +584,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),
                     relevantChunks,
-                    blobMetadata.getBlobLatencies()));
+                    blobMetadata.getBlobStats()));
           }
         });
 

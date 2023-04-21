@@ -630,9 +630,9 @@ public class FlushServiceTest {
 
     Assert.assertEquals(BlobBuilder.computeMD5(blobCaptor.getValue()), blobMetadata.getMD5());
     Assert.assertEquals(
-        expectedBuildLatencyMs, blobMetadata.getBlobLatencies().getBuildDurationMs());
+        expectedBuildLatencyMs, blobMetadata.getBlobStats().getBuildDurationMs());
     Assert.assertEquals(
-        expectedUploadLatencyMs, blobMetadata.getBlobLatencies().getUploadDurationMs());
+        expectedUploadLatencyMs, blobMetadata.getBlobStats().getUploadDurationMs());
 
     Assert.assertEquals(
         expectedChunkEpInfo.getRowCount(), metadataResult.getEpInfo().getRowCount());

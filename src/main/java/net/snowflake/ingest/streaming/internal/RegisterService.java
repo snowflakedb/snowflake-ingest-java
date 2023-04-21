@@ -4,10 +4,11 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
-
 import com.codahale.metrics.Timer;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.Utils;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +18,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.Utils;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 /**
  * Register one or more blobs to the targeted Snowflake table, it will be done using the dedicated
@@ -197,9 +198,7 @@ class RegisterService<T> {
                 Utils.createTimerContext(this.owningClient.registerLatency);
 
             for (BlobMetadata blobMetadata : blobs) {
-              long currentTimeMs = System.currentTimeMillis();
-              blobMetadata.getBlobLatencies().setRegisterStartMs(currentTimeMs);
-              blobMetadata.getBlobLatencies().setFlushStartMs(currentTimeMs);
+              blobMetadata.getBlobStats().setRegisterStartMs(System.currentTimeMillis());
             }
 
             // Register the blobs, and invalidate any channels that return a failure status code
