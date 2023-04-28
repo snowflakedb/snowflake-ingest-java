@@ -349,6 +349,8 @@ public class FlushServiceTest {
         .setOffsetToken("offset1")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
+        .setEncryptionKey("key")
+        .setEncryptionKeyId(1L)
         .buildAndAdd();
   }
 
@@ -361,6 +363,8 @@ public class FlushServiceTest {
         .setOffsetToken("offset2")
         .setChannelSequencer(10L)
         .setRowSequencer(100L)
+        .setEncryptionKey("key")
+        .setEncryptionKeyId(1L)
         .buildAndAdd();
   }
 
@@ -373,6 +377,22 @@ public class FlushServiceTest {
         .setOffsetToken("offset3")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
+        .setEncryptionKey("key3")
+        .setEncryptionKeyId(3L)
+        .buildAndAdd();
+  }
+
+  private SnowflakeStreamingIngestChannelInternal<?> addChannel4(TestContext<?> testContext) {
+    return testContext
+        .channelBuilder("channel4")
+        .setDBName("db1")
+        .setSchemaName("schema1")
+        .setTableName("table1")
+        .setOffsetToken("offset2")
+        .setChannelSequencer(10L)
+        .setRowSequencer(100L)
+        .setEncryptionKey("key4")
+        .setEncryptionKeyId(4L)
         .buildAndAdd();
   }
 
@@ -458,6 +478,38 @@ public class FlushServiceTest {
     flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(3)).distributeFlushTasks();
     Assert.assertTrue(flushService.lastFlushTime > 0);
+  }
+
+  @Test
+  public void testBlobCreation() throws Exception {
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel4 = addChannel4(testContext);
+
+    List<ColumnMetadata> schema = Arrays.asList(createTestIntegerColumn(), createTestTextColumn());
+    channel1.getRowBuffer().setupSchema(schema);
+    channel2.getRowBuffer().setupSchema(schema);
+    channel4.getRowBuffer().setupSchema(schema);
+
+    List<Map<String, Object>> rows1 =
+        RowSetBuilder.newBuilder()
+            .addColumn("COLINT", 11)
+            .addColumn("COLCHAR", "bob")
+            .newRow()
+            .addColumn("COLINT", 22)
+            .addColumn("COLCHAR", "bob")
+            .build();
+
+    channel1.insertRows(rows1, "offset1");
+    channel2.insertRows(rows1, "offset2");
+    channel4.insertRows(rows1, "offset4");
+
+    FlushService<?> flushService = testContext.flushService;
+
+    // Force = true flushes
+    flushService.flush(true).get();
+    Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
   }
 
   @Test

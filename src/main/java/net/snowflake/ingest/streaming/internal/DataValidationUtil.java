@@ -13,10 +13,6 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
-import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -98,14 +94,15 @@ class DataValidationUtil {
    * @return JSON tree representing the input
    */
   private static JsonNode validateAndParseSemiStructuredAsJsonTree(
-      String columnName, Object input, String snowflakeType) {
+      String columnName, Object input, String snowflakeType, final long insertRowIndex) {
     if (input instanceof String) {
       String stringInput = (String) input;
-      verifyValidUtf8(stringInput, columnName, snowflakeType);
+      verifyValidUtf8(stringInput, columnName, snowflakeType, insertRowIndex);
       try {
         return objectMapper.readTree(stringInput);
       } catch (JsonProcessingException e) {
-        throw valueFormatNotAllowedException(columnName, input, snowflakeType, "Not a valid JSON");
+        throw valueFormatNotAllowedException(
+            columnName, snowflakeType, "Not a valid JSON", insertRowIndex);
       }
     } else if (isAllowedSemiStructuredType(input)) {
       return objectMapper.valueToTree(input);
@@ -122,7 +119,8 @@ class DataValidationUtil {
           "List<T>",
           "Map<String, T>",
           "T[]"
-        });
+        },
+        insertRowIndex);
   }
 
   /**
@@ -130,10 +128,12 @@ class DataValidationUtil {
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
+   * @param insertRowIndex
    * @return JSON string representing the input
    */
-  static String validateAndParseVariant(String columnName, Object input) {
-    JsonNode node = validateAndParseSemiStructuredAsJsonTree(columnName, input, "VARIANT");
+  static String validateAndParseVariant(String columnName, Object input, long insertRowIndex) {
+    JsonNode node =
+        validateAndParseSemiStructuredAsJsonTree(columnName, input, "VARIANT", insertRowIndex);
 
     // Missing nodes are not valid json, ingest them as NULL instead
     if (node.isMissingNode()) {
@@ -145,11 +145,10 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          output,
           "VARIANT",
           String.format(
-              "Variant too long: length=%d maxLength=%d",
-              stringLength, MAX_SEMI_STRUCTURED_LENGTH));
+              "Variant too long: length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH),
+          insertRowIndex);
     }
     return output;
   }
@@ -262,10 +261,12 @@ class DataValidationUtil {
    * DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
+   * @param insertRowIndex
    * @return JSON array representing the input
    */
-  static String validateAndParseArray(String columnName, Object input) {
-    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(columnName, input, "ARRAY");
+  static String validateAndParseArray(String columnName, Object input, long insertRowIndex) {
+    JsonNode jsonNode =
+        validateAndParseSemiStructuredAsJsonTree(columnName, input, "ARRAY", insertRowIndex);
 
     // Non-array values are ingested as single-element arrays, mimicking the Worksheets behavior
     if (!jsonNode.isArray()) {
@@ -278,10 +279,10 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          output,
           "ARRAY",
           String.format(
-              "Array too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH));
+              "Array too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH),
+          insertRowIndex);
     }
     return output;
   }
@@ -292,12 +293,14 @@ class DataValidationUtil {
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
+   * @param insertRowIndex
    * @return JSON object representing the input
    */
-  static String validateAndParseObject(String columnName, Object input) {
-    JsonNode jsonNode = validateAndParseSemiStructuredAsJsonTree(columnName, input, "OBJECT");
+  static String validateAndParseObject(String columnName, Object input, long insertRowIndex) {
+    JsonNode jsonNode =
+        validateAndParseSemiStructuredAsJsonTree(columnName, input, "OBJECT", insertRowIndex);
     if (!jsonNode.isObject()) {
-      throw valueFormatNotAllowedException(columnName, jsonNode, "OBJECT", "Not an object");
+      throw valueFormatNotAllowedException(columnName, "OBJECT", "Not an object", insertRowIndex);
     }
 
     String output = jsonNode.toString();
@@ -306,11 +309,10 @@ class DataValidationUtil {
     if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
       throw valueFormatNotAllowedException(
           columnName,
-          output,
           "OBJECT",
           String.format(
-              "Object too large. length=%d maxLength=%d",
-              stringLength, MAX_SEMI_STRUCTURED_LENGTH));
+              "Object too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH),
+          insertRowIndex);
     }
     return output;
   }
@@ -320,7 +322,11 @@ class DataValidationUtil {
    * timestamps.
    */
   private static OffsetDateTime inputToOffsetDateTime(
-      String columnName, String typeName, Object input, ZoneId defaultTimezone) {
+      String columnName,
+      String typeName,
+      Object input,
+      ZoneId defaultTimezone,
+      final long insertRowIndex) {
     if (input instanceof OffsetDateTime) {
       return (OffsetDateTime) input;
     }
@@ -386,14 +392,13 @@ class DataValidationUtil {
       }
 
       // Couldn't parse anything, throw an exception
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
-          input.toString(),
           typeName,
           "Not a valid value, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
-              + " for the list of supported formats");
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
+              + " for the list of supported formats",
+          insertRowIndex);
     }
 
     // Type is not supported, throw an exception
@@ -401,7 +406,8 @@ class DataValidationUtil {
         columnName,
         input.getClass(),
         typeName,
-        new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"});
+        new String[] {"String", "LocalDate", "LocalDateTime", "ZonedDateTime", "OffsetDateTime"},
+        insertRowIndex);
   }
 
   private static <T> T catchParsingError(Supplier<T> op) {
@@ -432,12 +438,18 @@ class DataValidationUtil {
    *     interpreted in the default timezone.
    * @param trimTimezone Whether timezone information should be removed from the resulting date,
    *     should be true for TIMESTAMP_NTZ columns.
+   * @param insertRowIndex
    * @return TimestampWrapper
    */
   static TimestampWrapper validateAndParseTimestamp(
-      String columnName, Object input, int scale, ZoneId defaultTimezone, boolean trimTimezone) {
+      String columnName,
+      Object input,
+      int scale,
+      ZoneId defaultTimezone,
+      boolean trimTimezone,
+      long insertRowIndex) {
     OffsetDateTime offsetDateTime =
-        inputToOffsetDateTime(columnName, "TIMESTAMP", input, defaultTimezone);
+        inputToOffsetDateTime(columnName, "TIMESTAMP", input, defaultTimezone, insertRowIndex);
 
     if (trimTimezone) {
       offsetDateTime = offsetDateTime.withOffsetSameLocal(ZoneOffset.UTC);
@@ -460,13 +472,14 @@ class DataValidationUtil {
    * @param maxLengthOptional Maximum allowed length of the output String, if empty then uses
    *     maximum allowed by Snowflake
    *     (https://docs.snowflake.com/en/sql-reference/data-types-text.html#varchar)
+   * @param insertRowIndex
    */
   static String validateAndParseString(
-      String columnName, Object input, Optional<Integer> maxLengthOptional) {
+      String columnName, Object input, Optional<Integer> maxLengthOptional, long insertRowIndex) {
     String output;
     if (input instanceof String) {
       output = (String) input;
-      verifyValidUtf8(output, columnName, "STRING");
+      verifyValidUtf8(output, columnName, "STRING", insertRowIndex);
     } else if (input instanceof Number) {
       output = new BigDecimal(input.toString()).stripTrailingZeros().toPlainString();
     } else if (input instanceof Boolean || input instanceof Character) {
@@ -476,7 +489,8 @@ class DataValidationUtil {
           columnName,
           input.getClass(),
           "STRING",
-          new String[] {"String", "Number", "boolean", "char"});
+          new String[] {"String", "Number", "boolean", "char"},
+          insertRowIndex);
     }
     byte[] utf8Bytes = output.getBytes(StandardCharsets.UTF_8);
 
@@ -484,11 +498,10 @@ class DataValidationUtil {
     if (utf8Bytes.length > BYTES_16_MB) {
       throw valueFormatNotAllowedException(
           columnName,
-          input,
           "STRING",
           String.format(
-              "String too long: length=%d bytes maxLength=%d bytes",
-              utf8Bytes.length, BYTES_16_MB));
+              "String too long: length=%d bytes maxLength=%d bytes", utf8Bytes.length, BYTES_16_MB),
+          insertRowIndex);
     }
 
     // If max allowed length is specified (e.g. VARCHAR(10)), the number of unicode characters must
@@ -499,11 +512,11 @@ class DataValidationUtil {
           if (actualCharacters > maxAllowedCharacters) {
             throw valueFormatNotAllowedException(
                 columnName,
-                input,
                 "STRING",
                 String.format(
                     "String too long: length=%d characters maxLength=%d characters",
-                    actualCharacters, maxAllowedCharacters));
+                    actualCharacters, maxAllowedCharacters),
+                insertRowIndex);
           }
         });
     return output;
@@ -518,7 +531,8 @@ class DataValidationUtil {
    * <li>BigInteger, BigDecimal
    * <li>String
    */
-  static BigDecimal validateAndParseBigDecimal(String columnName, Object input) {
+  static BigDecimal validateAndParseBigDecimal(
+      String columnName, Object input, long insertRowIndex) {
     if (input instanceof BigDecimal) {
       return (BigDecimal) input;
     } else if (input instanceof BigInteger) {
@@ -535,7 +549,8 @@ class DataValidationUtil {
         final String stringInput = ((String) input).trim();
         return new BigDecimal(stringInput);
       } catch (NumberFormatException e) {
-        throw valueFormatNotAllowedException(columnName, input, "NUMBER", "Not a valid number");
+        throw valueFormatNotAllowedException(
+            columnName, "NUMBER", "Not a valid number", insertRowIndex);
       }
     } else {
       throw typeNotAllowedException(
@@ -544,7 +559,8 @@ class DataValidationUtil {
           "NUMBER",
           new String[] {
             "int", "long", "byte", "short", "float", "double", "BigDecimal", "BigInteger", "String"
-          });
+          },
+          insertRowIndex);
     }
   }
 
@@ -560,9 +576,9 @@ class DataValidationUtil {
    *   <li>{@link Instant}
    * </ul>
    */
-  static int validateAndParseDate(String columnName, Object input) {
+  static int validateAndParseDate(String columnName, Object input, long insertRowIndex) {
     OffsetDateTime offsetDateTime =
-        inputToOffsetDateTime(columnName, "DATE", input, ZoneOffset.UTC);
+        inputToOffsetDateTime(columnName, "DATE", input, ZoneOffset.UTC, insertRowIndex);
     return Math.toIntExact(offsetDateTime.toLocalDate().toEpochDay());
   }
 
@@ -577,10 +593,11 @@ class DataValidationUtil {
    * @param input Array to validate
    * @param maxLengthOptional Max array length, defaults to 8MB, which is the max allowed length for
    *     BINARY column
+   * @param insertRowIndex
    * @return Validated array
    */
   static byte[] validateAndParseBinary(
-      String columnName, Object input, Optional<Integer> maxLengthOptional) {
+      String columnName, Object input, Optional<Integer> maxLengthOptional, long insertRowIndex) {
     byte[] output;
     if (input instanceof byte[]) {
       // byte[] is a mutable object, we need to create a defensive copy to protect against
@@ -594,20 +611,25 @@ class DataValidationUtil {
         String stringInput = ((String) input).trim();
         output = Hex.decodeHex(stringInput);
       } catch (DecoderException e) {
-        throw valueFormatNotAllowedException(columnName, input, "BINARY", "Not a valid hex string");
+        throw valueFormatNotAllowedException(
+            columnName, "BINARY", "Not a valid hex string", insertRowIndex);
       }
     } else {
       throw typeNotAllowedException(
-          columnName, input.getClass(), "BINARY", new String[] {"byte[]", "String"});
+          columnName,
+          input.getClass(),
+          "BINARY",
+          new String[] {"byte[]", "String"},
+          insertRowIndex);
     }
 
     int maxLength = maxLengthOptional.orElse(BYTES_8_MB);
     if (output.length > maxLength) {
       throw valueFormatNotAllowedException(
           columnName,
-          String.format("byte[%d]", output.length),
           "BINARY",
-          String.format("Binary too long: length=%d maxLength=%d", output.length, maxLength));
+          String.format("Binary too long: length=%d maxLength=%d", output.length, maxLength),
+          insertRowIndex);
     }
     return output;
   }
@@ -622,19 +644,21 @@ class DataValidationUtil {
    *   <li>{@link OffsetTime}
    * </ul>
    */
-  static BigInteger validateAndParseTime(String columnName, Object input, int scale) {
+  static BigInteger validateAndParseTime(
+      String columnName, Object input, int scale, long insertRowIndex) {
     if (input instanceof LocalTime) {
       LocalTime localTime = (LocalTime) input;
       return BigInteger.valueOf(localTime.toNanoOfDay()).divide(Power10.sb16Table[9 - scale]);
     } else if (input instanceof OffsetTime) {
-      return validateAndParseTime(columnName, ((OffsetTime) input).toLocalTime(), scale);
+      return validateAndParseTime(
+          columnName, ((OffsetTime) input).toLocalTime(), scale, insertRowIndex);
     } else if (input instanceof String) {
       String stringInput = ((String) input).trim();
       {
         // First, try to parse LocalTime
         LocalTime localTime = catchParsingError(() -> LocalTime.parse(stringInput));
         if (localTime != null) {
-          return validateAndParseTime(columnName, localTime, scale);
+          return validateAndParseTime(columnName, localTime, scale, insertRowIndex);
         }
       }
 
@@ -642,7 +666,7 @@ class DataValidationUtil {
         // Alternatively, try to parse OffsetTime
         OffsetTime offsetTime = catchParsingError((() -> OffsetTime.parse(stringInput)));
         if (offsetTime != null) {
-          return validateAndParseTime(columnName, offsetTime.toLocalTime(), scale);
+          return validateAndParseTime(columnName, offsetTime.toLocalTime(), scale, insertRowIndex);
         }
       }
 
@@ -653,22 +677,26 @@ class DataValidationUtil {
           return validateAndParseTime(
               columnName,
               LocalDateTime.ofInstant(parsedInstant, ZoneOffset.UTC).toLocalTime(),
-              scale);
+              scale,
+              insertRowIndex);
         }
       }
 
-      // TODO Change URL when out of private preview
       throw valueFormatNotAllowedException(
           columnName,
-          input,
           "TIME",
           "Not a valid time, see"
-              + " https://docs.snowflake.com/en/LIMITEDACCESS/snowpipe-streaming.html"
-              + " for the list of supported formats");
+              + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview"
+              + " for the list of supported formats",
+          insertRowIndex);
 
     } else {
       throw typeNotAllowedException(
-          columnName, input.getClass(), "TIME", new String[] {"String", "LocalTime", "OffsetTime"});
+          columnName,
+          input.getClass(),
+          "TIME",
+          new String[] {"String", "LocalTime", "OffsetTime"},
+          insertRowIndex);
     }
   }
 
@@ -707,8 +735,9 @@ class DataValidationUtil {
    * </ul>
    *
    * @param input
+   * @param insertRowIndex
    */
-  static double validateAndParseReal(String columnName, Object input) {
+  static double validateAndParseReal(String columnName, Object input, long insertRowIndex) {
     if (input instanceof Float) {
       return Double.parseDouble(input.toString());
     } else if (input instanceof Number) {
@@ -728,12 +757,12 @@ class DataValidationUtil {
             return Double.NEGATIVE_INFINITY;
           default:
             throw valueFormatNotAllowedException(
-                columnName, input, "REAL", "Not a valid decimal number");
+                columnName, "REAL", "Not a valid decimal number", insertRowIndex);
         }
       }
     }
     throw typeNotAllowedException(
-        columnName, input.getClass(), "REAL", new String[] {"Number", "String"});
+        columnName, input.getClass(), "REAL", new String[] {"Number", "String"}, insertRowIndex);
   }
 
   /**
@@ -750,43 +779,48 @@ class DataValidationUtil {
    * @param input Input to be converted
    * @return 1 or 0 where 1=true, 0=false
    */
-  static int validateAndParseBoolean(String columnName, Object input) {
+  static int validateAndParseBoolean(String columnName, Object input, long insertRowIndex) {
     if (input instanceof Boolean) {
       return (boolean) input ? 1 : 0;
     } else if (input instanceof Number) {
       return new BigDecimal(input.toString()).compareTo(BigDecimal.ZERO) == 0 ? 0 : 1;
     } else if (input instanceof String) {
-      return convertStringToBoolean(columnName, (String) input) ? 1 : 0;
+      return convertStringToBoolean(columnName, (String) input, insertRowIndex) ? 1 : 0;
     }
 
     throw typeNotAllowedException(
-        columnName, input.getClass(), "BOOLEAN", new String[] {"boolean", "Number", "String"});
+        columnName,
+        input.getClass(),
+        "BOOLEAN",
+        new String[] {"boolean", "Number", "String"},
+        insertRowIndex);
   }
 
-  static void checkValueInRange(BigDecimal bigDecimalValue, int scale, int precision) {
+  static void checkValueInRange(
+      BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
     if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
       throw new SFException(
-          ErrorCode.INVALID_ROW,
-          bigDecimalValue,
+          ErrorCode.INVALID_FORMAT_ROW,
           String.format(
-              "Number out of representable exclusive range of (-1e%s..1e%s)",
-              precision - scale, precision - scale));
+              "Number out of representable exclusive range of (-1e%s..1e%s), Row Index:%s",
+              precision - scale, precision - scale, insertRowIndex));
     }
   }
 
   static Set<String> allowedBooleanStringsLowerCased =
       Sets.newHashSet("1", "0", "yes", "no", "y", "n", "t", "f", "true", "false", "on", "off");
 
-  private static boolean convertStringToBoolean(String columnName, String value) {
+  private static boolean convertStringToBoolean(
+      String columnName, String value, final long insertRowIndex) {
     String normalizedInput = value.toLowerCase().trim();
     if (!allowedBooleanStringsLowerCased.contains(normalizedInput)) {
       throw valueFormatNotAllowedException(
           columnName,
-          value,
           "BOOLEAN",
           "Not a valid boolean, see"
               + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
-              + " for the list of supported formats");
+              + " for the list of supported formats",
+          insertRowIndex);
     }
     return "1".equals(normalizedInput)
         || "yes".equals(normalizedInput)
@@ -804,12 +838,17 @@ class DataValidationUtil {
    * @param allowedJavaTypes Java types supported for the Java type
    */
   private static SFException typeNotAllowedException(
-      String columnName, Class<?> javaType, String snowflakeType, String[] allowedJavaTypes) {
+      String columnName,
+      Class<?> javaType,
+      String snowflakeType,
+      String[] allowedJavaTypes,
+      final long insertRowIndex) {
     return new SFException(
-        ErrorCode.INVALID_ROW,
+        ErrorCode.INVALID_FORMAT_ROW,
         String.format(
-            "Object of type %s cannot be ingested into Snowflake column %s of type %s",
-            javaType.getName(), columnName, snowflakeType),
+            "Object of type %s cannot be ingested into Snowflake column %s of type %s, Row"
+                + " Index:%s",
+            javaType.getName(), columnName, snowflakeType, insertRowIndex),
         String.format(
             String.format("Allowed Java types: %s", String.join(", ", allowedJavaTypes))));
   }
@@ -818,45 +857,35 @@ class DataValidationUtil {
    * Create exception when the Java type is correct, but the value is invalid (e.g. boolean cannot
    * be parsed from a string)
    *
-   * @param value Invalid value causing the exception
+   * <p>Note: Do not log actual Object Value
+   *
+   * @param columnName Column Name
    * @param snowflakeType Snowflake column type
+   * @param reason Reason why value format is not allowed.
+   * @param rowIndex Index of the Input row primarily for debugging purposes.
+   * @return SFException is thrown
    */
   private static SFException valueFormatNotAllowedException(
-      String columnName, Object value, String snowflakeType, String reason) {
+      String columnName, String snowflakeType, String reason, final long rowIndex) {
     return new SFException(
-        ErrorCode.INVALID_ROW,
-        sanitizeValueForExceptionMessage(value),
+        ErrorCode.INVALID_VALUE_ROW,
         String.format(
-            "Value cannot be ingested into Snowflake column %s of type %s: %s",
-            columnName, snowflakeType, reason));
-  }
-
-  /**
-   * Before passing a value to an exception string, we should limit how many characters are
-   * displayed. Important especially for "value exceeds max column size" exceptions.
-   *
-   * @param value Value to adapt for exception message
-   */
-  private static String sanitizeValueForExceptionMessage(Object value) {
-    int maxSize = 20;
-    String valueString = value.toString();
-    return valueString.length() <= maxSize ? valueString : valueString.substring(0, 20) + "...";
+            "Value cannot be ingested into Snowflake column %s of type %s, Row Index: %s, reason:"
+                + " %s",
+            columnName, snowflakeType, rowIndex, reason));
   }
 
   /**
    * Validates that a string is valid UTF-8 string. It catches situations like unmatched high/low
    * UTF-16 surrogate, for example.
    */
-  private static void verifyValidUtf8(String input, String columnName, String dataType) {
-    CharsetEncoder charsetEncoder =
-        StandardCharsets.UTF_8
-            .newEncoder()
-            .onMalformedInput(CodingErrorAction.REPORT)
-            .onUnmappableCharacter(CodingErrorAction.REPORT);
-    try {
-      charsetEncoder.encode(CharBuffer.wrap(input));
-    } catch (CharacterCodingException e) {
-      throw valueFormatNotAllowedException(columnName, input, dataType, "Invalid Unicode string");
+  private static void verifyValidUtf8(
+      String input, String columnName, String dataType, final long insertRowIndex) {
+    String roundTripStr =
+        new String(input.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
+    if (!input.equals(roundTripStr)) {
+      throw valueFormatNotAllowedException(
+          columnName, dataType, "Invalid Unicode string", insertRowIndex);
     }
   }
 }

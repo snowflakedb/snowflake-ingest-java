@@ -24,7 +24,6 @@ public class Constants {
   public static final String ROLE = "role";
   public static final String PRIVATE_KEY = "private_key";
   public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
-  public static final String JDBC_PRIVATE_KEY = "privateKey";
   public static final String PRIMARY_FILE_ID_KEY =
       "primaryFileId"; // Don't change, should match Parquet Scanner
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
@@ -51,7 +50,6 @@ public class Constants {
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
-  public static final int LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES = 100 * 1024 * 1024;
   public static final long EP_NDV_UNKNOWN = -1L;
 
   // Channel level constants

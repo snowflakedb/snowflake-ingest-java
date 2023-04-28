@@ -335,7 +335,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       FieldVector from = this.tempVectorsRoot.getVector(field);
       FieldVector to = this.vectorsRoot.getVector(field);
       for (int rowIdx = 0; rowIdx < tempRowCount; rowIdx++) {
-        to.copyFromSafe(rowIdx, this.rowCount + rowIdx, from);
+        to.copyFromSafe(rowIdx, this.bufferedRowCount + rowIdx, from);
       }
     }
   }
@@ -354,7 +354,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   Optional<VectorSchemaRoot> getSnapshot(final String filePath) {
     List<FieldVector> oldVectors = new ArrayList<>();
     for (FieldVector vector : this.vectorsRoot.getFieldVectors()) {
-      vector.setValueCount(this.rowCount);
+      vector.setValueCount(this.bufferedRowCount);
       if (vector instanceof DecimalVector) {
         // DecimalVectors do not transfer FieldType metadata when using
         // vector.getTransferPair. We need to explicitly create the new vector to transfer to
@@ -379,7 +379,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       }
     }
     VectorSchemaRoot root = new VectorSchemaRoot(oldVectors);
-    root.setRowCount(this.rowCount);
+    root.setRowCount(this.bufferedRowCount);
     return oldVectors.isEmpty() ? Optional.empty() : Optional.of(root);
   }
 
@@ -391,10 +391,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
   @Override
   float addRow(
       Map<String, Object> row,
-      int curRowIndex,
+      int bufferedRowIndex,
       Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
-    return convertRowToArrow(row, vectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
+      Set<String> formattedInputColumnNames,
+      final long insertRowIndex) {
+    return convertRowToArrow(
+        row, vectorsRoot, bufferedRowIndex, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   @Override
@@ -402,9 +404,10 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       Map<String, Object> row,
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
-      Set<String> formattedInputColumnNames) {
+      Set<String> formattedInputColumnNames,
+      long insertRowIndex) {
     return convertRowToArrow(
-        row, tempVectorsRoot, curRowIndex, statsMap, formattedInputColumnNames);
+        row, tempVectorsRoot, curRowIndex, statsMap, formattedInputColumnNames, insertRowIndex);
   }
 
   /**
@@ -412,19 +415,26 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
    *
    * @param row input row
    * @param sourceVectors vectors (buffers) that hold the row
-   * @param curRowIndex current row index to use
+   * @param bufferedRowIndex Buffered row index. This is not the same as the input row index
    * @param statsMap column stats map
    * @param inputColumnNames list of input column names after formatting
+   * @param insertRowsCurrIndex Row index of the input Rows passed in {@link
+   *     net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel#insertRows(Iterable,
+   *     String)}
    * @return row size
    */
   private float convertRowToArrow(
       Map<String, Object> row,
       VectorSchemaRoot sourceVectors,
-      int curRowIndex,
+      int bufferedRowIndex,
       Map<String, RowBufferStats> statsMap,
-      Set<String> inputColumnNames) {
+      Set<String> inputColumnNames,
+      long insertRowsCurrIndex) {
     // Insert values to the corresponding arrow buffers
     float rowBufferSize = 0F;
+    // Create new empty stats just for the current row.
+    Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
+
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       rowBufferSize += 0.125; // 1/8 for null value bitmap
       String columnName = LiteralQuoteUtils.unquoteColumnName(entry.getKey());
@@ -433,8 +443,9 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       Utils.assertNotNull("Arrow column field", field);
       FieldVector vector = sourceVectors.getVector(field);
       Utils.assertNotNull("Arrow column vector", vector);
-      RowBufferStats stats = statsMap.get(columnName);
-      Utils.assertNotNull("Arrow column stats", stats);
+      RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
+      forkedStatsMap.put(columnName, forkedStats);
+      Utils.assertNotNull("Arrow column stats", forkedStats);
       ColumnLogicalType logicalType =
           ColumnLogicalType.valueOf(field.getMetadata().get(COLUMN_LOGICAL_TYPE));
       ColumnPhysicalType physicalType =
@@ -447,37 +458,41 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
             int columnPrecision = Integer.parseInt(field.getMetadata().get(COLUMN_PRECISION));
             int columnScale = getColumnScale(field.getMetadata());
             BigDecimal inputAsBigDecimal =
-                DataValidationUtil.validateAndParseBigDecimal(stats.getColumnDisplayName(), value);
+                DataValidationUtil.validateAndParseBigDecimal(
+                    forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
             // vector.setSafe requires the BigDecimal input scale explicitly match its scale
             inputAsBigDecimal = inputAsBigDecimal.setScale(columnScale, RoundingMode.HALF_UP);
 
-            DataValidationUtil.checkValueInRange(inputAsBigDecimal, columnScale, columnPrecision);
+            DataValidationUtil.checkValueInRange(
+                inputAsBigDecimal, columnScale, columnPrecision, insertRowsCurrIndex);
 
             if (columnScale != 0 || physicalType == ColumnPhysicalType.SB16) {
-              ((DecimalVector) vector).setSafe(curRowIndex, inputAsBigDecimal);
-              stats.addIntValue(inputAsBigDecimal.unscaledValue());
+              ((DecimalVector) vector).setSafe(bufferedRowIndex, inputAsBigDecimal);
+              forkedStats.addIntValue(inputAsBigDecimal.unscaledValue());
               rowBufferSize += 16;
             } else {
               switch (physicalType) {
                 case SB1:
-                  ((TinyIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.byteValueExact());
-                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
+                  ((TinyIntVector) vector)
+                      .setSafe(bufferedRowIndex, inputAsBigDecimal.byteValueExact());
+                  forkedStats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 1;
                   break;
                 case SB2:
                   ((SmallIntVector) vector)
-                      .setSafe(curRowIndex, inputAsBigDecimal.shortValueExact());
-                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
+                      .setSafe(bufferedRowIndex, inputAsBigDecimal.shortValueExact());
+                  forkedStats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 2;
                   break;
                 case SB4:
-                  ((IntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.intValueExact());
-                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
+                  ((IntVector) vector).setSafe(bufferedRowIndex, inputAsBigDecimal.intValueExact());
+                  forkedStats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 4;
                   break;
                 case SB8:
-                  ((BigIntVector) vector).setSafe(curRowIndex, inputAsBigDecimal.longValueExact());
-                  stats.addIntValue(inputAsBigDecimal.toBigInteger());
+                  ((BigIntVector) vector)
+                      .setSafe(bufferedRowIndex, inputAsBigDecimal.longValueExact());
+                  forkedStats.addIntValue(inputAsBigDecimal.toBigInteger());
                   rowBufferSize += 8;
                   break;
                 default:
@@ -492,40 +507,44 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               String maxLengthString = field.getMetadata().get(COLUMN_CHAR_LENGTH);
               String str =
                   DataValidationUtil.validateAndParseString(
-                      stats.getColumnDisplayName(),
+                      forkedStats.getColumnDisplayName(),
                       value,
-                      Optional.ofNullable(maxLengthString).map(Integer::parseInt));
+                      Optional.ofNullable(maxLengthString).map(Integer::parseInt),
+                      insertRowsCurrIndex);
               Text text = new Text(str);
-              ((VarCharVector) vector).setSafe(curRowIndex, text);
-              stats.addStrValue(str);
+              ((VarCharVector) vector).setSafe(bufferedRowIndex, text);
+              forkedStats.addStrValue(str);
               rowBufferSize += text.getBytes().length;
               break;
             }
           case OBJECT:
             {
               String str =
-                  DataValidationUtil.validateAndParseObject(stats.getColumnDisplayName(), value);
+                  DataValidationUtil.validateAndParseObject(
+                      forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
               Text text = new Text(str);
-              ((VarCharVector) vector).setSafe(curRowIndex, text);
+              ((VarCharVector) vector).setSafe(bufferedRowIndex, text);
               rowBufferSize += text.getBytes().length;
               break;
             }
           case ARRAY:
             {
               String str =
-                  DataValidationUtil.validateAndParseArray(stats.getColumnDisplayName(), value);
+                  DataValidationUtil.validateAndParseArray(
+                      forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
               Text text = new Text(str);
-              ((VarCharVector) vector).setSafe(curRowIndex, text);
+              ((VarCharVector) vector).setSafe(bufferedRowIndex, text);
               rowBufferSize += text.getBytes().length;
               break;
             }
           case VARIANT:
             {
               String str =
-                  DataValidationUtil.validateAndParseVariant(stats.getColumnDisplayName(), value);
+                  DataValidationUtil.validateAndParseVariant(
+                      forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
               if (str != null) {
                 Text text = new Text(str);
-                ((VarCharVector) vector).setSafe(curRowIndex, text);
+                ((VarCharVector) vector).setSafe(bufferedRowIndex, text);
                 rowBufferSize += text.getBytes().length;
               } else {
                 isParsedValueNull = true;
@@ -542,14 +561,15 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   BigIntVector bigIntVector = (BigIntVector) vector;
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestamp(
-                          stats.getColumnDisplayName(),
+                          forkedStats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          trimTimezone);
+                          trimTimezone,
+                          insertRowsCurrIndex);
                   BigInteger timestampBinary = timestampWrapper.toBinary(false);
-                  bigIntVector.setSafe(curRowIndex, timestampBinary.longValue());
-                  stats.addIntValue(timestampBinary);
+                  bigIntVector.setSafe(bufferedRowIndex, timestampBinary.longValue());
+                  forkedStats.addIntValue(timestampBinary);
                   rowBufferSize += 8;
                   break;
                 }
@@ -561,19 +581,20 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   IntVector fractionVector =
                       (IntVector) structVector.getChild(FIELD_FRACTION_IN_NANOSECONDS);
                   rowBufferSize += 0.25; // for children vector's null value
-                  structVector.setIndexDefined(curRowIndex);
+                  structVector.setIndexDefined(bufferedRowIndex);
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestamp(
-                          stats.getColumnDisplayName(),
+                          forkedStats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          trimTimezone);
-                  epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
-                  fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
+                          trimTimezone,
+                          insertRowsCurrIndex);
+                  epochVector.setSafe(bufferedRowIndex, timestampWrapper.getEpoch());
+                  fractionVector.setSafe(bufferedRowIndex, timestampWrapper.getFraction());
                   rowBufferSize += 12;
-                  stats.addIntValue(timestampWrapper.toBinary(false));
+                  forkedStats.addIntValue(timestampWrapper.toBinary(false));
                   break;
                 }
               default:
@@ -590,20 +611,21 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   IntVector timezoneVector = (IntVector) structVector.getChild(FIELD_TIME_ZONE);
 
                   rowBufferSize += 0.25; // for children vector's null value
-                  structVector.setIndexDefined(curRowIndex);
+                  structVector.setIndexDefined(bufferedRowIndex);
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestamp(
-                          stats.getColumnDisplayName(),
+                          forkedStats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          false);
+                          false,
+                          insertRowsCurrIndex);
                   epochVector.setSafe(
-                      curRowIndex, timestampWrapper.toBinary(false).longValueExact());
-                  timezoneVector.setSafe(curRowIndex, timestampWrapper.getTimeZoneIndex());
+                      bufferedRowIndex, timestampWrapper.toBinary(false).longValueExact());
+                  timezoneVector.setSafe(bufferedRowIndex, timestampWrapper.getTimeZoneIndex());
                   rowBufferSize += 12;
-                  stats.addIntValue(timestampWrapper.toBinary(true));
+                  forkedStats.addIntValue(timestampWrapper.toBinary(true));
                   break;
                 }
               case SB16:
@@ -616,21 +638,22 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                   IntVector timezoneVector = (IntVector) structVector.getChild(FIELD_TIME_ZONE);
 
                   rowBufferSize += 0.375; // for children vector's null value
-                  structVector.setIndexDefined(curRowIndex);
+                  structVector.setIndexDefined(bufferedRowIndex);
 
                   TimestampWrapper timestampWrapper =
                       DataValidationUtil.validateAndParseTimestamp(
-                          stats.getColumnDisplayName(),
+                          forkedStats.getColumnDisplayName(),
                           value,
                           getColumnScale(field.getMetadata()),
                           defaultTimezone,
-                          false);
-                  epochVector.setSafe(curRowIndex, timestampWrapper.getEpoch());
-                  fractionVector.setSafe(curRowIndex, timestampWrapper.getFraction());
-                  timezoneVector.setSafe(curRowIndex, timestampWrapper.getTimeZoneIndex());
+                          false,
+                          insertRowsCurrIndex);
+                  epochVector.setSafe(bufferedRowIndex, timestampWrapper.getEpoch());
+                  fractionVector.setSafe(bufferedRowIndex, timestampWrapper.getFraction());
+                  timezoneVector.setSafe(bufferedRowIndex, timestampWrapper.getTimeZoneIndex());
                   rowBufferSize += 16;
                   BigInteger timeInBinary = timestampWrapper.toBinary(true);
-                  stats.addIntValue(timeInBinary);
+                  forkedStats.addIntValue(timeInBinary);
                   break;
                 }
               default:
@@ -642,9 +665,10 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
               DateDayVector dateDayVector = (DateDayVector) vector;
               // Expect days past the epoch
               int intValue =
-                  DataValidationUtil.validateAndParseDate(stats.getColumnDisplayName(), value);
-              dateDayVector.setSafe(curRowIndex, intValue);
-              stats.addIntValue(BigInteger.valueOf(intValue));
+                  DataValidationUtil.validateAndParseDate(
+                      forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
+              dateDayVector.setSafe(bufferedRowIndex, intValue);
+              forkedStats.addIntValue(BigInteger.valueOf(intValue));
               rowBufferSize += 4;
               break;
             }
@@ -654,9 +678,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                 {
                   BigInteger timeInScale =
                       DataValidationUtil.validateAndParseTime(
-                          stats.getColumnDisplayName(), value, getColumnScale(field.getMetadata()));
-                  ((IntVector) vector).setSafe(curRowIndex, timeInScale.intValue());
-                  stats.addIntValue(timeInScale);
+                          forkedStats.getColumnDisplayName(),
+                          value,
+                          getColumnScale(field.getMetadata()),
+                          insertRowsCurrIndex);
+                  ((IntVector) vector).setSafe(bufferedRowIndex, timeInScale.intValue());
+                  forkedStats.addIntValue(timeInScale);
                   rowBufferSize += 4;
                   break;
                 }
@@ -664,9 +691,12 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
                 {
                   BigInteger timeInScale =
                       DataValidationUtil.validateAndParseTime(
-                          stats.getColumnDisplayName(), value, getColumnScale(field.getMetadata()));
-                  ((BigIntVector) vector).setSafe(curRowIndex, timeInScale.longValue());
-                  stats.addIntValue(timeInScale);
+                          forkedStats.getColumnDisplayName(),
+                          value,
+                          getColumnScale(field.getMetadata()),
+                          insertRowsCurrIndex);
+                  ((BigIntVector) vector).setSafe(bufferedRowIndex, timeInScale.longValue());
+                  forkedStats.addIntValue(timeInScale);
                   rowBufferSize += 8;
                   break;
                 }
@@ -677,28 +707,31 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
           case BOOLEAN:
             {
               int intValue =
-                  DataValidationUtil.validateAndParseBoolean(stats.getColumnDisplayName(), value);
-              ((BitVector) vector).setSafe(curRowIndex, intValue);
+                  DataValidationUtil.validateAndParseBoolean(
+                      forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
+              ((BitVector) vector).setSafe(bufferedRowIndex, intValue);
               rowBufferSize += 0.125;
-              stats.addIntValue(BigInteger.valueOf(intValue));
+              forkedStats.addIntValue(BigInteger.valueOf(intValue));
               break;
             }
           case BINARY:
             String maxLengthString = field.getMetadata().get(COLUMN_BYTE_LENGTH);
             byte[] bytes =
                 DataValidationUtil.validateAndParseBinary(
-                    stats.getColumnDisplayName(),
+                    forkedStats.getColumnDisplayName(),
                     value,
-                    Optional.ofNullable(maxLengthString).map(Integer::parseInt));
-            ((VarBinaryVector) vector).setSafe(curRowIndex, bytes);
-            stats.addBinaryValue(bytes);
+                    Optional.ofNullable(maxLengthString).map(Integer::parseInt),
+                    insertRowsCurrIndex);
+            ((VarBinaryVector) vector).setSafe(bufferedRowIndex, bytes);
+            forkedStats.addBinaryValue(bytes);
             rowBufferSize += bytes.length;
             break;
           case REAL:
             double doubleValue =
-                DataValidationUtil.validateAndParseReal(stats.getColumnDisplayName(), value);
-            ((Float8Vector) vector).setSafe(curRowIndex, doubleValue);
-            stats.addRealValue(doubleValue);
+                DataValidationUtil.validateAndParseReal(
+                    forkedStats.getColumnDisplayName(), value, insertRowsCurrIndex);
+            ((Float8Vector) vector).setSafe(bufferedRowIndex, doubleValue);
+            forkedStats.addRealValue(doubleValue);
             rowBufferSize += 8;
             break;
           default:
@@ -709,11 +742,20 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       if (value == null || isParsedValueNull) {
         if (!field.getFieldType().isNullable()) {
           throw new SFException(
-              ErrorCode.INVALID_ROW, columnName, "Passed null to non nullable field");
+              ErrorCode.INVALID_FORMAT_ROW, columnName, "Passed null to non nullable field");
         } else {
-          insertNull(vector, stats, curRowIndex);
+          insertNull(vector, forkedStats, bufferedRowIndex);
         }
       }
+    }
+
+    // All input values passed validation, iterate over the columns again and combine their existing
+    // statistics with the forked statistics for the current row.
+    for (Map.Entry<String, RowBufferStats> forkedColStats : forkedStatsMap.entrySet()) {
+      String columnName = forkedColStats.getKey();
+      statsMap.put(
+          columnName,
+          RowBufferStats.getCombinedStats(statsMap.get(columnName), forkedColStats.getValue()));
     }
 
     // Insert nulls to the columns that doesn't show up in the input
@@ -722,7 +764,7 @@ class ArrowRowBuffer extends AbstractRowBuffer<VectorSchemaRoot> {
       insertNull(
           sourceVectors.getVector(this.fields.get(columnName)),
           statsMap.get(columnName),
-          curRowIndex);
+          bufferedRowIndex);
     }
 
     return rowBufferSize;

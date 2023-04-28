@@ -1,4 +1,4 @@
-name: Snowpipe Java SDK Tests
+name: Snowpipe Java SDK
 
 on:
   push:
@@ -8,10 +8,13 @@ on:
 
 jobs:
   build:
+    name: Build & Test - JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast
       matrix:
         java: [ 8 ]
+        snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -20,13 +23,13 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
 
-      - name: Decrypt profile.json
+      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
         run: |
-          ./scripts/decrypt_secret.sh
+          ./scripts/decrypt_secret.sh ${{ matrix.snowflake_cloud }}
 
-      - name: Unit & Integration Test
+      - name: Unit & Integration Test against Cloud ${{ matrix.snowflake_cloud }}
         env:
           JACOCO_COVERAGE: true
           WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
@@ -36,3 +39,27 @@ jobs:
 
       - name: Code Coverage
         uses: codecov/codecov-action@v1
+  build-windows:
+    name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ 8 ]
+        snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Install Java ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
+        env:
+          DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
+        shell: pwsh
+        run: |
+          ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
+      - name: Unit & Integration Test (Windows)
+        continue-on-error: false
+        run: mvn -DghActionsIT verify --batch-mode

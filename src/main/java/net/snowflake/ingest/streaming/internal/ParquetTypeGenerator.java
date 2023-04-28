@@ -42,6 +42,10 @@ public class ParquetTypeGenerator {
     public void setMetadata(Map<String, String> metadata) {
       this.metadata = metadata;
     }
+
+    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
+      return parquetType.asPrimitiveType().getPrimitiveTypeName();
+    }
   }
 
   private static final Set<AbstractRowBuffer.ColumnPhysicalType> TIME_SUPPORTED_PHYSICAL_TYPES =
@@ -60,10 +64,11 @@ public class ParquetTypeGenerator {
    * side.
    *
    * @param column column metadata as received from server side
-   * @param id column id
+   * @param id column id if column.getOrdinal() is not available
    * @return column parquet type
    */
   static ParquetTypeInfo generateColumnParquetTypeInfo(ColumnMetadata column, int id) {
+    id = column.getOrdinal() == null ? id : column.getOrdinal();
     ParquetTypeInfo res = new ParquetTypeInfo();
     Type parquetType;
     Map<String, String> metadata = new HashMap<>();

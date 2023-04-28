@@ -3,6 +3,9 @@
  */
 package net.snowflake.ingest.streaming.internal;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+
 /**
  * Util class to normalise literals to match server side metadata.
  *
@@ -10,6 +13,27 @@ package net.snowflake.ingest.streaming.internal;
  * side.
  */
 class LiteralQuoteUtils {
+
+  /** Maximum number of unquoted column names to store in cache */
+  static final int UNQUOTED_COLUMN_NAME_CACHE_MAX_SIZE = 30000;
+
+  /** Cache storing unquoted column names */
+  private static final LoadingCache<String, String> unquotedColumnNamesCache;
+
+  static {
+    unquotedColumnNamesCache =
+        Caffeine.newBuilder()
+            .maximumSize(UNQUOTED_COLUMN_NAME_CACHE_MAX_SIZE)
+            .build(LiteralQuoteUtils::unquoteColumnNameInternal);
+  }
+
+  /**
+   * Unquote column name expected to be used from the outside. It decides is unquoting would be
+   * expensive. If not, it unquotes directly, otherwise it return a value from a loading cache.
+   */
+  static String unquoteColumnName(String columnName) {
+    return unquotedColumnNamesCache.get(columnName);
+  }
 
   /**
    * Unquote SQL literal.
@@ -21,7 +45,7 @@ class LiteralQuoteUtils {
    * @param columnName column name literal to unquote
    * @return unquoted literal
    */
-  static String unquoteColumnName(String columnName) {
+  private static String unquoteColumnNameInternal(String columnName) {
     int length = columnName.length();
 
     if (length == 0) {

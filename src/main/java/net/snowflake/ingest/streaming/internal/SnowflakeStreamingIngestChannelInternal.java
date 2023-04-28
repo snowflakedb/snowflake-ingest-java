@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
@@ -14,7 +13,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +129,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
-            false,
             owningClient != null
                 ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
                 : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
@@ -348,7 +346,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
-    throttleInsertIfNeeded(Runtime.getRuntime());
+    throttleInsertIfNeeded(new MemoryInfoProviderFromRuntime());
     checkValidation();
 
     if (isClosed()) {
@@ -360,7 +358,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // concurrently modified (e.g. byte[]). Before validation and EP calculation, we must make sure
     // that defensive copies of all mutable objects are created.
     final List<Map<String, Object>> rowsCopy = new LinkedList<>();
-    rows.forEach(r -> rowsCopy.add(new HashMap<>(r)));
+    rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
 
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
@@ -401,11 +399,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Check whether we need to throttle the insertRows API */
-  void throttleInsertIfNeeded(Runtime runtime) {
+  void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
     long insertThrottleIntervalInMs =
         this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
-    while ((hasLowRuntimeMemory(runtime)
+    while ((hasLowRuntimeMemory(memoryInfoProvider)
             || (this.owningClient.getFlushService() != null
                 && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
         && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
@@ -427,18 +425,22 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Check whether we have a low runtime memory condition */
-  private boolean hasLowRuntimeMemory(Runtime runtime) {
+  private boolean hasLowRuntimeMemory(MemoryInfoProvider memoryInfoProvider) {
+    int insertThrottleThresholdInBytes =
+        this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
     int insertThrottleThresholdInPercentage =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
     long maxMemoryLimitInBytes =
         this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
     long maxMemory =
         maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
-            ? runtime.maxMemory()
+            ? memoryInfoProvider.getMaxMemory()
             : maxMemoryLimitInBytes;
-    long freeMemory = runtime.freeMemory() + (runtime.maxMemory() - runtime.totalMemory());
+    long freeMemory =
+        memoryInfoProvider.getFreeMemory()
+            + (memoryInfoProvider.getMaxMemory() - memoryInfoProvider.getTotalMemory());
     boolean hasLowRuntimeMemory =
-        freeMemory < LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES
+        freeMemory < insertThrottleThresholdInBytes
             && freeMemory * 100 / maxMemory < insertThrottleThresholdInPercentage;
     if (hasLowRuntimeMemory) {
       logger.logWarn(
