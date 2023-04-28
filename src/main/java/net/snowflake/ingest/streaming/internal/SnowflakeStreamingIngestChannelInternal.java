@@ -346,7 +346,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
-    throttleInsertIfNeeded(Runtime.getRuntime());
+    throttleInsertIfNeeded(new MemoryInfoProviderFromRuntime());
     checkValidation();
 
     if (isClosed()) {
@@ -401,11 +401,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Check whether we need to throttle the insertRows API */
-  void throttleInsertIfNeeded(Runtime runtime) {
+  void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
     long insertThrottleIntervalInMs =
         this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
-    while ((hasLowRuntimeMemory(runtime)
+    while ((hasLowRuntimeMemory(memoryInfoProvider)
             || (this.owningClient.getFlushService() != null
                 && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
         && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
@@ -427,7 +427,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Check whether we have a low runtime memory condition */
-  private boolean hasLowRuntimeMemory(Runtime runtime) {
+  private boolean hasLowRuntimeMemory(MemoryInfoProvider memoryInfoProvider) {
     int insertThrottleThresholdInBytes =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
     int insertThrottleThresholdInPercentage =
@@ -436,9 +436,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
     long maxMemory =
         maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
-            ? runtime.maxMemory()
+            ? memoryInfoProvider.getMaxMemory()
             : maxMemoryLimitInBytes;
-    long freeMemory = runtime.freeMemory() + (runtime.maxMemory() - runtime.totalMemory());
+    long freeMemory =
+        memoryInfoProvider.getFreeMemory()
+            + (memoryInfoProvider.getMaxMemory() - memoryInfoProvider.getTotalMemory());
     boolean hasLowRuntimeMemory =
         freeMemory < insertThrottleThresholdInBytes
             && freeMemory * 100 / maxMemory < insertThrottleThresholdInPercentage;
