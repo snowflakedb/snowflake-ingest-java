@@ -57,6 +57,7 @@
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.12.3</parquet.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <protobuf.version>3.19.6</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.8.3</snappy.version>
@@ -77,6 +78,11 @@
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>${guava.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>${protobuf.version}</version>
       </dependency>
       <dependency>
         <groupId>com.nimbusds</groupId>
