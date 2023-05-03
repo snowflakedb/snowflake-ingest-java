@@ -20,12 +20,13 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Tries to open several thousand channels into the same table from multiple threads in parallel */
+@Ignore("Will be reimplemented in dew: SNOW-807102")
 public class OpenManyChannelsIT {
   private static final int THREAD_COUNT = 20;
   private static final int CHANNELS_PER_THREAD = 250;
