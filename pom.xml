@@ -6,7 +6,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>1.1.3</version>
+  <version>1.1.4-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -57,7 +57,7 @@
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.12.3</parquet.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <shadeBase>net.snowflake.ingest.internal</shadeBase>
+    <shadeBase>net.snowflake.ingest.shade</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.8.3</snappy.version>
     <snowjdbc.version>3.13.29</snowjdbc.version>
@@ -384,7 +384,6 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.arrow</groupId>
@@ -495,6 +494,11 @@
             </execution>
           </executions>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>4.0.0-M8</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -510,7 +514,7 @@
           <sortDependencyExclusions>groupId,artifactId</sortDependencyExclusions>
           <sortExecutions>true</sortExecutions>
           <sortModules>true</sortModules>
-          <sortPlugins>groupId,artifactId</sortPlugins>
+          <sortPlugins>groupId</sortPlugins>
           <sortProperties>true</sortProperties>
           <verifyFail>stop</verifyFail>
           <verifyFailOn>strict</verifyFailOn>
@@ -676,7 +680,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.19.1</version>
+        <version>2.22.2</version>
         <configuration>
           <excludes>
             <exclude>**/TestSimpleIngestLocal.java</exclude>
@@ -724,7 +728,6 @@
       </activation>
       <build>
         <plugins>
-          <!-- Relocate all dependencies to internal to solve dependency conflict problem -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
@@ -732,58 +735,41 @@
             <configuration>
               <relocations>
                 <relocation>
-                  <pattern>com.nimbusds</pattern>
-                  <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
+                  <pattern>com</pattern>
+                  <shadedPattern>${shadeBase}.com</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>net.jcip</pattern>
-                  <shadedPattern>${shadeBase}.net.jcip</shadedPattern>
+                  <pattern>io</pattern>
+                  <shadedPattern>${shadeBase}.io</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>net.minidev</pattern>
-                  <shadedPattern>${shadeBase}.net.minidev</shadedPattern>
+                  <pattern>javax</pattern>
+                  <shadedPattern>${shadeBase}.javax</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>org.objectweb</pattern>
-                  <shadedPattern>${shadeBase}.org.objectweb</shadedPattern>
+                  <pattern>jersey</pattern>
+                  <shadedPattern>${shadeBase}.jersey</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>com.fasterxml</pattern>
-                  <shadedPattern>${shadeBase}.fasterxml</shadedPattern>
+                  <pattern>net</pattern>
+                  <shadedPattern>${shadeBase}.net</shadedPattern>
+                  <excludes>
+                    <exclude>net.snowflake.ingest.**</exclude>
+                  </excludes>
                 </relocation>
                 <relocation>
-                  <pattern>org.apache</pattern>
-                  <shadedPattern>${shadeBase}.apache</shadedPattern>
+                  <pattern>org</pattern>
+                  <shadedPattern>${shadeBase}.org</shadedPattern>
+                </relocation>
+                <relocation>
+                  <!--
+                    this is the parquet shade location
+                    https://github.com/apache/parquet-mr/blob/master/pom.xml#LL72C6-L72C18
+                  -->
+                  <pattern>shaded.parquet</pattern>
+                  <shadedPattern>${shadeBase}.shaded.parquet</shadedPattern>
                 </relocation>
               </relocations>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/LICENSE*</exclude>
-                    <exclude>META-INF/NOTICE*</exclude>
-                    <exclude>META-INF/DEPENDENCIES</exclude>
-                    <exclude>META-INF/maven/**</exclude>
-                    <exclude>META-INF/services/com.fasterxml.*</exclude>
-                    <exclude>META-INF/*.xml</exclude>
-                    <exclude>META-INF/*.SF</exclude>
-                    <exclude>META-INF/*.DSA</exclude>
-                    <exclude>META-INF/*.RSA</exclude>
-                  </excludes>
-                </filter>
-                <filter>
-                  <artifact>commons-logging:commons-logging</artifact>
-                  <excludes>
-                    <exclude>org/apache/commons/logging/impl/AvalonLogger.class</exclude>
-                  </excludes>
-                </filter>
-                <filter>
-                  <artifact>org.slf4j:slf4j-simple</artifact>
-                  <excludes>
-                    <exclude>org/slf4j/**</exclude>
-                  </excludes>
-                </filter>
-              </filters>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer"/>
@@ -795,6 +781,33 @@
                   <goal>shade</goal>
                 </goals>
                 <phase>package</phase>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <!-- hacky META-INF/versions shade relocation -->
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-antrun-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>run</goal>
+                </goals>
+                <phase>package</phase>
+                <configuration>
+                  <target>
+                    <unzip dest="${project.build.directory}/tmp" src="${project.build.directory}/${project.build.finalName}.jar"/>
+                    <mkdir dir="${project.build.directory}/tmp/META-INF/versions/9/net/snowflake/ingest/shade/net/snowflake/client"/>
+                    <mkdir dir="${project.build.directory}/tmp/META-INF/versions/11/net/snowflake/ingest/shade/net/snowflake/client"/>
+                    <mkdir dir="${project.build.directory}/tmp/META-INF/versions/15/net/snowflake/ingest/shade/net/snowflake/client"/>
+                    <move file="${project.build.directory}/tmp/META-INF/versions/9/net/snowflake/client" todir="${project.build.directory}/tmp/META-INF/versions/9/net/snowflake/ingest/shade/net/snowflake/"/>
+                    <move file="${project.build.directory}/tmp/META-INF/versions/11/net/snowflake/client" todir="${project.build.directory}/tmp/META-INF/versions/9/net/snowflake/ingest/shade/net/snowflake/"/>
+                    <move file="${project.build.directory}/tmp/META-INF/versions/15/net/snowflake/client" todir="${project.build.directory}/tmp/META-INF/versions/9/net/snowflake/ingest/shade/net/snowflake/"/>
+                    <zip basedir="${project.build.directory}/tmp" destfile="${project.build.directory}/${project.build.finalName}.jar"/>
+                    <delete dir="${project.build.directory}/tmp"/>
+                  </target>
+                </configuration>
               </execution>
             </executions>
           </plugin>
