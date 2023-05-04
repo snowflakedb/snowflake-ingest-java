@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.codahale.metrics.Timer;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.concurrent.TimeUnit;
 
