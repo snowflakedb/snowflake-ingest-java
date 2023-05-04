@@ -13,7 +13,7 @@ if jar tvf $DIR/../target/snowflake-ingest-sdk.jar  | awk '{print $8}' | \
     grep -v -E '/$' | \
 
     # Snowflake top-level packages are allowed
-    grep -v -E "^(net|com)/snowflake" | \
+    grep -v -E "^net/snowflake/ingest" | \
 
     # META-INF is allowed in the shaded JAR
     grep -v -E "^META-INF" | \
