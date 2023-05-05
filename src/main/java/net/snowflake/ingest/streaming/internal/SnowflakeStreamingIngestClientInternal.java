@@ -626,15 +626,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
-      if (this.telemetryWorker != null) {
-        this.telemetryWorker.shutdown();
-      }
       this.flushService.shutdown();
-      if (this.requestBuilder != null) {
-        this.requestBuilder.closeResources();
-      }
-      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
-      Utils.closeAllocator(this.allocator);
+      cleanUpResources();
     }
   }
 
@@ -908,5 +901,16 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       telemetryService.reportThroughputBytesPerSecond(this.inputThroughput, this.uploadThroughput);
       telemetryService.reportCpuMemoryUsage(this.cpuHistogram);
     }
+  }
+
+  private void cleanUpResources() {
+    if (this.telemetryWorker != null) {
+      this.telemetryWorker.shutdown();
+    }
+    if (this.requestBuilder != null) {
+      this.requestBuilder.closeResources();
+    }
+    HttpUtil.shutdownHttpConnectionManagerDaemonThread();
+    Utils.closeAllocator(this.allocator);
   }
 }
