@@ -50,6 +50,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
+    float chunkUncompressedSize = 0f;
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     BdecParquetWriter mergedChannelWriter = null;
@@ -100,6 +101,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       }
 
       rowCount += data.getRowCount();
+      chunkUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
@@ -116,6 +118,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         channelsMetadataList,
         columnEpStatsMapCombined,
         rowCount,
+        chunkUncompressedSize,
         mergedChunkData,
         chunkMinMaxInsertTimeInMs);
   }
@@ -125,6 +128,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
+    float chunkUncompressedSize = 0f;
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
@@ -176,6 +180,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       rows.addAll(data.getVectors().rows);
 
       rowCount += data.getRowCount();
+      chunkUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
@@ -183,7 +188,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
-          filePath);
+          filePath,
+          enableParquetInternalBuffering);
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
@@ -196,6 +202,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         channelsMetadataList,
         columnEpStatsMapCombined,
         rowCount,
+        chunkUncompressedSize,
         mergedData,
         chunkMinMaxInsertTimeInMs);
   }
