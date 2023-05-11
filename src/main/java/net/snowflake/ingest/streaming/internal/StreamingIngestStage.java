@@ -146,8 +146,7 @@ class StreamingIngestStage {
   private void putRemote(String fullFilePath, byte[] data, int retryCount)
       throws SnowflakeSQLException, IOException {
     SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy;
-    if (this.fileTransferMetadataWithAge.fileTransferMetadata.getStageInfo().getStageType()
-        == StageInfo.StageType.GCS) {
+    if (this.fileTransferMetadataWithAge.fileTransferMetadata.isForOneFile()) {
       fileTransferMetadataCopy = this.fetchSignedURL(fullFilePath);
     } else {
       // Set file path to be uploaded
@@ -186,6 +185,7 @@ class StreamingIngestStage {
               .setStreamingIngestClientKey(this.clientPrefix)
               .setStreamingIngestClientName(this.clientName)
               .setProxyProperties(this.proxyProperties)
+              .setDestFileName(fullFilePath)
               .build());
     } catch (SnowflakeSQLException e) {
       if (e.getErrorCode() != CLOUD_STORAGE_CREDENTIALS_EXPIRED || retryCount >= MAX_RETRY_COUNT) {
