@@ -23,10 +23,10 @@ if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
 fi
 
 # copy the settings.xml template and inject credential information
-OSSRH_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_ossrh_deploy.xml"
+SNAPSHOT_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_snapshot_deploy.xml"
 MVN_REPOSITORY_ID=snapshot
 
-cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
+cat > $SNAPSHOT_DEPLOY_SETTINGS_XML << SETTINGS.XML
 <?xml version="1.0" encoding="UTF-8"?>
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -42,7 +42,7 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
 SETTINGS.XML
 
 MVN_OPTIONS+=(
-  "--settings" "$OSSRH_DEPLOY_SETTINGS_XML"
+  "--settings" "$SNAPSHOT_DEPLOY_SETTINGS_XML"
   "--batch-mode"
 )
 
@@ -56,23 +56,23 @@ echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
     -DserverId=$MVN_REPOSITORY_ID -DnewVersion=$project_version-SNAPSHOT\
-    -DnexusUrl=https://oss.sonatype.org/ | grep netsnowflake | awk '{print $2}')
+    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ | grep netsnowflake | awk '{print $2}')
 IFS=" "
 if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
-    echo "[ERROR] Not single netsnowflake repository is staged. Login https://oss.sonatype.org/ and make sure no netsnowflake remains there."
+    echo "[ERROR] Not single netsnowflake repository is staged. Login https://nexus.int.snowflakecomputing.com/and make sure no netsnowflake remains there."
     exit 1
 fi
 if ! mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-close \
     -DserverId=$MVN_REPOSITORY_ID \
-    -DnexusUrl=https://oss.sonatype.org/ \
+    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
     -DstagingRepositoryId=$snowflake_repositories  -DnewVersion=$project_version-SNAPSHOT\
     -DstagingDescription="Automated Close"; then
     echo "[ERROR] Failed to close. Fix the errors and try this script again"
     mvn ${MVN_OPTIONS[@]} \
         nexus-staging:rc-drop \
         -DserverId=$MVN_REPOSITORY_ID \
-        -DnexusUrl=https://oss.sonatype.org/ \
+        -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
         -DstagingRepositoryId=$snowflake_repositories -DnewVersion=$project_version-SNAPSHOT\
         -DstagingDescription="Failed to close. Dropping..."
 fi
@@ -80,8 +80,8 @@ fi
 mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
     -DserverId=$MVN_REPOSITORY_ID \
-    -DnexusUrl=https://oss.sonatype.org/ \
+    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
     -DstagingRepositoryId=$snowflake_repositories -DnewVersion=$project_version-SNAPSHOT\
     -DstagingDescription="Automated Release"
 
-rm $OSSRH_DEPLOY_SETTINGS_XML
+rm $SNAPSHOT_DEPLOY_SETTINGS_XML
