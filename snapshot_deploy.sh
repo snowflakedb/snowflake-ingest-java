@@ -1,10 +1,9 @@
 #!/bin/bash -e
 
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ -z "$GPG_KEY_ID" ]; then
-  echo "[ERROR] Key Id not specified!"
-  exit 1
-fi
+export GPG_KEY_ID="Snowflake Computing"
+export SONATYPE_USER="$sonatype_user"
+export SONATYPE_PWD="$sonatype_password"
 
 if [ -z "$GPG_KEY_PASSPHRASE" ]; then
   echo "[ERROR] GPG passphrase is not specified for $GPG_KEY_ID!"
@@ -20,7 +19,6 @@ echo "[INFO] Import PGP Key"
 if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
   gpg --allow-secret-key-import --import "$GPG_PRIVATE_KEY"
 fi
-
 # copy the settings.xml template and inject credential information
 SNAPSHOT_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_snapshot_deploy.xml"
 MVN_REPOSITORY_ID=snapshot
