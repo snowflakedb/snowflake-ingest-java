@@ -53,7 +53,7 @@ echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
     -DserverId=$MVN_REPOSITORY_ID versions:set -DnewVersion=$project_version-SNAPSHOT
-    -DnexusUrl=https://nexus.int.snowflakecomputing.com/| grep netsnowflake | awk '{print $2}')
+    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ | grep net.snowflake | awk '{print $2}')
 IFS=" "
 if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
     echo "[ERROR] Not single netsnowflake repository is staged. Login https://nexus.int.snowflakecomputing.com/ and make sure no netsnowflake remains there."
