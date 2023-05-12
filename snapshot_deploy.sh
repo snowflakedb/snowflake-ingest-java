@@ -1,9 +1,10 @@
 #!/bin/bash -e
 
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export GPG_KEY_ID="Snowflake Computing"
-export SONATYPE_USER="$sonatype_user"
-export SONATYPE_PWD="$sonatype_password"
+if [ -z "$GPG_KEY_ID" ]; then
+  echo "[ERROR] Key Id not specified!"
+  exit 1
+fi
 
 if [ -z "$GPG_KEY_PASSPHRASE" ]; then
   echo "[ERROR] GPG passphrase is not specified for $GPG_KEY_ID!"
