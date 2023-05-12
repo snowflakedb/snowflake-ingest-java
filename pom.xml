@@ -978,6 +978,41 @@
       </build>
     </profile>
     <profile>
+      <id>snapshot-deploy</id>
+      <activation>
+        <property>
+          <name>snapshot-deploy</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>sign-and-deploy-file</goal>
+                </goals>
+                <phase>deploy</phase>
+                <configuration>
+                  <file>target/${project.artifactId}.jar</file>
+                  <repositoryId>snapshot</repositoryId>
+                  <url>https://nexus.int.snowflakecomputing.com/repository/Snapshots/</url>
+                  <pomFile>generated_public_pom.xml</pomFile>
+                  <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
+                  <sources>target/${project.artifactId}-sources.jar</sources>
+                  <keyname>${env.GPG_KEY_ID}</keyname>
+                  <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>ghActionsIT</id>
       <activation>
         <property>
