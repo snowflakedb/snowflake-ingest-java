@@ -55,7 +55,7 @@ echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
     -DserverId=$MVN_REPOSITORY_ID versions:set -DnewVersion=$project_version-SNAPSHOT \
-    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ | grep netsnowflake | awk '{print $2}')
+    -DnexusUrl=https://nexus.int.snowflakecomputing.com/repository/Snapshots/ | grep netsnowflake | awk '{print $2}')
 IFS=" "
 if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
     echo "[ERROR] Not single netsnowflake repository is staged. Login https://nexus.int.snowflakecomputing.com/ and make sure no netsnowflake remains there."
@@ -64,14 +64,14 @@ fi
 if ! mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-close \
     -DserverId=$MVN_REPOSITORY_ID versions:set -DnewVersion=$project_version-SNAPSHOT\
-    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
+    -DnexusUrl=https://nexus.int.snowflakecomputing.com/repository/Snapshots/ \
     -DstagingRepositoryId=$snowflake_repositories \
     -DstagingDescription="Automated Close"; then
     echo "[ERROR] Failed to close. Fix the errors and try this script again"
     mvn ${MVN_OPTIONS[@]} \
         nexus-staging:rc-drop \
         -DserverId=$MVN_REPOSITORY_ID versions:set -DnewVersion=$project_version-SNAPSHOT\
-        -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
+        -DnexusUrl=https://nexus.int.snowflakecomputing.com/repository/Snapshots/ \
         -DstagingRepositoryId=$snowflake_repositories \
         -DstagingDescription="Failed to close. Dropping..."
 fi
@@ -79,7 +79,7 @@ fi
 mvn ${MVN_OPTIONS[@]} \
     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
     -DserverId=$MVN_REPOSITORY_ID versions:set -DnewVersion=$project_version-SNAPSHOT\
-    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
+    -DnexusUrl=https://nexus.int.snowflakecomputing.com/repository/Snapshots/ \
     -DstagingRepositoryId=$snowflake_repositories \
     -DstagingDescription="Automated Release"
 
