@@ -34,6 +34,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
     ByteArrayOutputStream chunkData = new ByteArrayOutputStream();
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
+    float chunkUncompressedSize = 0f;
     VectorSchemaRoot root = null;
     ArrowWriter arrowWriter = null;
     VectorLoader loader = null;
@@ -94,6 +95,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
         // Write channel data using the stream writer
         arrowWriter.writeBatch();
         rowCount += data.getRowCount();
+        chunkUncompressedSize += data.getBufferSize();
 
         logger.logDebug(
             "Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
@@ -112,6 +114,7 @@ public class ArrowFlusher implements Flusher<VectorSchemaRoot> {
         channelsMetadataList,
         columnEpStatsMapCombined,
         rowCount,
+        chunkUncompressedSize,
         chunkData,
         chunkMinMaxInsertTimeInMs);
   }
