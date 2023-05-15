@@ -196,10 +196,6 @@ class RegisterService<T> {
             Timer.Context registerContext =
                 Utils.createTimerContext(this.owningClient.registerLatency);
 
-            for (BlobMetadata blobMetadata : blobs) {
-              blobMetadata.getBlobStats().setRegisterStartMs(System.currentTimeMillis());
-            }
-
             // Register the blobs, and invalidate any channels that return a failure status code
             this.owningClient.registerBlobs(blobs);
 
