@@ -1007,7 +1007,6 @@
                   <repositoryId>snapshot</repositoryId>
                   <url>https://nexus.int.snowflakecomputing.com/repository/Snapshots/</url>
                   <pomFile>generated_public_pom.xml</pomFile>
-                  <uniqueVersion>false</uniqueVersion>
                   <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
                   <sources>target/${project.artifactId}-sources.jar</sources>
                   <keyname>${env.GPG_KEY_ID}</keyname>
