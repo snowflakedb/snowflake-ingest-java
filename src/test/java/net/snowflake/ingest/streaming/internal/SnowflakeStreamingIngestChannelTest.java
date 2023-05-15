@@ -45,6 +45,30 @@ import org.mockito.Mockito;
 
 public class SnowflakeStreamingIngestChannelTest {
 
+  /**
+   * Mock memory provider, allows the user to set what memory values should be returned. Fields are
+   * volatile, so can be modified by another threads than the one reading it.
+   */
+  private static class MockedMemoryInfoProvider implements MemoryInfoProvider {
+    public volatile long freeMemory;
+    public volatile long maxMemory;
+
+    @Override
+    public long getMaxMemory() {
+      return maxMemory;
+    }
+
+    @Override
+    public long getTotalMemory() {
+      return maxMemory;
+    }
+
+    @Override
+    public long getFreeMemory() {
+      return freeMemory;
+    }
+  }
+
   @Test
   public void testChannelFactoryNullFields() {
     String name = "CHANNEL";
@@ -539,7 +563,11 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testInsertRowThrottling() {
-    long maxMemory = 1000000L;
+    final long maxMemory = 1000000L;
+
+    final MockedMemoryInfoProvider memoryInfoProvider = new MockedMemoryInfoProvider();
+    memoryInfoProvider.maxMemory = maxMemory;
+
     SnowflakeStreamingIngestClientInternal<?> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
     SnowflakeStreamingIngestChannelInternal<?> channel =
@@ -557,16 +585,12 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 
-    Runtime mockedRunTime = Mockito.mock(Runtime.class);
-    Mockito.when(mockedRunTime.maxMemory()).thenReturn(maxMemory);
-    Mockito.when(mockedRunTime.totalMemory()).thenReturn(maxMemory);
     ParameterProvider parameterProvider = new ParameterProvider();
-    Mockito.when(mockedRunTime.freeMemory())
-        .thenReturn(
-            maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
+    memoryInfoProvider.freeMemory =
+        maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100;
 
     CompletableFuture<Void> future =
-        CompletableFuture.runAsync(() -> channel.throttleInsertIfNeeded(mockedRunTime));
+        CompletableFuture.runAsync(() -> channel.throttleInsertIfNeeded(memoryInfoProvider));
 
     try {
       future.get(5L, TimeUnit.SECONDS);
@@ -577,7 +601,7 @@ public class SnowflakeStreamingIngestChannelTest {
       Assert.fail("unexpected exception encountered.");
     }
 
-    Mockito.when(mockedRunTime.freeMemory()).thenReturn(1000000L);
+    memoryInfoProvider.freeMemory = maxMemory;
 
     // We should succeed now
     try {

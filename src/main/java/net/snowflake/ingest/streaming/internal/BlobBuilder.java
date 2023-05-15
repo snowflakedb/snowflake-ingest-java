@@ -147,7 +147,7 @@ class BlobBuilder {
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
             startOffset,
-            chunkData.size(),
+            serializedChunk.chunkUncompressedSize,
             compressedChunkLength,
             encryptedCompressedChunkDataSize,
             bdecVersion);
