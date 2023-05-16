@@ -36,6 +36,7 @@ import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
@@ -73,9 +74,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.util.VisibleForTesting;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -83,8 +81,7 @@ import org.apache.arrow.util.VisibleForTesting;
  * <li>the channel cache, which contains all the channels that belong to this account
  * <li>the flush service, which schedules and coordinates the flush to Snowflake tables
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStreamingIngestClient {
 
@@ -115,9 +112,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
   // Reference to the flush service
   private final FlushService<T> flushService;
-
-  // Memory allocator
-  private final BufferAllocator allocator;
 
   // Indicates whether the client has closed
   private volatile boolean isClosed;
@@ -172,7 +166,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
     this.channelCache = new ChannelCache<>();
-    this.allocator = new RootAllocator();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
 
@@ -632,7 +625,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         this.requestBuilder.closeResources();
       }
       HttpUtil.shutdownHttpConnectionManagerDaemonThread();
-      Utils.closeAllocator(this.allocator);
     }
   }
 
@@ -652,15 +644,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   /** Set the flag to indicate that a flush is needed */
   void setNeedFlush() {
     this.flushService.setNeedFlush();
-  }
-
-  /**
-   * Get the buffer allocator
-   *
-   * @return the buffer allocator
-   */
-  BufferAllocator getAllocator() {
-    return this.allocator;
   }
 
   /** Remove the channel in the channel cache if the channel sequencer matches */

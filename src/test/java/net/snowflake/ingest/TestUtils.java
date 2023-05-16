@@ -150,10 +150,7 @@ public class TestUtils {
 
   /** @return list of Bdec versions for which to execute IT tests. */
   public static Collection<Object[]> getBdecVersionItCases() {
-    return Arrays.asList(
-        new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
-        });
+    return Arrays.asList(new Object[][] {{"Parquet", Constants.BdecVersion.THREE}});
   }
 
   public static String getUser() throws Exception {

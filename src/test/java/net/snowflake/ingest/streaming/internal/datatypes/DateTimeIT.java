@@ -101,7 +101,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29 23:59:59.999999999 Z",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("TIMESTAMP_TZ", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("TIMESTAMP_TZ", "2023-02-29T23:59:59.999999999");
 
     // Numeric strings
     testJdbcTypeCompatibility(
@@ -345,7 +345,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29 15:59:59.999999999 -0800",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("TIMESTAMP_LTZ", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("TIMESTAMP_LTZ", "2023-02-29T23:59:59.999999999");
 
     // Numeric strings
     testJdbcTypeCompatibility(
@@ -587,7 +587,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29 23:59:59.999999999 Z",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("TIMESTAMP_NTZ", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("TIMESTAMP_NTZ", "2023-02-29T23:59:59.999999999");
 
     // Numeric strings
     testJdbcTypeCompatibility(
@@ -927,7 +927,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("DATE", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("DATE", "2023-02-29T23:59:59.999999999");
 
     // Test numeric strings
     testJdbcTypeCompatibility(

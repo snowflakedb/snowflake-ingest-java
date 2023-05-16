@@ -46,9 +46,6 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -62,8 +59,7 @@ import org.mockito.Mockito;
 public class FlushServiceTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> testContextFactory() {
-    return Arrays.asList(
-        new Object[][] {{ArrowTestContext.createFactory()}, {ParquetTestContext.createFactory()}});
+    return Arrays.asList(new Object[][] {{ParquetTestContext.createFactory()}});
   }
 
   public FlushServiceTest(TestContextFactory<?> testContextFactory) {
@@ -244,58 +240,6 @@ public class FlushServiceTest {
     }
   }
 
-  private static class ArrowTestContext extends TestContext<VectorSchemaRoot> {
-    private final BufferAllocator allocator = new RootAllocator();
-
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> createChannel(
-        String name,
-        String dbName,
-        String schemaName,
-        String tableName,
-        String offsetToken,
-        Long channelSequencer,
-        Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption,
-        ZoneId defaultTimezone) {
-      return new SnowflakeStreamingIngestChannelInternal<>(
-          name,
-          dbName,
-          schemaName,
-          tableName,
-          offsetToken,
-          channelSequencer,
-          rowSequencer,
-          client,
-          encryptionKey,
-          encryptionKeyId,
-          onErrorOption,
-          defaultTimezone,
-          Constants.BdecVersion.ONE,
-          allocator);
-    }
-
-    @Override
-    public void close() {
-      try {
-        // Close allocator to make sure no memory leak
-        allocator.close();
-      } catch (Exception e) {
-        Assert.fail(String.format("Allocator close failure. Caused by %s", e.getMessage()));
-      }
-    }
-
-    static TestContextFactory<VectorSchemaRoot> createFactory() {
-      return new TestContextFactory<VectorSchemaRoot>("Arrow") {
-        @Override
-        TestContext<VectorSchemaRoot> create() {
-          return new ArrowTestContext();
-        }
-      };
-    }
-  }
-
   private static class ParquetTestContext extends TestContext<List<List<Object>>> {
 
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> createChannel(
@@ -323,8 +267,7 @@ public class FlushServiceTest {
           encryptionKeyId,
           onErrorOption,
           defaultTimezone,
-          Constants.BdecVersion.THREE,
-          null);
+          Constants.BdecVersion.THREE);
     }
 
     @Override

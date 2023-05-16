@@ -20,8 +20,6 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.NotImplementedException;
 import org.junit.Assert;
@@ -35,10 +33,7 @@ public class RowBufferTest {
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> bdecVersion() {
     return Arrays.asList(
-        new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE},
-          {"Parquet_w/o_optimization", Constants.BdecVersion.THREE}
-        });
+        new Object[][] {{"Parquet_w/o_optimization", Constants.BdecVersion.THREE}});
   }
 
   private final Constants.BdecVersion bdecVersion;
@@ -127,7 +122,6 @@ public class RowBufferTest {
     return AbstractRowBuffer.createRowBuffer(
         onErrorOption,
         UTC,
-        new RootAllocator(),
         bdecVersion,
         "test.buffer",
         rs -> {},
@@ -1564,20 +1558,6 @@ public class RowBufferTest {
         SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "3"));
 
     switch (bdecVersion) {
-      case ONE:
-        VectorSchemaRoot snapshotContinueArrow =
-            ((VectorSchemaRoot) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get());
-        // validRows and only the good row from mixedRows are in the buffer
-        Assert.assertEquals(2, snapshotContinueArrow.getRowCount());
-        Assert.assertEquals("[a, b]", snapshotContinueArrow.getVector(0).toString());
-
-        VectorSchemaRoot snapshotAbortArrow =
-            ((VectorSchemaRoot) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get());
-        // only validRows and none of the mixedRows are in the buffer
-        Assert.assertEquals(1, snapshotAbortArrow.getRowCount());
-        Assert.assertEquals("[a]", snapshotAbortArrow.getVector(0).toString());
-        break;
-
       case THREE:
         List<List<Object>> snapshotContinueParquet =
             ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
@@ -1594,11 +1574,6 @@ public class RowBufferTest {
         break;
       default:
         throw new NotImplementedException("Unsupported version!");
-    }
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-
-    } else if (bdecVersion == Constants.BdecVersion.ONE) {
-
     }
   }
 }

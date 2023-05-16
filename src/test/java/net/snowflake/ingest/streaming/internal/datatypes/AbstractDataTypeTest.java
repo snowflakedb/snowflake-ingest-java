@@ -180,7 +180,7 @@ public abstract class AbstractDataTypeTest {
                             maxPowerOf10Exclusive, maxPowerOf10Exclusive))));
   }
 
-  protected <T> void expectArrowNotSupported(String dataType, T value) throws Exception {
+  protected <T> void expectNotSupported(String dataType, T value) throws Exception {
     expectError(
         dataType,
         value,

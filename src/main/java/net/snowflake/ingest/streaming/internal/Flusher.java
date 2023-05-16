@@ -14,8 +14,7 @@ import net.snowflake.ingest.utils.Pair;
  * Interface to convert {@link ChannelData} buffered in {@link RowBuffer} to the underlying format
  * implementation for faster processing.
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 public interface Flusher<T> {
   /**

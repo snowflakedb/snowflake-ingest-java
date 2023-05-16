@@ -36,7 +36,7 @@ public class StringsIT extends AbstractDataTypeTest {
     testJdbcTypeCompatibility("CHAR(5)", true, "true", new BooleanProvider(), new StringProvider());
     testJdbcTypeCompatibility(
         "CHAR(5)", false, "false", new BooleanProvider(), new StringProvider());
-    expectArrowNotSupported("CHAR(4)", false);
+    expectNotSupported("CHAR(4)", false);
 
     // test numbers
     testJdbcTypeCompatibility(
@@ -95,23 +95,23 @@ public class StringsIT extends AbstractDataTypeTest {
     // 1-byte chars
     String maxString = buildString("a", MB_16);
     testIngestion("VARCHAR", maxString, new StringProvider());
-    expectArrowNotSupported("VARCHAR", maxString + "a");
+    expectNotSupported("VARCHAR", maxString + "a");
 
     // 2-byte chars
     maxString = buildString("š", MB_16 / 2);
     testIngestion("VARCHAR", maxString, new StringProvider());
 
-    expectArrowNotSupported("VARCHAR", maxString + "a");
+    expectNotSupported("VARCHAR", maxString + "a");
 
     // 3-byte chars
     maxString = buildString("❄", MB_16 / 3);
     testIngestion("VARCHAR", maxString, new StringProvider());
-    expectArrowNotSupported("VARCHAR", maxString + "aa");
+    expectNotSupported("VARCHAR", maxString + "aa");
 
     // 4-byte chars
     maxString = buildString("🍞", MB_16 / 4);
     testIngestion("VARCHAR", maxString, new StringProvider());
-    expectArrowNotSupported("VARCHAR", maxString + "a");
+    expectNotSupported("VARCHAR", maxString + "a");
   }
 
   @Test
