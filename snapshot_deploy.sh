@@ -51,7 +51,7 @@ mvn clean deploy ${MVN_OPTIONS[@]} -Dsnapshot-deploy
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
+    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.13:rc-list \
     -DserverId=$MVN_REPOSITORY_ID  \
     -DnexusUrl=https://nexus.int.snowflakecomputing.com/ | grep netsnowflake | awk '{print $2}')
 IFS=" "
@@ -60,7 +60,7 @@ if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
     exit 1
 fi
 if ! mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-close \
+    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.13:rc-close \
     -DserverId=$MVN_REPOSITORY_ID \
     -DnexusUrl=https://nexus.int.snowflakecomputing.com/  \
     -DstagingRepositoryId=$snowflake_repositories \
@@ -75,7 +75,7 @@ if ! mvn ${MVN_OPTIONS[@]} \
 fi
 
 mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
+    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.13:rc-release \
     -DserverId=$MVN_REPOSITORY_ID \
     -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
     -DstagingRepositoryId=$snowflake_repositories \
