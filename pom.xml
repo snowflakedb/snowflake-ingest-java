@@ -788,6 +788,8 @@
             <artifactId>maven-shade-plugin</artifactId>
             <version>3.4.1</version>
             <configuration>
+              <shadeTestJar>true</shadeTestJar>
+              <shadeSourcesContent>true</shadeSourcesContent>
               <relocations>
                 <relocation>
                   <pattern>com.nimbusds</pattern>
