@@ -56,7 +56,7 @@ snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
     -DnexusUrl=https://nexus.int.snowflakecomputing.com/ | grep netsnowflake | awk '{print $2}')
 IFS=" "
 if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
-    echo "[ERROR] Not single netsnowflake repository is staged. Login https://nexus.int.snowflakecomputing.com/ and make sure no netsnowflake remains there."
+    echo "[ERROR] Not single netsnowflake repository is staged.Login https://nexus.int.snowflakecomputing.com/ and make sure no netsnowflake remains there."
     exit 1
 fi
 if ! mvn ${MVN_OPTIONS[@]} \
