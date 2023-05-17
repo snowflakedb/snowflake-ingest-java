@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
@@ -131,7 +130,10 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             channelState,
             owningClient != null
                 ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
-                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
+                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
+            owningClient != null
+                ? owningClient.getParameterProvider().getMaxChunkSizeInBytes()
+                : ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
@@ -365,7 +367,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
-    if (this.rowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
+    if (this.rowBuffer.getSize()
+        >= this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()) {
       this.owningClient.setNeedFlush();
     }
 
