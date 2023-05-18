@@ -469,7 +469,7 @@ class FlushService<T> {
 
   /**
    * Check whether we should stop merging more channels into the same chunk, we need to stop in a
-   * few cases
+   * few cases:
    *
    * <p>When the size is larger than a certain threshold
    *
