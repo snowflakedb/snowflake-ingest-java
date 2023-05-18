@@ -373,22 +373,16 @@ class FlushService<T> {
           int idx = 0;
           while (idx < channelsDataPerTable.size()) {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
-            // Stop processing the rest of channels if reaching the blob size limit or the channel
-            // has different encryption key ids
+            // Stop processing the rest of channels when needed
             if (idx > 0
-                && (totalBufferSizeInBytes + channelData.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
-                    || !Objects.equals(
-                        channelData.getChannelContext().getEncryptionKeyId(),
-                        channelsDataPerTable
-                            .get(idx - 1)
-                            .getChannelContext()
-                            .getEncryptionKeyId()))) {
+                && shouldStopProcessing(
+                    totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1))) {
               leftoverChannelsDataPerTable.addAll(
                   channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
               logger.logInfo(
                   "Creation of another blob is needed because of blob size limit or different"
-                      + " encryption ids, client={}, table={},  size={}, encryptionId1={},"
-                      + " encryptionId2={}",
+                      + " encryption ids or different schema, client={}, table={},  size={},"
+                      + " encryptionId1={}, encryptionId2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
                   totalBufferSizeInBytes + channelData.getBufferSize(),
@@ -469,6 +463,25 @@ class FlushService<T> {
 
     // Add the flush task futures to the register service
     this.registerService.addBlobs(blobs);
+  }
+
+  /**
+   * Check whether we should stop merging more channels into the chunks, we need to stop in a few
+   * cases
+   *
+   * <p>When the size is larger than a certain threshold
+   *
+   * <p>When the encryption key ids are not the same
+   *
+   * <p>When the schema is not the same
+   */
+  private boolean shouldStopProcessing(
+      float totalBufferSizeInBytes, ChannelData<T> current, ChannelData<T> prev) {
+    return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
+        || !Objects.equals(
+            current.getChannelContext().getEncryptionKeyId(),
+            prev.getChannelContext().getEncryptionKeyId())
+        || !current.getColumnEps().keySet().equals(prev.getColumnEps().keySet());
   }
 
   /**

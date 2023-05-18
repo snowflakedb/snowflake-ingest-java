@@ -396,9 +396,9 @@ public class FlushServiceTest {
         .buildAndAdd();
   }
 
-  private static ColumnMetadata createTestIntegerColumn() {
+  private static ColumnMetadata createTestIntegerColumn(String name) {
     ColumnMetadata colInt = new ColumnMetadata();
-    colInt.setName("COLINT");
+    colInt.setName(name);
     colInt.setPhysicalType("SB4");
     colInt.setNullable(true);
     colInt.setLogicalType("FIXED");
@@ -407,9 +407,9 @@ public class FlushServiceTest {
     return colInt;
   }
 
-  private static ColumnMetadata createTestTextColumn() {
+  private static ColumnMetadata createTestTextColumn(String name) {
     ColumnMetadata colChar = new ColumnMetadata();
-    colChar.setName("COLCHAR");
+    colChar.setName(name);
     colChar.setPhysicalType("LOB");
     colChar.setNullable(true);
     colChar.setLogicalType("TEXT");
@@ -486,19 +486,22 @@ public class FlushServiceTest {
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel4 = addChannel4(testContext);
+    String colName1 = "testBlobCreation1";
+    String colName2 = "testBlobCreation2";
 
-    List<ColumnMetadata> schema = Arrays.asList(createTestIntegerColumn(), createTestTextColumn());
+    List<ColumnMetadata> schema =
+        Arrays.asList(createTestIntegerColumn(colName1), createTestTextColumn(colName2));
     channel1.getRowBuffer().setupSchema(schema);
     channel2.getRowBuffer().setupSchema(schema);
     channel4.getRowBuffer().setupSchema(schema);
 
     List<Map<String, Object>> rows1 =
         RowSetBuilder.newBuilder()
-            .addColumn("COLINT", 11)
-            .addColumn("COLCHAR", "bob")
+            .addColumn(colName1, 11)
+            .addColumn(colName2, "bob")
             .newRow()
-            .addColumn("COLINT", 22)
-            .addColumn("COLCHAR", "bob")
+            .addColumn(colName1, 22)
+            .addColumn(colName2, "bob")
             .build();
 
     channel1.insertRows(rows1, "offset1");
@@ -513,25 +516,77 @@ public class FlushServiceTest {
   }
 
   @Test
+  public void testBlobSplitDueToDifferentSchema() throws Exception {
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
+    String colName1 = "testBlobSplitDueToDifferentSchema1";
+    String colName2 = "testBlobSplitDueToDifferentSchema2";
+    String colName3 = "testBlobSplitDueToDifferentSchema3";
+
+    List<ColumnMetadata> schema1 =
+        Arrays.asList(createTestIntegerColumn(colName1), createTestTextColumn(colName2));
+    List<ColumnMetadata> schema2 =
+        Arrays.asList(
+            createTestIntegerColumn(colName1),
+            createTestTextColumn(colName2),
+            createTestIntegerColumn(colName3));
+    channel1.getRowBuffer().setupSchema(schema1);
+    channel2.getRowBuffer().setupSchema(schema2);
+
+    List<Map<String, Object>> rows1 =
+        RowSetBuilder.newBuilder()
+            .addColumn(colName1, 11)
+            .addColumn(colName2, "bob")
+            .newRow()
+            .addColumn(colName1, 22)
+            .addColumn(colName2, "bob")
+            .build();
+
+    List<Map<String, Object>> rows2 =
+        RowSetBuilder.newBuilder()
+            .addColumn(colName1, 11)
+            .addColumn(colName2, "bob")
+            .addColumn(colName3, 11)
+            .newRow()
+            .addColumn(colName1, 22)
+            .addColumn(colName2, "bob")
+            .addColumn(colName3, 22)
+            .build();
+
+    channel1.insertRows(rows1, "offset1");
+    channel2.insertRows(rows2, "offset2");
+
+    FlushService<?> flushService = testContext.flushService;
+
+    // Force = true flushes
+    flushService.flush(true).get();
+    Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
+  }
+
+  @Test
   public void testBuildAndUpload() throws Exception {
     TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
+    String colName1 = "testBuildAndUpload1";
+    String colName2 = "testBuildAndUpload2";
 
-    List<ColumnMetadata> schema = Arrays.asList(createTestIntegerColumn(), createTestTextColumn());
+    List<ColumnMetadata> schema =
+        Arrays.asList(createTestIntegerColumn(colName1), createTestTextColumn(colName2));
     channel1.getRowBuffer().setupSchema(schema);
     channel2.getRowBuffer().setupSchema(schema);
 
     List<Map<String, Object>> rows1 =
         RowSetBuilder.newBuilder()
-            .addColumn("COLINT", 11)
-            .addColumn("COLCHAR", "bob")
+            .addColumn(colName1, 11)
+            .addColumn(colName2, "bob")
             .newRow()
-            .addColumn("COLINT", 22)
-            .addColumn("COLCHAR", "bob")
+            .addColumn(colName1, 22)
+            .addColumn(colName2, "bob")
             .build();
     List<Map<String, Object>> rows2 =
-        RowSetBuilder.newBuilder().addColumn("COLINT", null).addColumn("COLCHAR", "toby").build();
+        RowSetBuilder.newBuilder().addColumn(colName1, null).addColumn(colName2, "toby").build();
 
     channel1.insertRows(rows1, "offset1");
     channel2.insertRows(rows2, "offset2");
@@ -647,15 +702,18 @@ public class FlushServiceTest {
     TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel3 = addChannel3(testContext);
+    String colName1 = "testBuildErrors1";
+    String colName2 = "testBuildErrors2";
 
-    List<ColumnMetadata> schema = Arrays.asList(createTestIntegerColumn(), createTestTextColumn());
+    List<ColumnMetadata> schema =
+        Arrays.asList(createTestIntegerColumn(colName1), createTestTextColumn(colName2));
     channel1.getRowBuffer().setupSchema(schema);
     channel3.getRowBuffer().setupSchema(schema);
 
     List<Map<String, Object>> rows1 =
-        RowSetBuilder.newBuilder().addColumn("COLINT", 0).addColumn("COLCHAR", "alice").build();
+        RowSetBuilder.newBuilder().addColumn(colName1, 0).addColumn(colName2, "alice").build();
     List<Map<String, Object>> rows2 =
-        RowSetBuilder.newBuilder().addColumn("COLINT", 0).addColumn("COLCHAR", 111).build();
+        RowSetBuilder.newBuilder().addColumn(colName1, 0).addColumn(colName2, 111).build();
 
     channel1.insertRows(rows1, "offset1");
     channel3.insertRows(rows2, "offset2");
