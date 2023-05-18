@@ -382,12 +382,14 @@ class FlushService<T> {
               logger.logInfo(
                   "Creation of another blob is needed because of blob size limit or different"
                       + " encryption ids or different schema, client={}, table={},  size={},"
-                      + " encryptionId1={}, encryptionId2={}",
+                      + " encryptionId1={}, encryptionId2={}, schema1={}, schema2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
                   totalBufferSizeInBytes + channelData.getBufferSize(),
                   channelData.getChannelContext().getEncryptionKeyId(),
-                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId());
+                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId(),
+                  channelData.getColumnEps().keySet(),
+                  channelsDataPerTable.get(idx - 1).getColumnEps().keySet());
               break;
             }
             totalBufferSizeInBytes += channelData.getBufferSize();
@@ -466,14 +468,14 @@ class FlushService<T> {
   }
 
   /**
-   * Check whether we should stop merging more channels into the chunks, we need to stop in a few
-   * cases
+   * Check whether we should stop merging more channels into the same chunk, we need to stop in a
+   * few cases
    *
    * <p>When the size is larger than a certain threshold
    *
    * <p>When the encryption key ids are not the same
    *
-   * <p>When the schema is not the same
+   * <p>When the schemas are not the same
    */
   private boolean shouldStopProcessing(
       float totalBufferSizeInBytes, ChannelData<T> current, ChannelData<T> prev) {
