@@ -49,36 +49,4 @@ $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > ge
 
 mvn clean deploy ${MVN_OPTIONS[@]} -Dsnapshot-deploy
 
-echo "[INFO] Close and Release"
-snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.13:rc-list \
-    -DserverId=$MVN_REPOSITORY_ID  \
-    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ | grep netsnowflake | awk '{print $2}')
-IFS=" "
-if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
-    echo "[ERROR] Not single netsnowflake repository is staged.Login https://nexus.int.snowflakecomputing.com/ and make sure no netsnowflake remains there."
-    exit 1
-fi
-if ! mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.13:rc-close \
-    -DserverId=$MVN_REPOSITORY_ID \
-    -DnexusUrl=https://nexus.int.snowflakecomputing.com/  \
-    -DstagingRepositoryId=$snowflake_repositories \
-    -DstagingDescription="Automated Close"; then
-    echo "[ERROR] Failed to close. Fix the errors and try this script again"
-    mvn ${MVN_OPTIONS[@]} \
-        nexus-staging:rc-drop \
-        -DserverId=$MVN_REPOSITORY_ID \
-        -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
-        -DstagingRepositoryId=$snowflake_repositories \
-        -DstagingDescription="Failed to close. Dropping..."
-fi
-
-mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.13:rc-release \
-    -DserverId=$MVN_REPOSITORY_ID \
-    -DnexusUrl=https://nexus.int.snowflakecomputing.com/ \
-    -DstagingRepositoryId=$snowflake_repositories \
-    -DstagingDescription="Automated Release"
-
 rm $SNAPSHOT_DEPLOY_SETTINGS_XML
