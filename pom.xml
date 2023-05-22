@@ -6,7 +6,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>1.1.3</version>
+  <version>1.1.5-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -154,16 +154,68 @@
             <artifactId>reload4j</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>com.github.pjfanning</groupId>
+            <artifactId>jersey-json</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-server</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-servlet</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>dnsjava</groupId>
+            <artifactId>dnsjava</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>javax.activation</groupId>
             <artifactId>activation</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet.jsp</groupId>
+            <artifactId>jsp-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-core</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-util</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-webapp</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.slf4j</groupId>
@@ -203,11 +255,6 @@
       <dependency>
         <groupId>org.codehaus.jackson</groupId>
         <artifactId>jackson-jaxrs</artifactId>
-        <version>${codehaus.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.codehaus.jackson</groupId>
-        <artifactId>jackson-mapper-asl</artifactId>
         <version>${codehaus.version}</version>
       </dependency>
       <dependency>
@@ -464,12 +511,18 @@
             <skip>true</skip>
           </configuration>
         </plugin>
+
         <!-- Need to define the maven-failsafe-plugin here -->
         <!-- http://maven.apache.org/surefire/maven-failsafe-plugin/plugin-info.html -->
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>3.0.0-M5</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.19.1</version>
         </plugin>
         <plugin>
           <groupId>org.jacoco</groupId>
@@ -697,8 +750,13 @@
       <id>checkShadedContent</id>
       <activation>
         <os>
+          <!-- Shaded JAR content checking is a shell script, do not run it on Windows -->
           <family>!Windows</family>
         </os>
+        <property>
+          <!-- Do not check shaded JAR content if shading has been disabled -->
+          <name>!not-shadeDep</name>
+        </property>
       </activation>
       <build>
         <plugins>
@@ -736,6 +794,11 @@
             <artifactId>maven-shade-plugin</artifactId>
             <version>3.4.1</version>
             <configuration>
+              <artifactSet>
+                <excludes>
+                  <exclude>net.snowflake:snowflake-jdbc</exclude>
+                </excludes>
+              </artifactSet>
               <relocations>
                 <relocation>
                   <pattern>com.nimbusds</pattern>
@@ -761,11 +824,85 @@
                   <pattern>org.apache</pattern>
                   <shadedPattern>${shadeBase}.apache</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>org.xbill</pattern>
+                  <shadedPattern>${shadeBase}.org.xbill</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.xerial</pattern>
+                  <shadedPattern>${shadeBase}.org.xerial</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.netty</pattern>
+                  <shadedPattern>${shadeBase}.io.netty</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google</pattern>
+                  <shadedPattern>${shadeBase}.com.google</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.github.benmanes</pattern>
+                  <shadedPattern>${shadeBase}.com.github.benmanes</shadedPattern>
+                </relocation>
+                <!-- shaded.parquet contains dependencies shaded in parquet itself. Here we are shading it for the second time -->
+                <relocation>
+                  <pattern>shaded.parquet</pattern>
+                  <shadedPattern>${shadeBase}.shaded.parquet</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.codehaus</pattern>
+                  <shadedPattern>${shadeBase}.org.codehaus</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.jcraft</pattern>
+                  <shadedPattern>${shadeBase}.com.jcraft</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.eclipse</pattern>
+                  <shadedPattern>${shadeBase}.org.eclipse</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.checkerframework</pattern>
+                  <shadedPattern>${shadeBase}.org.checkerframework</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.codahale</pattern>
+                  <shadedPattern>${shadeBase}.com.codahale</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.ctc</pattern>
+                  <shadedPattern>${shadeBase}.com.ctc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.github.luben</pattern>
+                  <shadedPattern>${shadeBase}.com.github.luben</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.thoughtworks</pattern>
+                  <shadedPattern>${shadeBase}.com.thoughtworks</shadedPattern>
+                </relocation>
+                <!-- This belongs to org.apache.arrow:arrow-vector -->
+                <relocation>
+                  <pattern>codegen</pattern>
+                  <shadedPattern>${shadeBase}.codegen</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>javax.annotation</pattern>
+                  <shadedPattern>${shadeBase}.javax.annotation</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>javax.activation</pattern>
+                  <shadedPattern>${shadeBase}.javax.activation</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
                   <artifact>*:*</artifact>
                   <excludes>
+                    <exclude>assets/org/apache/commons/math3/exception/util/LocalizedFormats_fr.properties</exclude>
+                    <exclude>about.html</exclude>
+                    <exclude>mozilla/public-suffix-list.txt</exclude>
+
                     <exclude>META-INF/LICENSE*</exclude>
                     <exclude>META-INF/NOTICE*</exclude>
                     <exclude>META-INF/DEPENDENCIES</exclude>
@@ -775,6 +912,7 @@
                     <exclude>META-INF/*.SF</exclude>
                     <exclude>META-INF/*.DSA</exclude>
                     <exclude>META-INF/*.RSA</exclude>
+                    <exclude>google/protobuf/**/*.proto</exclude>
                   </excludes>
                 </filter>
                 <filter>
@@ -830,6 +968,41 @@
                   <file>target/${project.artifactId}.jar</file>
                   <repositoryId>ossrh</repositoryId>
                   <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+                  <pomFile>generated_public_pom.xml</pomFile>
+                  <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
+                  <sources>target/${project.artifactId}-sources.jar</sources>
+                  <keyname>${env.GPG_KEY_ID}</keyname>
+                  <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>snapshot-deploy</id>
+      <activation>
+        <property>
+          <name>snapshot-deploy</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>sign-and-deploy-file</goal>
+                </goals>
+                <phase>deploy</phase>
+                <configuration>
+                  <file>target/${project.artifactId}.jar</file>
+                  <repositoryId>snapshot</repositoryId>
+                  <url>https://nexus.int.snowflakecomputing.com/repository/Snapshots/</url>
                   <pomFile>generated_public_pom.xml</pomFile>
                   <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
                   <sources>target/${project.artifactId}-sources.jar</sources>

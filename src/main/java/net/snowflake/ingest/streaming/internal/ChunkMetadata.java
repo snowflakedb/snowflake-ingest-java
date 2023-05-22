@@ -32,7 +32,7 @@ class ChunkMetadata {
     private String schemaName;
     private String tableName;
     private Long chunkStartOffset;
-    private Integer chunkLength;
+    private Integer chunkLength; // compressedChunkLength
     private List<ChannelMetadata> channels;
     private String chunkMD5;
     private EpInfo epInfo;
