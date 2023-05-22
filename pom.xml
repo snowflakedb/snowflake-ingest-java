@@ -794,18 +794,15 @@
             <artifactId>maven-shade-plugin</artifactId>
             <version>3.4.1</version>
             <configuration>
+              <artifactSet>
+                <excludes>
+                  <exclude>net.snowflake:snowflake-jdbc</exclude>
+                </excludes>
+              </artifactSet>
               <relocations>
                 <relocation>
                   <pattern>com.nimbusds</pattern>
                   <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>net.snowflake.client</pattern>
-                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>com.snowflake.client</pattern>
-                  <shadedPattern>${shadeBase}.com.snowflake.client</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>net.jcip</pattern>
