@@ -75,6 +75,7 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.util.VisibleForTesting;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -230,6 +231,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   SnowflakeStreamingIngestClientInternal(String name) {
     this(name, null, null, null, true, null, new HashMap<>());
+  }
+
+  // TESTING ONLY - inject the request builder
+  @VisibleForTesting
+  public void injectRequestBuilder(RequestBuilder requestBuilder) {
+    this.requestBuilder = requestBuilder;
   }
 
   /**
@@ -576,7 +583,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                     blobMetadata.getPath(),
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),
-                    relevantChunks));
+                    relevantChunks,
+                    blobMetadata.getBlobStats()));
           }
         });
 

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
+import org.apache.arrow.util.VisibleForTesting;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
@@ -16,17 +17,25 @@ class BlobMetadata {
   private final String md5;
   private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
+  private final BlobStats blobStats;
 
-  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks) {
-    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks);
+  // used for testing only
+  @VisibleForTesting
+  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobStats blobStats) {
+    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, blobStats);
   }
 
   BlobMetadata(
-      String path, String md5, Constants.BdecVersion bdecVersion, List<ChunkMetadata> chunks) {
+      String path,
+      String md5,
+      Constants.BdecVersion bdecVersion,
+      List<ChunkMetadata> chunks,
+      BlobStats blobStats) {
     this.path = path;
     this.md5 = md5;
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
+    this.blobStats = blobStats;
   }
 
   @JsonIgnore
@@ -54,9 +63,18 @@ class BlobMetadata {
     return bdecVersion.toByte();
   }
 
+  @JsonProperty("blob_stats")
+  BlobStats getBlobStats() {
+    return this.blobStats;
+  }
+
   /** Create {@link BlobMetadata}. */
   static BlobMetadata createBlobMetadata(
-      String path, String md5, Constants.BdecVersion bdecVersion, List<ChunkMetadata> chunks) {
-    return new BlobMetadata(path, md5, bdecVersion, chunks);
+      String path,
+      String md5,
+      Constants.BdecVersion bdecVersion,
+      List<ChunkMetadata> chunks,
+      BlobStats blobStats) {
+    return new BlobMetadata(path, md5, bdecVersion, chunks, blobStats);
   }
 }

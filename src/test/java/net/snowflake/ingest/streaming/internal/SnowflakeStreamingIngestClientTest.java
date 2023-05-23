@@ -489,7 +489,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobMetadata> blobs =
         Collections.singletonList(
-            new BlobMetadata("path", "md5", Collections.singletonList(chunkMetadata)));
+            new BlobMetadata("path", "md5", Collections.singletonList(chunkMetadata), null));
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("request_id", null);
@@ -589,8 +589,8 @@ public class SnowflakeStreamingIngestClientTest {
     chunks1.add(chunkMetadata1);
     chunks1.add(chunkMetadata2);
     chunks2.add(chunkMetadata3);
-    blobs.add(new BlobMetadata("path1", "md51", chunks1));
-    blobs.add(new BlobMetadata("path2", "md52", chunks2));
+    blobs.add(new BlobMetadata("path1", "md51", chunks1, null));
+    blobs.add(new BlobMetadata("path2", "md52", chunks2, null));
 
     List<ChannelRegisterStatus> channelRegisterStatuses = new ArrayList<>();
     ChannelRegisterStatus status1 = new ChannelRegisterStatus();
@@ -675,7 +675,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     try {
       List<BlobMetadata> blobs =
-          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on 404 error");
     } catch (SFException e) {
@@ -722,7 +722,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     try {
       List<BlobMetadata> blobs =
-          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on SF internal error");
     } catch (SFException e) {
@@ -777,7 +777,7 @@ public class SnowflakeStreamingIngestClientTest {
             null);
 
     List<BlobMetadata> blobs =
-        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
     client.registerBlobs(blobs);
   }
 
@@ -1084,7 +1084,7 @@ public class SnowflakeStreamingIngestClientTest {
     Assert.assertTrue(channel2.isValid());
 
     List<BlobMetadata> blobs =
-        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
     client.registerBlobs(blobs);
 
     // Channel2 should be invalidated now
