@@ -742,6 +742,50 @@
           </excludes>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>2.0.1</version>
+        <configuration>
+          <errorRemedy>failFast</errorRemedy>
+          <includedLicenses>
+            <includedLicense>Apache License 2.0</includedLicense>
+            <includedLicense>BSD 2-Clause License</includedLicense>
+            <includedLicense>3-Clause BSD License</includedLicense>
+            <includedLicense>Revised BSD</includedLicense>
+            <includedLicense>The MIT License</includedLicense>
+            <includedLicense>EDL 1.0</includedLicense>
+            <includedLicense>The Go license</includedLicense>
+          </includedLicenses>
+          <!--
+          The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+          check your dependencies", verify the conditions of the license, put the text of the license into third-party-licenses/
+          directory and add it to this list. You can also run "mvn license:third-party-report" to get an HTML license report.
+          -->
+          <excludedScopes>test,provided,system</excludedScopes>
+          <failOnBlacklist>true</failOnBlacklist>
+          <licenseMerges>
+            <licenseMerge>Apache License 2.0
+              |The Apache License, Version 2.0
+              |The Apache Software License, Version 2.0
+              |Apache-2.0
+              |Apache License, Version 2.0
+              |Apache 2.0
+              |Apache License V2.0</licenseMerge>
+            <licenseMerge>BSD 2-Clause License
+              |The BSD License</licenseMerge>
+          </licenseMerges>
+        </configuration>
+        <executions>
+          <execution>
+            <id>add-third-party</id>
+            <goals>
+              <goal>add-third-party</goal>
+            </goals>
+            <phase>package</phase>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
