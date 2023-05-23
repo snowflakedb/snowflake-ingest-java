@@ -3,6 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.Constants.USER;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 
@@ -1099,6 +1100,80 @@ public class StreamingIngestIT {
     // add one more column after change tracking columns
     executeQuery(String.format("alter table %s add column c6 varchar;", tableFullName));
     ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(2, 3, 5, 6), rowNum);
+  }
+
+  @Test
+  public void testGCSDownscopedToken() throws Exception {
+    String user = prop.getProperty(USER);
+    client.close();
+    try {
+      executeQuery(
+          String.format(
+              "alter user %s set GCS_USE_DOWNSCOPED_CREDENTIAL = true parameter_comment='Enabling"
+                  + " GCS_USE_DOWNSCOPED_CREDENTIAL for streaming ingest test';",
+              user));
+      executeQuery(
+          String.format(
+              "alter user %s set FORCE_GCP_USE_DOWNSCOPED_CREDENTIAL = true"
+                  + " parameter_comment='Enabling FORCE_GCP_USE_DOWNSCOPED_CREDENTIAL for streaming"
+                  + " ingest test';",
+              user));
+
+      client =
+          (SnowflakeStreamingIngestClientInternal<?>)
+              SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
+
+      OpenChannelRequest request1 =
+          OpenChannelRequest.builder("CHANNEL")
+              .setDBName(testDb)
+              .setSchemaName(TEST_SCHEMA)
+              .setTableName(TEST_TABLE)
+              .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+              .build();
+
+      // Open a streaming ingest channel from the given client
+      SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+      for (int val = 0; val < 100; val++) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("c1", Integer.toString(val));
+        verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
+      }
+
+      // Close the channel after insertion
+      channel1.close().get();
+
+      for (int i = 1; i < 15; i++) {
+        if (channel1.getLatestCommittedOffsetToken() != null
+            && channel1.getLatestCommittedOffsetToken().equals("999")) {
+          ResultSet result =
+              jdbcConnection
+                  .createStatement()
+                  .executeQuery(
+                      String.format(
+                          "select count(*) from %s.%s.%s", testDb, TEST_SCHEMA, TEST_TABLE));
+          result.next();
+          Assert.assertEquals(1000, result.getLong(1));
+
+          ResultSet result2 =
+              jdbcConnection
+                  .createStatement()
+                  .executeQuery(
+                      String.format(
+                          "select * from %s.%s.%s order by c1 limit 2",
+                          testDb, TEST_SCHEMA, TEST_TABLE));
+          result2.next();
+          Assert.assertEquals("0", result2.getString(1));
+          result2.next();
+          Assert.assertEquals("1", result2.getString(1));
+          return;
+        }
+        Thread.sleep(500);
+      }
+      Assert.fail("Row sequencer not updated before timeout");
+    } finally {
+      executeQuery(String.format("alter user %s unset GCS_USE_DOWNSCOPED_CREDENTIAL;", user));
+      executeQuery(String.format("alter user %s unset FORCE_GCP_USE_DOWNSCOPED_CREDENTIAL;", user));
+    }
   }
 
   /**
