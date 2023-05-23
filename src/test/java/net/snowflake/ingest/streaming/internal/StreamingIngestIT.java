@@ -42,7 +42,6 @@ import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -1055,7 +1054,6 @@ public class StreamingIngestIT {
     Assert.fail("Row sequencer not updated before timeout");
   }
 
-  @Ignore
   @Test
   public void testTableColumnEvolution() throws Exception {
     final int rowNum = 100;
