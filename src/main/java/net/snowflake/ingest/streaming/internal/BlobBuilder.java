@@ -157,7 +157,7 @@ class BlobBuilder {
     // Build blob file bytes
     byte[] blobBytes =
         buildBlob(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
-    return new Blob(blobBytes, chunksMetadataList);
+    return new Blob(blobBytes, chunksMetadataList, new BlobStats());
   }
 
   /**
@@ -327,10 +327,12 @@ class BlobBuilder {
   static class Blob {
     final byte[] blobBytes;
     final List<ChunkMetadata> chunksMetadataList;
+    final BlobStats blobStats;
 
-    Blob(byte[] blobBytes, List<ChunkMetadata> chunksMetadataList) {
+    Blob(byte[] blobBytes, List<ChunkMetadata> chunksMetadataList, BlobStats blobStats) {
       this.blobBytes = blobBytes;
       this.chunksMetadataList = chunksMetadataList;
+      this.blobStats = blobStats;
     }
   }
 }
