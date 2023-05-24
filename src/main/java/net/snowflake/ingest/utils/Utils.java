@@ -131,10 +131,6 @@ public class Utils {
               Integer.parseInt(properties.get(Constants.PORT).toString())));
     }
 
-    if (!properties.containsKey(Constants.ROLE)) {
-      throw new SFException(ErrorCode.MISSING_CONFIG, "role");
-    }
-
     /**
      * Behavior change in JDBC release 3.13.25
      *
