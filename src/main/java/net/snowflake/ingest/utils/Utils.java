@@ -131,6 +131,10 @@ public class Utils {
               Integer.parseInt(properties.get(Constants.PORT).toString())));
     }
 
+    if (!properties.containsKey(Constants.ROLE)) {
+      logger.logInfo("Missing user role property in the configuration file, the default role will be applied.");
+    }
+
     /**
      * Behavior change in JDBC release 3.13.25
      *
