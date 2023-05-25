@@ -5,6 +5,10 @@
 package net.snowflake.ingest.streaming;
 
 public class KcFlushReason {
+  public static KcFlushReason getDefaultKcFlushReason() {
+    return new KcFlushReason(FlushReason.NONE, -1);
+  }
+
   public enum FlushReason {
     NONE("NONE"),
     BUFFER_FLUSH_TIME("buffer.flush.time"),

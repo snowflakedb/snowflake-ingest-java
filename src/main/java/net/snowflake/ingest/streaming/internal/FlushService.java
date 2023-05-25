@@ -4,14 +4,21 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
-
 import com.codahale.metrics.Timer;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.util.VisibleForTesting;
+import org.apache.arrow.vector.VectorSchemaRoot;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -35,19 +42,13 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -345,6 +346,7 @@ class FlushService<T> {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
+      BlobMetadata.BlobCreationReason blobCreationReason = BlobMetadata.BlobCreationReason.NONE;
 
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
@@ -374,10 +376,12 @@ class FlushService<T> {
           int idx = 0;
           while (idx < channelsDataPerTable.size()) {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
+
             // Stop processing the rest of channels when needed
-            if (idx > 0
-                && shouldStopProcessing(
-                    totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1))) {
+            blobCreationReason = shouldStopProcessing(
+                totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1));
+
+            if (idx > 0 && !blobCreationReason.equals(BlobMetadata.BlobCreationReason.NONE)) {
               leftoverChannelsDataPerTable.addAll(
                   channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
               logger.logInfo(
@@ -414,6 +418,9 @@ class FlushService<T> {
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
         }
+
+        BlobMetadata.BlobCreationReason currBlobCreationReason = blobCreationReason;
+
         blobs.add(
             new Pair<>(
                 new BlobData<>(filePath, blobData),
@@ -422,6 +429,7 @@ class FlushService<T> {
                       try {
                         BlobMetadata blobMetadata = buildAndUpload(filePath, blobData);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
+                        blobMetadata.setBlobCreationReason(currBlobCreationReason);
                         return blobMetadata;
                       } catch (Throwable e) {
                         Throwable ex = e.getCause() == null ? e : e.getCause();
@@ -481,13 +489,23 @@ class FlushService<T> {
    *
    * <p>When the schemas are not the same
    */
-  private boolean shouldStopProcessing(
+  private BlobMetadata.BlobCreationReason shouldStopProcessing(
       float totalBufferSizeInBytes, ChannelData<T> current, ChannelData<T> prev) {
-    return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
-        || !Objects.equals(
+    if (totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES) {
+      return BlobMetadata.BlobCreationReason.BUFFER_BYTE_SIZE;
+    }
+
+    if (!Objects.equals(
             current.getChannelContext().getEncryptionKeyId(),
-            prev.getChannelContext().getEncryptionKeyId())
-        || !current.getColumnEps().keySet().equals(prev.getColumnEps().keySet());
+            prev.getChannelContext().getEncryptionKeyId())) {
+      return BlobMetadata.BlobCreationReason.ENCRYPTION_KEY_ID_CHANGE;
+    }
+
+    if (!current.getColumnEps().keySet().equals(prev.getColumnEps().keySet())) {
+      return BlobMetadata.BlobCreationReason.SCHEMA_CHANGE;
+    }
+
+    return BlobMetadata.BlobCreationReason.NONE;
   }
 
   /**

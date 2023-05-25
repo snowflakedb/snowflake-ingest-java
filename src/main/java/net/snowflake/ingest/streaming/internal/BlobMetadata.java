@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import net.snowflake.ingest.streaming.KcFlushReason;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 import org.apache.arrow.util.VisibleForTesting;
@@ -14,12 +15,18 @@ import java.util.List;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
-  // Which threshold KC flushed on, if given
+  enum BlobCreationReason {
+    NONE("NONE"),
+    BUFFER_BYTE_SIZE("max buffer threshold hit"),
+    ENCRYPTION_KEY_ID_CHANGE("encryption key id changed"),
+    SCHEMA_CHANGE("schema changed"),
+    ;
 
+    private final String description;
 
-  // Which threshold the sdk flushed on
-  public enum SdkFlushReason {
-
+    BlobCreationReason(final String description) {
+      this.description = description;
+    }
   }
 
   // data about the blob
@@ -29,14 +36,14 @@ class BlobMetadata {
   private final List<ChunkMetadata> chunks;
   private final BlobStats blobStats;
 
-  // buffer flush reasons
-  private final KcFlushReason kcFlushReason;
-  private final SdkFlushReason sdkFlushReason;
+  // optional buffer flush reasons
+  private KcFlushReason kcFlushReason;
+  private BlobCreationReason blobCreationReason;
 
   // used for testing only
   @VisibleForTesting
-  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobStats blobStats, KcFlushReason kcFlushReason, SdkFlushReason sdkFlushReason) {
-    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, blobStats, kcFlushReason, sdkFlushReason);
+  BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobStats blobStats) {
+    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, blobStats);
   }
 
   BlobMetadata(
@@ -44,16 +51,15 @@ class BlobMetadata {
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      BlobStats blobStats,
-      KcFlushReason kcFlushReason,
-      SdkFlushReason sdkFlushReason) {
+      BlobStats blobStats) {
     this.path = path;
     this.md5 = md5;
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
     this.blobStats = blobStats;
-    this.kcFlushReason = kcFlushReason;
-    this.sdkFlushReason = sdkFlushReason;
+
+    this.kcFlushReason = KcFlushReason.getDefaultKcFlushReason();
+    this.blobCreationReason = BlobCreationReason.NONE;
   }
 
   @JsonIgnore
@@ -86,15 +92,21 @@ class BlobMetadata {
     return this.blobStats;
   }
 
+  void setKcFlushReason(KcFlushReason kcFlushReason) {
+    this.kcFlushReason = kcFlushReason;
+  }
+
+  void setBlobCreationReason(BlobCreationReason blobCreationReason) {
+    this.blobCreationReason = blobCreationReason;
+  }
+
   /** Create {@link BlobMetadata}. */
   static BlobMetadata createBlobMetadata(
       String path,
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      BlobStats blobStats,
-      KcFlushReason kcFlushReason,
-      SdkFlushReason sdkFlushReason) {
-    return new BlobMetadata(path, md5, bdecVersion, chunks, blobStats, kcFlushReason, sdkFlushReason);
+      BlobStats blobStats) {
+    return new BlobMetadata(path, md5, bdecVersion, chunks, blobStats);
   }
 }
