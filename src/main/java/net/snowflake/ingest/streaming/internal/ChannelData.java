@@ -4,15 +4,14 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.ingest.streaming.KcFlushReason;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import net.snowflake.ingest.streaming.KcFlushReason;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
 
 /**
  * Contains the data and metadata returned for each channel flush, which will be used to build the

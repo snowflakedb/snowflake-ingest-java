@@ -29,7 +29,8 @@ public class KcFlushReason {
   private final String firstOffsetToken;
   private final String lastOffsetToken;
 
-  public KcFlushReason(FlushReason flushReason, long flushValue, String firstOffsetToken, String lastOffsetToken) {
+  public KcFlushReason(
+      FlushReason flushReason, long flushValue, String firstOffsetToken, String lastOffsetToken) {
     this.flushReason = flushReason;
     this.flushValue = flushValue;
     this.firstOffsetToken = firstOffsetToken;
@@ -45,7 +46,5 @@ public class KcFlushReason {
   }
 
   @Override
-  public String toString() {
-    
-  }
+  public String toString() {}
 }

@@ -4,15 +4,15 @@
 
 package net.snowflake.ingest.streaming;
 
-import net.snowflake.ingest.utils.Utils;
-
-import javax.annotation.Nullable;
 import java.util.Map;
+import javax.annotation.Nullable;
+import net.snowflake.ingest.utils.Utils;
 
 public class InsertRowsRequest {
 
   // builder for KC to call to create insertRowRequest
-  public static InsertRowsRequestBuilder builder(Map<String, Object> rows, @Nullable String offsetToken) {
+  public static InsertRowsRequestBuilder builder(
+      Map<String, Object> rows, @Nullable String offsetToken) {
     return new InsertRowsRequestBuilder(rows, offsetToken);
   }
 
@@ -54,9 +54,10 @@ public class InsertRowsRequest {
 
     // optional values
     KcFlushReason kcFlushReason = builder.kcFlushReason;
-    this.kcFlushReason = (kcFlushReason == null || kcFlushReason.getFlushReason() == KcFlushReason.FlushReason.NONE) ?
-      new KcFlushReason(KcFlushReason.FlushReason.NONE, -1, "", "") :
-      kcFlushReason;
+    this.kcFlushReason =
+        (kcFlushReason == null || kcFlushReason.getFlushReason() == KcFlushReason.FlushReason.NONE)
+            ? new KcFlushReason(KcFlushReason.FlushReason.NONE, -1, "", "")
+            : kcFlushReason;
   }
 
   public Map<String, Object> getRows() {

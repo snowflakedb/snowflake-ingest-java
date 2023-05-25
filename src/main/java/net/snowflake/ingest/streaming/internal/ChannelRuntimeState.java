@@ -4,11 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.ingest.streaming.KcFlushReason;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import net.snowflake.ingest.streaming.KcFlushReason;
 
 /** Internal state of channel that is used and mutated by both channel and its buffer. */
 class ChannelRuntimeState {

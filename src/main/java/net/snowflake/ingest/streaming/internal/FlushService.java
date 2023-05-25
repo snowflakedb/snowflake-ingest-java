@@ -4,22 +4,14 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.codahale.metrics.Timer;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.streaming.KcFlushReason;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
+import com.codahale.metrics.Timer;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -43,13 +35,20 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.streaming.KcFlushReason;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.util.VisibleForTesting;
+import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -379,8 +378,9 @@ class FlushService<T> {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
 
             // Stop processing the rest of channels when needed
-            blobCreationReason = shouldStopProcessing(
-                totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1));
+            blobCreationReason =
+                shouldStopProcessing(
+                    totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1));
 
             if (idx > 0 && !blobCreationReason.equals(BlobMetadata.BlobCreationReason.NONE)) {
               leftoverChannelsDataPerTable.addAll(
@@ -507,8 +507,8 @@ class FlushService<T> {
     }
 
     if (!Objects.equals(
-            current.getChannelContext().getEncryptionKeyId(),
-            prev.getChannelContext().getEncryptionKeyId())) {
+        current.getChannelContext().getEncryptionKeyId(),
+        prev.getChannelContext().getEncryptionKeyId())) {
       return BlobMetadata.BlobCreationReason.ENCRYPTION_KEY_ID_CHANGE;
     }
 

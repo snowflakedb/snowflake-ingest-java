@@ -6,13 +6,12 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.ArrayList;
+import java.util.List;
 import net.snowflake.ingest.streaming.KcFlushReason;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 import org.apache.arrow.util.VisibleForTesting;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {

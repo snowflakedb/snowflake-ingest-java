@@ -4,10 +4,10 @@
 
 package net.snowflake.ingest.streaming;
 
-import javax.annotation.Nullable;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import javax.annotation.Nullable;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
