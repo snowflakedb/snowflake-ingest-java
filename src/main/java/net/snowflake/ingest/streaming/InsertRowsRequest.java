@@ -12,19 +12,19 @@ import java.util.Map;
 public class InsertRowsRequest {
 
   // builder for KC to call to create insertRowRequest
-  public static InsertRowsRequestBuilder builder(Map<String, String> rows, @Nullable String offsetToken) {
+  public static InsertRowsRequestBuilder builder(Map<String, Object> rows, @Nullable String offsetToken) {
     return new InsertRowsRequestBuilder(rows, offsetToken);
   }
 
   public static class InsertRowsRequestBuilder {
     // required parameters
-    private final Map<String, String> rows;
+    private final Map<String, Object> rows;
     private final @Nullable String offsetToken;
 
     // optional parameters
     private KcFlushReason kcFlushReason;
 
-    public InsertRowsRequestBuilder(Map<String, String> rows, @Nullable String offsetToken) {
+    public InsertRowsRequestBuilder(Map<String, Object> rows, @Nullable String offsetToken) {
       this.rows = rows;
       this.offsetToken = offsetToken;
     }
@@ -40,7 +40,7 @@ public class InsertRowsRequest {
   }
 
   // actual insert row request
-  private final Map<String, String> rows;
+  private final Map<String, Object> rows;
   private final @Nullable String offsetToken;
   private final KcFlushReason kcFlushReason;
 
@@ -55,11 +55,11 @@ public class InsertRowsRequest {
     // optional values
     KcFlushReason kcFlushReason = builder.kcFlushReason;
     this.kcFlushReason = (kcFlushReason == null || kcFlushReason.getFlushReason() == KcFlushReason.FlushReason.NONE) ?
-      new KcFlushReason(KcFlushReason.FlushReason.NONE, -1) :
+      new KcFlushReason(KcFlushReason.FlushReason.NONE, -1, "", "") :
       kcFlushReason;
   }
 
-  public Map<String, String> getRows() {
+  public Map<String, Object> getRows() {
     return this.rows;
   }
 

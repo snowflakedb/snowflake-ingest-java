@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import com.codahale.metrics.Timer;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.streaming.KcFlushReason;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -430,6 +431,16 @@ class FlushService<T> {
                         BlobMetadata blobMetadata = buildAndUpload(filePath, blobData);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         blobMetadata.setBlobCreationReason(currBlobCreationReason);
+
+                        List<KcFlushReason> kcFlushReasons = new ArrayList<>();
+                        for (List<ChannelData<T>> blob : blobData) {
+                          for (ChannelData<T> channelData : blob) {
+                            kcFlushReasons.addAll(channelData.getKcFlushReasons());
+                          }
+                        }
+
+                        blobMetadata.setKcFlushReasons(kcFlushReasons);
+
                         return blobMetadata;
                       } catch (Throwable e) {
                         Throwable ex = e.getCause() == null ? e : e.getCause();

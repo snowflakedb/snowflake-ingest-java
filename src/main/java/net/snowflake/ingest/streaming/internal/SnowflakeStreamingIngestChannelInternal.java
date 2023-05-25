@@ -376,6 +376,13 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return response;
   }
 
+  @Override
+  public InsertValidationResponse insertRows(InsertRowsRequest insertRowsRequest) {
+    this.channelState.addKcFlushReason(insertRowsRequest.getKcFlushReason());
+
+    return this.insertRows(insertRowsRequest.getRows(), insertRowsRequest.getOffsetToken());
+  }
+
   /** Collect the row size from row buffer if required */
   void collectRowSize(float rowSize) {
     if (this.owningClient.inputThroughput != null) {

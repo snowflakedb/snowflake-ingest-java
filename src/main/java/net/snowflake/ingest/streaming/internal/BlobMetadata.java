@@ -11,6 +11,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 import org.apache.arrow.util.VisibleForTesting;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
@@ -37,7 +38,7 @@ class BlobMetadata {
   private final BlobStats blobStats;
 
   // optional buffer flush reasons
-  private KcFlushReason kcFlushReason;
+  private List<KcFlushReason> kcFlushReasons;
   private BlobCreationReason blobCreationReason;
 
   // used for testing only
@@ -58,7 +59,7 @@ class BlobMetadata {
     this.chunks = chunks;
     this.blobStats = blobStats;
 
-    this.kcFlushReason = KcFlushReason.getDefaultKcFlushReason();
+    this.kcFlushReasons = new ArrayList<>();
     this.blobCreationReason = BlobCreationReason.NONE;
   }
 
@@ -92,8 +93,12 @@ class BlobMetadata {
     return this.blobStats;
   }
 
-  void setKcFlushReason(KcFlushReason kcFlushReason) {
-    this.kcFlushReason = kcFlushReason;
+  void setKcFlushReasons(List<KcFlushReason> kcFlushReason) {
+    this.kcFlushReasons = kcFlushReason;
+  }
+
+  List<KcFlushReason> getKcFlushReason() {
+    return this.kcFlushReasons;
   }
 
   void setBlobCreationReason(BlobCreationReason blobCreationReason) {

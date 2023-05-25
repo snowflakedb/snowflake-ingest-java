@@ -4,6 +4,18 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.KcFlushReason;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.VisibleForTesting;
+
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,16 +28,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import net.snowflake.ingest.streaming.InsertValidationResponse;
-import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.util.VisibleForTesting;
 
 /**
  * The abstract implementation of the buffer in the Streaming Ingest channel that holds the
@@ -381,6 +383,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String oldOffsetToken = null;
       Map<String, RowBufferStats> oldColumnEps = null;
       Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
+      List<KcFlushReason> oldKcFlushReasons = new ArrayList<>();
 
       logger.logDebug("Buffer flush about to take lock on channel={}", channelFullyQualifiedName);
 
@@ -397,6 +400,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldMinMaxInsertTimeInMs =
               new Pair<>(
                   this.channelState.getFirstInsertInMs(), this.channelState.getLastInsertInMs());
+          oldKcFlushReasons = this.channelState.getKcFlushReasons();
           // Reset everything in the buffer once we save all the info
           reset();
         }
@@ -419,6 +423,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         data.setOffsetToken(oldOffsetToken);
         data.setColumnEps(oldColumnEps);
         data.setMinMaxInsertTimeInMs(oldMinMaxInsertTimeInMs);
+        data.setKcFlushReasons(oldKcFlushReasons);
         data.setFlusherFactory(this::createFlusher);
         return data;
       }

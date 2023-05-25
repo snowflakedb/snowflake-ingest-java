@@ -4,12 +4,15 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Supplier;
+import net.snowflake.ingest.streaming.KcFlushReason;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Contains the data and metadata returned for each channel flush, which will be used to build the
@@ -28,6 +31,7 @@ class ChannelData<T> {
   private Pair<Long, Long> minMaxInsertTimeInMs;
   private ChannelFlushContext channelFlushContext;
   private Supplier<Flusher<T>> flusherFactory;
+  private List<KcFlushReason> kcFlushReasons;
 
   // TODO performance test this vs in place update
   /**
@@ -149,6 +153,14 @@ class ChannelData<T> {
 
   void setMinMaxInsertTimeInMs(Pair<Long, Long> minMaxInsertTimeInMs) {
     this.minMaxInsertTimeInMs = minMaxInsertTimeInMs;
+  }
+
+  void setKcFlushReasons(List<KcFlushReason> kcFlushReasons) {
+    this.kcFlushReasons = kcFlushReasons;
+  }
+
+  List<KcFlushReason> getKcFlushReasons() {
+    return this.kcFlushReasons;
   }
 
   @Override

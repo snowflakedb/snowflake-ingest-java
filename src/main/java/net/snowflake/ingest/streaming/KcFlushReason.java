@@ -5,10 +5,6 @@
 package net.snowflake.ingest.streaming;
 
 public class KcFlushReason {
-  public static KcFlushReason getDefaultKcFlushReason() {
-    return new KcFlushReason(FlushReason.NONE, -1);
-  }
-
   public enum FlushReason {
     NONE("NONE"),
     BUFFER_FLUSH_TIME("buffer.flush.time"),
@@ -28,12 +24,16 @@ public class KcFlushReason {
     }
   }
 
-  private FlushReason flushReason;
-  private long flushValue;
+  private final FlushReason flushReason;
+  private final long flushValue;
+  private final String firstOffsetToken;
+  private final String lastOffsetToken;
 
-  public KcFlushReason(FlushReason flushReason, long flushValue) {
+  public KcFlushReason(FlushReason flushReason, long flushValue, String firstOffsetToken, String lastOffsetToken) {
     this.flushReason = flushReason;
     this.flushValue = flushValue;
+    this.firstOffsetToken = firstOffsetToken;
+    this.lastOffsetToken = lastOffsetToken;
   }
 
   public FlushReason getFlushReason() {
@@ -42,5 +42,10 @@ public class KcFlushReason {
 
   public long getFlushValue() {
     return this.flushValue;
+  }
+
+  @Override
+  public String toString() {
+    
   }
 }
