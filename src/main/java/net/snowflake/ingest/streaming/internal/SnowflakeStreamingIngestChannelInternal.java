@@ -4,20 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
-import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
-
 import com.google.common.annotations.VisibleForTesting;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+import net.snowflake.ingest.streaming.InsertRowsRequest;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -30,6 +18,20 @@ import net.snowflake.ingest.utils.Utils;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+
+import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
+
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
  *
@@ -37,7 +39,6 @@ import org.apache.arrow.memory.RootAllocator;
  *     ParquetChunkData})
  */
 class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannel {
-
   private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelInternal.class);
 
   // this context contains channel immutable identification and encryption attributes

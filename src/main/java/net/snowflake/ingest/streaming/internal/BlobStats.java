@@ -49,4 +49,5 @@ class BlobStats {
   void setFlushStartMs(long flushStartMs) {
     this.flushStartMs = flushStartMs;
   }
+
 }

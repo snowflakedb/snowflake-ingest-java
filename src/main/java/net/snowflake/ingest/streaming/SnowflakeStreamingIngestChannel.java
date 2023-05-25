@@ -4,10 +4,10 @@
 
 package net.snowflake.ingest.streaming;
 
+import javax.annotation.Nullable;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import javax.annotation.Nullable;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
@@ -232,6 +232,8 @@ public interface SnowflakeStreamingIngestChannel {
    */
   InsertValidationResponse insertRow(Map<String, Object> row, @Nullable String offsetToken);
 
+  InsertValidationResponse insertRow(InsertRowsRequest insertRowsRequest);
+
   /**
    * Insert a batch of rows into the channel, each row is represented using Map where the key is
    * column name and the value is a row of data. See {@link
@@ -245,6 +247,8 @@ public interface SnowflakeStreamingIngestChannel {
    */
   InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
+
+  InsertValidationResponse insertRows(InsertRowsRequest insertRowsRequest);
 
   /**
    * Get the latest committed offset token from Snowflake
