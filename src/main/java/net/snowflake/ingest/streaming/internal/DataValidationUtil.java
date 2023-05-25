@@ -68,7 +68,7 @@ class DataValidationUtil {
   // server-side representation. Validation leaves a small buffer for this difference.
   static final int MAX_SEMI_STRUCTURED_LENGTH = BYTES_16_MB - 64;
 
-  private static final ObjectMapper objectMapper = new ObjectMapper();
+  public static final ObjectMapper objectMapper = new ObjectMapper();
 
   // The version of Jackson we are using does not support serialization of date objects from the
   // java.time package. Here we define a module with custom java.time serializers. Additionally, we
@@ -879,7 +879,7 @@ class DataValidationUtil {
    * Validates that a string is valid UTF-8 string. It catches situations like unmatched high/low
    * UTF-16 surrogate, for example.
    */
-  private static void verifyValidUtf8(
+  public static void verifyValidUtf8(
       String input, String columnName, String dataType, final long insertRowIndex) {
     String roundTripStr =
         new String(input.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
@@ -887,5 +887,40 @@ class DataValidationUtil {
       throw valueFormatNotAllowedException(
           columnName, dataType, "Invalid Unicode string", insertRowIndex);
     }
+  }
+
+  public static void verifyValidUtf8_New(String input, String columnName, String dataType, final long insertRowIndex) {
+    int i = 0;
+    for (; i < input.length(); i++) {
+      if (Character.isSurrogate(input.charAt(i))) {
+        break;
+      }
+    }
+
+    char prevHighSurrogate = 0;
+    for (; i < input.length(); i++) {
+      final char c = input.charAt(i);
+
+      if (prevHighSurrogate != 0) {
+        if (!Character.isLowSurrogate(c)) {
+          throw valueFormatNotAllowedException(
+                  columnName, dataType, "Invalid Unicode string - high surrogate without low surrogate found", insertRowIndex);
+        }
+        prevHighSurrogate = 0;
+      } else if (Character.isHighSurrogate(c)) {
+        prevHighSurrogate = c;
+      } else if (Character.isLowSurrogate(c)) {
+        throw valueFormatNotAllowedException(
+                columnName, dataType, "Invalid Unicode string - low surrogate without high surrogate found", insertRowIndex);
+
+      }
+    }
+
+    if (prevHighSurrogate != 0) {
+      throw valueFormatNotAllowedException(
+              columnName, dataType, "Invalid Unicode string - high surrogate without low surrogate found", insertRowIndex);
+
+    }
+
   }
 }
