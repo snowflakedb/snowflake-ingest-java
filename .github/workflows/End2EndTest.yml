@@ -19,9 +19,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
+          distribution: temurin
           java-version: ${{ matrix.java }}
+          cache: maven
 
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
@@ -51,9 +53,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
+          distribution: temurin
           java-version: ${{ matrix.java }}
+          cache: maven
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}

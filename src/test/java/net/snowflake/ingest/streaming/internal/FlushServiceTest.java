@@ -8,6 +8,9 @@ import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
 
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.Timer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -32,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -51,6 +55,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 @RunWith(Parameterized.class)
@@ -87,6 +92,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
+    RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
@@ -98,6 +104,7 @@ public class FlushServiceTest {
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
+      registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
       flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, false));
     }
 
@@ -566,6 +573,9 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildAndUpload() throws Exception {
+    long expectedBuildLatencyMs = 100;
+    long expectedUploadLatencyMs = 200;
+
     TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
@@ -617,6 +627,15 @@ public class FlushServiceTest {
     channel2Data.setRowSequencer(10L);
     channel2Data.setBufferSize(100);
 
+    // set client timers
+
+    SnowflakeStreamingIngestClientInternal client = testContext.client;
+    client.buildLatency = this.setupTimer(expectedBuildLatencyMs);
+    client.uploadLatency = this.setupTimer(expectedUploadLatencyMs);
+    client.uploadThroughput = Mockito.mock(Meter.class);
+    client.blobSizeHistogram = Mockito.mock(Histogram.class);
+    client.blobRowCountHistogram = Mockito.mock(Histogram.class);
+
     BlobMetadata blobMetadata = testContext.buildAndUpload();
 
     EpInfo expectedChunkEpInfo =
@@ -654,13 +673,19 @@ public class FlushServiceTest {
     final ArgumentCaptor<List<ChunkMetadata>> metadataCaptor = ArgumentCaptor.forClass(List.class);
 
     Mockito.verify(testContext.flushService)
-        .upload(nameCaptor.capture(), blobCaptor.capture(), metadataCaptor.capture());
+        .upload(
+            nameCaptor.capture(),
+            blobCaptor.capture(),
+            metadataCaptor.capture(),
+            ArgumentMatchers.any());
     Assert.assertEquals("file_name", nameCaptor.getValue());
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
 
     Assert.assertEquals(BlobBuilder.computeMD5(blobCaptor.getValue()), blobMetadata.getMD5());
+    Assert.assertEquals(expectedBuildLatencyMs, blobMetadata.getBlobStats().getBuildDurationMs());
+    Assert.assertEquals(expectedUploadLatencyMs, blobMetadata.getBlobStats().getUploadDurationMs());
 
     Assert.assertEquals(
         expectedChunkEpInfo.getRowCount(), metadataResult.getEpInfo().getRowCount());
@@ -927,5 +952,14 @@ public class FlushServiceTest {
     byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier, 0);
 
     Assert.assertArrayEquals(data, decryptedData);
+  }
+
+  private Timer setupTimer(long expectedLatencyMs) {
+    Timer.Context timerContext = Mockito.mock(Timer.Context.class);
+    Mockito.when(timerContext.stop()).thenReturn(TimeUnit.MILLISECONDS.toNanos(expectedLatencyMs));
+    Timer timer = Mockito.mock(Timer.class);
+    Mockito.when(timer.time()).thenReturn(timerContext);
+
+    return timer;
   }
 }

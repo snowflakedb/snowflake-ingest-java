@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
+import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -32,21 +33,25 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 /** Example streaming ingest sdk integration test */
 @RunWith(Parameterized.class)
@@ -118,6 +123,18 @@ public class StreamingIngestIT {
 
   @Test
   public void testSimpleIngest() throws Exception {
+    // TODO @rcheng - dont want to change factory, so inject
+    SnowflakeURL url = new SnowflakeURL(TestUtils.getAccountURL());
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(
+                url,
+                TestUtils.getUser(),
+                TestUtils.getKeyPair(),
+                HttpUtil.getHttpClient(url.getAccount()),
+                "testrequestbuilder"));
+    client.injectRequestBuilder(requestBuilder);
+
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(testDb)
@@ -136,6 +153,16 @@ public class StreamingIngestIT {
 
     // Close the channel after insertion
     channel1.close().get();
+
+    // verify expected request sent to server
+    String[] expectedPayloadParams = {"request_id", "blobs", "role", "blob_stats"};
+    for (String expectedParam : expectedPayloadParams) {
+      Mockito.verify(requestBuilder)
+          .generateStreamingIngestPostRequest(
+              ArgumentMatchers.contains(expectedParam),
+              ArgumentMatchers.refEq(REGISTER_BLOB_ENDPOINT),
+              ArgumentMatchers.refEq("register blob"));
+    }
 
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
@@ -1056,7 +1083,6 @@ public class StreamingIngestIT {
     Assert.fail("Row sequencer not updated before timeout");
   }
 
-  @Ignore
   @Test
   public void testTableColumnEvolution() throws Exception {
     final int rowNum = 100;
