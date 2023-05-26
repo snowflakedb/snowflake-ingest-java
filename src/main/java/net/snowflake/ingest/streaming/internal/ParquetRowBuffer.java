@@ -43,6 +43,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   /* Unflushed rows as Java objects. Needed for the Parquet w/o memory optimization. */
   private final List<List<Object>> data;
+
   /* BDEC Parquet writer. It is used to buffer unflushed data in Parquet internal buffers instead of using Java objects */
   private BdecParquetWriter bdecParquetWriter;
 
