@@ -132,7 +132,9 @@ public class Utils {
     }
 
     if (!properties.containsKey(Constants.ROLE)) {
-      logger.logInfo("Missing user role property in the configuration file, the default role will be applied.");
+      logger.logInfo(
+          "Missing user role property in the configuration file, the default user role will be"
+              + " applied.");
     }
 
     /**
