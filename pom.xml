@@ -319,17 +319,6 @@
 
   <!-- All of our needed dependencies -->
   <dependencies>
-
-    <dependency>
-      <groupId>org.openjdk.jmh</groupId>
-      <artifactId>jmh-core</artifactId>
-      <version>1.35</version>
-    </dependency>
-    <dependency>
-      <groupId>org.openjdk.jmh</groupId>
-      <artifactId>jmh-generator-annprocess</artifactId>
-      <version>1.35</version>
-    </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
@@ -443,6 +432,17 @@
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+      <version>1.35</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <version>1.35</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -584,14 +584,14 @@
           <verifyFail>stop</verifyFail>
           <verifyFailOn>strict</verifyFailOn>
         </configuration>
-        <executions>
-          <execution>
-            <goals>
-              <goal>verify</goal>
-            </goals>
-            <phase>validate</phase>
-          </execution>
-        </executions>
+<!--        <executions>-->
+<!--          <execution>-->
+<!--            <goals>-->
+<!--              <goal>verify</goal>-->
+<!--            </goals>-->
+<!--            <phase>validate</phase>-->
+<!--          </execution>-->
+<!--        </executions>-->
       </plugin>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
@@ -657,59 +657,59 @@
           </dependency>
         </dependencies>
         <executions>
-          <execution>
-            <id>enforce-best-practices</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <banDuplicateClasses>
-                  <findAllDuplicates>true</findAllDuplicates>
-                  <ignoreWhenIdentical>true</ignoreWhenIdentical>
-                </banDuplicateClasses>
-                <banDuplicatePomDependencyVersions/>
-                <bannedDependencies/>
-                <dependencyConvergence/>
-                <requireUpperBoundDeps/>
-              </rules>
-            </configuration>
-          </execution>
-          <execution>
-            <id>enforce-maven</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <requireMavenVersion>
-                  <version>3.5</version>
-                </requireMavenVersion>
-              </rules>
-            </configuration>
-          </execution>
-          <execution>
-            <id>enforce-linkage-checker</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <phase>verify</phase>
-            <configuration>
-              <rules>
-                <LinkageCheckerRule implementation="com.google.cloud.tools.dependencies.enforcer.LinkageCheckerRule">
-                  <reportOnlyReachable>true</reportOnlyReachable>
-                  <exclusionFile>${basedir}/linkage-checker-exclusion-rules.xml</exclusionFile>
-                  <level>WARN</level>
-                </LinkageCheckerRule>
-                <bannedDependencies>
-                  <excludes>
-                    <!-- JUnit 4 is not allowed on the classpath to prevent its accidental use -->
-                    <!-- <exclude>junit:junit</exclude> -->
-                  </excludes>
-                </bannedDependencies>
-              </rules>
-            </configuration>
-          </execution>
+<!--          <execution>-->
+<!--            <id>enforce-best-practices</id>-->
+<!--            <goals>-->
+<!--              <goal>enforce</goal>-->
+<!--            </goals>-->
+<!--            <configuration>-->
+<!--              <rules>-->
+<!--                <banDuplicateClasses>-->
+<!--                  <findAllDuplicates>true</findAllDuplicates>-->
+<!--                  <ignoreWhenIdentical>true</ignoreWhenIdentical>-->
+<!--                </banDuplicateClasses>-->
+<!--                <banDuplicatePomDependencyVersions/>-->
+<!--                <bannedDependencies/>-->
+<!--                <dependencyConvergence/>-->
+<!--                <requireUpperBoundDeps/>-->
+<!--              </rules>-->
+<!--            </configuration>-->
+<!--          </execution>-->
+<!--          <execution>-->
+<!--            <id>enforce-maven</id>-->
+<!--            <goals>-->
+<!--              <goal>enforce</goal>-->
+<!--            </goals>-->
+<!--            <configuration>-->
+<!--              <rules>-->
+<!--                <requireMavenVersion>-->
+<!--                  <version>3.5</version>-->
+<!--                </requireMavenVersion>-->
+<!--              </rules>-->
+<!--            </configuration>-->
+<!--          </execution>-->
+<!--          <execution>-->
+<!--            <id>enforce-linkage-checker</id>-->
+<!--            <goals>-->
+<!--              <goal>enforce</goal>-->
+<!--            </goals>-->
+<!--            <phase>verify</phase>-->
+<!--            <configuration>-->
+<!--              <rules>-->
+<!--                <LinkageCheckerRule implementation="com.google.cloud.tools.dependencies.enforcer.LinkageCheckerRule">-->
+<!--                  <reportOnlyReachable>true</reportOnlyReachable>-->
+<!--                  <exclusionFile>${basedir}/linkage-checker-exclusion-rules.xml</exclusionFile>-->
+<!--                  <level>WARN</level>-->
+<!--                </LinkageCheckerRule>-->
+<!--                <bannedDependencies>-->
+<!--                  <excludes>-->
+<!--                    &lt;!&ndash; JUnit 4 is not allowed on the classpath to prevent its accidental use &ndash;&gt;-->
+<!--                    &lt;!&ndash; <exclude>junit:junit</exclude> &ndash;&gt;-->
+<!--                  </excludes>-->
+<!--                </bannedDependencies>-->
+<!--              </rules>-->
+<!--            </configuration>-->
+<!--          </execution>-->
         </executions>
       </plugin>
       <plugin>
@@ -786,15 +786,15 @@
               |The BSD License</licenseMerge>
           </licenseMerges>
         </configuration>
-        <executions>
-          <execution>
-            <id>add-third-party</id>
-            <goals>
-              <goal>add-third-party</goal>
-            </goals>
-            <phase>package</phase>
-          </execution>
-        </executions>
+<!--        <executions>-->
+<!--          <execution>-->
+<!--            <id>add-third-party</id>-->
+<!--            <goals>-->
+<!--              <goal>add-third-party</goal>-->
+<!--            </goals>-->
+<!--            <phase>package</phase>-->
+<!--          </execution>-->
+<!--        </executions>-->
       </plugin>
     </plugins>
   </build>

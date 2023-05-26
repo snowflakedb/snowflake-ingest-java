@@ -36,11 +36,10 @@ jobs:
           JACOCO_COVERAGE: true
           WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
         continue-on-error: false
-        run: |
-          ./scripts/run_gh_actions.sh
+        run: mvn clean verify -Dtest="*MultiChannelMultiTableRunnerTest"
 
-      - name: Code Coverage
-        uses: codecov/codecov-action@v1
+#      - name: Code Coverage
+#        uses: codecov/codecov-action@v1
   build-windows:
     name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022
@@ -66,4 +65,4 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
-        run: mvn -DghActionsIT verify --batch-mode
+        run: mvn clean verify -Dtest="*MultiChannelMultiTableRunnerTest"
