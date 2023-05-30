@@ -37,6 +37,7 @@ import org.apache.arrow.memory.RootAllocator;
  *     ParquetChunkData})
  */
 class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannel {
+
   private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelInternal.class);
 
   // this context contains channel immutable identification and encryption attributes
