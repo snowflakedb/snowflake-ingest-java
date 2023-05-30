@@ -17,7 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
-import net.snowflake.ingest.streaming.KcFlushReason;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -382,7 +381,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String oldOffsetToken = null;
       Map<String, RowBufferStats> oldColumnEps = null;
       Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
-      List<KcFlushReason> oldKcFlushReasons = new ArrayList<>();
 
       logger.logDebug("Buffer flush about to take lock on channel={}", channelFullyQualifiedName);
 
@@ -399,7 +397,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldMinMaxInsertTimeInMs =
               new Pair<>(
                   this.channelState.getFirstInsertInMs(), this.channelState.getLastInsertInMs());
-          oldKcFlushReasons = this.channelState.getKcFlushReasons();
           // Reset everything in the buffer once we save all the info
           reset();
         }
@@ -422,7 +419,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         data.setOffsetToken(oldOffsetToken);
         data.setColumnEps(oldColumnEps);
         data.setMinMaxInsertTimeInMs(oldMinMaxInsertTimeInMs);
-        data.setKcFlushReasons(oldKcFlushReasons);
         data.setFlusherFactory(this::createFlusher);
         return data;
       }

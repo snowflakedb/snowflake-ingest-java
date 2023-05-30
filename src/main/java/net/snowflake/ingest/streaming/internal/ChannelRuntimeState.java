@@ -4,10 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import net.snowflake.ingest.streaming.KcFlushReason;
 
 /** Internal state of channel that is used and mutated by both channel and its buffer. */
 class ChannelRuntimeState {
@@ -24,13 +21,10 @@ class ChannelRuntimeState {
   private Long firstInsertInMs;
   private Long lastInsertInMs;
 
-  private List<KcFlushReason> kcFlushReasons;
-
   ChannelRuntimeState(String offsetToken, long rowSequencer, boolean isValid) {
     this.offsetToken = offsetToken;
     this.rowSequencer = new AtomicLong(rowSequencer);
     this.isValid = isValid;
-    this.kcFlushReasons = new ArrayList<>();
   }
 
   /**
@@ -87,13 +81,5 @@ class ChannelRuntimeState {
   /** Get the insert timestamp of the last row in the current row buffer */
   Long getLastInsertInMs() {
     return this.lastInsertInMs;
-  }
-
-  void addKcFlushReason(KcFlushReason kcFlushReason) {
-    this.kcFlushReasons.add(kcFlushReason);
-  }
-
-  List<KcFlushReason> getKcFlushReasons() {
-    return this.kcFlushReasons;
   }
 }

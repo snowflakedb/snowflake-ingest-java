@@ -6,12 +6,11 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.ArrayList;
-import java.util.List;
-import net.snowflake.ingest.streaming.KcFlushReason;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 import org.apache.arrow.util.VisibleForTesting;
+
+import java.util.List;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
@@ -35,9 +34,6 @@ class BlobMetadata {
   private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
   private final BlobStats blobStats;
-
-  // optional buffer flush reasons
-  private List<KcFlushReason> kcFlushReasons;
   private BlobCreationReason blobCreationReason;
 
   // used for testing only
@@ -57,8 +53,6 @@ class BlobMetadata {
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
     this.blobStats = blobStats;
-
-    this.kcFlushReasons = new ArrayList<>();
     this.blobCreationReason = BlobCreationReason.NONE;
   }
 
@@ -90,14 +84,6 @@ class BlobMetadata {
   @JsonProperty("blob_stats")
   BlobStats getBlobStats() {
     return this.blobStats;
-  }
-
-  void setKcFlushReasons(List<KcFlushReason> kcFlushReason) {
-    this.kcFlushReasons = kcFlushReason;
-  }
-
-  List<KcFlushReason> getKcFlushReason() {
-    return this.kcFlushReasons;
   }
 
   void setBlobCreationReason(BlobCreationReason blobCreationReason) {
