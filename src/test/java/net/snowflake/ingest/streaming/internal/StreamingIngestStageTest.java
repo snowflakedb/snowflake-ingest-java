@@ -80,8 +80,8 @@ public class StreamingIngestStageTest {
           + " \"region\": \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\":"
           + " true, \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
           + " \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\":"
-          + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
-          + " \"endPoint\": null}}}";
+          + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\":"
+          + " \"presignedUrl\", \"endPoint\": null}}}";
 
   String exampleRemoteMetaResponse =
       "{\"src_locations\": [\"foo/\"],"
