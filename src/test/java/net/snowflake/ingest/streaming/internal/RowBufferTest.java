@@ -8,7 +8,6 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -21,28 +20,17 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.lang3.NotImplementedException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-@RunWith(Parameterized.class)
 public class RowBufferTest {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> bdecVersion() {
-    return Arrays.asList(
-        new Object[][] {{"Parquet_w/o_optimization", Constants.BdecVersion.THREE}});
-  }
 
-  private final Constants.BdecVersion bdecVersion;
   private final boolean enableParquetMemoryOptimization;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
 
-  public RowBufferTest(@SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
-    this.bdecVersion = bdecVersion;
+  public RowBufferTest() {
     this.enableParquetMemoryOptimization = false;
   }
 
@@ -122,7 +110,7 @@ public class RowBufferTest {
     return AbstractRowBuffer.createRowBuffer(
         onErrorOption,
         UTC,
-        bdecVersion,
+        Constants.BdecVersion.THREE,
         "test.buffer",
         rs -> {},
         initialState,
@@ -487,12 +475,10 @@ public class RowBufferTest {
     Assert.assertEquals(offsetToken, data.getOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
 
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-      final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
-      Assert.assertEquals(
-          StreamingIngestUtils.getShortname(filename),
-          chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
-    }
+    final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
+    Assert.assertEquals(
+        StreamingIngestUtils.getShortname(filename),
+        chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
   }
 
   @Test
@@ -759,10 +745,8 @@ public class RowBufferTest {
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-      final ParquetChunkData chunkData = (ParquetChunkData) result.getVectors();
-      Assert.assertEquals(filename, chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
-    }
+    final ParquetChunkData chunkData = (ParquetChunkData) result.getVectors();
+    Assert.assertEquals(filename, chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
 
     // Confirm we reset
     ChannelData<?> resetResults = rowBuffer.flush("my_snowpipe_streaming.bdec");
@@ -1557,23 +1541,17 @@ public class RowBufferTest {
     Assert.assertThrows(
         SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "3"));
 
-    switch (bdecVersion) {
-      case THREE:
-        List<List<Object>> snapshotContinueParquet =
-            ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
-        // validRows and only the good row from mixedRows are in the buffer
-        Assert.assertEquals(2, snapshotContinueParquet.size());
-        Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
-        Assert.assertEquals(Arrays.asList("b"), snapshotContinueParquet.get(1));
+    List<List<Object>> snapshotContinueParquet =
+        ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
+    // validRows and only the good row from mixedRows are in the buffer
+    Assert.assertEquals(2, snapshotContinueParquet.size());
+    Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
+    Assert.assertEquals(Arrays.asList("b"), snapshotContinueParquet.get(1));
 
-        List<List<Object>> snapshotAbortParquet =
-            ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
-        // only validRows and none of the mixedRows are in the buffer
-        Assert.assertEquals(1, snapshotAbortParquet.size());
-        Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
-        break;
-      default:
-        throw new NotImplementedException("Unsupported version!");
-    }
+    List<List<Object>> snapshotAbortParquet =
+        ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
+    // only validRows and none of the mixedRows are in the buffer
+    Assert.assertEquals(1, snapshotAbortParquet.size());
+    Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
   }
 }

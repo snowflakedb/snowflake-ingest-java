@@ -63,12 +63,6 @@ public class Constants {
 
   /** The write mode to generate BDEC file. */
   public enum BdecVersion {
-    // Unused (previously Arrow)
-    // ONE(1),
-
-    // Unused (previously Arrow with per column compression.
-    // TWO(2),
-
     /**
      * Uses Parquet to generate BDEC chunks with {@link
      * net.snowflake.ingest.streaming.internal.ParquetRowBuffer} (page-level compression). This
