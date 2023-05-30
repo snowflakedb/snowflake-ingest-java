@@ -132,9 +132,7 @@ public class Utils {
     }
 
     if (!properties.containsKey(Constants.ROLE)) {
-      logger.logInfo(
-          "Missing user role property in the configuration file, the default user role will be"
-              + " applied.");
+      logger.logInfo("Snowflake role is not provided, user's default role will be used.");
     }
 
     /**
