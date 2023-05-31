@@ -1,14 +1,9 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.util.Arrays;
-import net.snowflake.ingest.utils.Constants;
 import org.junit.Test;
 
 public class NullIT extends AbstractDataTypeTest {
-
-  public NullIT(String name, Constants.BdecVersion bdecVersion) {
-    super(name, bdecVersion);
-  }
 
   @Test
   public void testNullIngestion() throws Exception {
