@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -49,21 +48,13 @@ import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-@RunWith(Parameterized.class)
 public class FlushServiceTest {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> testContextFactory() {
-    return Arrays.asList(new Object[][] {{ParquetTestContext.createFactory()}});
-  }
-
-  public FlushServiceTest(TestContextFactory<?> testContextFactory) {
-    this.testContextFactory = testContextFactory;
+  public FlushServiceTest() {
+    this.testContextFactory = ParquetTestContext.createFactory();
   }
 
   private abstract static class TestContextFactory<T> {

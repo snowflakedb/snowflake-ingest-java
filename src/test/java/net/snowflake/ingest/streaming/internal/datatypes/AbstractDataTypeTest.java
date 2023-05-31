@@ -10,7 +10,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -27,16 +26,8 @@ import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-@RunWith(Parameterized.class)
 public abstract class AbstractDataTypeTest {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> bdecVersion() {
-    return TestUtils.getBdecVersionItCases();
-  }
-
   private static final String SOURCE_COLUMN_NAME = "source";
   private static final String VALUE_COLUMN_NAME = "value";
 
@@ -65,13 +56,6 @@ public abstract class AbstractDataTypeTest {
   private SnowflakeStreamingIngestClient client;
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  private final Constants.BdecVersion bdecVersion;
-
-  public AbstractDataTypeTest(
-      @SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
-    this.bdecVersion = bdecVersion;
-  }
-
   @Before
   public void before() throws Exception {
     databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
@@ -82,7 +66,7 @@ public abstract class AbstractDataTypeTest {
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
-    Properties props = TestUtils.getProperties(bdecVersion);
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }

@@ -16,7 +16,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,19 +46,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 /** Example streaming ingest sdk integration test */
-@RunWith(Parameterized.class)
 public class StreamingIngestIT {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> bdecVersion() {
-    return TestUtils.getBdecVersionItCases();
-  }
-
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
@@ -73,13 +64,6 @@ public class StreamingIngestIT {
   private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
-
-  private final Constants.BdecVersion bdecVersion;
-
-  public StreamingIngestIT(
-      @SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
-    this.bdecVersion = bdecVersion;
-  }
 
   @Before
   public void beforeAll() throws Exception {
@@ -105,7 +89,7 @@ public class StreamingIngestIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties(bdecVersion);
+    prop = TestUtils.getProperties(Constants.BdecVersion.THREE);
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }

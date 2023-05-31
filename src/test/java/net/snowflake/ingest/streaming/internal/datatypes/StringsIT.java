@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
@@ -16,10 +15,6 @@ import org.junit.Test;
 public class StringsIT extends AbstractDataTypeTest {
 
   private static final int MB_16 = 16 * 1024 * 1024;
-
-  public StringsIT(String name, Constants.BdecVersion bdecVersion) {
-    super(name, bdecVersion);
-  }
 
   @Test
   public void testStrings() throws Exception {

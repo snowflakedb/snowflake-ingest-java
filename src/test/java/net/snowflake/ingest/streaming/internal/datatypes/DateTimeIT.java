@@ -9,7 +9,6 @@ import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,10 +18,6 @@ public class DateTimeIT extends AbstractDataTypeTest {
   private static final ZoneId TZ_LOS_ANGELES = ZoneId.of("America/Los_Angeles");
   private static final ZoneId TZ_BERLIN = ZoneId.of("Europe/Berlin");
   private static final ZoneId TZ_TOKYO = ZoneId.of("Asia/Tokyo");
-
-  public DateTimeIT(String name, Constants.BdecVersion bdecVersion) {
-    super(name, bdecVersion);
-  }
 
   @Before
   public void setup() throws Exception {

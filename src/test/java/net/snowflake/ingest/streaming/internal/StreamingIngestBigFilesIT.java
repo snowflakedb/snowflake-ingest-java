@@ -17,17 +17,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 /** Ingest large amount of rows. */
-@RunWith(Parameterized.class)
 public class StreamingIngestBigFilesIT {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> bdecVersion() {
-    return TestUtils.getBdecVersionItCases();
-  }
-
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
@@ -36,13 +28,6 @@ public class StreamingIngestBigFilesIT {
   private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
-
-  private final Constants.BdecVersion bdecVersion;
-
-  public StreamingIngestBigFilesIT(
-      @SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
-    this.bdecVersion = bdecVersion;
-  }
 
   @Before
   public void beforeAll() throws Exception {
@@ -62,7 +47,7 @@ public class StreamingIngestBigFilesIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties(bdecVersion);
+    prop = TestUtils.getProperties(Constants.BdecVersion.THREE);
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }

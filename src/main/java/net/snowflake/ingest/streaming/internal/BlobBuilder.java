@@ -86,8 +86,8 @@ class BlobBuilder {
         ByteArrayOutputStream chunkData = serializedChunk.chunkData;
         Pair<byte[], Integer> paddedChunk =
             padChunk(chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
-        byte[] compressedAndPaddedChunkData = paddedChunk.getFirst();
-        int compressedChunkLength = paddedChunk.getSecond();
+        byte[] paddedChunkData = paddedChunk.getFirst();
+        int paddedChunkLength = paddedChunk.getSecond();
 
         // Encrypt the compressed chunk data, the encryption key is derived using the key from
         // server with the full blob path.
@@ -97,13 +97,10 @@ class BlobBuilder {
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
             Cryptor.encrypt(
-                compressedAndPaddedChunkData,
-                firstChannelFlushContext.getEncryptionKey(),
-                filePath,
-                iv);
+                paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
-        String md5 = computeMD5(encryptedCompressedChunkData, compressedChunkLength);
+        String md5 = computeMD5(encryptedCompressedChunkData, paddedChunkLength);
         int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
 
         // Create chunk metadata
@@ -114,9 +111,9 @@ class BlobBuilder {
                 // The start offset will be updated later in BlobBuilder#build to include the blob
                 // header
                 .setChunkStartOffset(startOffset)
-                // The compressedChunkLength is used because it is the actual data size used for
+                // The paddedChunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
-                .setChunkLength(compressedChunkLength)
+                .setChunkLength(paddedChunkLength)
                 .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
@@ -135,14 +132,14 @@ class BlobBuilder {
 
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
-                + " uncompressedSize={}, compressedChunkLength={}, encryptedCompressedSize={},"
+                + " uncompressedSize={}, paddedChunkLength={}, encryptedCompressedSize={},"
                 + " bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
             startOffset,
             serializedChunk.chunkUncompressedSize,
-            compressedChunkLength,
+            paddedChunkLength,
             encryptedCompressedChunkDataSize,
             bdecVersion);
       }
