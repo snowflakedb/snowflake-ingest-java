@@ -35,7 +35,6 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
-    <arrow.version>10.0.0</arrow.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
@@ -158,6 +157,10 @@
             <artifactId>jersey-json</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-core</artifactId>
           </exclusion>
@@ -168,6 +171,10 @@
           <exclusion>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-servlet</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
           </exclusion>
           <exclusion>
             <groupId>dnsjava</groupId>
@@ -190,8 +197,20 @@
             <artifactId>avro</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-client</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.kerby</groupId>
@@ -406,17 +425,6 @@
       <groupId>net.snowflake</groupId>
       <artifactId>snowflake-jdbc</artifactId>
     </dependency>
-    <!-- Apache Arrow -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-core</artifactId>
-      <version>${arrow.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-vector</artifactId>
-      <version>${arrow.version}</version>
-    </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
@@ -438,12 +446,6 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-netty</artifactId>
-      <version>${arrow.version}</version>
-      <scope>runtime</scope>
     </dependency>
     <!-- JUnit so that we can make some basic unit tests -->
     <dependency>
@@ -752,7 +754,6 @@
             <includedLicense>Apache License 2.0</includedLicense>
             <includedLicense>BSD 2-Clause License</includedLicense>
             <includedLicense>3-Clause BSD License</includedLicense>
-            <includedLicense>Revised BSD</includedLicense>
             <includedLicense>The MIT License</includedLicense>
             <includedLicense>EDL 1.0</includedLicense>
             <includedLicense>The Go license</includedLicense>

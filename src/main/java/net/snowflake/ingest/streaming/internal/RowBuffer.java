@@ -12,8 +12,7 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
  * Interface for the buffer in the Streaming Ingest channel that holds the un-flushed rows, these
  * rows will be converted to the underlying format implementation for faster processing
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 interface RowBuffer<T> {
   /**

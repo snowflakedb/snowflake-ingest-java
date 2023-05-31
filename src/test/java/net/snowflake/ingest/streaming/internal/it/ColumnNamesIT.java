@@ -13,17 +13,12 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.internal.datatypes.AbstractDataTypeTest;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class ColumnNamesIT extends AbstractDataTypeTest {
   private static final int INGEST_VALUE = 1;
-
-  public ColumnNamesIT(String name, Constants.BdecVersion bdecVersion) {
-    super(name, bdecVersion);
-  }
 
   @Test
   public void testColumnNamesSupport() throws Exception {

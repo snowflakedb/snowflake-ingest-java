@@ -27,14 +27,11 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data {@link ParquetChunkData})
  */
 class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannel {
 
@@ -93,8 +90,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKeyId,
         onErrorOption,
         defaultTimezone,
-        client.getParameterProvider().getBlobFormatVersion(),
-        new RootAllocator());
+        client.getParameterProvider().getBlobFormatVersion());
   }
 
   /** Default constructor */
@@ -111,8 +107,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      Constants.BdecVersion bdecVersion,
-      BufferAllocator allocator) {
+      Constants.BdecVersion bdecVersion) {
     this.isClosed = false;
     this.owningClient = client;
     this.channelFlushContext =
@@ -123,7 +118,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         AbstractRowBuffer.createRowBuffer(
             onErrorOption,
             defaultTimezone,
-            allocator,
             bdecVersion,
             getFullyQualifiedName(),
             this::collectRowSize,
