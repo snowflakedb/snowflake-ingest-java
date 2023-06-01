@@ -14,6 +14,8 @@ public class ParameterProvider {
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_INTERVAL_IN_MILLIS".toLowerCase();
   public static final String INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE =
       "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE".toLowerCase();
+  public static final String INSERT_THROTTLE_THRESHOLD_IN_BYTES =
+      "STREAMING_INGEST_CLIENT_SDK_INSERT_THROTTLE_THRESHOLD_IN_BYTES".toLowerCase();
   public static final String ENABLE_SNOWPIPE_STREAMING_METRICS =
       "ENABLE_SNOWPIPE_STREAMING_JMX_METRICS".toLowerCase();
   public static final String BLOB_FORMAT_VERSION = "BLOB_FORMAT_VERSION".toLowerCase();
@@ -23,18 +25,21 @@ public class ParameterProvider {
   public static final String MAX_MEMORY_LIMIT_IN_BYTES = "MAX_MEMORY_LIMIT_IN_BYTES".toLowerCase();
   public static final String ENABLE_PARQUET_INTERNAL_BUFFERING =
       "ENABLE_PARQUET_INTERNAL_BUFFERING".toLowerCase();
+  public static final String MAX_CHUNK_SIZE_IN_BYTES = "MAX_CHUNK_SIZE_IN_BYTES".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final int INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
+  public static final int INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT = 200 * 1024 * 1024; // 200MB
   public static final boolean SNOWPIPE_STREAMING_METRICS_DEFAULT = false;
   public static final Constants.BdecVersion BLOB_FORMAT_VERSION_DEFAULT =
       Constants.BdecVersion.THREE;
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
+  public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 32000000L;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -47,7 +52,7 @@ public class ParameterProvider {
    * Constructor. Takes properties from profile file and properties from client constructor and
    * resolves final parameter value
    *
-   * @param parameterOverrides Map<String, Object> of parameter name -> value
+   * @param parameterOverrides Map of parameter name to value
    * @param props Properties from profile file
    */
   public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
@@ -102,6 +107,12 @@ public class ParameterProvider {
         props);
 
     this.updateValue(
+        INSERT_THROTTLE_THRESHOLD_IN_BYTES,
+        INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT,
+        parameterOverrides,
+        props);
+
+    this.updateValue(
         ENABLE_SNOWPIPE_STREAMING_METRICS,
         SNOWPIPE_STREAMING_METRICS_DEFAULT,
         parameterOverrides,
@@ -126,6 +137,9 @@ public class ParameterProvider {
         ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
         parameterOverrides,
         props);
+
+    this.updateValue(
+        MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -173,6 +187,17 @@ public class ParameterProvider {
     return (int) val;
   }
 
+  /** @return Absolute size in bytes of free total memory at which we throttle row inserts */
+  public int getInsertThrottleThresholdInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            INSERT_THROTTLE_THRESHOLD_IN_BYTES, INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT);
+    if (val instanceof String) {
+      return Integer.parseInt(val.toString());
+    }
+    return (int) val;
+  }
+
   /** @return true if jmx metrics are enabled for a client */
   public boolean hasEnabledSnowpipeStreamingMetrics() {
     Object val =
@@ -184,7 +209,7 @@ public class ParameterProvider {
     return (boolean) val;
   }
 
-  /** @return Blob format version: 1 (arrow stream write mode), 2 (arrow file write mode) etc */
+  /** @return Blob format version */
   public Constants.BdecVersion getBlobFormatVersion() {
     Object val = this.parameterMap.getOrDefault(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT);
     if (val instanceof Constants.BdecVersion) {
@@ -238,6 +263,13 @@ public class ParameterProvider {
         this.parameterMap.getOrDefault(
             ENABLE_PARQUET_INTERNAL_BUFFERING, ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
+  }
+
+  /** @return The max chunk size in bytes */
+  public long getMaxChunkSizeInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
+    return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
   @Override

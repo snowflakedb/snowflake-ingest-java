@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
@@ -16,10 +15,6 @@ import org.junit.Test;
 public class StringsIT extends AbstractDataTypeTest {
 
   private static final int MB_16 = 16 * 1024 * 1024;
-
-  public StringsIT(String name, Constants.BdecVersion bdecVersion) {
-    super(name, bdecVersion);
-  }
 
   @Test
   public void testStrings() throws Exception {
@@ -36,7 +31,7 @@ public class StringsIT extends AbstractDataTypeTest {
     testJdbcTypeCompatibility("CHAR(5)", true, "true", new BooleanProvider(), new StringProvider());
     testJdbcTypeCompatibility(
         "CHAR(5)", false, "false", new BooleanProvider(), new StringProvider());
-    expectArrowNotSupported("CHAR(4)", false);
+    expectNotSupported("CHAR(4)", false);
 
     // test numbers
     testJdbcTypeCompatibility(
@@ -95,23 +90,23 @@ public class StringsIT extends AbstractDataTypeTest {
     // 1-byte chars
     String maxString = buildString("a", MB_16);
     testIngestion("VARCHAR", maxString, new StringProvider());
-    expectArrowNotSupported("VARCHAR", maxString + "a");
+    expectNotSupported("VARCHAR", maxString + "a");
 
     // 2-byte chars
     maxString = buildString("š", MB_16 / 2);
     testIngestion("VARCHAR", maxString, new StringProvider());
 
-    expectArrowNotSupported("VARCHAR", maxString + "a");
+    expectNotSupported("VARCHAR", maxString + "a");
 
     // 3-byte chars
     maxString = buildString("❄", MB_16 / 3);
     testIngestion("VARCHAR", maxString, new StringProvider());
-    expectArrowNotSupported("VARCHAR", maxString + "aa");
+    expectNotSupported("VARCHAR", maxString + "aa");
 
     // 4-byte chars
     maxString = buildString("🍞", MB_16 / 4);
     testIngestion("VARCHAR", maxString, new StringProvider());
-    expectArrowNotSupported("VARCHAR", maxString + "a");
+    expectNotSupported("VARCHAR", maxString + "a");
   }
 
   @Test
@@ -217,7 +212,7 @@ public class StringsIT extends AbstractDataTypeTest {
       openChannel(tableName);
       Assert.fail("Opening a channel shouldn't have succeeded");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.UNSUPPORTED_DATA_TYPE.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.OPEN_CHANNEL_FAILURE.getMessageCode(), e.getVendorCode());
     }
   }
 }

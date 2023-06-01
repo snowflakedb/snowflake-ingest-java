@@ -5,8 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
-import static net.snowflake.ingest.utils.Constants.LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
@@ -29,14 +27,11 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data {@link ParquetChunkData})
  */
 class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannel {
 
@@ -95,8 +90,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKeyId,
         onErrorOption,
         defaultTimezone,
-        client.getParameterProvider().getBlobFormatVersion(),
-        new RootAllocator());
+        client.getParameterProvider().getBlobFormatVersion());
   }
 
   /** Default constructor */
@@ -113,8 +107,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      Constants.BdecVersion bdecVersion,
-      BufferAllocator allocator) {
+      Constants.BdecVersion bdecVersion) {
     this.isClosed = false;
     this.owningClient = client;
     this.channelFlushContext =
@@ -125,15 +118,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         AbstractRowBuffer.createRowBuffer(
             onErrorOption,
             defaultTimezone,
-            allocator,
             bdecVersion,
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
-            false,
             owningClient != null
                 ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
-                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
+                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
+            owningClient != null
+                ? owningClient.getParameterProvider().getMaxChunkSizeInBytes()
+                : ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
@@ -348,7 +342,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
-    throttleInsertIfNeeded(Runtime.getRuntime());
+    throttleInsertIfNeeded(new MemoryInfoProviderFromRuntime());
     checkValidation();
 
     if (isClosed()) {
@@ -367,7 +361,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
-    if (this.rowBuffer.getSize() >= MAX_CHUNK_SIZE_IN_BYTES) {
+    if (this.rowBuffer.getSize()
+        >= this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()) {
       this.owningClient.setNeedFlush();
     }
 
@@ -401,11 +396,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Check whether we need to throttle the insertRows API */
-  void throttleInsertIfNeeded(Runtime runtime) {
+  void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
     long insertThrottleIntervalInMs =
         this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
-    while ((hasLowRuntimeMemory(runtime)
+    while ((hasLowRuntimeMemory(memoryInfoProvider)
             || (this.owningClient.getFlushService() != null
                 && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
         && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
@@ -427,18 +422,22 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Check whether we have a low runtime memory condition */
-  private boolean hasLowRuntimeMemory(Runtime runtime) {
+  private boolean hasLowRuntimeMemory(MemoryInfoProvider memoryInfoProvider) {
+    int insertThrottleThresholdInBytes =
+        this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
     int insertThrottleThresholdInPercentage =
         this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
     long maxMemoryLimitInBytes =
         this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
     long maxMemory =
         maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
-            ? runtime.maxMemory()
+            ? memoryInfoProvider.getMaxMemory()
             : maxMemoryLimitInBytes;
-    long freeMemory = runtime.freeMemory() + (runtime.maxMemory() - runtime.totalMemory());
+    long freeMemory =
+        memoryInfoProvider.getFreeMemory()
+            + (memoryInfoProvider.getMaxMemory() - memoryInfoProvider.getTotalMemory());
     boolean hasLowRuntimeMemory =
-        freeMemory < LOW_RUNTIME_MEMORY_THRESHOLD_IN_BYTES
+        freeMemory < insertThrottleThresholdInBytes
             && freeMemory * 100 / maxMemory < insertThrottleThresholdInPercentage;
     if (hasLowRuntimeMemory) {
       logger.logWarn(

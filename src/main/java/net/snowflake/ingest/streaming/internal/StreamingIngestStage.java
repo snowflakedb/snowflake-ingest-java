@@ -11,6 +11,7 @@ import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +40,6 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
@@ -146,8 +146,7 @@ class StreamingIngestStage {
   private void putRemote(String fullFilePath, byte[] data, int retryCount)
       throws SnowflakeSQLException, IOException {
     SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy;
-    if (this.fileTransferMetadataWithAge.fileTransferMetadata.getStageInfo().getStageType()
-        == StageInfo.StageType.GCS) {
+    if (this.fileTransferMetadataWithAge.fileTransferMetadata.isForOneFile()) {
       fileTransferMetadataCopy = this.fetchSignedURL(fullFilePath);
     } else {
       // Set file path to be uploaded
@@ -186,6 +185,7 @@ class StreamingIngestStage {
               .setStreamingIngestClientKey(this.clientPrefix)
               .setStreamingIngestClientName(this.clientName)
               .setProxyProperties(this.proxyProperties)
+              .setDestFileName(fullFilePath)
               .build());
     } catch (SnowflakeSQLException e) {
       if (e.getErrorCode() != CLOUD_STORAGE_CREDENTIALS_EXPIRED || retryCount >= MAX_RETRY_COUNT) {
@@ -399,6 +399,7 @@ class StreamingIngestStage {
       String stageLocation = this.fileTransferMetadataWithAge.localLocation;
       File destFile = Paths.get(stageLocation, fullFilePath).toFile();
       FileUtils.copyInputStreamToFile(input, destFile);
+      System.out.println("Filename: " + destFile); // TODO @rcheng - remove this before merge
     } catch (Exception ex) {
       throw new SFException(ex, ErrorCode.BLOB_UPLOAD_FAILURE);
     }

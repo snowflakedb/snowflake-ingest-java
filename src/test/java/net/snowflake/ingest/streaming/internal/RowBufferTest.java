@@ -1,49 +1,36 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.RootAllocator;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-@RunWith(Parameterized.class)
 public class RowBufferTest {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> bdecVersion() {
-    return Arrays.asList(
-        new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE},
-          {"Parquet_w/o_optimization", Constants.BdecVersion.THREE}
-        });
-  }
 
-  private final Constants.BdecVersion bdecVersion;
   private final boolean enableParquetMemoryOptimization;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
 
-  public RowBufferTest(@SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
-    this.bdecVersion = bdecVersion;
+  public RowBufferTest() {
     this.enableParquetMemoryOptimization = false;
   }
 
@@ -123,13 +110,12 @@ public class RowBufferTest {
     return AbstractRowBuffer.createRowBuffer(
         onErrorOption,
         UTC,
-        new RootAllocator(),
-        bdecVersion,
+        Constants.BdecVersion.THREE,
         "test.buffer",
         rs -> {},
         initialState,
-        true,
-        enableParquetMemoryOptimization);
+        enableParquetMemoryOptimization,
+        MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
   }
 
   @Test
@@ -280,7 +266,7 @@ public class RowBufferTest {
   }
 
   @Test
-  public void testRowIndexWithMultipleRowsWithErrorr() {
+  public void testRowIndexWithMultipleRowsWithError() {
     List<Map<String, Object>> rows = new ArrayList<>();
     Map<String, Object> row = new HashMap<>();
 
@@ -302,6 +288,27 @@ public class RowBufferTest {
     // second row out of the rows we sent was having bad data.
     // so InsertError corresponds to second row.
     Assert.assertEquals(1, response.getInsertErrors().get(0).getRowIndex());
+
+    Assert.assertTrue(response.getInsertErrors().get(0).getException() != null);
+
+    Assert.assertTrue(
+        Objects.equals(
+            response.getInsertErrors().get(0).getException().getVendorCode(),
+            ErrorCode.INVALID_VALUE_ROW.getMessageCode()));
+
+    Assert.assertEquals(1, response.getInsertErrors().get(0).getRowIndex());
+
+    Assert.assertTrue(
+        response
+            .getInsertErrors()
+            .get(0)
+            .getException()
+            .getMessage()
+            .equalsIgnoreCase(
+                "The given row cannot be converted to the internal format due to invalid value:"
+                    + " Value cannot be ingested into Snowflake column COLCHAR of type STRING, Row"
+                    + " Index: 1, reason: String too long: length=22 characters maxLength=11"
+                    + " characters"));
   }
 
   private void testStringLengthHelper(AbstractRowBuffer<?> rowBuffer) {
@@ -330,14 +337,14 @@ public class RowBufferTest {
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(1, response.getErrorRowCount());
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(),
+          ErrorCode.INVALID_VALUE_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
       Assert.assertTrue(response.getInsertErrors().get(0).getMessage().contains("String too long"));
     } else {
       try {
         rowBuffer.insertRows(Collections.singletonList(row), null);
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -468,12 +475,10 @@ public class RowBufferTest {
     Assert.assertEquals(offsetToken, data.getOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
 
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-      final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
-      Assert.assertEquals(
-          StreamingIngestUtils.getShortname(filename),
-          chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
-    }
+    final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
+    Assert.assertEquals(
+        StreamingIngestUtils.getShortname(filename),
+        chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
   }
 
   @Test
@@ -657,13 +662,13 @@ public class RowBufferTest {
           innerBuffer.insertRows(Collections.singletonList(row), null);
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(),
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row), null);
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -740,10 +745,8 @@ public class RowBufferTest {
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
-    if (bdecVersion == Constants.BdecVersion.THREE) {
-      final ParquetChunkData chunkData = (ParquetChunkData) result.getVectors();
-      Assert.assertEquals(filename, chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
-    }
+    final ParquetChunkData chunkData = (ParquetChunkData) result.getVectors();
+    Assert.assertEquals(filename, chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
 
     // Confirm we reset
     ChannelData<?> resetResults = rowBuffer.flush("my_snowpipe_streaming.bdec");
@@ -979,13 +982,13 @@ public class RowBufferTest {
       response = innerBuffer.insertRows(Collections.singletonList(row), "1");
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(),
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row), "1");
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -1027,14 +1030,14 @@ public class RowBufferTest {
       Assert.assertTrue(response.hasErrors());
       InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
       Assert.assertEquals(
-          ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
+          ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), error.getException().getVendorCode());
       Assert.assertEquals(
           Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
     } else {
       try {
         innerBuffer.insertRows(Collections.singletonList(row2), "2");
       } catch (SFException e) {
-        Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+        Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
     }
   }
@@ -1060,7 +1063,7 @@ public class RowBufferTest {
     Assert.assertTrue(response.hasErrors());
     InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
-        ErrorCode.INVALID_ROW.getMessageCode(), error.getException().getVendorCode());
+        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), error.getException().getVendorCode());
     Assert.assertEquals(Arrays.asList("COLBOOLEAN3", "COLBOOLEAN2"), error.getExtraColNames());
   }
 
@@ -1314,7 +1317,7 @@ public class RowBufferTest {
     InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals(1, innerBuffer.rowCount);
+    Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1328,7 +1331,7 @@ public class RowBufferTest {
     response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
     Assert.assertFalse(response.hasErrors());
 
-    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1342,10 +1345,10 @@ public class RowBufferTest {
     try {
       innerBuffer.insertRows(Collections.singletonList(row3), "3");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
     }
 
-    Assert.assertEquals(2, innerBuffer.rowCount);
+    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1357,7 +1360,7 @@ public class RowBufferTest {
     row3.put("COLDECIMAL", 3);
     response = innerBuffer.insertRows(Collections.singletonList(row3), "3");
     Assert.assertFalse(response.hasErrors());
-    Assert.assertEquals(3, innerBuffer.rowCount);
+    Assert.assertEquals(3, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
         3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
@@ -1368,7 +1371,7 @@ public class RowBufferTest {
 
     ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, data.getRowCount());
-    Assert.assertEquals(0, innerBuffer.rowCount);
+    Assert.assertEquals(0, innerBuffer.bufferedRowCount);
   }
 
   @Test
@@ -1497,5 +1500,58 @@ public class RowBufferTest {
     // Check stats generation
     ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(5, result.getRowCount());
+  }
+
+  @Test
+  public void testOnErrorAbortRowsWithError() {
+    AbstractRowBuffer<?> innerBufferOnErrorContinue =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    AbstractRowBuffer<?> innerBufferOnErrorAbort =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+
+    ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setName("COLCHAR");
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14);
+    colChar.setLength(11);
+    colChar.setScale(0);
+
+    innerBufferOnErrorContinue.setupSchema(Collections.singletonList(colChar));
+    innerBufferOnErrorAbort.setupSchema(Collections.singletonList(colChar));
+
+    // insert one valid row
+    List<Map<String, Object>> validRows = new ArrayList<>();
+    validRows.add(Collections.singletonMap("colChar", "a"));
+
+    InsertValidationResponse response = innerBufferOnErrorContinue.insertRows(validRows, "1");
+    Assert.assertFalse(response.hasErrors());
+    response = innerBufferOnErrorAbort.insertRows(validRows, "1");
+    Assert.assertFalse(response.hasErrors());
+
+    // insert one valid and one invalid row
+    List<Map<String, Object>> mixedRows = new ArrayList<>();
+    mixedRows.add(Collections.singletonMap("colChar", "b"));
+    mixedRows.add(Collections.singletonMap("colChar", "1111111111111111111111")); // too big
+
+    response = innerBufferOnErrorContinue.insertRows(mixedRows, "3");
+    Assert.assertTrue(response.hasErrors());
+
+    Assert.assertThrows(
+        SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "3"));
+
+    List<List<Object>> snapshotContinueParquet =
+        ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
+    // validRows and only the good row from mixedRows are in the buffer
+    Assert.assertEquals(2, snapshotContinueParquet.size());
+    Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
+    Assert.assertEquals(Arrays.asList("b"), snapshotContinueParquet.get(1));
+
+    List<List<Object>> snapshotAbortParquet =
+        ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
+    // only validRows and none of the mixedRows are in the buffer
+    Assert.assertEquals(1, snapshotAbortParquet.size());
+    Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
   }
 }

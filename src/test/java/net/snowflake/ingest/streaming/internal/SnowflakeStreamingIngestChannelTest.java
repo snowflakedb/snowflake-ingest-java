@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
-import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
@@ -20,6 +19,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
@@ -38,12 +38,35 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 public class SnowflakeStreamingIngestChannelTest {
+
+  /**
+   * Mock memory provider, allows the user to set what memory values should be returned. Fields are
+   * volatile, so can be modified by another threads than the one reading it.
+   */
+  private static class MockedMemoryInfoProvider implements MemoryInfoProvider {
+    public volatile long freeMemory;
+    public volatile long maxMemory;
+
+    @Override
+    public long getMaxMemory() {
+      return maxMemory;
+    }
+
+    @Override
+    public long getTotalMemory() {
+      return maxMemory;
+    }
+
+    @Override
+    public long getFreeMemory() {
+      return freeMemory;
+    }
+  }
 
   @Test
   public void testChannelFactoryNullFields() {
@@ -251,7 +274,9 @@ public class SnowflakeStreamingIngestChannelTest {
     String urlStr = "https://sfctest0.snowflakecomputing.com:80";
     SnowflakeURL url = new SnowflakeURL(urlStr);
 
-    KeyPair keyPair = Utils.createKeyPairFromPrivateKey((PrivateKey) prop.get(JDBC_PRIVATE_KEY));
+    KeyPair keyPair =
+        Utils.createKeyPairFromPrivateKey(
+            (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
     RequestBuilder requestBuilder =
         new RequestBuilder(url, prop.get(USER).toString(), keyPair, null, null);
 
@@ -472,14 +497,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testInsertRow() {
     SnowflakeStreamingIngestClientInternal<?> client;
-    boolean isArrowDefault =
-        ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT == Constants.BdecVersion.ONE;
-    if (isArrowDefault) {
-      client = new SnowflakeStreamingIngestClientInternal<VectorSchemaRoot>("client_ARROW");
-    } else {
-      client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
-    }
-
+    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -524,11 +542,7 @@ public class SnowflakeStreamingIngestChannelTest {
     data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
-    Assert.assertEquals(
-        1,
-        isArrowDefault
-            ? ((ChannelData<VectorSchemaRoot>) data).getVectors().getFieldVectors().size()
-            : ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
+    Assert.assertEquals(1, ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
     Assert.assertEquals("2", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
@@ -537,7 +551,11 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testInsertRowThrottling() {
-    long maxMemory = 1000000L;
+    final long maxMemory = 1000000L;
+
+    final MockedMemoryInfoProvider memoryInfoProvider = new MockedMemoryInfoProvider();
+    memoryInfoProvider.maxMemory = maxMemory;
+
     SnowflakeStreamingIngestClientInternal<?> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
     SnowflakeStreamingIngestChannelInternal<?> channel =
@@ -555,31 +573,29 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 
-    Runtime mockedRunTime = Mockito.mock(Runtime.class);
-    Mockito.when(mockedRunTime.maxMemory()).thenReturn(maxMemory);
-    Mockito.when(mockedRunTime.totalMemory()).thenReturn(maxMemory);
     ParameterProvider parameterProvider = new ParameterProvider();
-    Mockito.when(mockedRunTime.freeMemory())
-        .thenReturn(
-            maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100);
+    memoryInfoProvider.freeMemory =
+        maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100;
 
     CompletableFuture<Void> future =
-        CompletableFuture.runAsync(() -> channel.throttleInsertIfNeeded(mockedRunTime));
+        CompletableFuture.runAsync(() -> channel.throttleInsertIfNeeded(memoryInfoProvider));
 
     try {
       future.get(5L, TimeUnit.SECONDS);
       Assert.fail("the insert should be throttled.");
     } catch (TimeoutException ignored) {
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail("unexpected exception encountered.");
     }
 
-    Mockito.when(mockedRunTime.freeMemory()).thenReturn(1000000L);
+    memoryInfoProvider.freeMemory = maxMemory;
 
     // We should succeed now
     try {
       future.get(5L, TimeUnit.SECONDS);
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail("unexpected exception encountered.");
     }
   }

@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
+import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
@@ -15,7 +16,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,30 +31,26 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 /** Example streaming ingest sdk integration test */
-@RunWith(Parameterized.class)
 public class StreamingIngestIT {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> bdecVersion() {
-    return TestUtils.getBdecVersionItCases();
-  }
-
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
@@ -68,13 +64,6 @@ public class StreamingIngestIT {
   private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
-
-  private final Constants.BdecVersion bdecVersion;
-
-  public StreamingIngestIT(
-      @SuppressWarnings("unused") String name, Constants.BdecVersion bdecVersion) {
-    this.bdecVersion = bdecVersion;
-  }
 
   @Before
   public void beforeAll() throws Exception {
@@ -100,7 +89,7 @@ public class StreamingIngestIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties(bdecVersion);
+    prop = TestUtils.getProperties(Constants.BdecVersion.THREE);
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }
@@ -117,6 +106,18 @@ public class StreamingIngestIT {
 
   @Test
   public void testSimpleIngest() throws Exception {
+    // TODO @rcheng - dont want to change factory, so inject
+    SnowflakeURL url = new SnowflakeURL(TestUtils.getAccountURL());
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(
+                url,
+                TestUtils.getUser(),
+                TestUtils.getKeyPair(),
+                HttpUtil.getHttpClient(url.getAccount()),
+                "testrequestbuilder"));
+    client.injectRequestBuilder(requestBuilder);
+
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
             .setDBName(testDb)
@@ -135,6 +136,16 @@ public class StreamingIngestIT {
 
     // Close the channel after insertion
     channel1.close().get();
+
+    // verify expected request sent to server
+    String[] expectedPayloadParams = {"request_id", "blobs", "role", "blob_stats"};
+    for (String expectedParam : expectedPayloadParams) {
+      Mockito.verify(requestBuilder)
+          .generateStreamingIngestPostRequest(
+              ArgumentMatchers.contains(expectedParam),
+              ArgumentMatchers.refEq(REGISTER_BLOB_ENDPOINT),
+              ArgumentMatchers.refEq("register blob"));
+    }
 
     for (int i = 1; i < 15; i++) {
       if (channel1.getLatestCommittedOffsetToken() != null
@@ -186,6 +197,7 @@ public class StreamingIngestIT {
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 30L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 50L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 1);
+    parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_INTERVAL_IN_MILLIS, 1L);
     parameterMap.put(ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS, true);
     parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 1);
@@ -814,13 +826,13 @@ public class StreamingIngestIT {
       channel.insertRow(row3, "3");
       Assert.fail("insert should fail");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), e.getVendorCode());
     }
     try {
       channel.insertRows(Arrays.asList(row1, row2, row3), "6");
       Assert.fail("insert should fail");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_ROW.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), e.getVendorCode());
     }
     Map<String, Object> row7 = new HashMap<>();
     row7.put("c1", 7);
@@ -1054,7 +1066,6 @@ public class StreamingIngestIT {
     Assert.fail("Row sequencer not updated before timeout");
   }
 
-  @Ignore
   @Test
   public void testTableColumnEvolution() throws Exception {
     final int rowNum = 100;

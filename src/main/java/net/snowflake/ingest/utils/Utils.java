@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.utils;
 
-import static net.snowflake.ingest.utils.Constants.JDBC_PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Timer;
@@ -26,6 +25,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
@@ -33,7 +33,6 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEM
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.commons.codec.binary.Base64;
 
 /** Contains Ingest related utility functions */
@@ -97,12 +96,14 @@ public class Utils {
     }
 
     if (!privateKeyPassphrase.isEmpty()) {
-      properties.put(JDBC_PRIVATE_KEY, parseEncryptedPrivateKey(privateKey, privateKeyPassphrase));
+      properties.put(
+          SFSessionProperty.PRIVATE_KEY.getPropertyKey(),
+          parseEncryptedPrivateKey(privateKey, privateKeyPassphrase));
     } else if (!privateKey.isEmpty()) {
-      properties.put(JDBC_PRIVATE_KEY, parsePrivateKey(privateKey));
+      properties.put(SFSessionProperty.PRIVATE_KEY.getPropertyKey(), parsePrivateKey(privateKey));
     }
 
-    if (!properties.containsKey(JDBC_PRIVATE_KEY)) {
+    if (!properties.containsKey(SFSessionProperty.PRIVATE_KEY.getPropertyKey())) {
       throw new SFException(ErrorCode.MISSING_CONFIG, "private_key");
     }
 
@@ -132,6 +133,14 @@ public class Utils {
     if (!properties.containsKey(Constants.ROLE)) {
       throw new SFException(ErrorCode.MISSING_CONFIG, "role");
     }
+
+    /**
+     * Behavior change in JDBC release 3.13.25
+     *
+     * @see <a href="https://community.snowflake.com/s/article/JDBC-Driver-Release-Notes">Snowflake
+     *     Documentation Release Notes </a>
+     */
+    properties.put(SFSessionProperty.ALLOW_UNDERSCORES_IN_HOST.getPropertyKey(), "true");
 
     return properties;
   }
@@ -256,14 +265,6 @@ public class Utils {
   /** Utility function to check whether a string is null or empty */
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.isEmpty();
-  }
-
-  /** Release any outstanding memory and then close the buffer allocator */
-  public static void closeAllocator(BufferAllocator alloc) {
-    for (BufferAllocator childAlloc : alloc.getChildAllocators()) {
-      childAlloc.close();
-    }
-    alloc.close();
   }
 
   /** Util function to show memory usage info and debug memory issue in the SDK */
