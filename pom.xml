@@ -823,14 +823,7 @@
     <profile>
       <id>checkShadedContent</id>
       <activation>
-        <os>
-          <!-- Shaded JAR content checking is a shell script, do not run it on Windows -->
-          <family>!Windows</family>
-        </os>
-        <property>
-          <!-- Do not check shaded JAR content if shading has been disabled -->
-          <name>!not-shadeDep</name>
-        </property>
+        <activeByDefault>false</activeByDefault>
       </activation>
       <build>
         <plugins>
