@@ -377,7 +377,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /**
-   * Get the latest committed offset token from Snowflake
+   * Get the latest committed offset token from Snowflake, an exception will be thrown if the
+   * channel becomes invalid due to errors and the channel needs to be reopened in order to return a
+   * valid offset token
    *
    * @return the latest committed offset token
    */

@@ -99,8 +99,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Name of the client
   private final String name;
 
-  private String accountName;
-
   // Snowflake role for the client to use
   private String role;
 
@@ -162,7 +160,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
-    this.accountName = accountURL == null ? null : accountURL.getAccount();
+    String accountName = accountURL == null ? null : accountURL.getAccount();
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
     this.channelCache = new ChannelCache<>();
@@ -191,7 +189,13 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       this.setupMetricsForClient();
     }
 
-    this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+    try {
+      this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+    } catch (Exception e) {
+      // Need to clean up the resources before throwing any exceptions
+      cleanUpResources();
+      throw e;
+    }
 
     logger.logInfo(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
@@ -617,14 +621,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
-      if (this.telemetryWorker != null) {
-        this.telemetryWorker.shutdown();
-      }
       this.flushService.shutdown();
-      if (this.requestBuilder != null) {
-        this.requestBuilder.closeResources();
-      }
-      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
+      cleanUpResources();
     }
   }
 
@@ -888,6 +886,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           this.buildLatency, this.uploadLatency, this.registerLatency, this.flushLatency);
       telemetryService.reportThroughputBytesPerSecond(this.inputThroughput, this.uploadThroughput);
       telemetryService.reportCpuMemoryUsage(this.cpuHistogram);
+    }
+  }
+
+  /** Cleanup any resource during client closing or failures */
+  private void cleanUpResources() {
+    if (this.telemetryWorker != null) {
+      this.telemetryWorker.shutdown();
+    }
+    if (this.requestBuilder != null) {
+      this.requestBuilder.closeResources();
+    }
+    if (!this.isTestMode) {
+      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
     }
   }
 }
