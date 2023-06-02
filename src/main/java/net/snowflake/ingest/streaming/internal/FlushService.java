@@ -601,8 +601,7 @@ class FlushService<T> {
     int minute = calendar.get(Calendar.MINUTE);
     long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
     long threadId = Thread.currentThread().getId();
-    // Create the file short name, the clientPrefix may contain the deployment id when replication
-    // is enabled
+    // Create the file short name, the clientPrefix contains the deployment id
     String fileShortName =
         Long.toString(time, 36)
             + "_"

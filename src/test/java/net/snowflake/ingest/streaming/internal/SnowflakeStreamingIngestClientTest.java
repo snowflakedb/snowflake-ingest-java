@@ -1213,4 +1213,26 @@ public class SnowflakeStreamingIngestClientTest {
 
     client.close();
   }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testFlushServiceException() throws Exception {
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+
+    // Set IO_TIME_CPU_RATIO to MAX_VALUE in order to generate an exception
+    Map<String, Object> parameterMap = new HashMap<>();
+    parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, Integer.MAX_VALUE);
+
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            parameterMap);
+  }
 }

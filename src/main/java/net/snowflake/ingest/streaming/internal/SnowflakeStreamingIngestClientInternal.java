@@ -897,6 +897,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     if (this.requestBuilder != null) {
       this.requestBuilder.closeResources();
     }
-    HttpUtil.shutdownHttpConnectionManagerDaemonThread();
+    if (!this.isTestMode) {
+      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
+    }
   }
 }
