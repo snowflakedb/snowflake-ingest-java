@@ -6,7 +6,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>1.1.3</version>
+  <version>1.1.5-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -35,7 +35,6 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
-    <arrow.version>10.0.0</arrow.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
@@ -61,7 +60,7 @@
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.8.3</snappy.version>
-    <snowjdbc.version>3.13.29</snowjdbc.version>
+    <snowjdbc.version>3.13.30</snowjdbc.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
 
@@ -158,6 +157,10 @@
             <artifactId>jersey-json</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-core</artifactId>
           </exclusion>
@@ -168,6 +171,10 @@
           <exclusion>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-servlet</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
           </exclusion>
           <exclusion>
             <groupId>dnsjava</groupId>
@@ -190,8 +197,20 @@
             <artifactId>avro</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-client</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.kerby</groupId>
@@ -406,17 +425,6 @@
       <groupId>net.snowflake</groupId>
       <artifactId>snowflake-jdbc</artifactId>
     </dependency>
-    <!-- Apache Arrow -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-core</artifactId>
-      <version>${arrow.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-vector</artifactId>
-      <version>${arrow.version}</version>
-    </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
@@ -438,12 +446,6 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-netty</artifactId>
-      <version>${arrow.version}</version>
-      <scope>runtime</scope>
     </dependency>
     <!-- JUnit so that we can make some basic unit tests -->
     <dependency>
@@ -511,12 +513,18 @@
             <skip>true</skip>
           </configuration>
         </plugin>
+
         <!-- Need to define the maven-failsafe-plugin here -->
         <!-- http://maven.apache.org/surefire/maven-failsafe-plugin/plugin-info.html -->
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
           <version>3.0.0-M5</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.19.1</version>
         </plugin>
         <plugin>
           <groupId>org.jacoco</groupId>
@@ -735,6 +743,49 @@
             <exclude>**/TestSimpleIngestLocal.java</exclude>
           </excludes>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>2.0.1</version>
+        <configuration>
+          <errorRemedy>failFast</errorRemedy>
+          <includedLicenses>
+            <includedLicense>Apache License 2.0</includedLicense>
+            <includedLicense>BSD 2-Clause License</includedLicense>
+            <includedLicense>3-Clause BSD License</includedLicense>
+            <includedLicense>The MIT License</includedLicense>
+            <includedLicense>EDL 1.0</includedLicense>
+            <includedLicense>The Go license</includedLicense>
+          </includedLicenses>
+          <!--
+          The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+          check your dependencies", verify the conditions of the license, put the text of the license into third-party-licenses/
+          directory and add it to this list. You can also run "mvn license:third-party-report" to get an HTML license report.
+          -->
+          <excludedScopes>test,provided,system</excludedScopes>
+          <failOnBlacklist>true</failOnBlacklist>
+          <licenseMerges>
+            <licenseMerge>Apache License 2.0
+              |The Apache License, Version 2.0
+              |The Apache Software License, Version 2.0
+              |Apache-2.0
+              |Apache License, Version 2.0
+              |Apache 2.0
+              |Apache License V2.0</licenseMerge>
+            <licenseMerge>BSD 2-Clause License
+              |The BSD License</licenseMerge>
+          </licenseMerges>
+        </configuration>
+        <executions>
+          <execution>
+            <id>add-third-party</id>
+            <goals>
+              <goal>add-third-party</goal>
+            </goals>
+            <phase>package</phase>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -962,6 +1013,41 @@
                   <file>target/${project.artifactId}.jar</file>
                   <repositoryId>ossrh</repositoryId>
                   <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+                  <pomFile>generated_public_pom.xml</pomFile>
+                  <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
+                  <sources>target/${project.artifactId}-sources.jar</sources>
+                  <keyname>${env.GPG_KEY_ID}</keyname>
+                  <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>snapshot-deploy</id>
+      <activation>
+        <property>
+          <name>snapshot-deploy</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>sign-and-deploy-file</goal>
+                </goals>
+                <phase>deploy</phase>
+                <configuration>
+                  <file>target/${project.artifactId}.jar</file>
+                  <repositoryId>snapshot</repositoryId>
+                  <url>https://nexus.int.snowflakecomputing.com/repository/Snapshots/</url>
                   <pomFile>generated_public_pom.xml</pomFile>
                   <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
                   <sources>target/${project.artifactId}-sources.jar</sources>

@@ -14,8 +14,7 @@ import net.snowflake.ingest.utils.Pair;
  * Interface to convert {@link ChannelData} buffered in {@link RowBuffer} to the underlying format
  * implementation for faster processing.
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 public interface Flusher<T> {
   /**
@@ -34,6 +33,7 @@ public interface Flusher<T> {
     final List<ChannelMetadata> channelsMetadataList;
     final Map<String, RowBufferStats> columnEpStatsMapCombined;
     final long rowCount;
+    final float chunkUncompressedSize;
     final ByteArrayOutputStream chunkData;
     final Pair<Long, Long> chunkMinMaxInsertTimeInMs;
 
@@ -41,11 +41,13 @@ public interface Flusher<T> {
         List<ChannelMetadata> channelsMetadataList,
         Map<String, RowBufferStats> columnEpStatsMapCombined,
         long rowCount,
+        float chunkUncompressedSize,
         ByteArrayOutputStream chunkData,
         Pair<Long, Long> chunkMinMaxInsertTimeInMs) {
       this.channelsMetadataList = channelsMetadataList;
       this.columnEpStatsMapCombined = columnEpStatsMapCombined;
       this.rowCount = rowCount;
+      this.chunkUncompressedSize = chunkUncompressedSize;
       this.chunkData = chunkData;
       this.chunkMinMaxInsertTimeInMs = chunkMinMaxInsertTimeInMs;
     }

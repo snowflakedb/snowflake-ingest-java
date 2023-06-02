@@ -25,14 +25,17 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private static final Logging logger = new Logging(ParquetFlusher.class);
   private final MessageType schema;
   private final boolean enableParquetInternalBuffering;
+  private final long maxChunkSizeInBytes;
 
   /**
    * Construct parquet flusher from its schema and set flag that indicates whether Parquet memory
    * optimization is enabled, i.e. rows will be buffered in internal Parquet buffer.
    */
-  public ParquetFlusher(MessageType schema, boolean enableParquetInternalBuffering) {
+  public ParquetFlusher(
+      MessageType schema, boolean enableParquetInternalBuffering, long maxChunkSizeInBytes) {
     this.schema = schema;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
+    this.maxChunkSizeInBytes = maxChunkSizeInBytes;
   }
 
   @Override
@@ -50,6 +53,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
+    float chunkUncompressedSize = 0f;
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     BdecParquetWriter mergedChannelWriter = null;
@@ -100,6 +104,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       }
 
       rowCount += data.getRowCount();
+      chunkUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
@@ -116,6 +121,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         channelsMetadataList,
         columnEpStatsMapCombined,
         rowCount,
+        chunkUncompressedSize,
         mergedChunkData,
         chunkMinMaxInsertTimeInMs);
   }
@@ -125,6 +131,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
+    float chunkUncompressedSize = 0f;
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
@@ -176,6 +183,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       rows.addAll(data.getVectors().rows);
 
       rowCount += data.getRowCount();
+      chunkUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
@@ -183,12 +191,14 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
-          filePath);
+          filePath,
+          enableParquetInternalBuffering);
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     parquetWriter =
-        new BdecParquetWriter(mergedData, schema, metadata, firstChannelFullyQualifiedTableName);
+        new BdecParquetWriter(
+            mergedData, schema, metadata, firstChannelFullyQualifiedTableName, maxChunkSizeInBytes);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 
@@ -196,6 +206,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         channelsMetadataList,
         columnEpStatsMapCombined,
         rowCount,
+        chunkUncompressedSize,
         mergedData,
         chunkMinMaxInsertTimeInMs);
   }

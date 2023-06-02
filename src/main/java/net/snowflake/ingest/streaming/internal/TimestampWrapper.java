@@ -12,7 +12,7 @@ import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 
 /**
  * This class represents the outcome of timestamp parsing and validation. It contains methods needed
- * to serialize timestamps into Arrow and Parquet.
+ * to serialize timestamps into Parquet.
  */
 public class TimestampWrapper {
 
