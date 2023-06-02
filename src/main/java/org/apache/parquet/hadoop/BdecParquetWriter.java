@@ -148,7 +148,6 @@ public class BdecParquetWriter implements AutoCloseable {
         // server side does not support it TODO: SNOW-657238
         .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
         .withValuesWriterFactory(new DefaultV1ValuesWriterFactory())
-
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)

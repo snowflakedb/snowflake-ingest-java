@@ -209,7 +209,7 @@ public class ParameterProvider {
     return (boolean) val;
   }
 
-  /** @return Blob format version: 1 (arrow stream write mode), 2 (arrow file write mode) etc */
+  /** @return Blob format version */
   public Constants.BdecVersion getBlobFormatVersion() {
     Object val = this.parameterMap.getOrDefault(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT);
     if (val instanceof Constants.BdecVersion) {

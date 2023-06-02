@@ -12,6 +12,7 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -46,8 +47,6 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -57,8 +56,7 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  * <li>upload the blob to stage
  * <li>register the blob to the targeted Snowflake table
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 class FlushService<T> {
 
@@ -258,6 +256,7 @@ class FlushService<T> {
    */
   CompletableFuture<Void> flush(boolean isForce) {
     long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
+
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
             && !this.isTestMode
@@ -409,6 +408,7 @@ class FlushService<T> {
         // client. See method getFilePath() below.
         this.counter.decrementAndGet();
       } else {
+        long flushStartMs = System.currentTimeMillis();
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
         }
@@ -418,7 +418,9 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        return buildAndUpload(filePath, blobData);
+                        BlobMetadata blobMetadata = buildAndUpload(filePath, blobData);
+                        blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
+                        return blobMetadata;
                       } catch (Throwable e) {
                         Throwable ex = e.getCause() == null ? e : e.getCause();
                         String errorMessage =
@@ -502,10 +504,10 @@ class FlushService<T> {
 
     // Construct the blob along with the metadata of the blob
     BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
-    if (buildContext != null) {
-      buildContext.stop();
-    }
-    return upload(filePath, blob.blobBytes, blob.chunksMetadataList);
+
+    blob.blobStats.setBuildDurationMs(buildContext);
+
+    return upload(filePath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
   }
 
   /**
@@ -514,19 +516,20 @@ class FlushService<T> {
    * @param filePath full path of the blob file
    * @param blob blob data
    * @param metadata a list of chunk metadata
+   * @param blobStats an object to track latencies and other stats of the blob
    * @return BlobMetadata object used to create the register blob request
    */
-  BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata)
+  BlobMetadata upload(
+      String filePath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
       throws NoSuchAlgorithmException {
     logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-
     this.targetStage.put(filePath, blob);
 
     if (uploadContext != null) {
-      uploadContext.stop();
+      blobStats.setUploadDurationMs(uploadContext);
       this.owningClient.uploadThroughput.mark(blob.length);
       this.owningClient.blobSizeHistogram.update(blob.length);
       this.owningClient.blobRowCountHistogram.update(
@@ -540,7 +543,7 @@ class FlushService<T> {
         System.currentTimeMillis() - startTime);
 
     return BlobMetadata.createBlobMetadata(
-        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
+        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, blobStats);
   }
 
   /**
@@ -621,9 +624,6 @@ class FlushService<T> {
         chunkData ->
             chunkData.forEach(
                 channelData -> {
-                  if (channelData.getVectors() instanceof VectorSchemaRoot) {
-                    ((VectorSchemaRoot) channelData.getVectors()).close();
-                  }
                   this.owningClient
                       .getChannelCache()
                       .invalidateChannelIfSequencersMatch(

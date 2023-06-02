@@ -23,7 +23,6 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -43,6 +42,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   /* Unflushed rows as Java objects. Needed for the Parquet w/o memory optimization. */
   private final List<List<Object>> data;
+
   /* BDEC Parquet writer. It is used to buffer unflushed data in Parquet internal buffers instead of using Java objects */
   private BdecParquetWriter bdecParquetWriter;
 
@@ -58,7 +58,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   ParquetRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
@@ -67,7 +66,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     super(
         onErrorOption,
         defaultTimezone,
-        allocator,
         fullyQualifiedChannelName,
         rowSizeMetric,
         channelRuntimeState);
