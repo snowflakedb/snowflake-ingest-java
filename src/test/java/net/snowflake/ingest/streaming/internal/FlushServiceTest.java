@@ -360,6 +360,18 @@ public class FlushServiceTest {
     return colChar;
   }
 
+  private static ColumnMetadata createLargeTestTextColumn(String name) {
+    ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setName(name);
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14000000);
+    colChar.setLength(11000000);
+    colChar.setScale(0);
+    return colChar;
+  }
+
   @Test
   public void testGetFilePath() {
     TestContext<?> testContext = testContextFactory.create();
@@ -497,6 +509,45 @@ public class FlushServiceTest {
 
     channel1.insertRows(rows1, "offset1");
     channel2.insertRows(rows2, "offset2");
+
+    FlushService<?> flushService = testContext.flushService;
+
+    // Force = true flushes
+    flushService.flush(true).get();
+    Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
+  }
+
+  @Test
+  public void testBlobSplitDueToChunkSizeLimit() throws Exception {
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
+    String colName1 = "testBlobSplitDueToDifferentSchema1";
+    String colName2 = "testBlobSplitDueToDifferentSchema2";
+    String largeData = new String(new char[10000000]);
+
+    List<ColumnMetadata> schema =
+        Arrays.asList(createTestIntegerColumn(colName1), createLargeTestTextColumn(colName2));
+    channel1.getRowBuffer().setupSchema(schema);
+    channel2.getRowBuffer().setupSchema(schema);
+
+    List<Map<String, Object>> rows =
+        RowSetBuilder.newBuilder()
+            .addColumn(colName1, 11)
+            .addColumn(colName2, largeData)
+            .newRow()
+            .addColumn(colName1, 22)
+            .addColumn(colName2, largeData)
+            .newRow()
+            .addColumn(colName1, 33)
+            .addColumn(colName2, largeData)
+            .newRow()
+            .addColumn(colName1, 44)
+            .addColumn(colName2, largeData)
+            .build();
+
+    channel1.insertRows(rows, "offset1");
+    channel2.insertRows(rows, "offset2");
 
     FlushService<?> flushService = testContext.flushService;
 

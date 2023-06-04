@@ -370,21 +370,28 @@ class FlushService<T> {
 
         if (!channelsDataPerTable.isEmpty()) {
           int idx = 0;
+          float totalBufferSizePerTableInBytes = 0F;
           while (idx < channelsDataPerTable.size()) {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
             // Stop processing the rest of channels when needed
             if (idx > 0
                 && shouldStopProcessing(
-                    totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1))) {
+                    totalBufferSizeInBytes,
+                    totalBufferSizePerTableInBytes,
+                    channelData,
+                    channelsDataPerTable.get(idx - 1))) {
               leftoverChannelsDataPerTable.addAll(
                   channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
               logger.logInfo(
-                  "Creation of another blob is needed because of blob size limit or different"
-                      + " encryption ids or different schema, client={}, table={},  size={},"
-                      + " encryptionId1={}, encryptionId2={}, schema1={}, schema2={}",
+                  "Creation of another blob is needed because of blob/chunk size limit or"
+                      + " different encryption ids or different schema, client={}, table={},"
+                      + " fileSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
+                      + " encryptionId2={}, schema1={}, schema2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
-                  totalBufferSizeInBytes + channelData.getBufferSize(),
+                  totalBufferSizeInBytes,
+                  totalBufferSizePerTableInBytes,
+                  channelData.getBufferSize(),
                   channelData.getChannelContext().getEncryptionKeyId(),
                   channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId(),
                   channelData.getColumnEps().keySet(),
@@ -392,6 +399,7 @@ class FlushService<T> {
               break;
             }
             totalBufferSizeInBytes += channelData.getBufferSize();
+            totalBufferSizePerTableInBytes += channelData.getBufferSize();
             idx++;
           }
           // Add processed channels to the current blob, stop if we need to create a new blob
@@ -473,15 +481,22 @@ class FlushService<T> {
    * Check whether we should stop merging more channels into the same chunk, we need to stop in a
    * few cases:
    *
-   * <p>When the size is larger than a certain threshold
+   * <p>When the file size is larger than a certain threshold
+   *
+   * <p>When the chunk size is larger than a certain threshold
    *
    * <p>When the encryption key ids are not the same
    *
    * <p>When the schemas are not the same
    */
   private boolean shouldStopProcessing(
-      float totalBufferSizeInBytes, ChannelData<T> current, ChannelData<T> prev) {
+      float totalBufferSizeInBytes,
+      float totalBufferSizePerTableInBytes,
+      ChannelData<T> current,
+      ChannelData<T> prev) {
     return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
+        || totalBufferSizePerTableInBytes + current.getBufferSize()
+            > this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()
         || !Objects.equals(
             current.getChannelContext().getEncryptionKeyId(),
             prev.getChannelContext().getEncryptionKeyId())
