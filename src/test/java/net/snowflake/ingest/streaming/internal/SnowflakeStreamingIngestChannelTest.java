@@ -547,6 +547,14 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
     Assert.assertTrue(insertEndTimeInMs >= data.getMinMaxInsertTimeInMs().getSecond());
+
+    // Insert invalid row, verify it is returned back in the InsertError response
+    row.clear();
+    row.put("c1", "foo");
+    row.put("c2", "bar");
+    response = channel.insertRow(row, "token1");
+    Assert.assertEquals(1, response.getErrorRowCount());
+    Assert.assertEquals(row, response.getInsertErrors().get(0).getRowContent());
   }
 
   @Test
