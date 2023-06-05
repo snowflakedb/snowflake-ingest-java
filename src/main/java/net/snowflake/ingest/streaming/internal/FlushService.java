@@ -616,7 +616,8 @@ class FlushService<T> {
     int minute = calendar.get(Calendar.MINUTE);
     long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
     long threadId = Thread.currentThread().getId();
-    String fileName =
+    // Create the file short name, the clientPrefix contains the deployment id
+    String fileShortName =
         Long.toString(time, 36)
             + "_"
             + clientPrefix
@@ -626,7 +627,7 @@ class FlushService<T> {
             + this.counter.getAndIncrement()
             + "."
             + BLOB_EXTENSION_TYPE;
-    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileName;
+    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileShortName;
   }
 
   /**
