@@ -496,7 +496,7 @@ class FlushService<T> {
       ChannelData<T> prev) {
     return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
         || totalBufferSizePerTableInBytes + current.getBufferSize()
-            > this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()
+            > this.owningClient.getParameterProvider().getMaxChunkSizeInBytesToAvoidOom()
         || !Objects.equals(
             current.getChannelContext().getEncryptionKeyId(),
             prev.getChannelContext().getEncryptionKeyId())

@@ -7,6 +7,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_TO_AVOID_OOM_DEFAULT;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
@@ -522,29 +523,24 @@ public class FlushServiceTest {
     TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
-    String colName1 = "testBlobSplitDueToDifferentSchema1";
-    String colName2 = "testBlobSplitDueToDifferentSchema2";
-    String largeData = new String(new char[10000000]);
+    String colName1 = "testBlobSplitDueToChunkSizeLimit1";
+    String colName2 = "testBlobSplitDueToChunkSizeLimit2";
+    int rowSize = 10000000;
+    String largeData = new String(new char[rowSize]);
 
     List<ColumnMetadata> schema =
         Arrays.asList(createTestIntegerColumn(colName1), createLargeTestTextColumn(colName2));
     channel1.getRowBuffer().setupSchema(schema);
     channel2.getRowBuffer().setupSchema(schema);
 
-    List<Map<String, Object>> rows =
-        RowSetBuilder.newBuilder()
-            .addColumn(colName1, 11)
-            .addColumn(colName2, largeData)
-            .newRow()
-            .addColumn(colName1, 22)
-            .addColumn(colName2, largeData)
-            .newRow()
-            .addColumn(colName1, 33)
-            .addColumn(colName2, largeData)
-            .newRow()
-            .addColumn(colName1, 44)
-            .addColumn(colName2, largeData)
-            .build();
+    RowSetBuilder builder = RowSetBuilder.newBuilder();
+    RowSetBuilder.newBuilder().addColumn(colName1, 11).addColumn(colName2, largeData);
+
+    for (int idx = 0; idx <= MAX_CHUNK_SIZE_IN_BYTES_TO_AVOID_OOM_DEFAULT / (2 * rowSize); idx++) {
+      builder.addColumn(colName1, 11).addColumn(colName2, largeData).newRow();
+    }
+
+    List<Map<String, Object>> rows = builder.build();
 
     channel1.insertRows(rows, "offset1");
     channel2.insertRows(rows, "offset2");
