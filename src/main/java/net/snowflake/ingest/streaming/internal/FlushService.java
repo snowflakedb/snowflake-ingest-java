@@ -259,7 +259,7 @@ class FlushService<T> {
 
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
-            && !this.isTestMode
+            && !isTestMode()
             && (this.isNeedFlush
                 || timeDiffMillis
                     >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
@@ -672,5 +672,10 @@ class FlushService<T> {
           this.buildUploadWorkers.toString());
     }
     return throttleOnQueuedTasks;
+  }
+
+  /** Get whether we're running under test mode */
+  boolean isTestMode() {
+    return this.isTestMode;
   }
 }

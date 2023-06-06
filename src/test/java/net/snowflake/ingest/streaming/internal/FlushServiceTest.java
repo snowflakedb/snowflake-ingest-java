@@ -93,7 +93,7 @@ public class FlushServiceTest {
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
-      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, false));
+      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, true));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -411,6 +411,7 @@ public class FlushServiceTest {
   public void testFlush() throws Exception {
     TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
+    Mockito.when(flushService.isTestMode()).thenReturn(false);
 
     // Nothing to flush
     flushService.flush(false).get();
@@ -549,7 +550,7 @@ public class FlushServiceTest {
 
     // Force = true flushes
     flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
+    Mockito.verify(flushService, Mockito.times(2)).buildAndUpload(Mockito.any(), Mockito.any());
   }
 
   @Test
