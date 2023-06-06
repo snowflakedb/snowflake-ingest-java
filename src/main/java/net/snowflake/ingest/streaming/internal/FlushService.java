@@ -12,6 +12,7 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -46,8 +47,6 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -57,8 +56,7 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  * <li>upload the blob to stage
  * <li>register the blob to the targeted Snowflake table
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 class FlushService<T> {
 
@@ -624,7 +622,8 @@ class FlushService<T> {
     int minute = calendar.get(Calendar.MINUTE);
     long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
     long threadId = Thread.currentThread().getId();
-    String fileName =
+    // Create the file short name, the clientPrefix contains the deployment id
+    String fileShortName =
         Long.toString(time, 36)
             + "_"
             + clientPrefix
@@ -634,7 +633,7 @@ class FlushService<T> {
             + this.counter.getAndIncrement()
             + "."
             + BLOB_EXTENSION_TYPE;
-    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileName;
+    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileShortName;
   }
 
   /**
@@ -647,9 +646,6 @@ class FlushService<T> {
         chunkData ->
             chunkData.forEach(
                 channelData -> {
-                  if (channelData.getVectors() instanceof VectorSchemaRoot) {
-                    ((VectorSchemaRoot) channelData.getVectors()).close();
-                  }
                   this.owningClient
                       .getChannelCache()
                       .invalidateChannelIfSequencersMatch(

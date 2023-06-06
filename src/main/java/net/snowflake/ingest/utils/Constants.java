@@ -61,10 +61,10 @@ public class Constants {
     REST_API,
   }
 
-  /** The write mode to generate Arrow BDEC file. */
+  /** The write mode to generate BDEC file. */
   public enum BdecVersion {
-    /** Uses Arrow to generate BDEC chunks. */
-    ONE(1),
+    // Unused (previously Arrow)
+    // ONE(1),
 
     // Unused (previously Arrow with per column compression.
     // TWO(2),

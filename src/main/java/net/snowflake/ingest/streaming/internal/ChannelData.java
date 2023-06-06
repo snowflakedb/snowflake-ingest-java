@@ -15,8 +15,7 @@ import net.snowflake.ingest.utils.SFException;
  * Contains the data and metadata returned for each channel flush, which will be used to build the
  * blob and register blob request
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or Parquet
- *     {@link ParquetChunkData}
+ * @param <T> type of column data (Parquet {@link ParquetChunkData}
  */
 class ChannelData<T> {
   private Long rowSequencer;
