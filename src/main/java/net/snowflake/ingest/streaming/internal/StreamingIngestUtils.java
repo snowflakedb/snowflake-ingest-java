@@ -103,6 +103,12 @@ public class StreamingIngestUtils {
                 httpResponse, targetClass, apiName);
       }
 
+      // TODO: find response code
+      if (reponse auth error && requestBuilder.authType.equals("OAUTH_TOKEN")) {
+        // Retries for MAX_OAUTH_TOKEN_API_RETRY time until access token is fetched
+        // Update oauth token in requestBuilder.securityManager
+      }
+
       if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
         LOGGER.logDebug(
             "Retrying request for streaming ingest, endpoint={}, retryCount={}, responseCode={}",

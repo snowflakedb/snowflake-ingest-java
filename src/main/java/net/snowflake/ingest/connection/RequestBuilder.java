@@ -61,6 +61,8 @@ public class RequestBuilder {
   // Reference to the telemetry service
   private final TelemetryService telemetryService;
 
+  public String authType; // either KEY_PAIR_TOKEN or OAUTH_TOKEN
+
   /* Member variables End */
 
   /* Static constants Begin */
@@ -89,6 +91,8 @@ public class RequestBuilder {
 
   // the endpoint for get snowpipe client status
   private static final String CLIENT_STATUS_ENDPOINT_FORMAT = "/v1/data/pipes/%s/client/status";
+
+  private static final String OAUTH_TOKEN_ENDPOINT = "/oauth/token-request";
 
   // optional number of max seconds of items to fetch(eg. in the last hour)
   private static final String RECENT_HISTORY_IN_SECONDS = "recentSeconds";
@@ -129,6 +133,8 @@ public class RequestBuilder {
       "X-Snowflake-Authorization-Token-Type";
 
   public static final String JWT_TOKEN_TYPE = "KEYPAIR_JWT";
+
+  public static final String OAUTH_TOKEN_TYPE = "OAUTH_TOKEN";
 
   public static final String HTTP_HEADER_CONTENT_TYPE_JSON = "application/json";
 
@@ -619,16 +625,27 @@ public class RequestBuilder {
    * @param request the URI request
    * @param token the token to add
    */
-  private static void addToken(HttpUriRequest request, String token) {
+  private static void addKeyPairToken(HttpUriRequest request, String token) {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
     request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, JWT_TOKEN_TYPE);
   }
 
-  private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
+  private static void addOAuthToken(HttpUriRequest request, String token) {
+    request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
+    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, OAUTH_TOKEN_TYPE);
+  }
+
+  private void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
     addUserAgent(request, userAgentSuffix);
 
     // Add the auth token
-    addToken(request, token);
+    // TODO: should use constant
+    if (authType.equals("KEY_PAIR_TOKEN")) {
+      addKeyPairToken(request, token);
+    }
+    if (authType.equals("OAUTH_TOKEN")) {
+      addOAuthToken(request, token);
+    }
 
     // Add Accept header
     request.setHeader(HttpHeaders.ACCEPT, HTTP_HEADER_CONTENT_TYPE_JSON);
@@ -820,6 +837,11 @@ public class RequestBuilder {
     HttpGet get = new HttpGet(getClientStatusURI);
     addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
     return get;
+  }
+
+  public HttpPost generateOAuthTokenRefreshRequest(){
+    // TODO: Generate a request to get new access token using refresh toke
+    return new HttpPost();
   }
 
   /**

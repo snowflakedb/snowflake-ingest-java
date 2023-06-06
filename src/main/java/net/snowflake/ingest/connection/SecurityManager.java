@@ -30,6 +30,11 @@ import org.slf4j.LoggerFactory;
  * @author obabarinsa
  * @since 1.8
  */
+
+/**
+ * TODO:   1) Add a switch field to determine two kinds of authentication method
+ * TODO or 2) Make security manager abstract and derive two types of subclass to support jwt and oauth respectively
+ */
 final class SecurityManager implements AutoCloseable {
   // the logger for SecurityManager
   private static final Logger LOGGER = LoggerFactory.getLogger(SecurityManager.class);
