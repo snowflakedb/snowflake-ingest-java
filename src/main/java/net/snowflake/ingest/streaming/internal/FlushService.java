@@ -4,15 +4,20 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
-import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
-import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
-import static net.snowflake.ingest.utils.Utils.getStackTrace;
-
 import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -36,17 +41,13 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
+import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
+import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SEC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -418,9 +419,10 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(filePath, blobData);
-                        blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
-                        return blobMetadata;
+                        BlobBuilder.Blob builtBlob = this.buildBlob(filePath, blobData);
+                        BlobMetadata uploadedBlobMetadata = this.uploadBlob(builtBlob);
+                        uploadedBlobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
+                        return uploadedBlobMetadata;
                       } catch (Throwable e) {
                         Throwable ex = e.getCause() == null ? e : e.getCause();
                         String errorMessage =
@@ -489,61 +491,64 @@ class FlushService<T> {
   }
 
   /**
-   * Builds and uploads file to cloud storage.
+   * Builds the blob
    *
    * @param filePath Path of the destination file in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
-   * @return BlobMetadata for FlushService.upload
+   * @return The built blob
    */
-  BlobMetadata buildAndUpload(String filePath, List<List<ChannelData<T>>> blobData)
+  BlobBuilder.Blob buildBlob(String filePath, List<List<ChannelData<T>>> blobData)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
+    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndChunkMetadata(filePath, blobData, bdecVersion);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
-    return upload(filePath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
+    return blob;
   }
 
   /**
    * Upload a blob to Streaming Ingest dedicated stage
    *
-   * @param filePath full path of the blob file
-   * @param blob blob data
-   * @param metadata a list of chunk metadata
-   * @param blobStats an object to track latencies and other stats of the blob
+   * @param blob the built blob to upload
    * @return BlobMetadata object used to create the register blob request
    */
-  BlobMetadata upload(
-      String filePath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
+  BlobMetadata uploadBlob(BlobBuilder.Blob blob)
+      //String filePath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
       throws NoSuchAlgorithmException {
-    logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
+    String blobFilePath = blob.filePath;
+    byte[] blobByteData = blob.blobBytes;
+    int blobLength = blob.blobBytes.length;
+    List<ChunkMetadata> blobChunkMetadataList = blob.chunksMetadataList;
+    BlobStats blobStats = blob.blobStats;
+
+    logger.logInfo("Start uploading file={}, size={}", blobFilePath, blobLength);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-    this.targetStage.put(filePath, blob);
+    this.targetStage.put(blobFilePath, blobByteData);
 
     if (uploadContext != null) {
       blobStats.setUploadDurationMs(uploadContext);
-      this.owningClient.uploadThroughput.mark(blob.length);
-      this.owningClient.blobSizeHistogram.update(blob.length);
+      this.owningClient.uploadThroughput.mark(blobLength);
+      this.owningClient.blobSizeHistogram.update(blobLength);
       this.owningClient.blobRowCountHistogram.update(
-          metadata.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
+          blobChunkMetadataList.stream().mapToLong(i -> i.getEpInfo().getRowCount()).sum());
     }
 
     logger.logInfo(
         "Finish uploading file={}, size={}, timeInMillis={}",
-        filePath,
-        blob.length,
+        blobFilePath,
+        blobLength,
         System.currentTimeMillis() - startTime);
 
     return BlobMetadata.createBlobMetadata(
-        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, blobStats);
+        blobFilePath, BlobBuilder.computeMD5(blobByteData), bdecVersion, blobChunkMetadataList, blobStats);
   }
 
   /**

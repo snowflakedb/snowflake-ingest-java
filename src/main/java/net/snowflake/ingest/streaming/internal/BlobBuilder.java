@@ -4,17 +4,17 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
-import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
-import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.Utils.toByteArray;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.Cryptor;
+import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
+import org.apache.commons.codec.binary.Hex;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -24,14 +24,15 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.Cryptor;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
-import org.apache.commons.codec.binary.Hex;
+
+import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
+import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Utils.toByteArray;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -63,7 +64,7 @@ class BlobBuilder {
    * @param bdecVersion version of blob
    * @return {@link Blob} data
    */
-  static <T> Blob constructBlobAndMetadata(
+  static <T> Blob constructBlobAndChunkMetadata(
       String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
@@ -148,7 +149,7 @@ class BlobBuilder {
     // Build blob file bytes
     byte[] blobBytes =
         buildBlob(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
-    return new Blob(blobBytes, chunksMetadataList, new BlobStats());
+    return new Blob(filePath, blobBytes, chunksMetadataList, new BlobStats());
   }
 
   /**
@@ -254,11 +255,13 @@ class BlobBuilder {
 
   /** Blob data to store in a file and register by server side. */
   static class Blob {
+    final String filePath;
     final byte[] blobBytes;
     final List<ChunkMetadata> chunksMetadataList;
     final BlobStats blobStats;
 
-    Blob(byte[] blobBytes, List<ChunkMetadata> chunksMetadataList, BlobStats blobStats) {
+    Blob(String filePath, byte[] blobBytes, List<ChunkMetadata> chunksMetadataList, BlobStats blobStats) {
+      this.filePath = filePath;
       this.blobBytes = blobBytes;
       this.chunksMetadataList = chunksMetadataList;
       this.blobStats = blobStats;
