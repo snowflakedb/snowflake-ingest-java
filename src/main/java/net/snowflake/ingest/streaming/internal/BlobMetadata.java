@@ -13,11 +13,29 @@ import net.snowflake.ingest.utils.ParameterProvider;
 
 /** Metadata for a blob that sends to Snowflake as part of the register blob request */
 class BlobMetadata {
+  enum BlobCreationReason {
+    NONE("NONE"),
+    BUFFER_BYTE_SIZE("max buffer threshold hit"),
+    ENCRYPTION_KEY_ID_CHANGE("encryption key id changed"),
+    SCHEMA_CHANGE("schema changed"),
+    ;
+
+    private final String description;
+
+    BlobCreationReason(final String description) {
+      this.description = description;
+    }
+
+    // TODO @rcheng: might need to define the toString
+  }
+
+  // data about the blob
   private final String path;
   private final String md5;
   private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
   private final BlobStats blobStats;
+  private BlobCreationReason blobCreationReason;
 
   // used for testing only
   @VisibleForTesting
@@ -36,6 +54,7 @@ class BlobMetadata {
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
     this.blobStats = blobStats;
+    this.blobCreationReason = BlobCreationReason.NONE;
   }
 
   @JsonIgnore
@@ -66,6 +85,16 @@ class BlobMetadata {
   @JsonProperty("blob_stats")
   BlobStats getBlobStats() {
     return this.blobStats;
+  }
+
+  @JsonProperty("blob_creation_reason")
+  BlobCreationReason getBlobCreationReason() {
+    return this.blobCreationReason;
+  }
+
+  @JsonProperty("blob_creation_reason")
+  void setBlobCreationReason(BlobCreationReason blobCreationReason) {
+    this.blobCreationReason = blobCreationReason;
   }
 
   /** Create {@link BlobMetadata}. */

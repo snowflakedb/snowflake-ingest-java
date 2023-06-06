@@ -106,7 +106,6 @@ public class StreamingIngestIT {
 
   @Test
   public void testSimpleIngest() throws Exception {
-    // TODO @rcheng - dont want to change factory, so inject
     SnowflakeURL url = new SnowflakeURL(TestUtils.getAccountURL());
     RequestBuilder requestBuilder =
         Mockito.spy(

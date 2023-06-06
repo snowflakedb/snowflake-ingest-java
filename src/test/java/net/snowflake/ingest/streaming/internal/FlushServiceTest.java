@@ -451,8 +451,8 @@ public class FlushServiceTest {
 
     FlushService<?> flushService = testContext.flushService;
 
-    // Force = true flushes
     flushService.flush(true).get();
+    // Force = true flushes
     Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
   }
 

@@ -343,6 +343,7 @@ class FlushService<T> {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
       final String filePath = getFilePath(this.targetStage.getClientPrefix());
+      BlobMetadata.BlobCreationReason blobCreationReason = BlobMetadata.BlobCreationReason.NONE;
 
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
@@ -372,10 +373,15 @@ class FlushService<T> {
           int idx = 0;
           while (idx < channelsDataPerTable.size()) {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
+
             // Stop processing the rest of channels when needed
-            if (idx > 0
-                && shouldStopProcessing(
-                    totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1))) {
+            blobCreationReason =
+                idx > 0
+                    ? shouldStopProcessing(
+                        totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1))
+                    : BlobMetadata.BlobCreationReason.NONE;
+
+            if (!blobCreationReason.equals(BlobMetadata.BlobCreationReason.NONE)) {
               leftoverChannelsDataPerTable.addAll(
                   channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
               logger.logInfo(
@@ -412,6 +418,9 @@ class FlushService<T> {
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
         }
+
+        BlobMetadata.BlobCreationReason currBlobCreationReason = blobCreationReason;
+
         blobs.add(
             new Pair<>(
                 new BlobData<>(filePath, blobData),
@@ -420,6 +429,7 @@ class FlushService<T> {
                       try {
                         BlobMetadata blobMetadata = buildAndUpload(filePath, blobData);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
+                        blobMetadata.setBlobCreationReason(currBlobCreationReason);
                         return blobMetadata;
                       } catch (Throwable e) {
                         Throwable ex = e.getCause() == null ? e : e.getCause();
@@ -470,8 +480,9 @@ class FlushService<T> {
   }
 
   /**
-   * Check whether we should stop merging more channels into the same chunk, we need to stop in a
-   * few cases:
+   * Check whether we should stop merging more channels into the same chunk. Returns the
+   * corresponding {@link net.snowflake.ingest.streaming.internal.BlobMetadata.BlobCreationReason}
+   * in the following cases:
    *
    * <p>When the size is larger than a certain threshold
    *
@@ -479,13 +490,23 @@ class FlushService<T> {
    *
    * <p>When the schemas are not the same
    */
-  private boolean shouldStopProcessing(
+  private BlobMetadata.BlobCreationReason shouldStopProcessing(
       float totalBufferSizeInBytes, ChannelData<T> current, ChannelData<T> prev) {
-    return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
-        || !Objects.equals(
-            current.getChannelContext().getEncryptionKeyId(),
-            prev.getChannelContext().getEncryptionKeyId())
-        || !current.getColumnEps().keySet().equals(prev.getColumnEps().keySet());
+    if (totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES) {
+      return BlobMetadata.BlobCreationReason.BUFFER_BYTE_SIZE;
+    }
+
+    if (!Objects.equals(
+        current.getChannelContext().getEncryptionKeyId(),
+        prev.getChannelContext().getEncryptionKeyId())) {
+      return BlobMetadata.BlobCreationReason.ENCRYPTION_KEY_ID_CHANGE;
+    }
+
+    if (!current.getColumnEps().keySet().equals(prev.getColumnEps().keySet())) {
+      return BlobMetadata.BlobCreationReason.SCHEMA_CHANGE;
+    }
+
+    return BlobMetadata.BlobCreationReason.NONE;
   }
 
   /**
