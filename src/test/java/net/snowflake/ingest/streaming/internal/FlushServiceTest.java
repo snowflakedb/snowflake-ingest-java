@@ -7,7 +7,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_TO_AVOID_OOM_DEFAULT;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
@@ -537,7 +537,7 @@ public class FlushServiceTest {
     RowSetBuilder builder = RowSetBuilder.newBuilder();
     RowSetBuilder.newBuilder().addColumn(colName1, 11).addColumn(colName2, largeData);
 
-    for (int idx = 0; idx <= MAX_CHUNK_SIZE_IN_BYTES_TO_AVOID_OOM_DEFAULT / (2 * rowSize); idx++) {
+    for (int idx = 0; idx <= MAX_CHUNK_SIZE_IN_BYTES_DEFAULT / (2 * rowSize); idx++) {
       builder.addColumn(colName1, 11).addColumn(colName2, largeData).newRow();
     }
 
