@@ -532,6 +532,10 @@
           <version>${jacoco.version}</version>
           <configuration>
             <skip>${jacoco.skip.instrument}</skip>
+            <excludes>
+              <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
+              <exclude>**/*SnowflakeIngestBasicExample*</exclude>
+            </excludes>
           </configuration>
           <executions>
             <execution>
