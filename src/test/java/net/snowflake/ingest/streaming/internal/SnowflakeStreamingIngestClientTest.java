@@ -59,7 +59,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.RootAllocator;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -68,6 +67,8 @@ import org.mockito.Mockito;
 
 public class SnowflakeStreamingIngestClientTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  private static final Constants.BdecVersion BDEC_VERSION = Constants.BdecVersion.THREE;
 
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel1;
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2;
@@ -92,8 +93,7 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            Constants.BdecVersion.ONE,
-            new RootAllocator());
+            BDEC_VERSION);
     channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel2",
@@ -108,8 +108,7 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            Constants.BdecVersion.ONE,
-            new RootAllocator());
+            BDEC_VERSION);
     channel3 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel3",
@@ -124,8 +123,7 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            Constants.BdecVersion.ONE,
-            new RootAllocator());
+            BDEC_VERSION);
     channel4 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel4",
@@ -140,8 +138,7 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            Constants.BdecVersion.ONE,
-            new RootAllocator());
+            BDEC_VERSION);
   }
 
   @Test
@@ -358,8 +355,7 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            Constants.BdecVersion.ONE,
-            new RootAllocator());
+            BDEC_VERSION);
 
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
@@ -418,8 +414,7 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            Constants.BdecVersion.ONE,
-            new RootAllocator());
+            BDEC_VERSION);
 
     try {
       client.getChannelsStatus(Collections.singletonList(channel));
@@ -460,8 +455,7 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            Constants.BdecVersion.ONE,
-            new RootAllocator());
+            BDEC_VERSION);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
@@ -489,7 +483,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobMetadata> blobs =
         Collections.singletonList(
-            new BlobMetadata("path", "md5", Collections.singletonList(chunkMetadata)));
+            new BlobMetadata("path", "md5", Collections.singletonList(chunkMetadata), null));
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("request_id", null);
@@ -589,8 +583,8 @@ public class SnowflakeStreamingIngestClientTest {
     chunks1.add(chunkMetadata1);
     chunks1.add(chunkMetadata2);
     chunks2.add(chunkMetadata3);
-    blobs.add(new BlobMetadata("path1", "md51", chunks1));
-    blobs.add(new BlobMetadata("path2", "md52", chunks2));
+    blobs.add(new BlobMetadata("path1", "md51", chunks1, null));
+    blobs.add(new BlobMetadata("path2", "md52", chunks2, null));
 
     List<ChannelRegisterStatus> channelRegisterStatuses = new ArrayList<>();
     ChannelRegisterStatus status1 = new ChannelRegisterStatus();
@@ -675,7 +669,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     try {
       List<BlobMetadata> blobs =
-          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on 404 error");
     } catch (SFException e) {
@@ -722,7 +716,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     try {
       List<BlobMetadata> blobs =
-          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+          Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
       client.registerBlobs(blobs);
       Assert.fail("Register blob should fail on SF internal error");
     } catch (SFException e) {
@@ -777,7 +771,7 @@ public class SnowflakeStreamingIngestClientTest {
             null);
 
     List<BlobMetadata> blobs =
-        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
     client.registerBlobs(blobs);
   }
 
@@ -1084,7 +1078,7 @@ public class SnowflakeStreamingIngestClientTest {
     Assert.assertTrue(channel2.isValid());
 
     List<BlobMetadata> blobs =
-        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>()));
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
     client.registerBlobs(blobs);
 
     // Channel2 should be invalidated now
@@ -1218,5 +1212,27 @@ public class SnowflakeStreamingIngestClientTest {
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
     client.close();
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testFlushServiceException() throws Exception {
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+
+    // Set IO_TIME_CPU_RATIO to MAX_VALUE in order to generate an exception
+    Map<String, Object> parameterMap = new HashMap<>();
+    parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, Integer.MAX_VALUE);
+
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            parameterMap);
   }
 }

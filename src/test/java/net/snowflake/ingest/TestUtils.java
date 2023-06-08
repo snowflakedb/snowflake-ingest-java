@@ -30,8 +30,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -146,14 +144,6 @@ public class TestUtils {
             ? System.getProperty("testProfilePath")
             : PROFILE_PATH;
     return testProfilePath;
-  }
-
-  /** @return list of Bdec versions for which to execute IT tests. */
-  public static Collection<Object[]> getBdecVersionItCases() {
-    return Arrays.asList(
-        new Object[][] {
-          {"Arrow", Constants.BdecVersion.ONE}, {"Parquet", Constants.BdecVersion.THREE}
-        });
   }
 
   public static String getUser() throws Exception {

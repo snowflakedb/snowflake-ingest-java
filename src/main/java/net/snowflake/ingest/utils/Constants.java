@@ -34,7 +34,6 @@ public class Constants {
   public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC = 5;
   public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 60;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 256000000L;
-  public static final long MAX_CHUNK_SIZE_IN_BYTES = 16000000L;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
   public static final int BLOB_VERSION_SIZE_IN_BYTES = 1;
   public static final int BLOB_FILE_SIZE_SIZE_IN_BYTES = 8;
@@ -62,10 +61,10 @@ public class Constants {
     REST_API,
   }
 
-  /** The write mode to generate Arrow BDEC file. */
+  /** The write mode to generate BDEC file. */
   public enum BdecVersion {
-    /** Uses Arrow to generate BDEC chunks. */
-    ONE(1),
+    // Unused (previously Arrow)
+    // ONE(1),
 
     // Unused (previously Arrow with per column compression.
     // TWO(2),

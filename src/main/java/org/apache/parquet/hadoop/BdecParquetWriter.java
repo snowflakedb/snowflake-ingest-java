@@ -4,8 +4,6 @@
 
 package org.apache.parquet.hadoop;
 
-import static net.snowflake.ingest.utils.Constants.MAX_CHUNK_SIZE_IN_BYTES;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -52,9 +50,10 @@ public class BdecParquetWriter implements AutoCloseable {
       ByteArrayOutputStream stream,
       MessageType schema,
       Map<String, String> extraMetaData,
-      String channelName)
+      String channelName,
+      long maxChunkSizeInBytes)
       throws IOException {
-    OutputFile file = new ByteArrayOutputFile(stream);
+    OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
@@ -149,7 +148,6 @@ public class BdecParquetWriter implements AutoCloseable {
         // server side does not support it TODO: SNOW-657238
         .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
         .withValuesWriterFactory(new DefaultV1ValuesWriterFactory())
-
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)
@@ -166,9 +164,11 @@ public class BdecParquetWriter implements AutoCloseable {
    */
   private static class ByteArrayOutputFile implements OutputFile {
     private final ByteArrayOutputStream stream;
+    private final long maxChunkSizeInBytes;
 
-    private ByteArrayOutputFile(ByteArrayOutputStream stream) {
+    private ByteArrayOutputFile(ByteArrayOutputStream stream, long maxChunkSizeInBytes) {
       this.stream = stream;
+      this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     }
 
     @Override
@@ -189,7 +189,7 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public long defaultBlockSize() {
-      return (int) MAX_CHUNK_SIZE_IN_BYTES;
+      return maxChunkSizeInBytes;
     }
   }
 

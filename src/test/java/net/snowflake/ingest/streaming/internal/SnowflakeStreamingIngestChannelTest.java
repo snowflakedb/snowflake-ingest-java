@@ -38,7 +38,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -498,14 +497,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testInsertRow() {
     SnowflakeStreamingIngestClientInternal<?> client;
-    boolean isArrowDefault =
-        ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT == Constants.BdecVersion.ONE;
-    if (isArrowDefault) {
-      client = new SnowflakeStreamingIngestClientInternal<VectorSchemaRoot>("client_ARROW");
-    } else {
-      client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
-    }
-
+    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -550,11 +542,7 @@ public class SnowflakeStreamingIngestChannelTest {
     data = channel.getData("my_snowpipe_streaming.bdec");
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
-    Assert.assertEquals(
-        1,
-        isArrowDefault
-            ? ((ChannelData<VectorSchemaRoot>) data).getVectors().getFieldVectors().size()
-            : ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
+    Assert.assertEquals(1, ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
     Assert.assertEquals("2", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());

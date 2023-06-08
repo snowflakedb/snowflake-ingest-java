@@ -10,15 +10,12 @@ import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyPair;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
@@ -28,7 +25,6 @@ import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.ingest.SimpleIngestManager;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -118,16 +114,12 @@ public class RequestBuilder {
   // and object mapper for all marshalling and unmarshalling
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  private static final String RESOURCES_FILE = "project.properties";
-
-  private static final Properties PROPERTIES = loadProperties();
-
   private static final String USER_AGENT = getDefaultUserAgent();
 
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "1.1.3";
+  public static final String DEFAULT_VERSION = "1.1.5";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -298,25 +290,6 @@ public class RequestBuilder {
         this.userAgentSuffix);
   }
 
-  private static Properties loadProperties() {
-    Properties properties = new Properties();
-    properties.put("version", DEFAULT_VERSION);
-
-    try (InputStream is =
-        SimpleIngestManager.class.getClassLoader().getResourceAsStream(RESOURCES_FILE)) {
-      if (is == null) {
-        throw new FileNotFoundException(RESOURCES_FILE);
-      }
-      properties.load(is);
-    } catch (Exception e) {
-      LOGGER.warn("Could not read version info, use default version " + DEFAULT_VERSION, e);
-      return properties;
-    }
-
-    LOGGER.info("Loaded project version " + properties.getProperty("version"));
-    return properties;
-  }
-
   /**
    * Creates a string for user agent which should always be present in all requests to Snowflake
    * (Snowpipe APIs)
@@ -328,8 +301,7 @@ public class RequestBuilder {
    * @return the default agent string
    */
   private static String getDefaultUserAgent() {
-    final String clientVersion = PROPERTIES.getProperty("version");
-    StringBuilder defaultUserAgent = new StringBuilder(CLIENT_NAME + "/" + clientVersion);
+    StringBuilder defaultUserAgent = new StringBuilder(CLIENT_NAME + "/" + DEFAULT_VERSION);
 
     final String osInformation =
         String.format(

@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,17 +24,13 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.util.VisibleForTesting;
 
 /**
  * The abstract implementation of the buffer in the Streaming Ingest channel that holds the
  * un-flushed rows, these rows will be converted to the underlying format implementation for faster
  * processing
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or Parquet
- *     {@link ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData} for Parquet)
  */
 abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   private static final Logging logger = new Logging(AbstractRowBuffer.class);
@@ -162,9 +159,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Metric callback to report size of inserted rows
   private final Consumer<Float> rowSizeMetric;
 
-  // Allocator used to allocate the buffers
-  final BufferAllocator allocator;
-
   // State of the owning channel
   final ChannelRuntimeState channelState;
 
@@ -176,7 +170,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   AbstractRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState) {
@@ -185,7 +178,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.rowSizeMetric = rowSizeMetric;
     this.channelState = channelRuntimeState;
     this.channelFullyQualifiedName = fullyQualifiedChannelName;
-    this.allocator = allocator;
     this.nonNullableFieldNames = new HashSet<>();
     this.flushLock = new ReentrantLock();
     this.bufferedRowCount = 0;
@@ -505,30 +497,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   /** Close the row buffer and release allocated memory for the channel. */
   @Override
   public synchronized void close(String name) {
-    long allocatedBeforeRelease = this.allocator.getAllocatedMemory();
 
     closeInternal();
-
-    long allocatedAfterRelease = this.allocator.getAllocatedMemory();
-    logger.logInfo(
-        "Trying to close {} for channel={} from function={}, allocatedBeforeRelease={},"
-            + " allocatedAfterRelease={}",
-        this.getClass().getSimpleName(),
-        channelFullyQualifiedName,
-        name,
-        allocatedBeforeRelease,
-        allocatedAfterRelease);
-    Utils.closeAllocator(this.allocator);
-
-    // If the channel is valid but still has leftover data, throw an exception because it should be
-    // cleaned up already before calling close
-    if (allocatedBeforeRelease > 0 && this.channelState.isValid()) {
-      throw new SFException(
-          ErrorCode.INTERNAL_ERROR,
-          String.format(
-              "Memory leaked=%d by allocator=%s, channel=%s",
-              allocatedBeforeRelease, this.allocator, channelFullyQualifiedName));
-    }
   }
 
   /**
@@ -554,34 +524,24 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   static <T> AbstractRowBuffer<T> createRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      BufferAllocator allocator,
       Constants.BdecVersion bdecVersion,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean enableParquetMemoryOptimization) {
+      boolean enableParquetMemoryOptimization,
+      long maxChunkSizeInBytes) {
     switch (bdecVersion) {
-      case ONE:
-        //noinspection unchecked
-        return (AbstractRowBuffer<T>)
-            new ArrowRowBuffer(
-                onErrorOption,
-                defaultTimezone,
-                allocator,
-                fullyQualifiedChannelName,
-                rowSizeMetric,
-                channelRuntimeState);
       case THREE:
         //noinspection unchecked
         return (AbstractRowBuffer<T>)
             new ParquetRowBuffer(
                 onErrorOption,
                 defaultTimezone,
-                allocator,
                 fullyQualifiedChannelName,
                 rowSizeMetric,
                 channelRuntimeState,
-                enableParquetMemoryOptimization);
+                enableParquetMemoryOptimization,
+                maxChunkSizeInBytes);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);

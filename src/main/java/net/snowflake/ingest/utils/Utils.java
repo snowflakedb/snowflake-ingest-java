@@ -33,7 +33,6 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEM
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.commons.codec.binary.Base64;
 
 /** Contains Ingest related utility functions */
@@ -266,14 +265,6 @@ public class Utils {
   /** Utility function to check whether a string is null or empty */
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.isEmpty();
-  }
-
-  /** Release any outstanding memory and then close the buffer allocator */
-  public static void closeAllocator(BufferAllocator alloc) {
-    for (BufferAllocator childAlloc : alloc.getChildAllocators()) {
-      childAlloc.close();
-    }
-    alloc.close();
   }
 
   /** Util function to show memory usage info and debug memory issue in the SDK */

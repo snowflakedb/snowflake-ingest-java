@@ -6,7 +6,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>1.1.3</version>
+  <version>1.1.5</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -35,7 +35,6 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
-    <arrow.version>10.0.0</arrow.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
@@ -49,6 +48,10 @@
     <hadoop.version>3.3.5</hadoop.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.5</jacoco.version>
+    <license.processing.dependencyJarsDir>${project.build.directory}/dependency-jars</license.processing.dependencyJarsDir>
+    <license.processing.dependencyListFile>${project.build.directory}/dependency-list.txt</license.processing.dependencyListFile>
+    <license.processing.resourcesRoot>${project.build.directory}/generated-licenses-info</license.processing.resourcesRoot>
+    <license.processing.targetDir>${license.processing.resourcesRoot}/META-INF/third-party-licenses</license.processing.targetDir>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <net.minidev.version>2.4.9</net.minidev.version>
@@ -57,10 +60,11 @@
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.12.3</parquet.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <protobuf.version>3.19.6</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.8.3</snappy.version>
-    <snowjdbc.version>3.13.29</snowjdbc.version>
+    <snowjdbc.version>3.13.30</snowjdbc.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
 
@@ -77,6 +81,11 @@
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>${guava.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>${protobuf.version}</version>
       </dependency>
       <dependency>
         <groupId>com.nimbusds</groupId>
@@ -148,16 +157,88 @@
             <artifactId>reload4j</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>com.github.pjfanning</groupId>
+            <artifactId>jersey-json</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-server</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-servlet</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>dnsjava</groupId>
+            <artifactId>dnsjava</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>javax.activation</groupId>
             <artifactId>activation</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet.jsp</groupId>
+            <artifactId>jsp-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-client</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-auth</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-core</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-servlet</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-util</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-webapp</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.slf4j</groupId>
@@ -201,11 +282,6 @@
       </dependency>
       <dependency>
         <groupId>org.codehaus.jackson</groupId>
-        <artifactId>jackson-mapper-asl</artifactId>
-        <version>${codehaus.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.codehaus.jackson</groupId>
         <artifactId>jackson-xc</artifactId>
         <version>${codehaus.version}</version>
       </dependency>
@@ -224,7 +300,6 @@
         <artifactId>objenesis</artifactId>
         <version>${objenesis.version}</version>
       </dependency>
-      <!-- SLF4J api that a client can shim in later -->
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
@@ -353,17 +428,6 @@
       <groupId>net.snowflake</groupId>
       <artifactId>snowflake-jdbc</artifactId>
     </dependency>
-    <!-- Apache Arrow -->
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-core</artifactId>
-      <version>${arrow.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-vector</artifactId>
-      <version>${arrow.version}</version>
-    </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
@@ -384,13 +448,6 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.arrow</groupId>
-      <artifactId>arrow-memory-netty</artifactId>
-      <version>${arrow.version}</version>
-      <scope>runtime</scope>
     </dependency>
     <!-- JUnit so that we can make some basic unit tests -->
     <dependency>
@@ -432,6 +489,7 @@
       <version>2.0.2</version>
       <scope>test</scope>
     </dependency>
+    <!-- Change the 'test' scope to 'runtime' to enable console logging in examples -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
@@ -447,6 +505,9 @@
         <filtering>true</filtering>
         <directory>src/main/resources</directory>
       </resource>
+      <resource>
+        <directory>${license.processing.resourcesRoot}</directory>
+      </resource>
     </resources>
 
     <!-- disable default maven deploy plugin since we are using gpg:sign-and-deploy-file -->
@@ -458,6 +519,30 @@
             <skip>true</skip>
           </configuration>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>3.0.0-M3</version>
+          <dependencies>
+            <dependency>
+              <groupId>com.google.cloud.tools</groupId>
+              <artifactId>linkage-checker-enforcer-rules</artifactId>
+              <version>1.5.12</version>
+            </dependency>
+            <dependency>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>extra-enforcer-rules</artifactId>
+              <version>1.3</version>
+              <exclusions>
+                <exclusion>
+                  <groupId>org.eclipse.aether</groupId>
+                  <artifactId>aether-util</artifactId>
+                </exclusion>
+              </exclusions>
+            </dependency>
+          </dependencies>
+        </plugin>
+
         <!-- Need to define the maven-failsafe-plugin here -->
         <!-- http://maven.apache.org/surefire/maven-failsafe-plugin/plugin-info.html -->
         <plugin>
@@ -466,11 +551,20 @@
           <version>3.0.0-M5</version>
         </plugin>
         <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>2.19.1</version>
+        </plugin>
+        <plugin>
           <groupId>org.jacoco</groupId>
           <artifactId>jacoco-maven-plugin</artifactId>
           <version>${jacoco.version}</version>
           <configuration>
             <skip>${jacoco.skip.instrument}</skip>
+            <excludes>
+              <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
+              <exclude>**/*SnowflakeIngestBasicExample*</exclude>
+            </excludes>
           </configuration>
           <executions>
             <execution>
@@ -568,25 +662,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.0.0-M3</version>
-        <dependencies>
-          <dependency>
-            <groupId>com.google.cloud.tools</groupId>
-            <artifactId>linkage-checker-enforcer-rules</artifactId>
-            <version>1.5.12</version>
-          </dependency>
-          <dependency>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>extra-enforcer-rules</artifactId>
-            <version>1.3</version>
-            <exclusions>
-              <exclusion>
-                <groupId>org.eclipse.aether</groupId>
-                <artifactId>aether-util</artifactId>
-              </exclusion>
-            </exclusions>
-          </dependency>
-        </dependencies>
         <executions>
           <execution>
             <id>enforce-best-practices</id>
@@ -616,28 +691,6 @@
                 <requireMavenVersion>
                   <version>3.5</version>
                 </requireMavenVersion>
-              </rules>
-            </configuration>
-          </execution>
-          <execution>
-            <id>enforce-linkage-checker</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <phase>verify</phase>
-            <configuration>
-              <rules>
-                <LinkageCheckerRule implementation="com.google.cloud.tools.dependencies.enforcer.LinkageCheckerRule">
-                  <reportOnlyReachable>true</reportOnlyReachable>
-                  <exclusionFile>${basedir}/linkage-checker-exclusion-rules.xml</exclusionFile>
-                  <level>WARN</level>
-                </LinkageCheckerRule>
-                <bannedDependencies>
-                  <excludes>
-                    <!-- JUnit 4 is not allowed on the classpath to prevent its accidental use -->
-                    <!-- <exclude>junit:junit</exclude> -->
-                  </excludes>
-                </bannedDependencies>
               </rules>
             </configuration>
           </execution>
@@ -683,16 +736,100 @@
           </excludes>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>2.0.1</version>
+        <configuration>
+          <errorRemedy>failFast</errorRemedy>
+          <!--
+          The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+          check your dependencies", verify the conditions of the license and add the reference to it here.
+          -->
+          <includedLicenses>
+            <includedLicense>Apache License 2.0</includedLicense>
+            <includedLicense>BSD 2-Clause License</includedLicense>
+            <includedLicense>3-Clause BSD License</includedLicense>
+            <includedLicense>The MIT License</includedLicense>
+            <includedLicense>EDL 1.0</includedLicense>
+            <includedLicense>The Go license</includedLicense>
+          </includedLicenses>
+          <excludedScopes>test,provided,system</excludedScopes>
+          <failOnBlacklist>true</failOnBlacklist>
+          <licenseMerges>
+            <licenseMerge>Apache License 2.0
+                            |The Apache License, Version 2.0
+                            |The Apache Software License, Version 2.0
+                            |Apache-2.0
+                            |Apache License, Version 2.0
+                            |Apache 2.0
+                            |Apache License V2.0</licenseMerge>
+            <licenseMerge>BSD 2-Clause License
+                            |The BSD License</licenseMerge>
+            <licenseMerge>The MIT License|MIT License</licenseMerge>
+          </licenseMerges>
+        </configuration>
+        <executions>
+          <execution>
+            <id>add-third-party</id>
+            <goals>
+              <goal>add-third-party</goal>
+            </goals>
+            <phase>package</phase>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
   <profiles>
     <profile>
+      <id>checkLinkageErrors</id>
+      <activation>
+        <property>
+          <!-- Only check linkage errors for unshaded builds -->
+          <name>not-shadeDep</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>enforce-linkage-checker</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <phase>verify</phase>
+                <configuration>
+                  <rules>
+                    <LinkageCheckerRule implementation="com.google.cloud.tools.dependencies.enforcer.LinkageCheckerRule">
+                      <reportOnlyReachable>true</reportOnlyReachable>
+                      <exclusionFile>${basedir}/linkage-checker-exclusion-rules.xml</exclusionFile>
+                      <level>WARN</level>
+                    </LinkageCheckerRule>
+                    <bannedDependencies>
+                      <excludes>
+                        <!-- JUnit 4 is not allowed on the classpath to prevent its accidental use -->
+                        <!-- <exclude>junit:junit</exclude> -->
+                      </excludes>
+                    </bannedDependencies>
+                  </rules>
+                </configuration>
+              </execution>
+
+            </executions>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>checkShadedContent</id>
       <activation>
-        <os>
-          <family>!Windows</family>
-        </os>
+        <activeByDefault>false</activeByDefault>
       </activation>
       <build>
         <plugins>
@@ -724,12 +861,64 @@
       </activation>
       <build>
         <plugins>
+          <!--
+          Copy all project dependencies to target/dependency-jars. License processing Python script will look here for
+          license files of SDK dependencies.
+          -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>copy-dependencies</id>
+                <goals>
+                  <goal>copy-dependencies</goal>
+                </goals>
+                <phase>generate-resources</phase>
+                <configuration>
+                  <outputDirectory>${license.processing.dependencyJarsDir}</outputDirectory>
+                  <overWriteReleases>false</overWriteReleases>
+                  <overWriteSnapshots>false</overWriteSnapshots>
+                  <overWriteIfNewer>true</overWriteIfNewer>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!--
+          Compile the list of SDK dependencies in 'compile' and 'runtime' scopes.
+          This list is an entry point for the license processing python script.
+          -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.6.0</version>
+            <configuration>
+              <includeScope>runtime</includeScope>
+              <outputFile>${license.processing.dependencyListFile}</outputFile>
+            </configuration>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>list</goal>
+                </goals>
+                <phase>generate-resources</phase>
+              </execution>
+            </executions>
+          </plugin>
+
           <!-- Relocate all dependencies to internal to solve dependency conflict problem -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
             <version>3.4.1</version>
             <configuration>
+              <artifactSet>
+                <excludes>
+                  <exclude>net.snowflake:snowflake-jdbc</exclude>
+                  <exclude>org.slf4j:slf4j-api</exclude>
+                </excludes>
+              </artifactSet>
               <relocations>
                 <relocation>
                   <pattern>com.nimbusds</pattern>
@@ -755,11 +944,85 @@
                   <pattern>org.apache</pattern>
                   <shadedPattern>${shadeBase}.apache</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>org.xbill</pattern>
+                  <shadedPattern>${shadeBase}.org.xbill</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.xerial</pattern>
+                  <shadedPattern>${shadeBase}.org.xerial</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.netty</pattern>
+                  <shadedPattern>${shadeBase}.io.netty</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google</pattern>
+                  <shadedPattern>${shadeBase}.com.google</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.github.benmanes</pattern>
+                  <shadedPattern>${shadeBase}.com.github.benmanes</shadedPattern>
+                </relocation>
+                <!-- shaded.parquet contains dependencies shaded in parquet itself. Here we are shading it for the second time -->
+                <relocation>
+                  <pattern>shaded.parquet</pattern>
+                  <shadedPattern>${shadeBase}.shaded.parquet</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.codehaus</pattern>
+                  <shadedPattern>${shadeBase}.org.codehaus</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.jcraft</pattern>
+                  <shadedPattern>${shadeBase}.com.jcraft</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.eclipse</pattern>
+                  <shadedPattern>${shadeBase}.org.eclipse</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.checkerframework</pattern>
+                  <shadedPattern>${shadeBase}.org.checkerframework</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.codahale</pattern>
+                  <shadedPattern>${shadeBase}.com.codahale</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.ctc</pattern>
+                  <shadedPattern>${shadeBase}.com.ctc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.github.luben</pattern>
+                  <shadedPattern>${shadeBase}.com.github.luben</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.thoughtworks</pattern>
+                  <shadedPattern>${shadeBase}.com.thoughtworks</shadedPattern>
+                </relocation>
+                <!-- This belongs to org.apache.arrow:arrow-vector -->
+                <relocation>
+                  <pattern>codegen</pattern>
+                  <shadedPattern>${shadeBase}.codegen</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>javax.annotation</pattern>
+                  <shadedPattern>${shadeBase}.javax.annotation</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>javax.activation</pattern>
+                  <shadedPattern>${shadeBase}.javax.activation</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
                   <artifact>*:*</artifact>
                   <excludes>
+                    <exclude>assets/org/apache/commons/math3/exception/util/LocalizedFormats_fr.properties</exclude>
+                    <exclude>about.html</exclude>
+                    <exclude>mozilla/public-suffix-list.txt</exclude>
+
                     <exclude>META-INF/LICENSE*</exclude>
                     <exclude>META-INF/NOTICE*</exclude>
                     <exclude>META-INF/DEPENDENCIES</exclude>
@@ -769,6 +1032,7 @@
                     <exclude>META-INF/*.SF</exclude>
                     <exclude>META-INF/*.DSA</exclude>
                     <exclude>META-INF/*.RSA</exclude>
+                    <exclude>google/protobuf/**/*.proto</exclude>
                   </excludes>
                 </filter>
                 <filter>
@@ -798,6 +1062,32 @@
               </execution>
             </executions>
           </plugin>
+          <!--
+          Plugin executes license processing Python script, which copies third party license files into the directory
+          target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR. 
+          -->
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>process-third-party-licenses</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>generate-resources</phase>
+                <configuration>
+                  <executable>python3</executable>
+                  <arguments>
+                    <argument>${project.basedir}/scripts/process_licenses.py</argument>
+                    <argument>${license.processing.dependencyListFile}</argument>
+                    <argument>${license.processing.dependencyJarsDir}</argument>
+                    <argument>${license.processing.targetDir}</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
         </plugins>
       </build>
     </profile>
@@ -824,6 +1114,41 @@
                   <file>target/${project.artifactId}.jar</file>
                   <repositoryId>ossrh</repositoryId>
                   <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+                  <pomFile>generated_public_pom.xml</pomFile>
+                  <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
+                  <sources>target/${project.artifactId}-sources.jar</sources>
+                  <keyname>${env.GPG_KEY_ID}</keyname>
+                  <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>snapshot-deploy</id>
+      <activation>
+        <property>
+          <name>snapshot-deploy</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>sign-and-deploy-file</goal>
+                </goals>
+                <phase>deploy</phase>
+                <configuration>
+                  <file>target/${project.artifactId}.jar</file>
+                  <repositoryId>snapshot</repositoryId>
+                  <url>https://nexus.int.snowflakecomputing.com/repository/Snapshots/</url>
                   <pomFile>generated_public_pom.xml</pomFile>
                   <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
                   <sources>target/${project.artifactId}-sources.jar</sources>

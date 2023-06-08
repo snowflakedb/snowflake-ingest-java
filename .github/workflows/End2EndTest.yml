@@ -19,9 +19,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
+          distribution: temurin
           java-version: ${{ matrix.java }}
+          cache: maven
 
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
@@ -40,22 +42,28 @@ jobs:
       - name: Code Coverage
         uses: codecov/codecov-action@v1
   build-windows:
-    name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud AWS
+    name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022
     strategy:
+      fail-fast: false
       matrix:
         java: [ 8 ]
+        snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v2
         with:
+          distribution: temurin
           java-version: ${{ matrix.java }}
-      - name: Decrypt profile.json (Windows)
+          cache: maven
+      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
-        run: gpg --quiet --batch --yes --decrypt --passphrase="${env:DECRYPTION_PASSPHRASE}" --output profile.json ./profile.json.gpg
+        shell: pwsh
+        run: |
+          ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: mvn -DghActionsIT verify --batch-mode

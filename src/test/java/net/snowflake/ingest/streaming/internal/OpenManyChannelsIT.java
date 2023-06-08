@@ -23,9 +23,11 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Tries to open several thousand channels into the same table from multiple threads in parallel */
+@Ignore("Will be reimplemented in dew: SNOW-807102")
 public class OpenManyChannelsIT {
   private static final int THREAD_COUNT = 20;
   private static final int CHANNELS_PER_THREAD = 250;
@@ -49,7 +51,7 @@ public class OpenManyChannelsIT {
             String.format(
                 "create or replace table %s.%s.%s (col int)",
                 databaseName, SCHEMA_NAME, TABLE_NAME));
-    Properties props = TestUtils.getProperties(Constants.BdecVersion.ONE);
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }

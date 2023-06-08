@@ -23,7 +23,6 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -43,6 +42,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   /* Unflushed rows as Java objects. Needed for the Parquet w/o memory optimization. */
   private final List<List<Object>> data;
+
   /* BDEC Parquet writer. It is used to buffer unflushed data in Parquet internal buffers instead of using Java objects */
   private BdecParquetWriter bdecParquetWriter;
 
@@ -52,28 +52,30 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private MessageType schema;
   private final boolean enableParquetInternalBuffering;
+  private final long maxChunkSizeInBytes;
+
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean enableParquetInternalBuffering) {
+      boolean enableParquetInternalBuffering,
+      long maxChunkSizeInBytes) {
     super(
         onErrorOption,
         defaultTimezone,
-        allocator,
         fullyQualifiedChannelName,
         rowSizeMetric,
         channelRuntimeState);
-    fieldIndex = new HashMap<>();
-    metadata = new HashMap<>();
-    data = new ArrayList<>();
-    tempData = new ArrayList<>();
-    channelName = fullyQualifiedChannelName;
+    this.fieldIndex = new HashMap<>();
+    this.metadata = new HashMap<>();
+    this.data = new ArrayList<>();
+    this.tempData = new ArrayList<>();
+    this.channelName = fullyQualifiedChannelName;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
+    this.maxChunkSizeInBytes = maxChunkSizeInBytes;
   }
 
   @Override
@@ -117,7 +119,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     fileOutput = new ByteArrayOutputStream();
     try {
       if (enableParquetInternalBuffering) {
-        bdecParquetWriter = new BdecParquetWriter(fileOutput, schema, metadata, channelName);
+        bdecParquetWriter =
+            new BdecParquetWriter(fileOutput, schema, metadata, channelName, maxChunkSizeInBytes);
       } else {
         this.bdecParquetWriter = null;
       }
@@ -305,7 +308,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   public Flusher<ParquetChunkData> createFlusher() {
-    return new ParquetFlusher(schema, enableParquetInternalBuffering);
+    return new ParquetFlusher(schema, enableParquetInternalBuffering, maxChunkSizeInBytes);
   }
 
   private static class ParquetColumn {

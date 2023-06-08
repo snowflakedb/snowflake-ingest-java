@@ -12,6 +12,7 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -46,8 +47,6 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -57,8 +56,7 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  * <li>upload the blob to stage
  * <li>register the blob to the targeted Snowflake table
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 class FlushService<T> {
 
@@ -258,9 +256,10 @@ class FlushService<T> {
    */
   CompletableFuture<Void> flush(boolean isForce) {
     long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
+
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
-            && !this.isTestMode
+            && !isTestMode()
             && (this.isNeedFlush
                 || timeDiffMillis
                     >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
@@ -371,32 +370,36 @@ class FlushService<T> {
 
         if (!channelsDataPerTable.isEmpty()) {
           int idx = 0;
+          float totalBufferSizePerTableInBytes = 0F;
           while (idx < channelsDataPerTable.size()) {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
-            // Stop processing the rest of channels if reaching the blob size limit or the channel
-            // has different encryption key ids
+            // Stop processing the rest of channels when needed
             if (idx > 0
-                && (totalBufferSizeInBytes + channelData.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
-                    || !Objects.equals(
-                        channelData.getChannelContext().getEncryptionKeyId(),
-                        channelsDataPerTable
-                            .get(idx - 1)
-                            .getChannelContext()
-                            .getEncryptionKeyId()))) {
+                && shouldStopProcessing(
+                    totalBufferSizeInBytes,
+                    totalBufferSizePerTableInBytes,
+                    channelData,
+                    channelsDataPerTable.get(idx - 1))) {
               leftoverChannelsDataPerTable.addAll(
                   channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
               logger.logInfo(
-                  "Creation of another blob is needed because of blob size limit or different"
-                      + " encryption ids, client={}, table={},  size={}, encryptionId1={},"
-                      + " encryptionId2={}",
+                  "Creation of another blob is needed because of blob/chunk size limit or"
+                      + " different encryption ids or different schema, client={}, table={},"
+                      + " fileSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
+                      + " encryptionId2={}, schema1={}, schema2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
-                  totalBufferSizeInBytes + channelData.getBufferSize(),
+                  totalBufferSizeInBytes,
+                  totalBufferSizePerTableInBytes,
+                  channelData.getBufferSize(),
                   channelData.getChannelContext().getEncryptionKeyId(),
-                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId());
+                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId(),
+                  channelData.getColumnEps().keySet(),
+                  channelsDataPerTable.get(idx - 1).getColumnEps().keySet());
               break;
             }
             totalBufferSizeInBytes += channelData.getBufferSize();
+            totalBufferSizePerTableInBytes += channelData.getBufferSize();
             idx++;
           }
           // Add processed channels to the current blob, stop if we need to create a new blob
@@ -413,6 +416,7 @@ class FlushService<T> {
         // client. See method getFilePath() below.
         this.counter.decrementAndGet();
       } else {
+        long flushStartMs = System.currentTimeMillis();
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
         }
@@ -422,7 +426,9 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        return buildAndUpload(filePath, blobData);
+                        BlobMetadata blobMetadata = buildAndUpload(filePath, blobData);
+                        blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
+                        return blobMetadata;
                       } catch (Throwable e) {
                         Throwable ex = e.getCause() == null ? e : e.getCause();
                         String errorMessage =
@@ -472,6 +478,32 @@ class FlushService<T> {
   }
 
   /**
+   * Check whether we should stop merging more channels into the same chunk, we need to stop in a
+   * few cases:
+   *
+   * <p>When the file size is larger than a certain threshold
+   *
+   * <p>When the chunk size is larger than a certain threshold
+   *
+   * <p>When the encryption key ids are not the same
+   *
+   * <p>When the schemas are not the same
+   */
+  private boolean shouldStopProcessing(
+      float totalBufferSizeInBytes,
+      float totalBufferSizePerTableInBytes,
+      ChannelData<T> current,
+      ChannelData<T> prev) {
+    return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
+        || totalBufferSizePerTableInBytes + current.getBufferSize()
+            > this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()
+        || !Objects.equals(
+            current.getChannelContext().getEncryptionKeyId(),
+            prev.getChannelContext().getEncryptionKeyId())
+        || !current.getColumnEps().keySet().equals(prev.getColumnEps().keySet());
+  }
+
+  /**
    * Builds and uploads file to cloud storage.
    *
    * @param filePath Path of the destination file in cloud storage
@@ -487,10 +519,10 @@ class FlushService<T> {
 
     // Construct the blob along with the metadata of the blob
     BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
-    if (buildContext != null) {
-      buildContext.stop();
-    }
-    return upload(filePath, blob.blobBytes, blob.chunksMetadataList);
+
+    blob.blobStats.setBuildDurationMs(buildContext);
+
+    return upload(filePath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
   }
 
   /**
@@ -499,19 +531,20 @@ class FlushService<T> {
    * @param filePath full path of the blob file
    * @param blob blob data
    * @param metadata a list of chunk metadata
+   * @param blobStats an object to track latencies and other stats of the blob
    * @return BlobMetadata object used to create the register blob request
    */
-  BlobMetadata upload(String filePath, byte[] blob, List<ChunkMetadata> metadata)
+  BlobMetadata upload(
+      String filePath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
       throws NoSuchAlgorithmException {
     logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-
     this.targetStage.put(filePath, blob);
 
     if (uploadContext != null) {
-      uploadContext.stop();
+      blobStats.setUploadDurationMs(uploadContext);
       this.owningClient.uploadThroughput.mark(blob.length);
       this.owningClient.blobSizeHistogram.update(blob.length);
       this.owningClient.blobRowCountHistogram.update(
@@ -525,7 +558,7 @@ class FlushService<T> {
         System.currentTimeMillis() - startTime);
 
     return BlobMetadata.createBlobMetadata(
-        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata);
+        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, blobStats);
   }
 
   /**
@@ -583,7 +616,8 @@ class FlushService<T> {
     int minute = calendar.get(Calendar.MINUTE);
     long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
     long threadId = Thread.currentThread().getId();
-    String fileName =
+    // Create the file short name, the clientPrefix contains the deployment id
+    String fileShortName =
         Long.toString(time, 36)
             + "_"
             + clientPrefix
@@ -593,7 +627,7 @@ class FlushService<T> {
             + this.counter.getAndIncrement()
             + "."
             + BLOB_EXTENSION_TYPE;
-    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileName;
+    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileShortName;
   }
 
   /**
@@ -606,9 +640,6 @@ class FlushService<T> {
         chunkData ->
             chunkData.forEach(
                 channelData -> {
-                  if (channelData.getVectors() instanceof VectorSchemaRoot) {
-                    ((VectorSchemaRoot) channelData.getVectors()).close();
-                  }
                   this.owningClient
                       .getChannelCache()
                       .invalidateChannelIfSequencersMatch(
@@ -641,5 +672,10 @@ class FlushService<T> {
           this.buildUploadWorkers.toString());
     }
     return throttleOnQueuedTasks;
+  }
+
+  /** Get whether we're running under test mode */
+  boolean isTestMode() {
+    return this.isTestMode;
   }
 }
