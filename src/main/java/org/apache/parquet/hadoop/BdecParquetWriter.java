@@ -107,6 +107,10 @@ public class BdecParquetWriter implements AutoCloseable {
     }
   }
 
+  public long getDataSize() {
+    return writer.getDataSize();
+  }
+
   @Override
   public void close() throws IOException {
     try {

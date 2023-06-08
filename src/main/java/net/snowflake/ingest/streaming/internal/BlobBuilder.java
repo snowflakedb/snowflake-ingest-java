@@ -114,6 +114,7 @@ class BlobBuilder {
                 // The paddedChunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
                 .setChunkLength(paddedChunkLength)
+                .setUncompressedChunkLength((int) serializedChunk.chunkEstimatedUncompressedSize)
                 .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
@@ -132,13 +133,14 @@ class BlobBuilder {
 
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
-                + " uncompressedSize={}, paddedChunkLength={}, encryptedCompressedSize={},"
-                + " bdecVersion={}",
+                + " uncompressedSize={}, estimatedUncompressedSize={}, paddedChunkLength={},"
+                + " encryptedCompressedSize={}, bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
             startOffset,
             serializedChunk.chunkUncompressedSize,
+            serializedChunk.chunkEstimatedUncompressedSize,
             paddedChunkLength,
             encryptedCompressedChunkDataSize,
             bdecVersion);

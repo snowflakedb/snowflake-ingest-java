@@ -33,7 +33,8 @@ public interface Flusher<T> {
     final List<ChannelMetadata> channelsMetadataList;
     final Map<String, RowBufferStats> columnEpStatsMapCombined;
     final long rowCount;
-    final float chunkUncompressedSize;
+    final float chunkEstimatedUncompressedSize;
+    final long chunkUncompressedSize;
     final ByteArrayOutputStream chunkData;
     final Pair<Long, Long> chunkMinMaxInsertTimeInMs;
 
@@ -41,12 +42,14 @@ public interface Flusher<T> {
         List<ChannelMetadata> channelsMetadataList,
         Map<String, RowBufferStats> columnEpStatsMapCombined,
         long rowCount,
-        float chunkUncompressedSize,
+        float chunkEstimatedUncompressedSize,
+        long chunkUncompressedSize,
         ByteArrayOutputStream chunkData,
         Pair<Long, Long> chunkMinMaxInsertTimeInMs) {
       this.channelsMetadataList = channelsMetadataList;
       this.columnEpStatsMapCombined = columnEpStatsMapCombined;
       this.rowCount = rowCount;
+      this.chunkEstimatedUncompressedSize = chunkEstimatedUncompressedSize;
       this.chunkUncompressedSize = chunkUncompressedSize;
       this.chunkData = chunkData;
       this.chunkMinMaxInsertTimeInMs = chunkMinMaxInsertTimeInMs;
