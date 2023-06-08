@@ -15,6 +15,7 @@ class ChunkMetadata {
   private final String tableName;
   private Long chunkStartOffset;
   private final Integer chunkLength;
+  private final Integer uncompressedChunkLength;
   private final List<ChannelMetadata> channels;
   private final String chunkMD5;
   private final EpInfo epInfo;
@@ -33,6 +34,9 @@ class ChunkMetadata {
     private String tableName;
     private Long chunkStartOffset;
     private Integer chunkLength; // compressedChunkLength
+
+    private Integer uncompressedChunkLength;
+
     private List<ChannelMetadata> channels;
     private String chunkMD5;
     private EpInfo epInfo;
@@ -59,6 +63,15 @@ class ChunkMetadata {
 
     Builder setChunkLength(Integer chunkLength) {
       this.chunkLength = chunkLength;
+      return this;
+    }
+
+    /**
+     * Currently we send estimated uncompressed size that is close to the actual parquet data size
+     * and mostly about user data but parquet encoding overhead may be slightly different.
+     */
+    public Builder setUncompressedChunkLength(Integer uncompressedChunkLength) {
+      this.uncompressedChunkLength = uncompressedChunkLength;
       return this;
     }
 
@@ -110,6 +123,7 @@ class ChunkMetadata {
     this.tableName = builder.tableName;
     this.chunkStartOffset = builder.chunkStartOffset;
     this.chunkLength = builder.chunkLength;
+    this.uncompressedChunkLength = builder.uncompressedChunkLength;
     this.channels = builder.channels;
     this.chunkMD5 = builder.chunkMD5;
     this.epInfo = builder.epInfo;
@@ -150,6 +164,11 @@ class ChunkMetadata {
   @JsonProperty("chunk_length")
   Integer getChunkLength() {
     return chunkLength;
+  }
+
+  @JsonProperty("chunk_length_uncompressed")
+  public Integer getUncompressedChunkLength() {
+    return uncompressedChunkLength;
   }
 
   @JsonProperty("channels")
