@@ -53,7 +53,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
-    float chunkUncompressedSize = 0f;
+    float chunkEstimatedUncompressedSize = 0f;
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     BdecParquetWriter mergedChannelWriter = null;
@@ -104,7 +104,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       }
 
       rowCount += data.getRowCount();
-      chunkUncompressedSize += data.getBufferSize();
+      chunkEstimatedUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
@@ -121,7 +121,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         channelsMetadataList,
         columnEpStatsMapCombined,
         rowCount,
-        chunkUncompressedSize,
+        chunkEstimatedUncompressedSize,
         mergedChunkData,
         chunkMinMaxInsertTimeInMs);
   }
@@ -131,7 +131,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
-    float chunkUncompressedSize = 0f;
+    float chunkEstimatedUncompressedSize = 0f;
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
@@ -183,7 +183,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       rows.addAll(data.getVectors().rows);
 
       rowCount += data.getRowCount();
-      chunkUncompressedSize += data.getBufferSize();
+      chunkEstimatedUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
@@ -206,7 +206,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         channelsMetadataList,
         columnEpStatsMapCombined,
         rowCount,
-        chunkUncompressedSize,
+        chunkEstimatedUncompressedSize,
         mergedData,
         chunkMinMaxInsertTimeInMs);
   }
