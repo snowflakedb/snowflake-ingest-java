@@ -126,8 +126,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                 ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
                 : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
             owningClient != null
-                ? owningClient.getParameterProvider().getMaxChunkSizeInBytes()
-                : ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
+                ? owningClient.getParameterProvider().getMaxChannelSizeInBytes()
+                : ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
@@ -362,7 +362,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
     if (this.rowBuffer.getSize()
-        >= this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()) {
+        >= this.owningClient.getParameterProvider().getMaxChannelSizeInBytes()) {
       this.owningClient.setNeedFlush();
     }
 
