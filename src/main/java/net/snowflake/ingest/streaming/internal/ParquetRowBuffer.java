@@ -52,7 +52,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private MessageType schema;
   private final boolean enableParquetInternalBuffering;
-  private final long maxChunkSizeInBytes;
+  private final long maxChannelSizeInBytes;
 
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
@@ -62,7 +62,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
       boolean enableParquetInternalBuffering,
-      long maxChunkSizeInBytes) {
+      long maxChannelSizeInBytes) {
     super(
         onErrorOption,
         defaultTimezone,
@@ -75,7 +75,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.tempData = new ArrayList<>();
     this.channelName = fullyQualifiedChannelName;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
-    this.maxChunkSizeInBytes = maxChunkSizeInBytes;
+    this.maxChannelSizeInBytes = maxChannelSizeInBytes;
   }
 
   @Override
@@ -120,7 +120,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     try {
       if (enableParquetInternalBuffering) {
         bdecParquetWriter =
-            new BdecParquetWriter(fileOutput, schema, metadata, channelName, maxChunkSizeInBytes);
+            new BdecParquetWriter(fileOutput, schema, metadata, channelName, maxChannelSizeInBytes);
       } else {
         this.bdecParquetWriter = null;
       }
@@ -308,7 +308,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   public Flusher<ParquetChunkData> createFlusher() {
-    return new ParquetFlusher(schema, enableParquetInternalBuffering, maxChunkSizeInBytes);
+    return new ParquetFlusher(schema, enableParquetInternalBuffering, maxChannelSizeInBytes);
   }
 
   private static class ParquetColumn {

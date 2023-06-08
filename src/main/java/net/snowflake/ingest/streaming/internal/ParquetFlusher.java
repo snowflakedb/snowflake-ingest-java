@@ -25,17 +25,17 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private static final Logging logger = new Logging(ParquetFlusher.class);
   private final MessageType schema;
   private final boolean enableParquetInternalBuffering;
-  private final long maxChunkSizeInBytes;
+  private final long maxChannelSizeInBytes;
 
   /**
    * Construct parquet flusher from its schema and set flag that indicates whether Parquet memory
    * optimization is enabled, i.e. rows will be buffered in internal Parquet buffer.
    */
   public ParquetFlusher(
-      MessageType schema, boolean enableParquetInternalBuffering, long maxChunkSizeInBytes) {
+      MessageType schema, boolean enableParquetInternalBuffering, long maxChannelSizeInBytes) {
     this.schema = schema;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
-    this.maxChunkSizeInBytes = maxChunkSizeInBytes;
+    this.maxChannelSizeInBytes = maxChannelSizeInBytes;
   }
 
   @Override
@@ -198,7 +198,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     parquetWriter =
         new BdecParquetWriter(
-            mergedData, schema, metadata, firstChannelFullyQualifiedTableName, maxChunkSizeInBytes);
+            mergedData,
+            schema,
+            metadata,
+            firstChannelFullyQualifiedTableName,
+            maxChannelSizeInBytes);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 

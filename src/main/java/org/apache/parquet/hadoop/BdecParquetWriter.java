@@ -51,9 +51,9 @@ public class BdecParquetWriter implements AutoCloseable {
       MessageType schema,
       Map<String, String> extraMetaData,
       String channelName,
-      long maxChunkSizeInBytes)
+      long maxChannelSizeInBytes)
       throws IOException {
-    OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
+    OutputFile file = new ByteArrayOutputFile(stream, maxChannelSizeInBytes);
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
@@ -164,11 +164,11 @@ public class BdecParquetWriter implements AutoCloseable {
    */
   private static class ByteArrayOutputFile implements OutputFile {
     private final ByteArrayOutputStream stream;
-    private final long maxChunkSizeInBytes;
+    private final long maxChannelSizeInBytes;
 
-    private ByteArrayOutputFile(ByteArrayOutputStream stream, long maxChunkSizeInBytes) {
+    private ByteArrayOutputFile(ByteArrayOutputStream stream, long maxChannelSizeInBytes) {
       this.stream = stream;
-      this.maxChunkSizeInBytes = maxChunkSizeInBytes;
+      this.maxChannelSizeInBytes = maxChannelSizeInBytes;
     }
 
     @Override
@@ -189,7 +189,7 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public long defaultBlockSize() {
-      return maxChunkSizeInBytes;
+      return maxChannelSizeInBytes;
     }
   }
 
