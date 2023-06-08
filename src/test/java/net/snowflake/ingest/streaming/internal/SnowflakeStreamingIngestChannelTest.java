@@ -14,11 +14,14 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.commons.io.IOUtils;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
@@ -547,6 +550,85 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
     Assert.assertTrue(insertEndTimeInMs >= data.getMinMaxInsertTimeInMs().getSecond());
+  }
+
+  @Test
+  public void testInsertTooLargeRow() {
+    byte[] byteArrayOneMb = new byte[1024 * 1024];
+
+    List<ColumnMetadata> schema =
+        IntStream.range(0, 64)
+            .mapToObj(
+                rowId -> {
+                  ColumnMetadata col = new ColumnMetadata();
+                  col.setName("COL" + rowId);
+                  col.setPhysicalType("LOB");
+                  col.setNullable(false);
+                  col.setLogicalType("BINARY");
+                  col.setLength(8388608);
+                  col.setByteLength(8388608);
+                  return col;
+                })
+            .collect(Collectors.toList());
+
+    String expectedMessage =
+        "The given row exceeds the maximum allowed row size rowSizeInBytes=67109128.000"
+            + " maxAllowedRowSizeInBytes=33554432";
+
+    Map<String, Object> row = new HashMap<>();
+    schema.forEach(x -> row.put(x.getName(), byteArrayOneMb));
+
+    SnowflakeStreamingIngestClientInternal<?> client;
+    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("test_client");
+
+    // Test channel with on error CONTINUE
+    SnowflakeStreamingIngestChannelInternal<?> channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
+    channel.setupSchema(schema);
+
+    InsertValidationResponse insertValidationResponse = channel.insertRow(row, "token-1");
+    Assert.assertEquals(1, insertValidationResponse.getErrorRowCount());
+    SFException thrownException = insertValidationResponse.getInsertErrors().get(0).getException();
+    Assert.assertEquals(
+        ErrorCode.MAX_ROW_SIZE_EXCEEDED.getMessageCode(), thrownException.getVendorCode());
+    Assert.assertEquals(expectedMessage, thrownException.getMessage());
+
+    // Test channel with on error ABORT
+    channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.ABORT,
+            UTC);
+    channel.setupSchema(schema);
+
+    try {
+      channel.insertRow(row, "token-1");
+      Assert.fail("Insert row shouldn't have succeeded");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.MAX_ROW_SIZE_EXCEEDED.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(expectedMessage, e.getMessage());
+    }
   }
 
   @Test
