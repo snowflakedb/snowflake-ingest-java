@@ -45,7 +45,7 @@ public class ParameterProvider {
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 32000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 128000000L;
-  public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 32 * 1024 * 1024; // 32 MB
+  public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
