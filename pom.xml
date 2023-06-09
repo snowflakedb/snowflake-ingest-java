@@ -565,8 +565,6 @@
               <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
               <exclude>**/*SnowflakeIngestBasicExample*</exclude>
               <exclude>**/*IngestExampleHelper*</exclude>
-              <exclude>*.md</exclude>
-              <exclude>*.xml</exclude>
             </excludes>
           </configuration>
           <executions>
