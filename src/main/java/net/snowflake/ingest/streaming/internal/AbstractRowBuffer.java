@@ -529,7 +529,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
       boolean enableParquetMemoryOptimization,
-      long maxChunkSizeInBytes) {
+      long maxChunkSizeInBytes,
+      long maxRowSizeInBytes) {
     switch (bdecVersion) {
       case THREE:
         //noinspection unchecked
@@ -541,7 +542,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 rowSizeMetric,
                 channelRuntimeState,
                 enableParquetMemoryOptimization,
-                maxChunkSizeInBytes);
+                maxChunkSizeInBytes,
+                maxRowSizeInBytes);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
