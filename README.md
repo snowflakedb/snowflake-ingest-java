@@ -120,4 +120,4 @@ console log output.
 We use [Google Java format](https://github.com/google/google-java-format) to format the code. To format all files, run:
 ```bash
 ./format.sh
-````
+```
