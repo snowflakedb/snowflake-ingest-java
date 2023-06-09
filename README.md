@@ -97,16 +97,9 @@ However, for general usage, pulling a pre-built jar from maven is
 recommended.
 
 If you would like to run SnowflakeIngestBasicExample.java or SnowflakeStreamingIngestExample.java in the example folder, 
-you would need to remove the following scope limits in pom.xml
+please edit `pom.xml` and change the scope of the dependency `slf4j-simple` from `test` to `runtime` in order to enable
+console log output.
 
-<pre>
-&lt;!-- Remove provided scope from slf4j-api --&gt;
-&lt;dependency&gt;
-    &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
-    &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
-    <s>&lt;scope&gt;provided&lt;/scope&gt;</s>
-&lt;/dependency&gt;
-</pre>
 
 # Testing (SimpleIngestIT Test)
 

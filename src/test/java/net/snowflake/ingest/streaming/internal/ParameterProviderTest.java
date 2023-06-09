@@ -21,7 +21,7 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.IO_TIME_CPU_RATIO, 10);
     parameterMap.put(ParameterProvider.BLOB_UPLOAD_MAX_RETRY_COUNT, 100);
     parameterMap.put(ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES, 1000L);
-    parameterMap.put(ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES, 1000000L);
+    parameterMap.put(ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES, 1000000L);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
 
     Assert.assertEquals(3L, parameterProvider.getBufferFlushIntervalInMs());
@@ -32,7 +32,7 @@ public class ParameterProviderTest {
     Assert.assertEquals(10, parameterProvider.getIOTimeCpuRatio());
     Assert.assertEquals(100, parameterProvider.getBlobUploadMaxRetryCount());
     Assert.assertEquals(1000L, parameterProvider.getMaxMemoryLimitInBytes());
-    Assert.assertEquals(1000000L, parameterProvider.getMaxChunkSizeInBytes());
+    Assert.assertEquals(1000000L, parameterProvider.getMaxChannelSizeInBytes());
   }
 
   @Test
@@ -120,7 +120,7 @@ public class ParameterProviderTest {
         ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT,
         parameterProvider.getMaxMemoryLimitInBytes());
     Assert.assertEquals(
-        ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
-        parameterProvider.getMaxChunkSizeInBytes());
+        ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
+        parameterProvider.getMaxChannelSizeInBytes());
   }
 }

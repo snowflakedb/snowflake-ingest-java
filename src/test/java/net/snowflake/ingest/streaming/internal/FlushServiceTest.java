@@ -7,6 +7,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
@@ -92,7 +93,7 @@ public class FlushServiceTest {
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
-      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, false));
+      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, true));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -360,6 +361,18 @@ public class FlushServiceTest {
     return colChar;
   }
 
+  private static ColumnMetadata createLargeTestTextColumn(String name) {
+    ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setName(name);
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14000000);
+    colChar.setLength(11000000);
+    colChar.setScale(0);
+    return colChar;
+  }
+
   @Test
   public void testGetFilePath() {
     TestContext<?> testContext = testContextFactory.create();
@@ -398,6 +411,7 @@ public class FlushServiceTest {
   public void testFlush() throws Exception {
     TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
+    Mockito.when(flushService.isTestMode()).thenReturn(false);
 
     // Nothing to flush
     flushService.flush(false).get();
@@ -503,6 +517,40 @@ public class FlushServiceTest {
     // Force = true flushes
     flushService.flush(true).get();
     Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
+  }
+
+  @Test
+  public void testBlobSplitDueToChunkSizeLimit() throws Exception {
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
+    String colName1 = "testBlobSplitDueToChunkSizeLimit1";
+    String colName2 = "testBlobSplitDueToChunkSizeLimit2";
+    int rowSize = 10000000;
+    String largeData = new String(new char[rowSize]);
+
+    List<ColumnMetadata> schema =
+        Arrays.asList(createTestIntegerColumn(colName1), createLargeTestTextColumn(colName2));
+    channel1.getRowBuffer().setupSchema(schema);
+    channel2.getRowBuffer().setupSchema(schema);
+
+    RowSetBuilder builder = RowSetBuilder.newBuilder();
+    RowSetBuilder.newBuilder().addColumn(colName1, 11).addColumn(colName2, largeData);
+
+    for (int idx = 0; idx <= MAX_CHUNK_SIZE_IN_BYTES_DEFAULT / (2 * rowSize); idx++) {
+      builder.addColumn(colName1, 11).addColumn(colName2, largeData).newRow();
+    }
+
+    List<Map<String, Object>> rows = builder.build();
+
+    channel1.insertRows(rows, "offset1");
+    channel2.insertRows(rows, "offset2");
+
+    FlushService<?> flushService = testContext.flushService;
+
+    // Force = true flushes
+    flushService.flush(true).get();
+    Mockito.verify(flushService, Mockito.times(2)).buildAndUpload(Mockito.any(), Mockito.any());
   }
 
   @Test
