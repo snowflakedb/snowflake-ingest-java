@@ -1,7 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
-import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -115,7 +115,7 @@ public class RowBufferTest {
         rs -> {},
         initialState,
         enableParquetMemoryOptimization,
-        MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
+        MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT);
   }
 
   @Test
