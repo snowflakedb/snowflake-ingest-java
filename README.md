@@ -122,12 +122,9 @@ you would need to remove the following scope limits in pom.xml
 
 # Contributing to this repo
 
-Each PR must pass all required github action merge gates before approval and merge. 
+Each PR must pass all required github action merge gates before approval and merge. In addition to those tests, you will need:
 
+- Formatter: run this script [`./format.sh`](https://github.com/snowflakedb/snowflake-ingest-java/blob/master/format.sh) from root
 - CLA: all contributers must sign the Snowflake CLA. This is a one time signature, please provide your email so we can work with you to get this signed after you open a PR.
-- Formatting: in addition to tests, we use [Google Java format](https://github.com/google/google-java-format) to format the code. To format all files, run:
-```bash
-./format.sh
-````
 
 Thank you for contributing! We will review and approve PRs as soon as we can.
