@@ -13,6 +13,8 @@ authentication. Currently, we support ingestion through the following APIs:
 
 # Prerequisites
 
+**If your project depends on the Snowflake JDBC driver, as well, please make sure the JDBC driver version is 3.13.30 or newer.**
+
 ## Java 8+
 
 The Snowflake Ingest Service SDK can only be used with Java 8 or higher.
@@ -118,4 +120,4 @@ console log output.
 We use [Google Java format](https://github.com/google/google-java-format) to format the code. To format all files, run:
 ```bash
 ./format.sh
-````
+```
