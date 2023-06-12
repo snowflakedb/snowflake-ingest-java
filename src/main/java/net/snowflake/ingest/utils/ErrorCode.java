@@ -35,7 +35,9 @@ public enum ErrorCode {
   ENCRYPTION_FAILURE("0027"),
   CHANNEL_STATUS_INVALID("0028"),
   UNSUPPORTED_DATA_TYPE("0029"),
-  INVALID_VALUE_ROW("0030");
+  INVALID_VALUE_ROW("0030"),
+  MAKE_URI_FAILURE("0031"),
+  OAUTH_REFRESH_TOKEN_ERROR("0032");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

@@ -21,8 +21,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ThreadFactoryUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class manages creating and automatically renewing the JWT token
@@ -37,6 +35,8 @@ final class JWTManager extends SecurityManager {
 
   // the renewal time is 54 minutes
   private static final int RENEWAL_INTERVAL = 54;
+
+  private static final String TOKEN_TYPE = "KEYPAIR_JWT";
 
   // The public - private key pair we're using to connect to the service
   private final transient KeyPair keyPair;
@@ -68,12 +68,12 @@ final class JWTManager extends SecurityManager {
    * @param telemetryService reference to the telemetry service
    */
   JWTManager(
-          String accountName,
-          String username,
-          KeyPair keyPair,
-          int timeTillRenewal,
-          TimeUnit unit,
-          TelemetryService telemetryService) {
+      String accountName,
+      String username,
+      KeyPair keyPair,
+      int timeTillRenewal,
+      TimeUnit unit,
+      TelemetryService telemetryService) {
     super(accountName, username);
     // if any of our arguments are null, throw an exception
     if (keyPair == null) {
@@ -107,7 +107,7 @@ final class JWTManager extends SecurityManager {
    * @param telemetryService reference to the telemetry service
    */
   JWTManager(
-          String accountName, String username, KeyPair keyPair, TelemetryService telemetryService) {
+      String accountName, String username, KeyPair keyPair, TelemetryService telemetryService) {
     this(accountName, username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES, telemetryService);
   }
 
@@ -120,6 +120,11 @@ final class JWTManager extends SecurityManager {
     }
 
     return token.get();
+  }
+
+  @Override
+  String getTokenType() {
+    return TOKEN_TYPE;
   }
 
   /** regenerateToken - Regenerates our Token given our current user, account and keypair */
@@ -142,7 +147,7 @@ final class JWTManager extends SecurityManager {
 
     // build claim set
     JWTClaimsSet claimsSet =
-            builder.issuer(issuer).subject(subject).issueTime(iat).expirationTime(exp).build();
+        builder.issuer(issuer).subject(subject).issueTime(iat).expirationTime(exp).build();
     LOGGER.debug("Creating new JWT with subject {} and issuer {}...", subject, issuer);
 
     SignedJWT signedJWT = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claimsSet);

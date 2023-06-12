@@ -3,10 +3,7 @@ package net.snowflake.ingest.connection;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
+import java.security.*;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
@@ -30,8 +27,7 @@ public class TestKeyRenewal {
     KeyPair keyPair = keyGen.generateKeyPair();
 
     // create the security manager;
-    JWTManager manager =
-        new JWTManager("account", "user", keyPair, 3, TimeUnit.SECONDS, null);
+    SecurityManager manager = new JWTManager("account", "user", keyPair, 3, TimeUnit.SECONDS, null);
 
     // grab a token
     String token = manager.getToken();

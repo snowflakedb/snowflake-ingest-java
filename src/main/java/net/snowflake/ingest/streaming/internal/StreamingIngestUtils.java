@@ -1,7 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
+import static net.snowflake.ingest.utils.Constants.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +9,7 @@ import java.util.Map;
 import java.util.function.Function;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.client.jdbc.internal.google.api.client.http.HttpStatusCodes;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
@@ -93,11 +93,19 @@ public class StreamingIngestUtils {
       Function<T, Long> statusGetter)
       throws IOException, IngestResponseException {
     int retries = 0;
-    T response;
+    T response = null;
     do {
       try (CloseableHttpResponse httpResponse =
           httpClient.execute(
               requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message))) {
+
+        // Refresh OAuth token if needed, do not count as retry
+        if (httpResponse.getStatusLine().getStatusCode() == HttpStatusCodes.STATUS_CODE_UNAUTHORIZED
+            && requestBuilder.authType.equals(OAUTH)) {
+          requestBuilder.refreshToken();
+          continue;
+        }
+
         response =
             ServiceResponseHandler.unmarshallStreamingIngestResponse(
                 httpResponse, targetClass, apiName);

@@ -22,8 +22,14 @@ public class Constants {
   public static final String SCHEME = "scheme";
   public static final String ACCOUNT_URL = "url";
   public static final String ROLE = "role";
+  public static final String AUTHORIZATION_TYPE = "authorization_type";
+  public static final String JWT = "JWT";
+  public static final String OAUTH = "OAuth";
   public static final String PRIVATE_KEY = "private_key";
   public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
+  public static final String OAUTH_CLIENT_ID = "oauth_client_id";
+  public static final String OAUTH_CLIENT_SECRET = "oauth_client_secret";
+  public static final String OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
   public static final String PRIMARY_FILE_ID_KEY =
       "primaryFileId"; // Don't change, should match Parquet Scanner
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
@@ -49,6 +55,7 @@ public class Constants {
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
+  public static final int MAX_REFRESH_TOKEN_RETRY = 3;
   public static final long EP_NDV_UNKNOWN = -1L;
 
   // Channel level constants

@@ -4,23 +4,6 @@
 
 package net.snowflake.ingest.connection;
 
-import com.nimbusds.jose.JOSEException;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import java.security.KeyPair;
-import java.util.Date;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import net.snowflake.ingest.utils.Cryptor;
-import net.snowflake.ingest.utils.ThreadFactoryUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,12 +27,11 @@ abstract class SecurityManager implements AutoCloseable {
 
   /**
    * Creates a SecurityManager entity for a given account
+   *
    * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    */
-  SecurityManager(
-      String accountName,
-      String username) {
+  SecurityManager(String accountName, String username) {
     // if any of our arguments are null, throw an exception
     if (accountName == null || username == null) {
       throw new IllegalArgumentException();
@@ -79,6 +61,8 @@ abstract class SecurityManager implements AutoCloseable {
    */
   abstract String getToken();
 
+  abstract String getTokenType();
+
   /* Only used in testing at the moment */
   final String getAccount() {
     return this.account;
@@ -89,5 +73,7 @@ abstract class SecurityManager implements AutoCloseable {
     return publicKeyFingerPrint;
   }
 
-  abstract public void close();
+  public abstract void close();
+
+  void refreshToken() {}
 }

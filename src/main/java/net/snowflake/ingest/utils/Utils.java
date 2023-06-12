@@ -103,8 +103,29 @@ public class Utils {
       properties.put(SFSessionProperty.PRIVATE_KEY.getPropertyKey(), parsePrivateKey(privateKey));
     }
 
-    if (!properties.containsKey(SFSessionProperty.PRIVATE_KEY.getPropertyKey())) {
-      throw new SFException(ErrorCode.MISSING_CONFIG, "private_key");
+    if (!properties.containsKey(Constants.AUTHORIZATION_TYPE)) {
+      properties.put(Constants.AUTHORIZATION_TYPE, Constants.JWT);
+    }
+
+    String authType = properties.get(Constants.AUTHORIZATION_TYPE).toString();
+    if (authType.equals(Constants.JWT)) {
+      if (!properties.containsKey(SFSessionProperty.PRIVATE_KEY.getPropertyKey())) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.PRIVATE_KEY);
+      }
+    } else if (authType.equals(Constants.OAUTH)) {
+      if (!properties.containsKey(Constants.OAUTH_CLIENT_ID)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_CLIENT_ID);
+      }
+      if (!properties.containsKey(Constants.OAUTH_CLIENT_SECRET)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_CLIENT_SECRET);
+      }
+      if (!properties.containsKey(Constants.OAUTH_REFRESH_TOKEN)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_REFRESH_TOKEN);
+      }
+    } else {
+      throw new SFException(
+          ErrorCode.MISSING_CONFIG,
+          String.format("authorization_type, should be %s or %s", Constants.JWT, Constants.OAUTH));
     }
 
     if (!properties.containsKey(USER)) {

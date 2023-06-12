@@ -25,10 +25,7 @@ import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.StagedFileWrapper;
+import net.snowflake.ingest.utils.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +58,8 @@ public class RequestBuilder {
   // Reference to the telemetry service
   private final TelemetryService telemetryService;
 
+  public final String authType;
+
   /* Member variables End */
 
   /* Static constants Begin */
@@ -89,6 +88,9 @@ public class RequestBuilder {
 
   // the endpoint for get snowpipe client status
   private static final String CLIENT_STATUS_ENDPOINT_FORMAT = "/v1/data/pipes/%s/client/status";
+
+  // the endpoint for token request
+  private static final String TOKEN_REQUEST_ENDPOINT = "/oauth/token-request";
 
   // optional number of max seconds of items to fetch(eg. in the last hour)
   private static final String RECENT_HISTORY_IN_SECONDS = "recentSeconds";
@@ -137,10 +139,11 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the Public/Private key pair we'll use to authenticate
    */
-  public RequestBuilder(String accountName, String userName, KeyPair keyPair) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
+  public RequestBuilder(String accountName, String userName, Object credential) {
+    this(
+        accountName, userName, credential, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
   }
 
   /**
@@ -148,16 +151,17 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the Public/Private key pair we'll use to authenticate
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
   public RequestBuilder(
       String accountName,
       String userName,
       String hostName,
-      KeyPair keyPair,
+      Object credential,
       String userAgentSuffix) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
+    this(
+        accountName, userName, credential, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
   }
 
   /**
@@ -166,7 +170,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - our auth credentials
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -174,11 +178,11 @@ public class RequestBuilder {
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum) {
-    this(accountName, userName, keyPair, schemeName, hostName, portNum, null);
+    this(accountName, userName, credential, schemeName, hostName, portNum, null);
   }
 
   /**
@@ -186,7 +190,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - our auth credentials
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -195,13 +199,21 @@ public class RequestBuilder {
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum,
       String userAgentSuffix) {
     this(
-        accountName, userName, keyPair, schemeName, hostName, portNum, userAgentSuffix, null, null);
+        accountName,
+        userName,
+        credential,
+        schemeName,
+        hostName,
+        portNum,
+        userAgentSuffix,
+        null,
+        null);
   }
 
   /**
@@ -209,20 +221,20 @@ public class RequestBuilder {
    *
    * @param url - the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the Public/Private key pair we'll use to authenticate
    * @param httpClient - reference to the http client
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
       SnowflakeURL url,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       CloseableHttpClient httpClient,
       String clientName) {
     this(
         url.getAccount(),
         userName,
-        keyPair,
+        credential,
         url.getScheme(),
         url.getUrlWithoutPort(),
         url.getPort(),
@@ -236,7 +248,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - our auth credentials, either JWT key pair or OAuth credential
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -247,7 +259,7 @@ public class RequestBuilder {
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum,
@@ -255,7 +267,9 @@ public class RequestBuilder {
       CloseableHttpClient httpClient,
       String clientName) {
     // none of these arguments should be null
-    if (accountName == null || userName == null || keyPair == null) {
+    if (accountName == null
+        || userName == null
+        || (!(credential instanceof KeyPair) && !(credential instanceof OAuthCredential))) {
       throw new IllegalArgumentException();
     }
 
@@ -266,9 +280,6 @@ public class RequestBuilder {
                 httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
             : null;
 
-    // create our security/token manager
-    securityManager = new JWTManager(accountName, userName, keyPair, telemetryService);
-
     // stash references to the account and user name as well
     String account = accountName.toUpperCase();
     String user = userName.toUpperCase();
@@ -278,6 +289,22 @@ public class RequestBuilder {
     this.scheme = schemeName;
     this.host = hostName;
     this.userAgentSuffix = userAgentSuffix;
+
+    // create our security/token manager
+    if (credential instanceof KeyPair) {
+      securityManager =
+          new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
+      authType = Constants.JWT;
+    } else {
+      securityManager =
+          new OAuthManager(
+              accountName,
+              userName,
+              (OAuthCredential) credential,
+              makeOAuthTokenRequestURI(),
+              telemetryService);
+      authType = Constants.OAUTH;
+    }
 
     LOGGER.info(
         "Creating a RequestBuilder with arguments : "
@@ -563,6 +590,19 @@ public class RequestBuilder {
     return builder.build();
   }
 
+  private URI makeOAuthTokenRequestURI() {
+    try {
+      return new URIBuilder()
+          .setScheme(scheme)
+          .setHost(host)
+          .setPort(port)
+          .setPath(TOKEN_REQUEST_ENDPOINT)
+          .build();
+    } catch (URISyntaxException e) {
+      throw new SFException(e, ErrorCode.MAKE_URI_FAILURE, "Make OAuth token request fail");
+    }
+  }
+
   /**
    * Given a list of files, and an optional clientInfo generate json string which later can be
    * passed in request body of insertFiles API
@@ -619,12 +659,12 @@ public class RequestBuilder {
    * @param request the URI request
    * @param token the token to add
    */
-  private static void addToken(HttpUriRequest request, String token) {
+  private void addToken(HttpUriRequest request, String token) {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
-    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, JWT_TOKEN_TYPE);
+    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, this.securityManager.getTokenType());
   }
 
-  private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
+  private void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
     addUserAgent(request, userAgentSuffix);
 
     // Add the auth token
@@ -820,6 +860,10 @@ public class RequestBuilder {
     HttpGet get = new HttpGet(getClientStatusURI);
     addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
     return get;
+  }
+
+  public void refreshToken() {
+    securityManager.refreshToken();
   }
 
   /**
