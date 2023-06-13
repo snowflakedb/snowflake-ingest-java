@@ -139,7 +139,7 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param credential - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    */
   public RequestBuilder(String accountName, String userName, Object credential) {
     this(
@@ -151,7 +151,7 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param credential - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
   public RequestBuilder(
@@ -170,7 +170,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param credential - our auth credentials
+   * @param credential - the credential we'll use to authenticate
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -190,7 +190,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param credential - our auth credentials
+   * @param credential - the credential we'll use to authenticate
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -590,6 +590,10 @@ public class RequestBuilder {
     return builder.build();
   }
 
+  /**
+   * makeOAuthTokenRequestURI - Make the uri for OAuth token request
+   * http://snowflakeURL{:PORT}/oauth/token-request
+   */
   private URI makeOAuthTokenRequestURI() {
     try {
       return new URIBuilder()
@@ -860,10 +864,6 @@ public class RequestBuilder {
     HttpGet get = new HttpGet(getClientStatusURI);
     addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
     return get;
-  }
-
-  public void refreshToken() {
-    securityManager.refreshToken();
   }
 
   /**

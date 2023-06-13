@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class manages creating and automatically renewing the JWT token
+ * This class manages creating and automatically renewing the token
  *
  * @author obabarinsa
  * @since 1.8
@@ -56,11 +56,12 @@ abstract class SecurityManager implements AutoCloseable {
   /**
    * getToken - returns we've most recently generated
    *
-   * @return the string version of a valid JWT token
+   * @return the string version of a valid token
    * @throws SecurityException if we failed to regenerate or refresh a token since the last call
    */
   abstract String getToken();
 
+  /** getTokenType - returns the token type, either "KEYPAIR_JWT" or "OAUTH" */
   abstract String getTokenType();
 
   /* Only used in testing at the moment */
@@ -74,6 +75,4 @@ abstract class SecurityManager implements AutoCloseable {
   }
 
   public abstract void close();
-
-  void refreshToken() {}
 }

@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
@@ -38,12 +39,11 @@ import net.snowflake.ingest.utils.*;
  */
 final class OAuthManager extends SecurityManager {
 
-  // the token lifetime is 59 minutes
-  private static final float LIFETIME = 59;
-
-  // the renewal time is 54 minutes
-  private static final int RENEWAL_INTERVAL = 54;
-
+  // Default update threshold, a floating-point value representing the ratio between the expiration
+  // time of an access
+  // token and the time needed to update it. It must be a value greater than 0 and less than or
+  // equal to 1.
+  private static final double DEFAULT_UPDATE_THRESHOLD_RATIO = 0.8;
   private static final String TOKEN_TYPE = "OAUTH";
   private static final String OAUTH_CONTENT_TYPE_HEADER = "application/x-www-form-urlencoded";
 
@@ -51,8 +51,13 @@ final class OAuthManager extends SecurityManager {
 
   private static final String ACCESS_TOKEN = "access_token";
   private static final String REFRESH_TOKEN = "refresh_token";
+  private static final String EXPIRES_IN = "expires_in";
+  private final double updateThresholdRatio;
 
   private final AtomicReference<OAuthCredential> oAuthCredential;
+
+  // Did we fail to regenerate our token at some point?
+  private final AtomicBoolean refreshFailed;
 
   private final URI tokenRequestURI;
 
@@ -61,52 +66,15 @@ final class OAuthManager extends SecurityManager {
   // Thread factory for daemon threads so that application can shutdown
   final ThreadFactory tf = ThreadFactoryUtil.poolThreadFactory(getClass().getSimpleName(), true);
 
-  // the thread we use for renewing all tokens
-  private final ScheduledExecutorService keyRenewer = Executors.newScheduledThreadPool(1, tf);
+  // the thread we use for refreshing access token
+  private final ScheduledExecutorService tokenRefresher = Executors.newScheduledThreadPool(1, tf);
 
   // Reference to the Telemetry Service in the client
   private final TelemetryService telemetryService;
 
   /**
-   * Creates a SecurityManager entity for a given account, user and KeyPair with a specified time to
-   * renew the token
-   *
-   * @param accountName - the snowflake account name of this user
-   * @param username - the snowflake username of the current user
-   * @param oAuthCredential - the OAuth credential we're using to connect
-   * @param timeTillRenewal - the time measure until we renew the token
-   * @param unit the unit by which timeTillRenewal is measured
-   * @param telemetryService reference to the telemetry service
-   */
-  OAuthManager(
-      String accountName,
-      String username,
-      OAuthCredential oAuthCredential,
-      URI tokenRequestURI,
-      int timeTillRenewal,
-      TimeUnit unit,
-      TelemetryService telemetryService) {
-    super(accountName, username);
-    // if any of our arguments are null, throw an exception
-    if (oAuthCredential == null) {
-      throw new IllegalArgumentException();
-    }
-
-    this.oAuthCredential = new AtomicReference<>(oAuthCredential);
-
-    this.tokenRequestURI = tokenRequestURI;
-
-    this.httpClient = HttpUtil.getHttpClient(accountName);
-
-    this.telemetryService = telemetryService;
-
-    // generate our first token
-    refreshToken();
-  }
-
-  /**
-   * Creates a SecurityManager entity for a given account, user and KeyPair with the default time to
-   * renew (RENEWAL_INTERVAL minutes)
+   * Creates a OAuthManager entity for a given account, user and OAuthCredential with default time
+   * to refresh the access token
    *
    * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
@@ -124,13 +92,60 @@ final class OAuthManager extends SecurityManager {
         username,
         oAuthCredential,
         tokenRequestURI,
-        RENEWAL_INTERVAL,
-        TimeUnit.MINUTES,
+        DEFAULT_UPDATE_THRESHOLD_RATIO,
         telemetryService);
+  }
+
+  /**
+   * Creates a OAuthManager entity for a given account, user and OAuthCredential with a specified
+   * time to renew the token
+   *
+   * @param accountName - the snowflake account name of this user
+   * @param username - the snowflake username of the current user
+   * @param oAuthCredential - the OAuth credential we're using to connect
+   * @param updateThresholdRatio - the ratio between the expiration time of a token and the time
+   *     needed to refresh it.
+   * @param telemetryService reference to the telemetry service
+   */
+  OAuthManager(
+      String accountName,
+      String username,
+      OAuthCredential oAuthCredential,
+      URI tokenRequestURI,
+      double updateThresholdRatio,
+      TelemetryService telemetryService) {
+    super(accountName, username);
+    // if any of our arguments are null, throw an exception
+    if (oAuthCredential == null) {
+      throw new IllegalArgumentException();
+    }
+
+    if (updateThresholdRatio <= 0 || updateThresholdRatio >= 1) {
+      throw new IllegalArgumentException("updateThresholdRation should fall in (0, 1)");
+    }
+
+    this.oAuthCredential = new AtomicReference<>(oAuthCredential);
+
+    this.tokenRequestURI = tokenRequestURI;
+
+    this.httpClient = HttpUtil.getHttpClient(accountName);
+
+    this.telemetryService = telemetryService;
+
+    this.updateThresholdRatio = updateThresholdRatio;
+
+    refreshFailed = new AtomicBoolean();
+
+    // generate our first token
+    refreshToken();
   }
 
   @Override
   String getToken() {
+    if (refreshFailed.get()) {
+      LOGGER.error("getToken request failed due to token refresh failure");
+      throw new SecurityException();
+    }
     return oAuthCredential.get().getAccessToken();
   }
 
@@ -140,7 +155,6 @@ final class OAuthManager extends SecurityManager {
   }
 
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
-  @Override
   void refreshToken() {
     for (int retries = 0; retries < MAX_REFRESH_TOKEN_RETRY; retries++) {
       String respBodyString = null;
@@ -150,21 +164,36 @@ final class OAuthManager extends SecurityManager {
         if (httpResponse.getStatusLine().getStatusCode() == HttpStatusCodes.STATUS_CODE_OK) {
           JsonObject respBody = JsonParser.parseString(respBodyString).getAsJsonObject();
 
-          if (respBody.has(ACCESS_TOKEN)) {
-            oAuthCredential
-                .get()
-                .setAccessToken(respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", ""));
-            LOGGER.debug("Refresh access token {}", oAuthCredential.get().getAccessToken());
+          if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
+            String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
+            oAuthCredential.get().setAccessToken(newAccessToken);
+
+            // Refresh the token used in the telemetry service as well
+            if (telemetryService != null) {
+              telemetryService.refreshToken(newAccessToken);
+            }
+
+            // Schedule next refresh
+            long nextRefreshDelay =
+                (long) (respBody.get(EXPIRES_IN).getAsInt() * this.updateThresholdRatio);
+            tokenRefresher.schedule(this::refreshToken, nextRefreshDelay, TimeUnit.SECONDS);
+
+            LOGGER.info(
+                "Refresh access token, next refresh is scheduled after {} seconds",
+                nextRefreshDelay);
             return;
           }
+          LOGGER.error("A response with status ok does not contain access_token and expires_in");
         }
       } catch (IOException e) {
+        refreshFailed.set(true);
         throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
       }
 
       LOGGER.debug(
           "Refresh access token fail with response {}, retry count={}", respBodyString, retries);
 
+      // Exponential backoff retries
       try {
         Thread.sleep((1L << retries) * 1000L);
       } catch (InterruptedException e) {
@@ -172,10 +201,12 @@ final class OAuthManager extends SecurityManager {
       }
     }
 
+    refreshFailed.set(true);
     LOGGER.error("Fail to refresh access token");
     throw new SecurityException();
   }
 
+  /** makeRefreshTokenRequest - make the request for refresh an access token */
   private HttpPost makeRefreshTokenRequest() {
     HttpPost post = new HttpPost(tokenRequestURI);
     post.addHeader(HttpHeaders.CONTENT_TYPE, OAUTH_CONTENT_TYPE_HEADER);
@@ -205,6 +236,6 @@ final class OAuthManager extends SecurityManager {
   /** Currently, it only shuts down the instance of ExecutorService. */
   @Override
   public void close() {
-    keyRenewer.shutdown();
+    tokenRefresher.shutdown();
   }
 }

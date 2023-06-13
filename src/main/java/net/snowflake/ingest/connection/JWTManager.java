@@ -57,7 +57,7 @@ final class JWTManager extends SecurityManager {
   private final TelemetryService telemetryService;
 
   /**
-   * Creates a SecurityManager entity for a given account, user and KeyPair with a specified time to
+   * Creates a JWTManager entity for a given account, user and KeyPair with a specified time to
    * renew the token
    *
    * @param accountName - the snowflake account name of this user
@@ -98,7 +98,7 @@ final class JWTManager extends SecurityManager {
   }
 
   /**
-   * Creates a SecurityManager entity for a given account, user and KeyPair with the default time to
+   * Creates a JWTManager entity for a given account, user and KeyPair with the default time to
    * renew (RENEWAL_INTERVAL minutes)
    *
    * @param accountName - the snowflake account name of this user
@@ -170,7 +170,7 @@ final class JWTManager extends SecurityManager {
 
     // Refresh the token used in the telemetry service as well
     if (telemetryService != null) {
-      telemetryService.refreshJWTToken(newToken);
+      telemetryService.refreshToken(newToken);
     }
   }
 
