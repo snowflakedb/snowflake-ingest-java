@@ -496,10 +496,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                               String.format(
                                                   "Channel has been invalidated because of failure"
                                                       + " response, name=%s, channel_sequencer=%d,"
-                                                      + " status_code=%d, executionCount=%d",
+                                                      + " status_code=%d,  message=%s,"
+                                                      + " executionCount=%d",
                                                   channelStatus.getChannelName(),
                                                   channelStatus.getChannelSequencer(),
                                                   channelStatus.getStatusCode(),
+                                                  channelStatus.getMessage(),
                                                   executionCount);
                                           logger.logWarn(errorMessage);
                                           if (getTelemetryService() != null) {
