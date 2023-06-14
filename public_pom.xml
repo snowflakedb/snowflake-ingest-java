@@ -34,4 +34,19 @@
       <connection>scm:git:git://github.com/snowflakedb/snowflake-ingest-java</connection>
       <url>http://github.com/snowflakedb/snowflake-ingest-java/tree/master</url>
     </scm>
+
+    <dependencies>
+        <dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>3.13.30</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
 </project>
