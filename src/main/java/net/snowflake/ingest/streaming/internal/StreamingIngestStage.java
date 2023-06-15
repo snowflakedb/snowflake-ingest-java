@@ -203,6 +203,7 @@ class StreamingIngestStage {
   SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata()
       throws SnowflakeSQLException, IOException {
     logger.logInfo("Refresh Snowflake metadata, client={}", clientName);
+    logger.logInfo("Refresh Snowflake metadata, client={}", clientName);
     return refreshSnowflakeMetadata(false);
   }
 
