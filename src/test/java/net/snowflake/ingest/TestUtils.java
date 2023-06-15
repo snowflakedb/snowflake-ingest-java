@@ -478,6 +478,12 @@ public class TestUtils {
   public static OAuthCredential generateOAuthCredential(Connection jdbcConnection)
       throws Exception {
     if (profile == null) init();
+    return generateOAuthCredential(jdbcConnection, role);
+  }
+
+  public static OAuthCredential generateOAuthCredential(Connection jdbcConnection, String role)
+      throws Exception {
+    if (profile == null) init();
     ResultSet resultSet = jdbcConnection.createStatement().executeQuery("select current_role();");
     resultSet.next();
     String oldRole = resultSet.getString(1);

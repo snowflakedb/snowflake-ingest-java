@@ -221,7 +221,7 @@ public class RequestBuilder {
    *
    * @param url - the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param credential - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    * @param httpClient - reference to the http client
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
