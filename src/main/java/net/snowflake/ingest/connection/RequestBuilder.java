@@ -267,7 +267,7 @@ public class RequestBuilder {
             : null;
 
     // create our security/token manager
-    securityManager = new SecurityManager(accountName, userName, keyPair, telemetryService);
+    securityManager = new JWTManager(accountName, userName, keyPair, telemetryService);
 
     // stash references to the account and user name as well
     String account = accountName.toUpperCase();

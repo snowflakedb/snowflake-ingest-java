@@ -30,8 +30,7 @@ public class TestKeyRenewal {
     KeyPair keyPair = keyGen.generateKeyPair();
 
     // create the security manager;
-    SecurityManager manager =
-        new SecurityManager("account", "user", keyPair, 3, TimeUnit.SECONDS, null);
+    SecurityManager manager = new JWTManager("account", "user", keyPair, 3, TimeUnit.SECONDS, null);
 
     // grab a token
     String token = manager.getToken();
