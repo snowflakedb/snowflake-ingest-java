@@ -115,9 +115,11 @@ console log output.
     -   Here is the link for documentation [Key Pair
             Generator](https://docs.snowflake.com/en/user-guide/key-pair-auth.html)
 
-# Code style
+# Contributing to this repo
 
-We use [Google Java format](https://github.com/google/google-java-format) to format the code. To format all files, run:
-```bash
-./format.sh
-```
+Each PR must pass all required github action merge gates before approval and merge. In addition to those tests, you will need:
+
+- Formatter: run this script [`./format.sh`](https://github.com/snowflakedb/snowflake-ingest-java/blob/master/format.sh) from root
+- CLA: all contributers must sign the Snowflake CLA. This is a one time signature, please provide your email so we can work with you to get this signed after you open a PR.
+
+Thank you for contributing! We will review and approve PRs as soon as we can.
