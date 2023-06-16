@@ -58,7 +58,9 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCa
 import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.utils.*;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.HttpUtil;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Assert;
 
@@ -571,16 +573,14 @@ public class TestUtils {
     return new OAuthCredential(clientId, clientSecret, refreshToken);
   }
 
+  public static URIBuilder getBaseURIBuilder() {
+    return new URIBuilder().setScheme(scheme).setHost(host).setPort(port);
+  }
+
   public static URI getTokenRequestURI() {
     URI tokenRequestURI = null;
     try {
-      tokenRequestURI =
-          new URIBuilder()
-              .setScheme(scheme)
-              .setHost(host)
-              .setPort(port)
-              .setPath("/oauth/token-request")
-              .build();
+      tokenRequestURI = getBaseURIBuilder().setPath("/oauth/token-request").build();
     } catch (URISyntaxException e) {
       throw new RuntimeException("Fail to construct token request uri", e);
     }

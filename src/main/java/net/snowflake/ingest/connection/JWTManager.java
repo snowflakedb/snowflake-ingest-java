@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
@@ -13,14 +13,9 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.security.KeyPair;
 import java.util.Date;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import net.snowflake.ingest.utils.Cryptor;
-import net.snowflake.ingest.utils.ThreadFactoryUtil;
 
 /**
  * This class manages creating and automatically renewing the JWT token
@@ -31,10 +26,10 @@ import net.snowflake.ingest.utils.ThreadFactoryUtil;
 final class JWTManager extends SecurityManager {
 
   // the token lifetime is 59 minutes
-  private static final float LIFETIME = 59;
+  private static final float LIFETIME_IN_MINUTES = 59;
 
   // the renewal time is 54 minutes
-  private static final int RENEWAL_INTERVAL = 54;
+  private static final int RENEWAL_INTERVAL_IN_MINUTES = 54;
 
   private static final String TOKEN_TYPE = "KEYPAIR_JWT";
 
@@ -42,19 +37,7 @@ final class JWTManager extends SecurityManager {
   private final transient KeyPair keyPair;
 
   // the token itself
-  private final AtomicReference<String> token;
-
-  // Did we fail to regenerate our token at some point?
-  private final AtomicBoolean regenFailed;
-
-  // Thread factory for daemon threads so that application can shutdown
-  final ThreadFactory tf = ThreadFactoryUtil.poolThreadFactory(getClass().getSimpleName(), true);
-
-  // the thread we use for renewing all tokens
-  private final ScheduledExecutorService keyRenewer = Executors.newScheduledThreadPool(1, tf);
-
-  // Reference to the Telemetry Service in the client
-  private final TelemetryService telemetryService;
+  protected final AtomicReference<String> token;
 
   /**
    * Creates a JWTManager entity for a given account, user and KeyPair with a specified time to
@@ -74,32 +57,27 @@ final class JWTManager extends SecurityManager {
       int timeTillRenewal,
       TimeUnit unit,
       TelemetryService telemetryService) {
-    super(accountName, username);
+    super(accountName, username, telemetryService);
     // if any of our arguments are null, throw an exception
     if (keyPair == null) {
       throw new IllegalArgumentException();
     }
-
     token = new AtomicReference<>();
-
-    // we haven't yet failed to regenerate our token
-    regenFailed = new AtomicBoolean();
 
     // we have to keep around the keys
     this.keyPair = keyPair;
-
-    this.telemetryService = telemetryService;
 
     // generate our first token
     regenerateToken();
 
     // schedule all future renewals
-    keyRenewer.scheduleAtFixedRate(this::regenerateToken, timeTillRenewal, timeTillRenewal, unit);
+    tokenRefresher.scheduleAtFixedRate(
+        this::regenerateToken, timeTillRenewal, timeTillRenewal, unit);
   }
 
   /**
    * Creates a JWTManager entity for a given account, user and KeyPair with the default time to
-   * renew (RENEWAL_INTERVAL minutes)
+   * renew (RENEWAL_INTERVAL_IN_MINUTES minutes)
    *
    * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
@@ -108,13 +86,19 @@ final class JWTManager extends SecurityManager {
    */
   JWTManager(
       String accountName, String username, KeyPair keyPair, TelemetryService telemetryService) {
-    this(accountName, username, keyPair, RENEWAL_INTERVAL, TimeUnit.MINUTES, telemetryService);
+    this(
+        accountName,
+        username,
+        keyPair,
+        RENEWAL_INTERVAL_IN_MINUTES,
+        TimeUnit.MINUTES,
+        telemetryService);
   }
 
   @Override
   String getToken() {
     // if we failed to regenerate the token at some point, throw
-    if (regenFailed.get()) {
+    if (refreshFailed.get()) {
       LOGGER.error("getToken request failed due to token regeneration failure");
       throw new SecurityException();
     }
@@ -159,7 +143,7 @@ final class JWTManager extends SecurityManager {
       signedJWT.sign(signer);
       newToken = signedJWT.serialize();
     } catch (JOSEException e) {
-      regenFailed.set(true);
+      refreshFailed.set(true);
       LOGGER.error("Failed to regenerate token! Exception is as follows : {}", e.getMessage());
       throw new SecurityException();
     }
@@ -193,6 +177,6 @@ final class JWTManager extends SecurityManager {
   /** Currently, it only shuts down the instance of ExecutorService. */
   @Override
   public void close() {
-    keyRenewer.shutdown();
+    tokenRefresher.shutdown();
   }
 }

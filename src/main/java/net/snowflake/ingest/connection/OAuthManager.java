@@ -1,27 +1,23 @@
 /*
- * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
 
-import static net.snowflake.ingest.utils.Constants.*;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
@@ -29,48 +25,44 @@ import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
 import net.snowflake.client.jdbc.internal.google.api.client.http.HttpStatusCodes;
 import net.snowflake.client.jdbc.internal.google.gson.JsonObject;
 import net.snowflake.client.jdbc.internal.google.gson.JsonParser;
-import net.snowflake.ingest.utils.*;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.HttpUtil;
+import net.snowflake.ingest.utils.SFException;
 
 /**
- * This class manages creating and automatically renewing the JWT token
+ * This class manages creating and automatically refresh the OAuth token
  *
- * @author obabarinsa
- * @since 1.8
+ * @author alhuang
  */
 final class OAuthManager extends SecurityManager {
-
-  // Default update threshold, a floating-point value representing the ratio between the expiration
-  // time of an access
-  // token and the time needed to update it. It must be a value greater than 0 and less than or
-  // equal to 1.
   private static final double DEFAULT_UPDATE_THRESHOLD_RATIO = 0.8;
-  private static final String TOKEN_TYPE = "OAUTH";
+
+  // the endpoint for token request
+  private static final String TOKEN_REQUEST_ENDPOINT = "/oauth/token-request";
+
+  // Content type header to specify the encoding
   private static final String OAUTH_CONTENT_TYPE_HEADER = "application/x-www-form-urlencoded";
 
+  // Properties for token refresh request
+  private static final String TOKEN_TYPE = "OAUTH";
   private static final String GRANT_TYPE_PARAM = "grant_type";
-
   private static final String ACCESS_TOKEN = "access_token";
   private static final String REFRESH_TOKEN = "refresh_token";
   private static final String EXPIRES_IN = "expires_in";
+
+  // Update threshold, a floating-point value representing the ratio between the expiration time of
+  // an access token and the time needed to update it. It must be a value greater than 0 and less
+  // than 1. E.g. An access token with expires_in=600 and update_threshold_ratio=0.8 would be
+  // updated after 600*0.8 = 480.
   private final double updateThresholdRatio;
 
   private final AtomicReference<OAuthCredential> oAuthCredential;
 
-  // Did we fail to regenerate our token at some point?
-  private final AtomicBoolean refreshFailed;
-
   private final URI tokenRequestURI;
 
+  // Http client for submitting token refresh request
   private final CloseableHttpClient httpClient;
-
-  // Thread factory for daemon threads so that application can shutdown
-  final ThreadFactory tf = ThreadFactoryUtil.poolThreadFactory(getClass().getSimpleName(), true);
-
-  // the thread we use for refreshing access token
-  private final ScheduledExecutorService tokenRefresher = Executors.newScheduledThreadPool(1, tf);
-
-  // Reference to the Telemetry Service in the client
-  private final TelemetryService telemetryService;
 
   /**
    * Creates a OAuthManager entity for a given account, user and OAuthCredential with default time
@@ -79,30 +71,32 @@ final class OAuthManager extends SecurityManager {
    * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param oAuthCredential - the OAuth credential we're using to connect
+   * @param baseURIBuilder - the uri builder with common scheme, host and port
    * @param telemetryService reference to the telemetry service
    */
   OAuthManager(
       String accountName,
       String username,
       OAuthCredential oAuthCredential,
-      URI tokenRequestURI,
+      URIBuilder baseURIBuilder,
       TelemetryService telemetryService) {
     this(
         accountName,
         username,
         oAuthCredential,
-        tokenRequestURI,
+        baseURIBuilder,
         DEFAULT_UPDATE_THRESHOLD_RATIO,
         telemetryService);
   }
 
   /**
    * Creates a OAuthManager entity for a given account, user and OAuthCredential with a specified
-   * time to renew the token
+   * time to refresh the token
    *
    * @param accountName - the snowflake account name of this user
    * @param username - the snowflake username of the current user
    * @param oAuthCredential - the OAuth credential we're using to connect
+   * @param baseURIBuilder - the uri builder with common scheme, host and port
    * @param updateThresholdRatio - the ratio between the expiration time of a token and the time
    *     needed to refresh it.
    * @param telemetryService reference to the telemetry service
@@ -111,30 +105,33 @@ final class OAuthManager extends SecurityManager {
       String accountName,
       String username,
       OAuthCredential oAuthCredential,
-      URI tokenRequestURI,
+      URIBuilder baseURIBuilder,
       double updateThresholdRatio,
       TelemetryService telemetryService) {
-    super(accountName, username);
+    // disable telemetry service until jdbc v3.13.34 is released
+    super(accountName, username, null);
+
     // if any of our arguments are null, throw an exception
-    if (oAuthCredential == null) {
+    if (oAuthCredential == null || baseURIBuilder == null) {
       throw new IllegalArgumentException();
     }
 
+    // check if update threshold is within (0, 1)
     if (updateThresholdRatio <= 0 || updateThresholdRatio >= 1) {
       throw new IllegalArgumentException("updateThresholdRation should fall in (0, 1)");
     }
 
+    // build token request uri
+    baseURIBuilder.setPath(TOKEN_REQUEST_ENDPOINT);
+    try {
+      this.tokenRequestURI = baseURIBuilder.build();
+    } catch (URISyntaxException e) {
+      throw new SFException(e, ErrorCode.MAKE_URI_FAILURE, e.getMessage());
+    }
+
     this.oAuthCredential = new AtomicReference<>(oAuthCredential);
-
-    this.tokenRequestURI = tokenRequestURI;
-
     this.httpClient = HttpUtil.getHttpClient(accountName);
-
-    this.telemetryService = telemetryService;
-
     this.updateThresholdRatio = updateThresholdRatio;
-
-    refreshFailed = new AtomicBoolean();
 
     // generate our first token
     refreshToken();
@@ -156,7 +153,7 @@ final class OAuthManager extends SecurityManager {
 
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
   void refreshToken() {
-    for (int retries = 0; retries < MAX_REFRESH_TOKEN_RETRY; retries++) {
+    for (int retries = 0; retries < Constants.MAX_REFRESH_TOKEN_RETRY; retries++) {
       String respBodyString = null;
       try (CloseableHttpResponse httpResponse = httpClient.execute(makeRefreshTokenRequest())) {
         respBodyString = EntityUtils.toString(httpResponse.getEntity());

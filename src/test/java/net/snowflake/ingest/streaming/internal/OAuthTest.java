@@ -12,7 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class OAuthTest {
-  private static final String TABLE = "t2";
+  private static final String TABLE = "t1";
   private Connection jdbcConn;
   private SnowflakeStreamingIngestClient client;
 
@@ -70,11 +70,11 @@ public class OAuthTest {
     int retryCount;
     for (retryCount = 0; retryCount < maxRetries; retryCount++) {
       String offsetTokenFromSnowflake = channel.getLatestCommittedOffsetToken();
-      System.out.println(offsetTokenFromSnowflake);
       if (offsetTokenFromSnowflake != null
           && offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {
         break;
       }
+      Thread.sleep(1000);
     }
     if (retryCount == maxRetries) {
       throw new RuntimeException("Commit fail.");

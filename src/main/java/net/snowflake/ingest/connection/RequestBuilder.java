@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
@@ -25,7 +25,11 @@ import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.ingest.utils.*;
+import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SnowflakeURL;
+import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +62,7 @@ public class RequestBuilder {
   // Reference to the telemetry service
   private final TelemetryService telemetryService;
 
+  // The authorization type used in auth header
   public final String authType;
 
   /* Member variables End */
@@ -88,9 +93,6 @@ public class RequestBuilder {
 
   // the endpoint for get snowpipe client status
   private static final String CLIENT_STATUS_ENDPOINT_FORMAT = "/v1/data/pipes/%s/client/status";
-
-  // the endpoint for token request
-  private static final String TOKEN_REQUEST_ENDPOINT = "/oauth/token-request";
 
   // optional number of max seconds of items to fetch(eg. in the last hour)
   private static final String RECENT_HISTORY_IN_SECONDS = "recentSeconds";
@@ -267,9 +269,7 @@ public class RequestBuilder {
       CloseableHttpClient httpClient,
       String clientName) {
     // none of these arguments should be null
-    if (accountName == null
-        || userName == null
-        || (!(credential instanceof KeyPair) && !(credential instanceof OAuthCredential))) {
+    if (accountName == null || userName == null) {
       throw new IllegalArgumentException();
     }
 
@@ -291,19 +291,25 @@ public class RequestBuilder {
     this.userAgentSuffix = userAgentSuffix;
 
     // create our security/token manager
-    if (credential instanceof KeyPair) {
-      securityManager =
-          new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
-      authType = Constants.JWT;
-    } else {
-      securityManager =
-          new OAuthManager(
-              accountName,
-              userName,
-              (OAuthCredential) credential,
-              makeOAuthTokenRequestURI(),
-              telemetryService);
-      authType = Constants.OAUTH;
+    switch (credential.getClass().getSimpleName()) {
+      case "KeyPair":
+        securityManager =
+            new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
+        authType = Constants.JWT;
+        break;
+      case "OAuthCredential":
+        securityManager =
+            new OAuthManager(
+                accountName,
+                userName,
+                (OAuthCredential) credential,
+                makeBaseURI(),
+                telemetryService);
+        authType = Constants.OAUTH;
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "Credential should be instance of either KeyPair or OAuthCredential");
     }
 
     LOGGER.info(
@@ -403,6 +409,17 @@ public class RequestBuilder {
       throw new IllegalArgumentException();
     }
 
+    // construct the builder object without param
+    URIBuilder builder = makeBaseURI();
+
+    // set the request id
+    builder.setParameter(REQUEST_ID, requestId.toString());
+
+    return builder;
+  }
+
+  /** Construct a URIBuilder for common parts of request without any parameter */
+  private URIBuilder makeBaseURI() {
     // construct the builder object
     URIBuilder builder = new URIBuilder();
 
@@ -414,9 +431,6 @@ public class RequestBuilder {
 
     // set the port name
     builder.setPort(port);
-
-    // set the request id
-    builder.setParameter(REQUEST_ID, requestId.toString());
 
     return builder;
   }
@@ -591,23 +605,6 @@ public class RequestBuilder {
   }
 
   /**
-   * makeOAuthTokenRequestURI - Make the uri for OAuth token request
-   * http://snowflakeURL{:PORT}/oauth/token-request
-   */
-  private URI makeOAuthTokenRequestURI() {
-    try {
-      return new URIBuilder()
-          .setScheme(scheme)
-          .setHost(host)
-          .setPort(port)
-          .setPath(TOKEN_REQUEST_ENDPOINT)
-          .build();
-    } catch (URISyntaxException e) {
-      throw new SFException(e, ErrorCode.MAKE_URI_FAILURE, "Make OAuth token request fail");
-    }
-  }
-
-  /**
    * Given a list of files, and an optional clientInfo generate json string which later can be
    * passed in request body of insertFiles API
    *
@@ -658,7 +655,7 @@ public class RequestBuilder {
   }
 
   /**
-   * addToken - adds a the JWT token to a request
+   * addToken - adds a token to a request
    *
    * @param request the URI request
    * @param token the token to add

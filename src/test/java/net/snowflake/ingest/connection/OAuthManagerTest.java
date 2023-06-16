@@ -27,7 +27,7 @@ public class OAuthManagerTest {
             TestUtils.getAccount(),
             TestUtils.getUser(),
             oAuthCredential,
-            TestUtils.getTokenRequestURI(),
+            TestUtils.getBaseURIBuilder(),
             5e-3,
             null);
 

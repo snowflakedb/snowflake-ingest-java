@@ -1,9 +1,19 @@
+/*
+ * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.connection;
 
 import java.util.Base64;
 
+/**
+ * This class hold credential for OAuth
+ *
+ * @author alhuang
+ */
 public class OAuthCredential {
-  private static final String BASIC_AUTH_PREFIX = "Basic ";
+
+  private static final String BASIC_AUTH_HEADER_PREFIX = "Basic ";
   private final String authHeader;
   private final String clientId;
   private final String clientSecret;
@@ -12,7 +22,7 @@ public class OAuthCredential {
 
   public OAuthCredential(String clientId, String clientSecret, String refreshToken) {
     this.authHeader =
-        BASIC_AUTH_PREFIX
+        BASIC_AUTH_HEADER_PREFIX
             + Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes());
     this.clientId = clientId;
     this.clientSecret = clientSecret;
