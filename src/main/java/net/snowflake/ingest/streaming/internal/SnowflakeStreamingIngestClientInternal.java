@@ -59,10 +59,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.ingest.connection.IngestResponseException;
-import net.snowflake.ingest.connection.OAuthCredential;
-import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.TelemetryService;
+import net.snowflake.ingest.connection.*;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Constants;
@@ -784,6 +781,18 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
+  }
+
+  /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth
+   *
+   * @param refreshToken the new refresh token
+   */
+  void setRefreshToken(String refreshToken) {
+    if (requestBuilder != null) {
+      requestBuilder.setRefreshToken(refreshToken);
+    }
   }
 
   /**

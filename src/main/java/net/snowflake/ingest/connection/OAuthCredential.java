@@ -7,18 +7,17 @@ package net.snowflake.ingest.connection;
 import java.util.Base64;
 
 /**
- * This class hold credential for OAuth
+ * This class hold credentials for OAuth authentication
  *
  * @author alhuang
  */
 public class OAuthCredential {
-
   private static final String BASIC_AUTH_HEADER_PREFIX = "Basic ";
   private final String authHeader;
   private final String clientId;
   private final String clientSecret;
   private String accessToken;
-  private final String refreshToken;
+  private String refreshToken;
 
   public OAuthCredential(String clientId, String clientSecret, String refreshToken) {
     this.authHeader =
@@ -51,5 +50,9 @@ public class OAuthCredential {
 
   public String getRefreshToken() {
     return refreshToken;
+  }
+
+  public void setRefreshToken(String refreshToken) {
+    this.refreshToken = refreshToken;
   }
 }

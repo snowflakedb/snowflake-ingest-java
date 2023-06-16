@@ -151,6 +151,16 @@ final class OAuthManager extends SecurityManager {
     return TOKEN_TYPE;
   }
 
+  /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth
+   *
+   * @param refreshToken the new refresh token
+   */
+  public void setRefreshToken(String refreshToken) {
+    oAuthCredential.get().setRefreshToken(refreshToken);
+  }
+
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
   void refreshToken() {
     for (int retries = 0; retries < Constants.MAX_REFRESH_TOKEN_RETRY; retries++) {

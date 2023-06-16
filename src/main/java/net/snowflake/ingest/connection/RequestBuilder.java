@@ -864,6 +864,18 @@ public class RequestBuilder {
   }
 
   /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth
+   *
+   * @param refreshToken the new refresh token
+   */
+  public void setRefreshToken(String refreshToken) {
+    if (securityManager instanceof OAuthManager) {
+      ((OAuthManager) securityManager).setRefreshToken(refreshToken);
+    }
+  }
+
+  /**
    * Closes the resources being used by RequestBuilder object. {@link SecurityManager} is one such
    * resource which uses a threadpool which needs to be shutdown once SimpleIngestManager is done
    * interacting with Snowpipe Service (Rest APIs)
