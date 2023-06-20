@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
  * This class manages creating and automatically renewing the token
  *
  * @author obabarinsa
- * @since 1.8
  */
 abstract class SecurityManager implements AutoCloseable {
   // the logger for SecurityManager

@@ -21,7 +21,6 @@ import net.snowflake.ingest.utils.Cryptor;
  * This class manages creating and automatically renewing the JWT token
  *
  * @author obabarinsa
- * @since 1.8
  */
 final class JWTManager extends SecurityManager {
   // the token lifetime is 59 minutes
