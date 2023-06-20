@@ -148,7 +148,7 @@ public class TelemetryService {
   }
 
   /** Refresh JWT token stored in the telemetry client */
-  public void refreshJWTToken(String token) {
+  public void refreshToken(String token) {
     telemetry.refreshToken(token);
   }
 }
