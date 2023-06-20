@@ -62,6 +62,11 @@ abstract class SecurityManager implements AutoCloseable {
     this.telemetryService = telemetryService;
   }
 
+  /** Test only */
+  void setRefreshFailed(Boolean refreshFailed) {
+    this.refreshFailed.set(refreshFailed);
+  }
+
   private String parseAccount(final String accountName) {
     String parseAccount = null;
     if (accountName.contains(".")) {
@@ -85,16 +90,6 @@ abstract class SecurityManager implements AutoCloseable {
 
   /** getTokenType - returns the token type, either "KEYPAIR_JWT" or "OAUTH" */
   abstract String getTokenType();
-
-  /* Only used in testing at the moment */
-  final String getAccount() {
-    return this.account;
-  }
-
-  /** Only called by SecurityManagerTest */
-  final String getPublicKeyFingerPrint() {
-    return publicKeyFingerPrint;
-  }
 
   public abstract void close();
 }
