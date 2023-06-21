@@ -33,6 +33,7 @@ import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Example ingest sdk integration test */
@@ -384,6 +385,7 @@ public class SimpleIngestIT {
   }
 
   @Test
+  @Ignore("SNOW-693813") // Disable Snowpipe Exactly once, remove later
   public void testConfigureClientHappyCase() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
     SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
@@ -392,6 +394,7 @@ public class SimpleIngestIT {
   }
 
   @Test
+  @Ignore("SNOW-693813") // Disable Snowpipe Exactly once, remove later
   public void testConfigureClientNoPipeFound() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
     SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
@@ -406,6 +409,7 @@ public class SimpleIngestIT {
   }
 
   @Test
+  @Ignore("SNOW-693813") // Disable Snowpipe Exactly once, remove later
   public void testGetClientStatusHappyCase() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
     SimpleIngestManager manager = TestUtils.getManager(pipeName, userAgentSuffix);
@@ -416,6 +420,7 @@ public class SimpleIngestIT {
   }
 
   @Test
+  @Ignore("SNOW-693813") // Disable Snowpipe Exactly once, remove later
   public void testGetClientStatusNoPipeFound() throws Exception {
     final String userAgentSuffix = "kafka-provider/NONE";
     SimpleIngestManager manager = TestUtils.getManager("nopipe", userAgentSuffix);
@@ -430,6 +435,7 @@ public class SimpleIngestIT {
   }
 
   @Test
+  @Ignore("SNOW-693813") // Disable Snowpipe Exactly once, remove later
   public void testIngestFilesWithClientInfo() throws Exception {
 
     // first lets call configure client API
@@ -465,6 +471,7 @@ public class SimpleIngestIT {
   }
 
   @Test
+  @Ignore("SNOW-693813") // Disable Snowpipe Exactly once, remove later
   public void testIngestFilesWithClientInfoWithOldClientSequencer() throws Exception {
 
     // first lets call configure client API
@@ -526,6 +533,7 @@ public class SimpleIngestIT {
   }
 
   @Test
+  @Ignore("SNOW-693813") // Disable Snowpipe Exactly once, remove later
   public void testIngestFilesWithClientInfoWithNoClientSequencer() throws Exception {
     // first lets call configure client API
     final String userAgentSuffix = "kafka-provider/NONE";
