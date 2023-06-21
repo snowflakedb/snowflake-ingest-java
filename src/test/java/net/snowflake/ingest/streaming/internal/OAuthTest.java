@@ -41,6 +41,7 @@ public class OAuthTest {
         SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build();
   }
 
+  /** Insert rows and commit to test basic oauth functionality. */
   @Test
   public void testOAuthBasic() throws Exception {
     // Open a streaming ingest channel from the given client

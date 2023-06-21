@@ -123,7 +123,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "1.1.5-SNAPSHOT";
+  public static final String DEFAULT_VERSION = "2.0.2-SNAPSHOT";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -269,7 +269,7 @@ public class RequestBuilder {
       CloseableHttpClient httpClient,
       String clientName) {
     // none of these arguments should be null
-    if (accountName == null || userName == null) {
+    if (accountName == null || userName == null || credential == null) {
       throw new IllegalArgumentException();
     }
 
