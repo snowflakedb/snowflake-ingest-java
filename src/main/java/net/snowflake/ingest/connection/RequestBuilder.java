@@ -4,8 +4,17 @@
 
 package net.snowflake.ingest.connection;
 
+import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.KeyPair;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
@@ -20,16 +29,6 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.KeyPair;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
-import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 /**
  * This class handles constructing the URIs for our requests as well as putting together the
@@ -329,7 +328,7 @@ public class RequestBuilder {
      *
      * <p>clientInfo will be defaulted to null
      */
-    public IngestRequest(List<StagedFileWrapper> files){
+    public IngestRequest(List<StagedFileWrapper> files) {
       this.files = files;
     }
 
@@ -477,15 +476,14 @@ public class RequestBuilder {
   }
 
   /**
-   * Given a list of files, generate a json string which later can be
-   * passed in request body of insertFiles API
+   * Given a list of files, generate a json string which later can be passed in request body of
+   * insertFiles API
    *
    * @param files the list of files we want to send
    * @return the string json blob
    * @throws IllegalArgumentException if files passed in is null
    */
-  private String serializeInsertFilesRequest(
-      List<StagedFileWrapper> files) {
+  private String serializeInsertFilesRequest(List<StagedFileWrapper> files) {
     // if the files argument is null, throw
     if (files == null) {
       LOGGER.info("Null files argument in RequestBuilder");
@@ -568,8 +566,7 @@ public class RequestBuilder {
 
     // the entity for the containing the json
     final StringEntity entity =
-        new StringEntity(
-            serializeInsertFilesRequest(files), ContentType.APPLICATION_JSON);
+        new StringEntity(serializeInsertFilesRequest(files), ContentType.APPLICATION_JSON);
     post.setEntity(entity);
 
     return post;

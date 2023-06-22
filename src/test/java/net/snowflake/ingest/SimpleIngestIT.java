@@ -1,16 +1,13 @@
 package net.snowflake.ingest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.apache.http.Header;
-import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
-import net.snowflake.ingest.connection.HistoryResponse;
-import net.snowflake.ingest.connection.IngestResponse;
-import net.snowflake.ingest.utils.StagedFileWrapper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static net.snowflake.ingest.connection.RequestBuilder.CLIENT_NAME;
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
+import static net.snowflake.ingest.connection.RequestBuilder.JAVA_USER_AGENT;
+import static net.snowflake.ingest.connection.RequestBuilder.OS_INFO_USER_AGENT_FORMAT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URL;
 import java.util.Collections;
 import java.util.HashSet;
@@ -21,13 +18,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
-import static net.snowflake.ingest.connection.RequestBuilder.CLIENT_NAME;
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_VERSION;
-import static net.snowflake.ingest.connection.RequestBuilder.JAVA_USER_AGENT;
-import static net.snowflake.ingest.connection.RequestBuilder.OS_INFO_USER_AGENT_FORMAT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import net.snowflake.client.jdbc.internal.apache.http.Header;
+import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.ingest.connection.HistoryResponse;
+import net.snowflake.ingest.connection.IngestResponse;
+import net.snowflake.ingest.utils.StagedFileWrapper;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 /** Example ingest sdk integration test */
 public class SimpleIngestIT {

@@ -4,6 +4,20 @@
 
 package net.snowflake.ingest;
 
+import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
@@ -20,21 +34,6 @@ import net.snowflake.ingest.utils.StagedFileWrapper;
 import net.snowflake.ingest.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.security.spec.InvalidKeySpecException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import static net.snowflake.ingest.connection.RequestBuilder.DEFAULT_HOST_SUFFIX;
-import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 /**
  * This class provides a basic, low-level abstraction over the Snowflake Ingest Service REST api
@@ -527,14 +526,11 @@ public class SimpleIngestManager implements AutoCloseable {
     }
 
     HttpPost httpPostForIngestFile =
-        builder.generateInsertRequest(
-            requestId, pipe, files, showSkippedFiles);
+        builder.generateInsertRequest(requestId, pipe, files, showSkippedFiles);
 
     // send the request and get a response....
     try (CloseableHttpResponse response = httpClient.execute(httpPostForIngestFile)) {
-      LOGGER.info(
-          "Attempting to unmarshall insert response - {}",
-          response);
+      LOGGER.info("Attempting to unmarshall insert response - {}", response);
       return ServiceResponseHandler.unmarshallIngestResponse(response, requestId);
     }
   }
