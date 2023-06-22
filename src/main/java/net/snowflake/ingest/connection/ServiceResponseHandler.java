@@ -6,8 +6,6 @@ package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.HttpStatus;
@@ -16,6 +14,9 @@ import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
 import net.snowflake.ingest.utils.BackOffException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.UUID;
 
 /**
  * This class handles taking the HttpResponses we've gotten back, and producing an appropriate
@@ -152,64 +153,6 @@ public final class ServiceResponseHandler {
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
     // read out our blob into a pojo
     return mapper.readValue(blob, HistoryRangeResponse.class);
-  }
-
-  /**
-   * unmarshallConfigureClientResponse - Given an HttpResponse object, attempts to deserialize it
-   * into a ConfigureClientResponse
-   *
-   * @param response HttpResponse
-   * @param requestId
-   * @return ConfigureClientResponse
-   * @throws IOException if our entity is somehow corrupt or we can't get it
-   * @throws IngestResponseException - if we have an uncategorized network issue
-   * @throws BackOffException - if we have a 503 issue
-   */
-  public static ConfigureClientResponse unmarshallConfigureClientResponse(
-      HttpResponse response, UUID requestId)
-      throws IOException, IngestResponseException, BackOffException {
-    if (response == null) {
-      LOGGER.warn("Null response passed to unmarshallConfigureClientResponse");
-      throw new IllegalArgumentException();
-    }
-
-    // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.CLIENT_CONFIGURE);
-
-    // grab the string version of the response entity
-    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
-
-    // read out our blob into a pojo
-    return mapper.readValue(blob, ConfigureClientResponse.class);
-  }
-
-  /**
-   * unmarshallGetClientStatus - Given an HttpResponse object, attempts to deserialize it into a
-   * ClientStatusResponse
-   *
-   * @param response HttpResponse
-   * @param requestId
-   * @return ClientStatusResponse
-   * @throws IOException if our entity is somehow corrupt or we can't get it
-   * @throws IngestResponseException - if we have an uncategorized network issue
-   * @throws BackOffException - if we have a 503 issue
-   */
-  public static ClientStatusResponse unmarshallGetClientStatus(
-      HttpResponse response, UUID requestId)
-      throws IOException, IngestResponseException, BackOffException {
-    if (response == null) {
-      LOGGER.warn("Null response passed to unmarshallClientStatusResponse");
-      throw new IllegalArgumentException();
-    }
-
-    // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.CLIENT_STATUS);
-
-    // grab the string version of the response entity
-    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
-
-    // read out our blob into a pojo
-    return mapper.readValue(blob, ClientStatusResponse.class);
   }
 
   /**

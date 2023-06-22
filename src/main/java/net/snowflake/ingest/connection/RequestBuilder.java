@@ -4,19 +4,8 @@
 
 package net.snowflake.ingest.connection;
 
-import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
-import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.security.KeyPair;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
@@ -31,6 +20,16 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.security.KeyPair;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 /**
  * This class handles constructing the URIs for our requests as well as putting together the
@@ -82,13 +81,6 @@ public class RequestBuilder {
 
   // the endpoint for history time range queries
   private static final String HISTORY_RANGE_ENDPOINT_FORMAT = "/v1/data/pipes/%s/loadHistoryScan";
-
-  // the endpoint for configure snowpipe client
-  private static final String CONFIGURE_CLIENT_ENDPOINT_FORMAT =
-      "/v1/data/pipes/%s/client/configure";
-
-  // the endpoint for get snowpipe client status
-  private static final String CLIENT_STATUS_ENDPOINT_FORMAT = "/v1/data/pipes/%s/client/status";
 
   // optional number of max seconds of items to fetch(eg. in the last hour)
   private static final String RECENT_HISTORY_IN_SECONDS = "recentSeconds";
@@ -332,34 +324,18 @@ public class RequestBuilder {
     // the list of files we're loading
     private final List<StagedFileWrapper> files;
 
-    // additional info passed along with files which includes clientSequencer and offsetToken
-    // can be null
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private final InsertFilesClientInfo clientInfo;
-
-    /** Constructor used when both files and clientInfo are passed in request */
-    public IngestRequest(List<StagedFileWrapper> files, InsertFilesClientInfo clientInfo) {
-      this.files = files;
-      this.clientInfo = clientInfo;
-    }
-
     /**
      * Ctor used when only files is used in request body.
      *
      * <p>clientInfo will be defaulted to null
      */
-    public IngestRequest(List<StagedFileWrapper> files) {
-      this(files, null);
+    public IngestRequest(List<StagedFileWrapper> files){
+      this.files = files;
     }
 
     /* Gets the list of files which were added in request */
     public List<StagedFileWrapper> getFiles() {
       return files;
-    }
-
-    /* Gets the clientInfo associated with files which was added in request */
-    public InsertFilesClientInfo getClientInfo() {
-      return clientInfo;
     }
   }
 
@@ -501,79 +477,15 @@ public class RequestBuilder {
   }
 
   /**
-   * Given a request UUID, and a fully qualified pipe name make a URI for configure snowpipe client
-   * http://snowflakeURL{:PORT}/v1/data/pipes/{pipeName}/client/configure
-   *
-   * <p>Where snowflake URL can be an old url or new regionless URL.
-   *
-   * <p>Request Body is Empty
-   *
-   * <p>And our response looks like:
-   *
-   * <pre>
-   *   {
-   *      'clientSequencer': LONG
-   *   }
-   * </pre>
-   *
-   * @param requestId the label for this request
-   * @param pipe the pipe name
-   * @return configure snowpipe client URI
-   * @throws URISyntaxException
-   */
-  private URI makeConfigureClientURI(UUID requestId, String pipe) throws URISyntaxException {
-    if (pipe == null) {
-      throw new IllegalArgumentException();
-    }
-    URIBuilder builder = makeBaseURI(requestId);
-    builder.setPath(String.format(CONFIGURE_CLIENT_ENDPOINT_FORMAT, pipe));
-    LOGGER.info("Final Configure Client URIBuilder - {}", builder);
-    return builder.build();
-  }
-
-  /**
-   * makeGetClientURI - Given a request UUID, and a fully qualified pipe name make a URI for getting
-   * snowpipe client http://snowflakeURL{:PORT}/v1/data/pipes/{pipeName}/client/status
-   *
-   * <p>Where snowflake URL can be an old url or new regionless URL.
-   *
-   * <p>Request Body is Empty
-   *
-   * <p>And our response looks like:
-   *
-   * <pre>
-   *   {
-   *      'offsetToken': STRING
-   *      'clientSequencer': LONG
-   *   }
-   * </pre>
-   *
-   * @param requestId the label for this request
-   * @param pipe the pipe name
-   * @return get client URI
-   * @throws URISyntaxException
-   */
-  private URI makeGetClientURI(UUID requestId, String pipe) throws URISyntaxException {
-    if (pipe == null) {
-      throw new IllegalArgumentException();
-    }
-    URIBuilder builder = makeBaseURI(requestId);
-    builder.setPath(String.format(CLIENT_STATUS_ENDPOINT_FORMAT, pipe));
-    LOGGER.info("Final Get Client URIBuilder - {}", builder);
-    return builder.build();
-  }
-
-  /**
-   * Given a list of files, and an optional clientInfo generate json string which later can be
+   * Given a list of files, generate a json string which later can be
    * passed in request body of insertFiles API
    *
    * @param files the list of files we want to send
-   * @param clientInfo optional clientInfo which can be empty.
    * @return the string json blob
    * @throws IllegalArgumentException if files passed in is null
    */
   private String serializeInsertFilesRequest(
-      List<StagedFileWrapper> files, Optional<InsertFilesClientInfo> clientInfo) {
+      List<StagedFileWrapper> files) {
     // if the files argument is null, throw
     if (files == null) {
       LOGGER.info("Null files argument in RequestBuilder");
@@ -581,10 +493,7 @@ public class RequestBuilder {
     }
 
     // create pojo
-    IngestRequest ingestRequest =
-        clientInfo
-            .map(insertFilesClientInfo -> new IngestRequest(files, insertFilesClientInfo))
-            .orElseGet(() -> new IngestRequest(files));
+    IngestRequest ingestRequest = new IngestRequest(files);
 
     // serialize to a string
     try {
@@ -648,28 +557,6 @@ public class RequestBuilder {
   public HttpPost generateInsertRequest(
       UUID requestId, String pipe, List<StagedFileWrapper> files, boolean showSkippedFiles)
       throws URISyntaxException {
-    return generateInsertRequest(requestId, pipe, files, showSkippedFiles, Optional.empty());
-  }
-
-  /**
-   * generateInsertRequest - given a pipe, list of files and clientInfo, make a request for the
-   * insert endpoint
-   *
-   * @param requestId a UUID we will use to label this request
-   * @param pipe a fully qualified pipe name
-   * @param files a list of files
-   * @param showSkippedFiles a boolean which returns skipped files when set to true
-   * @param clientInfo
-   * @return a post request with all the data we need
-   * @throws URISyntaxException if the URI components provided are improper
-   */
-  public HttpPost generateInsertRequest(
-      UUID requestId,
-      String pipe,
-      List<StagedFileWrapper> files,
-      boolean showSkippedFiles,
-      Optional<InsertFilesClientInfo> clientInfo)
-      throws URISyntaxException {
     // make the insert URI
     URI insertURI = makeInsertURI(requestId, pipe, showSkippedFiles);
     LOGGER.info("Created Insert Request : {} ", insertURI);
@@ -682,7 +569,7 @@ public class RequestBuilder {
     // the entity for the containing the json
     final StringEntity entity =
         new StringEntity(
-            serializeInsertFilesRequest(files, clientInfo), ContentType.APPLICATION_JSON);
+            serializeInsertFilesRequest(files), ContentType.APPLICATION_JSON);
     post.setEntity(entity);
 
     return post;
@@ -770,22 +657,6 @@ public class RequestBuilder {
   }
 
   /**
-   * Given a requestId and a pipe, make a configure client request
-   *
-   * @param requestID a UUID we will use to label this request
-   * @param pipe a fully qualified pipe name
-   * @return configure client request
-   * @throws URISyntaxException
-   */
-  public HttpPost generateConfigureClientRequest(UUID requestID, String pipe)
-      throws URISyntaxException {
-    URI configureClientURI = makeConfigureClientURI(requestID, pipe);
-    HttpPost post = new HttpPost(configureClientURI);
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
-    return post;
-  }
-
-  /**
    * Generate post request for streaming ingest related APIs
    *
    * @param payload POST request payload
@@ -804,22 +675,6 @@ public class RequestBuilder {
     }
 
     return this.generateStreamingIngestPostRequest(payloadInString, endPoint, message);
-  }
-
-  /**
-   * Given a requestId and a pipe, make a get client status request
-   *
-   * @param requestID UUID
-   * @param pipe a fully qualified pipe name
-   * @return get client status request
-   * @throws URISyntaxException
-   */
-  public HttpGet generateGetClientStatusRequest(UUID requestID, String pipe)
-      throws URISyntaxException {
-    URI getClientStatusURI = makeGetClientURI(requestID, pipe);
-    HttpGet get = new HttpGet(getClientStatusURI);
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
-    return get;
   }
 
   /**
