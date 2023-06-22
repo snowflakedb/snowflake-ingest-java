@@ -124,7 +124,7 @@ public class Utils {
       }
     } else {
       throw new SFException(
-          ErrorCode.MISSING_CONFIG,
+          ErrorCode.WRONG_CONFIG_PARAMETER,
           String.format("authorization_type, should be %s or %s", Constants.JWT, Constants.OAUTH));
     }
 

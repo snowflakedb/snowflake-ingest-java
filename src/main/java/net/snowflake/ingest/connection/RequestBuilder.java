@@ -291,25 +291,18 @@ public class RequestBuilder {
     this.userAgentSuffix = userAgentSuffix;
 
     // create our security/token manager
-    switch (credential.getClass().getSimpleName()) {
-      case "KeyPair":
-        securityManager =
-            new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
-        authType = Constants.JWT;
-        break;
-      case "OAuthCredential":
-        securityManager =
-            new OAuthManager(
-                accountName,
-                userName,
-                (OAuthCredential) credential,
-                makeBaseURI(),
-                telemetryService);
-        authType = Constants.OAUTH;
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "Credential should be instance of either KeyPair or OAuthCredential");
+    if (credential instanceof KeyPair) {
+      securityManager =
+          new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
+      authType = Constants.JWT;
+    } else if (credential instanceof OAuthCredential) {
+      securityManager =
+          new OAuthManager(
+              accountName, userName, (OAuthCredential) credential, makeBaseURI(), telemetryService);
+      authType = Constants.OAUTH;
+    } else {
+      throw new IllegalArgumentException(
+          "Credential should be instance of either KeyPair or OAuthCredential");
     }
 
     LOGGER.info(

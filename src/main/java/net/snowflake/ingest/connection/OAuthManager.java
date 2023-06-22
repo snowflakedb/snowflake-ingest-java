@@ -4,30 +4,10 @@
 
 package net.snowflake.ingest.connection;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
-import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
-import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
-import net.snowflake.client.jdbc.internal.google.api.client.http.HttpStatusCodes;
-import net.snowflake.client.jdbc.internal.google.gson.JsonObject;
-import net.snowflake.client.jdbc.internal.google.gson.JsonParser;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SFException;
 
 /** This class manages creating and automatically refresh the OAuth token */
@@ -42,10 +22,6 @@ final class OAuthManager extends SecurityManager {
 
   // Properties for token refresh request
   private static final String TOKEN_TYPE = "OAUTH";
-  private static final String GRANT_TYPE_PARAM = "grant_type";
-  private static final String ACCESS_TOKEN = "access_token";
-  private static final String REFRESH_TOKEN = "refresh_token";
-  private static final String EXPIRES_IN = "expires_in";
 
   // Update threshold, a floating-point value representing the ratio between the expiration time of
   // an access token and the time needed to update it. It must be a value greater than 0 and less
@@ -53,12 +29,7 @@ final class OAuthManager extends SecurityManager {
   // updated after 600*0.8 = 480.
   private final double updateThresholdRatio;
 
-  private final AtomicReference<OAuthCredential> oAuthCredential;
-
-  private final URI tokenRequestURI;
-
-  // Http client for submitting token refresh request
-  private final CloseableHttpClient httpClient;
+  private OAuthClient oAuthClient;
 
   /**
    * Creates a OAuthManager entity for a given account, user and OAuthCredential with default time
@@ -114,22 +85,32 @@ final class OAuthManager extends SecurityManager {
 
     // check if update threshold is within (0, 1)
     if (updateThresholdRatio <= 0 || updateThresholdRatio >= 1) {
-      throw new IllegalArgumentException("updateThresholdRation should fall in (0, 1)");
+      throw new IllegalArgumentException("updateThresholdRatio should fall in (0, 1)");
     }
-
-    // build token request uri
-    baseURIBuilder.setPath(TOKEN_REQUEST_ENDPOINT);
-    try {
-      this.tokenRequestURI = baseURIBuilder.build();
-    } catch (URISyntaxException e) {
-      throw new SFException(e, ErrorCode.MAKE_URI_FAILURE, e.getMessage());
-    }
-
-    this.oAuthCredential = new AtomicReference<>(oAuthCredential);
-    this.httpClient = HttpUtil.getHttpClient(accountName);
     this.updateThresholdRatio = updateThresholdRatio;
+    this.oAuthClient = new SnowflakeOAuthClient(accountName, oAuthCredential, baseURIBuilder);
 
     // generate our first token
+    refreshToken();
+  }
+
+  /**
+   * Creates a OAuthManager entity for a given account, user and OAuthClient with a specified time
+   * to refresh the token. Use for testing only.
+   *
+   * @param accountName - the snowflake account name of this user
+   * @param username - the snowflake username of the current user
+   * @param oAuthClient - the OAuth client to perform token refresh
+   * @param updateThresholdRatio - the ratio between the expiration time of a token and the time
+   *     needed to refresh it.
+   */
+  public OAuthManager(
+      String accountName, String username, OAuthClient oAuthClient, double updateThresholdRatio) {
+    super(accountName, username, null);
+
+    this.updateThresholdRatio = updateThresholdRatio;
+    this.oAuthClient = oAuthClient;
+
     refreshToken();
   }
 
@@ -139,7 +120,7 @@ final class OAuthManager extends SecurityManager {
       LOGGER.error("getToken request failed due to token refresh failure");
       throw new SecurityException();
     }
-    return oAuthCredential.get().getAccessToken();
+    return oAuthClient.getoAuthCredentialRef().get().getAccessToken();
   }
 
   @Override
@@ -153,87 +134,39 @@ final class OAuthManager extends SecurityManager {
    *
    * @param refreshToken the new refresh token
    */
-  public void setRefreshToken(String refreshToken) {
-    oAuthCredential.get().setRefreshToken(refreshToken);
+  void setRefreshToken(String refreshToken) {
+    oAuthClient.getoAuthCredentialRef().get().setRefreshToken(refreshToken);
   }
 
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
-  void refreshToken() {
+  private void refreshToken() {
     for (int retries = 0; retries < Constants.MAX_REFRESH_TOKEN_RETRY; retries++) {
-      String respBodyString = null;
-      try (CloseableHttpResponse httpResponse = httpClient.execute(makeRefreshTokenRequest())) {
-        respBodyString = EntityUtils.toString(httpResponse.getEntity());
-
-        if (httpResponse.getStatusLine().getStatusCode() == HttpStatusCodes.STATUS_CODE_OK) {
-          JsonObject respBody = JsonParser.parseString(respBodyString).getAsJsonObject();
-
-          if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
-            String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
-            oAuthCredential.get().setAccessToken(newAccessToken);
-
-            // Refresh the token used in the telemetry service as well
-            if (telemetryService != null) {
-              telemetryService.refreshToken(newAccessToken);
-            }
-
-            // Schedule next refresh
-            long nextRefreshDelay =
-                (long) (respBody.get(EXPIRES_IN).getAsInt() * this.updateThresholdRatio);
-            tokenRefresher.schedule(this::refreshToken, nextRefreshDelay, TimeUnit.SECONDS);
-
-            LOGGER.info(
-                "Refresh access token, next refresh is scheduled after {} seconds",
-                nextRefreshDelay);
-            return;
-          }
-          LOGGER.error("A response with status ok does not contain access_token and expires_in");
-        }
-      } catch (IOException e) {
-        refreshFailed.set(true);
-        throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
-      }
-
-      LOGGER.debug(
-          "Refresh access token fail with response {}, retry count={}", respBodyString, retries);
-
-      // Exponential backoff retries
       try {
-        Thread.sleep((1L << retries) * 1000L);
-      } catch (InterruptedException e) {
-        throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
+        oAuthClient.refreshToken();
+
+        // Schedule next refresh
+        long nextRefreshDelay =
+            (long)
+                (oAuthClient.getoAuthCredentialRef().get().getExpires_in()
+                    * this.updateThresholdRatio);
+        tokenRefresher.schedule(this::refreshToken, nextRefreshDelay, TimeUnit.SECONDS);
+        LOGGER.debug(
+            "Refresh access token, next refresh is scheduled after {} seconds", nextRefreshDelay);
+
+        return;
+      } catch (SFException e1) {
+        // Exponential backoff retries
+        try {
+          Thread.sleep((1L << retries) * 1000L);
+        } catch (InterruptedException e2) {
+          throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e2.getMessage());
+        }
       }
     }
 
     refreshFailed.set(true);
     LOGGER.error("Fail to refresh access token");
     throw new SecurityException();
-  }
-
-  /** makeRefreshTokenRequest - make the request for refresh an access token */
-  private HttpPost makeRefreshTokenRequest() {
-    HttpPost post = new HttpPost(tokenRequestURI);
-    post.addHeader(HttpHeaders.CONTENT_TYPE, OAUTH_CONTENT_TYPE_HEADER);
-    post.addHeader(HttpHeaders.AUTHORIZATION, oAuthCredential.get().getAuthHeader());
-
-    Map<Object, Object> payload = new HashMap<>();
-    try {
-      payload.put(GRANT_TYPE_PARAM, URLEncoder.encode(REFRESH_TOKEN, "UTF-8"));
-      payload.put(
-          REFRESH_TOKEN, URLEncoder.encode(oAuthCredential.get().getRefreshToken(), "UTF-8"));
-    } catch (UnsupportedEncodingException e) {
-      throw new SFException(e, ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
-    }
-
-    String payloadString =
-        payload.entrySet().stream()
-            .map(e -> e.getKey() + "=" + e.getValue())
-            .collect(Collectors.joining("&"));
-
-    final StringEntity entity =
-        new StringEntity(payloadString, ContentType.APPLICATION_FORM_URLENCODED);
-    post.setEntity(entity);
-
-    return post;
   }
 
   /** Currently, it only shuts down the instance of ExecutorService. */

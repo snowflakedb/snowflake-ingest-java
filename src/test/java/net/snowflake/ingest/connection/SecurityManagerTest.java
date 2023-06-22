@@ -6,9 +6,9 @@ import static org.junit.Assert.assertNotEquals;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.sql.Connection;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.utils.Constants;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -17,7 +17,6 @@ public class SecurityManagerTest {
   // generate our keys using RSA
   private static final String ALGORITHM = "RSA";
   private KeyPair keyPair;
-  private OAuthCredential oAuthCredential;
 
   @Before
   public void setup() throws Exception {
@@ -27,43 +26,18 @@ public class SecurityManagerTest {
     keyGen.initialize(2048);
     // generate the actual keys
     keyPair = keyGen.generateKeyPair();
-
-    // get connection for generating OAuth credential
-    Connection jdbcConnection = TestUtils.getConnection(true);
-    oAuthCredential = TestUtils.generateOAuthCredential(jdbcConnection);
   }
 
   /** Test instantiate jwt manager with invalid params */
-  @Test
+  @Test(expected = IllegalArgumentException.class)
   public void testJWTManagerInstantiate() {
-    // Try to create jwt manager without required args
-    try {
-      SecurityManager jwtManager = new JWTManager(null, null, null, 3, TimeUnit.SECONDS, null);
-    } catch (IllegalArgumentException e1) {
-      try {
-        SecurityManager jwtManager =
-            new JWTManager("account", "user", null, 3, TimeUnit.SECONDS, null);
-      } catch (IllegalArgumentException e2) {
-        return;
-      }
-    }
-    assertFalse("testJWTManagerInstantiate failed", true);
+    SecurityManager jwtManager = new JWTManager(null, null, null, 3, TimeUnit.SECONDS, null);
   }
 
   /** Test instantiate OAuth manager with invalid params */
-  @Test
+  @Test(expected = IllegalArgumentException.class)
   public void testOAuthManagerInstantiate() {
-    // Try to create OAuth manager without required args
-    try {
-      SecurityManager oAuthManager = new OAuthManager("account", "user", null, null, null);
-    } catch (IllegalArgumentException e1) {
-      try {
-        SecurityManager oAuthManager = new OAuthManager("account", "user", null, null, -1, null);
-      } catch (IllegalArgumentException e2) {
-        return;
-      }
-    }
-    assertFalse("testOAuthManagerInstantiate failed", true);
+    SecurityManager oAuthManager = new OAuthManager("account", "user", null, null, null);
   }
 
   /** Test get token type, should exactly match the request */
@@ -74,12 +48,7 @@ public class SecurityManagerTest {
     assertEquals(jwtManager.getTokenType(), "KEYPAIR_JWT");
 
     SecurityManager oAuthManager =
-        new OAuthManager(
-            TestUtils.getAccount(),
-            TestUtils.getUser(),
-            oAuthCredential,
-            TestUtils.getBaseURIBuilder(),
-            null);
+        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), new MockOAuthClient(), 0.8);
     assertEquals(oAuthManager.getTokenType(), "OAUTH");
   }
 
@@ -109,13 +78,7 @@ public class SecurityManagerTest {
 
     // Set update threshold ratio to 5e-3, access token should be refreshed after 3 seconds
     SecurityManager securityManager =
-        new OAuthManager(
-            TestUtils.getAccount(),
-            TestUtils.getUser(),
-            oAuthCredential,
-            TestUtils.getBaseURIBuilder(),
-            5e-3,
-            null);
+        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), new MockOAuthClient(), 5e-3);
 
     String token = securityManager.getToken();
 
@@ -144,5 +107,25 @@ public class SecurityManagerTest {
       return;
     }
     assertFalse("testGetTokenFail failed", true);
+  }
+
+  /** Test refresh oauth token fail */
+  @Test(expected = SecurityException.class)
+  public void testOAuthRefreshFail() throws Exception {
+    MockOAuthClient mockOAuthClient = new MockOAuthClient();
+    mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_REFRESH_TOKEN_RETRY);
+
+    SecurityManager securityManager =
+        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
+  }
+
+  /** Test retry, should success */
+  @Test
+  public void testOAuthRefreshRetry() throws Exception {
+    MockOAuthClient mockOAuthClient = new MockOAuthClient();
+    mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_REFRESH_TOKEN_RETRY - 1);
+
+    SecurityManager securityManager =
+        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
   }
 }

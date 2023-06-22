@@ -16,11 +16,9 @@ import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -40,26 +38,13 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
-import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
-import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
-import net.snowflake.client.jdbc.internal.google.api.client.http.HttpStatusCodes;
-import net.snowflake.client.jdbc.internal.google.gson.JsonObject;
-import net.snowflake.client.jdbc.internal.google.gson.JsonParser;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
-import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Assert;
@@ -101,10 +86,6 @@ public class TestUtils {
   private static String host = "";
 
   private static int port = 0;
-
-  private static Boolean isOAuthIntegrationSet = false;
-  private static String oAuthClientId = "";
-  private static String oAuthClientSecret = "";
 
   // Keep separate test connections for snowpipe and snowpipe streaming so that session state is
   // isolated
@@ -158,44 +139,6 @@ public class TestUtils {
       keyPair = kpg.generateKeyPair();
       privateKey = keyPair.getPrivate();
       privateKeyPem = java.util.Base64.getEncoder().encodeToString(privateKey.getEncoded());
-    }
-
-    if (!isOAuthIntegrationSet) {
-      Connection jdbcConnection = getConnection(true);
-      ResultSet resultSet = jdbcConnection.createStatement().executeQuery("select current_role();");
-      resultSet.next();
-      String oldRole = resultSet.getString(1);
-
-      // create integration
-      jdbcConnection.createStatement().executeQuery("use role accountadmin;");
-      jdbcConnection
-          .createStatement()
-          .executeQuery(
-              "create or replace security integration "
-                  + OAUTH_INTEGRATION
-                  + "\n"
-                  + "  type=oauth\n"
-                  + "  oauth_client=CUSTOM\n"
-                  + "  oauth_client_type=CONFIDENTIAL\n"
-                  + "  oauth_redirect_uri='https://localhost.com/oauth'\n"
-                  + "  oauth_issue_refresh_tokens=true\n"
-                  + "  enabled=true"
-                  + "  oauth_refresh_token_validity=86400;");
-      jdbcConnection.createStatement().executeQuery("use role " + oldRole + ";");
-
-      // get client_id and client_secret
-      resultSet =
-          jdbcConnection
-              .createStatement()
-              .executeQuery(
-                  "select system$show_oauth_client_secrets('" + OAUTH_INTEGRATION + "');");
-      resultSet.next();
-      JsonObject jsonObject = JsonParser.parseString(resultSet.getString(1)).getAsJsonObject();
-      oAuthClientId = jsonObject.get("OAUTH_CLIENT_ID").toString().replaceAll("^\"|\"$", "");
-      oAuthClientSecret =
-          jsonObject.get("OAUTH_CLIENT_SECRET").toString().replaceAll("^\"|\"$", "");
-
-      isOAuthIntegrationSet = true;
     }
   }
 
@@ -519,83 +462,6 @@ public class TestUtils {
     row.put("bin", nullOrIfNullable(nullable, r, () -> nextBytes(r)));
 
     return row;
-  }
-
-  public static OAuthCredential generateOAuthCredential(Connection jdbcConnection)
-      throws Exception {
-    return generateOAuthCredential(jdbcConnection, role);
-  }
-
-  public static OAuthCredential generateOAuthCredential(Connection jdbcConnection, String role)
-      throws Exception {
-    if (profile == null) init();
-    return new OAuthCredential(
-        oAuthClientId, oAuthClientSecret, getRefreshToken(jdbcConnection, role));
-  }
-
-  public static String getRefreshToken(Connection jdbcConnection) throws Exception {
-    return getRefreshToken(jdbcConnection, role);
-  }
-
-  public static String getRefreshToken(Connection jdbcConnection, String role) throws Exception {
-    if (profile == null) init();
-    // get az code
-    ResultSet resultSet =
-        jdbcConnection
-            .createStatement()
-            .executeQuery(
-                "select system$it('create_oauth_az_code', '"
-                    + OAUTH_INTEGRATION
-                    + "', '"
-                    + "refresh_token session:role:"
-                    + role.toUpperCase()
-                    + "')");
-    resultSet.next();
-    String aZCode = resultSet.getString(1);
-
-    // build token post request
-    HttpPost post = new HttpPost(getTokenRequestURI());
-    post.addHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded");
-    post.addHeader(
-        HttpHeaders.AUTHORIZATION,
-        "Basic "
-            + java.util.Base64.getEncoder()
-                .encodeToString((oAuthClientId + ":" + oAuthClientSecret).getBytes()));
-    Map<Object, Object> payload = new HashMap<>();
-    try {
-      payload.put("grant_type", URLEncoder.encode("authorization_code", "UTF-8"));
-      payload.put("code", URLEncoder.encode(aZCode, "UTF-8"));
-      payload.put("redirect_uri", URLEncoder.encode("https://localhost.com/oauth", "UTF-8"));
-    } catch (UnsupportedEncodingException e) {
-      throw new RuntimeException("Fail to construct token post request", e);
-    }
-    String payloadString =
-        payload.entrySet().stream()
-            .map(e -> e.getKey() + "=" + e.getValue())
-            .collect(Collectors.joining("&"));
-    final StringEntity entity =
-        new StringEntity(payloadString, ContentType.APPLICATION_FORM_URLENCODED);
-    post.setEntity(entity);
-
-    // submit http request to get refresh token
-    CloseableHttpClient httpClient = HttpUtil.getHttpClient(account);
-    String respBodyStr = null;
-    try (CloseableHttpResponse httpResponse = httpClient.execute(post)) {
-      if (httpResponse.getStatusLine().getStatusCode() != HttpStatusCodes.STATUS_CODE_OK) {
-        throw new RuntimeException(
-            String.format("Get refresh token fail with response %s", httpResponse));
-      }
-      respBodyStr = EntityUtils.toString(httpResponse.getEntity());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    JsonObject respBody = JsonParser.parseString(respBodyStr).getAsJsonObject();
-    Assert.assertTrue(
-        String.format("Response %s does not contains refresh_token", respBodyStr),
-        respBody.has("refresh_token"));
-    String refreshToken = respBody.get("refresh_token").toString().replaceAll("^\"|\"$", "");
-
-    return refreshToken;
   }
 
   public static URIBuilder getBaseURIBuilder() {
