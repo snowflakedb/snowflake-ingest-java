@@ -280,7 +280,7 @@ public class RequestBuilder {
                 httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
             : null;
 
-    // stash references to the account and user name as well
+    // stash references to the account and username as well
     String account = accountName.toUpperCase();
     String user = userName.toUpperCase();
 
@@ -314,6 +314,22 @@ public class RequestBuilder {
         this.host,
         this.port,
         this.userAgentSuffix);
+  }
+
+  /**
+   * RequestBuilder - this constructor is for testing OAuth purposes only
+   *
+   * @param securityManager - security manager, either JWTManager or OAuthManager
+   */
+  public RequestBuilder(SecurityManager securityManager) {
+    this.port = DEFAULT_PORT;
+    this.scheme = DEFAULT_SCHEME;
+    this.host = DEFAULT_HOST_SUFFIX;
+    this.securityManager = securityManager;
+
+    this.userAgentSuffix = null;
+    this.authType = "OAuth";
+    this.telemetryService = null;
   }
 
   /**

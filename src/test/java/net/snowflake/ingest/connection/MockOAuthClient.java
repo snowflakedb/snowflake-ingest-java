@@ -11,7 +11,7 @@ public class MockOAuthClient implements OAuthClient {
 
   private int futureRefreshFailCount = 0;
 
-  MockOAuthClient() {
+  public MockOAuthClient() {
     OAuthCredential mockOAuthCredential =
         new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN");
     oAuthCredential = new AtomicReference<>(mockOAuthCredential);

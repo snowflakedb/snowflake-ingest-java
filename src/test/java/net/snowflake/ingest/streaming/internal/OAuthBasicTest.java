@@ -1,8 +1,13 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Properties;
+import java.util.UUID;
 import net.snowflake.ingest.TestUtils;
-import net.snowflake.ingest.streaming.*;
+import net.snowflake.ingest.connection.MockOAuthClient;
+import net.snowflake.ingest.connection.OAuthManager;
+import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,5 +35,20 @@ public class OAuthBasicTest {
   public void testCreateOAuthClient() {
     SnowflakeStreamingIngestClient client =
         SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build();
+  }
+
+  @Test
+  public void testSetRefreshToken() throws Exception {
+    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
+        new SnowflakeStreamingIngestClientInternal<>("TEST_CLIENT");
+    MockOAuthClient mockOAuthClient = new MockOAuthClient();
+
+    OAuthManager oAuthManager =
+        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
+    RequestBuilder requestBuilder = new RequestBuilder(oAuthManager);
+    client.injectRequestBuilder(requestBuilder);
+
+    String newToken = UUID.randomUUID().toString();
+    client.setRefreshToken(newToken);
   }
 }

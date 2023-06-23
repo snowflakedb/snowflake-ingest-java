@@ -1,7 +1,6 @@
 package net.snowflake.ingest.connection;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 
 import java.security.KeyPair;
@@ -97,16 +96,22 @@ public class SecurityManagerTest {
   }
 
   /** Test behavior of getting token after refresh failed */
-  @Test
-  public void testGetTokenFail() {
+  @Test(expected = SecurityException.class)
+  public void testGetJWTTokenFail() {
     SecurityManager manager = new JWTManager("account", "user", keyPair, 3, TimeUnit.SECONDS, null);
     manager.setRefreshFailed(true);
-    try {
-      String token = manager.getToken();
-    } catch (SecurityException e) {
-      return;
-    }
-    assertFalse("testGetTokenFail failed", true);
+    String token = manager.getToken();
+  }
+
+  /** Test behavior of getting token after refresh failed */
+  @Test(expected = SecurityException.class)
+  public void testGetOAuthTokenFail() throws Exception {
+    MockOAuthClient mockOAuthClient = new MockOAuthClient();
+
+    SecurityManager manager =
+        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
+    manager.setRefreshFailed(true);
+    String token = manager.getToken();
   }
 
   /** Test refresh oauth token fail */
@@ -117,6 +122,7 @@ public class SecurityManagerTest {
 
     SecurityManager securityManager =
         new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
+    securityManager.close();
   }
 
   /** Test retry, should success */
@@ -127,5 +133,6 @@ public class SecurityManagerTest {
 
     SecurityManager securityManager =
         new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
+    securityManager.close();
   }
 }
