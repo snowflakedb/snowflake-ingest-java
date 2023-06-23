@@ -11,6 +11,16 @@ authentication. Currently, we support ingestion through the following APIs:
 1. [Snowpipe](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-gs.html#client-requirement-java-or-python-sdk)
 2. [Snowpipe Streaming](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview) - Under Public Preview
 
+# Dependencies
+
+The Snowflake Ingest Service SDK depends on the following libraries:
+
+* snowflake-jdbc (3.13.30+)
+* slf4j-api
+
+These dependencies will be fetch automatically my build system like Maven or Gradle. If you don't build your project
+using a build system, please make sure these dependencies are on classpath.
+
 # Prerequisites
 
 **If your project depends on the Snowflake JDBC driver, as well, please make sure the JDBC driver version is 3.13.30 or newer.**
