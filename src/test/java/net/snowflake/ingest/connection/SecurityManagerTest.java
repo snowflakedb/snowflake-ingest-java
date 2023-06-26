@@ -118,7 +118,7 @@ public class SecurityManagerTest {
   @Test(expected = SecurityException.class)
   public void testOAuthRefreshFail() throws Exception {
     MockOAuthClient mockOAuthClient = new MockOAuthClient();
-    mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_REFRESH_TOKEN_RETRY);
+    mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY);
 
     SecurityManager securityManager =
         new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
@@ -129,7 +129,7 @@ public class SecurityManagerTest {
   @Test
   public void testOAuthRefreshRetry() throws Exception {
     MockOAuthClient mockOAuthClient = new MockOAuthClient();
-    mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_REFRESH_TOKEN_RETRY - 1);
+    mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY - 1);
 
     SecurityManager securityManager =
         new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);

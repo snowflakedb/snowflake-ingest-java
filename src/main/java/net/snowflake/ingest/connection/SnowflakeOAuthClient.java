@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2023 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.connection;
 
 import java.io.UnsupportedEncodingException;
@@ -92,8 +96,9 @@ public class SnowflakeOAuthClient implements OAuthClient {
           return;
         }
       }
-      LOGGER.debug("Refresh access token fail with response {}", respBodyString);
-      throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR);
+      throw new SFException(
+          ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
+          "Refresh access token fail with response: " + respBodyString);
     } catch (Exception e) {
       throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
     }

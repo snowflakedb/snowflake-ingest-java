@@ -103,6 +103,7 @@ public class Utils {
       properties.put(SFSessionProperty.PRIVATE_KEY.getPropertyKey(), parsePrivateKey(privateKey));
     }
 
+    // Use JWT if authorization type not specified
     if (!properties.containsKey(Constants.AUTHORIZATION_TYPE)) {
       properties.put(Constants.AUTHORIZATION_TYPE, Constants.JWT);
     }
@@ -124,7 +125,7 @@ public class Utils {
       }
     } else {
       throw new SFException(
-          ErrorCode.WRONG_CONFIG_PARAMETER,
+          ErrorCode.INVALID_CONFIG_PARAMETER,
           String.format("authorization_type, should be %s or %s", Constants.JWT, Constants.OAUTH));
     }
 

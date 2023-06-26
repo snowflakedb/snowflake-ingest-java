@@ -9,7 +9,9 @@ import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
-import org.junit.Before;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -17,22 +19,76 @@ import org.junit.Test;
  * integration test would be added in dew.
  */
 public class OAuthBasicTest {
-  private Properties props;
 
-  @Before
-  public void setUp() throws Exception {
-    props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+  /** Create client with invalid authorization type, this should fail. */
+  @Test
+  public void invalidAuthType() throws Exception {
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    props.put(Constants.AUTHORIZATION_TYPE, "INVALID_AUTH_TYPE");
+    SFException e =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT")
+                    .setProperties(props)
+                    .build());
+    Assert.assertEquals(e.getVendorCode(), ErrorCode.INVALID_CONFIG_PARAMETER.getMessageCode());
+  }
 
+  /** Create client with missing config, this should fail. */
+  @Test
+  public void missingOAuthParam() throws Exception {
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    props.put(Constants.AUTHORIZATION_TYPE, Constants.OAUTH);
+
+    // Missing oauth_client_id
+    SFException e =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT")
+                    .setProperties(props)
+                    .build());
+    Assert.assertEquals(
+        e.getMessage(),
+        new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_CLIENT_ID).getMessage());
+
+    // Missing oauth_client_secret
+    props.put(Constants.OAUTH_CLIENT_ID, "MOCK_CLIENT_ID");
+    e =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT")
+                    .setProperties(props)
+                    .build());
+    Assert.assertEquals(
+        e.getMessage(),
+        new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_CLIENT_SECRET).getMessage());
+
+    // Missing oauth_refresh_token
+    props.put(Constants.OAUTH_CLIENT_SECRET, "MOCK_CLIENT_SECRET");
+    e =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT")
+                    .setProperties(props)
+                    .build());
+    Assert.assertEquals(
+        e.getMessage(),
+        new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_REFRESH_TOKEN).getMessage());
+  }
+
+  /** Create client with mock credential, should fail when refreshing token */
+  @Test(expected = SecurityException.class)
+  public void testCreateOAuthClient() throws Exception {
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
     props.remove(Constants.PRIVATE_KEY);
     props.put(Constants.AUTHORIZATION_TYPE, Constants.OAUTH);
     props.put(Constants.OAUTH_CLIENT_ID, "MOCK_CLIENT_ID");
     props.put(Constants.OAUTH_CLIENT_SECRET, "MOCK_CLIENT_SECRET");
     props.put(Constants.OAUTH_REFRESH_TOKEN, "MOCK_REFRESH_TOKEN");
-  }
-
-  /** Create client with mock credential, should fail when refreshing token */
-  @Test(expected = SecurityException.class)
-  public void testCreateOAuthClient() {
     SnowflakeStreamingIngestClient client =
         SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build();
   }

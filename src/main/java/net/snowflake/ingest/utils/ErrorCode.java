@@ -39,7 +39,7 @@ public enum ErrorCode {
   MAX_ROW_SIZE_EXCEEDED("0031"),
   MAKE_URI_FAILURE("0032"),
   OAUTH_REFRESH_TOKEN_ERROR("0033"),
-  WRONG_CONFIG_PARAMETER("0034");
+  INVALID_CONFIG_PARAMETER("0034");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

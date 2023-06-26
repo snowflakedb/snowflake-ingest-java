@@ -172,6 +172,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       this.role = prop.getProperty(Constants.ROLE);
 
       Object credential = null;
+
+      // Authorization type will be set to jwt by default
       if (prop.getProperty(Constants.AUTHORIZATION_TYPE).equals(Constants.JWT)) {
         try {
           credential =
@@ -508,10 +510,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                               String.format(
                                                   "Channel has been invalidated because of failure"
                                                       + " response, name=%s, channel_sequencer=%d,"
-                                                      + " status_code=%d, executionCount=%d",
+                                                      + " status_code=%d,  message=%s,"
+                                                      + " executionCount=%d",
                                                   channelStatus.getChannelName(),
                                                   channelStatus.getChannelSequencer(),
                                                   channelStatus.getStatusCode(),
+                                                  channelStatus.getMessage(),
                                                   executionCount);
                                           logger.logWarn(errorMessage);
                                           if (getTelemetryService() != null) {

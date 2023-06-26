@@ -117,8 +117,7 @@ public final class OAuthManager extends SecurityManager {
   @Override
   String getToken() {
     if (refreshFailed.get()) {
-      LOGGER.error("getToken request failed due to token refresh failure");
-      throw new SecurityException();
+      throw new SecurityException("getToken request failed due to token refresh failure");
     }
     return oAuthClient.getoAuthCredentialRef().get().getAccessToken();
   }
@@ -140,7 +139,7 @@ public final class OAuthManager extends SecurityManager {
 
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
   private void refreshToken() {
-    for (int retries = 0; retries < Constants.MAX_REFRESH_TOKEN_RETRY; retries++) {
+    for (int retries = 0; retries < Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY; retries++) {
       try {
         oAuthClient.refreshToken();
 
@@ -165,8 +164,7 @@ public final class OAuthManager extends SecurityManager {
     }
 
     refreshFailed.set(true);
-    LOGGER.error("Fail to refresh access token");
-    throw new SecurityException();
+    throw new SecurityException("Fail to refresh access token");
   }
 
   /** Currently, it only shuts down the instance of ExecutorService. */
