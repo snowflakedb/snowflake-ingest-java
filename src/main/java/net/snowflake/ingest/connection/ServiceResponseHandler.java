@@ -6,6 +6,8 @@ package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.HttpStatus;
@@ -14,9 +16,6 @@ import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
 import net.snowflake.ingest.utils.BackOffException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.UUID;
 
 /**
  * This class handles taking the HttpResponses we've gotten back, and producing an appropriate
