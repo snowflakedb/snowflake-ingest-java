@@ -275,7 +275,7 @@ public class RequestBuilder {
 
     // Set up the telemetry service if needed
     this.telemetryService =
-        ENABLE_TELEMETRY_TO_SF
+        ENABLE_TELEMETRY_TO_SF && credential instanceof KeyPair
             ? new TelemetryService(
                 httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
             : null;
@@ -900,7 +900,9 @@ public class RequestBuilder {
    */
   public void closeResources() {
     securityManager.close();
-    telemetryService.close();
+    if (telemetryService != null) {
+      telemetryService.close();
+    }
   }
 
   /** Get the telemetry service */
