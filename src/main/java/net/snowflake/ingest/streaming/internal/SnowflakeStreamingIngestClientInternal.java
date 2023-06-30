@@ -182,14 +182,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
           throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
         }
-        logger.logInfo("Using JWT KeyPair for authorization");
       } else {
         credential =
             new OAuthCredential(
                 prop.getProperty(Constants.OAUTH_CLIENT_ID),
                 prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
-        logger.logInfo("Using OAuth for authorization");
       }
       this.requestBuilder =
           new RequestBuilder(
@@ -198,6 +196,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               credential,
               this.httpClient,
               String.format("%s_%s", this.name, System.currentTimeMillis()));
+
+      logger.logInfo("Using {} for authorization", requestBuilder.getAuthType());
 
       // Setup client telemetries if needed
       this.setupMetricsForClient();

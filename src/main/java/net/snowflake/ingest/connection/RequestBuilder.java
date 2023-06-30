@@ -270,6 +270,7 @@ public class RequestBuilder {
     }
 
     // Set up the telemetry service if needed
+    // TODO: SNOW-854272 Support telemetry service when using OAuth authentication
     this.telemetryService =
         ENABLE_TELEMETRY_TO_SF && credential instanceof KeyPair
             ? new TelemetryService(
@@ -882,6 +883,11 @@ public class RequestBuilder {
     if (securityManager instanceof OAuthManager) {
       ((OAuthManager) securityManager).setRefreshToken(refreshToken);
     }
+  }
+
+  /** Get authorization type */
+  public String getAuthType() {
+    return securityManager.getTokenType();
   }
 
   /**
