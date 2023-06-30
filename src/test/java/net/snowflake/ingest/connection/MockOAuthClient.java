@@ -15,7 +15,7 @@ public class MockOAuthClient implements OAuthClient {
     OAuthCredential mockOAuthCredential =
         new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN");
     oAuthCredential = new AtomicReference<>(mockOAuthCredential);
-    oAuthCredential.get().setExpires_in(600);
+    oAuthCredential.get().setExpiresIn(600);
   }
 
   @Override

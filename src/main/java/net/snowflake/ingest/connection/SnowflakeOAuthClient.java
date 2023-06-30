@@ -30,6 +30,9 @@ import net.snowflake.ingest.utils.SFException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/*
+ * Implementation of Snowflake OAuth Client, used for refreshing an OAuth access token.
+ */
 public class SnowflakeOAuthClient implements OAuthClient {
 
   static final Logger LOGGER = LoggerFactory.getLogger(SnowflakeOAuthClient.class);
@@ -90,9 +93,11 @@ public class SnowflakeOAuthClient implements OAuthClient {
         JsonObject respBody = JsonParser.parseString(respBodyString).getAsJsonObject();
 
         if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
+          // Trim surrounding quotation marks
           String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
+
           oAuthCredential.get().setAccessToken(newAccessToken);
-          oAuthCredential.get().setExpires_in(respBody.get(EXPIRES_IN).getAsInt());
+          oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).getAsInt());
           return;
         }
       }

@@ -146,7 +146,7 @@ public final class OAuthManager extends SecurityManager {
         // Schedule next refresh
         long nextRefreshDelay =
             (long)
-                (oAuthClient.getoAuthCredentialRef().get().getExpires_in()
+                (oAuthClient.getoAuthCredentialRef().get().getExpiresIn()
                     * this.updateThresholdRatio);
         tokenRefresher.schedule(this::refreshToken, nextRefreshDelay, TimeUnit.SECONDS);
         LOGGER.debug(

@@ -14,7 +14,7 @@ public class OAuthCredential {
   private final String clientSecret;
   private String accessToken;
   private String refreshToken;
-  private int expires_in;
+  private int expiresIn;
 
   public OAuthCredential(String clientId, String clientSecret, String refreshToken) {
     this.authHeader =
@@ -45,11 +45,11 @@ public class OAuthCredential {
     this.refreshToken = refreshToken;
   }
 
-  public void setExpires_in(int expires_in) {
-    this.expires_in = expires_in;
+  public void setExpiresIn(int expiresIn) {
+    this.expiresIn = expiresIn;
   }
 
-  public int getExpires_in() {
-    return expires_in;
+  public int getExpiresIn() {
+    return expiresIn;
   }
 }

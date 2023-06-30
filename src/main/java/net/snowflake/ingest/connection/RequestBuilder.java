@@ -25,7 +25,6 @@ import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -61,9 +60,6 @@ public class RequestBuilder {
 
   // Reference to the telemetry service
   private final TelemetryService telemetryService;
-
-  // The authorization type used in auth header
-  public final String authType;
 
   /* Member variables End */
 
@@ -294,12 +290,10 @@ public class RequestBuilder {
     if (credential instanceof KeyPair) {
       securityManager =
           new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
-      authType = Constants.JWT;
     } else if (credential instanceof OAuthCredential) {
       securityManager =
           new OAuthManager(
               accountName, userName, (OAuthCredential) credential, makeBaseURI(), telemetryService);
-      authType = Constants.OAUTH;
     } else {
       throw new IllegalArgumentException(
           "Credential should be instance of either KeyPair or OAuthCredential");
@@ -328,7 +322,6 @@ public class RequestBuilder {
     this.securityManager = securityManager;
 
     this.userAgentSuffix = null;
-    this.authType = "OAuth";
     this.telemetryService = null;
   }
 
