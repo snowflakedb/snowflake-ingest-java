@@ -197,7 +197,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.httpClient,
               String.format("%s_%s", this.name, System.currentTimeMillis()));
 
-      logger.logInfo("Using {} for authorization", requestBuilder.getAuthType());
+      logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
 
       // Setup client telemetries if needed
       this.setupMetricsForClient();
