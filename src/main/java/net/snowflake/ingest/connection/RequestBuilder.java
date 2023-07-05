@@ -202,6 +202,7 @@ public class RequestBuilder {
         portNum,
         userAgentSuffix,
         null,
+        null,
         null);
   }
 
@@ -228,6 +229,7 @@ public class RequestBuilder {
         url.getUrlWithoutPort(),
         url.getPort(),
         null,
+        null,
         httpClient,
         clientName);
   }
@@ -242,6 +244,7 @@ public class RequestBuilder {
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param securityManager - The security manager for authentication
    * @param httpClient - reference to the http client
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
@@ -253,6 +256,7 @@ public class RequestBuilder {
       String hostName,
       int portNum,
       String userAgentSuffix,
+      SecurityManager securityManager,
       CloseableHttpClient httpClient,
       String clientName) {
     // none of these arguments should be null
@@ -279,16 +283,24 @@ public class RequestBuilder {
     this.userAgentSuffix = userAgentSuffix;
 
     // create our security/token manager
-    if (credential instanceof KeyPair) {
-      securityManager =
-          new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
-    } else if (credential instanceof OAuthCredential) {
-      securityManager =
-          new OAuthManager(
-              accountName, userName, (OAuthCredential) credential, makeBaseURI(), telemetryService);
+    if (securityManager == null) {
+      if (credential instanceof KeyPair) {
+        this.securityManager =
+            new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
+      } else if (credential instanceof OAuthCredential) {
+        this.securityManager =
+            new OAuthManager(
+                accountName,
+                userName,
+                (OAuthCredential) credential,
+                makeBaseURI(),
+                telemetryService);
+      } else {
+        throw new IllegalArgumentException(
+            "Credential should be instance of either KeyPair or OAuthCredential");
+      }
     } else {
-      throw new IllegalArgumentException(
-          "Credential should be instance of either KeyPair or OAuthCredential");
+      this.securityManager = securityManager;
     }
 
     LOGGER.info(
@@ -300,21 +312,6 @@ public class RequestBuilder {
         this.host,
         this.port,
         this.userAgentSuffix);
-  }
-
-  /**
-   * RequestBuilder - this constructor is for testing OAuth purposes only
-   *
-   * @param securityManager - security manager, either JWTManager or OAuthManager
-   */
-  public RequestBuilder(SecurityManager securityManager) {
-    this.port = DEFAULT_PORT;
-    this.scheme = DEFAULT_SCHEME;
-    this.host = DEFAULT_HOST_SUFFIX;
-    this.securityManager = securityManager;
-
-    this.userAgentSuffix = null;
-    this.telemetryService = null;
   }
 
   /**

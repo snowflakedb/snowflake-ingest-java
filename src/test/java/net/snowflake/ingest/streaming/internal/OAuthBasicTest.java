@@ -101,7 +101,18 @@ public class OAuthBasicTest {
 
     OAuthManager oAuthManager =
         new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
-    RequestBuilder requestBuilder = new RequestBuilder(oAuthManager);
+    RequestBuilder requestBuilder =
+        new RequestBuilder(
+            "MOCK_ACCOUNTNAME",
+            "MOCK_USERNAME",
+            "MOCK_CREDENTIAL",
+            "https",
+            "MOCK_HOST_NAME",
+            443,
+            null,
+            oAuthManager,
+            null,
+            null);
     client.injectRequestBuilder(requestBuilder);
 
     String newToken = UUID.randomUUID().toString();
