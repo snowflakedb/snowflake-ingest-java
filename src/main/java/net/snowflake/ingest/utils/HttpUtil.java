@@ -266,7 +266,7 @@ public class HttpUtil {
   }
 
   /**
-   * Retry handler logic. Retry at most 3 times if any of the following exceptions is thrown by
+   * Retry handler logic. Retry at most {@link HttpUtil.MAX_RETRIES} times if any of the following exceptions is thrown by
    * request execution:
    *
    * <ul>
