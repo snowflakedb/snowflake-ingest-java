@@ -266,8 +266,8 @@ public class HttpUtil {
   }
 
   /**
-   * Retry handler logic. Retry at most {@link HttpUtil.MAX_RETRIES} times if any of the following exceptions is thrown by
-   * request execution:
+   * Retry handler logic. Retry at most {@link HttpUtil.MAX_RETRIES} times if any of the following
+   * exceptions is thrown by request execution:
    *
    * <ul>
    *   <li>No response from Service exception (NoHttpResponseException)
@@ -276,7 +276,7 @@ public class HttpUtil {
    *
    * @return retryHandler to add to http client.
    */
-  private static HttpRequestRetryHandler getHttpRequestRetryHandler() {
+  static HttpRequestRetryHandler getHttpRequestRetryHandler() {
     return (exception, executionCount, httpContext) -> {
       final String requestURI = getRequestUriFromContext(httpContext);
       if (executionCount > MAX_RETRIES) {
