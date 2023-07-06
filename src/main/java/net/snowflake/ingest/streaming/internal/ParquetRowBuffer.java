@@ -309,7 +309,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /** Close the row buffer by releasing its internal resources. */
   @Override
   void closeInternal() {
-    this.fieldIndex.clear();
     if (bdecParquetWriter != null) {
       try {
         bdecParquetWriter.close();
