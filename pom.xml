@@ -213,10 +213,6 @@
             <artifactId>hadoop-auth</artifactId>
           </exclusion>
           <exclusion>
-            <groupId>org.apache.hadoop.thirdparty</groupId>
-            <artifactId>hadoop-shaded-protobuf_3_7</artifactId>
-          </exclusion>
-          <exclusion>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
           </exclusion>
