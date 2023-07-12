@@ -51,9 +51,9 @@ public class BdecParquetWriter implements AutoCloseable {
       MessageType schema,
       Map<String, String> extraMetaData,
       String channelName,
-      long maxChannelSizeInBytes)
+      long maxChunkSizeInBytes)
       throws IOException {
-    OutputFile file = new ByteArrayOutputFile(stream, maxChannelSizeInBytes);
+    OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
