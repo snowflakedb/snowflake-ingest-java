@@ -164,11 +164,11 @@ public class BdecParquetWriter implements AutoCloseable {
    */
   private static class ByteArrayOutputFile implements OutputFile {
     private final ByteArrayOutputStream stream;
-    private final long maxChannelSizeInBytes;
+    private final long maxChunkSizeInBytes;
 
-    private ByteArrayOutputFile(ByteArrayOutputStream stream, long maxChannelSizeInBytes) {
+    private ByteArrayOutputFile(ByteArrayOutputStream stream, long maxChunkSizeInBytes) {
       this.stream = stream;
-      this.maxChannelSizeInBytes = maxChannelSizeInBytes;
+      this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     }
 
     @Override
@@ -189,7 +189,7 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public long defaultBlockSize() {
-      return maxChannelSizeInBytes;
+      return maxChunkSizeInBytes;
     }
   }
 
