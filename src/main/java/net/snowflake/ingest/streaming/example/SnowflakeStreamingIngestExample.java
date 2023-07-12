@@ -48,8 +48,8 @@ public class SnowflakeStreamingIngestExample {
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE")
-              .setSchemaName("MY_SCHEMA")
+              .setDBName("MY_DATABASE_TEST")
+              .setSchemaName("MY_SCHEMA_TEST")
               .setTableName("MY_TABLE")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
@@ -78,7 +78,7 @@ public class SnowflakeStreamingIngestExample {
       // If needed, you can check the offset_token registered in Snowflake to make sure everything
       // is committed
       final int expectedOffsetTokenInSnowflake = totalRowsInTable - 1; // 0 based offset_token
-      final int maxRetries = 10;
+      final int maxRetries = 100;
       int retryCount = 0;
 
       do {
