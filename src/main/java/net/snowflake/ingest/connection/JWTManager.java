@@ -35,7 +35,7 @@ final class JWTManager extends SecurityManager {
   private final transient KeyPair keyPair;
 
   // the token itself
-  protected final AtomicReference<String> token;
+  private final AtomicReference<String> token;
 
   /**
    * Creates a JWTManager entity for a given account, user and KeyPair with a specified time to
