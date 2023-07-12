@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT;
 
 import java.math.BigDecimal;
@@ -115,7 +116,8 @@ public class RowBufferTest {
         rs -> {},
         initialState,
         enableParquetMemoryOptimization,
-        MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT);
+        MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
+        MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
   }
 
   @Test
@@ -416,25 +418,6 @@ public class RowBufferTest {
 
     InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null);
     Assert.assertFalse(response.hasErrors());
-  }
-
-  @Test
-  public void testClose() {
-    this.rowBufferOnErrorContinue.close("testClose");
-    Map<String, Object> row = new HashMap<>();
-    row.put("colTinyInt", (byte) 1);
-    row.put("colSmallInt", (short) 2);
-    row.put("colInt", 3);
-    row.put("colBigInt", 4L);
-    row.put("colDecimal", 1.23);
-    row.put("colChar", "2");
-
-    try {
-      this.rowBufferOnErrorContinue.insertRows(Collections.singletonList(row), null);
-      Assert.fail("Insert should fail after buffer is closed");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
-    }
   }
 
   @Test

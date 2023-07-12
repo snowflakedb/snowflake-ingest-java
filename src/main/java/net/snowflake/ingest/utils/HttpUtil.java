@@ -73,6 +73,12 @@ public class HttpUtil {
   private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
   private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
 
+  /**
+   * After how many seconds of inactivity should be idle connections evicted from the connection
+   * pool.
+   */
+  private static final int DEFAULT_EVICT_IDLE_AFTER_SECONDS = 60;
+
   // Default is 2, but scaling it up to 100 to match with default_max_connections
   private static final int DEFAULT_MAX_CONNECTIONS_PER_ROUTE = 100;
 
@@ -146,6 +152,7 @@ public class HttpUtil {
     HttpClientBuilder clientBuilder =
         HttpClientBuilder.create()
             .setConnectionManager(connectionManager)
+            .evictIdleConnections(DEFAULT_EVICT_IDLE_AFTER_SECONDS, TimeUnit.SECONDS)
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
             .setRetryHandler(getHttpRequestRetryHandler())
@@ -259,27 +266,34 @@ public class HttpUtil {
   }
 
   /**
-   * Retry handler logic. Retry if No response from Service exception. (NoHttpResponseException)
+   * Retry handler logic. Retry at most {@link HttpUtil.MAX_RETRIES} times if any of the following
+   * exceptions is thrown by request execution:
+   *
+   * <ul>
+   *   <li>No response from Service exception (NoHttpResponseException)
+   *   <li>javax.net.ssl.SSLException: Connection reset.
+   * </ul>
    *
    * @return retryHandler to add to http client.
    */
-  private static HttpRequestRetryHandler getHttpRequestRetryHandler() {
+  static HttpRequestRetryHandler getHttpRequestRetryHandler() {
     return (exception, executionCount, httpContext) -> {
       final String requestURI = getRequestUriFromContext(httpContext);
       if (executionCount > MAX_RETRIES) {
         LOGGER.info("Max retry exceeded for requestURI:{}", requestURI);
         return false;
       }
-      if (exception instanceof NoHttpResponseException) {
+      if (exception instanceof NoHttpResponseException
+          || exception instanceof javax.net.ssl.SSLException) {
         LOGGER.info(
-            "Retrying request which caused No HttpResponse Exception with "
-                + "URI:{}, retryCount:{} and maxRetryCount:{}",
+            "Retrying request which caused {} with " + "URI:{}, retryCount:{} and maxRetryCount:{}",
+            exception.getClass().getName(),
             requestURI,
             executionCount,
             MAX_RETRIES);
         return true;
       }
-      LOGGER.info("No retry for URI:{} with exception", requestURI, exception);
+      LOGGER.info("No retry for URI:{} with exception {}", requestURI, exception.toString());
       return false;
     };
   }

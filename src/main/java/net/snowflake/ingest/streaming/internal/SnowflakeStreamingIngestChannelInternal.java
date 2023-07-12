@@ -127,7 +127,10 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                 : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
             owningClient != null
                 ? owningClient.getParameterProvider().getMaxChannelSizeInBytes()
-                : ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT);
+                : ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
+            owningClient != null
+                ? owningClient.getParameterProvider().getMaxAllowedRowSizeInBytes()
+                : ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),

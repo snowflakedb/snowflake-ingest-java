@@ -6,7 +6,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>1.1.5-SNAPSHOT</version>
+  <version>2.0.2-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -44,14 +44,18 @@
     <commonslogging.version>1.2</commonslogging.version>
     <commonstext.version>1.10.0</commonstext.version>
     <fasterxml.version>2.14.0</fasterxml.version>
-    <guava.version>31.1-jre</guava.version>
+    <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.3.5</hadoop.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.5</jacoco.version>
+    <license.processing.dependencyJarsDir>${project.build.directory}/dependency-jars</license.processing.dependencyJarsDir>
+    <license.processing.dependencyListFile>${project.build.directory}/dependency-list.txt</license.processing.dependencyListFile>
+    <license.processing.resourcesRoot>${project.build.directory}/generated-licenses-info</license.processing.resourcesRoot>
+    <license.processing.targetDir>${license.processing.resourcesRoot}/META-INF/third-party-licenses</license.processing.targetDir>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <net.minidev.version>2.4.9</net.minidev.version>
-    <netty.version>4.1.82.Final</netty.version>
+    <netty.version>4.1.94.Final</netty.version>
     <nimbusds.version>9.9.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.12.3</parquet.version>
@@ -59,7 +63,7 @@
     <protobuf.version>3.19.6</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
-    <snappy.version>1.1.8.3</snappy.version>
+    <snappy.version>1.1.10.1</snappy.version>
     <snowjdbc.version>3.13.30</snowjdbc.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
@@ -296,7 +300,6 @@
         <artifactId>objenesis</artifactId>
         <version>${objenesis.version}</version>
       </dependency>
-      <!-- SLF4J api that a client can shim in later -->
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
@@ -445,7 +448,6 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <scope>provided</scope>
     </dependency>
     <!-- JUnit so that we can make some basic unit tests -->
     <dependency>
@@ -487,6 +489,7 @@
       <version>2.0.2</version>
       <scope>test</scope>
     </dependency>
+    <!-- Change the 'test' scope to 'runtime' to enable console logging in examples -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-simple</artifactId>
@@ -502,6 +505,9 @@
         <filtering>true</filtering>
         <directory>src/main/resources</directory>
       </resource>
+      <resource>
+        <directory>${license.processing.resourcesRoot}</directory>
+      </resource>
     </resources>
 
     <!-- disable default maven deploy plugin since we are using gpg:sign-and-deploy-file -->
@@ -512,6 +518,29 @@
           <configuration>
             <skip>true</skip>
           </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-enforcer-plugin</artifactId>
+          <version>3.0.0-M3</version>
+          <dependencies>
+            <dependency>
+              <groupId>com.google.cloud.tools</groupId>
+              <artifactId>linkage-checker-enforcer-rules</artifactId>
+              <version>1.5.12</version>
+            </dependency>
+            <dependency>
+              <groupId>org.codehaus.mojo</groupId>
+              <artifactId>extra-enforcer-rules</artifactId>
+              <version>1.3</version>
+              <exclusions>
+                <exclusion>
+                  <groupId>org.eclipse.aether</groupId>
+                  <artifactId>aether-util</artifactId>
+                </exclusion>
+              </exclusions>
+            </dependency>
+          </dependencies>
         </plugin>
 
         <!-- Need to define the maven-failsafe-plugin here -->
@@ -535,6 +564,7 @@
             <excludes>
               <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
               <exclude>**/*SnowflakeIngestBasicExample*</exclude>
+              <exclude>**/*IngestExampleHelper*</exclude>
             </excludes>
           </configuration>
           <executions>
@@ -633,25 +663,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.0.0-M3</version>
-        <dependencies>
-          <dependency>
-            <groupId>com.google.cloud.tools</groupId>
-            <artifactId>linkage-checker-enforcer-rules</artifactId>
-            <version>1.5.12</version>
-          </dependency>
-          <dependency>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>extra-enforcer-rules</artifactId>
-            <version>1.3</version>
-            <exclusions>
-              <exclusion>
-                <groupId>org.eclipse.aether</groupId>
-                <artifactId>aether-util</artifactId>
-              </exclusion>
-            </exclusions>
-          </dependency>
-        </dependencies>
         <executions>
           <execution>
             <id>enforce-best-practices</id>
@@ -681,28 +692,6 @@
                 <requireMavenVersion>
                   <version>3.5</version>
                 </requireMavenVersion>
-              </rules>
-            </configuration>
-          </execution>
-          <execution>
-            <id>enforce-linkage-checker</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <phase>verify</phase>
-            <configuration>
-              <rules>
-                <LinkageCheckerRule implementation="com.google.cloud.tools.dependencies.enforcer.LinkageCheckerRule">
-                  <reportOnlyReachable>true</reportOnlyReachable>
-                  <exclusionFile>${basedir}/linkage-checker-exclusion-rules.xml</exclusionFile>
-                  <level>WARN</level>
-                </LinkageCheckerRule>
-                <bannedDependencies>
-                  <excludes>
-                    <!-- JUnit 4 is not allowed on the classpath to prevent its accidental use -->
-                    <!-- <exclude>junit:junit</exclude> -->
-                  </excludes>
-                </bannedDependencies>
               </rules>
             </configuration>
           </execution>
@@ -754,6 +743,10 @@
         <version>2.0.1</version>
         <configuration>
           <errorRemedy>failFast</errorRemedy>
+          <!--
+          The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+          check your dependencies", verify the conditions of the license and add the reference to it here.
+          -->
           <includedLicenses>
             <includedLicense>Apache License 2.0</includedLicense>
             <includedLicense>BSD 2-Clause License</includedLicense>
@@ -762,23 +755,19 @@
             <includedLicense>EDL 1.0</includedLicense>
             <includedLicense>The Go license</includedLicense>
           </includedLicenses>
-          <!--
-          The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
-          check your dependencies", verify the conditions of the license, put the text of the license into third-party-licenses/
-          directory and add it to this list. You can also run "mvn license:third-party-report" to get an HTML license report.
-          -->
           <excludedScopes>test,provided,system</excludedScopes>
           <failOnBlacklist>true</failOnBlacklist>
           <licenseMerges>
             <licenseMerge>Apache License 2.0
-              |The Apache License, Version 2.0
-              |The Apache Software License, Version 2.0
-              |Apache-2.0
-              |Apache License, Version 2.0
-              |Apache 2.0
-              |Apache License V2.0</licenseMerge>
+                            |The Apache License, Version 2.0
+                            |The Apache Software License, Version 2.0
+                            |Apache-2.0
+                            |Apache License, Version 2.0
+                            |Apache 2.0
+                            |Apache License V2.0</licenseMerge>
             <licenseMerge>BSD 2-Clause License
-              |The BSD License</licenseMerge>
+                            |The BSD License</licenseMerge>
+            <licenseMerge>The MIT License|MIT License</licenseMerge>
           </licenseMerges>
         </configuration>
         <executions>
@@ -796,16 +785,52 @@
 
   <profiles>
     <profile>
+      <id>checkLinkageErrors</id>
+      <activation>
+        <property>
+          <!-- Only check linkage errors for unshaded builds -->
+          <name>not-shadeDep</name>
+        </property>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>enforce-linkage-checker</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <phase>verify</phase>
+                <configuration>
+                  <rules>
+                    <LinkageCheckerRule implementation="com.google.cloud.tools.dependencies.enforcer.LinkageCheckerRule">
+                      <reportOnlyReachable>true</reportOnlyReachable>
+                      <exclusionFile>${basedir}/linkage-checker-exclusion-rules.xml</exclusionFile>
+                      <level>WARN</level>
+                    </LinkageCheckerRule>
+                    <bannedDependencies>
+                      <excludes>
+                        <!-- JUnit 4 is not allowed on the classpath to prevent its accidental use -->
+                        <!-- <exclude>junit:junit</exclude> -->
+                      </excludes>
+                    </bannedDependencies>
+                  </rules>
+                </configuration>
+              </execution>
+
+            </executions>
+          </plugin>
+
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>checkShadedContent</id>
       <activation>
-        <os>
-          <!-- Shaded JAR content checking is a shell script, do not run it on Windows -->
-          <family>!Windows</family>
-        </os>
-        <property>
-          <!-- Do not check shaded JAR content if shading has been disabled -->
-          <name>!not-shadeDep</name>
-        </property>
+        <activeByDefault>false</activeByDefault>
       </activation>
       <build>
         <plugins>
@@ -837,6 +862,52 @@
       </activation>
       <build>
         <plugins>
+          <!--
+          Copy all project dependencies to target/dependency-jars. License processing Python script will look here for
+          license files of SDK dependencies.
+          -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>copy-dependencies</id>
+                <goals>
+                  <goal>copy-dependencies</goal>
+                </goals>
+                <phase>generate-resources</phase>
+                <configuration>
+                  <outputDirectory>${license.processing.dependencyJarsDir}</outputDirectory>
+                  <overWriteReleases>false</overWriteReleases>
+                  <overWriteSnapshots>false</overWriteSnapshots>
+                  <overWriteIfNewer>true</overWriteIfNewer>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+
+          <!--
+          Compile the list of SDK dependencies in 'compile' and 'runtime' scopes.
+          This list is an entry point for the license processing python script.
+          -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <version>3.6.0</version>
+            <configuration>
+              <includeScope>runtime</includeScope>
+              <outputFile>${license.processing.dependencyListFile}</outputFile>
+            </configuration>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>list</goal>
+                </goals>
+                <phase>generate-resources</phase>
+              </execution>
+            </executions>
+          </plugin>
+
           <!-- Relocate all dependencies to internal to solve dependency conflict problem -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
@@ -846,6 +917,7 @@
               <artifactSet>
                 <excludes>
                   <exclude>net.snowflake:snowflake-jdbc</exclude>
+                  <exclude>org.slf4j:slf4j-api</exclude>
                 </excludes>
               </artifactSet>
               <relocations>
@@ -988,6 +1060,32 @@
                   <goal>shade</goal>
                 </goals>
                 <phase>package</phase>
+              </execution>
+            </executions>
+          </plugin>
+          <!--
+          Plugin executes license processing Python script, which copies third party license files into the directory
+          target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR. 
+          -->
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>process-third-party-licenses</id>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <phase>generate-resources</phase>
+                <configuration>
+                  <executable>python3</executable>
+                  <arguments>
+                    <argument>${project.basedir}/scripts/process_licenses.py</argument>
+                    <argument>${license.processing.dependencyListFile}</argument>
+                    <argument>${license.processing.dependencyJarsDir}</argument>
+                    <argument>${license.processing.targetDir}</argument>
+                  </arguments>
+                </configuration>
               </execution>
             </executions>
           </plugin>
