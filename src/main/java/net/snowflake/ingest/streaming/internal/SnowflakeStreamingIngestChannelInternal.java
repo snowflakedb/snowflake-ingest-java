@@ -325,11 +325,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public InsertValidationResponse insertRow(Map<String, Object> row, String offsetToken) {
-    try {
-      Thread.sleep(30);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+
     return insertRows(Collections.singletonList(row), offsetToken);
   }
 
@@ -373,7 +369,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         >= this.owningClient.getParameterProvider().getMaxChannelSizeInBytes()) {
       this.owningClient.setNeedFlush();
     }
-
+    System.out.println("1");
     return response;
   }
 
