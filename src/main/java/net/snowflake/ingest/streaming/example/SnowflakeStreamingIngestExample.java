@@ -48,8 +48,8 @@ public class SnowflakeStreamingIngestExample {
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE_TEST")
-              .setSchemaName("MY_SCHEMA_TEST")
+              .setDBName("MY_DATABASE")
+              .setSchemaName("MY_SCHEMA")
               .setTableName("MY_TABLE")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
