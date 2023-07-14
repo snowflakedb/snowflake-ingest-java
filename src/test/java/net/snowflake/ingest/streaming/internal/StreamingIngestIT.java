@@ -89,10 +89,9 @@ public class StreamingIngestIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties(Constants.BdecVersion.THREE);
-    if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
-      prop.setProperty(ROLE, "ACCOUNTADMIN");
-    }
+    // Test without role param
+    prop = TestUtils.getProperties(Constants.BdecVersion.THREE, true);
+    
     client =
         (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();

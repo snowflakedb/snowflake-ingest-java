@@ -47,7 +47,7 @@ public class StreamingIngestBigFilesIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    prop = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }

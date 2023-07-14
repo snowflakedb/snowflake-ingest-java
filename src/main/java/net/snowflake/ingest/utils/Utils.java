@@ -153,7 +153,7 @@ public class Utils {
     }
 
     if (!properties.containsKey(Constants.ROLE)) {
-      logger.logInfo("Snowflake role is not provided, user's default role will be used.");
+      logger.logInfo("Snowflake role is not provided, the default user role will be applied.");
     }
 
     /**

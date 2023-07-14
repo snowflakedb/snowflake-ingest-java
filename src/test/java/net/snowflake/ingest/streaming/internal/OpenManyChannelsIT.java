@@ -51,7 +51,7 @@ public class OpenManyChannelsIT {
             String.format(
                 "create or replace table %s.%s.%s (col int)",
                 databaseName, SCHEMA_NAME, TABLE_NAME));
-    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
