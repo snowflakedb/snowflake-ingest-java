@@ -17,6 +17,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -345,7 +346,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public InsertValidationResponse insertRows(
-      Iterable<Map<String, Object>> rows, String offsetToken) {
+      Iterable<Map<String, Object>> rows, String offsetToken)  {
     throttleInsertIfNeeded(new MemoryInfoProviderFromRuntime());
     checkValidation();
 
@@ -358,6 +359,13 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // concurrently modified (e.g. byte[]). Before validation and EP calculation, we must make sure
     // that defensive copies of all mutable objects are created.
     final List<Map<String, Object>> rowsCopy = new LinkedList<>();
+//    try {
+//      TimeUnit.NANOSECONDS.sleep(1);
+//    } catch (InterruptedException e) {
+//      throw new RuntimeException(e);
+//    }
+
+  //  busySleep(1000);
     rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
 
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
@@ -369,7 +377,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         >= this.owningClient.getParameterProvider().getMaxChannelSizeInBytes()) {
       this.owningClient.setNeedFlush();
     }
-    System.out.println("1");
+
     return response;
   }
 
@@ -473,5 +481,13 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @VisibleForTesting
   public ChannelFlushContext getChannelContext() {
     return channelFlushContext;
+  }
+  public static void busySleep(long nanos)
+  {
+    long elapsed;
+    final long startTime = System.nanoTime();
+    do {
+      elapsed = System.nanoTime() - startTime;
+    } while (elapsed < nanos);
   }
 }
