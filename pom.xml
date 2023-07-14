@@ -1019,10 +1019,6 @@
                   <pattern>javax.activation</pattern>
                   <shadedPattern>${shadeBase}.javax.activation</shadedPattern>
                 </relocation>
-                <relocation>
-                  <pattern>org.apache.parquet</pattern>
-                  <shadedPattern>${shadeBase}.org.apache.parquet</shadedPattern>
-                </relocation>
               </relocations>
               <filters>
                 <filter>
