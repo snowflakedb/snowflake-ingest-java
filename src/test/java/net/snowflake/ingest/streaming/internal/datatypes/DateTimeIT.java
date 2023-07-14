@@ -9,7 +9,6 @@ import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,10 +18,6 @@ public class DateTimeIT extends AbstractDataTypeTest {
   private static final ZoneId TZ_LOS_ANGELES = ZoneId.of("America/Los_Angeles");
   private static final ZoneId TZ_BERLIN = ZoneId.of("Europe/Berlin");
   private static final ZoneId TZ_TOKYO = ZoneId.of("Asia/Tokyo");
-
-  public DateTimeIT(String name, Constants.BdecVersion bdecVersion) {
-    super(name, bdecVersion);
-  }
 
   @Before
   public void setup() throws Exception {
@@ -101,7 +96,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29 23:59:59.999999999 Z",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("TIMESTAMP_TZ", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("TIMESTAMP_TZ", "2023-02-29T23:59:59.999999999");
 
     // Numeric strings
     testJdbcTypeCompatibility(
@@ -345,7 +340,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29 15:59:59.999999999 -0800",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("TIMESTAMP_LTZ", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("TIMESTAMP_LTZ", "2023-02-29T23:59:59.999999999");
 
     // Numeric strings
     testJdbcTypeCompatibility(
@@ -587,7 +582,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29 23:59:59.999999999 Z",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("TIMESTAMP_NTZ", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("TIMESTAMP_NTZ", "2023-02-29T23:59:59.999999999");
 
     // Numeric strings
     testJdbcTypeCompatibility(
@@ -927,7 +922,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "2024-02-29",
         new StringProvider(),
         new StringProvider());
-    expectArrowNotSupported("DATE", "2023-02-29T23:59:59.999999999");
+    expectNotSupported("DATE", "2023-02-29T23:59:59.999999999");
 
     // Test numeric strings
     testJdbcTypeCompatibility(
@@ -952,19 +947,56 @@ public class DateTimeIT extends AbstractDataTypeTest {
 
   @Test
   public void testOldTimestamps() throws Exception {
-    testIngestion("DATE", "0001-12-31", "0001-12-31", new StringProvider());
-    testIngestion(
+    // DATE
+    testJdbcTypeCompatibility("DATE", "0001-12-31", new StringProvider());
+    testJdbcTypeCompatibility("DATE", "0000-01-01", new StringProvider());
+    testJdbcTypeCompatibility("DATE", "-0001-01-01", new StringProvider());
+    testJdbcTypeCompatibility("DATE", "-9999-01-01", new StringProvider());
+
+    // TIMESTAMP_NTZ
+    testJdbcTypeCompatibility(
         "TIMESTAMP_NTZ",
         "0001-12-31T11:11:11",
         "0001-12-31 11:11:11.000000000 Z",
+        new StringProvider(),
         new StringProvider());
-    // TODO uncomment once SNOW-727474 is resolved
-    //        testIngestion("TIMESTAMP_LTZ", "0001-12-31T11:11:11", "0001-12-31 03:11:11.000000000
-    // -0800", new StringProvider());
-    testIngestion(
+
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_NTZ",
+        "0001-01-01T00:00:00",
+        "0001-01-01 00:00:00.000000000 Z",
+        new StringProvider(),
+        new StringProvider());
+
+    // TIMESTAMP_TZ
+    testJdbcTypeCompatibility(
         "TIMESTAMP_TZ",
         "0001-12-31T11:11:11+03:00",
         "0001-12-31 11:11:11.000000000 +0300",
+        new StringProvider(),
+        new StringProvider());
+
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_TZ",
+        "0001-01-01T00:00:00+03:00",
+        "0001-01-01 00:00:00.000000000 +0300",
+        new StringProvider(),
+        new StringProvider());
+
+    // TIMESTAMP_LTZ
+    conn.createStatement()
+        .execute("alter session set timezone = 'UTC';"); // workaround for SNOW-727474
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_LTZ",
+        "0001-12-31T11:11:11+00:00",
+        "0001-12-31 11:11:11.000000000 Z",
+        new StringProvider(),
+        new StringProvider());
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_LTZ",
+        "0001-01-01T00:00:00+00:00",
+        "0001-01-01 00:00:00.000000000 Z",
+        new StringProvider(),
         new StringProvider());
   }
 

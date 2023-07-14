@@ -23,7 +23,6 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -54,21 +53,21 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private MessageType schema;
   private final boolean enableParquetInternalBuffering;
   private final long maxChunkSizeInBytes;
+  private final long maxAllowedRowSizeInBytes;
 
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      BufferAllocator allocator,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
       boolean enableParquetInternalBuffering,
-      long maxChunkSizeInBytes) {
+      long maxChunkSizeInBytes,
+      long maxAllowedRowSizeInBytes) {
     super(
         onErrorOption,
         defaultTimezone,
-        allocator,
         fullyQualifiedChannelName,
         rowSizeMetric,
         channelRuntimeState);
@@ -79,6 +78,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.channelName = fullyQualifiedChannelName;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
+    this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
   }
 
   @Override
@@ -205,6 +205,16 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
+
+    long rowSizeRoundedUp = Double.valueOf(Math.ceil(size)).longValue();
+
+    if (rowSizeRoundedUp > maxAllowedRowSizeInBytes) {
+      throw new SFException(
+          ErrorCode.MAX_ROW_SIZE_EXCEEDED,
+          String.format(
+              "rowSizeInBytes=%.3f maxAllowedRowSizeInBytes=%d", size, maxAllowedRowSizeInBytes));
+    }
+
     out.accept(Arrays.asList(indexedRow));
 
     // All input values passed validation, iterate over the columns again and combine their existing
@@ -299,7 +309,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /** Close the row buffer by releasing its internal resources. */
   @Override
   void closeInternal() {
-    this.fieldIndex.clear();
     if (bdecParquetWriter != null) {
       try {
         bdecParquetWriter.close();

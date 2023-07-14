@@ -27,14 +27,11 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data {@link ParquetChunkData})
  */
 class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannel {
 
@@ -93,8 +90,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKeyId,
         onErrorOption,
         defaultTimezone,
-        client.getParameterProvider().getBlobFormatVersion(),
-        new RootAllocator());
+        client.getParameterProvider().getBlobFormatVersion());
   }
 
   /** Default constructor */
@@ -111,8 +107,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      Constants.BdecVersion bdecVersion,
-      BufferAllocator allocator) {
+      Constants.BdecVersion bdecVersion) {
     this.isClosed = false;
     this.owningClient = client;
     this.channelFlushContext =
@@ -123,7 +118,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         AbstractRowBuffer.createRowBuffer(
             onErrorOption,
             defaultTimezone,
-            allocator,
             bdecVersion,
             getFullyQualifiedName(),
             this::collectRowSize,
@@ -132,8 +126,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                 ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
                 : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
             owningClient != null
-                ? owningClient.getParameterProvider().getMaxChunkSizeInBytes()
-                : ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
+                ? owningClient.getParameterProvider().getMaxChannelSizeInBytes()
+                : ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
+            owningClient != null
+                ? owningClient.getParameterProvider().getMaxAllowedRowSizeInBytes()
+                : ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
@@ -368,7 +365,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
     // if a large number of rows are inserted
     if (this.rowBuffer.getSize()
-        >= this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()) {
+        >= this.owningClient.getParameterProvider().getMaxChannelSizeInBytes()) {
       this.owningClient.setNeedFlush();
     }
 
@@ -383,7 +380,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /**
-   * Get the latest committed offset token from Snowflake
+   * Get the latest committed offset token from Snowflake, an exception will be thrown if the
+   * channel becomes invalid due to errors and the channel needs to be reopened in order to return a
+   * valid offset token
    *
    * @return the latest committed offset token
    */

@@ -25,7 +25,11 @@ public class ParameterProvider {
   public static final String MAX_MEMORY_LIMIT_IN_BYTES = "MAX_MEMORY_LIMIT_IN_BYTES".toLowerCase();
   public static final String ENABLE_PARQUET_INTERNAL_BUFFERING =
       "ENABLE_PARQUET_INTERNAL_BUFFERING".toLowerCase();
+  // This should not be needed once we have the ability to track size at table/chunk level
+  public static final String MAX_CHANNEL_SIZE_IN_BYTES = "MAX_CHANNEL_SIZE_IN_BYTES".toLowerCase();
   public static final String MAX_CHUNK_SIZE_IN_BYTES = "MAX_CHUNK_SIZE_IN_BYTES".toLowerCase();
+  public static final String MAX_ALLOWED_ROW_SIZE_IN_BYTES =
+      "MAX_ALLOWED_ROW_SIZE_IN_BYTES".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -39,7 +43,9 @@ public class ParameterProvider {
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
-  public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 32000000L;
+  public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 32000000L;
+  public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 128000000L;
+  public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -139,6 +145,9 @@ public class ParameterProvider {
         props);
 
     this.updateValue(
+        MAX_CHANNEL_SIZE_IN_BYTES, MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
+
+    this.updateValue(
         MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
   }
 
@@ -209,7 +218,7 @@ public class ParameterProvider {
     return (boolean) val;
   }
 
-  /** @return Blob format version: 1 (arrow stream write mode), 2 (arrow file write mode) etc */
+  /** @return Blob format version */
   public Constants.BdecVersion getBlobFormatVersion() {
     Object val = this.parameterMap.getOrDefault(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT);
     if (val instanceof Constants.BdecVersion) {
@@ -265,10 +274,25 @@ public class ParameterProvider {
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
-  /** @return The max chunk size in bytes */
+  /** @return The max channel size in bytes */
+  public long getMaxChannelSizeInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_CHANNEL_SIZE_IN_BYTES, MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT);
+    return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  /** @return The max chunk size in bytes that could avoid OOM at server side */
   public long getMaxChunkSizeInBytes() {
     Object val =
         this.parameterMap.getOrDefault(MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
+    return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  public long getMaxAllowedRowSizeInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_ALLOWED_ROW_SIZE_IN_BYTES, MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 

@@ -7,6 +7,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
@@ -28,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -46,28 +46,16 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-@RunWith(Parameterized.class)
 public class FlushServiceTest {
-  @Parameterized.Parameters(name = "{0}")
-  public static Collection<Object[]> testContextFactory() {
-    return Arrays.asList(
-        new Object[][] {{ArrowTestContext.createFactory()}, {ParquetTestContext.createFactory()}});
-  }
-
-  public FlushServiceTest(TestContextFactory<?> testContextFactory) {
-    this.testContextFactory = testContextFactory;
+  public FlushServiceTest() {
+    this.testContextFactory = ParquetTestContext.createFactory();
   }
 
   private abstract static class TestContextFactory<T> {
@@ -105,7 +93,7 @@ public class FlushServiceTest {
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
-      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, false));
+      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, true));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -244,58 +232,6 @@ public class FlushServiceTest {
     }
   }
 
-  private static class ArrowTestContext extends TestContext<VectorSchemaRoot> {
-    private final BufferAllocator allocator = new RootAllocator();
-
-    SnowflakeStreamingIngestChannelInternal<VectorSchemaRoot> createChannel(
-        String name,
-        String dbName,
-        String schemaName,
-        String tableName,
-        String offsetToken,
-        Long channelSequencer,
-        Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
-        OpenChannelRequest.OnErrorOption onErrorOption,
-        ZoneId defaultTimezone) {
-      return new SnowflakeStreamingIngestChannelInternal<>(
-          name,
-          dbName,
-          schemaName,
-          tableName,
-          offsetToken,
-          channelSequencer,
-          rowSequencer,
-          client,
-          encryptionKey,
-          encryptionKeyId,
-          onErrorOption,
-          defaultTimezone,
-          Constants.BdecVersion.ONE,
-          allocator);
-    }
-
-    @Override
-    public void close() {
-      try {
-        // Close allocator to make sure no memory leak
-        allocator.close();
-      } catch (Exception e) {
-        Assert.fail(String.format("Allocator close failure. Caused by %s", e.getMessage()));
-      }
-    }
-
-    static TestContextFactory<VectorSchemaRoot> createFactory() {
-      return new TestContextFactory<VectorSchemaRoot>("Arrow") {
-        @Override
-        TestContext<VectorSchemaRoot> create() {
-          return new ArrowTestContext();
-        }
-      };
-    }
-  }
-
   private static class ParquetTestContext extends TestContext<List<List<Object>>> {
 
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> createChannel(
@@ -323,8 +259,7 @@ public class FlushServiceTest {
           encryptionKeyId,
           onErrorOption,
           defaultTimezone,
-          Constants.BdecVersion.THREE,
-          null);
+          Constants.BdecVersion.THREE);
     }
 
     @Override
@@ -426,6 +361,18 @@ public class FlushServiceTest {
     return colChar;
   }
 
+  private static ColumnMetadata createLargeTestTextColumn(String name) {
+    ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setName(name);
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14000000);
+    colChar.setLength(11000000);
+    colChar.setScale(0);
+    return colChar;
+  }
+
   @Test
   public void testGetFilePath() {
     TestContext<?> testContext = testContextFactory.create();
@@ -464,6 +411,7 @@ public class FlushServiceTest {
   public void testFlush() throws Exception {
     TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
+    Mockito.when(flushService.isTestMode()).thenReturn(false);
 
     // Nothing to flush
     flushService.flush(false).get();
@@ -569,6 +517,40 @@ public class FlushServiceTest {
     // Force = true flushes
     flushService.flush(true).get();
     Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
+  }
+
+  @Test
+  public void testBlobSplitDueToChunkSizeLimit() throws Exception {
+    TestContext<?> testContext = testContextFactory.create();
+    SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
+    SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
+    String colName1 = "testBlobSplitDueToChunkSizeLimit1";
+    String colName2 = "testBlobSplitDueToChunkSizeLimit2";
+    int rowSize = 10000000;
+    String largeData = new String(new char[rowSize]);
+
+    List<ColumnMetadata> schema =
+        Arrays.asList(createTestIntegerColumn(colName1), createLargeTestTextColumn(colName2));
+    channel1.getRowBuffer().setupSchema(schema);
+    channel2.getRowBuffer().setupSchema(schema);
+
+    RowSetBuilder builder = RowSetBuilder.newBuilder();
+    RowSetBuilder.newBuilder().addColumn(colName1, 11).addColumn(colName2, largeData);
+
+    for (int idx = 0; idx <= MAX_CHUNK_SIZE_IN_BYTES_DEFAULT / (2 * rowSize); idx++) {
+      builder.addColumn(colName1, 11).addColumn(colName2, largeData).newRow();
+    }
+
+    List<Map<String, Object>> rows = builder.build();
+
+    channel1.insertRows(rows, "offset1");
+    channel2.insertRows(rows, "offset2");
+
+    FlushService<?> flushService = testContext.flushService;
+
+    // Force = true flushes
+    flushService.flush(true).get();
+    Mockito.verify(flushService, Mockito.times(2)).buildAndUpload(Mockito.any(), Mockito.any());
   }
 
   @Test

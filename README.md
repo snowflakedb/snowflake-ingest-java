@@ -11,7 +11,19 @@ authentication. Currently, we support ingestion through the following APIs:
 1. [Snowpipe](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-rest-gs.html#client-requirement-java-or-python-sdk)
 2. [Snowpipe Streaming](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview) - Under Public Preview
 
+# Dependencies
+
+The Snowflake Ingest Service SDK depends on the following libraries:
+
+* snowflake-jdbc (3.13.30+)
+* slf4j-api
+
+These dependencies will be fetched automatically by build systems like Maven or Gradle. If you don't build your project
+using a build system, please make sure these dependencies are on the classpath.
+
 # Prerequisites
+
+**If your project depends on the Snowflake JDBC driver, as well, please make sure the JDBC driver version is 3.13.30 or newer.**
 
 ## Java 8+
 
@@ -97,16 +109,9 @@ However, for general usage, pulling a pre-built jar from maven is
 recommended.
 
 If you would like to run SnowflakeIngestBasicExample.java or SnowflakeStreamingIngestExample.java in the example folder, 
-you would need to remove the following scope limits in pom.xml
+please edit `pom.xml` and change the scope of the dependency `slf4j-simple` from `test` to `runtime` in order to enable
+console log output.
 
-<pre>
-&lt;!-- Remove provided scope from slf4j-api --&gt;
-&lt;dependency&gt;
-    &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
-    &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
-    <s>&lt;scope&gt;provided&lt;/scope&gt;</s>
-&lt;/dependency&gt;
-</pre>
 
 # Testing (SimpleIngestIT Test)
 
@@ -120,9 +125,11 @@ you would need to remove the following scope limits in pom.xml
     -   Here is the link for documentation [Key Pair
             Generator](https://docs.snowflake.com/en/user-guide/key-pair-auth.html)
 
-# Code style
+# Contributing to this repo
 
-We use [Google Java format](https://github.com/google/google-java-format) to format the code. To format all files, run:
-```bash
-./format.sh
-````
+Each PR must pass all required github action merge gates before approval and merge. In addition to those tests, you will need:
+
+- Formatter: run this script [`./format.sh`](https://github.com/snowflakedb/snowflake-ingest-java/blob/master/format.sh) from root
+- CLA: all contributers must sign the Snowflake CLA. This is a one time signature, please provide your email so we can work with you to get this signed after you open a PR.
+
+Thank you for contributing! We will review and approve PRs as soon as we can.

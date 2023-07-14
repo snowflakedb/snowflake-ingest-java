@@ -36,8 +36,8 @@ import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
-import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
@@ -60,6 +60,7 @@ import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -73,9 +74,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.memory.RootAllocator;
-import org.apache.arrow.util.VisibleForTesting;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -83,8 +81,7 @@ import org.apache.arrow.util.VisibleForTesting;
  * <li>the channel cache, which contains all the channels that belong to this account
  * <li>the flush service, which schedules and coordinates the flush to Snowflake tables
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStreamingIngestClient {
 
@@ -102,8 +99,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Name of the client
   private final String name;
 
-  private String accountName;
-
   // Snowflake role for the client to use
   private String role;
 
@@ -115,9 +110,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
   // Reference to the flush service
   private final FlushService<T> flushService;
-
-  // Memory allocator
-  private final BufferAllocator allocator;
 
   // Indicates whether the client has closed
   private volatile boolean isClosed;
@@ -168,37 +160,56 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
-    this.accountName = accountURL == null ? null : accountURL.getAccount();
+    String accountName = accountURL == null ? null : accountURL.getAccount();
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
     this.channelCache = new ChannelCache<>();
-    this.allocator = new RootAllocator();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
 
     if (!isTestMode) {
       // Setup request builder for communication with the server side
       this.role = prop.getProperty(Constants.ROLE);
-      try {
-        KeyPair keyPair =
-            Utils.createKeyPairFromPrivateKey(
-                (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
-        this.requestBuilder =
-            new RequestBuilder(
-                accountURL,
-                prop.get(USER).toString(),
-                keyPair,
-                this.httpClient,
-                String.format("%s_%s", this.name, System.currentTimeMillis()));
-      } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-        throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
+
+      Object credential = null;
+
+      // Authorization type will be set to jwt by default
+      if (prop.getProperty(Constants.AUTHORIZATION_TYPE).equals(Constants.JWT)) {
+        try {
+          credential =
+              Utils.createKeyPairFromPrivateKey(
+                  (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+          throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
+        }
+      } else {
+        credential =
+            new OAuthCredential(
+                prop.getProperty(Constants.OAUTH_CLIENT_ID),
+                prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
+                prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
       }
+      this.requestBuilder =
+          new RequestBuilder(
+              accountURL,
+              prop.get(USER).toString(),
+              credential,
+              this.httpClient,
+              String.format("%s_%s", this.name, System.currentTimeMillis()));
+
+      logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
 
       // Setup client telemetries if needed
       this.setupMetricsForClient();
     }
 
-    this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+    try {
+      this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+    } catch (Exception e) {
+      // Need to clean up the resources before throwing any exceptions
+      cleanUpResources();
+      throw e;
+    }
 
     logger.logInfo(
         "Client created, name={}, account={}. isTestMode={}, parameters={}",
@@ -499,10 +510,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                               String.format(
                                                   "Channel has been invalidated because of failure"
                                                       + " response, name=%s, channel_sequencer=%d,"
-                                                      + " status_code=%d, executionCount=%d",
+                                                      + " status_code=%d,  message=%s,"
+                                                      + " executionCount=%d",
                                                   channelStatus.getChannelName(),
                                                   channelStatus.getChannelSequencer(),
                                                   channelStatus.getStatusCode(),
+                                                  channelStatus.getMessage(),
                                                   executionCount);
                                           logger.logWarn(errorMessage);
                                           if (getTelemetryService() != null) {
@@ -624,15 +637,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     } catch (InterruptedException | ExecutionException e) {
       throw new SFException(e, ErrorCode.RESOURCE_CLEANUP_FAILURE, "client close");
     } finally {
-      if (this.telemetryWorker != null) {
-        this.telemetryWorker.shutdown();
-      }
       this.flushService.shutdown();
-      if (this.requestBuilder != null) {
-        this.requestBuilder.closeResources();
-      }
-      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
-      Utils.closeAllocator(this.allocator);
+      cleanUpResources();
     }
   }
 
@@ -652,15 +658,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   /** Set the flag to indicate that a flush is needed */
   void setNeedFlush() {
     this.flushService.setNeedFlush();
-  }
-
-  /**
-   * Get the buffer allocator
-   *
-   * @return the buffer allocator
-   */
-  BufferAllocator getAllocator() {
-    return this.allocator;
   }
 
   /** Remove the channel in the channel cache if the channel sequencer matches */
@@ -793,6 +790,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth
+   *
+   * @param refreshToken the new refresh token
+   */
+  @Override
+  public void setRefreshToken(String refreshToken) {
+    if (requestBuilder != null) {
+      requestBuilder.setRefreshToken(refreshToken);
+    }
+  }
+
+  /**
    * Registers the performance metrics along with JVM memory and Threads.
    *
    * <p>Latency and throughput metrics are emitted to JMX, jvm memory and thread metrics are logged
@@ -905,6 +915,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           this.buildLatency, this.uploadLatency, this.registerLatency, this.flushLatency);
       telemetryService.reportThroughputBytesPerSecond(this.inputThroughput, this.uploadThroughput);
       telemetryService.reportCpuMemoryUsage(this.cpuHistogram);
+    }
+  }
+
+  /** Cleanup any resource during client closing or failures */
+  private void cleanUpResources() {
+    if (this.telemetryWorker != null) {
+      this.telemetryWorker.shutdown();
+    }
+    if (this.requestBuilder != null) {
+      this.requestBuilder.closeResources();
+    }
+    if (!this.isTestMode) {
+      HttpUtil.shutdownHttpConnectionManagerDaemonThread();
     }
   }
 }

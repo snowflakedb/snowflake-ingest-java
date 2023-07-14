@@ -34,8 +34,6 @@ public final class ServiceResponseHandler {
     INSERT_FILES("POST"),
     INSERT_REPORT("GET"),
     LOAD_HISTORY_SCAN("GET"),
-    CLIENT_CONFIGURE("POST"),
-    CLIENT_STATUS("GET"),
     STREAMING_OPEN_CHANNEL("POST"),
     STREAMING_CHANNEL_STATUS("POST"),
     STREAMING_REGISTER_BLOB("POST"),
@@ -152,64 +150,6 @@ public final class ServiceResponseHandler {
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
     // read out our blob into a pojo
     return mapper.readValue(blob, HistoryRangeResponse.class);
-  }
-
-  /**
-   * unmarshallConfigureClientResponse - Given an HttpResponse object, attempts to deserialize it
-   * into a ConfigureClientResponse
-   *
-   * @param response HttpResponse
-   * @param requestId
-   * @return ConfigureClientResponse
-   * @throws IOException if our entity is somehow corrupt or we can't get it
-   * @throws IngestResponseException - if we have an uncategorized network issue
-   * @throws BackOffException - if we have a 503 issue
-   */
-  public static ConfigureClientResponse unmarshallConfigureClientResponse(
-      HttpResponse response, UUID requestId)
-      throws IOException, IngestResponseException, BackOffException {
-    if (response == null) {
-      LOGGER.warn("Null response passed to unmarshallConfigureClientResponse");
-      throw new IllegalArgumentException();
-    }
-
-    // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.CLIENT_CONFIGURE);
-
-    // grab the string version of the response entity
-    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
-
-    // read out our blob into a pojo
-    return mapper.readValue(blob, ConfigureClientResponse.class);
-  }
-
-  /**
-   * unmarshallGetClientStatus - Given an HttpResponse object, attempts to deserialize it into a
-   * ClientStatusResponse
-   *
-   * @param response HttpResponse
-   * @param requestId
-   * @return ClientStatusResponse
-   * @throws IOException if our entity is somehow corrupt or we can't get it
-   * @throws IngestResponseException - if we have an uncategorized network issue
-   * @throws BackOffException - if we have a 503 issue
-   */
-  public static ClientStatusResponse unmarshallGetClientStatus(
-      HttpResponse response, UUID requestId)
-      throws IOException, IngestResponseException, BackOffException {
-    if (response == null) {
-      LOGGER.warn("Null response passed to unmarshallClientStatusResponse");
-      throw new IllegalArgumentException();
-    }
-
-    // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.CLIENT_STATUS);
-
-    // grab the string version of the response entity
-    String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
-
-    // read out our blob into a pojo
-    return mapper.readValue(blob, ClientStatusResponse.class);
   }
 
   /**

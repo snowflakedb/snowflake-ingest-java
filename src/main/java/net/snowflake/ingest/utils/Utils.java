@@ -33,7 +33,6 @@ import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEM
 import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.commons.codec.binary.Base64;
 
 /** Contains Ingest related utility functions */
@@ -104,8 +103,30 @@ public class Utils {
       properties.put(SFSessionProperty.PRIVATE_KEY.getPropertyKey(), parsePrivateKey(privateKey));
     }
 
-    if (!properties.containsKey(SFSessionProperty.PRIVATE_KEY.getPropertyKey())) {
-      throw new SFException(ErrorCode.MISSING_CONFIG, "private_key");
+    // Use JWT if authorization type not specified
+    if (!properties.containsKey(Constants.AUTHORIZATION_TYPE)) {
+      properties.put(Constants.AUTHORIZATION_TYPE, Constants.JWT);
+    }
+
+    String authType = properties.get(Constants.AUTHORIZATION_TYPE).toString();
+    if (authType.equals(Constants.JWT)) {
+      if (!properties.containsKey(SFSessionProperty.PRIVATE_KEY.getPropertyKey())) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.PRIVATE_KEY);
+      }
+    } else if (authType.equals(Constants.OAUTH)) {
+      if (!properties.containsKey(Constants.OAUTH_CLIENT_ID)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_CLIENT_ID);
+      }
+      if (!properties.containsKey(Constants.OAUTH_CLIENT_SECRET)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_CLIENT_SECRET);
+      }
+      if (!properties.containsKey(Constants.OAUTH_REFRESH_TOKEN)) {
+        throw new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_REFRESH_TOKEN);
+      }
+    } else {
+      throw new SFException(
+          ErrorCode.INVALID_CONFIG_PARAMETER,
+          String.format("authorization_type, should be %s or %s", Constants.JWT, Constants.OAUTH));
     }
 
     if (!properties.containsKey(USER)) {
@@ -266,14 +287,6 @@ public class Utils {
   /** Utility function to check whether a string is null or empty */
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.isEmpty();
-  }
-
-  /** Release any outstanding memory and then close the buffer allocator */
-  public static void closeAllocator(BufferAllocator alloc) {
-    for (BufferAllocator childAlloc : alloc.getChildAllocators()) {
-      childAlloc.close();
-    }
-    alloc.close();
   }
 
   /** Util function to show memory usage info and debug memory issue in the SDK */

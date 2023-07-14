@@ -12,6 +12,7 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -46,8 +47,6 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.arrow.util.VisibleForTesting;
-import org.apache.arrow.vector.VectorSchemaRoot;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -57,8 +56,7 @@ import org.apache.arrow.vector.VectorSchemaRoot;
  * <li>upload the blob to stage
  * <li>register the blob to the targeted Snowflake table
  *
- * @param <T> type of column data (Arrow {@link org.apache.arrow.vector.VectorSchemaRoot} or {@link
- *     ParquetChunkData})
+ * @param <T> type of column data ({@link ParquetChunkData})
  */
 class FlushService<T> {
 
@@ -261,7 +259,7 @@ class FlushService<T> {
 
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
-            && !this.isTestMode
+            && !isTestMode()
             && (this.isNeedFlush
                 || timeDiffMillis
                     >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
@@ -372,21 +370,28 @@ class FlushService<T> {
 
         if (!channelsDataPerTable.isEmpty()) {
           int idx = 0;
+          float totalBufferSizePerTableInBytes = 0F;
           while (idx < channelsDataPerTable.size()) {
             ChannelData<T> channelData = channelsDataPerTable.get(idx);
             // Stop processing the rest of channels when needed
             if (idx > 0
                 && shouldStopProcessing(
-                    totalBufferSizeInBytes, channelData, channelsDataPerTable.get(idx - 1))) {
+                    totalBufferSizeInBytes,
+                    totalBufferSizePerTableInBytes,
+                    channelData,
+                    channelsDataPerTable.get(idx - 1))) {
               leftoverChannelsDataPerTable.addAll(
                   channelsDataPerTable.subList(idx, channelsDataPerTable.size()));
               logger.logInfo(
-                  "Creation of another blob is needed because of blob size limit or different"
-                      + " encryption ids or different schema, client={}, table={},  size={},"
-                      + " encryptionId1={}, encryptionId2={}, schema1={}, schema2={}",
+                  "Creation of another blob is needed because of blob/chunk size limit or"
+                      + " different encryption ids or different schema, client={}, table={},"
+                      + " fileSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
+                      + " encryptionId2={}, schema1={}, schema2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
-                  totalBufferSizeInBytes + channelData.getBufferSize(),
+                  totalBufferSizeInBytes,
+                  totalBufferSizePerTableInBytes,
+                  channelData.getBufferSize(),
                   channelData.getChannelContext().getEncryptionKeyId(),
                   channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId(),
                   channelData.getColumnEps().keySet(),
@@ -394,6 +399,7 @@ class FlushService<T> {
               break;
             }
             totalBufferSizeInBytes += channelData.getBufferSize();
+            totalBufferSizePerTableInBytes += channelData.getBufferSize();
             idx++;
           }
           // Add processed channels to the current blob, stop if we need to create a new blob
@@ -475,15 +481,22 @@ class FlushService<T> {
    * Check whether we should stop merging more channels into the same chunk, we need to stop in a
    * few cases:
    *
-   * <p>When the size is larger than a certain threshold
+   * <p>When the file size is larger than a certain threshold
+   *
+   * <p>When the chunk size is larger than a certain threshold
    *
    * <p>When the encryption key ids are not the same
    *
    * <p>When the schemas are not the same
    */
   private boolean shouldStopProcessing(
-      float totalBufferSizeInBytes, ChannelData<T> current, ChannelData<T> prev) {
+      float totalBufferSizeInBytes,
+      float totalBufferSizePerTableInBytes,
+      ChannelData<T> current,
+      ChannelData<T> prev) {
     return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
+        || totalBufferSizePerTableInBytes + current.getBufferSize()
+            > this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()
         || !Objects.equals(
             current.getChannelContext().getEncryptionKeyId(),
             prev.getChannelContext().getEncryptionKeyId())
@@ -603,7 +616,8 @@ class FlushService<T> {
     int minute = calendar.get(Calendar.MINUTE);
     long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
     long threadId = Thread.currentThread().getId();
-    String fileName =
+    // Create the file short name, the clientPrefix contains the deployment id
+    String fileShortName =
         Long.toString(time, 36)
             + "_"
             + clientPrefix
@@ -613,7 +627,7 @@ class FlushService<T> {
             + this.counter.getAndIncrement()
             + "."
             + BLOB_EXTENSION_TYPE;
-    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileName;
+    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileShortName;
   }
 
   /**
@@ -626,9 +640,6 @@ class FlushService<T> {
         chunkData ->
             chunkData.forEach(
                 channelData -> {
-                  if (channelData.getVectors() instanceof VectorSchemaRoot) {
-                    ((VectorSchemaRoot) channelData.getVectors()).close();
-                  }
                   this.owningClient
                       .getChannelCache()
                       .invalidateChannelIfSequencersMatch(
@@ -661,5 +672,10 @@ class FlushService<T> {
           this.buildUploadWorkers.toString());
     }
     return throttleOnQueuedTasks;
+  }
+
+  /** Get whether we're running under test mode */
+  boolean isTestMode() {
+    return this.isTestMode;
   }
 }

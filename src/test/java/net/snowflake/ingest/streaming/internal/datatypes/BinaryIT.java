@@ -1,14 +1,9 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import net.snowflake.client.jdbc.internal.org.bouncycastle.util.encoders.Hex;
-import net.snowflake.ingest.utils.Constants;
 import org.junit.Test;
 
 public class BinaryIT extends AbstractDataTypeTest {
-
-  public BinaryIT(String name, Constants.BdecVersion bdecVersion) {
-    super(name, bdecVersion);
-  }
 
   @Test
   public void testBinary() throws Exception {
