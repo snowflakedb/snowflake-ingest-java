@@ -1019,6 +1019,10 @@
                   <pattern>javax.activation</pattern>
                   <shadedPattern>${shadeBase}.javax.activation</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>io.airlift.compress</pattern>
+                  <shadedPattern>${shadeBase}.io.airlift.compress</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
