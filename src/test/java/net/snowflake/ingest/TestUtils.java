@@ -223,7 +223,8 @@ public class TestUtils {
     return schema;
   }
 
-  public static Properties getProperties(Constants.BdecVersion bdecVersion, boolean useDefaultRole) throws Exception {
+  public static Properties getProperties(Constants.BdecVersion bdecVersion, boolean useDefaultRole)
+      throws Exception {
     if (profile == null) {
       init();
     }
