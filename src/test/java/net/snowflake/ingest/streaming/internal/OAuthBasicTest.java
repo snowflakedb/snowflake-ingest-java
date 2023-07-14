@@ -23,7 +23,7 @@ public class OAuthBasicTest {
   /** Create client with invalid authorization type, this should fail. */
   @Test
   public void invalidAuthType() throws Exception {
-    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     props.put(Constants.AUTHORIZATION_TYPE, "INVALID_AUTH_TYPE");
     SFException e =
         Assert.assertThrows(
@@ -38,7 +38,7 @@ public class OAuthBasicTest {
   /** Create client with missing config, this should fail. */
   @Test
   public void missingOAuthParam() throws Exception {
-    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     props.put(Constants.AUTHORIZATION_TYPE, Constants.OAUTH);
 
     // Missing oauth_client_id
@@ -83,7 +83,7 @@ public class OAuthBasicTest {
   /** Create client with mock credential, should fail when refreshing token */
   @Test(expected = SecurityException.class)
   public void testCreateOAuthClient() throws Exception {
-    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     props.remove(Constants.PRIVATE_KEY);
     props.put(Constants.AUTHORIZATION_TYPE, Constants.OAUTH);
     props.put(Constants.OAUTH_CLIENT_ID, "MOCK_CLIENT_ID");

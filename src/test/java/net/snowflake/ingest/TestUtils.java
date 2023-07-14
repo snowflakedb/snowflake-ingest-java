@@ -223,7 +223,8 @@ public class TestUtils {
     return schema;
   }
 
-  public static Properties getProperties(Constants.BdecVersion bdecVersion) throws Exception {
+  public static Properties getProperties(Constants.BdecVersion bdecVersion, boolean useDefaultRole)
+      throws Exception {
     if (profile == null) {
       init();
     }
@@ -236,7 +237,9 @@ public class TestUtils {
     props.put(SCHEMA, schema);
     props.put(WAREHOUSE, warehouse);
     props.put(PRIVATE_KEY, privateKeyPem);
-    props.put(ROLE, role);
+    if (!useDefaultRole) {
+      props.put(ROLE, role);
+    }
     props.put(ACCOUNT_URL, getAccountURL());
     props.put(BLOB_FORMAT_VERSION, bdecVersion.toByte());
     return props;
