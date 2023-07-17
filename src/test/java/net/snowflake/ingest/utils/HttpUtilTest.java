@@ -5,9 +5,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
 import java.io.IOException;
-import javax.net.ssl.SSLException;
 import net.snowflake.client.jdbc.internal.apache.http.HttpRequest;
-import net.snowflake.client.jdbc.internal.apache.http.NoHttpResponseException;
 import net.snowflake.client.jdbc.internal.apache.http.RequestLine;
 import net.snowflake.client.jdbc.internal.apache.http.client.HttpRequestRetryHandler;
 import net.snowflake.client.jdbc.internal.apache.http.client.protocol.HttpClientContext;
@@ -29,13 +27,12 @@ public class HttpUtilTest {
 
     assertTrue(
         httpRequestRetryHandler.retryRequest(
-            new NoHttpResponseException("Test exception"), 1, httpContextMock));
+            new IOException("Test exception"), 0, httpContextMock));
     assertTrue(
         httpRequestRetryHandler.retryRequest(
-            new SSLException("Test exception"), 1, httpContextMock));
+            new IOException("Test exception"), 30, httpContextMock));
     assertFalse(
         httpRequestRetryHandler.retryRequest(
-            new SSLException("Test exception"), 4, httpContextMock));
-    assertFalse(httpRequestRetryHandler.retryRequest(new IOException(), 1, httpContextMock));
+            new IOException("Test exception"), 31, httpContextMock));
   }
 }
