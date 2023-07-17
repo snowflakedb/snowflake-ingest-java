@@ -60,7 +60,7 @@ public class StreamingIngestUtils {
     }
   }
 
-  static void sleepForRetry(int executionCount) {
+  public static void sleepForRetry(int executionCount) {
     long sleepForRetryMs = getSleepForRetryMs(executionCount);
     if (sleepForRetryMs == 0) {
       return;
