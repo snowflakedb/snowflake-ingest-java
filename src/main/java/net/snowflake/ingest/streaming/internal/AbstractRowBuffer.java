@@ -38,6 +38,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // side scanner
   private static final int INVALID_SERVER_SIDE_DATA_TYPE_ORDINAL = -1;
 
+  // Maximum number of rows we recommend to pass to insertRows()
+  private static final int RECOMMENDED_MAX_BATCH_SIZE = 10_000;
+
   // Snowflake table column logical type
   enum ColumnLogicalType {
     ANY,
@@ -318,6 +321,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
             throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
           }
         }
+        batchSizeWarning(rowIndex);
       } else {
         // If the on_error option is ABORT, simply throw the first exception
         float tempRowsSizeInBytes = 0F;
@@ -328,6 +332,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames, tempRowCount);
           tempRowCount++;
         }
+        batchSizeWarning(tempRowCount);
 
         moveTempRowsToActualBuffer(tempRowCount);
 
@@ -547,6 +552,16 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
+    }
+  }
+
+  private static void batchSizeWarning(long rowsPassed) {
+    if (rowsPassed > RECOMMENDED_MAX_BATCH_SIZE) {
+      logger.logWarn(
+          "Too many rows passed in one batch to 'insertRows': %d. The recommended max batch size is"
+              + " %d rows. We recommend splitting large batches into multiple smaller ones"
+              + " and call insertRows for each smaller batch separately.",
+          rowsPassed, RECOMMENDED_MAX_BATCH_SIZE);
     }
   }
 }
