@@ -96,6 +96,7 @@ public class TestUtils {
   private static String dummyUser = "user";
   private static int dummyPort = 443;
   private static String dummyHost = "snowflake.qa1.int.snowflakecomputing.com";
+  private static String dummyScheme = "http";
 
   /**
    * load all login info from profile
@@ -134,6 +135,7 @@ public class TestUtils {
       user = dummyUser;
       port = dummyPort;
       host = dummyHost;
+      scheme = dummyScheme;
       KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
       kpg.initialize(2048);
       keyPair = kpg.generateKeyPair();
