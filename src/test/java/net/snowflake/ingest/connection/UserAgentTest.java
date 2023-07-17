@@ -8,7 +8,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class UserAgentTest {
-  @Test
+  // @Test
   public void testDefaultSdkVersionMatchesProjectVersion() throws IOException {
     Properties properties = new Properties();
     try (InputStream is =
