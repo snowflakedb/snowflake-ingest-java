@@ -96,6 +96,7 @@ public class TestUtils {
   private static String dummyUser = "user";
   private static int dummyPort = 443;
   private static String dummyHost = "snowflake.qa1.int.snowflakecomputing.com";
+  private static String dummyScheme = "http";
 
   /**
    * load all login info from profile
@@ -134,6 +135,7 @@ public class TestUtils {
       user = dummyUser;
       port = dummyPort;
       host = dummyHost;
+      scheme = dummyScheme;
       KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
       kpg.initialize(2048);
       keyPair = kpg.generateKeyPair();
@@ -223,7 +225,8 @@ public class TestUtils {
     return schema;
   }
 
-  public static Properties getProperties(Constants.BdecVersion bdecVersion) throws Exception {
+  public static Properties getProperties(Constants.BdecVersion bdecVersion, boolean useDefaultRole)
+      throws Exception {
     if (profile == null) {
       init();
     }
@@ -236,7 +239,9 @@ public class TestUtils {
     props.put(SCHEMA, schema);
     props.put(WAREHOUSE, warehouse);
     props.put(PRIVATE_KEY, privateKeyPem);
-    props.put(ROLE, role);
+    if (!useDefaultRole) {
+      props.put(ROLE, role);
+    }
     props.put(ACCOUNT_URL, getAccountURL());
     props.put(BLOB_FORMAT_VERSION, bdecVersion.toByte());
     return props;
