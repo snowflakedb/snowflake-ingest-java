@@ -31,6 +31,12 @@ public class ParameterProvider {
   public static final String MAX_ALLOWED_ROW_SIZE_IN_BYTES =
       "MAX_ALLOWED_ROW_SIZE_IN_BYTES".toLowerCase();
 
+  public static final String INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES =
+      "INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES".toLowerCase();
+
+  public static final String INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES =
+      "INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
@@ -46,6 +52,11 @@ public class ParameterProvider {
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 32000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 128000000L;
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
+
+  public static final long INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES_DEFAULT =
+      16 * 1024 * 1024;
+  public static final long INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES_DEFAULT =
+      128 * 1024 * 1024;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -149,6 +160,17 @@ public class ParameterProvider {
 
     this.updateValue(
         MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
+
+    this.updateValue(
+        INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES,
+        INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES,
+        parameterOverrides,
+        props);
+    this.updateValue(
+        INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES,
+        INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES_DEFAULT,
+        parameterOverrides,
+        props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -293,6 +315,22 @@ public class ParameterProvider {
     Object val =
         this.parameterMap.getOrDefault(
             MAX_ALLOWED_ROW_SIZE_IN_BYTES, MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
+    return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  public long getInsertRowsRecommendedMaxSizeInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES,
+            INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES_DEFAULT);
+    return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  public long getInsertRowsEnforcedMaxSizeInBytes() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES,
+            INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES_DEFAULT);
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 

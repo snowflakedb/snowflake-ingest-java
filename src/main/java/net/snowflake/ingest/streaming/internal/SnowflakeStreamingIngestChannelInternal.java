@@ -130,7 +130,13 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                 : ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
             owningClient != null
                 ? owningClient.getParameterProvider().getMaxAllowedRowSizeInBytes()
-                : ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
+                : ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
+            owningClient != null
+                ? owningClient.getParameterProvider().getInsertRowsRecommendedMaxSizeInBytes()
+                : ParameterProvider.INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES_DEFAULT,
+            owningClient != null
+                ? owningClient.getParameterProvider().getInsertRowsEnforcedMaxSizeInBytes()
+                : ParameterProvider.INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES_DEFAULT);
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),

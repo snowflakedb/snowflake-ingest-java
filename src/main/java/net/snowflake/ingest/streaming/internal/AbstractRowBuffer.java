@@ -170,17 +170,24 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   final ZoneId defaultTimezone;
 
+  private final long insertRowsRecommendedMaxSizeInBytes;
+  private final long insertRowsEnforcedMaxSizeInBytes;
+
   AbstractRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
-      ChannelRuntimeState channelRuntimeState) {
+      ChannelRuntimeState channelRuntimeState,
+      long insertRowsRecommendedMaxSizeInBytes,
+      long insertRowsEnforcedMaxSizeInBytes) {
     this.onErrorOption = onErrorOption;
     this.defaultTimezone = defaultTimezone;
     this.rowSizeMetric = rowSizeMetric;
     this.channelState = channelRuntimeState;
     this.channelFullyQualifiedName = fullyQualifiedChannelName;
+    this.insertRowsRecommendedMaxSizeInBytes = insertRowsRecommendedMaxSizeInBytes;
+    this.insertRowsEnforcedMaxSizeInBytes = insertRowsEnforcedMaxSizeInBytes;
     this.nonNullableFieldNames = new HashSet<>();
     this.flushLock = new ReentrantLock();
     this.bufferedRowCount = 0;
@@ -316,12 +323,13 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
             error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
             response.addError(error);
           }
+          checkBatchSizeEnforcedMaximum(rowsSizeInBytes);
           rowIndex++;
           if (this.bufferedRowCount == Integer.MAX_VALUE) {
             throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
           }
         }
-        batchSizeWarning(rowIndex);
+        checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
       } else {
         // If the on_error option is ABORT, simply throw the first exception
         float tempRowsSizeInBytes = 0F;
@@ -330,9 +338,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           Set<String> inputColumnNames = verifyInputColumns(row, null);
           tempRowsSizeInBytes +=
               addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames, tempRowCount);
+          checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
           tempRowCount++;
         }
-        batchSizeWarning(tempRowCount);
+        checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
 
         moveTempRowsToActualBuffer(tempRowCount);
 
@@ -535,7 +544,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       ChannelRuntimeState channelRuntimeState,
       boolean enableParquetMemoryOptimization,
       long maxChunkSizeInBytes,
-      long maxRowSizeInBytes) {
+      long maxRowSizeInBytes,
+      long insertRowsRecommendedMaxSizeInBytes,
+      long insertRowsEnforcedMaxSizeInBytes) {
     switch (bdecVersion) {
       case THREE:
         //noinspection unchecked
@@ -548,20 +559,30 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 channelRuntimeState,
                 enableParquetMemoryOptimization,
                 maxChunkSizeInBytes,
-                maxRowSizeInBytes);
+                maxRowSizeInBytes,
+                insertRowsRecommendedMaxSizeInBytes,
+                insertRowsEnforcedMaxSizeInBytes);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
     }
   }
 
-  private static void batchSizeWarning(long rowsPassed) {
-    if (rowsPassed > RECOMMENDED_MAX_BATCH_SIZE) {
-      logger.logWarn(
-          "Too many rows passed in one batch to 'insertRows': %d. The recommended max batch size is"
-              + " %d rows. We recommend splitting large batches into multiple smaller ones"
-              + " and call insertRows for each smaller batch separately.",
-          rowsPassed, RECOMMENDED_MAX_BATCH_SIZE);
+  private void checkBatchSizeEnforcedMaximum(float batchSizeInBytes) {
+    if (batchSizeInBytes > insertRowsEnforcedMaxSizeInBytes) {
+      throw new SFException(
+          ErrorCode.MAX_BATCH_SIZE_EXCEEDED,
+          insertRowsEnforcedMaxSizeInBytes,
+          insertRowsRecommendedMaxSizeInBytes);
     }
+  }
+
+  private void checkBatchSizeRecommendedMaximum(float batchSizeInBytes) {
+    logger.logWarn(
+        "Too large batch of rows passed to 'insertRows': {} bytes. The recommended max batch size"
+            + " is {} bytes. We recommend splitting large batches into multiple smaller ones and"
+            + " call insertRows for each smaller batch separately.",
+        batchSizeInBytes,
+        insertRowsRecommendedMaxSizeInBytes);
   }
 }
