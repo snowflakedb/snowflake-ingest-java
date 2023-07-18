@@ -38,9 +38,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // side scanner
   private static final int INVALID_SERVER_SIDE_DATA_TYPE_ORDINAL = -1;
 
-  // Maximum number of rows we recommend to pass to insertRows()
-  private static final int RECOMMENDED_MAX_BATCH_SIZE = 10_000;
-
   // Snowflake table column logical type
   enum ColumnLogicalType {
     ANY,
