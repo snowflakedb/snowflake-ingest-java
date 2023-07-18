@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.util.Properties;
 import net.snowflake.ingest.SimpleIngestManager;
 import org.junit.Assert;
-import org.junit.Test;
 
 public class UserAgentTest {
   // @Test
