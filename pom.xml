@@ -218,10 +218,6 @@
           </exclusion>
           <exclusion>
             <groupId>org.apache.hadoop.thirdparty</groupId>
-            <artifactId>hadoop-shaded-guava</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.apache.hadoop.thirdparty</groupId>
             <artifactId>hadoop-shaded-protobuf_3_7</artifactId>
           </exclusion>
           <exclusion>
@@ -276,12 +272,6 @@
         <groupId>org.apache.parquet</groupId>
         <artifactId>parquet-hadoop</artifactId>
         <version>${parquet.version}</version>
-        <exclusions>
-          <exclusion>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-jackson</artifactId>
-          </exclusion>
-        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.apache.yetus</groupId>
