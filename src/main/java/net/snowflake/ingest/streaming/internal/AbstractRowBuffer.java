@@ -575,11 +575,13 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   private void checkBatchSizeRecommendedMaximum(float batchSizeInBytes) {
-    logger.logWarn(
-        "Too large batch of rows passed to 'insertRows': {} bytes. The recommended max batch size"
-            + " is {} bytes. We recommend splitting large batches into multiple smaller ones and"
-            + " call insertRows for each smaller batch separately.",
-        batchSizeInBytes,
-        insertRowsRecommendedMaxSizeInBytes);
+    if (batchSizeInBytes > insertRowsRecommendedMaxSizeInBytes) {
+      logger.logWarn(
+          "Too large batch of rows passed to 'insertRows': {} bytes. The recommended max batch size"
+              + " is {} bytes. We recommend splitting large batches into multiple smaller ones and"
+              + " call insertRows for each smaller batch separately.",
+          batchSizeInBytes,
+          insertRowsRecommendedMaxSizeInBytes);
+    }
   }
 }
