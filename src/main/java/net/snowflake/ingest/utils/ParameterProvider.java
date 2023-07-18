@@ -163,7 +163,7 @@ public class ParameterProvider {
 
     this.updateValue(
         INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES,
-        INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES,
+        INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES_DEFAULT,
         parameterOverrides,
         props);
     this.updateValue(
