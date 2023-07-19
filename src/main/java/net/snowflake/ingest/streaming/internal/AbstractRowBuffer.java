@@ -38,6 +38,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // side scanner
   private static final int INVALID_SERVER_SIDE_DATA_TYPE_ORDINAL = -1;
 
+  // The maximum recommended batch size of data passed into a single insertRows() call
+  private static final int INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES = 16 * 1024 * 1024;
+
   // Snowflake table column logical type
   enum ColumnLogicalType {
     ANY,
@@ -159,6 +162,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Metric callback to report size of inserted rows
   private final Consumer<Float> rowSizeMetric;
 
+  private final long maxChunkSizeInBytes;
+
   // State of the owning channel
   final ChannelRuntimeState channelState;
 
@@ -167,28 +172,23 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   final ZoneId defaultTimezone;
 
-  private final long insertRowsRecommendedMaxSizeInBytes;
-  private final long insertRowsEnforcedMaxSizeInBytes;
-
   AbstractRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      long insertRowsRecommendedMaxSizeInBytes,
-      long insertRowsEnforcedMaxSizeInBytes) {
+      long maxChunkSizeInBytes) {
     this.onErrorOption = onErrorOption;
     this.defaultTimezone = defaultTimezone;
     this.rowSizeMetric = rowSizeMetric;
     this.channelState = channelRuntimeState;
     this.channelFullyQualifiedName = fullyQualifiedChannelName;
-    this.insertRowsRecommendedMaxSizeInBytes = insertRowsRecommendedMaxSizeInBytes;
-    this.insertRowsEnforcedMaxSizeInBytes = insertRowsEnforcedMaxSizeInBytes;
     this.nonNullableFieldNames = new HashSet<>();
     this.flushLock = new ReentrantLock();
     this.bufferedRowCount = 0;
     this.bufferSize = 0F;
+    this.maxChunkSizeInBytes = maxChunkSizeInBytes;
 
     // Initialize empty stats
     this.statsMap = new HashMap<>();
@@ -541,9 +541,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       ChannelRuntimeState channelRuntimeState,
       boolean enableParquetMemoryOptimization,
       long maxChunkSizeInBytes,
-      long maxRowSizeInBytes,
-      long insertRowsRecommendedMaxSizeInBytes,
-      long insertRowsEnforcedMaxSizeInBytes) {
+      long maxRowSizeInBytes) {
     switch (bdecVersion) {
       case THREE:
         //noinspection unchecked
@@ -556,9 +554,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 channelRuntimeState,
                 enableParquetMemoryOptimization,
                 maxChunkSizeInBytes,
-                maxRowSizeInBytes,
-                insertRowsRecommendedMaxSizeInBytes,
-                insertRowsEnforcedMaxSizeInBytes);
+                maxRowSizeInBytes);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
@@ -566,22 +562,23 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   private void checkBatchSizeEnforcedMaximum(float batchSizeInBytes) {
-    if (batchSizeInBytes > insertRowsEnforcedMaxSizeInBytes) {
+    if (batchSizeInBytes > maxChunkSizeInBytes) {
       throw new SFException(
           ErrorCode.MAX_BATCH_SIZE_EXCEEDED,
-          insertRowsEnforcedMaxSizeInBytes,
-          insertRowsRecommendedMaxSizeInBytes);
+          maxChunkSizeInBytes,
+          INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES);
     }
   }
 
   private void checkBatchSizeRecommendedMaximum(float batchSizeInBytes) {
-    if (batchSizeInBytes > insertRowsRecommendedMaxSizeInBytes) {
+    if (batchSizeInBytes > INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES) {
       logger.logWarn(
-          "Too large batch of rows passed to 'insertRows': {} bytes. The recommended max batch size"
-              + " is {} bytes. We recommend splitting large batches into multiple smaller ones and"
+          "The batch of rows passed to 'insertRows' is over the recommended max batch size. Given"
+              + " {} bytes, recommended max batch is {} bytes. For optimal performance and memory"
+              + " utilization, we recommend splitting large batches into multiple smaller ones and"
               + " call insertRows for each smaller batch separately.",
           batchSizeInBytes,
-          insertRowsRecommendedMaxSizeInBytes);
+          INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES);
     }
   }
 }

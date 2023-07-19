@@ -64,17 +64,14 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       ChannelRuntimeState channelRuntimeState,
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
-      long maxAllowedRowSizeInBytes,
-      long insertRowsRecommendedMaxSizeInBytes,
-      long insertRowsEnforcedMaxSizeInBytes) {
+      long maxAllowedRowSizeInBytes) {
     super(
         onErrorOption,
         defaultTimezone,
         fullyQualifiedChannelName,
         rowSizeMetric,
         channelRuntimeState,
-        insertRowsRecommendedMaxSizeInBytes,
-        insertRowsEnforcedMaxSizeInBytes);
+        maxChunkSizeInBytes);
     this.fieldIndex = new HashMap<>();
     this.metadata = new HashMap<>();
     this.data = new ArrayList<>();

@@ -1,10 +1,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
-import static net.snowflake.ingest.utils.ParameterProvider.INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES_DEFAULT;
-import static net.snowflake.ingest.utils.ParameterProvider.INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
-import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -118,16 +116,12 @@ public class RowBufferTest {
         rs -> {},
         initialState,
         enableParquetMemoryOptimization,
-        MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
-        MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
-        INSERT_ROWS_BATCH_SIZE_RECOMMENDED_MAX_SIZE_IN_BYTES_DEFAULT,
-        INSERT_ROWS_BATCH_SIZE_ENFORCED_MAX_SIZE_IN_BYTES_DEFAULT);
+        MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
+        MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
   }
 
   @Test
   public void testCollatedColumnsAreRejected() {
-    AbstractRowBuffer<?> testBuffer = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
-
     ColumnMetadata collatedColumn = new ColumnMetadata();
     collatedColumn.setName("COLCHAR");
     collatedColumn.setPhysicalType("LOB");
@@ -960,9 +954,16 @@ public class RowBufferTest {
     byte[] arr = new byte[8 * 1024 * 1024];
     innerBuffer.setupSchema(Collections.singletonList(colBinary));
     List<Map<String, Object>> rows = new ArrayList<>();
-    for (int i = 0; i < 17; i++) { // 0 .. (128/8+1)
+    for (int i = 0; i < 15; i++) {
       rows.add(Collections.singletonMap("COLBINARY", arr));
     }
+
+    // Insert rows should succeed
+    innerBuffer.insertRows(rows, "");
+
+    // After adding another row, it should fail due to too large batch of rows passed to
+    // insertRows() in one go
+    rows.add(Collections.singletonMap("COLBINARY", arr));
     try {
       innerBuffer.insertRows(rows, "");
       Assert.fail("Inserting rows should have failed");
