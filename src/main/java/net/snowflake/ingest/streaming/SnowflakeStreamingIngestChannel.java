@@ -251,5 +251,6 @@ public interface SnowflakeStreamingIngestChannel {
    *
    * @return the latest committed offset token
    */
+  @Nullable
   String getLatestCommittedOffsetToken();
 }
