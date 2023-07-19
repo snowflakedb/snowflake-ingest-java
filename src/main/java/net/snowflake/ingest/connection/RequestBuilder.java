@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
@@ -7,7 +7,6 @@ package net.snowflake.ingest.connection;
 import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -15,7 +14,6 @@ import java.net.URISyntaxException;
 import java.security.KeyPair;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
@@ -83,13 +81,6 @@ public class RequestBuilder {
   // the endpoint for history time range queries
   private static final String HISTORY_RANGE_ENDPOINT_FORMAT = "/v1/data/pipes/%s/loadHistoryScan";
 
-  // the endpoint for configure snowpipe client
-  private static final String CONFIGURE_CLIENT_ENDPOINT_FORMAT =
-      "/v1/data/pipes/%s/client/configure";
-
-  // the endpoint for get snowpipe client status
-  private static final String CLIENT_STATUS_ENDPOINT_FORMAT = "/v1/data/pipes/%s/client/status";
-
   // optional number of max seconds of items to fetch(eg. in the last hour)
   private static final String RECENT_HISTORY_IN_SECONDS = "recentSeconds";
 
@@ -119,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.0.1";
+  public static final String DEFAULT_VERSION = "2.0.2-SNAPSHOT";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -137,10 +128,11 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    */
-  public RequestBuilder(String accountName, String userName, KeyPair keyPair) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
+  public RequestBuilder(String accountName, String userName, Object credential) {
+    this(
+        accountName, userName, credential, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
   }
 
   /**
@@ -148,16 +140,17 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
   public RequestBuilder(
       String accountName,
       String userName,
       String hostName,
-      KeyPair keyPair,
+      Object credential,
       String userAgentSuffix) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
+    this(
+        accountName, userName, credential, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
   }
 
   /**
@@ -166,7 +159,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - the credential we'll use to authenticate
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -174,11 +167,11 @@ public class RequestBuilder {
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum) {
-    this(accountName, userName, keyPair, schemeName, hostName, portNum, null);
+    this(accountName, userName, credential, schemeName, hostName, portNum, null);
   }
 
   /**
@@ -186,7 +179,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - the credential we'll use to authenticate
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -195,13 +188,22 @@ public class RequestBuilder {
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum,
       String userAgentSuffix) {
     this(
-        accountName, userName, keyPair, schemeName, hostName, portNum, userAgentSuffix, null, null);
+        accountName,
+        userName,
+        credential,
+        schemeName,
+        hostName,
+        portNum,
+        userAgentSuffix,
+        null,
+        null,
+        null);
   }
 
   /**
@@ -209,23 +211,24 @@ public class RequestBuilder {
    *
    * @param url - the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    * @param httpClient - reference to the http client
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
       SnowflakeURL url,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       CloseableHttpClient httpClient,
       String clientName) {
     this(
         url.getAccount(),
         userName,
-        keyPair,
+        credential,
         url.getScheme(),
         url.getUrlWithoutPort(),
         url.getPort(),
+        null,
         null,
         httpClient,
         clientName);
@@ -236,40 +239,40 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - our auth credentials, either JWT key pair or OAuth credential
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param securityManager - The security manager for authentication
    * @param httpClient - reference to the http client
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum,
       String userAgentSuffix,
+      SecurityManager securityManager,
       CloseableHttpClient httpClient,
       String clientName) {
     // none of these arguments should be null
-    if (accountName == null || userName == null || keyPair == null) {
+    if (accountName == null || userName == null || credential == null) {
       throw new IllegalArgumentException();
     }
 
     // Set up the telemetry service if needed
+    // TODO: SNOW-854272 Support telemetry service when using OAuth authentication
     this.telemetryService =
-        ENABLE_TELEMETRY_TO_SF
+        ENABLE_TELEMETRY_TO_SF && credential instanceof KeyPair
             ? new TelemetryService(
                 httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
             : null;
 
-    // create our security/token manager
-    securityManager = new SecurityManager(accountName, userName, keyPair, telemetryService);
-
-    // stash references to the account and user name as well
+    // stash references to the account and username as well
     String account = accountName.toUpperCase();
     String user = userName.toUpperCase();
 
@@ -278,6 +281,27 @@ public class RequestBuilder {
     this.scheme = schemeName;
     this.host = hostName;
     this.userAgentSuffix = userAgentSuffix;
+
+    // create our security/token manager
+    if (securityManager == null) {
+      if (credential instanceof KeyPair) {
+        this.securityManager =
+            new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
+      } else if (credential instanceof OAuthCredential) {
+        this.securityManager =
+            new OAuthManager(
+                accountName,
+                userName,
+                (OAuthCredential) credential,
+                makeBaseURI(),
+                telemetryService);
+      } else {
+        throw new IllegalArgumentException(
+            "Credential should be instance of either KeyPair or OAuthCredential");
+      }
+    } else {
+      this.securityManager = securityManager;
+    }
 
     LOGGER.info(
         "Creating a RequestBuilder with arguments : "
@@ -332,34 +356,18 @@ public class RequestBuilder {
     // the list of files we're loading
     private final List<StagedFileWrapper> files;
 
-    // additional info passed along with files which includes clientSequencer and offsetToken
-    // can be null
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private final InsertFilesClientInfo clientInfo;
-
-    /** Constructor used when both files and clientInfo are passed in request */
-    public IngestRequest(List<StagedFileWrapper> files, InsertFilesClientInfo clientInfo) {
-      this.files = files;
-      this.clientInfo = clientInfo;
-    }
-
     /**
      * Ctor used when only files is used in request body.
      *
      * <p>clientInfo will be defaulted to null
      */
     public IngestRequest(List<StagedFileWrapper> files) {
-      this(files, null);
+      this.files = files;
     }
 
     /* Gets the list of files which were added in request */
     public List<StagedFileWrapper> getFiles() {
       return files;
-    }
-
-    /* Gets the clientInfo associated with files which was added in request */
-    public InsertFilesClientInfo getClientInfo() {
-      return clientInfo;
     }
   }
 
@@ -376,6 +384,17 @@ public class RequestBuilder {
       throw new IllegalArgumentException();
     }
 
+    // construct the builder object without param
+    URIBuilder builder = makeBaseURI();
+
+    // set the request id
+    builder.setParameter(REQUEST_ID, requestId.toString());
+
+    return builder;
+  }
+
+  /** Construct a URIBuilder for common parts of request without any parameter */
+  private URIBuilder makeBaseURI() {
     // construct the builder object
     URIBuilder builder = new URIBuilder();
 
@@ -387,9 +406,6 @@ public class RequestBuilder {
 
     // set the port name
     builder.setPort(port);
-
-    // set the request id
-    builder.setParameter(REQUEST_ID, requestId.toString());
 
     return builder;
   }
@@ -501,79 +517,14 @@ public class RequestBuilder {
   }
 
   /**
-   * Given a request UUID, and a fully qualified pipe name make a URI for configure snowpipe client
-   * http://snowflakeURL{:PORT}/v1/data/pipes/{pipeName}/client/configure
-   *
-   * <p>Where snowflake URL can be an old url or new regionless URL.
-   *
-   * <p>Request Body is Empty
-   *
-   * <p>And our response looks like:
-   *
-   * <pre>
-   *   {
-   *      'clientSequencer': LONG
-   *   }
-   * </pre>
-   *
-   * @param requestId the label for this request
-   * @param pipe the pipe name
-   * @return configure snowpipe client URI
-   * @throws URISyntaxException
-   */
-  private URI makeConfigureClientURI(UUID requestId, String pipe) throws URISyntaxException {
-    if (pipe == null) {
-      throw new IllegalArgumentException();
-    }
-    URIBuilder builder = makeBaseURI(requestId);
-    builder.setPath(String.format(CONFIGURE_CLIENT_ENDPOINT_FORMAT, pipe));
-    LOGGER.info("Final Configure Client URIBuilder - {}", builder);
-    return builder.build();
-  }
-
-  /**
-   * makeGetClientURI - Given a request UUID, and a fully qualified pipe name make a URI for getting
-   * snowpipe client http://snowflakeURL{:PORT}/v1/data/pipes/{pipeName}/client/status
-   *
-   * <p>Where snowflake URL can be an old url or new regionless URL.
-   *
-   * <p>Request Body is Empty
-   *
-   * <p>And our response looks like:
-   *
-   * <pre>
-   *   {
-   *      'offsetToken': STRING
-   *      'clientSequencer': LONG
-   *   }
-   * </pre>
-   *
-   * @param requestId the label for this request
-   * @param pipe the pipe name
-   * @return get client URI
-   * @throws URISyntaxException
-   */
-  private URI makeGetClientURI(UUID requestId, String pipe) throws URISyntaxException {
-    if (pipe == null) {
-      throw new IllegalArgumentException();
-    }
-    URIBuilder builder = makeBaseURI(requestId);
-    builder.setPath(String.format(CLIENT_STATUS_ENDPOINT_FORMAT, pipe));
-    LOGGER.info("Final Get Client URIBuilder - {}", builder);
-    return builder.build();
-  }
-
-  /**
-   * Given a list of files, and an optional clientInfo generate json string which later can be
-   * passed in request body of insertFiles API
+   * Given a list of files, generate a json string which later can be passed in request body of
+   * insertFiles API
    *
    * @param files the list of files we want to send
-   * @param clientInfo optional clientInfo which can be empty.
    * @return the string json blob
    * @throws IllegalArgumentException if files passed in is null
    */
-  private String serializeInsertFilesRequest(
-      List<StagedFileWrapper> files, Optional<InsertFilesClientInfo> clientInfo) {
+  private String serializeInsertFilesRequest(List<StagedFileWrapper> files) {
     // if the files argument is null, throw
     if (files == null) {
       LOGGER.info("Null files argument in RequestBuilder");
@@ -581,10 +532,7 @@ public class RequestBuilder {
     }
 
     // create pojo
-    IngestRequest ingestRequest =
-        clientInfo
-            .map(insertFilesClientInfo -> new IngestRequest(files, insertFilesClientInfo))
-            .orElseGet(() -> new IngestRequest(files));
+    IngestRequest ingestRequest = new IngestRequest(files);
 
     // serialize to a string
     try {
@@ -614,17 +562,24 @@ public class RequestBuilder {
   }
 
   /**
-   * addToken - adds a the JWT token to a request
+   * addToken - adds a token to a request
    *
    * @param request the URI request
    * @param token the token to add
    */
-  private static void addToken(HttpUriRequest request, String token) {
+  private void addToken(HttpUriRequest request, String token) {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
-    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, JWT_TOKEN_TYPE);
+    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, this.securityManager.getTokenType());
   }
 
-  private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
+  /**
+   * addHeader - adds necessary header to a request
+   *
+   * @param request the URI request
+   * @param token authentication token
+   * @param userAgentSuffix user agent suffix
+   */
+  private void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
     addUserAgent(request, userAgentSuffix);
 
     // Add the auth token
@@ -648,28 +603,6 @@ public class RequestBuilder {
   public HttpPost generateInsertRequest(
       UUID requestId, String pipe, List<StagedFileWrapper> files, boolean showSkippedFiles)
       throws URISyntaxException {
-    return generateInsertRequest(requestId, pipe, files, showSkippedFiles, Optional.empty());
-  }
-
-  /**
-   * generateInsertRequest - given a pipe, list of files and clientInfo, make a request for the
-   * insert endpoint
-   *
-   * @param requestId a UUID we will use to label this request
-   * @param pipe a fully qualified pipe name
-   * @param files a list of files
-   * @param showSkippedFiles a boolean which returns skipped files when set to true
-   * @param clientInfo
-   * @return a post request with all the data we need
-   * @throws URISyntaxException if the URI components provided are improper
-   */
-  public HttpPost generateInsertRequest(
-      UUID requestId,
-      String pipe,
-      List<StagedFileWrapper> files,
-      boolean showSkippedFiles,
-      Optional<InsertFilesClientInfo> clientInfo)
-      throws URISyntaxException {
     // make the insert URI
     URI insertURI = makeInsertURI(requestId, pipe, showSkippedFiles);
     LOGGER.info("Created Insert Request : {} ", insertURI);
@@ -681,8 +614,7 @@ public class RequestBuilder {
 
     // the entity for the containing the json
     final StringEntity entity =
-        new StringEntity(
-            serializeInsertFilesRequest(files, clientInfo), ContentType.APPLICATION_JSON);
+        new StringEntity(serializeInsertFilesRequest(files), ContentType.APPLICATION_JSON);
     post.setEntity(entity);
 
     return post;
@@ -770,22 +702,6 @@ public class RequestBuilder {
   }
 
   /**
-   * Given a requestId and a pipe, make a configure client request
-   *
-   * @param requestID a UUID we will use to label this request
-   * @param pipe a fully qualified pipe name
-   * @return configure client request
-   * @throws URISyntaxException
-   */
-  public HttpPost generateConfigureClientRequest(UUID requestID, String pipe)
-      throws URISyntaxException {
-    URI configureClientURI = makeConfigureClientURI(requestID, pipe);
-    HttpPost post = new HttpPost(configureClientURI);
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
-    return post;
-  }
-
-  /**
    * Generate post request for streaming ingest related APIs
    *
    * @param payload POST request payload
@@ -807,19 +723,20 @@ public class RequestBuilder {
   }
 
   /**
-   * Given a requestId and a pipe, make a get client status request
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth
    *
-   * @param requestID UUID
-   * @param pipe a fully qualified pipe name
-   * @return get client status request
-   * @throws URISyntaxException
+   * @param refreshToken the new refresh token
    */
-  public HttpGet generateGetClientStatusRequest(UUID requestID, String pipe)
-      throws URISyntaxException {
-    URI getClientStatusURI = makeGetClientURI(requestID, pipe);
-    HttpGet get = new HttpGet(getClientStatusURI);
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
-    return get;
+  public void setRefreshToken(String refreshToken) {
+    if (securityManager instanceof OAuthManager) {
+      ((OAuthManager) securityManager).setRefreshToken(refreshToken);
+    }
+  }
+
+  /** Get authorization type */
+  public String getAuthType() {
+    return securityManager.getTokenType();
   }
 
   /**
@@ -831,7 +748,9 @@ public class RequestBuilder {
    */
   public void closeResources() {
     securityManager.close();
-    telemetryService.close();
+    if (telemetryService != null) {
+      telemetryService.close();
+    }
   }
 
   /** Get the telemetry service */

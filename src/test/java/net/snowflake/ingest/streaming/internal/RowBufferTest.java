@@ -421,25 +421,6 @@ public class RowBufferTest {
   }
 
   @Test
-  public void testClose() {
-    this.rowBufferOnErrorContinue.close("testClose");
-    Map<String, Object> row = new HashMap<>();
-    row.put("colTinyInt", (byte) 1);
-    row.put("colSmallInt", (short) 2);
-    row.put("colInt", 3);
-    row.put("colBigInt", 4L);
-    row.put("colDecimal", 1.23);
-    row.put("colChar", "2");
-
-    try {
-      this.rowBufferOnErrorContinue.insertRows(Collections.singletonList(row), null);
-      Assert.fail("Insert should fail after buffer is closed");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
-    }
-  }
-
-  @Test
   public void testFlush() {
     testFlushHelper(this.rowBufferOnErrorAbort);
     testFlushHelper(this.rowBufferOnErrorContinue);

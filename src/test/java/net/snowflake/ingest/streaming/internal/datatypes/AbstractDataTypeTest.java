@@ -66,7 +66,7 @@ public abstract class AbstractDataTypeTest {
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
-    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE);
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }

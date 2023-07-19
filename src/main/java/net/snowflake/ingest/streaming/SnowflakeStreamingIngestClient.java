@@ -30,6 +30,14 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
   String getName();
 
   /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth.
+   *
+   * @param refreshToken the new refresh token
+   */
+  void setRefreshToken(String refreshToken);
+
+  /**
    * Check whether the client is closed or not, if you want to make sure all data are committed
    * before closing, please call {@link SnowflakeStreamingIngestClient#close()} before closing the
    * entire client
