@@ -40,6 +40,7 @@ import net.snowflake.client.jdbc.internal.apache.http.impl.conn.PoolingHttpClien
 import net.snowflake.client.jdbc.internal.apache.http.pool.PoolStats;
 import net.snowflake.client.jdbc.internal.apache.http.protocol.HttpContext;
 import net.snowflake.client.jdbc.internal.apache.http.ssl.SSLContexts;
+import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -300,6 +301,7 @@ public class HttpUtil {
             requestURI,
             executionCount,
             MAX_RETRIES);
+        StreamingIngestUtils.sleepForRetry(executionCount);
         return true;
       }
       LOGGER.info("No retry for URI:{} with exception {}", requestURI, exception.toString());
