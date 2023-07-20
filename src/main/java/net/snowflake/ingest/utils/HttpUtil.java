@@ -40,6 +40,7 @@ import net.snowflake.client.jdbc.internal.apache.http.impl.conn.PoolingHttpClien
 import net.snowflake.client.jdbc.internal.apache.http.pool.PoolStats;
 import net.snowflake.client.jdbc.internal.apache.http.protocol.HttpContext;
 import net.snowflake.client.jdbc.internal.apache.http.ssl.SSLContexts;
+import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,14 @@ public class HttpUtil {
   private static final String FIRST_FAULT_TIMESTAMP = "FIRST_FAULT_TIMESTAMP";
   private static final Duration TOTAL_RETRY_DURATION = Duration.of(120, ChronoUnit.SECONDS);
   private static final Duration RETRY_INTERVAL = Duration.of(3, ChronoUnit.SECONDS);
-  private static final int MAX_RETRIES = 3;
+
+  /**
+   * How many times to retry when an IO exception is thrown. Value here is chosen to match the total
+   * value of {@link HttpUtil.TOTAL_RETRY_DURATION} when exponential backoff of up to 4 seconds per
+   * retry is used.
+   */
+  private static final int MAX_RETRIES = 10;
+
   private static volatile CloseableHttpClient httpClient;
 
   private static PoolingHttpClientConnectionManager connectionManager;
@@ -284,13 +292,16 @@ public class HttpUtil {
         return false;
       }
       if (exception instanceof NoHttpResponseException
-          || exception instanceof javax.net.ssl.SSLException) {
+          || exception instanceof javax.net.ssl.SSLException
+          || exception instanceof java.net.SocketException
+          || exception instanceof java.net.UnknownHostException) {
         LOGGER.info(
             "Retrying request which caused {} with " + "URI:{}, retryCount:{} and maxRetryCount:{}",
             exception.getClass().getName(),
             requestURI,
             executionCount,
             MAX_RETRIES);
+        StreamingIngestUtils.sleepForRetry(executionCount);
         return true;
       }
       LOGGER.info("No retry for URI:{} with exception {}", requestURI, exception.toString());
