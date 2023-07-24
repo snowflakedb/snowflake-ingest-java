@@ -131,7 +131,7 @@ public class Utils {
     }
 
     if (!properties.containsKey(Constants.ROLE)) {
-      throw new SFException(ErrorCode.MISSING_CONFIG, "role");
+      logger.logInfo("Snowflake role is not provided, the default user role will be applied.");
     }
 
     /**

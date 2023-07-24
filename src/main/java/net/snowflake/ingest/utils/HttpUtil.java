@@ -40,6 +40,7 @@ import net.snowflake.client.jdbc.internal.apache.http.impl.conn.PoolingHttpClien
 import net.snowflake.client.jdbc.internal.apache.http.pool.PoolStats;
 import net.snowflake.client.jdbc.internal.apache.http.protocol.HttpContext;
 import net.snowflake.client.jdbc.internal.apache.http.ssl.SSLContexts;
+import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +58,14 @@ public class HttpUtil {
   private static final String FIRST_FAULT_TIMESTAMP = "FIRST_FAULT_TIMESTAMP";
   private static final Duration TOTAL_RETRY_DURATION = Duration.of(120, ChronoUnit.SECONDS);
   private static final Duration RETRY_INTERVAL = Duration.of(3, ChronoUnit.SECONDS);
-  private static final int MAX_RETRIES = 3;
+
+  /**
+   * How many times to retry when an IO exception is thrown. Value here is chosen to match the total
+   * value of {@link HttpUtil.TOTAL_RETRY_DURATION} when exponential backoff of up to 4 seconds per
+   * retry is used.
+   */
+  private static final int MAX_RETRIES = 10;
+
   private static volatile CloseableHttpClient httpClient;
 
   private static PoolingHttpClientConnectionManager connectionManager;
@@ -72,6 +80,12 @@ public class HttpUtil {
 
   private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
   private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
+
+  /**
+   * After how many seconds of inactivity should be idle connections evicted from the connection
+   * pool.
+   */
+  private static final int DEFAULT_EVICT_IDLE_AFTER_SECONDS = 60;
 
   // Default is 2, but scaling it up to 100 to match with default_max_connections
   private static final int DEFAULT_MAX_CONNECTIONS_PER_ROUTE = 100;
@@ -146,6 +160,7 @@ public class HttpUtil {
     HttpClientBuilder clientBuilder =
         HttpClientBuilder.create()
             .setConnectionManager(connectionManager)
+            .evictIdleConnections(DEFAULT_EVICT_IDLE_AFTER_SECONDS, TimeUnit.SECONDS)
             .setSSLSocketFactory(f)
             .setServiceUnavailableRetryStrategy(getServiceUnavailableRetryStrategy())
             .setRetryHandler(getHttpRequestRetryHandler())
@@ -259,27 +274,37 @@ public class HttpUtil {
   }
 
   /**
-   * Retry handler logic. Retry if No response from Service exception. (NoHttpResponseException)
+   * Retry handler logic. Retry at most {@link HttpUtil.MAX_RETRIES} times if any of the following
+   * exceptions is thrown by request execution:
+   *
+   * <ul>
+   *   <li>No response from Service exception (NoHttpResponseException)
+   *   <li>javax.net.ssl.SSLException: Connection reset.
+   * </ul>
    *
    * @return retryHandler to add to http client.
    */
-  private static HttpRequestRetryHandler getHttpRequestRetryHandler() {
+  static HttpRequestRetryHandler getHttpRequestRetryHandler() {
     return (exception, executionCount, httpContext) -> {
       final String requestURI = getRequestUriFromContext(httpContext);
       if (executionCount > MAX_RETRIES) {
         LOGGER.info("Max retry exceeded for requestURI:{}", requestURI);
         return false;
       }
-      if (exception instanceof NoHttpResponseException) {
+      if (exception instanceof NoHttpResponseException
+          || exception instanceof javax.net.ssl.SSLException
+          || exception instanceof java.net.SocketException
+          || exception instanceof java.net.UnknownHostException) {
         LOGGER.info(
-            "Retrying request which caused No HttpResponse Exception with "
-                + "URI:{}, retryCount:{} and maxRetryCount:{}",
+            "Retrying request which caused {} with " + "URI:{}, retryCount:{} and maxRetryCount:{}",
+            exception.getClass().getName(),
             requestURI,
             executionCount,
             MAX_RETRIES);
+        StreamingIngestUtils.sleepForRetry(executionCount);
         return true;
       }
-      LOGGER.info("No retry for URI:{} with exception", requestURI, exception);
+      LOGGER.info("No retry for URI:{} with exception {}", requestURI, exception.toString());
       return false;
     };
   }

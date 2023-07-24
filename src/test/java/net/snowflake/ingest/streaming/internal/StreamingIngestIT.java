@@ -3,7 +3,6 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.ROLE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 
@@ -89,10 +88,9 @@ public class StreamingIngestIT {
         .createStatement()
         .execute(String.format("use warehouse %s", TestUtils.getWarehouse()));
 
-    prop = TestUtils.getProperties(Constants.BdecVersion.THREE);
-    if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
-      prop.setProperty(ROLE, "ACCOUNTADMIN");
-    }
+    // Test without role param
+    prop = TestUtils.getProperties(Constants.BdecVersion.THREE, true);
+
     client =
         (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
