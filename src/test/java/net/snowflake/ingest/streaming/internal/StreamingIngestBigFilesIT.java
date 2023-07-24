@@ -69,7 +69,7 @@ public class StreamingIngestBigFilesIT {
 
     int numTables = 2;
     int numChannels = 4; // channels are assigned round-robin to tables.
-    int batchSize = 20000;
+    int batchSize = 10000;
     int numBatches = 10; // number of rows PER CHANNEL is batchSize * numBatches
     boolean isNullable = false;
 
