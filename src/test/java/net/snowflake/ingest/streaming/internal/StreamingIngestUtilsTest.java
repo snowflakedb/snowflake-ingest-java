@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
+import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.getSleepForRetryMs;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
@@ -161,5 +162,21 @@ public class StreamingIngestUtilsTest {
         .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
 
     Assert.assertEquals("honkSuccess", result.getMessage());
+  }
+
+  @Test
+  public void testGetSleepForRetry() {
+    Assert.assertEquals(0, getSleepForRetryMs(0));
+    Assert.assertEquals(0, getSleepForRetryMs(1));
+    Assert.assertEquals(1000, getSleepForRetryMs(2));
+    Assert.assertEquals(2000, getSleepForRetryMs(3));
+    Assert.assertEquals(4000, getSleepForRetryMs(4));
+    Assert.assertEquals(4000, getSleepForRetryMs(5));
+    Assert.assertEquals(4000, getSleepForRetryMs(100000));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testGetSleepForRetryNegative() {
+    getSleepForRetryMs(-1);
   }
 }
