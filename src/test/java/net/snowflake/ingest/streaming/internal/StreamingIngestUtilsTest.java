@@ -146,7 +146,9 @@ public class StreamingIngestUtilsTest {
 
     // build payload
     Map<Object, Object> payload = new HashMap<>();
-    payload.put("role", TestUtils.getRole());
+    if (!TestUtils.getRole().isEmpty() && !TestUtils.getRole().equals("DEFAULT_ROLE")) {
+      payload.put("role", TestUtils.getRole());
+    }
     ObjectMapper mapper = new ObjectMapper();
 
     // request wih invalid token
