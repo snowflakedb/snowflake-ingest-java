@@ -3,8 +3,8 @@
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 export GPG_KEY_ID="Snowflake Computing"
-export SONATYPE_USER="$sonatype_user"
-export SONATYPE_PWD="$sonatype_password"
+export LDAP_USER="$sonatype_user"
+export LDAP_PWD="$sonatype_password"
 
 if [ -z "$GPG_KEY_PASSPHRASE" ]; then
   echo "[ERROR] GPG passphrase is not specified for $GPG_KEY_ID!"
@@ -33,8 +33,8 @@ cat > $UNSHADED_SNAPSHOT_DEPLOY_SETTINGS_XML << SETTINGS.XML
   <servers>
     <server>
       <id>$MVN_REPOSITORY_ID</id>
-      <username>$SONATYPE_USER</username>
-      <password>$SONATYPE_PWD</password>
+      <username>$LDAP_USER</username>
+      <password>$LDAP_PWD</password>
     </server>
   </servers>
 </settings>
@@ -50,6 +50,6 @@ project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.x
 echo "[Info] Project version: $project_version"
 $THIS_DIR/scripts/update_project_version.py pom.xml ${project_version} > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy
+mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dsnapshot-deploy
 
 rm $UNSHADED_SNAPSHOT_DEPLOY_SETTINGS_XML
