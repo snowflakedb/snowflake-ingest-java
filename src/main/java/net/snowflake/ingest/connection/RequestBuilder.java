@@ -739,6 +739,11 @@ public class RequestBuilder {
     return securityManager.getTokenType();
   }
 
+  /** Refresh token manually */
+  public void refreshToken() {
+    securityManager.refreshToken();
+  }
+
   /**
    * Closes the resources being used by RequestBuilder object. {@link SecurityManager} is one such
    * resource which uses a threadpool which needs to be shutdown once SimpleIngestManager is done

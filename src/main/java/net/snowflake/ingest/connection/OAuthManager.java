@@ -11,7 +11,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
 /** This class manages creating and automatically refresh the OAuth token */
-public final class OAuthManager extends SecurityManager {
+public class OAuthManager extends SecurityManager {
   private static final double DEFAULT_UPDATE_THRESHOLD_RATIO = 0.8;
 
   // the endpoint for token request
@@ -138,7 +138,8 @@ public final class OAuthManager extends SecurityManager {
   }
 
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
-  private void refreshToken() {
+  @Override
+  void refreshToken() {
     for (int retries = 0; retries < Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY; retries++) {
       try {
         oAuthClient.refreshToken();

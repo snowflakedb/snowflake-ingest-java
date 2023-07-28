@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
+import static net.snowflake.ingest.utils.Constants.MAX_TOKEN_REFRESH_FOR_UNAUTHORIZE_RETRY;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
+import net.snowflake.client.jdbc.internal.apache.http.HttpStatus;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
@@ -124,11 +126,23 @@ public class StreamingIngestUtils {
       Function<T, Long> statusGetter)
       throws IOException, IngestResponseException {
     int retries = 0;
-    T response;
+    int authRetries = 0;
+    T response = null;
     do {
       try (CloseableHttpResponse httpResponse =
           httpClient.execute(
               requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message))) {
+
+        // SNOW-877039 in case token is expired
+        if (httpResponse.getStatusLine().getStatusCode() == HttpStatus.SC_UNAUTHORIZED) {
+          if (authRetries < MAX_TOKEN_REFRESH_FOR_UNAUTHORIZE_RETRY) {
+            requestBuilder.refreshToken();
+            authRetries++;
+            continue;
+          }
+          throw new SecurityException("Authorization failed after maximum retries");
+        }
+
         response =
             ServiceResponseHandler.unmarshallStreamingIngestResponse(
                 httpResponse, targetClass, apiName);
