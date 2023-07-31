@@ -90,6 +90,7 @@ abstract class SecurityManager implements AutoCloseable {
   /** getTokenType - returns the token type, either "KEYPAIR_JWT" or "OAUTH" */
   abstract String getTokenType();
 
+  /** refreshToken - regenerate or fetch a new token */
   abstract void refreshToken();
 
   public abstract void close();

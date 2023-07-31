@@ -12,8 +12,13 @@ import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.HttpStatus;
 import net.snowflake.client.jdbc.internal.apache.http.StatusLine;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
 import net.snowflake.ingest.utils.BackOffException;
+import net.snowflake.ingest.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,12 +79,20 @@ public final class ServiceResponseHandler {
    *
    * @param response the HTTPResponse we want to distill into an IngestResponse
    * @param requestId
+   * @param httpClient HttpClient for retries
+   * @param httpPostForIngestFile HttpRequest for retries
+   * @param builder RequestBuilder for retries
    * @return An IngestResponse with all of the parsed out information
    * @throws IOException if our entity is somehow corrupt or we can't get it
    * @throws IngestResponseException - if we have an uncategorized network issue
    * @throws BackOffException - if we have a 503 issue
    */
-  public static IngestResponse unmarshallIngestResponse(HttpResponse response, UUID requestId)
+  public static IngestResponse unmarshallIngestResponse(
+      HttpResponse response,
+      UUID requestId,
+      CloseableHttpClient httpClient,
+      HttpPost httpPostForIngestFile,
+      RequestBuilder builder)
       throws IOException, IngestResponseException, BackOffException {
     // we can't unmarshall a null response
     if (response == null) {
@@ -88,7 +101,9 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.INSERT_FILES);
+    response =
+        handleExceptionalStatus(
+            response, requestId, ApiName.INSERT_FILES, httpClient, httpPostForIngestFile, builder);
 
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
@@ -102,12 +117,20 @@ public final class ServiceResponseHandler {
    *
    * @param response the HttpResponse object we are trying to deserialize
    * @param requestId
+   * @param httpClient HttpClient for retries
+   * @param httpGetHistory HttpRequest for retries
+   * @param builder RequestBuilder for retries
    * @return a HistoryResponse with all the parsed out information
    * @throws IOException if our entity is somehow corrupt or we can't get it
    * @throws IngestResponseException - if we have an uncategorized network issue
    * @throws BackOffException - if we have a 503 issue
    */
-  public static HistoryResponse unmarshallHistoryResponse(HttpResponse response, UUID requestId)
+  public static HistoryResponse unmarshallHistoryResponse(
+      HttpResponse response,
+      UUID requestId,
+      CloseableHttpClient httpClient,
+      HttpGet httpGetHistory,
+      RequestBuilder builder)
       throws IOException, IngestResponseException, BackOffException {
     // we can't unmarshall a null response
     if (response == null) {
@@ -116,7 +139,9 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.INSERT_REPORT);
+    response =
+        handleExceptionalStatus(
+            response, requestId, ApiName.INSERT_REPORT, httpClient, httpGetHistory, builder);
 
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
 
@@ -129,13 +154,20 @@ public final class ServiceResponseHandler {
    *
    * @param response the HttpResponse object we are trying to deserialize
    * @param requestId
+   * @param httpClient HttpClient for retries
+   * @param request HttpRequest for retries
+   * @param builder HttpBuilder for retries
    * @return HistoryRangeResponse
    * @throws IOException if our entity is somehow corrupt or we can't get it
    * @throws IngestResponseException - if we have an uncategorized network issue
    * @throws BackOffException - if we have a 503 issue
    */
   public static HistoryRangeResponse unmarshallHistoryRangeResponse(
-      HttpResponse response, UUID requestId)
+      HttpResponse response,
+      UUID requestId,
+      CloseableHttpClient httpClient,
+      HttpGet request,
+      RequestBuilder builder)
       throws IOException, IngestResponseException, BackOffException {
 
     // we can't unmarshall a null response
@@ -145,7 +177,9 @@ public final class ServiceResponseHandler {
     }
 
     // handle the exceptional status code
-    handleExceptionalStatus(response, requestId, ApiName.LOAD_HISTORY_SCAN);
+    response =
+        handleExceptionalStatus(
+            response, requestId, ApiName.LOAD_HISTORY_SCAN, httpClient, request, builder);
 
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
     // read out our blob into a pojo
@@ -164,7 +198,12 @@ public final class ServiceResponseHandler {
    * @throws IngestResponseException if received an exceptional status code
    */
   public static <T> T unmarshallStreamingIngestResponse(
-      HttpResponse response, Class<T> valueType, ApiName apiName)
+      HttpResponse response,
+      Class<T> valueType,
+      ApiName apiName,
+      CloseableHttpClient httpClient,
+      HttpUriRequest request,
+      RequestBuilder requestBuilder)
       throws IOException, IngestResponseException {
     // We can't unmarshall a null response
     if (response == null) {
@@ -173,7 +212,8 @@ public final class ServiceResponseHandler {
     }
 
     // Handle the exceptional status code
-    handleExceptionalStatus(response, null, apiName);
+    response =
+        handleExceptionalStatus(response, null, apiName, httpClient, request, requestBuilder);
 
     // Grab the string version of the response entity
     String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
@@ -187,15 +227,26 @@ public final class ServiceResponseHandler {
    *
    * @param response HttpResponse
    * @param requestId
+   * @param apiName enum to represent the corresponding api name
+   * @param httpClient HttpClient for retries
+   * @param request HttpRequest for retries
+   * @param requestBuilder RequestBuilder for retries
+   * @return modified HttpResponse
    * @throws IOException if our entity is somehow corrupt or we can't get it
    * @throws IngestResponseException - for all other non OK status
    * @throws BackOffException - if we have a 503 issue
    */
-  private static void handleExceptionalStatus(
-      HttpResponse response, UUID requestId, ApiName apiName)
+  private static HttpResponse handleExceptionalStatus(
+      HttpResponse response,
+      UUID requestId,
+      ApiName apiName,
+      CloseableHttpClient httpClient,
+      HttpUriRequest request,
+      RequestBuilder requestBuilder)
       throws IOException, IngestResponseException, BackOffException {
-    StatusLine statusLine = response.getStatusLine();
-    if (!isStatusOK(statusLine)) {
+    int authRetries = 0;
+    while (!isStatusOK(response.getStatusLine())) {
+      StatusLine statusLine = response.getStatusLine();
       // if we have a 503 exception throw a backoff
       switch (statusLine.getStatusCode()) {
           // If we have a 503, BACKOFF
@@ -205,6 +256,20 @@ public final class ServiceResponseHandler {
               apiName,
               requestId == null ? "" : requestId.toString());
           throw new BackOffException();
+        case HttpStatus.SC_UNAUTHORIZED:
+          LOGGER.warn(
+              "401 Status hit from {}, requestId:{}",
+              apiName,
+              requestId == null ? "" : requestId.toString());
+          if (authRetries++ < Constants.MAX_TOKEN_REFRESH_FOR_UNAUTHORIZED_RETRY) {
+            requestBuilder.refreshToken();
+            requestBuilder.addToken(request);
+            LOGGER.info("Authorization fail, retries={}", authRetries);
+            response = httpClient.execute(request);
+            continue;
+          } else {
+            throw new SecurityException("Authorization failed after maximum retries");
+          }
         default:
           LOGGER.error(
               "Exceptional Status Code from {}: {}, requestId:{}",
@@ -217,6 +282,7 @@ public final class ServiceResponseHandler {
               IngestResponseException.IngestExceptionBody.parseBody(blob));
       }
     }
+    return response;
   }
 
   /**
