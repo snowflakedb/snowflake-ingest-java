@@ -264,7 +264,8 @@ public final class ServiceResponseHandler {
           if (authRetries++ < Constants.MAX_TOKEN_REFRESH_FOR_UNAUTHORIZED_RETRY) {
             requestBuilder.refreshToken();
             requestBuilder.addToken(request);
-            LOGGER.info("Authorization fail, retries={}", authRetries);
+            LOGGER.warn(
+                "Authorization failed, refreshing Token succeeded, retries={}", authRetries);
             response = httpClient.execute(request);
             continue;
           } else {

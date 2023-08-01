@@ -22,7 +22,7 @@ import net.snowflake.ingest.utils.Cryptor;
  *
  * @author obabarinsa
  */
-public class JWTManager extends SecurityManager {
+public final class JWTManager extends SecurityManager {
   // the token lifetime is 59 minutes
   private static final float LIFETIME_IN_MINUTES = 59;
 

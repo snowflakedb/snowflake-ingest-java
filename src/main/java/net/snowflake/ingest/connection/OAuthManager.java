@@ -11,7 +11,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
 /** This class manages creating and automatically refresh the OAuth token */
-public class OAuthManager extends SecurityManager {
+public final class OAuthManager extends SecurityManager {
   private static final double DEFAULT_UPDATE_THRESHOLD_RATIO = 0.8;
 
   // the endpoint for token request

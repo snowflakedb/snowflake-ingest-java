@@ -8,7 +8,6 @@ import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
-import static org.powermock.api.mockito.PowerMockito.doReturn;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
@@ -21,16 +20,26 @@ import net.snowflake.client.jdbc.internal.apache.http.StatusLine;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.JWTManager;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({JWTManager.class})
+@PowerMockIgnore({"javax.net.ssl.*"}) /* Avoid ssl related exception from power mockito*/
 public class StreamingIngestUtilsTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -128,21 +137,22 @@ public class StreamingIngestUtilsTest {
 
     JWTManager manager =
         new JWTManager(url.getAccount(), TestUtils.getUser(), TestUtils.getKeyPair(), null);
-    JWTManager spyManager = Mockito.spy(manager);
+    JWTManager spyManager = PowerMockito.spy(manager);
 
     // inject spy manager
     RequestBuilder requestBuilder =
-        new RequestBuilder(
-            url.getAccount(),
-            TestUtils.getUser(),
-            TestUtils.getKeyPair(),
-            url.getScheme(),
-            TestUtils.getHost(),
-            url.getPort(),
-            "testJWTRetries",
-            spyManager,
-            httpClient,
-            "testJWTRetries");
+        PowerMockito.spy(
+            new RequestBuilder(
+                url.getAccount(),
+                TestUtils.getUser(),
+                TestUtils.getKeyPair(),
+                url.getScheme(),
+                TestUtils.getHost(),
+                url.getPort(),
+                "testJWTRetries",
+                spyManager,
+                httpClient,
+                "testJWTRetries"));
 
     // build payload
     Map<Object, Object> payload = new HashMap<>();
@@ -151,8 +161,8 @@ public class StreamingIngestUtilsTest {
     }
     ObjectMapper mapper = new ObjectMapper();
 
-    // request wih invalid token
-    doReturn("invalid_token").when(spyManager).getToken();
+    // request wih invalid token, should get 401 3 times
+    PowerMockito.doReturn("invalid_token").when(spyManager).getToken();
     try {
       ChannelsStatusResponse response =
           executeWithRetries(
@@ -166,9 +176,31 @@ public class StreamingIngestUtilsTest {
       Assert.fail("Expected error for invalid token");
     } catch (SecurityException ignored) {
     }
+    Mockito.verify(
+            requestBuilder, Mockito.times(Constants.MAX_TOKEN_REFRESH_FOR_UNAUTHORIZED_RETRY))
+        .refreshToken();
+    Mockito.clearInvocations(requestBuilder);
+
+    // request wih invalid header, should get 400 once and never refresh
+    PowerMockito.doReturn("invalid header").when(spyManager).getToken();
+    try {
+      ChannelsStatusResponse response =
+          executeWithRetries(
+              ChannelsStatusResponse.class,
+              CLIENT_CONFIGURE_ENDPOINT,
+              mapper.writeValueAsString(payload),
+              "client configure",
+              STREAMING_CLIENT_CONFIGURE,
+              httpClient,
+              requestBuilder);
+      Assert.fail("Expected error for invalid token");
+    } catch (IngestResponseException ignored) {
+    }
+    Mockito.verify(requestBuilder, Mockito.times(0)).refreshToken();
+    Mockito.clearInvocations(requestBuilder);
 
     // request with invalid token first time but with valid token second time after refresh
-    doReturn("invalid_token").doReturn(manager.getToken()).when(spyManager).getToken();
+    PowerMockito.doReturn("invalid_token").doReturn(manager.getToken()).when(spyManager).getToken();
     ChannelsStatusResponse response =
         executeWithRetries(
             ChannelsStatusResponse.class,
@@ -180,6 +212,7 @@ public class StreamingIngestUtilsTest {
             requestBuilder);
 
     assert (response.getStatusCode() == RESPONSE_SUCCESS);
+    Mockito.verify(requestBuilder, Mockito.times(1)).refreshToken();
   }
 
   @Test
