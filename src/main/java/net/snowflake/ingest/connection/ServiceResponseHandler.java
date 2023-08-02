@@ -18,7 +18,6 @@ import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequ
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
 import net.snowflake.ingest.utils.BackOffException;
-import net.snowflake.ingest.utils.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -244,39 +243,29 @@ public final class ServiceResponseHandler {
       HttpUriRequest request,
       RequestBuilder requestBuilder)
       throws IOException, IngestResponseException, BackOffException {
-    int authRetries = 0;
-    while (!isStatusOK(response.getStatusLine())) {
+    if (!isStatusOK(response.getStatusLine())) {
       StatusLine statusLine = response.getStatusLine();
+      LOGGER.warn(
+          "{} Status hit from {}, requestId:{}",
+          statusLine.getStatusCode(),
+          apiName,
+          requestId == null ? "" : requestId.toString());
+
       // if we have a 503 exception throw a backoff
       switch (statusLine.getStatusCode()) {
           // If we have a 503, BACKOFF
         case HttpStatus.SC_SERVICE_UNAVAILABLE:
-          LOGGER.warn(
-              "503 Status hit from {}, backoff, requestId:{}",
-              apiName,
-              requestId == null ? "" : requestId.toString());
           throw new BackOffException();
         case HttpStatus.SC_UNAUTHORIZED:
-          LOGGER.warn(
-              "401 Status hit from {}, requestId:{}",
-              apiName,
-              requestId == null ? "" : requestId.toString());
-          if (authRetries++ < Constants.MAX_TOKEN_REFRESH_FOR_UNAUTHORIZED_RETRY) {
-            requestBuilder.refreshToken();
-            requestBuilder.addToken(request);
-            LOGGER.warn(
-                "Authorization failed, refreshing Token succeeded, retries={}", authRetries);
-            response = httpClient.execute(request);
-            continue;
-          } else {
-            throw new SecurityException("Authorization failed after maximum retries");
+          LOGGER.warn("Authorization failed, refreshing Token succeeded, retry");
+          requestBuilder.refreshToken();
+          requestBuilder.addToken(request);
+          response = httpClient.execute(request);
+          if (!isStatusOK(response.getStatusLine())) {
+            throw new SecurityException("Authorization failed after retry");
           }
+          break;
         default:
-          LOGGER.error(
-              "Exceptional Status Code from {}: {}, requestId:{}",
-              apiName,
-              statusLine.getStatusCode(),
-              requestId == null ? "" : requestId.toString());
           String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
           throw new IngestResponseException(
               statusLine.getStatusCode(),

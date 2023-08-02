@@ -23,7 +23,6 @@ import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.JWTManager;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import org.junit.Assert;
@@ -176,9 +175,7 @@ public class StreamingIngestUtilsTest {
       Assert.fail("Expected error for invalid token");
     } catch (SecurityException ignored) {
     }
-    Mockito.verify(
-            requestBuilder, Mockito.times(Constants.MAX_TOKEN_REFRESH_FOR_UNAUTHORIZED_RETRY))
-        .refreshToken();
+    Mockito.verify(requestBuilder, Mockito.times(1)).refreshToken();
     Mockito.clearInvocations(requestBuilder);
 
     // request wih invalid header, should get 400 once and never refresh
