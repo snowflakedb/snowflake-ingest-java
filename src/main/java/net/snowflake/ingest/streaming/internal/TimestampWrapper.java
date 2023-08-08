@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
+import net.snowflake.common.util.Power10;
 
 /**
  * This class represents the outcome of timestamp parsing and validation. It contains methods needed
@@ -30,13 +30,13 @@ public class TimestampWrapper {
 
   /**
    * How many bits should be reserver for the timezone part. Needs to be aligned with {@link
-   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#BITS_FOR_TIMEZONE}
+   * net.snowflake.common.core.SFTimestamp#BITS_FOR_TIMEZONE}
    */
   private static final int BITS_FOR_TIMEZONE = 14;
 
   /**
    * Mask of the timezone bits. Needs to be aligned with {@link
-   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#MASK_OF_TIMEZONE}
+   * net.snowflake.common.core.SFTimestamp#MASK_OF_TIMEZONE}
    */
   private static final int MASK_OF_TIMEZONE = (1 << BITS_FOR_TIMEZONE) - 1;
 
@@ -55,7 +55,7 @@ public class TimestampWrapper {
 
   /**
    * Convert the timestamp to a binary representation. Needs to be aligned with {@link
-   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#toBinary}.
+   * net.snowflake.common.core.SFTimestamp#toBinary}.
    */
   public BigInteger toBinary(boolean includeTimezone) {
     BigDecimal timeInNs =
@@ -90,7 +90,7 @@ public class TimestampWrapper {
 
   /**
    * Get timezone index, 1440 means UTC. Calculation needs to be aligned with {@link
-   * net.snowflake.client.jdbc.internal.snowflake.common.core.SFTimestamp#toBinary}
+   * net.snowflake.common.core.SFTimestamp#toBinary}
    */
   public int getTimeZoneIndex() {
     return timezoneOffsetSeconds / 60 + 1440;

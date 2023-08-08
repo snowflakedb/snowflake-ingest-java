@@ -27,7 +27,7 @@ public class SnowflakeStreamingIngestExample {
   // Please follow the example in profile_streaming.json.example to see the required properties, or
   // if you have already set up profile.json with Snowpipe before, all you need is to add the "role"
   // property. If the "role" is not specified, the default user role will be applied.
-  private static String PROFILE_PATH = "profile.json";
+  private static String PROFILE_PATH = "profile_qa6.json";
   private static final ObjectMapper mapper = new ObjectMapper();
 
   public static void main(String[] args) throws Exception {
@@ -82,6 +82,7 @@ public class SnowflakeStreamingIngestExample {
       int retryCount = 0;
 
       do {
+        Thread.sleep(2000);
         String offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
         if (offsetTokenFromSnowflake != null
             && offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {

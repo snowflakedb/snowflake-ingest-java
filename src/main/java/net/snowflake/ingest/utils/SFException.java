@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.utils;
 
-import net.snowflake.client.jdbc.internal.snowflake.common.core.ResourceBundleManager;
+import net.snowflake.common.core.ResourceBundleManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

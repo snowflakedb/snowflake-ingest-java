@@ -1,6 +1,6 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
-import net.snowflake.client.jdbc.internal.org.bouncycastle.util.encoders.Hex;
+import org.bouncycastle.util.encoders.Hex;
 import org.junit.Test;
 
 public class BinaryIT extends AbstractDataTypeTest {

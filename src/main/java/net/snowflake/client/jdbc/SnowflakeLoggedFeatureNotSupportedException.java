@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2012-2020 Snowflake Computing Inc. All rights reserved.
+ */
+
+package net.snowflake.client.jdbc;
+
+import net.snowflake.client.core.SFBaseSession;
+import net.snowflake.common.core.SqlState;
+
+import java.sql.SQLFeatureNotSupportedException;
+
+import static net.snowflake.client.jdbc.SnowflakeSQLLoggedException.sendTelemetryData;
+
+public class SnowflakeLoggedFeatureNotSupportedException extends SQLFeatureNotSupportedException {
+
+  public SnowflakeLoggedFeatureNotSupportedException(SFBaseSession session) {
+    super();
+    sendTelemetryData(null, SqlState.FEATURE_NOT_SUPPORTED, -1, session, this);
+  }
+
+  public SnowflakeLoggedFeatureNotSupportedException(SFBaseSession session, String message) {
+    super(message);
+    sendTelemetryData(null, SqlState.FEATURE_NOT_SUPPORTED, -1, session, this);
+  }
+}
