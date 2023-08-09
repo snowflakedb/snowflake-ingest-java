@@ -15,7 +15,7 @@ import java.io.Serializable;
  */
 public class HttpClientSettingsKey implements Serializable {
 
-  private OCSPMode ocspMode;
+  private net.snowflake.client.core.OCSPMode ocspMode;
   private boolean useProxy;
   private String proxyHost = "";
   private int proxyPort = 0;

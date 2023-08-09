@@ -2,9 +2,9 @@
  * Copyright (c) 2012-2022 Snowflake Computing Inc. All rights reserved.
  */
 
-package net.snowflake.client.core;
+package  net.snowflake.client.core;
 
-import net.snowflake.client.jdbc.ErrorCode;
+import  net.snowflake.client.jdbc.ErrorCode;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -344,8 +344,8 @@ public class SFLoginInput {
       return (Boolean) v;
     } else if (v instanceof String) {
       return !Boolean.FALSE.toString().equalsIgnoreCase((String) v)
-          && !"off".equalsIgnoreCase((String) v)
-          && (Boolean.TRUE.toString().equalsIgnoreCase((String) v)
+              && !"off".equalsIgnoreCase((String) v)
+              && (Boolean.TRUE.toString().equalsIgnoreCase((String) v)
               || "on".equalsIgnoreCase((String) v));
     }
     return false;
@@ -357,7 +357,7 @@ public class SFLoginInput {
       url = new URL(serverUrl);
     } catch (MalformedURLException e) {
       throw new SFException(
-          e, ErrorCode.INTERNAL_ERROR, "Invalid serverUrl for retrieving host name");
+              e, ErrorCode.INTERNAL_ERROR, "Invalid serverUrl for retrieving host name");
     }
     return url.getHost();
   }

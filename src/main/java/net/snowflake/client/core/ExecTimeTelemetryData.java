@@ -5,8 +5,8 @@ package net.snowflake.client.core;
 
 import com.google.common.base.Strings;
 import net.minidev.json.JSONObject;
-import net.snowflake.client.jdbc.SnowflakeUtil;
-import net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
+import  net.snowflake.client.jdbc.SnowflakeUtil;
+import  net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
 
 public class ExecTimeTelemetryData {
   private long queryStart;

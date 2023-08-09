@@ -4,9 +4,9 @@
 
 package net.snowflake.client.jdbc;
 
-import net.snowflake.client.core.SFException;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.core.SFException;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 import net.snowflake.common.core.ResourceBundleManager;
 
 import java.sql.SQLException;
@@ -20,7 +20,7 @@ public class SnowflakeSQLException extends SQLException {
   private static final long serialVersionUID = 1L;
 
   static final ResourceBundleManager errorResourceBundleManager =
-      ResourceBundleManager.getSingleton(ErrorCode.errorMessageResource);
+      ResourceBundleManager.getSingleton( net.snowflake.client.jdbc.ErrorCode.errorMessageResource);
 
   private String queryId = "unknown";
   private int retryCount = 0;
@@ -97,7 +97,7 @@ public class SnowflakeSQLException extends SQLException {
         ex);
   }
 
-  public SnowflakeSQLException(Throwable ex, ErrorCode errorCode, Object... params) {
+  public SnowflakeSQLException(Throwable ex, net.snowflake.client.jdbc.ErrorCode errorCode, Object... params) {
     this(ex, errorCode.getSqlState(), errorCode.getMessageCode(), params);
   }
 
@@ -114,7 +114,7 @@ public class SnowflakeSQLException extends SQLException {
         ex);
   }
 
-  public SnowflakeSQLException(ErrorCode errorCode, Object... params) {
+  public SnowflakeSQLException(net.snowflake.client.jdbc.ErrorCode errorCode, Object... params) {
     super(
         errorResourceBundleManager.getLocalizedMessage(
             String.valueOf(errorCode.getMessageCode()), params),
@@ -123,7 +123,7 @@ public class SnowflakeSQLException extends SQLException {
   }
 
   public SnowflakeSQLException(
-      ErrorCode errorCode, int retryCount, boolean issocketTimeoutNoBackoff, long elapsedSeconds) {
+          ErrorCode errorCode, int retryCount, boolean issocketTimeoutNoBackoff, long elapsedSeconds) {
     super(
         errorResourceBundleManager.getLocalizedMessage(String.valueOf(errorCode.getMessageCode())),
         errorCode.getSqlState(),

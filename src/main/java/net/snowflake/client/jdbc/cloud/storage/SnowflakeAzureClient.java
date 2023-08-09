@@ -11,8 +11,6 @@ import com.microsoft.azure.storage.*;
 import com.microsoft.azure.storage.blob.*;
 import net.snowflake.client.core.*;
 import net.snowflake.client.jdbc.*;
-import net.snowflake.client.core.*;
-import net.snowflake.client.jdbc.*;
 import net.snowflake.client.log.SFLogger;
 import net.snowflake.client.log.SFLoggerFactory;
 import net.snowflake.client.util.SFPair;
@@ -49,8 +47,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
   private CloudBlobClient azStorageClient;
   private static final SFLogger logger = SFLoggerFactory.getLogger(SnowflakeAzureClient.class);
   private OperationContext opContext = null;
-  private SFBaseSession session;
-
+  private final SFBaseSession session = null;
   private SnowflakeAzureClient() {}
   ;
 
@@ -61,10 +58,10 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    *                required to decrypt/encrypt content in stage
    */
   public static SnowflakeAzureClient createSnowflakeAzureClient(
-      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession sfSession)
+          StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession session)
       throws SnowflakeSQLException {
     SnowflakeAzureClient azureClient = new SnowflakeAzureClient();
-    azureClient.setupAzureClient(stage, encMat, sfSession);
+    azureClient.setupAzureClient(stage, encMat, session);
 
     return azureClient;
   }
@@ -80,13 +77,12 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    * @throws IllegalArgumentException when invalid credentials are used
    */
   private void setupAzureClient(
-      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession sfSession)
+          StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession session)
       throws IllegalArgumentException, SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the Azure client.
     this.stageInfo = stage;
     this.encMat = encMat;
-    this.session = sfSession;
 
     logger.debug("Setting up the Azure client ", false);
 
@@ -110,7 +106,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
 
         if (encryptionKeySize != 128 && encryptionKeySize != 192 && encryptionKeySize != 256) {
           throw new SnowflakeSQLLoggedException(
-              session,
+              null,
               ErrorCode.INTERNAL_ERROR.getMessageCode(),
               SqlState.INTERNAL_ERROR,
               "unsupported key size",
@@ -119,11 +115,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       }
       this.azStorageClient = new CloudBlobClient(storageEndpoint, azCreds);
       opContext = new OperationContext();
-      if (session != null) {
-        HttpUtil.setProxyForAzure(session.getHttpClientKey(), opContext);
-      } else {
-        HttpUtil.setSessionlessProxyForAzure(stage.getProxyProperties(), opContext);
-      }
+      HttpUtil.setSessionlessProxyForAzure(stage.getProxyProperties(), opContext);
     } catch (URISyntaxException ex) {
       throw new IllegalArgumentException("invalid_azure_credentials");
     }
@@ -132,12 +124,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
   // Returns the Max number of retry attempts
   @Override
   public int getMaxRetries() {
-    if (session != null
-        && session
-            .getConnectionPropertiesMap()
-            .containsKey(SFSessionProperty.PUT_GET_MAX_RETRIES)) {
-      return (int) session.getConnectionPropertiesMap().get(SFSessionProperty.PUT_GET_MAX_RETRIES);
-    }
     return 25;
   }
 
@@ -673,7 +659,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
         // A 403 indicates that the SAS token has expired,
         // we need to refresh the Azure client with the new token
         if (session != null) {
-          SnowflakeFileTransferAgent.renewExpiredToken(session, command, azClient);
+          // SnowflakeFileTransferAgent.renewExpiredToken(session, command, azClient);
         } else {
           // If session is null we cannot renew the token so throw the ExpiredToken exception
           throw new SnowflakeSQLException(
@@ -722,7 +708,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
         if (se.getHttpStatusCode() == 403) {
           // A 403 indicates that the SAS token has expired,
           // we need to refresh the Azure client with the new token
-          SnowflakeFileTransferAgent.renewExpiredToken(session, command, azClient);
+          // SnowflakeFileTransferAgent.renewExpiredToken(session, command, azClient);
         }
       }
     } else {
@@ -890,7 +876,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    */
   @Override
   public void addStreamingIngestMetadata(
-      StorageObjectMetadata meta, String clientName, String clientKey) {
+          StorageObjectMetadata meta, String clientName, String clientKey) {
     meta.addUserMetadata(AZ_STREAMING_INGEST_CLIENT_NAME, clientName);
     meta.addUserMetadata(AZ_STREAMING_INGEST_CLIENT_KEY, clientKey);
   }

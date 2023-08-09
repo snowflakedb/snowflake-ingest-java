@@ -6,7 +6,7 @@ package net.snowflake.client.core;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import static net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
+import static  net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
 
 /**
  * Utility class to encapsulate support information pertaining to the EventHandler and events.

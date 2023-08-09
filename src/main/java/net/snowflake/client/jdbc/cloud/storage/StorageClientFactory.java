@@ -52,15 +52,13 @@ public class StorageClientFactory {
    * @throws SnowflakeSQLException if any error occurs
    */
   public SnowflakeStorageClient createClient(
-      StageInfo stage, int parallel, RemoteStoreFileEncryptionMaterial encMat, SFSession session)
+          StageInfo stage, int parallel, RemoteStoreFileEncryptionMaterial encMat)
       throws SnowflakeSQLException {
     logger.debug("createClient client type={}", stage.getStageType().name());
 
     switch (stage.getStageType()) {
       case S3:
-        boolean useS3RegionalUrl =
-            (stage.getUseS3RegionalUrl()
-                || (session != null && session.getUseRegionalS3EndpointsForPresignedURL()));
+        boolean useS3RegionalUrl = stage.getUseS3RegionalUrl();
         return createS3Client(
             stage.getCredentials(),
             parallel,
@@ -69,14 +67,14 @@ public class StorageClientFactory {
             stage.getRegion(),
             stage.getEndPoint(),
             stage.getIsClientSideEncrypted(),
-            session,
+            null,
             useS3RegionalUrl);
 
       case AZURE:
-        return createAzureClient(stage, encMat, session);
+        return createAzureClient(stage, encMat, null);
 
       case GCS:
-        return createGCSClient(stage, encMat, session);
+        return createGCSClient(stage, encMat, null);
 
       default:
         // We don't create a storage client for FS_LOCAL,
@@ -194,7 +192,7 @@ public class StorageClientFactory {
    * @return the SnowflakeS3Client instance created
    */
   private SnowflakeAzureClient createAzureClient(
-      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession session)
+          StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession session)
       throws SnowflakeSQLException {
     logger.debug("createAzureClient encryption={}", (encMat == null ? "no" : "yes"));
 
@@ -219,7 +217,7 @@ public class StorageClientFactory {
    * @return the SnowflakeGCSClient instance created
    */
   private SnowflakeGCSClient createGCSClient(
-      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFSession session)
+          StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFSession session)
       throws SnowflakeSQLException {
     logger.debug("createGCSClient encryption={}", (encMat == null ? "no" : "yes"));
 

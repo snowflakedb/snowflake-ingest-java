@@ -4,7 +4,7 @@
 
 package net.snowflake.client.core;
 
-import static net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
+import static  net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
 
 /**
  * Base Event class for events that don't need to deviate from the default flush behavior.

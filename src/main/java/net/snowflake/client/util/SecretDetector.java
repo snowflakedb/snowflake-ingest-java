@@ -11,8 +11,8 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import net.minidev.json.JSONStyle;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 
 import java.io.IOException;
 import java.util.*;

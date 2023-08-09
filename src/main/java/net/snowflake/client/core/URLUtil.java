@@ -3,8 +3,8 @@
  */
 package net.snowflake.client.core;
 
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.UnsupportedEncodingException;

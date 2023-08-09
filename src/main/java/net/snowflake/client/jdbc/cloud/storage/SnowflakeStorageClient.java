@@ -6,7 +6,6 @@ package net.snowflake.client.jdbc.cloud.storage;
 import net.snowflake.client.core.HttpClientSettingsKey;
 import net.snowflake.client.core.SFSession;
 import net.snowflake.client.jdbc.*;
-import net.snowflake.client.jdbc.*;
 import net.snowflake.common.core.SqlState;
 
 import java.io.File;

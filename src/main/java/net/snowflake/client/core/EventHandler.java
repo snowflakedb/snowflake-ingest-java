@@ -4,8 +4,8 @@
 
 package net.snowflake.client.core;
 
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 import org.joda.time.DateTime;
 
 import java.io.*;
@@ -22,7 +22,7 @@ import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.zip.GZIPOutputStream;
 
-import static net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
+import static  net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
 
 /**
  * @author jrosen
@@ -114,7 +114,7 @@ public class EventHandler extends Handler {
     eventBuffer = new ArrayList<>();
     logBuffer = new ArrayList<>();
 
-    logDumpPathPrefix = EventUtil.getDumpPathPrefix();
+    logDumpPathPrefix =  net.snowflake.client.core.EventUtil.getDumpPathPrefix();
 
     incidentCounter = new HashMap<>();
     throttledIncidents = new HashMap<>();

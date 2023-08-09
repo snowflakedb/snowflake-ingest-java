@@ -4,9 +4,9 @@
 package net.snowflake.client.jdbc;
 
 import com.google.common.base.Strings;
-import net.snowflake.client.core.SFSessionProperty;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.core.SFSessionProperty;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;

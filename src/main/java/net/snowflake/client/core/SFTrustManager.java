@@ -12,11 +12,11 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Strings;
-import net.snowflake.client.jdbc.OCSPErrorCode;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
-import net.snowflake.client.util.DecorrelatedJitterBackoff;
-import net.snowflake.client.util.SFPair;
+import  net.snowflake.client.jdbc.OCSPErrorCode;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.util.DecorrelatedJitterBackoff;
+import  net.snowflake.client.util.SFPair;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpHost;
@@ -69,8 +69,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static net.snowflake.client.jdbc.SnowflakeUtil.systemGetEnv;
-import static net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
+import static  net.snowflake.client.jdbc.SnowflakeUtil.systemGetEnv;
+import static  net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
 
 /**
  * SFTrustManager is a composite of TrustManager of the default JVM TrustManager and Snowflake OCSP
@@ -257,9 +257,9 @@ public class SFTrustManager extends X509ExtendedTrustManager {
 
   OCSPCacheServer ocspCacheServer = new OCSPCacheServer();
   /** OCSP mode */
-  private OCSPMode ocspMode;
+  private  net.snowflake.client.core.OCSPMode ocspMode;
 
-  private static HttpClientSettingsKey proxySettingsKey;
+  private static  net.snowflake.client.core.HttpClientSettingsKey proxySettingsKey;
 
   /**
    * Constructor with the cache file. If not specified, the default cachefile is used.
@@ -800,7 +800,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
       }
       try {
         readOcspResponseCacheServer();
-      } catch (SFOCSPException ex) {
+      } catch ( net.snowflake.client.core.SFOCSPException ex) {
         LOGGER.debug(
             "Error downloading OCSP Response from cache server : {}."
                 + "OCSP Responses will be fetched directly from the CA OCSP"
@@ -904,7 +904,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
             } catch (Throwable ex) {
               LOGGER.debug(
                   "Exception occurred while trying to fetch OCSP Response - {}", ex.getMessage());
-              throw new SFOCSPException(
+              throw new  net.snowflake.client.core.SFOCSPException(
                   OCSPErrorCode.OCSP_RESPONSE_FETCH_FAILURE,
                   "Exception occurred while trying to fetch OCSP Response",
                   ex);
@@ -916,13 +916,13 @@ public class SFTrustManager extends X509ExtendedTrustManager {
               validateRevocationStatusMain(pairIssuerSubject, value0.right);
               success = true;
               break;
-            } catch (SFOCSPException ex) {
+            } catch ( net.snowflake.client.core.SFOCSPException ex) {
               if (ex.getErrorCode() != OCSPErrorCode.REVOCATION_CHECK_FAILURE) {
                 throw ex;
               }
               throw new CertificateException(ex.getMessage(), ex);
             }
-          } catch (SFOCSPException ex) {
+          } catch ( net.snowflake.client.core.SFOCSPException ex) {
             if (ex.getErrorCode() == OCSPErrorCode.CERTIFICATE_STATUS_REVOKED) {
               throw ex;
             } else {
@@ -947,7 +947,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
           }
         }
       }
-    } catch (SFOCSPException ex) {
+    } catch ( net.snowflake.client.core.SFOCSPException ex) {
       // Revoked Certificate
       error = new CertificateException(ex);
       ocspLog =
@@ -1015,7 +1015,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
         } else {
           try {
             validateRevocationStatusMain(pairIssuerSubject, res.right);
-          } catch (SFOCSPException ex) {
+          } catch ( net.snowflake.client.core.SFOCSPException ex) {
             LOGGER.debug(
                 "Cache includes invalid OCSPResponse. "
                     + "Will download the OCSP cache from Snowflake OCSP server",
@@ -1031,7 +1031,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
   }
 
   /** Reads the OCSP response cache from the server. */
-  private void readOcspResponseCacheServer() throws SFOCSPException {
+  private void readOcspResponseCacheServer() throws  net.snowflake.client.core.SFOCSPException {
     String ocspCacheServerInUse;
 
     if (ocspCacheServer.new_endpoint_enabled) {
@@ -1069,7 +1069,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
           ex);
     } catch (URISyntaxException ex) {
       LOGGER.debug("Indicate that a string could not be parsed as a URI reference.", false);
-      throw new SFOCSPException(
+      throw new  net.snowflake.client.core.SFOCSPException(
           OCSPErrorCode.INVALID_CACHE_SERVER_URL, "Invalid OCSP Cache Server URL used", ex);
     } finally {
       IOUtils.closeQuietly(response);
@@ -1212,7 +1212,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
     if (ocspUrls.size() == 0 || isEnabledSystemTestParameter(SF_OCSP_TEST_NO_OCSP_RESPONDER_URL)) {
       throw new CertificateEncodingException(
           "No OCSP Responder URL is attached to the certificate.",
-          new SFOCSPException(
+          new  net.snowflake.client.core.SFOCSPException(
               OCSPErrorCode.NO_OCSP_URL_ATTACHED,
               "No OCSP Responder URL is attached to the certificate."));
     }
@@ -1243,15 +1243,15 @@ public class SFTrustManager extends X509ExtendedTrustManager {
    *
    * @param pairIssuerSubject a pair of issuer and subject certificates
    * @param ocspRespB64 Base64 encoded OCSP Response object
-   * @throws SFOCSPException raises if any other error occurs
+   * @throws  net.snowflake.client.core.SFOCSPException raises if any other error occurs
    */
   private void validateRevocationStatusMain(
       SFPair<Certificate, Certificate> pairIssuerSubject, String ocspRespB64)
-      throws SFOCSPException {
+      throws  net.snowflake.client.core.SFOCSPException {
     try {
       OCSPResp ocspResp = b64ToOCSPResp(ocspRespB64);
       if (ocspResp == null) {
-        throw new SFOCSPException(
+        throw new  net.snowflake.client.core.SFOCSPException(
             OCSPErrorCode.INVALID_OCSP_RESPONSE, "OCSP response is null. The content is invalid.");
       }
       Date currentTime = new Date();
@@ -1267,7 +1267,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
         signVerifyCert = attachedCerts[0];
         if (currentTime.after(signVerifyCert.getNotAfter())
             || currentTime.before(signVerifyCert.getNotBefore())) {
-          throw new SFOCSPException(
+          throw new  net.snowflake.client.core.SFOCSPException(
               OCSPErrorCode.EXPIRED_OCSP_SIGNING_CERTIFICATE,
               String.format(
                   "Cert attached to "
@@ -1285,7 +1285,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
               signVerifyCert.getSignatureAlgorithm());
         } catch (CertificateException ex) {
           LOGGER.debug("OCSP Signing Certificate signature verification failed", false);
-          throw new SFOCSPException(
+          throw new  net.snowflake.client.core.SFOCSPException(
               OCSPErrorCode.INVALID_CERTIFICATE_SIGNATURE,
               "OCSP Signing Certificate signature verification failed",
               ex);
@@ -1306,7 +1306,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
             basicOcspResp.getSignatureAlgorithmID());
       } catch (CertificateException ex) {
         LOGGER.debug("OCSP signature verification failed", false);
-        throw new SFOCSPException(
+        throw new  net.snowflake.client.core.SFOCSPException(
             OCSPErrorCode.INVALID_OCSP_RESPONSE_SIGNATURE,
             "OCSP signature verification failed",
             ex);
@@ -1314,14 +1314,14 @@ public class SFTrustManager extends X509ExtendedTrustManager {
 
       validateBasicOcspResponse(currentTime, basicOcspResp);
     } catch (IOException | OCSPException ex) {
-      throw new SFOCSPException(
+      throw new  net.snowflake.client.core.SFOCSPException(
           OCSPErrorCode.REVOCATION_CHECK_FAILURE, "Failed to check revocation status.", ex);
     }
   }
 
-  private void checkInvalidSigningCertTestParameter() throws SFOCSPException {
+  private void checkInvalidSigningCertTestParameter() throws  net.snowflake.client.core.SFOCSPException {
     if (isEnabledSystemTestParameter(SF_OCSP_TEST_INVALID_SIGNING_CERT)) {
-      throw new SFOCSPException(
+      throw new  net.snowflake.client.core.SFOCSPException(
           OCSPErrorCode.EXPIRED_OCSP_SIGNING_CERTIFICATE,
           "Cert attached to OCSP Response is invalid");
     }
@@ -1332,10 +1332,10 @@ public class SFTrustManager extends X509ExtendedTrustManager {
    *
    * @param currentTime the current timestamp.
    * @param basicOcspResp BasicOcspResponse data.
-   * @throws SFOCSPException raises if any failure occurs.
+   * @throws  net.snowflake.client.core.SFOCSPException raises if any failure occurs.
    */
   private void validateBasicOcspResponse(Date currentTime, BasicOCSPResp basicOcspResp)
-      throws SFOCSPException {
+      throws  net.snowflake.client.core.SFOCSPException {
     for (SingleResp singleResps : basicOcspResp.getResponses()) {
       checkCertUnknownTestParameter();
       CertificateStatus certStatus = singleResps.getCertStatus();
@@ -1349,14 +1349,14 @@ public class SFTrustManager extends X509ExtendedTrustManager {
             reason = -1;
           }
           Date revocationTime = status.getRevocationTime();
-          throw new SFOCSPException(
+          throw new  net.snowflake.client.core.SFOCSPException(
               OCSPErrorCode.CERTIFICATE_STATUS_REVOKED,
               String.format(
                   "The certificate has been revoked. Reason: %d, Time: %s",
                   reason, DATE_FORMAT_UTC.format(revocationTime)));
         } else {
           // Unknown status
-          throw new SFOCSPException(
+          throw new  net.snowflake.client.core.SFOCSPException(
               OCSPErrorCode.CERTIFICATE_STATUS_UNKNOWN,
               "Failed to validate the certificate for UNKNOWN reason.");
         }
@@ -1370,7 +1370,7 @@ public class SFTrustManager extends X509ExtendedTrustManager {
           thisUpdate,
           nextUpdate);
       if (!isValidityRange(currentTime, thisUpdate, nextUpdate)) {
-        throw new SFOCSPException(
+        throw new  net.snowflake.client.core.SFOCSPException(
             OCSPErrorCode.INVALID_OCSP_RESPONSE_VALIDITY,
             String.format(
                 "The OCSP response validity is out of range: "
@@ -1383,9 +1383,9 @@ public class SFTrustManager extends X509ExtendedTrustManager {
     LOGGER.debug("OK. Verified the certificate revocation status.", false);
   }
 
-  private void checkCertUnknownTestParameter() throws SFOCSPException {
+  private void checkCertUnknownTestParameter() throws  net.snowflake.client.core.SFOCSPException {
     if (isEnabledSystemTestParameter(SF_OCSP_TEST_INJECT_UNKNOWN_STATUS)) {
-      throw new SFOCSPException(
+      throw new  net.snowflake.client.core.SFOCSPException(
           OCSPErrorCode.CERTIFICATE_STATUS_UNKNOWN,
           "Failed to validate the certificate for UNKNOWN reason.");
     }

@@ -14,8 +14,8 @@ import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Clock;
 import com.yammer.metrics.core.VirtualMachineMetrics;
 import com.yammer.metrics.reporting.MetricsServlet;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 
 import java.io.*;
 import java.util.Map;
@@ -71,7 +71,7 @@ public class IncidentUtil {
   public static void dumpVmMetrics(String incidentId) {
     PrintWriter writer = null;
     try {
-      File dmpFileDirectory = new File(EventUtil.getDumpPathPrefix());
+      File dmpFileDirectory = new File( net.snowflake.client.core.EventUtil.getDumpPathPrefix());
       dmpFileDirectory.mkdirs();
       String dumpFile =
           EventUtil.getDumpPathPrefix() + "/" + INC_DUMP_FILE_NAME + incidentId + INC_DUMP_FILE_EXT;

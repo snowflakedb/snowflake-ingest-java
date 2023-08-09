@@ -4,9 +4,9 @@
 
 package net.snowflake.client.core;
 
-import net.snowflake.client.jdbc.OCSPErrorCode;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.jdbc.OCSPErrorCode;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 
 public class SFOCSPException extends Throwable {
   static final SFLogger logger = SFLoggerFactory.getLogger(SFOCSPException.class);

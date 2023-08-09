@@ -5,8 +5,8 @@
 package net.snowflake.client.core;
 
 import com.google.common.base.Preconditions;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 
 import java.io.*;
 import java.util.zip.GZIPOutputStream;
@@ -81,10 +81,10 @@ public abstract class Event {
 
   protected void writeEventDumpLine(String message) {
     final String eventDumpPath =
-        EventUtil.getDumpPathPrefix()
+         net.snowflake.client.core.EventUtil.getDumpPathPrefix()
             + "/"
             + EVENT_DUMP_FILE_NAME
-            + EventUtil.getDumpFileId()
+            +  net.snowflake.client.core.EventUtil.getDumpFileId()
             + EVENT_DUMP_FILE_EXT;
 
     // If the event dump file is too large, truncate

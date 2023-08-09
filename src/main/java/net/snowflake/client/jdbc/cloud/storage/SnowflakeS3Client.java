@@ -26,8 +26,6 @@ import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
 import net.snowflake.client.core.*;
 import net.snowflake.client.jdbc.*;
-import net.snowflake.client.core.*;
-import net.snowflake.client.jdbc.*;
 import net.snowflake.client.log.SFLogger;
 import net.snowflake.client.log.SFLoggerFactory;
 import net.snowflake.client.util.SFPair;
@@ -143,7 +141,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
     clientConfig.withSignerOverride("AWSS3V4SignerType");
     clientConfig.getApacheHttpClientConfig().setSslSocketFactory(getSSLConnectionSocketFactory());
     if (session != null) {
-      HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
+      // HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
     } else {
       HttpUtil.setSessionlessProxyForS3(proxyProperties, clientConfig);
     }
@@ -209,12 +207,12 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
   // Returns the Max number of retry attempts
   @Override
   public int getMaxRetries() {
-    if (session != null
-        && session
-            .getConnectionPropertiesMap()
-            .containsKey(SFSessionProperty.PUT_GET_MAX_RETRIES)) {
-      return (int) session.getConnectionPropertiesMap().get(SFSessionProperty.PUT_GET_MAX_RETRIES);
-    }
+//    if (session != null
+//        && session
+//            .getConnectionPropertiesMap()
+//            .containsKey(SFSessionProperty.PUT_GET_MAX_RETRIES)) {
+//      return (int) session.getConnectionPropertiesMap().get(SFSessionProperty.PUT_GET_MAX_RETRIES);
+//    }
     return 25;
   }
 
@@ -714,7 +712,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
           // does not return the ExpiredToken error code.
           // If session is null we cannot renew the token so throw the exception
           if (ex1.getStatusCode() == HttpStatus.SC_BAD_REQUEST && session != null) {
-            SnowflakeFileTransferAgent.renewExpiredToken(session, command, s3Client);
+            // SnowflakeFileTransferAgent.renewExpiredToken(session, command, s3Client);
           } else {
             throw new SnowflakeSQLLoggedException(
                 session,
@@ -768,7 +766,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
           if (s3ex.getErrorCode().equalsIgnoreCase(EXPIRED_AWS_TOKEN_ERROR_CODE)) {
             // If session is null we cannot renew the token so throw the ExpiredToken exception
             if (session != null) {
-              SnowflakeFileTransferAgent.renewExpiredToken(session, command, s3Client);
+              // SnowflakeFileTransferAgent.renewExpiredToken(session, command, s3Client);
             } else {
               throw new SnowflakeSQLException(
                   s3ex.getErrorCode(),

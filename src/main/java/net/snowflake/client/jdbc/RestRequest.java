@@ -4,13 +4,13 @@
 
 package net.snowflake.client.jdbc;
 
-import net.snowflake.client.core.*;
-import net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
-import net.snowflake.client.log.ArgSupplier;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
-import net.snowflake.client.util.DecorrelatedJitterBackoff;
-import net.snowflake.client.util.SecretDetector;
+import  net.snowflake.client.core.*;
+import  net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
+import  net.snowflake.client.log.ArgSupplier;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.util.DecorrelatedJitterBackoff;
+import  net.snowflake.client.util.SecretDetector;
 import net.snowflake.common.core.SqlState;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpRequestBase;
@@ -63,7 +63,7 @@ public class RestRequest {
       boolean includeRequestGuid,
       boolean retryHTTP403,
       ExecTimeTelemetryData execTimeTelemetryData)
-      throws SnowflakeSQLException {
+      throws  net.snowflake.client.jdbc.SnowflakeSQLException {
     return execute(
         httpClient,
         httpRequest,
@@ -99,7 +99,7 @@ public class RestRequest {
    * @param retryHTTP403 whether to retry on HTTP 403 or not
    * @param noRetry should we disable retry on non-successful http resp code
    * @return HttpResponse Object get from server
-   * @throws SnowflakeSQLException Request timeout Exception or Illegal
+   * @throws  net.snowflake.client.jdbc.SnowflakeSQLException Request timeout Exception or Illegal
    *     State Exception i.e. connection is already shutdown etc
    */
   public static CloseableHttpResponse execute(
@@ -117,7 +117,7 @@ public class RestRequest {
       boolean retryHTTP403,
       boolean noRetry,
       ExecTimeTelemetryData execTimeData)
-      throws SnowflakeSQLException {
+      throws  net.snowflake.client.jdbc.SnowflakeSQLException {
     CloseableHttpResponse response = null;
 
     String requestInfoScrubbed = SecretDetector.maskSASToken(httpRequest.toString());
@@ -224,8 +224,8 @@ public class RestRequest {
       } catch (IllegalStateException ex) {
         // if exception is caused by illegal state, e.g shutdown of http client
         // because of closing of connection, then fail immediately and stop retrying.
-        throw new SnowflakeSQLLoggedException(
-            null, ErrorCode.INVALID_STATE, ex, /* session = */ ex.getMessage());
+        throw new  net.snowflake.client.jdbc.SnowflakeSQLLoggedException(
+            null,  net.snowflake.client.jdbc.ErrorCode.INVALID_STATE, ex, /* session = */ ex.getMessage());
 
       } catch (SSLHandshakeException
           | SSLKeyException
@@ -234,7 +234,7 @@ public class RestRequest {
         // if an SSL issue occurs like an SSLHandshakeException then fail
         // immediately and stop retrying the requests
 
-        throw new SnowflakeSQLLoggedException(null, ErrorCode.NETWORK_ERROR, ex, ex.getMessage());
+        throw new SnowflakeSQLLoggedException(null,  net.snowflake.client.jdbc.ErrorCode.NETWORK_ERROR, ex, ex.getMessage());
 
       } catch (Exception ex) {
 
@@ -376,12 +376,12 @@ public class RestRequest {
                   retryTimeout,
                   retryCount,
                   SqlState.IO_ERROR,
-                  ErrorCode.NETWORK_ERROR.getMessageCode());
+                   net.snowflake.client.jdbc.ErrorCode.NETWORK_ERROR.getMessageCode());
           // rethrow the timeout exception
           if (response == null && savedEx != null) {
-            throw new SnowflakeSQLException(
+            throw new  net.snowflake.client.jdbc.SnowflakeSQLException(
                 savedEx,
-                ErrorCode.NETWORK_ERROR,
+                 net.snowflake.client.jdbc.ErrorCode.NETWORK_ERROR,
                 "Exception encountered for HTTP request: " + savedEx.getMessage());
           }
           // no more retry
@@ -403,8 +403,8 @@ public class RestRequest {
           /* connect timeout not reached */
           // check if this is a login-request
           if (String.valueOf(httpRequest.getURI()).contains("login-request")) {
-            throw new SnowflakeSQLException(
-                ErrorCode.AUTHENTICATOR_REQUEST_TIMEOUT,
+            throw new  net.snowflake.client.jdbc.SnowflakeSQLException(
+                 net.snowflake.client.jdbc.ErrorCode.AUTHENTICATOR_REQUEST_TIMEOUT,
                 retryCount,
                 true,
                 elapsedMilliForTransientIssues / 1000);
@@ -430,8 +430,8 @@ public class RestRequest {
         // increase the retry count and throw special exception to renew the token before retrying.
         if (authTimeout > 0) {
           if (elapsedMilliForTransientIssues >= authTimeoutInMilli) {
-            throw new SnowflakeSQLException(
-                ErrorCode.AUTHENTICATOR_REQUEST_TIMEOUT,
+            throw new  net.snowflake.client.jdbc.SnowflakeSQLException(
+                 net.snowflake.client.jdbc.ErrorCode.AUTHENTICATOR_REQUEST_TIMEOUT,
                 retryCount,
                 false,
                 elapsedMilliForTransientIssues / 1000);
@@ -456,7 +456,7 @@ public class RestRequest {
                   retryTimeout,
                   retryCount,
                   SqlState.IO_ERROR,
-                  ErrorCode.NETWORK_ERROR.getMessageCode());
+                   net.snowflake.client.jdbc.ErrorCode.NETWORK_ERROR.getMessageCode());
         }
         savedEx = null;
 

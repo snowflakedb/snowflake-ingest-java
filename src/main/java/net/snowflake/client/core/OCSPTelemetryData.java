@@ -4,7 +4,7 @@
 package net.snowflake.client.core;
 
 import net.minidev.json.JSONObject;
-import net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
+import  net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
 
 import java.security.cert.CertificateException;
 
@@ -15,10 +15,10 @@ public class OCSPTelemetryData {
   private String ocspReq;
   private Boolean cacheEnabled;
   private Boolean cacheHit;
-  private OCSPMode ocspMode;
+  private  net.snowflake.client.core.OCSPMode ocspMode;
 
   public OCSPTelemetryData() {
-    this.ocspMode = OCSPMode.FAIL_OPEN;
+    this.ocspMode =  net.snowflake.client.core.OCSPMode.FAIL_OPEN;
     this.cacheEnabled = true;
   }
 

@@ -14,8 +14,8 @@ public class SFLoggerFactory {
   private static LoggerImpl loggerImplementation;
 
   enum LoggerImpl {
-    SLF4JLOGGER("net.snowflake.client.log.SLF4JLogger"),
-    JDK14LOGGER("net.snowflake.client.log.JDK14Logger");
+    SLF4JLOGGER(" net.snowflake.client.log.SLF4JLogger"),
+    JDK14LOGGER(" net.snowflake.client.log.JDK14Logger");
 
     private String loggerImplClassName;
 

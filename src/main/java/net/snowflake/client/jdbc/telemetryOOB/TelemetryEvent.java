@@ -115,7 +115,7 @@ public class TelemetryEvent extends JSONObject {
     protected TelemetryEvent body = new TelemetryEvent();
     protected HashMap<String, String> tags = new HashMap<>();
     private static final String version =
-        ResourceBundleManager.getSingleton("net.snowflake.client.jdbc.version")
+        ResourceBundleManager.getSingleton(" net.snowflake.client.jdbc.version")
             .getLocalizedMessage("version");
     private static final String driver = "JDBC";
 

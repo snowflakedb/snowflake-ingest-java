@@ -5,7 +5,6 @@
 package net.snowflake.client.jdbc;
 
 import net.snowflake.client.core.OCSPMode;
-import net.snowflake.client.core.SFSession;
 
 import java.io.InputStream;
 import java.util.Properties;
@@ -22,7 +21,6 @@ public class SnowflakeFileTransferConfig {
   private Properties proxyProperties;
   private String prefix;
   private String destFileName;
-  private SFSession session; // Optional, added for S3 and Azure
   private String command; // Optional, added for S3 and Azure
   private boolean useS3RegionalUrl; // only for S3 us-east-1 private link deployments
   private String streamingIngestClientName;
@@ -37,7 +35,6 @@ public class SnowflakeFileTransferConfig {
     this.proxyProperties = builder.proxyProperties;
     this.prefix = builder.prefix;
     this.destFileName = builder.destFileName;
-    this.session = builder.session;
     this.command = builder.command;
     this.useS3RegionalUrl = builder.useS3RegionalUrl;
     this.streamingIngestClientKey = builder.streamingIngestClientKey;
@@ -76,9 +73,6 @@ public class SnowflakeFileTransferConfig {
     return destFileName;
   }
 
-  public SFSession getSession() {
-    return session;
-  }
 
   public String getCommand() {
     return command;
@@ -106,7 +100,6 @@ public class SnowflakeFileTransferConfig {
     private Properties proxyProperties = null;
     private String prefix = null;
     private String destFileName = null;
-    private SFSession session = null;
     private String command = null;
     private boolean useS3RegionalUrl = false; // only for S3 us-east-1 private link deployments
     private String streamingIngestClientName;
@@ -176,10 +169,6 @@ public class SnowflakeFileTransferConfig {
       return this;
     }
 
-    public Builder setSFSession(SFSession session) {
-      this.session = session;
-      return this;
-    }
 
     public Builder setCommand(String command) {
       this.command = command;

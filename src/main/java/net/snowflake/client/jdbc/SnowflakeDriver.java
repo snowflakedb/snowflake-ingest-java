@@ -10,7 +10,6 @@ import net.snowflake.common.core.SqlState;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.sql.*;
-import java.util.List;
 import java.util.Properties;
 
 /**
@@ -36,7 +35,7 @@ public class SnowflakeDriver implements Driver {
   private static String disableArrowResultFormatMessage;
 
   private static final ResourceBundleManager versionResourceBundleManager =
-      ResourceBundleManager.getSingleton("net.snowflake.client.jdbc.version");
+      ResourceBundleManager.getSingleton("  net.snowflake.client.jdbc.version");
 
   static {
     try {
@@ -113,12 +112,12 @@ public class SnowflakeDriver implements Driver {
         } else {
           throw new SnowflakeSQLLoggedException(
               null,
-              ErrorCode.INTERNAL_ERROR.getMessageCode(),
+               net.snowflake.client.jdbc.ErrorCode.INTERNAL_ERROR.getMessageCode(),
               SqlState.INTERNAL_ERROR,
               /*session = */ "Invalid Snowflake JDBC Version: " + implementVersion);
         }
       } else {
-        throw new SnowflakeSQLException(
+        throw new  net.snowflake.client.jdbc.SnowflakeSQLException(
             SqlState.INTERNAL_ERROR,
             ErrorCode.INTERNAL_ERROR.getMessageCode(),
             /*session = */ null,
@@ -161,7 +160,7 @@ public class SnowflakeDriver implements Driver {
    */
   @Override
   public boolean acceptsURL(String url) {
-    return SnowflakeConnectString.parse(url, EMPTY_PROPERTIES).isValid();
+    return  net.snowflake.client.jdbc.SnowflakeConnectString.parse(url, EMPTY_PROPERTIES).isValid();
   }
 
   /**
@@ -174,18 +173,7 @@ public class SnowflakeDriver implements Driver {
    */
   @Override
   public Connection connect(String url, Properties info) throws SQLException {
-    if (url == null) {
-      // expected return format per the JDBC spec for java.sql.Driver#connect()
-      throw new SnowflakeSQLException("Unable to connect to url of 'null'.");
-    }
-    if (!SnowflakeConnectString.hasSupportedPrefix(url)) {
-      return null; // expected return format per the JDBC spec for java.sql.Driver#connect()
-    }
-    SnowflakeConnectString conStr = SnowflakeConnectString.parse(url, info);
-    if (!conStr.isValid()) {
-      throw new SnowflakeSQLException("Connection string is invalid. Unable to parse.");
-    }
-    return new SnowflakeConnectionV1(url, info);
+    throw new SQLException();
   }
 
   @Override
@@ -200,23 +188,7 @@ public class SnowflakeDriver implements Driver {
 
   @Override
   public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
-    DriverPropertyInfo[] retVal;
-    if (url == null || url.isEmpty()) {
-      retVal = new DriverPropertyInfo[1];
-      retVal[0] = new DriverPropertyInfo("serverURL", null);
-      retVal[0].description =
-          "server URL in form of <protocol>://<host or domain>:<port number>/<path of resource>";
-      return retVal;
-    }
-
-    Connection con = new SnowflakeConnectionV1(url, info, true);
-    List<DriverPropertyInfo> missingProperties =
-        ((SnowflakeConnectionV1) con).returnMissingProperties();
-    con.close();
-
-    retVal = new DriverPropertyInfo[missingProperties.size()];
-    retVal = missingProperties.toArray(retVal);
-    return retVal;
+    throw new SQLException();
   }
 
   @Override
@@ -239,7 +211,7 @@ public class SnowflakeDriver implements Driver {
 
   public static final void main(String[] args) {
     if (args.length > 0 && "--version".equals(args[0])) {
-      Package pkg = Package.getPackage("net.snowflake.client.jdbc");
+      Package pkg = Package.getPackage("  net.snowflake.client.jdbc");
       if (pkg != null) {
         System.out.println(pkg.getImplementationVersion());
       }

@@ -6,8 +6,8 @@ package net.snowflake.client.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
+import  net.snowflake.client.log.SFLogger;
+import  net.snowflake.client.log.SFLoggerFactory;
 
 import java.io.*;
 import java.nio.charset.Charset;
@@ -18,8 +18,8 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Date;
 
-import static net.snowflake.client.jdbc.SnowflakeUtil.systemGetEnv;
-import static net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
+import static  net.snowflake.client.jdbc.SnowflakeUtil.systemGetEnv;
+import static  net.snowflake.client.jdbc.SnowflakeUtil.systemGetProperty;
 
 class FileCacheManager {
   private static final SFLogger LOGGER = SFLoggerFactory.getLogger(FileCacheManager.class);
@@ -124,11 +124,11 @@ class FileCacheManager {
         // if still home directory is null, no cache dir is set.
         return this;
       }
-      if (Constants.getOS() == Constants.OS.WINDOWS) {
+      if ( net.snowflake.client.core.Constants.getOS() ==  net.snowflake.client.core.Constants.OS.WINDOWS) {
         this.cacheDir =
             new File(
                 new File(new File(new File(homeDir, "AppData"), "Local"), "Snowflake"), "Caches");
-      } else if (Constants.getOS() == Constants.OS.MAC) {
+      } else if ( net.snowflake.client.core.Constants.getOS() == Constants.OS.MAC) {
         this.cacheDir = new File(new File(new File(homeDir, "Library"), "Caches"), "Snowflake");
       } else {
         this.cacheDir = new File(new File(homeDir, ".cache"), "snowflake");

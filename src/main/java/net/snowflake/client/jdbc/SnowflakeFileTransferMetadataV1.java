@@ -6,7 +6,7 @@ package net.snowflake.client.jdbc;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
-import net.snowflake.client.jdbc.SFBaseFileTransferAgent.CommandType;
+import net.snowflake.client.jdbc.SnowflakeFileTransferAgent.CommandType;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
 

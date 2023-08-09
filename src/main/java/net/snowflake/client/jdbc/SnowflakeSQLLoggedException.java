@@ -8,14 +8,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.api.client.util.Strings;
 import net.minidev.json.JSONObject;
-import net.snowflake.client.core.ObjectMapperFactory;
-import net.snowflake.client.core.SFBaseSession;
-import net.snowflake.client.core.SFException;
-import net.snowflake.client.jdbc.telemetry.Telemetry;
-import net.snowflake.client.jdbc.telemetry.TelemetryField;
-import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
-import net.snowflake.client.jdbc.telemetryOOB.TelemetryEvent;
-import net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
+import  net.snowflake.client.core.ObjectMapperFactory;
+import  net.snowflake.client.core.SFBaseSession;
+import  net.snowflake.client.core.SFException;
+import  net.snowflake.client.jdbc.telemetry.Telemetry;
+import  net.snowflake.client.jdbc.telemetry.TelemetryField;
+import  net.snowflake.client.jdbc.telemetry.TelemetryUtil;
+import  net.snowflake.client.jdbc.telemetryOOB.TelemetryEvent;
+import  net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
 import net.snowflake.common.core.LoginInfoDTO;
 import net.snowflake.common.core.SqlState;
 
@@ -125,7 +125,7 @@ public class SnowflakeSQLLoggedException extends SnowflakeSQLException {
     JSONObject oobValue = new JSONObject();
     oobValue.put("type", TelemetryField.SQL_EXCEPTION.toString());
     oobValue.put("DriverType", LoginInfoDTO.SF_JDBC_APP_ID);
-    oobValue.put("DriverVersion", SnowflakeDriver.implementVersion);
+    oobValue.put("DriverVersion", "");
     if (!Strings.isNullOrEmpty(queryId)) {
       oobValue.put("QueryID", queryId);
     }
@@ -179,7 +179,7 @@ public class SnowflakeSQLLoggedException extends SnowflakeSQLException {
     Telemetry ibInstance = null;
     // if session is not null, try sending data using in-band telemetry
     if (session != null) {
-      ibInstance = session.getTelemetryClient();
+      // ibInstance = session.getTelemetryClient();
     }
     // if in-band instance is successfully created, compile sql exception data into an in-band
     // telemetry log
@@ -247,7 +247,7 @@ public class SnowflakeSQLLoggedException extends SnowflakeSQLException {
   }
 
   public SnowflakeSQLLoggedException(
-      SFBaseSession session, ErrorCode errorCode, Throwable ex, Object... params) {
+          SFBaseSession session, net.snowflake.client.jdbc.ErrorCode errorCode, Throwable ex, Object... params) {
     super(ex, errorCode, params);
     // add telemetry
     sendTelemetryData(null, errorCode.getSqlState(), errorCode.getMessageCode(), session, this);

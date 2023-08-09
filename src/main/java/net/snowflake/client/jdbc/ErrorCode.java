@@ -84,7 +84,7 @@ public enum ErrorCode {
   GCP_SERVICE_ERROR(200061, SqlState.SYSTEM_ERROR),
   AUTHENTICATOR_REQUEST_TIMEOUT(200062, SqlState.CONNECTION_EXCEPTION);
 
-  public static final String errorMessageResource = "net.snowflake.client.jdbc.jdbc_error_messages";
+  public static final String errorMessageResource = " net.snowflake.client.jdbc.jdbc_error_messages";
 
   /** Snowflake internal message associated to the error. */
   private final Integer messageCode;

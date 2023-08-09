@@ -21,12 +21,12 @@ public class SFLoggerUtil {
     switch (loggerImplementation) {
       case SLF4JLOGGER:
         logFactory.setAttribute(
-            "org.apache.commons.logging.Log", "net.snowflake.client.log.SLF4JJCLWrapper");
+            "org.apache.commons.logging.Log", " net.snowflake.client.log.SLF4JJCLWrapper");
         break;
       case JDK14LOGGER:
       default:
         logFactory.setAttribute(
-            "org.apache.commons.logging.Log", "net.snowflake.client.log.JDK14JCLWrapper");
+            "org.apache.commons.logging.Log", " net.snowflake.client.log.JDK14JCLWrapper");
     }
   }
 }

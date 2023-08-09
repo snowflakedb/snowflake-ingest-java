@@ -14,8 +14,6 @@ import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.common.base.Strings;
 import net.snowflake.client.core.*;
 import net.snowflake.client.jdbc.*;
-import net.snowflake.client.core.*;
-import net.snowflake.client.jdbc.*;
 import net.snowflake.client.log.ArgSupplier;
 import net.snowflake.client.log.SFLogger;
 import net.snowflake.client.log.SFLoggerFactory;
@@ -23,10 +21,8 @@ import net.snowflake.client.util.SFPair;
 import net.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
 import net.snowflake.common.core.SqlState;
 import org.apache.commons.io.IOUtils;
-import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpResponseException;
-import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.InputStreamEntity;
@@ -84,12 +80,12 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   // Returns the Max number of retry attempts
   @Override
   public int getMaxRetries() {
-    if (session != null
-        && session
-            .getConnectionPropertiesMap()
-            .containsKey(SFSessionProperty.PUT_GET_MAX_RETRIES)) {
-      return (int) session.getConnectionPropertiesMap().get(SFSessionProperty.PUT_GET_MAX_RETRIES);
-    }
+//    if (session != null
+//        && session
+//            .getConnectionPropertiesMap()
+//            .containsKey(SFSessionProperty.PUT_GET_MAX_RETRIES)) {
+//      return (int) session.getConnectionPropertiesMap().get(SFSessionProperty.PUT_GET_MAX_RETRIES);
+//    }
     return 25;
   }
 
@@ -202,310 +198,6 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
    * @param presignedUrl Credential to use for download
    * @throws SnowflakeSQLException download failure
    */
-  @Override
-  public void download(
-      SFSession session,
-      String command,
-      String localLocation,
-      String destFileName,
-      int parallelism,
-      String remoteStorageLocation,
-      String stageFilePath,
-      String stageRegion,
-      String presignedUrl)
-      throws SnowflakeSQLException {
-    int retryCount = 0;
-    String localFilePath = localLocation + localFileSep + destFileName;
-    File localFile = new File(localFilePath);
-
-    do {
-      try {
-        String key = null;
-        String iv = null;
-        if (!Strings.isNullOrEmpty(presignedUrl)) {
-          logger.debug("Starting download with presigned URL", false);
-          URIBuilder uriBuilder = new URIBuilder(presignedUrl);
-
-          HttpGet httpRequest = new HttpGet(uriBuilder.build());
-          httpRequest.addHeader("accept-encoding", "GZIP");
-
-          logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
-
-          CloseableHttpClient httpClient =
-              HttpUtil.getHttpClientWithoutDecompression(session.getHttpClientKey());
-
-          // Put the file on storage using the presigned url
-          HttpResponse response =
-              RestRequest.execute(
-                  httpClient,
-                  httpRequest,
-                  session.getNetworkTimeoutInMilli() / 1000, // retry timeout
-                  session.getAuthTimeout(),
-                  session.getHttpClientSocketTimeout(),
-                  getMaxRetries(),
-                  0, // no socket timeout injection
-                  null, // no canceling
-                  false, // no cookie
-                  false, // no retry
-                  false, // no request_guid
-                  true, // retry on HTTP 403
-                  new ExecTimeTelemetryData());
-
-          logger.debug(
-              "Call returned for URL: {}",
-              (ArgSupplier) () -> scrubPresignedUrl(this.stageInfo.getPresignedUrl()));
-          if (isSuccessStatusCode(response.getStatusLine().getStatusCode())) {
-            try {
-              InputStream bodyStream = response.getEntity().getContent();
-              byte[] buffer = new byte[8 * 1024];
-              int bytesRead;
-              OutputStream outStream = new FileOutputStream(localFile);
-              while ((bytesRead = bodyStream.read(buffer)) != -1) {
-                outStream.write(buffer, 0, bytesRead);
-              }
-              outStream.flush();
-              outStream.close();
-              bodyStream.close();
-              if (isEncrypting()) {
-                for (Header header : response.getAllHeaders()) {
-                  if (header
-                      .getName()
-                      .equalsIgnoreCase(GCS_METADATA_PREFIX + GCS_ENCRYPTIONDATAPROP)) {
-                    AbstractMap.SimpleEntry<String, String> encryptionData =
-                        parseEncryptionData(header.getValue());
-
-                    key = encryptionData.getKey();
-                    iv = encryptionData.getValue();
-                    break;
-                  }
-                }
-              }
-              logger.debug("Download successful", false);
-            } catch (IOException ex) {
-              logger.debug("Download unsuccessful {}", ex);
-              handleStorageException(ex, ++retryCount, "download", session, command);
-            }
-          } else {
-            Exception ex =
-                new HttpResponseException(
-                    response.getStatusLine().getStatusCode(),
-                    EntityUtils.toString(response.getEntity()));
-            handleStorageException(ex, ++retryCount, "download", session, command);
-          }
-        } else {
-          BlobId blobId = BlobId.of(remoteStorageLocation, stageFilePath);
-          Blob blob = gcsClient.get(blobId);
-          if (blob == null) {
-            throw new StorageProviderException(
-                new StorageException(
-                    404, // because blob not found
-                    "Blob" + blobId.getName() + " not found in bucket " + blobId.getBucket()));
-          }
-
-          logger.debug("Starting download without presigned URL", false);
-          blob.downloadTo(
-              localFile.toPath(), Blob.BlobSourceOption.shouldReturnRawInputStream(true));
-          logger.debug("Download successful", false);
-
-          // Get the user-defined BLOB metadata
-          Map<String, String> userDefinedMetadata = blob.getMetadata();
-          if (isEncrypting()) {
-            if (userDefinedMetadata != null) {
-              AbstractMap.SimpleEntry<String, String> encryptionData =
-                  parseEncryptionData(userDefinedMetadata.get(GCS_ENCRYPTIONDATAPROP));
-
-              key = encryptionData.getKey();
-              iv = encryptionData.getValue();
-            }
-          }
-        }
-
-        if (!Strings.isNullOrEmpty(iv)
-            && !Strings.isNullOrEmpty(key)
-            && this.isEncrypting()
-            && this.getEncryptionKeySize() <= 256) {
-          if (key == null || iv == null) {
-            throw new SnowflakeSQLLoggedException(
-                session,
-                ErrorCode.INTERNAL_ERROR.getMessageCode(),
-                SqlState.INTERNAL_ERROR,
-                "File metadata incomplete");
-          }
-
-          // Decrypt file
-          try {
-            EncryptionProvider.decrypt(localFile, key, iv, this.encMat);
-          } catch (Exception ex) {
-            logger.error("Error decrypting file", ex);
-            throw new SnowflakeSQLLoggedException(
-                session,
-                ErrorCode.INTERNAL_ERROR.getMessageCode(),
-                SqlState.INTERNAL_ERROR,
-                "Cannot decrypt file");
-          }
-        }
-        return;
-      } catch (Exception ex) {
-        logger.debug("Download unsuccessful {}", ex);
-        handleStorageException(ex, ++retryCount, "download", session, command);
-      }
-    } while (retryCount <= getMaxRetries());
-
-    throw new SnowflakeSQLLoggedException(
-        session,
-        ErrorCode.INTERNAL_ERROR.getMessageCode(),
-        SqlState.INTERNAL_ERROR,
-        "Unexpected: download unsuccessful without exception!");
-  }
-
-  /**
-   * Download a file from remote storage
-   *
-   * @param session session object
-   * @param command command to download file
-   * @param parallelism number of threads for parallel downloading
-   * @param remoteStorageLocation remote storage location, i.e. bucket for s3
-   * @param stageFilePath stage file path
-   * @param stageRegion region name where the stage persists
-   * @param presignedUrl Signed credential for download
-   * @return input file stream
-   * @throws SnowflakeSQLException when download failure
-   */
-  @Override
-  public InputStream downloadToStream(
-      SFSession session,
-      String command,
-      int parallelism,
-      String remoteStorageLocation,
-      String stageFilePath,
-      String stageRegion,
-      String presignedUrl)
-      throws SnowflakeSQLException {
-    int retryCount = 0;
-    InputStream inputStream = null;
-    do {
-      try {
-        String key = null;
-        String iv = null;
-
-        if (!Strings.isNullOrEmpty(presignedUrl)) {
-          logger.debug("Starting download with presigned URL", false);
-          URIBuilder uriBuilder = new URIBuilder(presignedUrl);
-
-          HttpGet httpRequest = new HttpGet(uriBuilder.build());
-          httpRequest.addHeader("accept-encoding", "GZIP");
-
-          logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
-
-          CloseableHttpClient httpClient =
-              HttpUtil.getHttpClientWithoutDecompression(session.getHttpClientKey());
-
-          // Put the file on storage using the presigned url
-          HttpResponse response =
-              RestRequest.execute(
-                  httpClient,
-                  httpRequest,
-                  session.getNetworkTimeoutInMilli() / 1000, // retry timeout
-                  session.getAuthTimeout(),
-                  session.getHttpClientSocketTimeout(),
-                  getMaxRetries(),
-                  0, // no socket timeout injection
-                  null, // no canceling
-                  false, // no cookie
-                  false, // no retry
-                  false, // no request_guid
-                  true, // retry on HTTP 403
-                  new ExecTimeTelemetryData());
-
-          logger.debug(
-              "Call returned for URL: {}",
-              (ArgSupplier) () -> scrubPresignedUrl(this.stageInfo.getPresignedUrl()));
-          if (isSuccessStatusCode(response.getStatusLine().getStatusCode())) {
-            try {
-              inputStream = response.getEntity().getContent();
-
-              if (isEncrypting()) {
-                for (Header header : response.getAllHeaders()) {
-                  if (header
-                      .getName()
-                      .equalsIgnoreCase(GCS_METADATA_PREFIX + GCS_ENCRYPTIONDATAPROP)) {
-                    AbstractMap.SimpleEntry<String, String> encryptionData =
-                        parseEncryptionData(header.getValue());
-
-                    key = encryptionData.getKey();
-                    iv = encryptionData.getValue();
-                    break;
-                  }
-                }
-              }
-              logger.debug("Download successful", false);
-            } catch (IOException ex) {
-              logger.debug("Download unsuccessful {}", ex);
-              handleStorageException(ex, ++retryCount, "download", session, command);
-            }
-          } else {
-            Exception ex =
-                new HttpResponseException(
-                    response.getStatusLine().getStatusCode(),
-                    EntityUtils.toString(response.getEntity()));
-            handleStorageException(ex, ++retryCount, "download", session, command);
-          }
-        } else {
-          BlobId blobId = BlobId.of(remoteStorageLocation, stageFilePath);
-          Blob blob = gcsClient.get(blobId);
-          if (blob == null) {
-            throw new StorageProviderException(
-                new StorageException(
-                    404, // because blob not found
-                    "Blob" + blobId.getName() + " not found in bucket " + blobId.getBucket()));
-          }
-          inputStream = Channels.newInputStream(blob.reader());
-          if (isEncrypting()) {
-            // Get the user-defined BLOB metadata
-            Map<String, String> userDefinedMetadata = blob.getMetadata();
-            AbstractMap.SimpleEntry<String, String> encryptionData =
-                parseEncryptionData(userDefinedMetadata.get(GCS_ENCRYPTIONDATAPROP));
-
-            key = encryptionData.getKey();
-            iv = encryptionData.getValue();
-          }
-        }
-
-        if (this.isEncrypting() && this.getEncryptionKeySize() <= 256) {
-          if (key == null || iv == null) {
-            throw new SnowflakeSQLException(
-                SqlState.INTERNAL_ERROR,
-                ErrorCode.INTERNAL_ERROR.getMessageCode(),
-                "File metadata incomplete");
-          }
-
-          // Decrypt file
-          try {
-            if (inputStream != null) {
-              inputStream = EncryptionProvider.decryptStream(inputStream, key, iv, this.encMat);
-              return inputStream;
-            }
-          } catch (Exception ex) {
-            logger.error("Error decrypting file", ex);
-            throw new SnowflakeSQLLoggedException(
-                session,
-                ErrorCode.INTERNAL_ERROR.getMessageCode(),
-                SqlState.INTERNAL_ERROR,
-                "Cannot decrypt file");
-          }
-        }
-      } catch (Exception ex) {
-        logger.debug("Download unsuccessful {}", ex);
-        handleStorageException(ex, ++retryCount, "download", session, command);
-      }
-    } while (retryCount <= getMaxRetries());
-
-    throw new SnowflakeSQLLoggedException(
-        session,
-        ErrorCode.INTERNAL_ERROR.getMessageCode(),
-        SqlState.INTERNAL_ERROR,
-        "Unexpected: download unsuccessful without exception!");
-  }
 
   /**
    * Upload a file (-stream) to remote storage with Pre-signed URL without JDBC session.
@@ -635,24 +327,24 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       throw new IllegalArgumentException("Unexpected metadata object type");
     }
 
-    if (!Strings.isNullOrEmpty(presignedUrl)) {
-      logger.debug("Starting upload", false);
-      uploadWithPresignedUrl(
-          session.getNetworkTimeoutInMilli(),
-          session.getAuthTimeout(),
-          session.getHttpClientSocketTimeout(),
-          meta.getContentEncoding(),
-          meta.getUserMetadata(),
-          uploadStreamInfo.left,
-          presignedUrl,
-          session.getHttpClientKey());
-      logger.debug("Upload successful", false);
-
-      // close any open streams in the "toClose" list and return
-      for (FileInputStream is : toClose) IOUtils.closeQuietly(is);
-
-      return;
-    }
+//    if (!Strings.isNullOrEmpty(presignedUrl)) {
+//      logger.debug("Starting upload", false);
+//      uploadWithPresignedUrl(
+//          session.getNetworkTimeoutInMilli(),
+//          session.getAuthTimeout(),
+//          session.getHttpClientSocketTimeout(),
+//          meta.getContentEncoding(),
+//          meta.getUserMetadata(),
+//          uploadStreamInfo.left,
+//          presignedUrl,
+//          session.getHttpClientKey());
+//      logger.debug("Upload successful", false);
+//
+//      // close any open streams in the "toClose" list and return
+//      for (FileInputStream is : toClose) IOUtils.closeQuietly(is);
+//
+//      return;
+//    }
 
     // No presigned URL. This codepath is for when we have a token instead.
     int retryCount = 0;
@@ -920,6 +612,324 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
     return SFPair.of(stream, uploadFromStream);
   }
 
+  /**
+   * Download a file from remote storage.
+   *
+   * @param session session object
+   * @param command command to download file
+   * @param localLocation local file path
+   * @param destFileName destination file name
+   * @param parallelism [ not used by the GCP implementation ]
+   * @param remoteStorageLocation remote storage location, i.e. bucket for S3
+   * @param stageFilePath stage file path
+   * @param stageRegion region name where the stage persists
+   * @param presignedUrl Credential to use for download
+   * @throws SnowflakeSQLException download failure
+   */
+  @Override
+  public void download(
+      SFSession session,
+      String command,
+      String localLocation,
+      String destFileName,
+      int parallelism,
+      String remoteStorageLocation,
+      String stageFilePath,
+      String stageRegion,
+      String presignedUrl)
+      throws SnowflakeSQLException {
+    int retryCount = 0;
+    String localFilePath = localLocation + localFileSep + destFileName;
+    File localFile = new File(localFilePath);
+
+    do {
+      try {
+        String key = null;
+        String iv = null;
+        if (!Strings.isNullOrEmpty(presignedUrl)) {
+//          logger.debug("Starting download with presigned URL", false);
+//          URIBuilder uriBuilder = new URIBuilder(presignedUrl);
+//
+//          HttpGet httpRequest = new HttpGet(uriBuilder.build());
+//          httpRequest.addHeader("accept-encoding", "GZIP");
+//
+//          logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
+//
+//          CloseableHttpClient httpClient =
+//              HttpUtil.getHttpClientWithoutDecompression(session.getHttpClientKey());
+//
+//          // Put the file on storage using the presigned url
+//          HttpResponse response =
+//              RestRequest.execute(
+//                  httpClient,
+//                  httpRequest,
+//                  session.getNetworkTimeoutInMilli() / 1000, // retry timeout
+//                  session.getAuthTimeout(),
+//                  session.getHttpClientSocketTimeout(),
+//                  getMaxRetries(),
+//                  0, // no socket timeout injection
+//                  null, // no canceling
+//                  false, // no cookie
+//                  false, // no retry
+//                  false, // no request_guid
+//                  true, // retry on HTTP 403
+//                  new ExecTimeTelemetryData());
+//
+//          logger.debug(
+//              "Call returned for URL: {}",
+//              (ArgSupplier) () -> scrubPresignedUrl(this.stageInfo.getPresignedUrl()));
+//          if (isSuccessStatusCode(response.getStatusLine().getStatusCode())) {
+//            try {
+//              InputStream bodyStream = response.getEntity().getContent();
+//              byte[] buffer = new byte[8 * 1024];
+//              int bytesRead;
+//              OutputStream outStream = new FileOutputStream(localFile);
+//              while ((bytesRead = bodyStream.read(buffer)) != -1) {
+//                outStream.write(buffer, 0, bytesRead);
+//              }
+//              outStream.flush();
+//              outStream.close();
+//              bodyStream.close();
+//              if (isEncrypting()) {
+//                for (Header header : response.getAllHeaders()) {
+//                  if (header
+//                      .getName()
+//                      .equalsIgnoreCase(GCS_METADATA_PREFIX + GCS_ENCRYPTIONDATAPROP)) {
+//                    AbstractMap.SimpleEntry<String, String> encryptionData =
+//                        parseEncryptionData(header.getValue());
+//
+//                    key = encryptionData.getKey();
+//                    iv = encryptionData.getValue();
+//                    break;
+//                  }
+//                }
+//              }
+//              logger.debug("Download successful", false);
+//            } catch (IOException ex) {
+//              logger.debug("Download unsuccessful {}", ex);
+//              handleStorageException(ex, ++retryCount, "download", session, command);
+//            }
+//          } else {
+//            Exception ex =
+//                new HttpResponseException(
+//                    response.getStatusLine().getStatusCode(),
+//                    EntityUtils.toString(response.getEntity()));
+//            handleStorageException(ex, ++retryCount, "download", session, command);
+//          }
+        } else {
+          BlobId blobId = BlobId.of(remoteStorageLocation, stageFilePath);
+          Blob blob = gcsClient.get(blobId);
+          if (blob == null) {
+            throw new StorageProviderException(
+                new StorageException(
+                    404, // because blob not found
+                    "Blob" + blobId.getName() + " not found in bucket " + blobId.getBucket()));
+          }
+
+          logger.debug("Starting download without presigned URL", false);
+          blob.downloadTo(
+              localFile.toPath(), Blob.BlobSourceOption.shouldReturnRawInputStream(true));
+          logger.debug("Download successful", false);
+
+          // Get the user-defined BLOB metadata
+          Map<String, String> userDefinedMetadata = blob.getMetadata();
+          if (isEncrypting()) {
+            if (userDefinedMetadata != null) {
+              AbstractMap.SimpleEntry<String, String> encryptionData =
+                  parseEncryptionData(userDefinedMetadata.get(GCS_ENCRYPTIONDATAPROP));
+
+              key = encryptionData.getKey();
+              iv = encryptionData.getValue();
+            }
+          }
+        }
+
+        if (!Strings.isNullOrEmpty(iv)
+            && !Strings.isNullOrEmpty(key)
+            && this.isEncrypting()
+            && this.getEncryptionKeySize() <= 256) {
+          if (key == null || iv == null) {
+            throw new SnowflakeSQLLoggedException(
+                session,
+                ErrorCode.INTERNAL_ERROR.getMessageCode(),
+                SqlState.INTERNAL_ERROR,
+                "File metadata incomplete");
+          }
+
+          // Decrypt file
+          try {
+            EncryptionProvider.decrypt(localFile, key, iv, this.encMat);
+          } catch (Exception ex) {
+            logger.error("Error decrypting file", ex);
+            throw new SnowflakeSQLLoggedException(
+                session,
+                ErrorCode.INTERNAL_ERROR.getMessageCode(),
+                SqlState.INTERNAL_ERROR,
+                "Cannot decrypt file");
+          }
+        }
+        return;
+      } catch (Exception ex) {
+        logger.debug("Download unsuccessful {}", ex);
+        handleStorageException(ex, ++retryCount, "download", session, command);
+      }
+    } while (retryCount <= getMaxRetries());
+
+    throw new SnowflakeSQLLoggedException(
+        session,
+        ErrorCode.INTERNAL_ERROR.getMessageCode(),
+        SqlState.INTERNAL_ERROR,
+        "Unexpected: download unsuccessful without exception!");
+  }
+
+  /**
+   * Download a file from remote storage
+   *
+   * @param session session object
+   * @param command command to download file
+   * @param parallelism number of threads for parallel downloading
+   * @param remoteStorageLocation remote storage location, i.e. bucket for s3
+   * @param stageFilePath stage file path
+   * @param stageRegion region name where the stage persists
+   * @param presignedUrl Signed credential for download
+   * @return input file stream
+   * @throws SnowflakeSQLException when download failure
+   */
+  @Override
+  public InputStream downloadToStream(
+      SFSession session,
+      String command,
+      int parallelism,
+      String remoteStorageLocation,
+      String stageFilePath,
+      String stageRegion,
+      String presignedUrl)
+      throws SnowflakeSQLException {
+    int retryCount = 0;
+    InputStream inputStream = null;
+    do {
+      try {
+        String key = null;
+        String iv = null;
+
+        if (!Strings.isNullOrEmpty(presignedUrl)) {
+//          logger.debug("Starting download with presigned URL", false);
+//          URIBuilder uriBuilder = new URIBuilder(presignedUrl);
+//
+//          HttpGet httpRequest = new HttpGet(uriBuilder.build());
+//          httpRequest.addHeader("accept-encoding", "GZIP");
+//
+//          logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
+//
+//          CloseableHttpClient httpClient =
+//              HttpUtil.getHttpClientWithoutDecompression(session.getHttpClientKey());
+//
+//          // Put the file on storage using the presigned url
+//          HttpResponse response =
+//              RestRequest.execute(
+//                  httpClient,
+//                  httpRequest,
+//                  session.getNetworkTimeoutInMilli() / 1000, // retry timeout
+//                  session.getAuthTimeout(),
+//                  session.getHttpClientSocketTimeout(),
+//                  getMaxRetries(),
+//                  0, // no socket timeout injection
+//                  null, // no canceling
+//                  false, // no cookie
+//                  false, // no retry
+//                  false, // no request_guid
+//                  true, // retry on HTTP 403
+//                  new ExecTimeTelemetryData());
+//
+//          logger.debug(
+//              "Call returned for URL: {}",
+//              (ArgSupplier) () -> scrubPresignedUrl(this.stageInfo.getPresignedUrl()));
+//          if (isSuccessStatusCode(response.getStatusLine().getStatusCode())) {
+//            try {
+//              inputStream = response.getEntity().getContent();
+//
+//              if (isEncrypting()) {
+//                for (Header header : response.getAllHeaders()) {
+//                  if (header
+//                      .getName()
+//                      .equalsIgnoreCase(GCS_METADATA_PREFIX + GCS_ENCRYPTIONDATAPROP)) {
+//                    AbstractMap.SimpleEntry<String, String> encryptionData =
+//                        parseEncryptionData(header.getValue());
+//
+//                    key = encryptionData.getKey();
+//                    iv = encryptionData.getValue();
+//                    break;
+//                  }
+//                }
+//              }
+//              logger.debug("Download successful", false);
+//            } catch (IOException ex) {
+//              logger.debug("Download unsuccessful {}", ex);
+//              handleStorageException(ex, ++retryCount, "download", session, command);
+//            }
+//          } else {
+//            Exception ex =
+//                new HttpResponseException(
+//                    response.getStatusLine().getStatusCode(),
+//                    EntityUtils.toString(response.getEntity()));
+//            handleStorageException(ex, ++retryCount, "download", session, command);
+//          }
+        } else {
+          BlobId blobId = BlobId.of(remoteStorageLocation, stageFilePath);
+          Blob blob = gcsClient.get(blobId);
+          if (blob == null) {
+            throw new StorageProviderException(
+                new StorageException(
+                    404, // because blob not found
+                    "Blob" + blobId.getName() + " not found in bucket " + blobId.getBucket()));
+          }
+          inputStream = Channels.newInputStream(blob.reader());
+          if (isEncrypting()) {
+            // Get the user-defined BLOB metadata
+            Map<String, String> userDefinedMetadata = blob.getMetadata();
+            AbstractMap.SimpleEntry<String, String> encryptionData =
+                parseEncryptionData(userDefinedMetadata.get(GCS_ENCRYPTIONDATAPROP));
+
+            key = encryptionData.getKey();
+            iv = encryptionData.getValue();
+          }
+        }
+
+        if (this.isEncrypting() && this.getEncryptionKeySize() <= 256) {
+          if (key == null || iv == null) {
+            throw new SnowflakeSQLException(
+                SqlState.INTERNAL_ERROR,
+                ErrorCode.INTERNAL_ERROR.getMessageCode(),
+                "File metadata incomplete");
+          }
+
+          // Decrypt file
+          try {
+            if (inputStream != null) {
+              inputStream = EncryptionProvider.decryptStream(inputStream, key, iv, this.encMat);
+              return inputStream;
+            }
+          } catch (Exception ex) {
+            logger.error("Error decrypting file", ex);
+            throw new SnowflakeSQLLoggedException(
+                session,
+                ErrorCode.INTERNAL_ERROR.getMessageCode(),
+                SqlState.INTERNAL_ERROR,
+                "Cannot decrypt file");
+          }
+        }
+      } catch (Exception ex) {
+        logger.debug("Download unsuccessful {}", ex);
+        handleStorageException(ex, ++retryCount, "download", session, command);
+      }
+    } while (retryCount <= getMaxRetries());
+
+    throw new SnowflakeSQLLoggedException(
+        session,
+        ErrorCode.INTERNAL_ERROR.getMessageCode(),
+        SqlState.INTERNAL_ERROR,
+        "Unexpected: download unsuccessful without exception!");
+  }
   @Override
   public void handleStorageException(
       Exception ex, int retryCount, String operation, SFSession session, String command)
@@ -981,7 +991,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
           if (session != null) {
             // A 401 indicates that the access token has expired,
             // we need to refresh the GCS client with the new token
-            SnowflakeFileTransferAgent.renewExpiredToken(session, command, this);
+            // SnowflakeFileTransferAgent.renewExpiredToken(session, command, this);
           } else {
             throw new SnowflakeSQLException(
                 se.getMessage(), CLOUD_STORAGE_CREDENTIALS_EXPIRED, "GCS credentials have expired");

@@ -3,7 +3,6 @@
  */
 package net.snowflake.client.log;
 
-import net.snowflake.client.jdbc.SnowflakeDriver;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -21,11 +20,7 @@ public class SFFormatter extends Formatter {
     df.setTimeZone(TimeZone.getTimeZone("UTC"));
   }
 
-  public static final String CLASS_NAME_PREFIX =
-      SnowflakeDriver.class
-          .getPackage()
-          .getName()
-          .substring(0, SnowflakeDriver.class.getPackage().getName().lastIndexOf('.'));
+  public static final String CLASS_NAME_PREFIX = " net.snowflake.client";
 
   public static final String INFORMATICA_V1_CLASS_NAME_PREFIX = "com.snowflake";
 

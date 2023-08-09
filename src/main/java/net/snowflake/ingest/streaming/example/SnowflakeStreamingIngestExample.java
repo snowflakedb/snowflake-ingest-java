@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
+
+import net.snowflake.client.log.SFLoggerUtil;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -38,7 +40,7 @@ public class SnowflakeStreamingIngestExample {
       Map.Entry<String, JsonNode> prop = propIt.next();
       props.put(prop.getKey(), prop.getValue().asText());
     }
-
+    SFLoggerUtil.initializeSnowflakeLogger();
     // Create a streaming ingest client
     try (SnowflakeStreamingIngestClient client =
         SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build()) {
