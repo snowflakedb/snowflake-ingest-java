@@ -8,6 +8,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -195,8 +196,9 @@ class RegisterService<T> {
             Timer.Context registerContext =
                 Utils.createTimerContext(this.owningClient.registerLatency);
 
+            int blobsPerReq = getBlobNumToRegisterInOneReq(blobs.size());
             // Register the blobs, and invalidate any channels that return a failure status code
-            this.owningClient.registerBlobs(blobs);
+            Lists.partition(blobs, blobsPerReq).forEach(owningClient::registerBlobs);
 
             if (registerContext != null) {
               registerContext.stop();
@@ -214,6 +216,21 @@ class RegisterService<T> {
       }
     }
     return errorBlobs;
+  }
+
+  /**
+   * We split blobs into batches to avoid too big payload in registration requests in case of
+   * connection hiccups if too many blobs are accumulated.
+   */
+  private int getBlobNumToRegisterInOneReq(int blobNum) {
+    int blobsPerReq = owningClient.getParameterProvider().getMaxBlobsToRegisterInOneRequest();
+    if (blobNum > blobsPerReq) {
+      logger.logWarn(
+          "Many blobs to register: {}, possibly bad connection to Snowflake or ingestion is"
+              + " too fast and needs more resources",
+          blobNum);
+    }
+    return blobsPerReq;
   }
 
   /**

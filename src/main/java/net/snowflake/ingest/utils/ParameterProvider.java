@@ -31,6 +31,9 @@ public class ParameterProvider {
   public static final String MAX_ALLOWED_ROW_SIZE_IN_BYTES =
       "MAX_ALLOWED_ROW_SIZE_IN_BYTES".toLowerCase();
 
+  public static final String MAX_BLOBS_TO_REGISTER_IN_ONE_REQUEST =
+      "MAX_BLOBS_TO_REGISTER_IN_ONE_REQUEST".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
@@ -50,6 +53,8 @@ public class ParameterProvider {
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
   public static final boolean ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT = false;
+
+  public static final int MAX_BLOBS_TO_REGISTER_IN_ONE_REQUEST_DEFAULT = 10;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -294,6 +299,13 @@ public class ParameterProvider {
         this.parameterMap.getOrDefault(
             MAX_ALLOWED_ROW_SIZE_IN_BYTES, MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  public int getMaxBlobsToRegisterInOneRequest() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_BLOBS_TO_REGISTER_IN_ONE_REQUEST, MAX_BLOBS_TO_REGISTER_IN_ONE_REQUEST_DEFAULT);
+    return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
   }
 
   @Override
