@@ -3,8 +3,8 @@
 THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 export GPG_KEY_ID="Snowflake Computing"
-export LDAP_USER="$INTERNAL_NEXUS_USERNAME"
-export LDAP_PWD="$INTERNAL_NEXUS_PASSWORD"
+export LDAP_USER="$sonatype_user"
+export LDAP_PWD="$sonatype_password"
 
 if [ -z "$GPG_KEY_PASSPHRASE" ]; then
   echo "[ERROR] GPG passphrase is not specified for $GPG_KEY_ID!"
