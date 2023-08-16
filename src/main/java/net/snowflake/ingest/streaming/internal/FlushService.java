@@ -413,8 +413,7 @@ class FlushService<T> {
       // Kick off a build job
       if (blobData.isEmpty()) {
         // we decrement the counter so that we do not have gaps in the file/blob names created by
-        // this
-        // client. See method getBlobPath() below.
+        // this client. See method getBlobPath() below.
         this.counter.decrementAndGet();
       } else {
         long flushStartMs = System.currentTimeMillis();
