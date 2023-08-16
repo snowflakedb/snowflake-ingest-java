@@ -268,7 +268,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @return map of channel to the latest persisted offset token
    */
   @Override
-  public Map<SnowflakeStreamingIngestChannel, String> getALlLatestCommittedOffsetTokens() {
+  public Map<SnowflakeStreamingIngestChannel, String> getAllLatestCommittedOffsetTokens() {
     List<SnowflakeStreamingIngestChannelInternal<?>> channels = channelCache.getChannels();
     List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
         getChannelsStatus(channelCache.getChannels()).getChannels();
