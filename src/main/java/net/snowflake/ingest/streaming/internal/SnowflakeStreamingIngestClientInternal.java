@@ -75,7 +75,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.hadoop.util.hash.Hash;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -268,8 +267,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @return map of channel to the latest persisted offset token
    */
   @Override
-  public Map<SnowflakeStreamingIngestChannel, String> getLatestCommittedOffsetTokens(List<SnowflakeStreamingIngestChannel> channels) {
-    List<SnowflakeStreamingIngestChannelInternal<?>> internalChannels = channels.stream().map(c -> (SnowflakeStreamingIngestChannelInternal<?>) c).collect(Collectors.toList());
+  public Map<SnowflakeStreamingIngestChannel, String> getLatestCommittedOffsetTokens(
+      List<SnowflakeStreamingIngestChannel> channels) {
+    List<SnowflakeStreamingIngestChannelInternal<?>> internalChannels =
+        channels.stream()
+            .map(c -> (SnowflakeStreamingIngestChannelInternal<?>) c)
+            .collect(Collectors.toList());
     List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
         getChannelsStatus(internalChannels).getChannels();
     Map<SnowflakeStreamingIngestChannel, String> result = new HashMap<>();
@@ -288,9 +291,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     return this.role;
   }
 
-  /**
-   * @return a boolean to indicate whether the client is closed or not
-   */
+  /** @return a boolean to indicate whether the client is closed or not */
   @Override
   public boolean isClosed() {
     return isClosed;
