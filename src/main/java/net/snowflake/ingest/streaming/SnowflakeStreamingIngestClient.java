@@ -36,7 +36,7 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
    *
    * @return a map of channel to latest committed offset token
    */
-  Map<SnowflakeStreamingIngestChannel, String> getALlLatestCommittedOffsetTokens();
+  Map<SnowflakeStreamingIngestChannel, String> getAllLatestCommittedOffsetTokens();
 
   /**
    * Set refresh token, this method is for refresh token renewal without requiring to restart
