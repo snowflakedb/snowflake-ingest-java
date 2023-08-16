@@ -5,8 +5,10 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * In-memory cache that stores the active channels for a given Streaming Ingest client, and the
@@ -92,6 +94,10 @@ class ChannelCache<T> {
         channel.invalidate("invalidate with matched sequencer");
       }
     }
+  }
+
+  List<SnowflakeStreamingIngestChannelInternal<?>> getChannels() {
+    return cache.values().stream().flatMap(v -> v.values().stream()).collect(Collectors.toList());
   }
 
   /** Get the number of key-value pairs in the cache */

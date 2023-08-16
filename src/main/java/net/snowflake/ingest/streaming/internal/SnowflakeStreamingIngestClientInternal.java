@@ -64,6 +64,7 @@ import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -74,6 +75,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.hadoop.util.hash.Hash;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -261,6 +263,23 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
+   * Return the latest committed/persisted offset token for all channels
+   *
+   * @return map of channel to the latest persisted offset token
+   */
+  @Override
+  public Map<SnowflakeStreamingIngestChannel, String> getALlLatestCommittedOffsetTokens() {
+    List<SnowflakeStreamingIngestChannelInternal<?>> channels = channelCache.getChannels();
+    List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
+        getChannelsStatus(channelCache.getChannels()).getChannels();
+    Map<SnowflakeStreamingIngestChannel, String> result = new HashMap<>();
+    for (int idx = 0; idx < channels.size(); idx++) {
+      result.put(channels.get(idx), channelsStatus.get(idx).getPersistedOffsetToken());
+    }
+    return result;
+  }
+
+  /**
    * Get the role used by the client
    *
    * @return the client's role
@@ -269,7 +288,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     return this.role;
   }
 
-  /** @return a boolean to indicate whether the client is closed or not */
+  /**
+   * @return a boolean to indicate whether the client is closed or not
+   */
   @Override
   public boolean isClosed() {
     return isClosed;
