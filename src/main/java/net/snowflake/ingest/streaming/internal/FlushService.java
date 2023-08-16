@@ -512,12 +512,8 @@ class FlushService<T> {
    * @return BlobMetadata for FlushService.upload
    */
   BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData)
-      throws IOException,
-          NoSuchAlgorithmException,
-          InvalidAlgorithmParameterException,
-          NoSuchPaddingException,
-          IllegalBlockSizeException,
-          BadPaddingException,
+      throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
+          NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
