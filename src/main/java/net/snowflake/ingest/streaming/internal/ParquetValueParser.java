@@ -402,6 +402,7 @@ class ParquetValueParser {
     }
     return str;
   }
+
   /**
    * Converts a binary value to its byte array representation.
    *

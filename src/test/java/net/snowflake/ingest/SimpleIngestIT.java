@@ -176,7 +176,8 @@ public class SimpleIngestIT {
   }
 
   private void getHistoryAndAssertLoad(SimpleIngestManager manager, String test_file_name_2)
-      throws InterruptedException, java.util.concurrent.ExecutionException,
+      throws InterruptedException,
+          java.util.concurrent.ExecutionException,
           java.util.concurrent.TimeoutException {
     // keeps track of whether we've loaded the file
     boolean loaded = false;

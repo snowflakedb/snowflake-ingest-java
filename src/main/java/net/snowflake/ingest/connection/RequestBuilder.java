@@ -351,6 +351,7 @@ public class RequestBuilder {
   private static String buildCustomUserAgent(String additionalUserAgentInfo) {
     return USER_AGENT.trim() + " " + additionalUserAgentInfo;
   }
+
   /** A simple POJO for generating our POST body to the insert endpoint */
   private static class IngestRequest {
     // the list of files we're loading

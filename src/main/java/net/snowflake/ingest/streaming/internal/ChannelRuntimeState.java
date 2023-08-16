@@ -41,17 +41,23 @@ class ChannelRuntimeState {
     isValid = false;
   }
 
-  /** @return current offset token */
+  /**
+   * @return current offset token
+   */
   String getOffsetToken() {
     return offsetToken;
   }
 
-  /** @return current offset token after first incrementing it by one. */
+  /**
+   * @return current offset token after first incrementing it by one.
+   */
   long incrementAndGetRowSequencer() {
     return rowSequencer.incrementAndGet();
   }
 
-  /** @return row sequencer of the channel. */
+  /**
+   * @return row sequencer of the channel.
+   */
   long getRowSequencer() {
     return rowSequencer.get();
   }

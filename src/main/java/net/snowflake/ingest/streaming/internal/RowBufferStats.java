@@ -25,6 +25,7 @@ class RowBufferStats {
   // for binary or string columns
   private long currentMaxLength;
   private final String collationDefinitionString;
+
   /** Display name is required for the registration endpoint */
   private final String columnDisplayName;
 

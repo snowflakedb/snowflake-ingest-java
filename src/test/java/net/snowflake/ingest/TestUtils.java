@@ -144,7 +144,9 @@ public class TestUtils {
     }
   }
 
-  /** @return profile path that will be used for tests. */
+  /**
+   * @return profile path that will be used for tests.
+   */
   private static String getTestProfilePath() {
     String testProfilePath =
         System.getProperty("testProfilePath") != null

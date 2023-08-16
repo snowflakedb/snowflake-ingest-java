@@ -65,8 +65,12 @@ class BlobBuilder {
    */
   static <T> Blob constructBlobAndMetadata(
       String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
-      throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
-          InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
+      throws IOException,
+          NoSuchPaddingException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          InvalidKeyException,
+          IllegalBlockSizeException,
           BadPaddingException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
