@@ -96,10 +96,6 @@ class ChannelCache<T> {
     }
   }
 
-  List<SnowflakeStreamingIngestChannelInternal<?>> getChannels() {
-    return cache.values().stream().flatMap(v -> v.values().stream()).collect(Collectors.toList());
-  }
-
   /** Get the number of key-value pairs in the cache */
   int getSize() {
     return cache.size();

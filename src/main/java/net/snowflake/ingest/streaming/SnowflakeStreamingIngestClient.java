@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,7 +37,7 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
    *
    * @return a map of channel to latest committed offset token
    */
-  Map<SnowflakeStreamingIngestChannel, String> getAllLatestCommittedOffsetTokens();
+  Map<SnowflakeStreamingIngestChannel, String> getLatestCommittedOffsetTokens(List<SnowflakeStreamingIngestChannel> channels);
 
   /**
    * Set refresh token, this method is for refresh token renewal without requiring to restart
