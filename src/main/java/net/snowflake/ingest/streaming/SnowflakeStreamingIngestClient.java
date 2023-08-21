@@ -33,11 +33,11 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
   String getName();
 
   /**
-   * Return the latest committed offset token for all open channels.
+   * Return the latest committed offset token for a list of channels
    *
-   * @return a map of channel to latest committed offset token
+   * @return a map of channel fully qualified name to latest committed offset token
    */
-  Map<SnowflakeStreamingIngestChannel, String> getLatestCommittedOffsetTokens(
+  Map<String, String> getLatestCommittedOffsetTokens(
       List<SnowflakeStreamingIngestChannel> channels);
 
   /**

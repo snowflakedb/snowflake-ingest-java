@@ -424,6 +424,71 @@ public class SnowflakeStreamingIngestClientTest {
   }
 
   @Test
+  public void testGetLatestCommittedOffsetTokens() throws Exception {
+    ChannelsStatusResponse.ChannelStatusResponseDTO channelStatus =
+        new ChannelsStatusResponse.ChannelStatusResponseDTO();
+    channelStatus.setStatusCode(RESPONSE_SUCCESS);
+    channelStatus.setPersistedOffsetToken("foo");
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("honk");
+    response.setChannels(Collections.singletonList(channelStatus));
+    String responseString = objectMapper.writeValueAsString(response);
+
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
+
+    SnowflakeStreamingIngestChannelInternal<?> channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            "channel",
+            "db",
+            "schemaName",
+            "tableName",
+            "0",
+            0L,
+            0L,
+            null,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            ZoneOffset.UTC,
+            BDEC_VERSION);
+
+    ChannelsStatusRequest.ChannelStatusRequestDTO dto =
+        new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
+    ChannelsStatusRequest request = new ChannelsStatusRequest();
+    request.setRequestId("null_0");
+    request.setChannels(Collections.singletonList(dto));
+    Map<String, String> result =
+        client.getLatestCommittedOffsetTokens(Collections.singletonList(channel));
+    Assert.assertEquals(
+        channelStatus.getPersistedOffsetToken(), result.get(channel.getFullyQualifiedName()));
+    Mockito.verify(requestBuilder)
+        .generateStreamingIngestPostRequest(
+            objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
+  }
+
+  @Test
   public void testRegisterBlobRequestCreationSuccess() throws Exception {
     Properties prop = new Properties();
     prop.put(USER, TestUtils.getUser());
