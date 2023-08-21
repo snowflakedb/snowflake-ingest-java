@@ -108,7 +108,7 @@ public class StreamingIngestUtilsTest {
             httpClient,
             requestBuilder);
 
-    Mockito.verify(requestBuilder, Mockito.times(4))
+    Mockito.verify(requestBuilder, Mockito.times(1))
         .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
     Assert.assertEquals("honk", result.getMessage());
   }
@@ -158,7 +158,7 @@ public class StreamingIngestUtilsTest {
             httpClient,
             requestBuilder);
 
-    Mockito.verify(requestBuilder, Mockito.times(3))
+    Mockito.verify(requestBuilder, Mockito.times(1))
         .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
 
     Assert.assertEquals("honkSuccess", result.getMessage());

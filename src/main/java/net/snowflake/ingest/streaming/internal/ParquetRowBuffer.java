@@ -70,7 +70,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         defaultTimezone,
         fullyQualifiedChannelName,
         rowSizeMetric,
-        channelRuntimeState);
+        channelRuntimeState,
+        maxChunkSizeInBytes);
     this.fieldIndex = new HashMap<>();
     this.metadata = new HashMap<>();
     this.data = new ArrayList<>();
