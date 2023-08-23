@@ -4,6 +4,9 @@
 
 package net.snowflake.ingest.streaming;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * A class that is the starting point for using the Streaming Ingest client APIs, a single client
  * maps to exactly one account in Snowflake; however, multiple clients can point to the same
@@ -45,4 +48,12 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
    * @return a boolean to indicate whether the client is closed
    */
   boolean isClosed();
+
+  /**
+   * Return the latest committed offset token for a list of channels
+   *
+   * @return a map of channel fully qualified name to latest committed offset token
+   */
+  Map<String, String> getLatestCommittedOffsetTokens(
+      List<SnowflakeStreamingIngestChannel> channels);
 }

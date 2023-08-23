@@ -63,16 +63,16 @@ class FlushService<T> {
   // Static class to save the list of channels that are used to build a blob, which is mainly used
   // to invalidate all the channels when there is a failure
   static class BlobData<T> {
-    private final String filePath;
+    private final String path;
     private final List<List<ChannelData<T>>> data;
 
-    BlobData(String filePath, List<List<ChannelData<T>>> data) {
-      this.filePath = filePath;
+    BlobData(String path, List<List<ChannelData<T>>> data) {
+      this.path = path;
       this.data = data;
     }
 
-    String getFilePath() {
-      return filePath;
+    String getPath() {
+      return path;
     }
 
     List<List<ChannelData<T>>> getData() {
@@ -118,7 +118,7 @@ class FlushService<T> {
   // A map which stores the timer for each blob in order to capture the flush latency
   private final Map<String, Timer.Context> latencyTimerContextMap;
 
-  // blob file version
+  // blob encoding version
   private final Constants.BdecVersion bdecVersion;
 
   /**
@@ -342,7 +342,7 @@ class FlushService<T> {
     while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
-      final String filePath = getFilePath(this.targetStage.getClientPrefix());
+      final String blobPath = getBlobPath(this.targetStage.getClientPrefix());
 
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
@@ -360,7 +360,7 @@ class FlushService<T> {
               .forEach(
                   channel -> {
                     if (channel.isValid()) {
-                      ChannelData<T> data = channel.getData(filePath);
+                      ChannelData<T> data = channel.getData(blobPath);
                       if (data != null) {
                         channelsDataPerTable.add(data);
                       }
@@ -385,7 +385,7 @@ class FlushService<T> {
               logger.logInfo(
                   "Creation of another blob is needed because of blob/chunk size limit or"
                       + " different encryption ids or different schema, client={}, table={},"
-                      + " fileSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
+                      + " blobSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
                       + " encryptionId2={}, schema1={}, schema2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
@@ -412,32 +412,32 @@ class FlushService<T> {
 
       // Kick off a build job
       if (blobData.isEmpty()) {
-        // we decrement the counter so that we do not have gaps in the filenames created by this
-        // client. See method getFilePath() below.
+        // we decrement the counter so that we do not have gaps in the blob names created by this
+        // client. See method getBlobPath() below.
         this.counter.decrementAndGet();
       } else {
         long flushStartMs = System.currentTimeMillis();
         if (this.owningClient.flushLatency != null) {
-          latencyTimerContextMap.putIfAbsent(filePath, this.owningClient.flushLatency.time());
+          latencyTimerContextMap.putIfAbsent(blobPath, this.owningClient.flushLatency.time());
         }
         blobs.add(
             new Pair<>(
-                new BlobData<>(filePath, blobData),
+                new BlobData<>(blobPath, blobData),
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(filePath, blobData);
+                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
                         Throwable ex = e.getCause() == null ? e : e.getCause();
                         String errorMessage =
                             String.format(
-                                "Building blob failed, client=%s, file=%s, exception=%s,"
+                                "Building blob failed, client=%s, blob=%s, exception=%s,"
                                     + " detail=%s, trace=%s, all channels in the blob will be"
                                     + " invalidated",
                                 this.owningClient.getName(),
-                                filePath,
+                                blobPath,
                                 ex,
                                 ex.getMessage(),
                                 getStackTrace(ex));
@@ -468,7 +468,7 @@ class FlushService<T> {
         logger.logInfo(
             "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
             this.owningClient.getName(),
-            filePath,
+            blobPath,
             this.buildUploadWorkers.toString());
       }
     }
@@ -481,7 +481,7 @@ class FlushService<T> {
    * Check whether we should stop merging more channels into the same chunk, we need to stop in a
    * few cases:
    *
-   * <p>When the file size is larger than a certain threshold
+   * <p>When the blob size is larger than a certain threshold
    *
    * <p>When the chunk size is larger than a certain threshold
    *
@@ -504,44 +504,44 @@ class FlushService<T> {
   }
 
   /**
-   * Builds and uploads file to cloud storage.
+   * Builds and uploads blob to cloud storage.
    *
-   * @param filePath Path of the destination file in cloud storage
+   * @param blobPath Path of the destination blob in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @return BlobMetadata for FlushService.upload
    */
-  BlobMetadata buildAndUpload(String filePath, List<List<ChannelData<T>>> blobData)
+  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(filePath, blobData, bdecVersion);
+    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
-    return upload(filePath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
+    return upload(blobPath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
   }
 
   /**
    * Upload a blob to Streaming Ingest dedicated stage
    *
-   * @param filePath full path of the blob file
+   * @param blobPath full path of the blob
    * @param blob blob data
    * @param metadata a list of chunk metadata
    * @param blobStats an object to track latencies and other stats of the blob
    * @return BlobMetadata object used to create the register blob request
    */
   BlobMetadata upload(
-      String filePath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
+      String blobPath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
       throws NoSuchAlgorithmException {
-    logger.logInfo("Start uploading file={}, size={}", filePath, blob.length);
+    logger.logInfo("Start uploading blob={}, size={}", blobPath, blob.length);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-    this.targetStage.put(filePath, blob);
+    this.targetStage.put(blobPath, blob);
 
     if (uploadContext != null) {
       blobStats.setUploadDurationMs(uploadContext);
@@ -552,13 +552,13 @@ class FlushService<T> {
     }
 
     logger.logInfo(
-        "Finish uploading file={}, size={}, timeInMillis={}",
-        filePath,
+        "Finish uploading blob={}, size={}, timeInMillis={}",
+        blobPath,
         blob.length,
         System.currentTimeMillis() - startTime);
 
     return BlobMetadata.createBlobMetadata(
-        filePath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, blobStats);
+        blobPath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, blobStats);
   }
 
   /**
@@ -592,18 +592,18 @@ class FlushService<T> {
   }
 
   /**
-   * Generate a blob file path, which is: "YEAR/MONTH/DAY_OF_MONTH/HOUR_OF_DAY/MINUTE/<current utc
+   * Generate a blob path, which is: "YEAR/MONTH/DAY_OF_MONTH/HOUR_OF_DAY/MINUTE/<current utc
    * timestamp + client unique prefix + thread id + counter>.BDEC"
    *
    * @return the generated blob file path
    */
-  private String getFilePath(String clientPrefix) {
+  private String getBlobPath(String clientPrefix) {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    return getFilePath(calendar, clientPrefix);
+    return getBlobPath(calendar, clientPrefix);
   }
 
   /** For TESTING */
-  String getFilePath(Calendar calendar, String clientPrefix) {
+  String getBlobPath(Calendar calendar, String clientPrefix) {
     if (isTestMode && clientPrefix == null) {
       clientPrefix = "testPrefix";
     }
@@ -616,8 +616,8 @@ class FlushService<T> {
     int minute = calendar.get(Calendar.MINUTE);
     long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
     long threadId = Thread.currentThread().getId();
-    // Create the file short name, the clientPrefix contains the deployment id
-    String fileShortName =
+    // Create the blob short name, the clientPrefix contains the deployment id
+    String blobShortName =
         Long.toString(time, 36)
             + "_"
             + clientPrefix
@@ -627,7 +627,7 @@ class FlushService<T> {
             + this.counter.getAndIncrement()
             + "."
             + BLOB_EXTENSION_TYPE;
-    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + fileShortName;
+    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + blobShortName;
   }
 
   /**
