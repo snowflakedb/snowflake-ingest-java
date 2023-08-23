@@ -17,6 +17,8 @@ import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,6 +38,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.Supplier;
+import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -49,6 +52,8 @@ import org.junit.Assert;
 public class TestUtils {
   // profile path, follow readme for the format
   private static final String PROFILE_PATH = "profile.json";
+
+  private static final String OAUTH_INTEGRATION = "OAUTH_INTEGRATION";
 
   private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -91,6 +96,7 @@ public class TestUtils {
   private static String dummyUser = "user";
   private static int dummyPort = 443;
   private static String dummyHost = "snowflake.qa1.int.snowflakecomputing.com";
+  private static String dummyScheme = "http";
 
   /**
    * load all login info from profile
@@ -129,6 +135,7 @@ public class TestUtils {
       user = dummyUser;
       port = dummyPort;
       host = dummyHost;
+      scheme = dummyScheme;
       KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
       kpg.initialize(2048);
       keyPair = kpg.generateKeyPair();
@@ -151,6 +158,13 @@ public class TestUtils {
       init();
     }
     return user;
+  }
+
+  public static String getAccount() throws Exception {
+    if (profile == null) {
+      init();
+    }
+    return account;
   }
 
   public static String getAccountURL() throws Exception {
@@ -211,7 +225,8 @@ public class TestUtils {
     return schema;
   }
 
-  public static Properties getProperties(Constants.BdecVersion bdecVersion) throws Exception {
+  public static Properties getProperties(Constants.BdecVersion bdecVersion, boolean useDefaultRole)
+      throws Exception {
     if (profile == null) {
       init();
     }
@@ -224,7 +239,9 @@ public class TestUtils {
     props.put(SCHEMA, schema);
     props.put(WAREHOUSE, warehouse);
     props.put(PRIVATE_KEY, privateKeyPem);
-    props.put(ROLE, role);
+    if (!useDefaultRole) {
+      props.put(ROLE, role);
+    }
     props.put(ACCOUNT_URL, getAccountURL());
     props.put(BLOB_FORMAT_VERSION, bdecVersion.toByte());
     return props;
@@ -450,6 +467,21 @@ public class TestUtils {
     row.put("bin", nullOrIfNullable(nullable, r, () -> nextBytes(r)));
 
     return row;
+  }
+
+  public static URIBuilder getBaseURIBuilder() {
+    return new URIBuilder().setScheme(scheme).setHost(host).setPort(port);
+  }
+
+  public static URI getTokenRequestURI() {
+    URI tokenRequestURI = null;
+    try {
+      tokenRequestURI = getBaseURIBuilder().setPath("/oauth/token-request").build();
+    } catch (URISyntaxException e) {
+      throw new RuntimeException("Fail to construct token request uri", e);
+    }
+
+    return tokenRequestURI;
   }
 
   private static <T> T nullOrIfNullable(boolean nullable, Random r, Supplier<T> value) {

@@ -454,6 +454,11 @@ class DataValidationUtil {
     if (trimTimezone) {
       offsetDateTime = offsetDateTime.withOffsetSameLocal(ZoneOffset.UTC);
     }
+    if (offsetDateTime.getYear() < 1 || offsetDateTime.getYear() > 9999) {
+      throw new SFException(
+          ErrorCode.INVALID_VALUE_ROW,
+          "Timestamp out of representable inclusive range of years between 1 and 9999");
+    }
     return new TimestampWrapper(offsetDateTime, scale);
   }
 
@@ -579,6 +584,13 @@ class DataValidationUtil {
   static int validateAndParseDate(String columnName, Object input, long insertRowIndex) {
     OffsetDateTime offsetDateTime =
         inputToOffsetDateTime(columnName, "DATE", input, ZoneOffset.UTC, insertRowIndex);
+
+    if (offsetDateTime.getYear() < -9999 || offsetDateTime.getYear() > 9999) {
+      throw new SFException(
+          ErrorCode.INVALID_VALUE_ROW,
+          "Date out of representable inclusive range of years between -9999 and 9999");
+    }
+
     return Math.toIntExact(offsetDateTime.toLocalDate().toEpochDay());
   }
 

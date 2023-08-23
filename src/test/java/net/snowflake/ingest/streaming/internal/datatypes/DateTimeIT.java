@@ -947,19 +947,56 @@ public class DateTimeIT extends AbstractDataTypeTest {
 
   @Test
   public void testOldTimestamps() throws Exception {
-    testIngestion("DATE", "0001-12-31", "0001-12-31", new StringProvider());
-    testIngestion(
+    // DATE
+    testJdbcTypeCompatibility("DATE", "0001-12-31", new StringProvider());
+    testJdbcTypeCompatibility("DATE", "0000-01-01", new StringProvider());
+    testJdbcTypeCompatibility("DATE", "-0001-01-01", new StringProvider());
+    testJdbcTypeCompatibility("DATE", "-9999-01-01", new StringProvider());
+
+    // TIMESTAMP_NTZ
+    testJdbcTypeCompatibility(
         "TIMESTAMP_NTZ",
         "0001-12-31T11:11:11",
         "0001-12-31 11:11:11.000000000 Z",
+        new StringProvider(),
         new StringProvider());
-    // TODO uncomment once SNOW-727474 is resolved
-    //        testIngestion("TIMESTAMP_LTZ", "0001-12-31T11:11:11", "0001-12-31 03:11:11.000000000
-    // -0800", new StringProvider());
-    testIngestion(
+
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_NTZ",
+        "0001-01-01T00:00:00",
+        "0001-01-01 00:00:00.000000000 Z",
+        new StringProvider(),
+        new StringProvider());
+
+    // TIMESTAMP_TZ
+    testJdbcTypeCompatibility(
         "TIMESTAMP_TZ",
         "0001-12-31T11:11:11+03:00",
         "0001-12-31 11:11:11.000000000 +0300",
+        new StringProvider(),
+        new StringProvider());
+
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_TZ",
+        "0001-01-01T00:00:00+03:00",
+        "0001-01-01 00:00:00.000000000 +0300",
+        new StringProvider(),
+        new StringProvider());
+
+    // TIMESTAMP_LTZ
+    conn.createStatement()
+        .execute("alter session set timezone = 'UTC';"); // workaround for SNOW-727474
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_LTZ",
+        "0001-12-31T11:11:11+00:00",
+        "0001-12-31 11:11:11.000000000 Z",
+        new StringProvider(),
+        new StringProvider());
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_LTZ",
+        "0001-01-01T00:00:00+00:00",
+        "0001-01-01 00:00:00.000000000 Z",
+        new StringProvider(),
         new StringProvider());
   }
 

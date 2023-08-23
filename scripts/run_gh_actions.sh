@@ -3,7 +3,7 @@
 set -o pipefail
 
 # Build and install shaded JAR first. check_content.sh runs here.
-mvn install -DskipTests=true --batch-mode --show-version
+mvn install -PcheckShadedContent -DskipTests=true --batch-mode --show-version
 
 PARAMS=()
 PARAMS+=("-DghActionsIT")

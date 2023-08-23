@@ -118,6 +118,14 @@ public class DataValidationUtilTest {
     // Time input is not supported
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseDate("COL", "20:57:01", 0));
 
+    // Test values out of range
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseDate("COL", LocalDateTime.of(10000, 2, 2, 2, 2), 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseDate("COL", LocalDateTime.of(-10000, 2, 2, 2, 2), 0));
+
     // Test forbidden values
     expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseDate("COL", new Object(), 0));
     expectError(
@@ -261,6 +269,19 @@ public class DataValidationUtilTest {
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseTimestamp("COL", "20:57:01", 3, UTC, false, 0));
+
+    // Test values out of range
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseTimestamp(
+                "COL", LocalDateTime.of(10000, 2, 2, 2, 2), 3, UTC, false, 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseTimestamp("COL", LocalDateTime.of(0, 2, 2, 2, 2), 3, UTC, false, 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseTimestamp("COL", LocalDateTime.of(-1, 2, 2, 2, 2), 3, UTC, false, 0));
 
     // Test forbidden values
     expectError(
@@ -845,7 +866,7 @@ public class DataValidationUtilTest {
         Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL",
-            "1234567890abcdef",
+            "1234567890abcdef", // pragma: allowlist secret NOT A SECRET
             Optional.empty(),
             0)); // pragma: allowlist secret NOT A SECRET
     assertArrayEquals(

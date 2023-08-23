@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -34,9 +35,40 @@ public class StreamingIngestUtils {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  static void sleepForRetry(int executionCount) {
+  /**
+   * How many milliseconds of exponential backoff to sleep before retrying the request again:
+   *
+   * <ul>
+   *   <li>0 or 1 failure => no sleep
+   *   <li>2 failures => 1s
+   *   <li>3 failures => 2s
+   *   <li>4 or more failures => 4s
+   * </ul>
+   *
+   * @param executionCount How many unsuccessful attempts have been attempted
+   * @return Sleep time in ms
+   */
+  static long getSleepForRetryMs(int executionCount) {
+    if (executionCount < 0) {
+      throw new IllegalArgumentException(
+          String.format(
+              "executionCount must be a non-negative integer, passed: %d", executionCount));
+    } else if (executionCount < 2) {
+      return 0;
+    } else {
+      final int effectiveExecutionCount = Math.min(executionCount, 4);
+      return (1 << (effectiveExecutionCount - 2)) * 1000L;
+    }
+  }
+
+  public static void sleepForRetry(int executionCount) {
+    long sleepForRetryMs = getSleepForRetryMs(executionCount);
+    if (sleepForRetryMs == 0) {
+      return;
+    }
+
     try {
-      Thread.sleep((1 << (executionCount + 1)) * 1000);
+      Thread.sleep(sleepForRetryMs);
     } catch (InterruptedException e) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, e.getMessage());
     }
@@ -94,13 +126,13 @@ public class StreamingIngestUtils {
       throws IOException, IngestResponseException {
     int retries = 0;
     T response;
+    HttpUriRequest request =
+        requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message);
     do {
-      try (CloseableHttpResponse httpResponse =
-          httpClient.execute(
-              requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message))) {
+      try (CloseableHttpResponse httpResponse = httpClient.execute(request)) {
         response =
             ServiceResponseHandler.unmarshallStreamingIngestResponse(
-                httpResponse, targetClass, apiName);
+                httpResponse, targetClass, apiName, httpClient, request, requestBuilder);
       }
 
       if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {
