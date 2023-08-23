@@ -110,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.0.2";
+  public static final String DEFAULT_VERSION = "2.0.3";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -565,10 +565,9 @@ public class RequestBuilder {
    * addToken - adds a token to a request
    *
    * @param request the URI request
-   * @param token the token to add
    */
-  private void addToken(HttpUriRequest request, String token) {
-    request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
+  public void addToken(HttpUriRequest request) {
+    request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + securityManager.getToken());
     request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, this.securityManager.getTokenType());
   }
 
@@ -576,14 +575,13 @@ public class RequestBuilder {
    * addHeader - adds necessary header to a request
    *
    * @param request the URI request
-   * @param token authentication token
    * @param userAgentSuffix user agent suffix
    */
-  private void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
+  private void addHeaders(HttpUriRequest request, String userAgentSuffix) {
     addUserAgent(request, userAgentSuffix);
 
     // Add the auth token
-    addToken(request, token);
+    addToken(request);
 
     // Add Accept header
     request.setHeader(HttpHeaders.ACCEPT, HTTP_HEADER_CONTENT_TYPE_JSON);
@@ -610,7 +608,7 @@ public class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(insertURI);
 
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(post, this.userAgentSuffix);
 
     // the entity for the containing the json
     final StringEntity entity =
@@ -638,7 +636,7 @@ public class RequestBuilder {
     // make the get request
     HttpGet get = new HttpGet(historyURI);
 
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(get, this.userAgentSuffix);
 
     return get;
   }
@@ -664,7 +662,7 @@ public class RequestBuilder {
 
     HttpGet get = new HttpGet(historyRangeURI);
 
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+    addHeaders(get, this.userAgentSuffix /*User agent information*/);
 
     return get;
   }
@@ -692,7 +690,7 @@ public class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(uri);
 
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+    addHeaders(post, this.userAgentSuffix /*User agent information*/);
 
     // The entity for the containing the json
     final StringEntity entity = new StringEntity(payload, ContentType.APPLICATION_JSON);
@@ -737,6 +735,11 @@ public class RequestBuilder {
   /** Get authorization type */
   public String getAuthType() {
     return securityManager.getTokenType();
+  }
+
+  /** Refresh token manually */
+  public void refreshToken() {
+    securityManager.refreshToken();
   }
 
   /**

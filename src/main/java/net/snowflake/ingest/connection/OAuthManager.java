@@ -138,7 +138,8 @@ public final class OAuthManager extends SecurityManager {
   }
 
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
-  private void refreshToken() {
+  @Override
+  void refreshToken() {
     for (int retries = 0; retries < Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY; retries++) {
       try {
         oAuthClient.refreshToken();

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -125,13 +126,13 @@ public class StreamingIngestUtils {
       throws IOException, IngestResponseException {
     int retries = 0;
     T response;
+    HttpUriRequest request =
+        requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message);
     do {
-      try (CloseableHttpResponse httpResponse =
-          httpClient.execute(
-              requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message))) {
+      try (CloseableHttpResponse httpResponse = httpClient.execute(request)) {
         response =
             ServiceResponseHandler.unmarshallStreamingIngestResponse(
-                httpResponse, targetClass, apiName);
+                httpResponse, targetClass, apiName, httpClient, request, requestBuilder);
       }
 
       if (statusGetter.apply(response) == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST) {

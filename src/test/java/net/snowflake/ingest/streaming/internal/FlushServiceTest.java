@@ -843,6 +843,7 @@ public class FlushServiceTest {
             .setOwningTableFromChannelContext(channel1.getChannelContext())
             .setChunkStartOffset(0L)
             .setChunkLength(dataSize)
+            .setUncompressedChunkLength(dataSize * 2)
             .setChannelList(Collections.singletonList(channelMetadata))
             .setChunkMD5("md5")
             .setEncryptionKeyId(1234L)
@@ -867,7 +868,8 @@ public class FlushServiceTest {
               Arrays.copyOfRange(blob, offset, offset += BLOB_TAG_SIZE_IN_BYTES),
               StandardCharsets.UTF_8));
       Assert.assertEquals(
-          bdecVersion, Arrays.copyOfRange(blob, offset, offset += BLOB_VERSION_SIZE_IN_BYTES)[0]);
+          bdecVersion.toByte(),
+          Arrays.copyOfRange(blob, offset, offset += BLOB_VERSION_SIZE_IN_BYTES)[0]);
       long totalSize =
           ByteBuffer.wrap(Arrays.copyOfRange(blob, offset, offset += BLOB_FILE_SIZE_SIZE_IN_BYTES))
               .getLong();
@@ -892,6 +894,9 @@ public class FlushServiceTest {
       Assert.assertEquals(chunkMetadata.getTableName(), map.get("table"));
       Assert.assertEquals(chunkMetadata.getSchemaName(), map.get("schema"));
       Assert.assertEquals(chunkMetadata.getDBName(), map.get("database"));
+      Assert.assertEquals(chunkMetadata.getChunkLength(), map.get("chunk_length"));
+      Assert.assertEquals(
+          chunkMetadata.getUncompressedChunkLength(), map.get("chunk_length_uncompressed"));
       Assert.assertEquals(
           Long.toString(chunkMetadata.getChunkStartOffset() - offset),
           map.get("chunk_start_offset").toString());
