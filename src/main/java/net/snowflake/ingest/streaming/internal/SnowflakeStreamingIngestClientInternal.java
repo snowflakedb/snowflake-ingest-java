@@ -64,6 +64,7 @@ import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -360,6 +361,29 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
+  }
+
+  /**
+   * Return the latest committed/persisted offset token for all channels
+   *
+   * @return map of channel to the latest persisted offset token
+   */
+  @Override
+  public Map<String, String> getLatestCommittedOffsetTokens(
+      List<SnowflakeStreamingIngestChannel> channels) {
+    List<SnowflakeStreamingIngestChannelInternal<?>> internalChannels =
+        channels.stream()
+            .map(c -> (SnowflakeStreamingIngestChannelInternal<?>) c)
+            .collect(Collectors.toList());
+    List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
+        getChannelsStatus(internalChannels).getChannels();
+    Map<String, String> result = new HashMap<>();
+    for (int idx = 0; idx < channels.size(); idx++) {
+      result.put(
+          channels.get(idx).getFullyQualifiedName(),
+          channelsStatus.get(idx).getPersistedOffsetToken());
+    }
+    return result;
   }
 
   /**
