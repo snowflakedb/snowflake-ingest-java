@@ -53,7 +53,6 @@ public class Constants {
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
   public static final int ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES = 16;
-  public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
   public static final long EP_NDV_UNKNOWN = -1L;
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;

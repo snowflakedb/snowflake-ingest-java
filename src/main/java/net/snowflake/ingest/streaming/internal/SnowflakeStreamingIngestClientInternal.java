@@ -527,7 +527,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                                 || channelStatus.getStatusCode()
                                                     == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST)
                                             && executionCount
-                                                < MAX_STREAMING_INGEST_API_CHANNEL_RETRY) {
+                                                < HttpUtil.MAX_RETRIES) {
                                           queueFullChunks.add(chunkStatus);
                                         } else {
                                           String errorMessage =
