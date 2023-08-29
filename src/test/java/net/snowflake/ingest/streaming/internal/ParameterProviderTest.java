@@ -3,7 +3,9 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -270,6 +272,31 @@ public class ParameterProviderTest {
       Assert.fail("Should not have succeeded");
     } catch (IllegalArgumentException e) {
       Assert.assertTrue(e.getMessage().startsWith("Lag falls outside"));
+    }
+  }
+
+  @Test
+  public void testMaxChunksInBlobAndRegistrationRequest() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put("max_chunks_in_blob", 1);
+    parameterMap.put("max_chunks_in_registration_request", 2);
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    Assert.assertEquals(1, parameterProvider.getMaxChunksInBlob());
+    Assert.assertEquals(2, parameterProvider.getMaxChunksInRegistrationRequest());
+  }
+
+  @Test
+  public void testValidationMaxChunksInBlobAndRegistrationRequest() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put("max_chunks_in_blob", 2);
+    parameterMap.put("max_chunks_in_registration_request", 1);
+    try {
+      new ParameterProvider(parameterMap, prop);
+      Assert.fail("Should not have succeeded");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_CONFIG_PARAMETER.getMessageCode(), e.getVendorCode());
     }
   }
 }

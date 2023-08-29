@@ -452,7 +452,42 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param blobs list of uploaded blobs
    */
   void registerBlobs(List<BlobMetadata> blobs) {
-    this.registerBlobs(blobs, 0);
+    for (List<BlobMetadata> blobBatch : partitionBlobListForRegistrationRequest(blobs)) {
+      this.registerBlobs(blobBatch, 0);
+    }
+  }
+
+  /**
+   * Partition the collection of blobs into sub-lists, so that the total number of chunks in each
+   * sublist does not exceed the max allowed number of chunks in one registration request.
+   */
+  List<List<BlobMetadata>> partitionBlobListForRegistrationRequest(List<BlobMetadata> blobs) {
+    List<List<BlobMetadata>> result = new ArrayList<>();
+    List<BlobMetadata> currentBatch = new ArrayList<>();
+    int chunksInCurrentBatch = 0;
+
+    for (BlobMetadata blob : blobs) {
+      if (chunksInCurrentBatch + blob.getChunks().size()
+          > parameterProvider.getMaxChunksInRegistrationRequest()) {
+        // Newly added BDEC file would exceed the max number of chunks in a single registration
+        // request. We put chunks collected so far into the result list and create a new batch with
+        // the current blob
+        result.add(currentBatch);
+        currentBatch = new ArrayList<>();
+        currentBatch.add(blob);
+        chunksInCurrentBatch = blob.getChunks().size();
+      } else {
+        // Newly added BDEC can be added to the current batch because it does not exceed the max
+        // number of chunks in a single registration request, yet.
+        currentBatch.add(blob);
+        chunksInCurrentBatch += blob.getChunks().size();
+      }
+    }
+
+    if (!currentBatch.isEmpty()) {
+      result.add(currentBatch);
+    }
+    return result;
   }
 
   /**

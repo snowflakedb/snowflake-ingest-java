@@ -11,6 +11,8 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -319,11 +321,11 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         Mockito.spy(
@@ -378,11 +380,11 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(500);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(statusLine.getStatusCode()).thenReturn(500);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         Mockito.spy(
@@ -645,12 +647,12 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(500);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(statusLine.getStatusCode()).thenReturn(500);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
     String response = "testRegisterBlobErrorResponse";
-    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
@@ -693,11 +695,11 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
@@ -749,11 +751,11 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
@@ -827,16 +829,16 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent())
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent())
         .thenReturn(
             IOUtils.toInputStream(responseString),
             IOUtils.toInputStream(retryResponseString),
             IOUtils.toInputStream(retryResponseString),
             IOUtils.toInputStream(retryResponseString));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         Mockito.spy(
@@ -860,6 +862,79 @@ public class SnowflakeStreamingIngestClientTest {
         .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
     Assert.assertFalse(channel1.isValid());
     Assert.assertFalse(channel2.isValid());
+  }
+
+  @Test
+  public void testRegisterBlobChunkLimit() throws Exception {
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+
+    SnowflakeStreamingIngestClientInternal<Object> client =
+        Mockito.spy(
+            new SnowflakeStreamingIngestClientInternal<>(
+                "client",
+                new SnowflakeURL("snowflake.dev.local:8082"),
+                null,
+                httpClient,
+                true,
+                requestBuilder,
+                null));
+
+    assertEquals(0, client.partitionBlobListForRegistrationRequest(new ArrayList<>()).size());
+    assertEquals(
+        1, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(99)).size());
+    assertEquals(
+        2, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(101)).size());
+    assertEquals(
+        2, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(99, 2)).size());
+    assertEquals(
+        2,
+        client
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 98))
+            .size());
+    assertEquals(
+        3,
+        client
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 99))
+            .size());
+    assertEquals(
+        3,
+        client
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 99, 1))
+            .size());
+  }
+
+  /**
+   * Generate blob metadata with specified number of chunks per blob
+   *
+   * @param numbersOfChunks Array of chunk numbers per blob
+   * @return List of blob metadata
+   */
+  private List<BlobMetadata> createTestBlobMetadata(int... numbersOfChunks) {
+    List<BlobMetadata> result = new ArrayList<>();
+    for (int n : numbersOfChunks) {
+      List<ChunkMetadata> chunkMetadata = new ArrayList<>();
+      for (int i = 0; i < n; i++) {
+        ChunkMetadata chunk =
+            ChunkMetadata.builder()
+                .setOwningTableFromChannelContext(channel1.getChannelContext())
+                .setChunkStartOffset(0L)
+                .setChunkLength(1)
+                .setEncryptionKeyId(0L)
+                .setChunkMD5("")
+                .setEpInfo(new EpInfo())
+                .setChannelList(new ArrayList<>())
+                .setFirstInsertTimeInMs(0L)
+                .setLastInsertTimeInMs(0L)
+                .build();
+        chunkMetadata.add(chunk);
+      }
+
+      result.add(new BlobMetadata("", "", chunkMetadata, new BlobStats()));
+    }
+    return result;
   }
 
   @Test
@@ -945,13 +1020,13 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent())
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent())
         .thenReturn(
             IOUtils.toInputStream(responseString), IOUtils.toInputStream(retryResponseString));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         Mockito.spy(
@@ -1022,11 +1097,11 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
@@ -1146,7 +1221,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     CompletableFuture<Void> future = new CompletableFuture<>();
     future.completeExceptionally(new Exception("Simulating Error"));
-    Mockito.when(client.flush(true)).thenReturn(future);
+    when(client.flush(true)).thenReturn(future);
 
     Assert.assertFalse(client.isClosed());
     try {
@@ -1249,11 +1324,11 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    Mockito.when(statusLine.getStatusCode()).thenReturn(200);
-    Mockito.when(httpResponse.getStatusLine()).thenReturn(statusLine);
-    Mockito.when(httpResponse.getEntity()).thenReturn(httpEntity);
-    Mockito.when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
-    Mockito.when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(responseString));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
 
     RequestBuilder requestBuilder =
         Mockito.spy(

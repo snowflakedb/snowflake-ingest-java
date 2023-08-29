@@ -31,6 +31,9 @@ public class ParameterProvider {
   public static final String MAX_CHUNK_SIZE_IN_BYTES = "MAX_CHUNK_SIZE_IN_BYTES".toLowerCase();
   public static final String MAX_ALLOWED_ROW_SIZE_IN_BYTES =
       "MAX_ALLOWED_ROW_SIZE_IN_BYTES".toLowerCase();
+  public static final String MAX_CHUNKS_IN_BLOB = "MAX_CHUNKS_IN_BLOB".toLowerCase();
+  public static final String MAX_CHUNKS_IN_REGISTRATION_REQUEST =
+      "MAX_CHUNKS_IN_REGISTRATION_REQUEST".toLowerCase();
 
   public static final String MAX_CLIENT_LAG = "MAX_CLIENT_LAG".toLowerCase();
 
@@ -59,6 +62,8 @@ public class ParameterProvider {
 
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
+  public static final int MAX_CHUNKS_IN_BLOB_DEFAULT = 20;
+  public static final int MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT = 100;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -79,6 +84,7 @@ public class ParameterProvider {
    */
   public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
     this.setParameterMap(parameterOverrides, props);
+    this.validateParameters();
   }
 
   /** Empty constructor for tests */
@@ -170,6 +176,12 @@ public class ParameterProvider {
     this.updateValue(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT, parameterOverrides, props);
     this.updateValue(
         MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT, parameterOverrides, props);
+    this.updateValue(MAX_CHUNKS_IN_BLOB, MAX_CHUNKS_IN_BLOB_DEFAULT, parameterOverrides, props);
+    this.updateValue(
+        MAX_CHUNKS_IN_REGISTRATION_REQUEST,
+        MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT,
+        parameterOverrides,
+        props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -369,11 +381,44 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
+  /** @return The max allow row size (in bytes) */
   public long getMaxAllowedRowSizeInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
             MAX_ALLOWED_ROW_SIZE_IN_BYTES, MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
+  }
+
+  /** @return The max number of chunks that can be put into a single BDEC file */
+  public int getMaxChunksInBlob() {
+    Object val = this.parameterMap.getOrDefault(MAX_CHUNKS_IN_BLOB, MAX_CHUNKS_IN_BLOB_DEFAULT);
+    return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
+  }
+
+  /**
+   * @return The max number of chunks that can be put into a single BDEC registration request. Must
+   *     be higher than MAX_CHUNKS_IN_BLOB.
+   */
+  public int getMaxChunksInRegistrationRequest() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_CHUNKS_IN_REGISTRATION_REQUEST, MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT);
+    return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
+  }
+
+  /** Validates parameters */
+  private void validateParameters() {
+    if (this.getMaxChunksInBlob() >= this.getMaxChunksInRegistrationRequest()) {
+      throw new SFException(
+          ErrorCode.INVALID_CONFIG_PARAMETER,
+          String.format(
+              "Value of configuration property %s (%d) must be smaller than the value of"
+                  + " configuration property %s (%d).",
+              MAX_CHUNKS_IN_BLOB,
+              getMaxChunksInBlob(),
+              MAX_CHUNKS_IN_REGISTRATION_REQUEST,
+              getMaxChunksInRegistrationRequest()));
+    }
   }
 
   @Override

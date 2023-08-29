@@ -350,6 +350,16 @@ class FlushService<T> {
         if (!leftoverChannelsDataPerTable.isEmpty()) {
           channelsDataPerTable.addAll(leftoverChannelsDataPerTable);
           leftoverChannelsDataPerTable.clear();
+        } else if (blobData.size()
+            >= this.owningClient.getParameterProvider().getMaxChunksInBlob()) {
+          // Create a new blob if the current one already contains max allowed number of chunks
+          logger.logInfo(
+              "Max allowed number of chunks in the current blob reached. chunkCount={}"
+                  + " maxChunkCount={} currentBlobPath={}",
+              blobData.size(),
+              this.owningClient.getParameterProvider().getMaxChunksInBlob(),
+              blobPath);
+          break;
         } else {
           ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
               itr.next().getValue();

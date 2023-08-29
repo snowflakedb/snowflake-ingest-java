@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -273,7 +274,22 @@ public class FlushServiceTest {
     }
   }
 
-  TestContextFactory<?> testContextFactory;
+  TestContextFactory<List<List<Object>>> testContextFactory;
+
+  private SnowflakeStreamingIngestChannelInternal<List<List<Object>>> addChannel(
+      TestContext<List<List<Object>>> testContext, int tableId, long encryptionKeyId) {
+    return testContext
+        .channelBuilder("channel" + UUID.randomUUID())
+        .setDBName("db1")
+        .setSchemaName("PUBLIC")
+        .setTableName("table" + tableId)
+        .setOffsetToken("offset1")
+        .setChannelSequencer(0L)
+        .setRowSequencer(0L)
+        .setEncryptionKey("key")
+        .setEncryptionKeyId(encryptionKeyId)
+        .buildAndAdd();
+  }
 
   private SnowflakeStreamingIngestChannelInternal<?> addChannel1(TestContext<?> testContext) {
     return testContext
@@ -544,6 +560,107 @@ public class FlushServiceTest {
     // Force = true flushes
     flushService.flush(true).get();
     Mockito.verify(flushService, Mockito.times(2)).buildAndUpload(Mockito.any(), Mockito.any());
+  }
+
+  @Test
+  public void testBlobSplitDueToNumberOfChunks() throws Exception {
+    for (int rowCount : Arrays.asList(0, 1, 30, 111, 159, 287, 1287, 1599, 4496)) {
+      runTestBlobSplitDueToNumberOfChunks(rowCount);
+    }
+  }
+
+  /**
+   * Insert rows in batches of 3 into each table and assert that the expected number of blobs is
+   * generated.
+   *
+   * @param numberOfRows How many rows to insert
+   */
+  public void runTestBlobSplitDueToNumberOfChunks(int numberOfRows) throws Exception {
+    int channelsPerTable = 3;
+    int expectedBlobs =
+        (int)
+            Math.ceil(
+                (double) numberOfRows
+                    / channelsPerTable
+                    / ParameterProvider.MAX_CHUNKS_IN_BLOB_DEFAULT);
+
+    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
+
+    for (int i = 0; i < numberOfRows; i++) {
+      SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
+          addChannel(testContext, i / channelsPerTable, 1);
+      channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+      channel.insertRow(Collections.singletonMap("C1", i), "");
+    }
+
+    FlushService<List<List<Object>>> flushService = testContext.flushService;
+    flushService.flush(true).get();
+
+    ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
+        ArgumentCaptor.forClass(List.class);
+    Mockito.verify(flushService, Mockito.times(expectedBlobs))
+        .buildAndUpload(Mockito.any(), blobDataCaptor.capture());
+
+    // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
+    List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
+        blobDataCaptor.getAllValues();
+
+    Assert.assertEquals(numberOfRows, getRows(allUploadedBlobs).size());
+  }
+
+  @Test
+  public void testBlobSplitDueToNumberOfChunksWithLeftoverChannels() throws Exception {
+    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
+
+    for (int i = 0; i < 19; i++) { // 19 simple chunks
+      SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
+          addChannel(testContext, i, 1);
+      channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+      channel.insertRow(Collections.singletonMap("C1", i), "");
+    }
+
+    // 20th chunk would contain multiple channels, but there are some with different encryption key
+    // ID, so they spill to a new blob
+    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel1 =
+        addChannel(testContext, 19, 1);
+    channel1.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+    channel1.insertRow(Collections.singletonMap("C1", 19), "");
+
+    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel2 =
+        addChannel(testContext, 19, 2);
+    channel2.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+    channel2.insertRow(Collections.singletonMap("C1", 19), "");
+
+    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel3 =
+        addChannel(testContext, 19, 2);
+    channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+    channel3.insertRow(Collections.singletonMap("C1", 19), "");
+
+    FlushService<List<List<Object>>> flushService = testContext.flushService;
+    flushService.flush(true).get();
+
+    ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
+        ArgumentCaptor.forClass(List.class);
+    Mockito.verify(flushService, Mockito.atLeast(2))
+        .buildAndUpload(Mockito.any(), blobDataCaptor.capture());
+
+    // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
+    List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
+        blobDataCaptor.getAllValues();
+
+    Assert.assertEquals(22, getRows(allUploadedBlobs).size());
+  }
+
+  private List<List<Object>> getRows(List<List<List<ChannelData<List<List<Object>>>>>> blobs) {
+    List<List<Object>> result = new ArrayList<>();
+    blobs.forEach(
+        chunks ->
+            chunks.forEach(
+                channels ->
+                    channels.forEach(
+                        chunkData ->
+                            result.addAll(((ParquetChunkData) chunkData.getVectors()).rows))));
+    return result;
   }
 
   @Test
