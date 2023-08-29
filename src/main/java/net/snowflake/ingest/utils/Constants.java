@@ -5,6 +5,7 @@
 package net.snowflake.ingest.utils;
 
 import java.util.Arrays;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /** Contains all the constants needed for Streaming Ingest */
 public class Constants {
@@ -113,6 +114,34 @@ public class Constants {
     }
   }
 
+  /**
+   * Compression algorithm supported by BDEC Parquet Writer. It is a wrapper around Parquet's lib
+   * CompressionCodecName, but we want to control and allow only specific values of that.
+   */
+  public enum BdecParquetCompression {
+    UNCOMPRESSED,
+    GZIP,
+    SNAPPY,
+    ZSTD;
+
+    public CompressionCodecName getCompressionCodec() {
+      return (this == UNCOMPRESSED
+          ? CompressionCodecName.fromConf(null)
+          : CompressionCodecName.fromConf(this.name()));
+    }
+
+    public static BdecParquetCompression fromName(String name) {
+      for (BdecParquetCompression e : BdecParquetCompression.values()) {
+        if (e.name().toLowerCase().equals(name.toLowerCase())) {
+          return e;
+        }
+      }
+      throw new IllegalArgumentException(
+          String.format(
+              "Unsupported BDEC_PARQUET_COMPRESSION_ALGORITHM = '%d', allowed values are %s",
+              name, Arrays.asList(BdecParquetCompression.values())));
+    }
+  }
   // Parameters
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;
