@@ -170,6 +170,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   final ZoneId defaultTimezone;
 
+  // Buffer parameters that are set at the owning client level
   final ClientBufferParameters clientBufferParameters;
 
   AbstractRowBuffer(
