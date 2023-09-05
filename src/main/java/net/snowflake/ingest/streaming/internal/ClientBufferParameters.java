@@ -16,14 +16,14 @@ public class ClientBufferParameters {
   private long maxAllowedRowSizeInBytes;
 
   /**
-   * This is TEST-ONLY constructor
+   * Private constructor used for test methods
    *
    * @param enableParquetInternalBuffering flag whether buffering in internal Parquet buffers is
    *     enabled
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
    */
-  public ClientBufferParameters(
+  private ClientBufferParameters(
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes) {
@@ -46,6 +46,21 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().getMaxAllowedRowSizeInBytes()
             : ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
+  }
+
+  /**
+   * @param enableParquetInternalBuffering flag whether buffering in internal Parquet buffers is
+   *     enabled
+   * @param maxChunkSizeInBytes maximum chunk size in bytes
+   * @param maxAllowedRowSizeInBytes maximum row size in bytes
+   * @return ClientBufferParameters object
+   */
+  public static ClientBufferParameters test_createClientBufferParameters(
+      boolean enableParquetInternalBuffering,
+      long maxChunkSizeInBytes,
+      long maxAllowedRowSizeInBytes) {
+    return new ClientBufferParameters(
+        enableParquetInternalBuffering, maxChunkSizeInBytes, maxAllowedRowSizeInBytes);
   }
 
   public boolean getEnableParquetInternalBuffering() {
