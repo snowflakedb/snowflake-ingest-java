@@ -327,7 +327,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           }
         }
         checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
-      } else {
+      } else if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
         // If the on_error option is ABORT, simply throw the first exception
         float tempRowsSizeInBytes = 0F;
         int tempRowCount = 0;
