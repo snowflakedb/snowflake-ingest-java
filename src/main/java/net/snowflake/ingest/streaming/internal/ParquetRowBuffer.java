@@ -51,9 +51,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private final String channelName;
 
   private MessageType schema;
-  private final boolean enableParquetInternalBuffering;
-  private final long maxChunkSizeInBytes;
-  private final long maxAllowedRowSizeInBytes;
 
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
@@ -62,24 +59,19 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean enableParquetInternalBuffering,
-      long maxChunkSizeInBytes,
-      long maxAllowedRowSizeInBytes) {
+      ClientBufferParameters clientBufferParameters) {
     super(
         onErrorOption,
         defaultTimezone,
         fullyQualifiedChannelName,
         rowSizeMetric,
         channelRuntimeState,
-        maxChunkSizeInBytes);
+        clientBufferParameters);
     this.fieldIndex = new HashMap<>();
     this.metadata = new HashMap<>();
     this.data = new ArrayList<>();
     this.tempData = new ArrayList<>();
     this.channelName = fullyQualifiedChannelName;
-    this.enableParquetInternalBuffering = enableParquetInternalBuffering;
-    this.maxChunkSizeInBytes = maxChunkSizeInBytes;
-    this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
   }
 
   @Override
@@ -122,9 +114,14 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private void createFileWriter() {
     fileOutput = new ByteArrayOutputStream();
     try {
-      if (enableParquetInternalBuffering) {
+      if (clientBufferParameters.getEnableParquetInternalBuffering()) {
         bdecParquetWriter =
-            new BdecParquetWriter(fileOutput, schema, metadata, channelName, maxChunkSizeInBytes);
+            new BdecParquetWriter(
+                fileOutput,
+                schema,
+                metadata,
+                channelName,
+                clientBufferParameters.getMaxChunkSizeInBytes());
       } else {
         this.bdecParquetWriter = null;
       }
@@ -150,7 +147,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   void writeRow(List<Object> row) {
-    if (enableParquetInternalBuffering) {
+    if (clientBufferParameters.getEnableParquetInternalBuffering()) {
       bdecParquetWriter.writeRow(row);
     } else {
       data.add(row);
@@ -209,11 +206,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     long rowSizeRoundedUp = Double.valueOf(Math.ceil(size)).longValue();
 
-    if (rowSizeRoundedUp > maxAllowedRowSizeInBytes) {
+    if (rowSizeRoundedUp > clientBufferParameters.getMaxAllowedRowSizeInBytes()) {
       throw new SFException(
           ErrorCode.MAX_ROW_SIZE_EXCEEDED,
           String.format(
-              "rowSizeInBytes=%.3f maxAllowedRowSizeInBytes=%d", size, maxAllowedRowSizeInBytes));
+              "rowSizeInBytes=%.3f maxAllowedRowSizeInBytes=%d",
+              size, clientBufferParameters.getMaxAllowedRowSizeInBytes()));
     }
 
     out.accept(Arrays.asList(indexedRow));
@@ -257,7 +255,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
 
     List<List<Object>> oldData = new ArrayList<>();
-    if (!enableParquetInternalBuffering) {
+    if (!clientBufferParameters.getEnableParquetInternalBuffering()) {
       data.forEach(r -> oldData.add(new ArrayList<>(r)));
     }
     return bufferedRowCount <= 0
@@ -321,7 +319,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   public Flusher<ParquetChunkData> createFlusher() {
-    return new ParquetFlusher(schema, enableParquetInternalBuffering, maxChunkSizeInBytes);
+    return new ParquetFlusher(
+        schema,
+        clientBufferParameters.getEnableParquetInternalBuffering(),
+        clientBufferParameters.getMaxChunkSizeInBytes());
   }
 
   private static class ParquetColumn {
