@@ -301,7 +301,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.flushLock.lock();
     try {
       this.channelState.updateInsertStats(System.currentTimeMillis(), this.bufferedRowCount);
-      if (onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
+      if (onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE
+          || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_AT_FIRST_ERROR) {
         // Used to map incoming row(nth row) to InsertError(for nth row) in response
         long rowIndex = 0;
         for (Map<String, Object> row : rows) {
@@ -322,6 +323,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           }
           checkBatchSizeEnforcedMaximum(rowsSizeInBytes);
           rowIndex++;
+          if (onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_AT_FIRST_ERROR
+              && response.hasErrors()) {
+            break;
+          }
           if (this.bufferedRowCount == Integer.MAX_VALUE) {
             throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
           }
