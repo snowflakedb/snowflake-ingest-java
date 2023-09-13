@@ -242,4 +242,34 @@ public class ParameterProviderTest {
       Assert.assertTrue(e.getMessage().startsWith("Failed to parse"));
     }
   }
+
+  @Test
+  public void testMaxClientLagEnabledThresholdBelow() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "0 second");
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    try {
+      parameterProvider.getBufferFlushIntervalInMs();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().startsWith("Lag falls outside"));
+    }
+  }
+
+  @Test
+  public void testMaxClientLagEnabledThresholdAbove() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "11 minutes");
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    try {
+      parameterProvider.getBufferFlushIntervalInMs();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().startsWith("Lag falls outside"));
+    }
+  }
 }

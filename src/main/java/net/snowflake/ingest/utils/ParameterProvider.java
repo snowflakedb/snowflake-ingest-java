@@ -53,6 +53,11 @@ public class ParameterProvider {
   // Lag related parameters
   public static final String MAX_CLIENT_LAG_DEFAULT = "1 second";
   public static final boolean MAX_CLIENT_LAG_ENABLED_DEFAULT = true;
+
+  static final long MAX_CLIENT_LAG_MS_MIN = 1000;
+
+  // 10 minutes
+  static final long MAX_CLIENT_LAG_MS_MAX = 600000;
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
@@ -92,6 +97,7 @@ public class ParameterProvider {
       this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
     }
   }
+
   /**
    * Sets parameter values by first checking 1. parameterOverrides 2. props 3. default value
    *
@@ -205,17 +211,29 @@ public class ParameterProvider {
       throw new IllegalArgumentException(
           String.format("Failed to parse MAX_CLIENT_LAG = '%s'", lagParts[0]), t);
     }
+    long computedLag = BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT;
     switch (lagParts[1].toLowerCase()) {
       case "second":
       case "seconds":
-        return lag * 1000;
+        computedLag = lag * 1000;
+        break;
       case "minute":
       case "minutes":
-        return lag * 60000;
+        computedLag = lag * 60000;
+        break;
       default:
         throw new IllegalArgumentException(
             String.format("Invalid time unit supplied = '%s", lagParts[1]));
     }
+
+    if (!(computedLag >= MAX_CLIENT_LAG_MS_MIN && computedLag <= MAX_CLIENT_LAG_MS_MAX)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Lag falls outside of allowed time range. Minimum (milliseconds) = %s, Maximum"
+                  + " (milliseconds) = %s",
+              MAX_CLIENT_LAG_MS_MIN, MAX_CLIENT_LAG_MS_MAX));
+    }
+    return computedLag;
   }
 
   private boolean getMaxClientLagEnabled() {
