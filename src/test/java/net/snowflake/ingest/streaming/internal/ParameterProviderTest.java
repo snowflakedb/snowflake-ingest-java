@@ -190,7 +190,12 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "1");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    Assert.assertEquals(1000, parameterProvider.getBufferFlushIntervalInMs());
+    try {
+      parameterProvider.getBufferFlushIntervalInMs();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().startsWith("Failed to parse"));
+    }
   }
 
   @Test
@@ -200,7 +205,12 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, " year");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    Assert.assertEquals(1000, parameterProvider.getBufferFlushIntervalInMs());
+    try {
+      parameterProvider.getBufferFlushIntervalInMs();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().startsWith("Failed to parse"));
+    }
   }
 
   @Test

@@ -188,18 +188,19 @@ public class ParameterProvider {
   private long getMaxClientLagMs() {
     Object val = this.parameterMap.getOrDefault(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT);
     if (!(val instanceof String)) {
-      return 1000;
+      return BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT;
     }
     String maxLag = (String) val;
     String[] lagParts = maxLag.split(" ");
     if (lagParts.length != 2
         || (lagParts[0] == null || "".equals(lagParts[0]))
         || (lagParts[1] == null || "".equals(lagParts[1]))) {
-      return 1000;
+      throw new IllegalArgumentException(
+          String.format("Failed to parse MAX_CLIENT_LAG = '%s'", maxLag));
     }
-    long unit;
+    long lag;
     try {
-      unit = Long.parseLong(lagParts[0]);
+      lag = Long.parseLong(lagParts[0]);
     } catch (Throwable t) {
       throw new IllegalArgumentException(
           String.format("Failed to parse MAX_CLIENT_LAG = '%s'", lagParts[0]), t);
@@ -207,10 +208,10 @@ public class ParameterProvider {
     switch (lagParts[1].toLowerCase()) {
       case "second":
       case "seconds":
-        return unit * 1000;
+        return lag * 1000;
       case "minute":
       case "minutes":
-        return unit * 60000;
+        return lag * 60000;
       default:
         throw new IllegalArgumentException(
             String.format("Invalid time unit supplied = '%s", lagParts[1]));
@@ -220,7 +221,7 @@ public class ParameterProvider {
   private boolean getMaxClientLagEnabled() {
     Object val =
         this.parameterMap.getOrDefault(MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT);
-    return (val instanceof Boolean) ? (Boolean) val : false;
+    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
   /** @return Time in milliseconds between checks to see if the buffer should be flushed */
