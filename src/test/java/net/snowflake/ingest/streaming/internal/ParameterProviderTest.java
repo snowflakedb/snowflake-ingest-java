@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Properties;
 import net.snowflake.ingest.utils.ParameterProvider;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 public class ParameterProviderTest {
@@ -154,6 +153,7 @@ public class ParameterProviderTest {
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
     Assert.assertEquals(2000, parameterProvider.getBufferFlushIntervalInMs());
   }
+
   @Test
   public void testMaxClientLagEnabledMinuteTimeUnit() {
     Properties prop = new Properties();
