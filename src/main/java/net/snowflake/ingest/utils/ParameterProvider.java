@@ -31,6 +31,10 @@ public class ParameterProvider {
   public static final String MAX_ALLOWED_ROW_SIZE_IN_BYTES =
       "MAX_ALLOWED_ROW_SIZE_IN_BYTES".toLowerCase();
 
+  public static final String MAX_CLIENT_LAG = "MAX_CLIENT_LAG".toLowerCase();
+
+  public static final String MAX_CLIENT_LAG_ENABLED = "MAX_CLIENT_LAG_ENABLED".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
@@ -45,6 +49,10 @@ public class ParameterProvider {
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 32000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 128000000L;
+
+  // Lag related parameters
+  public static final String MAX_CLIENT_LAG_DEFAULT = "1 second";
+  public static final boolean MAX_CLIENT_LAG_ENABLED_DEFAULT = true;
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
@@ -53,6 +61,9 @@ public class ParameterProvider {
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
+
+  // Cached buffer flush interval - avoid parsing each time for quick lookup
+  private Long cachedBufferFlushIntervalMs = -1L;
 
   /**
    * Constructor. Takes properties from profile file and properties from client constructor and
@@ -149,20 +160,74 @@ public class ParameterProvider {
 
     this.updateValue(
         MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
+
+    this.updateValue(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT, parameterOverrides, props);
+    this.updateValue(
+        MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT, parameterOverrides, props);
   }
 
-  /** @return Longest interval in milliseconds between buffer flushes */
+  /**
+   * @return Longest interval in milliseconds between buffer flushes
+   */
   public long getBufferFlushIntervalInMs() {
-    Object val =
-        this.parameterMap.getOrDefault(
-            BUFFER_FLUSH_INTERVAL_IN_MILLIS, BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT);
-    if (val instanceof String) {
-      return Long.parseLong(val.toString());
+    if (getMaxClientLagEnabled()) {
+      if (cachedBufferFlushIntervalMs != -1L) {
+        return cachedBufferFlushIntervalMs;
+      }
+      long lag = getMaxClientLagMs();
+      if (cachedBufferFlushIntervalMs == -1L) {
+        cachedBufferFlushIntervalMs = lag;
+      }
+      return cachedBufferFlushIntervalMs;
+    } else {
+      Object val =
+          this.parameterMap.getOrDefault(
+              BUFFER_FLUSH_INTERVAL_IN_MILLIS, BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT);
+      return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
     }
-    return (long) val;
   }
 
-  /** @return Time in milliseconds between checks to see if the buffer should be flushed */
+  private long getMaxClientLagMs() {
+    Object val = this.parameterMap.getOrDefault(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT);
+    if (!(val instanceof String)) {
+      return 1000;
+    }
+    String maxLag = (String) val;
+    String[] lagParts = maxLag.split(" ");
+    if (lagParts.length != 2
+        || (lagParts[0] == null || "".equals(lagParts[0]))
+        || (lagParts[1] == null || "".equals(lagParts[1]))) {
+      return 1000;
+    }
+    long unit;
+    try {
+      unit = Long.parseLong(lagParts[0]);
+    } catch (Throwable t) {
+      throw new IllegalArgumentException(
+          String.format("Failed to parse MAX_CLIENT_LAG = '%s'", lagParts[0]), t);
+    }
+    switch (lagParts[1].toLowerCase()) {
+      case "second":
+      case "seconds":
+        return unit * 1000;
+      case "minute":
+      case "minutes":
+        return unit * 60000;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid time unit supplied = '%s", lagParts[1]));
+    }
+  }
+
+  private boolean getMaxClientLagEnabled() {
+    Object val =
+        this.parameterMap.getOrDefault(MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT);
+    return (val instanceof Boolean) ? (Boolean) val : false;
+  }
+
+  /**
+   * @return Time in milliseconds between checks to see if the buffer should be flushed
+   */
   public long getBufferFlushCheckIntervalInMs() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -173,7 +238,9 @@ public class ParameterProvider {
     return (long) val;
   }
 
-  /** @return Duration in milliseconds to delay data insertion to the buffer when throttled */
+  /**
+   * @return Duration in milliseconds to delay data insertion to the buffer when throttled
+   */
   public long getInsertThrottleIntervalInMs() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -184,7 +251,9 @@ public class ParameterProvider {
     return (long) val;
   }
 
-  /** @return Percent of free total memory at which we throttle row inserts */
+  /**
+   * @return Percent of free total memory at which we throttle row inserts
+   */
   public int getInsertThrottleThresholdInPercentage() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -196,7 +265,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return Absolute size in bytes of free total memory at which we throttle row inserts */
+  /**
+   * @return Absolute size in bytes of free total memory at which we throttle row inserts
+   */
   public int getInsertThrottleThresholdInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -207,7 +278,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return true if jmx metrics are enabled for a client */
+  /**
+   * @return true if jmx metrics are enabled for a client
+   */
   public boolean hasEnabledSnowpipeStreamingMetrics() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -218,7 +291,9 @@ public class ParameterProvider {
     return (boolean) val;
   }
 
-  /** @return Blob format version */
+  /**
+   * @return Blob format version
+   */
   public Constants.BdecVersion getBlobFormatVersion() {
     Object val = this.parameterMap.getOrDefault(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT);
     if (val instanceof Constants.BdecVersion) {
@@ -247,7 +322,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return the max retry count when waiting for a blob upload task to finish */
+  /**
+   * @return the max retry count when waiting for a blob upload task to finish
+   */
   public int getBlobUploadMaxRetryCount() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -258,7 +335,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return The max memory limit in bytes */
+  /**
+   * @return The max memory limit in bytes
+   */
   public long getMaxMemoryLimitInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -266,7 +345,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
-  /** @return Return whether memory optimization for Parquet is enabled. */
+  /**
+   * @return Return whether memory optimization for Parquet is enabled.
+   */
   public boolean getEnableParquetInternalBuffering() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -274,7 +355,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
-  /** @return The max channel size in bytes */
+  /**
+   * @return The max channel size in bytes
+   */
   public long getMaxChannelSizeInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -282,7 +365,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
-  /** @return The max chunk size in bytes that could avoid OOM at server side */
+  /**
+   * @return The max chunk size in bytes that could avoid OOM at server side
+   */
   public long getMaxChunkSizeInBytes() {
     Object val =
         this.parameterMap.getOrDefault(MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
