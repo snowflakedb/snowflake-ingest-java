@@ -185,6 +185,7 @@ class StreamingIngestStage {
               .setStreamingIngestClientKey(this.clientPrefix)
               .setStreamingIngestClientName(this.clientName)
               .setProxyProperties(this.proxyProperties)
+              .setUseS3RegionalUrl(true) // required for Private link customers
               .setDestFileName(fullFilePath)
               .build());
     } catch (SnowflakeSQLException e) {
