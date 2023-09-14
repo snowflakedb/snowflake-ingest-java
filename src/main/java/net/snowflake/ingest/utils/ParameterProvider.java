@@ -3,6 +3,7 @@ package net.snowflake.ingest.utils;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /** Utility class to provide configurable constants */
 public class ParameterProvider {
@@ -54,10 +55,9 @@ public class ParameterProvider {
   public static final String MAX_CLIENT_LAG_DEFAULT = "1 second";
   public static final boolean MAX_CLIENT_LAG_ENABLED_DEFAULT = true;
 
-  static final long MAX_CLIENT_LAG_MS_MIN = 1000;
+  static final long MAX_CLIENT_LAG_MS_MIN = TimeUnit.SECONDS.toMillis(1);
 
-  // 10 minutes
-  static final long MAX_CLIENT_LAG_MS_MAX = 600000;
+  static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
@@ -211,15 +211,15 @@ public class ParameterProvider {
       throw new IllegalArgumentException(
           String.format("Failed to parse MAX_CLIENT_LAG = '%s'", lagParts[0]), t);
     }
-    long computedLag = BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT;
+    long computedLag;
     switch (lagParts[1].toLowerCase()) {
       case "second":
       case "seconds":
-        computedLag = lag * 1000;
+        computedLag = lag * TimeUnit.SECONDS.toMillis(1);
         break;
       case "minute":
       case "minutes":
-        computedLag = lag * 60000;
+        computedLag = lag * TimeUnit.SECONDS.toMillis(60);
         break;
       default:
         throw new IllegalArgumentException(
