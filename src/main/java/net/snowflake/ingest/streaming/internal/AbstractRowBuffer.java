@@ -162,8 +162,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Metric callback to report size of inserted rows
   private final Consumer<Float> rowSizeMetric;
 
-  private final long maxChunkSizeInBytes;
-
   // State of the owning channel
   final ChannelRuntimeState channelState;
 
@@ -172,13 +170,16 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   final ZoneId defaultTimezone;
 
+  // Buffer parameters that are set at the owning client level
+  final ClientBufferParameters clientBufferParameters;
+
   AbstractRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      long maxChunkSizeInBytes) {
+      ClientBufferParameters clientBufferParameters) {
     this.onErrorOption = onErrorOption;
     this.defaultTimezone = defaultTimezone;
     this.rowSizeMetric = rowSizeMetric;
@@ -188,7 +189,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.flushLock = new ReentrantLock();
     this.bufferedRowCount = 0;
     this.bufferSize = 0F;
-    this.maxChunkSizeInBytes = maxChunkSizeInBytes;
+    this.clientBufferParameters = clientBufferParameters;
 
     // Initialize empty stats
     this.statsMap = new HashMap<>();
@@ -544,9 +545,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      boolean enableParquetMemoryOptimization,
-      long maxChunkSizeInBytes,
-      long maxRowSizeInBytes) {
+      ClientBufferParameters clientBufferParameters) {
     switch (bdecVersion) {
       case THREE:
         //noinspection unchecked
@@ -557,9 +556,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 fullyQualifiedChannelName,
                 rowSizeMetric,
                 channelRuntimeState,
-                enableParquetMemoryOptimization,
-                maxChunkSizeInBytes,
-                maxRowSizeInBytes);
+                clientBufferParameters);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
@@ -567,10 +564,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   private void checkBatchSizeEnforcedMaximum(float batchSizeInBytes) {
-    if (batchSizeInBytes > maxChunkSizeInBytes) {
+    if (batchSizeInBytes > clientBufferParameters.getMaxChunkSizeInBytes()) {
       throw new SFException(
           ErrorCode.MAX_BATCH_SIZE_EXCEEDED,
-          maxChunkSizeInBytes,
+          clientBufferParameters.getMaxChunkSizeInBytes(),
           INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES);
     }
   }

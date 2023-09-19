@@ -3,6 +3,7 @@ package net.snowflake.ingest.utils;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /** Utility class to provide configurable constants */
 public class ParameterProvider {
@@ -31,6 +32,10 @@ public class ParameterProvider {
   public static final String MAX_ALLOWED_ROW_SIZE_IN_BYTES =
       "MAX_ALLOWED_ROW_SIZE_IN_BYTES".toLowerCase();
 
+  public static final String MAX_CLIENT_LAG = "MAX_CLIENT_LAG".toLowerCase();
+
+  public static final String MAX_CLIENT_LAG_ENABLED = "MAX_CLIENT_LAG_ENABLED".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
@@ -45,6 +50,14 @@ public class ParameterProvider {
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 32000000L;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 128000000L;
+
+  // Lag related parameters
+  public static final String MAX_CLIENT_LAG_DEFAULT = "1 second";
+  public static final boolean MAX_CLIENT_LAG_ENABLED_DEFAULT = true;
+
+  static final long MAX_CLIENT_LAG_MS_MIN = TimeUnit.SECONDS.toMillis(1);
+
+  static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
@@ -53,6 +66,9 @@ public class ParameterProvider {
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
+
+  // Cached buffer flush interval - avoid parsing each time for quick lookup
+  private Long cachedBufferFlushIntervalMs = -1L;
 
   /**
    * Constructor. Takes properties from profile file and properties from client constructor and
@@ -81,6 +97,7 @@ public class ParameterProvider {
       this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
     }
   }
+
   /**
    * Sets parameter values by first checking 1. parameterOverrides 2. props 3. default value
    *
@@ -149,17 +166,80 @@ public class ParameterProvider {
 
     this.updateValue(
         MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
+
+    this.updateValue(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT, parameterOverrides, props);
+    this.updateValue(
+        MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT, parameterOverrides, props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
   public long getBufferFlushIntervalInMs() {
-    Object val =
-        this.parameterMap.getOrDefault(
-            BUFFER_FLUSH_INTERVAL_IN_MILLIS, BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT);
-    if (val instanceof String) {
-      return Long.parseLong(val.toString());
+    if (getMaxClientLagEnabled()) {
+      if (cachedBufferFlushIntervalMs != -1L) {
+        return cachedBufferFlushIntervalMs;
+      }
+      long lag = getMaxClientLagMs();
+      if (cachedBufferFlushIntervalMs == -1L) {
+        cachedBufferFlushIntervalMs = lag;
+      }
+      return cachedBufferFlushIntervalMs;
+    } else {
+      Object val =
+          this.parameterMap.getOrDefault(
+              BUFFER_FLUSH_INTERVAL_IN_MILLIS, BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT);
+      return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
     }
-    return (long) val;
+  }
+
+  private long getMaxClientLagMs() {
+    Object val = this.parameterMap.getOrDefault(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT);
+    if (!(val instanceof String)) {
+      return BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT;
+    }
+    String maxLag = (String) val;
+    String[] lagParts = maxLag.split(" ");
+    if (lagParts.length != 2
+        || (lagParts[0] == null || "".equals(lagParts[0]))
+        || (lagParts[1] == null || "".equals(lagParts[1]))) {
+      throw new IllegalArgumentException(
+          String.format("Failed to parse MAX_CLIENT_LAG = '%s'", maxLag));
+    }
+    long lag;
+    try {
+      lag = Long.parseLong(lagParts[0]);
+    } catch (Throwable t) {
+      throw new IllegalArgumentException(
+          String.format("Failed to parse MAX_CLIENT_LAG = '%s'", lagParts[0]), t);
+    }
+    long computedLag;
+    switch (lagParts[1].toLowerCase()) {
+      case "second":
+      case "seconds":
+        computedLag = lag * TimeUnit.SECONDS.toMillis(1);
+        break;
+      case "minute":
+      case "minutes":
+        computedLag = lag * TimeUnit.SECONDS.toMillis(60);
+        break;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid time unit supplied = '%s", lagParts[1]));
+    }
+
+    if (!(computedLag >= MAX_CLIENT_LAG_MS_MIN && computedLag <= MAX_CLIENT_LAG_MS_MAX)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Lag falls outside of allowed time range. Minimum (milliseconds) = %s, Maximum"
+                  + " (milliseconds) = %s",
+              MAX_CLIENT_LAG_MS_MIN, MAX_CLIENT_LAG_MS_MAX));
+    }
+    return computedLag;
+  }
+
+  private boolean getMaxClientLagEnabled() {
+    Object val =
+        this.parameterMap.getOrDefault(MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT);
+    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
   /** @return Time in milliseconds between checks to see if the buffer should be flushed */
