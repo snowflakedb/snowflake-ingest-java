@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
@@ -110,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.0.2-SNAPSHOT";
+  public static final String DEFAULT_VERSION = "2.0.3";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -128,10 +128,11 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    */
-  public RequestBuilder(String accountName, String userName, KeyPair keyPair) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
+  public RequestBuilder(String accountName, String userName, Object credential) {
+    this(
+        accountName, userName, credential, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
   }
 
   /**
@@ -139,16 +140,17 @@ public class RequestBuilder {
    *
    * @param accountName - the name of the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
   public RequestBuilder(
       String accountName,
       String userName,
       String hostName,
-      KeyPair keyPair,
+      Object credential,
       String userAgentSuffix) {
-    this(accountName, userName, keyPair, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
+    this(
+        accountName, userName, credential, DEFAULT_SCHEME, hostName, DEFAULT_PORT, userAgentSuffix);
   }
 
   /**
@@ -157,7 +159,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - the credential we'll use to authenticate
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -165,11 +167,11 @@ public class RequestBuilder {
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum) {
-    this(accountName, userName, keyPair, schemeName, hostName, portNum, null);
+    this(accountName, userName, credential, schemeName, hostName, portNum, null);
   }
 
   /**
@@ -177,7 +179,7 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - the credential we'll use to authenticate
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
@@ -186,13 +188,22 @@ public class RequestBuilder {
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum,
       String userAgentSuffix) {
     this(
-        accountName, userName, keyPair, schemeName, hostName, portNum, userAgentSuffix, null, null);
+        accountName,
+        userName,
+        credential,
+        schemeName,
+        hostName,
+        portNum,
+        userAgentSuffix,
+        null,
+        null,
+        null);
   }
 
   /**
@@ -200,23 +211,24 @@ public class RequestBuilder {
    *
    * @param url - the Snowflake account to which we're connecting
    * @param userName - the username of the entity loading files
-   * @param keyPair - the Public/Private key pair we'll use to authenticate
+   * @param credential - the credential we'll use to authenticate
    * @param httpClient - reference to the http client
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
       SnowflakeURL url,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       CloseableHttpClient httpClient,
       String clientName) {
     this(
         url.getAccount(),
         userName,
-        keyPair,
+        credential,
         url.getScheme(),
         url.getUrlWithoutPort(),
         url.getPort(),
+        null,
         null,
         httpClient,
         clientName);
@@ -227,40 +239,40 @@ public class RequestBuilder {
    *
    * @param accountName - the account name to which we're connecting
    * @param userName - for whom are we connecting?
-   * @param keyPair - our auth credentials
+   * @param credential - our auth credentials, either JWT key pair or OAuth credential
    * @param schemeName - are we HTTP or HTTPS?
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param securityManager - The security manager for authentication
    * @param httpClient - reference to the http client
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
       String accountName,
       String userName,
-      KeyPair keyPair,
+      Object credential,
       String schemeName,
       String hostName,
       int portNum,
       String userAgentSuffix,
+      SecurityManager securityManager,
       CloseableHttpClient httpClient,
       String clientName) {
     // none of these arguments should be null
-    if (accountName == null || userName == null || keyPair == null) {
+    if (accountName == null || userName == null || credential == null) {
       throw new IllegalArgumentException();
     }
 
     // Set up the telemetry service if needed
+    // TODO: SNOW-854272 Support telemetry service when using OAuth authentication
     this.telemetryService =
-        ENABLE_TELEMETRY_TO_SF
+        ENABLE_TELEMETRY_TO_SF && credential instanceof KeyPair
             ? new TelemetryService(
                 httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
             : null;
 
-    // create our security/token manager
-    securityManager = new JWTManager(accountName, userName, keyPair, telemetryService);
-
-    // stash references to the account and user name as well
+    // stash references to the account and username as well
     String account = accountName.toUpperCase();
     String user = userName.toUpperCase();
 
@@ -269,6 +281,27 @@ public class RequestBuilder {
     this.scheme = schemeName;
     this.host = hostName;
     this.userAgentSuffix = userAgentSuffix;
+
+    // create our security/token manager
+    if (securityManager == null) {
+      if (credential instanceof KeyPair) {
+        this.securityManager =
+            new JWTManager(accountName, userName, (KeyPair) credential, telemetryService);
+      } else if (credential instanceof OAuthCredential) {
+        this.securityManager =
+            new OAuthManager(
+                accountName,
+                userName,
+                (OAuthCredential) credential,
+                makeBaseURI(),
+                telemetryService);
+      } else {
+        throw new IllegalArgumentException(
+            "Credential should be instance of either KeyPair or OAuthCredential");
+      }
+    } else {
+      this.securityManager = securityManager;
+    }
 
     LOGGER.info(
         "Creating a RequestBuilder with arguments : "
@@ -351,6 +384,17 @@ public class RequestBuilder {
       throw new IllegalArgumentException();
     }
 
+    // construct the builder object without param
+    URIBuilder builder = makeBaseURI();
+
+    // set the request id
+    builder.setParameter(REQUEST_ID, requestId.toString());
+
+    return builder;
+  }
+
+  /** Construct a URIBuilder for common parts of request without any parameter */
+  private URIBuilder makeBaseURI() {
     // construct the builder object
     URIBuilder builder = new URIBuilder();
 
@@ -362,9 +406,6 @@ public class RequestBuilder {
 
     // set the port name
     builder.setPort(port);
-
-    // set the request id
-    builder.setParameter(REQUEST_ID, requestId.toString());
 
     return builder;
   }
@@ -521,21 +562,26 @@ public class RequestBuilder {
   }
 
   /**
-   * addToken - adds a the JWT token to a request
+   * addToken - adds a token to a request
    *
    * @param request the URI request
-   * @param token the token to add
    */
-  private static void addToken(HttpUriRequest request, String token) {
-    request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + token);
-    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, JWT_TOKEN_TYPE);
+  public void addToken(HttpUriRequest request) {
+    request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + securityManager.getToken());
+    request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, this.securityManager.getTokenType());
   }
 
-  private static void addHeaders(HttpUriRequest request, String token, String userAgentSuffix) {
+  /**
+   * addHeader - adds necessary header to a request
+   *
+   * @param request the URI request
+   * @param userAgentSuffix user agent suffix
+   */
+  private void addHeaders(HttpUriRequest request, String userAgentSuffix) {
     addUserAgent(request, userAgentSuffix);
 
     // Add the auth token
-    addToken(request, token);
+    addToken(request);
 
     // Add Accept header
     request.setHeader(HttpHeaders.ACCEPT, HTTP_HEADER_CONTENT_TYPE_JSON);
@@ -562,7 +608,7 @@ public class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(insertURI);
 
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(post, this.userAgentSuffix);
 
     // the entity for the containing the json
     final StringEntity entity =
@@ -590,7 +636,7 @@ public class RequestBuilder {
     // make the get request
     HttpGet get = new HttpGet(historyURI);
 
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix);
+    addHeaders(get, this.userAgentSuffix);
 
     return get;
   }
@@ -616,7 +662,7 @@ public class RequestBuilder {
 
     HttpGet get = new HttpGet(historyRangeURI);
 
-    addHeaders(get, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+    addHeaders(get, this.userAgentSuffix /*User agent information*/);
 
     return get;
   }
@@ -644,7 +690,7 @@ public class RequestBuilder {
     // Make the post request
     HttpPost post = new HttpPost(uri);
 
-    addHeaders(post, securityManager.getToken(), this.userAgentSuffix /*User agent information*/);
+    addHeaders(post, this.userAgentSuffix /*User agent information*/);
 
     // The entity for the containing the json
     final StringEntity entity = new StringEntity(payload, ContentType.APPLICATION_JSON);
@@ -675,6 +721,28 @@ public class RequestBuilder {
   }
 
   /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth
+   *
+   * @param refreshToken the new refresh token
+   */
+  public void setRefreshToken(String refreshToken) {
+    if (securityManager instanceof OAuthManager) {
+      ((OAuthManager) securityManager).setRefreshToken(refreshToken);
+    }
+  }
+
+  /** Get authorization type */
+  public String getAuthType() {
+    return securityManager.getTokenType();
+  }
+
+  /** Refresh token manually */
+  public void refreshToken() {
+    securityManager.refreshToken();
+  }
+
+  /**
    * Closes the resources being used by RequestBuilder object. {@link SecurityManager} is one such
    * resource which uses a threadpool which needs to be shutdown once SimpleIngestManager is done
    * interacting with Snowpipe Service (Rest APIs)
@@ -683,7 +751,9 @@ public class RequestBuilder {
    */
   public void closeResources() {
     securityManager.close();
-    telemetryService.close();
+    if (telemetryService != null) {
+      telemetryService.close();
+    }
   }
 
   /** Get the telemetry service */

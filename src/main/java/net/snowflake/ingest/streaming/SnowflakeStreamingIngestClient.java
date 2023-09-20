@@ -4,6 +4,9 @@
 
 package net.snowflake.ingest.streaming;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * A class that is the starting point for using the Streaming Ingest client APIs, a single client
  * maps to exactly one account in Snowflake; however, multiple clients can point to the same
@@ -30,6 +33,14 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
   String getName();
 
   /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth.
+   *
+   * @param refreshToken the new refresh token
+   */
+  void setRefreshToken(String refreshToken);
+
+  /**
    * Check whether the client is closed or not, if you want to make sure all data are committed
    * before closing, please call {@link SnowflakeStreamingIngestClient#close()} before closing the
    * entire client
@@ -37,4 +48,12 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
    * @return a boolean to indicate whether the client is closed
    */
   boolean isClosed();
+
+  /**
+   * Return the latest committed offset token for a list of channels
+   *
+   * @return a map of channel fully qualified name to latest committed offset token
+   */
+  Map<String, String> getLatestCommittedOffsetTokens(
+      List<SnowflakeStreamingIngestChannel> channels);
 }

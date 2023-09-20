@@ -22,7 +22,7 @@ import net.snowflake.ingest.utils.Cryptor;
  *
  * @author obabarinsa
  */
-final class JWTManager extends SecurityManager {
+public final class JWTManager extends SecurityManager {
   // the token lifetime is 59 minutes
   private static final float LIFETIME_IN_MINUTES = 59;
 
@@ -35,7 +35,7 @@ final class JWTManager extends SecurityManager {
   private final transient KeyPair keyPair;
 
   // the token itself
-  protected final AtomicReference<String> token;
+  private final AtomicReference<String> token;
 
   /**
    * Creates a JWTManager entity for a given account, user and KeyPair with a specified time to
@@ -66,11 +66,10 @@ final class JWTManager extends SecurityManager {
     this.keyPair = keyPair;
 
     // generate our first token
-    regenerateToken();
+    refreshToken();
 
     // schedule all future renewals
-    tokenRefresher.scheduleAtFixedRate(
-        this::regenerateToken, timeTillRenewal, timeTillRenewal, unit);
+    tokenRefresher.scheduleAtFixedRate(this::refreshToken, timeTillRenewal, timeTillRenewal, unit);
   }
 
   /**
@@ -82,7 +81,7 @@ final class JWTManager extends SecurityManager {
    * @param keyPair - the public/private key pair we're using to connect
    * @param telemetryService reference to the telemetry service
    */
-  JWTManager(
+  public JWTManager(
       String accountName, String username, KeyPair keyPair, TelemetryService telemetryService) {
     this(
         accountName,
@@ -94,7 +93,7 @@ final class JWTManager extends SecurityManager {
   }
 
   @Override
-  String getToken() {
+  public String getToken() {
     // if we failed to regenerate the token at some point, throw
     if (refreshFailed.get()) {
       LOGGER.error("getToken request failed due to token regeneration failure");
@@ -110,7 +109,8 @@ final class JWTManager extends SecurityManager {
   }
 
   /** regenerateToken - Regenerates our Token given our current user, account and keypair */
-  private void regenerateToken() {
+  @Override
+  void refreshToken() {
     // create our JWT claim builder object
     JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder();
 

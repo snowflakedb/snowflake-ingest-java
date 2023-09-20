@@ -112,7 +112,7 @@ class RegisterService<T> {
         int retry = 0;
         logger.logDebug(
             "Start loop outer for uploading blobs={}",
-            oldList.stream().map(blob -> blob.getKey().getFilePath()).collect(Collectors.toList()));
+            oldList.stream().map(blob -> blob.getKey().getPath()).collect(Collectors.toList()));
         while (idx < oldList.size()) {
           List<BlobMetadata> blobs = new ArrayList<>();
           long startTime = System.currentTimeMillis();
@@ -125,15 +125,13 @@ class RegisterService<T> {
                 oldList.get(idx);
             try {
               logger.logDebug(
-                  "Start waiting on uploading blob={}, idx={}",
-                  futureBlob.getKey().getFilePath(),
-                  idx);
+                  "Start waiting on uploading blob={}, idx={}", futureBlob.getKey().getPath(), idx);
               // Wait for uploading to finish
               BlobMetadata blob =
                   futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
               logger.logDebug(
                   "Finish waiting on uploading blob={}, idx={}",
-                  futureBlob.getKey().getFilePath(),
+                  futureBlob.getKey().getPath(),
                   idx);
               if (blob != null) {
                 blobs.add(blob);
@@ -152,7 +150,7 @@ class RegisterService<T> {
                       < this.owningClient.getParameterProvider().getBlobUploadMaxRetryCount()) {
                 logger.logInfo(
                     "Retry on waiting for uploading blob={}, idx={}",
-                    futureBlob.getKey().getFilePath(),
+                    futureBlob.getKey().getPath(),
                     idx);
                 retry++;
                 break;
@@ -163,7 +161,7 @@ class RegisterService<T> {
                           + " detail=%s, cause=%s, cause_detail=%s, cause_trace=%s all channels in"
                           + " the blob will be invalidated",
                       this.owningClient.getName(),
-                      futureBlob.getKey().getFilePath(),
+                      futureBlob.getKey().getPath(),
                       e,
                       e.getMessage(),
                       e.getCause(),

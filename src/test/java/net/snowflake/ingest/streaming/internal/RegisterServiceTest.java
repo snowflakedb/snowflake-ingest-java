@@ -60,7 +60,7 @@ public class RegisterServiceTest {
       List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
-      Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
+      Assert.assertEquals("fail", errorBlobs.get(0).getPath());
     } catch (Exception e) {
       Assert.fail("The timeout exception should be caught in registerBlobs");
     }
@@ -96,7 +96,7 @@ public class RegisterServiceTest {
       List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
-      Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
+      Assert.assertEquals("fail", errorBlobs.get(0).getPath());
     } catch (Exception e) {
       Assert.fail("The timeout exception should be caught in registerBlobs");
     }
@@ -118,7 +118,7 @@ public class RegisterServiceTest {
       List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
       Assert.assertEquals(0, rs.getBlobsList().size());
       Assert.assertEquals(1, errorBlobs.size());
-      Assert.assertEquals("fail", errorBlobs.get(0).getFilePath());
+      Assert.assertEquals("fail", errorBlobs.get(0).getPath());
     } catch (Exception e) {
       Assert.fail("The exception should be caught in registerBlobs");
     }

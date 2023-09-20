@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URL;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.Header;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
+import net.snowflake.ingest.connection.HistoryRangeResponse;
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.utils.StagedFileWrapper;
@@ -186,13 +188,20 @@ public class SimpleIngestIT {
     Future<?> result =
         service.submit(
             () -> {
+              String startTime = Instant.ofEpochMilli(System.currentTimeMillis()).toString();
               String beginMark = null;
 
               while (true) {
 
                 try {
                   Thread.sleep(5000);
+
+                  String endTime = Instant.ofEpochMilli(System.currentTimeMillis()).toString();
                   HistoryResponse response = manager.getHistory(null, null, beginMark);
+                  HistoryRangeResponse rangeResponse =
+                      manager.getHistoryRange(null, startTime, endTime);
+
+                  assertEquals(response.files.size(), rangeResponse.files.size());
 
                   if (response != null && response.getNextBeginMark() != null) {
                     beginMark = response.getNextBeginMark();

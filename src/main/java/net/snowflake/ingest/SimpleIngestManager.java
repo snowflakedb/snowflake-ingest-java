@@ -531,7 +531,8 @@ public class SimpleIngestManager implements AutoCloseable {
     // send the request and get a response....
     try (CloseableHttpResponse response = httpClient.execute(httpPostForIngestFile)) {
       LOGGER.info("Attempting to unmarshall insert response - {}", response);
-      return ServiceResponseHandler.unmarshallIngestResponse(response, requestId);
+      return ServiceResponseHandler.unmarshallIngestResponse(
+          response, requestId, httpClient, httpPostForIngestFile, builder);
     }
   }
 
@@ -561,7 +562,8 @@ public class SimpleIngestManager implements AutoCloseable {
     // send the request and get a response...
     try (CloseableHttpResponse response = httpClient.execute(httpGetHistory)) {
       LOGGER.info("Attempting to unmarshall history response - {}", response);
-      return ServiceResponseHandler.unmarshallHistoryResponse(response, requestId);
+      return ServiceResponseHandler.unmarshallHistoryResponse(
+          response, requestId, httpClient, httpGetHistory, builder);
     }
   }
 
@@ -588,12 +590,13 @@ public class SimpleIngestManager implements AutoCloseable {
       requestId = UUID.randomUUID();
     }
 
-    try (CloseableHttpResponse response =
-        httpClient.execute(
-            builder.generateHistoryRangeRequest(
-                requestId, pipe, startTimeInclusive, endTimeExclusive))) {
+    HttpGet request =
+        builder.generateHistoryRangeRequest(requestId, pipe, startTimeInclusive, endTimeExclusive);
+
+    try (CloseableHttpResponse response = httpClient.execute(request)) {
       LOGGER.info("Attempting to unmarshall history range response - {}", response);
-      return ServiceResponseHandler.unmarshallHistoryRangeResponse(response, requestId);
+      return ServiceResponseHandler.unmarshallHistoryRangeResponse(
+          response, requestId, httpClient, request, builder);
     }
   }
 

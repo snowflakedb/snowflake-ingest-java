@@ -2,7 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
-import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -115,15 +115,14 @@ public class RowBufferTest {
         "test.buffer",
         rs -> {},
         initialState,
-        enableParquetMemoryOptimization,
-        MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
-        MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
+        ClientBufferParameters.test_createClientBufferParameters(
+            enableParquetMemoryOptimization,
+            MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
+            MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT));
   }
 
   @Test
   public void testCollatedColumnsAreRejected() {
-    AbstractRowBuffer<?> testBuffer = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
-
     ColumnMetadata collatedColumn = new ColumnMetadata();
     collatedColumn.setName("COLCHAR");
     collatedColumn.setPhysicalType("LOB");
@@ -935,6 +934,43 @@ public class RowBufferTest {
         BigInteger.valueOf(11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456),
         result.getColumnEps().get("COLTIMESB8").getCurrentMaxIntValue());
     Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB8").getCurrentNullCount());
+  }
+
+  @Test
+  public void testMaxInsertRowsBatchSize() {
+    testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.ABORT);
+  }
+
+  private void testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
+    AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
+    ColumnMetadata colBinary = new ColumnMetadata();
+    colBinary.setName("COLBINARY");
+    colBinary.setPhysicalType("LOB");
+    colBinary.setNullable(true);
+    colBinary.setLogicalType("BINARY");
+    colBinary.setLength(8 * 1024 * 1024);
+    colBinary.setByteLength(8 * 1024 * 1024);
+
+    byte[] arr = new byte[8 * 1024 * 1024];
+    innerBuffer.setupSchema(Collections.singletonList(colBinary));
+    List<Map<String, Object>> rows = new ArrayList<>();
+    for (int i = 0; i < 15; i++) {
+      rows.add(Collections.singletonMap("COLBINARY", arr));
+    }
+
+    // Insert rows should succeed
+    innerBuffer.insertRows(rows, "");
+
+    // After adding another row, it should fail due to too large batch of rows passed to
+    // insertRows() in one go
+    rows.add(Collections.singletonMap("COLBINARY", arr));
+    try {
+      innerBuffer.insertRows(rows, "");
+      Assert.fail("Inserting rows should have failed");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.MAX_BATCH_SIZE_EXCEEDED.getMessageCode(), e.getVendorCode());
+    }
   }
 
   @Test

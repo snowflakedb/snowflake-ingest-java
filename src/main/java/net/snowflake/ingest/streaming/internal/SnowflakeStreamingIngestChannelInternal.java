@@ -24,7 +24,6 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
@@ -122,15 +121,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
-            owningClient != null
-                ? owningClient.getParameterProvider().getEnableParquetInternalBuffering()
-                : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
-            owningClient != null
-                ? owningClient.getParameterProvider().getMaxChannelSizeInBytes()
-                : ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
-            owningClient != null
-                ? owningClient.getParameterProvider().getMaxAllowedRowSizeInBytes()
-                : ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT);
+            new ClientBufferParameters(owningClient));
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),

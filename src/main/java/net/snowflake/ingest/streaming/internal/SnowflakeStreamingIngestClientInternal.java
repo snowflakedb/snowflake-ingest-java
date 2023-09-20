@@ -38,7 +38,6 @@ import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
-import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
@@ -61,9 +60,11 @@ import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -170,20 +171,34 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     if (!isTestMode) {
       // Setup request builder for communication with the server side
       this.role = prop.getProperty(Constants.ROLE);
-      try {
-        KeyPair keyPair =
-            Utils.createKeyPairFromPrivateKey(
-                (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
-        this.requestBuilder =
-            new RequestBuilder(
-                accountURL,
-                prop.get(USER).toString(),
-                keyPair,
-                this.httpClient,
-                String.format("%s_%s", this.name, System.currentTimeMillis()));
-      } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-        throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
+
+      Object credential = null;
+
+      // Authorization type will be set to jwt by default
+      if (prop.getProperty(Constants.AUTHORIZATION_TYPE).equals(Constants.JWT)) {
+        try {
+          credential =
+              Utils.createKeyPairFromPrivateKey(
+                  (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+          throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
+        }
+      } else {
+        credential =
+            new OAuthCredential(
+                prop.getProperty(Constants.OAUTH_CLIENT_ID),
+                prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
+                prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
       }
+      this.requestBuilder =
+          new RequestBuilder(
+              accountURL,
+              prop.get(USER).toString(),
+              credential,
+              this.httpClient,
+              String.format("%s_%s", this.name, System.currentTimeMillis()));
+
+      logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
 
       // Setup client telemetries if needed
       this.setupMetricsForClient();
@@ -346,6 +361,29 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
+  }
+
+  /**
+   * Return the latest committed/persisted offset token for all channels
+   *
+   * @return map of channel to the latest persisted offset token
+   */
+  @Override
+  public Map<String, String> getLatestCommittedOffsetTokens(
+      List<SnowflakeStreamingIngestChannel> channels) {
+    List<SnowflakeStreamingIngestChannelInternal<?>> internalChannels =
+        channels.stream()
+            .map(c -> (SnowflakeStreamingIngestChannelInternal<?>) c)
+            .collect(Collectors.toList());
+    List<ChannelsStatusResponse.ChannelStatusResponseDTO> channelsStatus =
+        getChannelsStatus(internalChannels).getChannels();
+    Map<String, String> result = new HashMap<>();
+    for (int idx = 0; idx < channels.size(); idx++) {
+      result.put(
+          channels.get(idx).getFullyQualifiedName(),
+          channelsStatus.get(idx).getPersistedOffsetToken());
+    }
+    return result;
   }
 
   /**
@@ -773,6 +811,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
+  }
+
+  /**
+   * Set refresh token, this method is for refresh token renewal without requiring to restart
+   * client. This method only works when the authorization type is OAuth
+   *
+   * @param refreshToken the new refresh token
+   */
+  @Override
+  public void setRefreshToken(String refreshToken) {
+    if (requestBuilder != null) {
+      requestBuilder.setRefreshToken(refreshToken);
+    }
   }
 
   /**
