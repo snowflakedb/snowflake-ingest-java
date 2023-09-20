@@ -308,7 +308,7 @@ public class RowBufferTest {
             .equalsIgnoreCase(
                 "The given row cannot be converted to the internal format due to invalid value:"
                     + " Value cannot be ingested into Snowflake column COLCHAR of type STRING, Row"
-                    + " Index: 1, reason: String too long: length=22 characters maxLength=11"
+                    + " Index:1, reason: String too long: length=22 characters maxLength=11"
                     + " characters"));
   }
 

@@ -210,8 +210,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       throw new SFException(
           ErrorCode.MAX_ROW_SIZE_EXCEEDED,
           String.format(
-              "rowSizeInBytes=%.3f maxAllowedRowSizeInBytes=%d",
-              size, clientBufferParameters.getMaxAllowedRowSizeInBytes()));
+              "rowSizeInBytes=%.3f, maxAllowedRowSizeInBytes=%d, Row Index=%d",
+              size, clientBufferParameters.getMaxAllowedRowSizeInBytes(), insertRowsCurrIndex));
     }
 
     out.accept(Arrays.asList(indexedRow));

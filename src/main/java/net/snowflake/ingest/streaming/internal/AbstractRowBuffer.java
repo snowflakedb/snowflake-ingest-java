@@ -260,7 +260,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           "Extra columns: " + extraCols,
-          "Columns not present in the table shouldn't be specified.");
+          "Columns not present in the table shouldn't be specified. Row Index:%d");
     }
 
     // Check for missing columns in the row
@@ -278,7 +278,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           "Missing columns: " + missingCols,
-          "Values for all non-nullable columns must be specified.");
+          "Values for all non-nullable columns must be specified. Row Index:%d");
     }
 
     return inputColNamesMap.keySet();
