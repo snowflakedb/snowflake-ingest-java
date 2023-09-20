@@ -2,7 +2,8 @@ package net.snowflake.ingest.streaming.internal;
 
 /**
  * Class that encapsulates column properties. These are the same properties showed in the output of
- * <a href="https://docs.snowflake.com/en/sql-reference/sql/show-columns">SHOW COLUMNS</a>
+ * <a href="https://docs.snowflake.com/en/sql-reference/sql/show-columns">SHOW COLUMNS</a>. Note
+ * that this is slightly different than the internal column metadata used elsewhere in this SDK.
  */
 public class ColumnProperties {
   private String type;

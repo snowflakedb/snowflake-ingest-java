@@ -126,11 +126,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             this::collectRowSize,
             channelState,
             new ClientBufferParameters(owningClient));
+    this.tableColumns = new HashMap<>();
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
         this.channelFlushContext.getTableName());
-    this.tableColumns = new HashMap<>();
   }
 
   /**

@@ -256,7 +256,9 @@ public interface SnowflakeStreamingIngestChannel {
   String getLatestCommittedOffsetToken();
 
   /**
-   * Gets the table schema associated with this channel
+   * Gets the table schema associated with this channel. Note that this is the table schema at the
+   * time of a channel open event. The schema may be changed on the Snowflake side in which case
+   * this will continue to show an old schema version until the channel is re-opened.
    *
    * @return map representing Column Name -> Column Properties
    */
