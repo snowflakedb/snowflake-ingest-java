@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
+import net.snowflake.ingest.streaming.internal.ColumnProperties;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
@@ -253,4 +254,11 @@ public interface SnowflakeStreamingIngestChannel {
    */
   @Nullable
   String getLatestCommittedOffsetToken();
+
+  /**
+   * Gets the table schema associated with this channel
+   *
+   * @return map representing Column Name -> Column Properties
+   */
+  Map<String, ColumnProperties> getTableSchema();
 }
