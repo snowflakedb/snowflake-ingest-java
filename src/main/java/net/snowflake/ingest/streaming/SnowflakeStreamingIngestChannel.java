@@ -18,7 +18,7 @@ import net.snowflake.ingest.streaming.internal.ColumnProperties;
  * at the same time. When a new channel is opened, all previously opened channels with the same name
  * are invalidated (this applies for the table globally. not just in a single JVM). In order to
  * ingest data from multiple threads/clients/applications, we recommend opening multiple channels,
- * each with a different name. There is no limit on the number of channels that can be opened.
+ * each with a different name.
  *
  * <p>Thread safety note: Implementations of this interface are required to be thread safe.
  */
