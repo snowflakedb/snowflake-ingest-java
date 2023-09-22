@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
+import net.snowflake.ingest.streaming.internal.ColumnProperties;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
@@ -17,7 +18,7 @@ import javax.annotation.Nullable;
  * at the same time. When a new channel is opened, all previously opened channels with the same name
  * are invalidated (this applies for the table globally. not just in a single JVM). In order to
  * ingest data from multiple threads/clients/applications, we recommend opening multiple channels,
- * each with a different name. There is no limit on the number of channels that can be opened.
+ * each with a different name.
  *
  * <p>Thread safety note: Implementations of this interface are required to be thread safe.
  */
@@ -253,4 +254,13 @@ public interface SnowflakeStreamingIngestChannel {
    */
   @Nullable
   String getLatestCommittedOffsetToken();
+
+  /**
+   * Gets the table schema associated with this channel. Note that this is the table schema at the
+   * time of a channel open event. The schema may be changed on the Snowflake side in which case
+   * this will continue to show an old schema version until the channel is re-opened.
+   *
+   * @return map representing Column Name -> Column Properties
+   */
+  Map<String, ColumnProperties> getTableSchema();
 }
