@@ -12,6 +12,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -50,6 +51,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   // State of the channel that will be shared with its underlying buffer
   private final ChannelRuntimeState channelState;
+
+  // Internal map of column name -> column properties
+  private final Map<String, ColumnProperties> tableColumns;
 
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
@@ -122,6 +126,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             this::collectRowSize,
             channelState,
             new ClientBufferParameters(owningClient));
+    this.tableColumns = new HashMap<>();
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
@@ -298,6 +303,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   void setupSchema(List<ColumnMetadata> columns) {
     logger.logDebug("Setup schema for channel={}, schema={}", getFullyQualifiedName(), columns);
     this.rowBuffer.setupSchema(columns);
+    columns.forEach(c -> tableColumns.putIfAbsent(c.getName(), new ColumnProperties(c)));
   }
 
   /**
@@ -389,6 +395,12 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     }
 
     return response.getPersistedOffsetToken();
+  }
+
+  /** Returns a map of column name -> datatype for the table the channel is bound to */
+  @Override
+  public Map<String, ColumnProperties> getTableSchema() {
+    return this.tableColumns;
   }
 
   /** Check whether we need to throttle the insertRows API */
