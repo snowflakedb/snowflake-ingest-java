@@ -39,7 +39,7 @@ public class ParameterProvider {
   public static final String MAX_CLIENT_LAG_ENABLED = "MAX_CLIENT_LAG_ENABLED".toLowerCase();
 
   public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
-          "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
+      "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -67,7 +67,7 @@ public class ParameterProvider {
   public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT = 100;
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
-          Constants.BdecParquetCompression.GZIP;
+      Constants.BdecParquetCompression.GZIP;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -186,10 +186,10 @@ public class ParameterProvider {
         props);
 
     this.updateValue(
-            BDEC_PARQUET_COMPRESSION_ALGORITHM,
-            BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
-            parameterOverrides,
-            props);
+        BDEC_PARQUET_COMPRESSION_ALGORITHM,
+        BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
+        parameterOverrides,
+        props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
