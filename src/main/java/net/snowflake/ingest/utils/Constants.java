@@ -138,7 +138,7 @@ public class Constants {
       }
       throw new IllegalArgumentException(
           String.format(
-              "Unsupported BDEC_PARQUET_COMPRESSION_ALGORITHM = '%d', allowed values are %s",
+              "Unsupported BDEC_PARQUET_COMPRESSION_ALGORITHM = '%s', allowed values are %s",
               name, Arrays.asList(BdecParquetCompression.values())));
     }
   }
