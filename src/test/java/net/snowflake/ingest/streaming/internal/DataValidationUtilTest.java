@@ -676,19 +676,19 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type VARIANT, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type VARIANT, rowIndex:0, reason:"
             + " Variant too long: length=18874376 maxLength=16777152",
         () -> validateAndParseVariant("COL", m, 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type ARRAY, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type ARRAY, rowIndex:0, reason:"
             + " Array too large. length=18874378 maxLength=16777152",
         () -> validateAndParseArray("COL", m, 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type OBJECT, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type OBJECT, rowIndex:0, reason:"
             + " Object too large. length=18874376 maxLength=16777152",
         () -> validateAndParseObject("COL", m, 0));
   }
@@ -1005,13 +1005,13 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type BOOLEAN, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type BOOLEAN, rowIndex:0. Allowed"
             + " Java types: boolean, Number, String",
         () -> validateAndParseBoolean("COL", new Object(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type BOOLEAN, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type BOOLEAN, rowIndex:0, reason:"
             + " Not a valid boolean, see"
             + " https://docs.snowflake.com/en/sql-reference/data-types-logical.html#conversion-to-boolean"
             + " for the list of supported formats",
@@ -1021,13 +1021,13 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type TIME, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type TIME, rowIndex:0. Allowed"
             + " Java types: String, LocalTime, OffsetTime",
         () -> validateAndParseTime("COL", new Object(), 10, 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type TIME, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type TIME, rowIndex:0, reason:"
             + " Not a valid time, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
@@ -1037,13 +1037,13 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type DATE, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type DATE, rowIndex:0. Allowed"
             + " Java types: String, LocalDate, LocalDateTime, ZonedDateTime, OffsetDateTime",
         () -> validateAndParseDate("COL", new Object(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type DATE, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type DATE, rowIndex:0, reason:"
             + " Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
@@ -1053,14 +1053,14 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0."
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, rowIndex:0."
             + " Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime,"
             + " OffsetDateTime",
         () -> validateAndParseTimestamp("COL", new Object(), 3, UTC, true, 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0,"
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, rowIndex:0,"
             + " reason: Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
@@ -1070,14 +1070,14 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0."
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, rowIndex:0."
             + " Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime,"
             + " OffsetDateTime",
         () -> validateAndParseTimestamp("COL", new Object(), 3, UTC, false, 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0,"
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, rowIndex:0,"
             + " reason: Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
@@ -1087,14 +1087,14 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0."
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, rowIndex:0."
             + " Allowed Java types: String, LocalDate, LocalDateTime, ZonedDateTime,"
             + " OffsetDateTime",
         () -> validateAndParseTimestamp("COL", new Object(), 3, UTC, false, 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, Row Index:0,"
+            + " cannot be ingested into Snowflake column COL of type TIMESTAMP, rowIndex:0,"
             + " reason: Not a valid value, see"
             + " https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview for"
             + " the list of supported formats",
@@ -1104,13 +1104,13 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type NUMBER, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type NUMBER, rowIndex:0. Allowed"
             + " Java types: int, long, byte, short, float, double, BigDecimal, BigInteger, String",
         () -> validateAndParseBigDecimal("COL", new Object(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type NUMBER, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type NUMBER, rowIndex:0, reason:"
             + " Not a valid number",
         () -> validateAndParseBigDecimal("COL", "abc", 0));
 
@@ -1118,13 +1118,13 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type REAL, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type REAL, rowIndex:0. Allowed"
             + " Java types: Number, String",
         () -> validateAndParseReal("COL", new Object(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type REAL, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type REAL, rowIndex:0, reason:"
             + " Not a valid decimal number",
         () -> validateAndParseReal("COL", "abc", 0));
 
@@ -1132,13 +1132,13 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type STRING, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type STRING, rowIndex:0. Allowed"
             + " Java types: String, Number, boolean, char",
         () -> validateAndParseString("COL", new Object(), Optional.empty(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type STRING, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type STRING, rowIndex:0, reason:"
             + " String too long: length=3 characters maxLength=2 characters",
         () -> validateAndParseString("COL", "abc", Optional.of(2), 0));
 
@@ -1146,19 +1146,19 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type BINARY, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type BINARY, rowIndex:0. Allowed"
             + " Java types: byte[], String",
         () -> validateAndParseBinary("COL", new Object(), Optional.empty(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type BINARY, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type BINARY, rowIndex:0, reason:"
             + " Binary too long: length=2 maxLength=1",
         () -> validateAndParseBinary("COL", new byte[] {1, 2}, Optional.of(1), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type BINARY, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type BINARY, rowIndex:0, reason:"
             + " Not a valid hex string",
         () -> validateAndParseBinary("COL", "ghi", Optional.empty(), 0));
 
@@ -1166,14 +1166,14 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type VARIANT, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type VARIANT, rowIndex:0. Allowed"
             + " Java types: String, Primitive data types and their arrays, java.time.*, List<T>,"
             + " Map<String, T>, T[]",
         () -> validateAndParseVariant("COL", new Object(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type VARIANT, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type VARIANT, rowIndex:0, reason:"
             + " Not a valid JSON",
         () -> validateAndParseVariant("COL", "][", 0));
 
@@ -1181,14 +1181,14 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type ARRAY, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type ARRAY, rowIndex:0. Allowed"
             + " Java types: String, Primitive data types and their arrays, java.time.*, List<T>,"
             + " Map<String, T>, T[]",
         () -> validateAndParseArray("COL", new Object(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type ARRAY, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type ARRAY, rowIndex:0, reason:"
             + " Not a valid JSON",
         () -> validateAndParseArray("COL", "][", 0));
 
@@ -1196,14 +1196,14 @@ public class DataValidationUtilTest {
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_FORMAT_ROW,
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
-            + " cannot be ingested into Snowflake column COL of type OBJECT, Row Index:0. Allowed"
+            + " cannot be ingested into Snowflake column COL of type OBJECT, rowIndex:0. Allowed"
             + " Java types: String, Primitive data types and their arrays, java.time.*, List<T>,"
             + " Map<String, T>, T[]",
         () -> validateAndParseObject("COL", new Object(), 0));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
-            + " cannot be ingested into Snowflake column COL of type OBJECT, Row Index:0, reason:"
+            + " cannot be ingested into Snowflake column COL of type OBJECT, rowIndex:0, reason:"
             + " Not a valid JSON",
         () -> validateAndParseObject("COL", "}{", 0));
   }
