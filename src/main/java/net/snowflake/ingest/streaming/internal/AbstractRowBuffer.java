@@ -236,10 +236,11 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    *
    * @param row the input row
    * @param error the insert error that we return to the customer
+   * @param rowIndex the index of the current row in the input batch
    * @return the set of input column names
    */
   Set<String> verifyInputColumns(
-      Map<String, Object> row, InsertValidationResponse.InsertError error) {
+      Map<String, Object> row, InsertValidationResponse.InsertError error, int rowIndex) {
     // Map of unquoted column name -> original column name
     Map<String, String> inputColNamesMap =
         row.keySet().stream()
@@ -260,7 +261,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           "Extra columns: " + extraCols,
-          "Columns not present in the table shouldn't be specified.");
+          String.format(
+              "Columns not present in the table shouldn't be specified, rowIndex:%d", rowIndex));
     }
 
     // Check for missing columns in the row
@@ -278,7 +280,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           "Missing columns: " + missingCols,
-          "Values for all non-nullable columns must be specified.");
+          String.format(
+              "Values for all non-nullable columns must be specified, rowIndex:%d", rowIndex));
     }
 
     return inputColNamesMap.keySet();
@@ -304,12 +307,12 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       this.channelState.updateInsertStats(System.currentTimeMillis(), this.bufferedRowCount);
       if (onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
         // Used to map incoming row(nth row) to InsertError(for nth row) in response
-        long rowIndex = 0;
+        int rowIndex = 0;
         for (Map<String, Object> row : rows) {
           InsertValidationResponse.InsertError error =
               new InsertValidationResponse.InsertError(row, rowIndex);
           try {
-            Set<String> inputColumnNames = verifyInputColumns(row, error);
+            Set<String> inputColumnNames = verifyInputColumns(row, error, rowIndex);
             rowsSizeInBytes +=
                 addRow(row, this.bufferedRowCount, this.statsMap, inputColumnNames, rowIndex);
             this.bufferedRowCount++;
@@ -333,7 +336,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         float tempRowsSizeInBytes = 0F;
         int tempRowCount = 0;
         for (Map<String, Object> row : rows) {
-          Set<String> inputColumnNames = verifyInputColumns(row, null);
+          Set<String> inputColumnNames = verifyInputColumns(row, null, tempRowCount);
           tempRowsSizeInBytes +=
               addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames, tempRowCount);
           checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);

@@ -588,8 +588,8 @@ public class SnowflakeStreamingIngestChannelTest {
             .collect(Collectors.toList());
 
     String expectedMessage =
-        "The given row exceeds the maximum allowed row size rowSizeInBytes=67109128.000"
-            + " maxAllowedRowSizeInBytes=67108864";
+        "The given row exceeds the maximum allowed row size rowSizeInBytes:67109128.000,"
+            + " maxAllowedRowSizeInBytes:67108864, rowIndex:0";
 
     Map<String, Object> row = new HashMap<>();
     schema.forEach(x -> row.put(x.getName(), byteArrayOneMb));
