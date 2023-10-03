@@ -1,15 +1,15 @@
 {
-  "user": "user name",
-  "url": "https://account_name.snowflakecomputing.com:443",
-  "account": "account_name",
+  "user": "admin",
+  "url": "http://snowflake.dev.local:8082",
+  "account": "admin",
   "private_key": "PEM Private Key",
   "port": 443,
-  "host": "account_name.snowflakecomputing.com",
-  "schema": "schema",
+  "host": "admin.snowflakecomputing.com",
+  "schema": "public",
   "scheme": "https",
-  "database": "database_name",
-  "connect_string": "jdbc:snowflake://account_name.snowflakecomputing.com:443",
+  "database": "snowhouse_export",
+  "connect_string": "jdbc:snowflake://admin.snowflakecomputing.com:443",
   "ssl": "on",
-  "warehouse": "warehouse_name",
-  "role": "role_name"
+  "warehouse": "regress",
+  "role": "accountadmin"
 }

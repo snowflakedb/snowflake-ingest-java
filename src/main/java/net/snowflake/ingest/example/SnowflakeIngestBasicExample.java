@@ -30,24 +30,24 @@ import net.snowflake.ingest.utils.StagedFileWrapper;
 public class SnowflakeIngestBasicExample {
   // Details required to connect to Snowflake over jdbc and establish
   // pre-requesites
-  private static String account = "s3testaccount";
-  private static String user = "snowman";
-  private static String host = "s3testaccount.snowflakecomputing.com";
+  private static String account = "snowflake";
+  private static String user = "admin";
+  private static String host = "snowflake.dev.local/";
   private static String scheme = "https";
-  private static String password = "****";
-  private static int port = 8080;
+  private static String password = "test";
+  private static int port = 8082;
 
   // Details for the pipe which we are going to use
   // the name of our target DB
-  private static String database = "testdb";
+  private static String database = "snowhouse_export";
   // the name of our target schema
   private static String schema = "public";
   // the name of our stage
   private static String stage = "ingest_stage";
   // the name of our target table
-  private static String table = "ingest_table";
+  private static String table = "ingest_table_revi";
   // the name of our pipe
-  private static String pipe = "ingest_pipe";
+  private static String pipe = "ingest_pipe_revi";
 
   // the connection we will use for queries
   private static Connection conn;

@@ -48,8 +48,8 @@ public class SnowflakeStreamingIngestExample {
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE")
-              .setSchemaName("MY_SCHEMA")
+              .setDBName("RSC")
+              .setSchemaName("PUBLIC")
               .setTableName("MY_TABLE")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
@@ -59,7 +59,7 @@ public class SnowflakeStreamingIngestExample {
       SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
       // Insert rows into the channel (Using insertRows API)
-      final int totalRowsInTable = 1000;
+      final int totalRowsInTable = 100000;
       for (int val = 0; val < totalRowsInTable; val++) {
         Map<String, Object> row = new HashMap<>();
 
