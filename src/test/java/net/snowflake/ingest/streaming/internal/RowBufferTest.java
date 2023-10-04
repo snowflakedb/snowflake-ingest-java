@@ -30,6 +30,7 @@ public class RowBufferTest {
   private final boolean enableParquetMemoryOptimization;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
+  private AbstractRowBuffer<?> rowBufferOnErrorSkipBatch;
 
   public RowBufferTest() {
     this.enableParquetMemoryOptimization = false;
@@ -39,9 +40,11 @@ public class RowBufferTest {
   public void setupRowBuffer() {
     this.rowBufferOnErrorContinue = createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
     this.rowBufferOnErrorAbort = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+    this.rowBufferOnErrorSkipBatch = createTestBuffer(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
     List<ColumnMetadata> schema = createSchema();
     this.rowBufferOnErrorContinue.setupSchema(schema);
     this.rowBufferOnErrorAbort.setupSchema(schema);
+    this.rowBufferOnErrorSkipBatch.setupSchema(schema);
   }
 
   static List<ColumnMetadata> createSchema() {
@@ -467,6 +470,7 @@ public class RowBufferTest {
   public void testDoubleQuotesColumnName() {
     testDoubleQuotesColumnNameHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testDoubleQuotesColumnNameHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testDoubleQuotesColumnNameHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testDoubleQuotesColumnNameHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -739,6 +743,7 @@ public class RowBufferTest {
   public void testStatsE2ETimestamp() {
     testStatsE2ETimestampHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testStatsE2ETimestampHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testStatsE2ETimestampHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testStatsE2ETimestampHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -820,6 +825,7 @@ public class RowBufferTest {
   public void testE2EDate() {
     testE2EDateHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2EDateHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2EDateHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2EDateHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -868,6 +874,7 @@ public class RowBufferTest {
   public void testE2ETime() {
     testE2ETimeHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2ETimeHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2ETimeHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2ETimeHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -940,6 +947,7 @@ public class RowBufferTest {
   public void testMaxInsertRowsBatchSize() {
     testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
     testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.ABORT);
+    testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -977,6 +985,7 @@ public class RowBufferTest {
   public void testNullableCheck() {
     testNullableCheckHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testNullableCheckHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testNullableCheckHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testNullableCheckHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1016,6 +1025,7 @@ public class RowBufferTest {
   public void testMissingColumnCheck() {
     testMissingColumnCheckHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testMissingColumnCheckHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testMissingColumnCheckHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testMissingColumnCheckHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1087,13 +1097,10 @@ public class RowBufferTest {
   }
 
   @Test
-  public void testFailureHalfwayThroughColumnProcessingAbort() {
-    doTestFailureHalfwayThroughColumnProcessing(OpenChannelRequest.OnErrorOption.ABORT);
-  }
-
-  @Test
-  public void testFailureHalfwayThroughColumnProcessingContinue() {
+  public void testFailureHalfwayThroughColumnProcessing() {
     doTestFailureHalfwayThroughColumnProcessing(OpenChannelRequest.OnErrorOption.CONTINUE);
+    doTestFailureHalfwayThroughColumnProcessing(OpenChannelRequest.OnErrorOption.ABORT);
+    doTestFailureHalfwayThroughColumnProcessing(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void doTestFailureHalfwayThroughColumnProcessing(
@@ -1170,6 +1177,7 @@ public class RowBufferTest {
   public void testE2EBoolean() {
     testE2EBooleanHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2EBooleanHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2EBooleanHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2EBooleanHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1218,6 +1226,7 @@ public class RowBufferTest {
   public void testE2EBinary() {
     testE2EBinaryHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2EBinaryHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2EBinaryHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2EBinaryHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1274,6 +1283,7 @@ public class RowBufferTest {
   public void testE2EReal() {
     testE2ERealHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2ERealHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2ERealHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2ERealHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1394,9 +1404,86 @@ public class RowBufferTest {
   }
 
   @Test
+  public void testOnErrorAbortSkipBatch() {
+    AbstractRowBuffer<?> innerBuffer = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+
+    ColumnMetadata colDecimal = new ColumnMetadata();
+    colDecimal.setName("COLDECIMAL");
+    colDecimal.setPhysicalType("SB16");
+    colDecimal.setNullable(true);
+    colDecimal.setLogicalType("FIXED");
+    colDecimal.setPrecision(38);
+    colDecimal.setScale(0);
+
+    innerBuffer.setupSchema(Collections.singletonList(colDecimal));
+    Map<String, Object> row = new HashMap<>();
+    row.put("COLDECIMAL", 1);
+
+    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    Assert.assertFalse(response.hasErrors());
+
+    Assert.assertEquals(1, innerBuffer.bufferedRowCount);
+    Assert.assertEquals(0, innerBuffer.getTempRowCount());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("COLDECIMAL", 2);
+    response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
+    Assert.assertFalse(response.hasErrors());
+
+    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
+    Assert.assertEquals(0, innerBuffer.getTempRowCount());
+    Assert.assertEquals(
+        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("COLDECIMAL", true);
+    try {
+      innerBuffer.insertRows(Collections.singletonList(row3), "3");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
+    }
+
+    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
+    Assert.assertEquals(0, innerBuffer.getTempRowCount());
+    Assert.assertEquals(
+        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    row3.put("COLDECIMAL", 3);
+    response = innerBuffer.insertRows(Collections.singletonList(row3), "3");
+    Assert.assertFalse(response.hasErrors());
+    Assert.assertEquals(3, innerBuffer.bufferedRowCount);
+    Assert.assertEquals(0, innerBuffer.getTempRowCount());
+    Assert.assertEquals(
+        3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+    Assert.assertEquals(
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+
+    ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    Assert.assertEquals(3, data.getRowCount());
+    Assert.assertEquals(0, innerBuffer.bufferedRowCount);
+  }
+
+  @Test
   public void testE2EVariant() {
     testE2EVariantHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2EVariantHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2EVariantHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2EVariantHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1446,6 +1533,7 @@ public class RowBufferTest {
   public void testE2EObject() {
     testE2EObjectHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2EObjectHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2EObjectHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2EObjectHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1477,6 +1565,7 @@ public class RowBufferTest {
   public void testE2EArray() {
     testE2EArrayHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testE2EArrayHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+    testE2EArrayHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
   private void testE2EArrayHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1527,6 +1616,8 @@ public class RowBufferTest {
         createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
     AbstractRowBuffer<?> innerBufferOnErrorAbort =
         createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+    AbstractRowBuffer<?> innerBufferOnErrorSkipBatch =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
 
     ColumnMetadata colChar = new ColumnMetadata();
     colChar.setName("COLCHAR");

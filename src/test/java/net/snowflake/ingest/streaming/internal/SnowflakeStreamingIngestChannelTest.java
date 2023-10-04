@@ -645,6 +645,30 @@ public class SnowflakeStreamingIngestChannelTest {
       Assert.assertEquals(ErrorCode.MAX_ROW_SIZE_EXCEEDED.getMessageCode(), e.getVendorCode());
       Assert.assertEquals(expectedMessage, e.getMessage());
     }
+
+    // Test channel with on error SKIP_BATCH
+    channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            0L,
+            0L,
+            client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.SKIP_BATCH,
+            UTC);
+    channel.setupSchema(schema);
+
+    insertValidationResponse = channel.insertRow(row, "token-1");
+    Assert.assertEquals(1, insertValidationResponse.getErrorRowCount());
+    thrownException = insertValidationResponse.getInsertErrors().get(0).getException();
+    Assert.assertEquals(
+        ErrorCode.MAX_ROW_SIZE_EXCEEDED.getMessageCode(), thrownException.getVendorCode());
+    Assert.assertEquals(expectedMessage, thrownException.getMessage());
   }
 
   @Test

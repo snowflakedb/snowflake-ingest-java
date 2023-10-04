@@ -331,6 +331,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           }
         }
         checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
+        this.channelState.setOffsetToken(offsetToken);
       } else if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
         // If the on_error option is ABORT, simply throw the first exception
         float tempRowsSizeInBytes = 0F;
@@ -356,6 +357,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 this.statsMap.put(
                     colName,
                     RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
+        this.channelState.setOffsetToken(offsetToken);
       } else if (onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
         float tempRowsSizeInBytes = 0F;
         int tempRowCount = 0;
@@ -375,30 +377,26 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
             error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
             response.addError(error);
           }
-          tempRowCount++;
-          if (this.bufferedRowCount == Integer.MAX_VALUE) {
+          checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
+        }
+
+        if (!response.hasErrors()) {
+          checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
+          moveTempRowsToActualBuffer(tempRowCount);
+          rowsSizeInBytes = tempRowsSizeInBytes;
+          if ((long) this.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
             throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
           }
+          this.bufferedRowCount += tempRowCount;
+          this.statsMap.forEach(
+              (colName, stats) ->
+                  this.statsMap.put(
+                      colName,
+                      RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
+          this.channelState.setOffsetToken(offsetToken);
         }
-        checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
-        checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
-
-        moveTempRowsToActualBuffer(tempRowCount);
-
-        rowsSizeInBytes = tempRowsSizeInBytes;
-        if ((long) this.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-        }
-        this.bufferedRowCount += tempRowCount;
-        this.statsMap.forEach(
-            (colName, stats) ->
-                this.statsMap.put(
-                    colName,
-                    RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
       }
-
       this.bufferSize += rowsSizeInBytes;
-      this.channelState.setOffsetToken(offsetToken);
       this.rowSizeMetric.accept(rowsSizeInBytes);
     } finally {
       this.tempStatsMap.values().forEach(RowBufferStats::reset);
