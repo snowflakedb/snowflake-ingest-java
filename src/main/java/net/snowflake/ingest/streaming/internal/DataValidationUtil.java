@@ -457,7 +457,10 @@ class DataValidationUtil {
     if (offsetDateTime.getYear() < 1 || offsetDateTime.getYear() > 9999) {
       throw new SFException(
           ErrorCode.INVALID_VALUE_ROW,
-          "Timestamp out of representable inclusive range of years between 1 and 9999");
+          String.format(
+              "Timestamp out of representable inclusive range of years between 1 and 9999,"
+                  + " rowIndex:%d",
+              insertRowIndex));
     }
     return new TimestampWrapper(offsetDateTime, scale);
   }
@@ -588,7 +591,10 @@ class DataValidationUtil {
     if (offsetDateTime.getYear() < -9999 || offsetDateTime.getYear() > 9999) {
       throw new SFException(
           ErrorCode.INVALID_VALUE_ROW,
-          "Date out of representable inclusive range of years between -9999 and 9999");
+          String.format(
+              "Date out of representable inclusive range of years between -9999 and 9999,"
+                  + " rowIndex:%d",
+              insertRowIndex));
     }
 
     return Math.toIntExact(offsetDateTime.toLocalDate().toEpochDay());
@@ -814,7 +820,7 @@ class DataValidationUtil {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           String.format(
-              "Number out of representable exclusive range of (-1e%s..1e%s), Row Index:%s",
+              "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d",
               precision - scale, precision - scale, insertRowIndex));
     }
   }
@@ -858,8 +864,7 @@ class DataValidationUtil {
     return new SFException(
         ErrorCode.INVALID_FORMAT_ROW,
         String.format(
-            "Object of type %s cannot be ingested into Snowflake column %s of type %s, Row"
-                + " Index:%s",
+            "Object of type %s cannot be ingested into Snowflake column %s of type %s, rowIndex:%d",
             javaType.getName(), columnName, snowflakeType, insertRowIndex),
         String.format(
             String.format("Allowed Java types: %s", String.join(", ", allowedJavaTypes))));
@@ -882,7 +887,7 @@ class DataValidationUtil {
     return new SFException(
         ErrorCode.INVALID_VALUE_ROW,
         String.format(
-            "Value cannot be ingested into Snowflake column %s of type %s, Row Index: %s, reason:"
+            "Value cannot be ingested into Snowflake column %s of type %s, rowIndex:%d, reason:"
                 + " %s",
             columnName, snowflakeType, rowIndex, reason));
   }

@@ -495,6 +495,22 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertEquals(dbName, channel.getDBName());
     Assert.assertEquals(schemaName, channel.getSchemaName());
     Assert.assertEquals(tableName, channel.getTableName());
+
+    Assert.assertTrue(channel.getTableSchema().containsKey("C1"));
+    Assert.assertEquals("NUMBER(38,0)", channel.getTableSchema().get("C1").getType());
+    Assert.assertEquals("FIXED", channel.getTableSchema().get("C1").getLogicalType());
+    Assert.assertEquals(38, (int) channel.getTableSchema().get("C1").getPrecision());
+    Assert.assertEquals(0, (int) channel.getTableSchema().get("C1").getScale());
+    Assert.assertNull(channel.getTableSchema().get("C1").getByteLength());
+    Assert.assertTrue(channel.getTableSchema().get("C1").isNullable());
+
+    Assert.assertTrue(channel.getTableSchema().containsKey("C2"));
+    Assert.assertEquals("NUMBER(38,0)", channel.getTableSchema().get("C2").getType());
+    Assert.assertEquals("FIXED", channel.getTableSchema().get("C2").getLogicalType());
+    Assert.assertEquals(38, (int) channel.getTableSchema().get("C2").getPrecision());
+    Assert.assertEquals(0, (int) channel.getTableSchema().get("C2").getScale());
+    Assert.assertNull(channel.getTableSchema().get("C2").getByteLength());
+    Assert.assertTrue(channel.getTableSchema().get("C2").isNullable());
   }
 
   @Test
@@ -572,8 +588,8 @@ public class SnowflakeStreamingIngestChannelTest {
             .collect(Collectors.toList());
 
     String expectedMessage =
-        "The given row exceeds the maximum allowed row size rowSizeInBytes=67109128.000"
-            + " maxAllowedRowSizeInBytes=67108864";
+        "The given row exceeds the maximum allowed row size rowSizeInBytes:67109128.000,"
+            + " maxAllowedRowSizeInBytes:67108864, rowIndex:0";
 
     Map<String, Object> row = new HashMap<>();
     schema.forEach(x -> row.put(x.getName(), byteArrayOneMb));
