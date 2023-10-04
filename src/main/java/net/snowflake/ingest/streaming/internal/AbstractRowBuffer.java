@@ -297,113 +297,140 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   @Override
   public InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, String offsetToken) {
-    float rowsSizeInBytes = 0F;
     if (!hasColumns()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
     }
-    InsertValidationResponse response = new InsertValidationResponse();
+    InsertValidationResponse response = null;
     this.flushLock.lock();
     try {
       this.channelState.updateInsertStats(System.currentTimeMillis(), this.bufferedRowCount);
       if (onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
-        // Used to map incoming row(nth row) to InsertError(for nth row) in response
-        int rowIndex = 0;
-        for (Map<String, Object> row : rows) {
-          InsertValidationResponse.InsertError error =
-              new InsertValidationResponse.InsertError(row, rowIndex);
-          try {
-            Set<String> inputColumnNames = verifyInputColumns(row, error, rowIndex);
-            rowsSizeInBytes +=
-                addRow(row, this.bufferedRowCount, this.statsMap, inputColumnNames, rowIndex);
-            this.bufferedRowCount++;
-          } catch (SFException e) {
-            error.setException(e);
-            response.addError(error);
-          } catch (Throwable e) {
-            logger.logWarn("Unexpected error happens during insertRows: {}", e);
-            error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
-            response.addError(error);
-          }
-          checkBatchSizeEnforcedMaximum(rowsSizeInBytes);
-          rowIndex++;
-          if (this.bufferedRowCount == Integer.MAX_VALUE) {
-            throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-          }
-        }
-        checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
-        this.channelState.setOffsetToken(offsetToken);
+        response = insertRowsHelperForContinue(rows, offsetToken);
       } else if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT) {
-        // If the on_error option is ABORT, simply throw the first exception
-        float tempRowsSizeInBytes = 0F;
-        int tempRowCount = 0;
-        for (Map<String, Object> row : rows) {
-          Set<String> inputColumnNames = verifyInputColumns(row, null, tempRowCount);
-          tempRowsSizeInBytes +=
-              addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames, tempRowCount);
-          checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
-          tempRowCount++;
-        }
-        checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
-
-        moveTempRowsToActualBuffer(tempRowCount);
-
-        rowsSizeInBytes = tempRowsSizeInBytes;
-        if ((long) this.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-        }
-        this.bufferedRowCount += tempRowCount;
-        this.statsMap.forEach(
-            (colName, stats) ->
-                this.statsMap.put(
-                    colName,
-                    RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
-        this.channelState.setOffsetToken(offsetToken);
+        response = insertRowsHelperForAbort(rows, offsetToken);
       } else if (onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
-        float tempRowsSizeInBytes = 0F;
-        int tempRowCount = 0;
-        for (Map<String, Object> row : rows) {
-          InsertValidationResponse.InsertError error =
-              new InsertValidationResponse.InsertError(row, tempRowCount);
-          try {
-            Set<String> inputColumnNames = verifyInputColumns(row, error, tempRowCount);
-            tempRowsSizeInBytes +=
-                addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames, tempRowCount);
-            tempRowCount++;
-          } catch (SFException e) {
-            error.setException(e);
-            response.addError(error);
-          } catch (Throwable e) {
-            logger.logWarn("Unexpected error happens during insertRows: {}", e);
-            error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
-            response.addError(error);
-          }
-          checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
-        }
-
-        if (!response.hasErrors()) {
-          checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
-          moveTempRowsToActualBuffer(tempRowCount);
-          rowsSizeInBytes = tempRowsSizeInBytes;
-          if ((long) this.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
-            throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-          }
-          this.bufferedRowCount += tempRowCount;
-          this.statsMap.forEach(
-              (colName, stats) ->
-                  this.statsMap.put(
-                      colName,
-                      RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
-          this.channelState.setOffsetToken(offsetToken);
-        }
+        response = insertRowsHelperForSkipBatch(rows, offsetToken);
       }
-      this.bufferSize += rowsSizeInBytes;
-      this.rowSizeMetric.accept(rowsSizeInBytes);
     } finally {
       this.tempStatsMap.values().forEach(RowBufferStats::reset);
       clearTempRows();
       this.flushLock.unlock();
     }
+    return response;
+  }
 
+  /** Insert rows function helper for ON_ERROR=CONTINUE */
+  private InsertValidationResponse insertRowsHelperForContinue(
+      Iterable<Map<String, Object>> rows, String offsetToken) {
+    InsertValidationResponse response = new InsertValidationResponse();
+    float rowsSizeInBytes = 0F;
+    int rowIndex = 0;
+    for (Map<String, Object> row : rows) {
+      InsertValidationResponse.InsertError error =
+          new InsertValidationResponse.InsertError(row, rowIndex);
+      try {
+        Set<String> inputColumnNames = verifyInputColumns(row, error, rowIndex);
+        rowsSizeInBytes +=
+            addRow(row, this.bufferedRowCount, this.statsMap, inputColumnNames, rowIndex);
+        this.bufferedRowCount++;
+      } catch (SFException e) {
+        error.setException(e);
+        response.addError(error);
+      } catch (Throwable e) {
+        logger.logWarn("Unexpected error happens during insertRows: {}", e);
+        error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
+        response.addError(error);
+      }
+      checkBatchSizeEnforcedMaximum(rowsSizeInBytes);
+      rowIndex++;
+      if (this.bufferedRowCount == Integer.MAX_VALUE) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+      }
+    }
+    checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
+    this.channelState.setOffsetToken(offsetToken);
+    this.bufferSize += rowsSizeInBytes;
+    this.rowSizeMetric.accept(rowsSizeInBytes);
+    return response;
+  }
+
+  /** Insert rows function helper for ON_ERROR=ABORT */
+  private InsertValidationResponse insertRowsHelperForAbort(
+      Iterable<Map<String, Object>> rows, String offsetToken) {
+    // If the on_error option is ABORT, simply throw the first exception
+    InsertValidationResponse response = new InsertValidationResponse();
+    float rowsSizeInBytes = 0F;
+    float tempRowsSizeInBytes = 0F;
+    int tempRowCount = 0;
+    for (Map<String, Object> row : rows) {
+      Set<String> inputColumnNames = verifyInputColumns(row, null, tempRowCount);
+      tempRowsSizeInBytes +=
+          addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames, tempRowCount);
+      checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
+      tempRowCount++;
+    }
+    checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
+
+    moveTempRowsToActualBuffer(tempRowCount);
+
+    rowsSizeInBytes = tempRowsSizeInBytes;
+    if ((long) this.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+    }
+    this.bufferedRowCount += tempRowCount;
+    this.statsMap.forEach(
+        (colName, stats) ->
+            this.statsMap.put(
+                colName, RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
+    this.channelState.setOffsetToken(offsetToken);
+    this.bufferSize += rowsSizeInBytes;
+    this.rowSizeMetric.accept(rowsSizeInBytes);
+    return response;
+  }
+
+  /** Insert rows function helper for ON_ERROR=SKIP_BATCH */
+  private InsertValidationResponse insertRowsHelperForSkipBatch(
+      Iterable<Map<String, Object>> rows, String offsetToken) {
+    InsertValidationResponse response = new InsertValidationResponse();
+    float rowsSizeInBytes = 0F;
+    float tempRowsSizeInBytes = 0F;
+    int tempRowCount = 0;
+    for (Map<String, Object> row : rows) {
+      InsertValidationResponse.InsertError error =
+          new InsertValidationResponse.InsertError(row, tempRowCount);
+      try {
+        Set<String> inputColumnNames = verifyInputColumns(row, error, tempRowCount);
+        tempRowsSizeInBytes +=
+            addTempRow(row, tempRowCount, this.tempStatsMap, inputColumnNames, tempRowCount);
+        tempRowCount++;
+      } catch (SFException e) {
+        error.setException(e);
+        response.addError(error);
+      } catch (Throwable e) {
+        logger.logWarn("Unexpected error happens during insertRows: {}", e);
+        error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
+        response.addError(error);
+      }
+      checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
+    }
+
+    if (!response.hasErrors()) {
+      checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
+      moveTempRowsToActualBuffer(tempRowCount);
+      rowsSizeInBytes = tempRowsSizeInBytes;
+      if ((long) this.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
+        throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+      }
+      this.bufferedRowCount += tempRowCount;
+      this.statsMap.forEach(
+          (colName, stats) ->
+              this.statsMap.put(
+                  colName, RowBufferStats.getCombinedStats(stats, this.tempStatsMap.get(colName))));
+      this.channelState.setOffsetToken(offsetToken);
+    }
+
+    this.bufferSize += rowsSizeInBytes;
+    this.rowSizeMetric.accept(rowsSizeInBytes);
     return response;
   }
 

@@ -1405,7 +1405,8 @@ public class RowBufferTest {
 
   @Test
   public void testOnErrorAbortSkipBatch() {
-    AbstractRowBuffer<?> innerBuffer = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
+    AbstractRowBuffer<?> innerBuffer =
+        createTestBuffer(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
 
     ColumnMetadata colDecimal = new ColumnMetadata();
     colDecimal.setName("COLDECIMAL");
@@ -1433,37 +1434,32 @@ public class RowBufferTest {
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLDECIMAL", 2);
-    response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
-    Assert.assertFalse(response.hasErrors());
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("COLDECIMAL", true);
 
-    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
+    response = innerBuffer.insertRows(Arrays.asList(row2, row3), "3");
+    Assert.assertTrue(response.hasErrors());
+
+    Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
-        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
     Assert.assertEquals(
         1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
-    Map<String, Object> row3 = new HashMap<>();
-    row3.put("COLDECIMAL", true);
-    try {
-      innerBuffer.insertRows(Collections.singletonList(row3), "3");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
-    }
-
-    Assert.assertEquals(2, innerBuffer.bufferedRowCount);
+    Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
     Assert.assertEquals(
-        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
     Assert.assertEquals(
         1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
     row3.put("COLDECIMAL", 3);
-    response = innerBuffer.insertRows(Collections.singletonList(row3), "3");
+    response = innerBuffer.insertRows(Arrays.asList(row2, row3), "3");
     Assert.assertFalse(response.hasErrors());
     Assert.assertEquals(3, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());

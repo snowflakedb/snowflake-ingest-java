@@ -861,6 +861,64 @@ public class StreamingIngestIT {
   }
 
   @Test
+  public void testAbortOnErrorSkipBatch() throws Exception {
+    String onErrorOptionTable = "skip_batch_on_error_option";
+    jdbcConnection
+        .createStatement()
+        .execute(String.format("create or replace table %s (c1 int);", onErrorOptionTable));
+
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(testDb)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(onErrorOptionTable)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.SKIP_BATCH)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel = client.openChannel(request);
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("c1", 1);
+    channel.insertRow(row1, "1");
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("c1", 2);
+    channel.insertRow(row2, "2");
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("c1", "a");
+
+    verifyInsertValidationResponse(channel.insertRow(row1, "1"));
+
+    InsertValidationResponse response = channel.insertRows(Arrays.asList(row1, row2, row3), "3");
+    Assert.assertTrue(response.hasErrors());
+
+    Map<String, Object> row4 = new HashMap<>();
+    row4.put("c1", 4);
+    verifyInsertValidationResponse(channel.insertRow(row4, "4"));
+
+    // Close the channel after insertion
+    channel.close().get();
+
+    for (int i = 1; i < 15; i++) {
+      if (channel.getLatestCommittedOffsetToken() != null
+          && channel.getLatestCommittedOffsetToken().equals("4")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(c1), min(c1), max(c1) from %s.%s.%s",
+                        testDb, TEST_SCHEMA, onErrorOptionTable));
+        result.next();
+        Assert.assertEquals("1", result.getString(1));
+        Assert.assertEquals("4", result.getString(2));
+        return;
+      }
+      Thread.sleep(1000);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
   public void testChannelClose() throws Exception {
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")
