@@ -39,7 +39,6 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
@@ -47,7 +46,6 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
@@ -276,11 +274,6 @@ public class FlushServiceTest {
   }
 
   TestContextFactory<?> testContextFactory;
-
-  @Before
-  public void setup() {
-    java.security.Security.addProvider(new BouncyCastleProvider());
-  }
 
   private SnowflakeStreamingIngestChannelInternal<?> addChannel1(TestContext<?> testContext) {
     return testContext

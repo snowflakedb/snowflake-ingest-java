@@ -30,6 +30,7 @@ BSD_3_CLAUSE_LICENSE = "3-Clause BSD License"
 EDL_10_LICENSE = "EDL 1.0"
 MIT_LICENSE = "The MIT License"
 GO_LICENSE = "The Go license"
+BOUNCY_CASTLE_LICENSE = "Bouncy Castle Licence <https://www.bouncycastle.org/licence.html>"
 
 # The SDK does not need to include licenses of dependencies, which aren't shaded
 IGNORED_DEPENDENCIES = {"net.snowflake:snowflake-jdbc", "org.slf4j:slf4j-api"}
@@ -57,6 +58,9 @@ ADDITIONAL_LICENSES_MAP = {
     "org.apache.parquet:parquet-format-structures": APACHE_LICENSE,
     "com.github.luben:zstd-jni": BSD_2_CLAUSE_LICENSE,
     "io.airlift:aircompressor": APACHE_LICENSE,
+    "org.bouncycastle:bcpkix-jdk18on": BOUNCY_CASTLE_LICENSE,
+    "org.bouncycastle:bcutil-jdk18on": BOUNCY_CASTLE_LICENSE,
+    "org.bouncycastle:bcprov-jdk18on": BOUNCY_CASTLE_LICENSE,
 }
 
 

@@ -12,10 +12,12 @@ import java.io.StringReader;
 import java.lang.management.BufferPoolMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
+import java.lang.reflect.InvocationTargetException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.Provider;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.interfaces.RSAPrivateCrtKey;
@@ -26,19 +28,65 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.core.SFSessionProperty;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 import org.apache.commons.codec.binary.Base64;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import org.bouncycastle.operator.InputDecryptorProvider;
+import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
 
 /** Contains Ingest related utility functions */
 public class Utils {
 
   private static final Logging logger = new Logging(Utils.class);
+
+  private static final String DEFAULT_SECURITY_PROVIDER_NAME =
+      "org.bouncycastle.jce.provider.BouncyCastleProvider";
+
+  /** provider name */
+  private static final String BOUNCY_CASTLE_PROVIDER = "BC";
+  /** provider name for FIPS */
+  private static final String BOUNCY_CASTLE_FIPS_PROVIDER = "BCFIPS";
+
+  static {
+    // Add Bouncy Castle to the security provider. This is required to
+    // verify the signature on OCSP response and attached certificates.
+    if (Security.getProvider(BOUNCY_CASTLE_PROVIDER) == null
+        && Security.getProvider(BOUNCY_CASTLE_FIPS_PROVIDER) == null) {
+      Security.addProvider(instantiateSecurityProvider());
+    }
+  }
+
+  public static Provider getProvider() {
+    final Provider bcProvider = Security.getProvider(BOUNCY_CASTLE_PROVIDER);
+    if (bcProvider != null) {
+      return bcProvider;
+    }
+    final Provider bcFipsProvider = Security.getProvider(BOUNCY_CASTLE_FIPS_PROVIDER);
+    if (bcFipsProvider != null) {
+      return bcFipsProvider;
+    }
+    throw new SFException(ErrorCode.INTERNAL_ERROR, "No security provider found");
+  }
+
+  private static Provider instantiateSecurityProvider() {
+    try {
+      logger.logInfo("Adding security provider {}", DEFAULT_SECURITY_PROVIDER_NAME);
+      Class klass = Class.forName(DEFAULT_SECURITY_PROVIDER_NAME);
+      return (Provider) klass.getDeclaredConstructor().newInstance();
+    } catch (ExceptionInInitializerError
+        | ClassNotFoundException
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | IllegalArgumentException
+        | InvocationTargetException
+        | SecurityException ex) {
+      throw new SFException(
+          ErrorCode.CRYPTO_PROVIDER_ERROR, DEFAULT_SECURITY_PROVIDER_NAME, ex.getMessage());
+    }
+  }
 
   /**
    * Assert when the String is null or Empty
@@ -183,7 +231,6 @@ public class Utils {
     key = key.replaceAll("-+[A-Za-z ]+-+", "");
     key = key.replaceAll("\\s", "");
 
-    java.security.Security.addProvider(new BouncyCastleProvider());
     byte[] encoded = Base64.decodeBase64(key);
     try {
       KeyFactory kf = KeyFactory.getInstance("RSA");
@@ -216,7 +263,6 @@ public class Utils {
     }
     builder.append("\n-----END ENCRYPTED PRIVATE KEY-----");
     key = builder.toString();
-    Security.addProvider(new BouncyCastleProvider());
     try {
       PEMParser pemParser = new PEMParser(new StringReader(key));
       PKCS8EncryptedPrivateKeyInfo encryptedPrivateKeyInfo =
@@ -225,7 +271,7 @@ public class Utils {
       InputDecryptorProvider pkcs8Prov =
           new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase.toCharArray());
       JcaPEMKeyConverter converter =
-          new JcaPEMKeyConverter().setProvider(BouncyCastleProvider.PROVIDER_NAME);
+          new JcaPEMKeyConverter().setProvider(Utils.getProvider().getName());
       PrivateKeyInfo decryptedPrivateKeyInfo =
           encryptedPrivateKeyInfo.decryptPrivateKeyInfo(pkcs8Prov);
       return converter.getPrivateKey(decryptedPrivateKeyInfo);
