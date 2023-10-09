@@ -71,7 +71,7 @@ The Snowflake Ingest SDK provides shaded and unshaded versions of its jar. The s
 whereas the unshaded version declares its dependencies in `pom.xml`, which are fetched as standard transitive dependencies by the build system like Maven or Gradle.
 The shaded JAR can help avoid potential dependency conflicts, but the unshaded version provides finer graned control over transitive dependencies.
 
-## Using with snowflake-jdbc-fics
+## Using with snowflake-jdbc-fips
 
 For use cases, which need to use `snowflake-jdbc-fips` instead of the default `snowflake-jdbc`, we recommend to take the following steps:
 
