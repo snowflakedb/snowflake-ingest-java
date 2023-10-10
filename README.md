@@ -65,6 +65,25 @@ dependencies {
 }
 ```
 
+## Jar Versions
+
+The Snowflake Ingest SDK provides shaded and unshaded versions of its jar. The shaded version bundles the dependencies into its own jar,
+whereas the unshaded version declares its dependencies in `pom.xml`, which are fetched as standard transitive dependencies by the build system like Maven or Gradle.
+The shaded JAR can help avoid potential dependency conflicts, but the unshaded version provides finer graned control over transitive dependencies.
+
+## Using with snowflake-jdbc-fips
+
+For use cases, which need to use `snowflake-jdbc-fips` instead of the default `snowflake-jdbc`, we recommend to take the following steps:
+
+- Use the unshaded version of the Ingest SDK.
+- Exclude these transitive dependencies:
+    - `net.snowflake:snowflake-jdbc`
+    - `org.bouncycastle:bcpkix-jdk18on`
+    - `org.bouncycastle:bcprov-jdk18on`
+- Add a dependency on `snowflake-jdbc-fips`.
+
+See [this test](https://github.com/snowflakedb/snowflake-ingest-java/tree/master/e2e-jar-test/fips) for an example how to use Snowflake Ingest SDK together with Snowflake FIPS JDBC Driver.
+
 # Example
 
 ## Snowpipe
