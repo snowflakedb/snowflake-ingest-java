@@ -41,7 +41,6 @@ import java.util.function.Supplier;
 import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
@@ -122,8 +121,6 @@ public class TestUtils {
       scheme = profile.get(SCHEME).asText();
       role = Optional.ofNullable(profile.get(ROLE)).map(r -> r.asText()).orElse("DEFAULT_ROLE");
       privateKeyPem = profile.get(PRIVATE_KEY).asText();
-
-      java.security.Security.addProvider(new BouncyCastleProvider());
 
       byte[] encoded = Base64.decodeBase64(privateKeyPem);
       KeyFactory kf = KeyFactory.getInstance("RSA");

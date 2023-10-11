@@ -35,6 +35,7 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
+    <bouncycastle.version>1.74</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
@@ -275,6 +276,16 @@
         <version>${yetus.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcprov-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.codehaus.jackson</groupId>
         <artifactId>jackson-core-asl</artifactId>
         <version>${codehaus.version}</version>
@@ -449,6 +460,15 @@
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
     </dependency>
+
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk18on</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
@@ -531,7 +551,7 @@
             <dependency>
               <groupId>com.google.cloud.tools</groupId>
               <artifactId>linkage-checker-enforcer-rules</artifactId>
-              <version>1.5.12</version>
+              <version>1.5.13</version>
             </dependency>
             <dependency>
               <groupId>org.codehaus.mojo</groupId>
@@ -758,6 +778,7 @@
             <includedLicense>The MIT License</includedLicense>
             <includedLicense>EDL 1.0</includedLicense>
             <includedLicense>The Go license</includedLicense>
+            <includedLicense>Bouncy Castle Licence</includedLicense>
           </includedLicenses>
           <excludedScopes>test,provided,system</excludedScopes>
           <failOnBlacklist>true</failOnBlacklist>
@@ -928,6 +949,10 @@
                 <relocation>
                   <pattern>com.nimbusds</pattern>
                   <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.bouncycastle</pattern>
+                  <shadedPattern>${shadeBase}.org.bouncycastle</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>net.jcip</pattern>
