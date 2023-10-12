@@ -662,7 +662,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       case SKIP_BATCH:
         return new SkipBatchIngestionStrategy<>();
       default:
-        throw new IllegalArgumentException("Unknown on error option: ");
+        throw new IllegalArgumentException("Unknown on error option: " + onErrorOption);
     }
   }
 }

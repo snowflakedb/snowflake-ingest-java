@@ -7,9 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.Map;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 
-/**
- * Interface to a batch of rows into the row buffer based on different on error options
- */
+/** Interface to a batch of rows into the row buffer based on different on error options */
 public interface IngestionStrategy<T> {
   /**
    * Insert a batch of rows into the row buffer
@@ -18,5 +16,6 @@ public interface IngestionStrategy<T> {
    * @param offsetToken offset token of the latest row in the batch
    * @return insert response that possibly contains errors because of insertion failures
    */
-  InsertValidationResponse insertRows(AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken);
+  InsertValidationResponse insertRows(
+      AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken);
 }
