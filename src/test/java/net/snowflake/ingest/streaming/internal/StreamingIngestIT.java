@@ -879,12 +879,10 @@ public class StreamingIngestIT {
     SnowflakeStreamingIngestChannel channel = client.openChannel(request);
     Map<String, Object> row1 = new HashMap<>();
     row1.put("c1", 1);
-    channel.insertRow(row1, "1");
     Map<String, Object> row2 = new HashMap<>();
     row2.put("c1", 2);
-    channel.insertRow(row2, "2");
     Map<String, Object> row3 = new HashMap<>();
-    row3.put("c1", "a");
+    row3.put("c1", "3");
 
     verifyInsertValidationResponse(channel.insertRow(row1, "1"));
 
@@ -909,8 +907,9 @@ public class StreamingIngestIT {
                         "select count(c1), min(c1), max(c1) from %s.%s.%s",
                         testDb, TEST_SCHEMA, onErrorOptionTable));
         result.next();
-        Assert.assertEquals("1", result.getString(1));
-        Assert.assertEquals("4", result.getString(2));
+        Assert.assertEquals("2", result.getString(1));
+        Assert.assertEquals("1", result.getString(2));
+        Assert.assertEquals("4", result.getString(3));
         return;
       }
       Thread.sleep(1000);
