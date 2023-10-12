@@ -19,6 +19,18 @@
         <Reason>Google Crypto Tink is an optional dependency of nimbus-jose-jwt</Reason>
     </LinkageError>
 
+    <LinkageError>
+        <Target>
+            <Class name="org.bouncycastle.asn1.x509.qualified.QCStatement" />
+        </Target>
+        <Reason>Seems like a false positive, this class does exist on classpath.</Reason>
+    </LinkageError>
+    <LinkageError>
+        <Target>
+            <Class name="org.bouncycastle.asn1.x9.X9FieldID" />
+        </Target>
+        <Reason>Seems like a false positive, this class does exist on classpath.</Reason>
+    </LinkageError>
     <!-- Hadoop-related linkage errors-->
     <LinkageError>
         <Source>

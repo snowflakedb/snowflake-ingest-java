@@ -15,7 +15,7 @@ authentication. Currently, we support ingestion through the following APIs:
 
 The Snowflake Ingest Service SDK depends on the following libraries:
 
-* snowflake-jdbc (3.13.30+)
+* snowflake-jdbc (3.13.30 to 3.13.33) 
 * slf4j-api
 
 These dependencies will be fetched automatically by build systems like Maven or Gradle. If you don't build your project
@@ -23,7 +23,7 @@ using a build system, please make sure these dependencies are on the classpath.
 
 # Prerequisites
 
-**If your project depends on the Snowflake JDBC driver, as well, please make sure the JDBC driver version is 3.13.30 or newer.**
+**If your project depends on the Snowflake JDBC driver, as well, please make sure the JDBC driver version is 3.13.30 to 3.13.33. JDBC driver version 3.14.0 or higher is currently not supported. **
 
 ## Java 8+
 
@@ -64,6 +64,25 @@ dependencies {
     compile 'net.snowflake:snowflake-ingest-sdk:{version}'
 }
 ```
+
+## Jar Versions
+
+The Snowflake Ingest SDK provides shaded and unshaded versions of its jar. The shaded version bundles the dependencies into its own jar,
+whereas the unshaded version declares its dependencies in `pom.xml`, which are fetched as standard transitive dependencies by the build system like Maven or Gradle.
+The shaded JAR can help avoid potential dependency conflicts, but the unshaded version provides finer graned control over transitive dependencies.
+
+## Using with snowflake-jdbc-fips
+
+For use cases, which need to use `snowflake-jdbc-fips` instead of the default `snowflake-jdbc`, we recommend to take the following steps:
+
+- Use the unshaded version of the Ingest SDK.
+- Exclude these transitive dependencies:
+    - `net.snowflake:snowflake-jdbc`
+    - `org.bouncycastle:bcpkix-jdk18on`
+    - `org.bouncycastle:bcprov-jdk18on`
+- Add a dependency on `snowflake-jdbc-fips`.
+
+See [this test](https://github.com/snowflakedb/snowflake-ingest-java/tree/master/e2e-jar-test/fips) for an example how to use Snowflake Ingest SDK together with Snowflake FIPS JDBC Driver.
 
 # Example
 
