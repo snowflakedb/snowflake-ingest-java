@@ -882,7 +882,7 @@ public class StreamingIngestIT {
     Map<String, Object> row2 = new HashMap<>();
     row2.put("c1", 2);
     Map<String, Object> row3 = new HashMap<>();
-    row3.put("c1", "3");
+    row3.put("c1", "a");
 
     verifyInsertValidationResponse(channel.insertRow(row1, "1"));
 
