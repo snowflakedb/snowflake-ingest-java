@@ -12,6 +12,8 @@ public class OpenChannelRequest {
   public enum OnErrorOption {
     CONTINUE, // CONTINUE loading the rows, and return all the errors in the response
     ABORT, // ABORT the entire batch, and throw an exception when we hit the first error
+    SKIP_BATCH, // If an error in the batch is detected return a response containing all error row
+    // indexes. No data is ingested
   }
 
   /**
