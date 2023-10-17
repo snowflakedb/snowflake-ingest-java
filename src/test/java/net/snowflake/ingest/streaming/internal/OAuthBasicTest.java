@@ -12,14 +12,12 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
  * This test only contains basic construction of client using OAuth authentication. Further
  * integration test would be added in dew.
  */
-@Ignore
 public class OAuthBasicTest {
 
   /** Create client with invalid authorization type, this should fail. */
