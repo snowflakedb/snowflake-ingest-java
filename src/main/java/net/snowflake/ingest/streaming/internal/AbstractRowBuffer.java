@@ -150,6 +150,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         InsertValidationResponse.InsertError error =
             new InsertValidationResponse.InsertError(row, rowIndex);
         try {
+          if (rowBuffer.bufferedRowCount == Integer.MAX_VALUE) {
+            throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+          }
           Set<String> inputColumnNames = verifyInputColumns(row, error, rowIndex);
           rowsSizeInBytes +=
               addRow(
@@ -163,11 +166,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
           response.addError(error);
         }
-        checkBatchSizeEnforcedMaximum(rowsSizeInBytes);
         rowIndex++;
-        if (rowBuffer.bufferedRowCount == Integer.MAX_VALUE) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-        }
       }
       checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
       rowBuffer.channelState.setOffsetToken(offsetToken);
@@ -191,17 +190,17 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         Set<String> inputColumnNames = verifyInputColumns(row, null, tempRowCount);
         tempRowsSizeInBytes +=
             addTempRow(row, tempRowCount, rowBuffer.tempStatsMap, inputColumnNames, tempRowCount);
-        checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
         tempRowCount++;
+        checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
+        if ((long) rowBuffer.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
+          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+        }
       }
       checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
 
       moveTempRowsToActualBuffer(tempRowCount);
 
       rowsSizeInBytes = tempRowsSizeInBytes;
-      if ((long) rowBuffer.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
-        throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-      }
       rowBuffer.bufferedRowCount += tempRowCount;
       rowBuffer.statsMap.forEach(
           (colName, stats) ->
@@ -241,15 +240,15 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           response.addError(error);
         }
         checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
+        if ((long) rowBuffer.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
+          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
+        }
       }
 
       if (!response.hasErrors()) {
         checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
         moveTempRowsToActualBuffer(tempRowCount);
         rowsSizeInBytes = tempRowsSizeInBytes;
-        if ((long) rowBuffer.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
-          throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
-        }
         rowBuffer.bufferedRowCount += tempRowCount;
         rowBuffer.statsMap.forEach(
             (colName, stats) ->
@@ -257,9 +256,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                     colName,
                     RowBufferStats.getCombinedStats(stats, rowBuffer.tempStatsMap.get(colName))));
         rowBuffer.channelState.setOffsetToken(offsetToken);
+        rowBuffer.bufferSize += rowsSizeInBytes;
+        rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       }
-      rowBuffer.bufferSize += rowsSizeInBytes;
-      rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       return response;
     }
   }
