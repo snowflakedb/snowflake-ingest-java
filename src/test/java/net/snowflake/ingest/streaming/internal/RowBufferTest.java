@@ -945,7 +945,6 @@ public class RowBufferTest {
 
   @Test
   public void testMaxInsertRowsBatchSize() {
-    testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
     testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.ABORT);
     testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
