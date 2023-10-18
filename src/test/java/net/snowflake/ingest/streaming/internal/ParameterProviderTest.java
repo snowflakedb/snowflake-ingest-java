@@ -272,4 +272,13 @@ public class ParameterProviderTest {
       Assert.assertTrue(e.getMessage().startsWith("Lag falls outside"));
     }
   }
+
+  @Test
+  public void testMaxChunksInBlobAndRegistrationRequest() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put("max_chunks_in_blob_and_registration_request", 1);
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    Assert.assertEquals(1, parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
+  }
 }
