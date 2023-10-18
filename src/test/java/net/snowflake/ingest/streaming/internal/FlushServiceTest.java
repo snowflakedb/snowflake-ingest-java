@@ -582,7 +582,7 @@ public class FlushServiceTest {
             Math.ceil(
                 (double) numberOfRows
                     / channelsPerTable
-                    / ParameterProvider.MAX_CHUNKS_IN_BLOB_DEFAULT);
+                    / ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT);
 
     final TestContext<List<List<Object>>> testContext = testContextFactory.create();
 
@@ -612,7 +612,7 @@ public class FlushServiceTest {
   public void testBlobSplitDueToNumberOfChunksWithLeftoverChannels() throws Exception {
     final TestContext<List<List<Object>>> testContext = testContextFactory.create();
 
-    for (int i = 0; i < 19; i++) { // 19 simple chunks
+    for (int i = 0; i < 99; i++) { // 19 simple chunks
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
           addChannel(testContext, i, 1);
       channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
@@ -622,19 +622,19 @@ public class FlushServiceTest {
     // 20th chunk would contain multiple channels, but there are some with different encryption key
     // ID, so they spill to a new blob
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel1 =
-        addChannel(testContext, 19, 1);
+        addChannel(testContext, 99, 1);
     channel1.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
-    channel1.insertRow(Collections.singletonMap("C1", 19), "");
+    channel1.insertRow(Collections.singletonMap("C1", 0), "");
 
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel2 =
-        addChannel(testContext, 19, 2);
+        addChannel(testContext, 99, 2);
     channel2.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
-    channel2.insertRow(Collections.singletonMap("C1", 19), "");
+    channel2.insertRow(Collections.singletonMap("C1", 0), "");
 
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel3 =
-        addChannel(testContext, 19, 2);
+        addChannel(testContext, 99, 2);
     channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
-    channel3.insertRow(Collections.singletonMap("C1", 19), "");
+    channel3.insertRow(Collections.singletonMap("C1", 0), "");
 
     FlushService<List<List<Object>>> flushService = testContext.flushService;
     flushService.flush(true).get();
@@ -648,7 +648,7 @@ public class FlushServiceTest {
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
         blobDataCaptor.getAllValues();
 
-    Assert.assertEquals(22, getRows(allUploadedBlobs).size());
+    Assert.assertEquals(102, getRows(allUploadedBlobs).size());
   }
 
   private List<List<Object>> getRows(List<List<List<ChannelData<List<List<Object>>>>>> blobs) {

@@ -26,8 +26,8 @@ import org.junit.Test;
  */
 public class ManyTablesIT {
 
-  private static final int TABLES_COUNT = 100;
-  private static final int TOTAL_ROWS_COUNT = 20_000;
+  private static final int TABLES_COUNT = 20;
+  private static final int TOTAL_ROWS_COUNT = 200_000;
   private String dbName;
   private SnowflakeStreamingIngestClient client;
   private Connection connection;
@@ -37,8 +37,7 @@ public class ManyTablesIT {
   @Before
   public void setUp() throws Exception {
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
-    props.put(ParameterProvider.MAX_CHUNKS_IN_BLOB, 2);
-    props.put(ParameterProvider.MAX_CHUNKS_IN_REGISTRATION_REQUEST, 3);
+    props.put(ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST, 2);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }

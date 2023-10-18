@@ -351,13 +351,15 @@ class FlushService<T> {
           channelsDataPerTable.addAll(leftoverChannelsDataPerTable);
           leftoverChannelsDataPerTable.clear();
         } else if (blobData.size()
-            >= this.owningClient.getParameterProvider().getMaxChunksInBlob()) {
+            >= this.owningClient
+                .getParameterProvider()
+                .getMaxChunksInBlobAndRegistrationRequest()) {
           // Create a new blob if the current one already contains max allowed number of chunks
           logger.logInfo(
               "Max allowed number of chunks in the current blob reached. chunkCount={}"
                   + " maxChunkCount={} currentBlobPath={}",
               blobData.size(),
-              this.owningClient.getParameterProvider().getMaxChunksInBlob(),
+              this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest(),
               blobPath);
           break;
         } else {

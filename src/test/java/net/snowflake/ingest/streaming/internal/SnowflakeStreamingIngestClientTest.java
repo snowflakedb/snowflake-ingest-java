@@ -884,13 +884,22 @@ public class SnowflakeStreamingIngestClientTest {
 
     assertEquals(0, client.partitionBlobListForRegistrationRequest(new ArrayList<>()).size());
     assertEquals(
+        1, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(1)).size());
+    assertEquals(
         1, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(99)).size());
     assertEquals(
         1, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(100)).size());
+
     assertEquals(
-        2, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(101)).size());
+        1, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2)).size());
     assertEquals(
-        2, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(200)).size());
+        2,
+        client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 1)).size());
+    assertEquals(
+        3,
+        client
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 1, 100))
+            .size());
     assertEquals(
         2, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(99, 2)).size());
     assertEquals(

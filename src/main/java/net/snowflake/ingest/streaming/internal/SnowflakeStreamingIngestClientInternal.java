@@ -465,10 +465,21 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     List<List<BlobMetadata>> result = new ArrayList<>();
     List<BlobMetadata> currentBatch = new ArrayList<>();
     int chunksInCurrentBatch = 0;
+    int maxChunksInBlobAndRegistrationRequest =
+        parameterProvider.getMaxChunksInBlobAndRegistrationRequest();
 
     for (BlobMetadata blob : blobs) {
-      if (chunksInCurrentBatch + blob.getChunks().size()
-          > parameterProvider.getMaxChunksInRegistrationRequest()) {
+      if (blob.getChunks().size() > maxChunksInBlobAndRegistrationRequest) {
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR,
+            String.format(
+                "Incorrectly generated blob detected - number of chunks in the blob is larger than"
+                    + " the max allowed number of chunks. Please report this bug to Snowflake."
+                    + " bdec=%s chunkCount=%d maxAllowedChunkCount=%d",
+                blob.getPath(), blob.getChunks().size(), maxChunksInBlobAndRegistrationRequest));
+      }
+
+      if (chunksInCurrentBatch + blob.getChunks().size() > maxChunksInBlobAndRegistrationRequest) {
         // Newly added BDEC file would exceed the max number of chunks in a single registration
         // request. We put chunks collected so far into the result list and create a new batch with
         // the current blob
