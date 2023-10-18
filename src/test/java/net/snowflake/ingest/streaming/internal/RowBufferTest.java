@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -267,40 +266,54 @@ public class RowBufferTest {
   public void testStringLength() {
     testStringLengthHelper(this.rowBufferOnErrorContinue);
     testStringLengthHelper(this.rowBufferOnErrorAbort);
+    testStringLengthHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   @Test
   public void testRowIndexWithMultipleRowsWithError() {
+    testRowIndexWithMultipleRowsWithErrorHelper(this.rowBufferOnErrorContinue);
+    testRowIndexWithMultipleRowsWithErrorHelper(this.rowBufferOnErrorSkipBatch);
+  }
+
+  public void testRowIndexWithMultipleRowsWithErrorHelper(AbstractRowBuffer<?> rowBuffer) {
     List<Map<String, Object>> rows = new ArrayList<>();
     Map<String, Object> row = new HashMap<>();
 
-    // row with good data
+    // row with interleaved good and bad data
     row.put("colInt", 3);
     rows.add(row);
 
     row = new HashMap<>();
     row.put("colChar", "1111111111111111111111"); // too big
-
-    // lets add a row with bad data
     rows.add(row);
 
-    InsertValidationResponse response = this.rowBufferOnErrorContinue.insertRows(rows, null);
+    row = new HashMap<>();
+    row.put("colInt", 3);
+    rows.add(row);
+
+    row = new HashMap<>();
+    row.put("colChar", "1111111111111111111111"); // too big
+    rows.add(row);
+
+    InsertValidationResponse response = rowBuffer.insertRows(rows, null);
     Assert.assertTrue(response.hasErrors());
 
-    Assert.assertEquals(1, response.getErrorRowCount());
+    Assert.assertEquals(2, response.getErrorRowCount());
 
     // second row out of the rows we sent was having bad data.
     // so InsertError corresponds to second row.
     Assert.assertEquals(1, response.getInsertErrors().get(0).getRowIndex());
+    Assert.assertEquals(3, response.getInsertErrors().get(1).getRowIndex());
 
-    Assert.assertTrue(response.getInsertErrors().get(0).getException() != null);
+    Assert.assertNotNull(response.getInsertErrors().get(0).getException());
+    Assert.assertNotNull(response.getInsertErrors().get(1).getException());
 
-    Assert.assertTrue(
-        Objects.equals(
-            response.getInsertErrors().get(0).getException().getVendorCode(),
-            ErrorCode.INVALID_VALUE_ROW.getMessageCode()));
-
-    Assert.assertEquals(1, response.getInsertErrors().get(0).getRowIndex());
+    Assert.assertEquals(
+        response.getInsertErrors().get(0).getException().getVendorCode(),
+        ErrorCode.INVALID_VALUE_ROW.getMessageCode());
+    Assert.assertEquals(
+        response.getInsertErrors().get(1).getException().getVendorCode(),
+        ErrorCode.INVALID_VALUE_ROW.getMessageCode());
 
     Assert.assertTrue(
         response
@@ -312,6 +325,17 @@ public class RowBufferTest {
                 "The given row cannot be converted to the internal format due to invalid value:"
                     + " Value cannot be ingested into Snowflake column COLCHAR of type STRING,"
                     + " rowIndex:1, reason: String too long: length=22 characters maxLength=11"
+                    + " characters"));
+    Assert.assertTrue(
+        response
+            .getInsertErrors()
+            .get(1)
+            .getException()
+            .getMessage()
+            .equalsIgnoreCase(
+                "The given row cannot be converted to the internal format due to invalid value:"
+                    + " Value cannot be ingested into Snowflake column COLCHAR of type STRING,"
+                    + " rowIndex:3, reason: String too long: length=22 characters maxLength=11"
                     + " characters"));
   }
 
@@ -357,6 +381,7 @@ public class RowBufferTest {
   public void testInsertRow() {
     testInsertRowHelper(this.rowBufferOnErrorContinue);
     testInsertRowHelper(this.rowBufferOnErrorAbort);
+    testInsertRowHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   private void testInsertRowHelper(AbstractRowBuffer<?> rowBuffer) {
@@ -377,6 +402,7 @@ public class RowBufferTest {
   public void testNullInsertRow() {
     testInsertNullRowHelper(this.rowBufferOnErrorContinue);
     testInsertNullRowHelper(this.rowBufferOnErrorAbort);
+    testInsertNullRowHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   private void testInsertNullRowHelper(AbstractRowBuffer<?> rowBuffer) {
@@ -397,6 +423,7 @@ public class RowBufferTest {
   public void testInsertRows() {
     testInsertRowsHelper(this.rowBufferOnErrorContinue);
     testInsertRowsHelper(this.rowBufferOnErrorAbort);
+    testInsertRowsHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   private void testInsertRowsHelper(AbstractRowBuffer<?> rowBuffer) {
@@ -426,6 +453,7 @@ public class RowBufferTest {
   public void testFlush() {
     testFlushHelper(this.rowBufferOnErrorAbort);
     testFlushHelper(this.rowBufferOnErrorContinue);
+    testFlushHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   private void testFlushHelper(AbstractRowBuffer<?> rowBuffer) {
@@ -598,6 +626,7 @@ public class RowBufferTest {
   public void testE2E() {
     testE2EHelper(this.rowBufferOnErrorAbort);
     testE2EHelper(this.rowBufferOnErrorContinue);
+    testE2EHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   private void testE2EHelper(AbstractRowBuffer<?> rowBuffer) {
@@ -626,6 +655,7 @@ public class RowBufferTest {
   public void testE2ETimestampErrors() {
     testE2ETimestampErrorsHelper(this.rowBufferOnErrorAbort);
     testE2ETimestampErrorsHelper(this.rowBufferOnErrorContinue);
+    testE2ETimestampErrorsHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   private void testE2ETimestampErrorsHelper(AbstractRowBuffer<?> innerBuffer) {
@@ -663,6 +693,7 @@ public class RowBufferTest {
   public void testStatsE2E() {
     testStatsE2EHelper(this.rowBufferOnErrorAbort);
     testStatsE2EHelper(this.rowBufferOnErrorContinue);
+    testStatsE2EHelper(this.rowBufferOnErrorSkipBatch);
   }
 
   private void testStatsE2EHelper(AbstractRowBuffer<?> rowBuffer) {
