@@ -19,3 +19,6 @@ if ! command -v java > /dev/null; then
 fi
 echo "Running Google Java Format"
 find ./src -type f -name "*.java" -print0 | xargs -0 java -jar "${JAR_FILE}" --replace --set-exit-if-changed && echo "OK"
+
+echo "Sorting pom.xml"
+mvn com.github.ekryd.sortpom:sortpom-maven-plugin:sort
