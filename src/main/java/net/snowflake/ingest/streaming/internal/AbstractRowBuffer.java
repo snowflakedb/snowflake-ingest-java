@@ -223,13 +223,14 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       float rowsSizeInBytes = 0F;
       float tempRowsSizeInBytes = 0F;
       int tempRowCount = 0;
+      int rowIndex = 0;
       for (Map<String, Object> row : rows) {
         InsertValidationResponse.InsertError error =
-            new InsertValidationResponse.InsertError(row, tempRowCount);
+            new InsertValidationResponse.InsertError(row, rowIndex);
         try {
-          Set<String> inputColumnNames = verifyInputColumns(row, error, tempRowCount);
+          Set<String> inputColumnNames = verifyInputColumns(row, error, rowIndex);
           tempRowsSizeInBytes +=
-              addTempRow(row, tempRowCount, rowBuffer.tempStatsMap, inputColumnNames, tempRowCount);
+              addTempRow(row, tempRowCount, rowBuffer.tempStatsMap, inputColumnNames, rowIndex);
           tempRowCount++;
         } catch (SFException e) {
           error.setException(e);
@@ -239,8 +240,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
           response.addError(error);
         }
+        rowIndex++;
         checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
-        if ((long) rowBuffer.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
+        if ((long) rowBuffer.bufferedRowCount + rowIndex >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
         }
       }
