@@ -110,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.0.4-SNAPSHOT";
+  public static final String DEFAULT_VERSION = "2.0.4";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -351,6 +351,7 @@ public class RequestBuilder {
   private static String buildCustomUserAgent(String additionalUserAgentInfo) {
     return USER_AGENT.trim() + " " + additionalUserAgentInfo;
   }
+
   /** A simple POJO for generating our POST body to the insert endpoint */
   private static class IngestRequest {
     // the list of files we're loading
