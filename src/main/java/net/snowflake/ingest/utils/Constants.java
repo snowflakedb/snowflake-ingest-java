@@ -119,15 +119,10 @@ public class Constants {
    * CompressionCodecName, but we want to control and allow only specific values of that.
    */
   public enum BdecParquetCompression {
-    UNCOMPRESSED,
-    GZIP,
-    SNAPPY,
-    ZSTD;
+    GZIP;
 
     public CompressionCodecName getCompressionCodec() {
-      return (this == UNCOMPRESSED
-          ? CompressionCodecName.fromConf(null)
-          : CompressionCodecName.fromConf(this.name()));
+      return CompressionCodecName.fromConf(this.name());
     }
 
     public static BdecParquetCompression fromName(String name) {
