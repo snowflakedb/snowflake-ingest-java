@@ -122,7 +122,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                 schema,
                 metadata,
                 channelName,
-                clientBufferParameters.getMaxChunkSizeInBytes());
+                clientBufferParameters.getMaxChunkSizeInBytes(),
+                clientBufferParameters.getBdecParquetCompression());
       } else {
         this.bdecParquetWriter = null;
       }
@@ -323,7 +324,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     return new ParquetFlusher(
         schema,
         clientBufferParameters.getEnableParquetInternalBuffering(),
-        clientBufferParameters.getMaxChunkSizeInBytes());
+        clientBufferParameters.getMaxChunkSizeInBytes(),
+        clientBufferParameters.getBdecParquetCompression());
   }
 
   private static class ParquetColumn {

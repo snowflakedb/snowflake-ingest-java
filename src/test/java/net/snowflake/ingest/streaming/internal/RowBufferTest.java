@@ -120,7 +120,8 @@ public class RowBufferTest {
         ClientBufferParameters.test_createClientBufferParameters(
             enableParquetMemoryOptimization,
             MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
-            MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT));
+            MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
+            Constants.BdecParquetCompression.GZIP));
   }
 
   @Test

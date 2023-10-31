@@ -38,6 +38,9 @@ public class ParameterProvider {
 
   public static final String MAX_CLIENT_LAG_ENABLED = "MAX_CLIENT_LAG_ENABLED".toLowerCase();
 
+  public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
+      "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
@@ -62,6 +65,9 @@ public class ParameterProvider {
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
   public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT = 100;
+
+  public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
+      Constants.BdecParquetCompression.GZIP;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -176,6 +182,12 @@ public class ParameterProvider {
     this.updateValue(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
+        parameterOverrides,
+        props);
+
+    this.updateValue(
+        BDEC_PARQUET_COMPRESSION_ALGORITHM,
+        BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
         props);
   }
@@ -377,7 +389,6 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
-  /** @return The max allow row size (in bytes) */
   public long getMaxAllowedRowSizeInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -395,6 +406,17 @@ public class ParameterProvider {
             MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
             MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT);
     return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
+  }
+
+  /** @return BDEC compression algorithm */
+  public Constants.BdecParquetCompression getBdecParquetCompressionAlgorithm() {
+    Object val =
+            this.parameterMap.getOrDefault(
+                    BDEC_PARQUET_COMPRESSION_ALGORITHM, BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT);
+    if (val instanceof Constants.BdecParquetCompression) {
+      return (Constants.BdecParquetCompression) val;
+    }
+    return Constants.BdecParquetCompression.fromName((String) val);
   }
 
   @Override
