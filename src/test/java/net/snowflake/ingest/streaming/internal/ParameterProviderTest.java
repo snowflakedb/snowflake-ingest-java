@@ -1,6 +1,8 @@
 package net.snowflake.ingest.streaming.internal;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.ingest.utils.Constants;
@@ -288,5 +290,37 @@ public class ParameterProviderTest {
     parameterMap.put("max_chunks_in_blob_and_registration_request", 1);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
     Assert.assertEquals(1, parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
+  }
+
+  @Test
+  public void testValidCompressionAlgorithmsAndWithUppercaseLowerCase() {
+    List<String> gzipValues = Arrays.asList("GZIP", "gzip", "Gzip", "gZip");
+    gzipValues.forEach(
+        v -> {
+          Properties prop = new Properties();
+          Map<String, Object> parameterMap = getStartingParameterMap();
+          parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, v);
+          ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+          Assert.assertEquals(
+              Constants.BdecParquetCompression.GZIP,
+              parameterProvider.getBdecParquetCompressionAlgorithm());
+        });
+  }
+
+  @Test
+  public void testInvalidCompressionAlgorithm() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, "invalid_comp");
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    try {
+      parameterProvider.getBdecParquetCompressionAlgorithm();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals(
+          "Unsupported BDEC_PARQUET_COMPRESSION_ALGORITHM = 'invalid_comp', allowed values are"
+              + " [GZIP]",
+          e.getMessage());
+    }
   }
 }
