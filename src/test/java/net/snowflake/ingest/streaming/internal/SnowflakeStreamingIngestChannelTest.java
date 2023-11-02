@@ -263,6 +263,25 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Assert.assertEquals(
         "STREAMINGINGEST_TEST.PUBLIC.T_STREAMINGINGEST", request.getFullyQualifiedTableName());
+    Assert.assertFalse(request.isOffsetTokenProvided());
+  }
+
+
+  @Test
+  public void testOpenChannelRequesCreationtWithOffsetToken() {
+    OpenChannelRequest request =
+            OpenChannelRequest.builder("CHANNEL")
+                    .setDBName("STREAMINGINGEST_TEST")
+                    .setSchemaName("PUBLIC")
+                    .setTableName("T_STREAMINGINGEST")
+                    .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+                    .setOffsetToken("TEST_TOKEN")
+                    .build();
+
+    Assert.assertEquals(
+            "STREAMINGINGEST_TEST.PUBLIC.T_STREAMINGINGEST", request.getFullyQualifiedTableName());
+    Assert.assertEquals("TEST_TOKEN", request.getOffsetToken());
+    Assert.assertTrue(request.isOffsetTokenProvided());
   }
 
   @Test

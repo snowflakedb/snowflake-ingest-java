@@ -17,7 +17,6 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -51,7 +50,8 @@ public class BdecParquetWriter implements AutoCloseable {
       MessageType schema,
       Map<String, String> extraMetaData,
       String channelName,
-      long maxChunkSizeInBytes)
+      long maxChunkSizeInBytes,
+      Constants.BdecParquetCompression bdecParquetCompression)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
     ParquetProperties encodingProps = createParquetProperties();
@@ -86,7 +86,8 @@ public class BdecParquetWriter implements AutoCloseable {
     */
     codecFactory = new CodecFactory(conf, ParquetWriter.DEFAULT_PAGE_SIZE);
     @SuppressWarnings("deprecation") // Parquet does not support the new one now
-    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(CompressionCodecName.GZIP);
+    CodecFactory.BytesCompressor compressor =
+        codecFactory.getCompressor(bdecParquetCompression.getCompressionCodec());
     writer =
         new InternalParquetRecordWriter<>(
             fileWriter,
