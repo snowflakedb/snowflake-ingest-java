@@ -1,0 +1,8 @@
+name: snowflake-ingest-java
+git:
+  enable: true
+codeowners:
+  enable: true
+semaphore:
+  enable: true
+  pipeline_type: cp
