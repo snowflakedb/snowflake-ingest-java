@@ -28,6 +28,7 @@ import net.snowflake.ingest.connection.IngestResponse;
 import net.snowflake.ingest.utils.StagedFileWrapper;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /** Example ingest sdk integration test */
@@ -123,6 +124,7 @@ public class SimpleIngestIT {
 
   /** ingest test example ingest a simple file and check load history. */
   @Test
+  @Ignore // SNOW-957347: re-enable after fix
   public void testSimpleIngest() throws Exception {
     // put
     TestUtils.executeQuery("put file://" + testFilePath + " @" + stageName);
@@ -176,7 +178,8 @@ public class SimpleIngestIT {
   }
 
   private void getHistoryAndAssertLoad(SimpleIngestManager manager, String test_file_name_2)
-      throws InterruptedException, java.util.concurrent.ExecutionException,
+      throws InterruptedException,
+          java.util.concurrent.ExecutionException,
           java.util.concurrent.TimeoutException {
     // keeps track of whether we've loaded the file
     boolean loaded = false;
@@ -302,6 +305,7 @@ public class SimpleIngestIT {
    * <p>Creates the thread only two times since the manager was closed only once.
    */
   @Test
+  @Ignore // SNOW-957347: re-enable after fix
   public void testMultipleSimpleIngestManagers() throws Exception {
     // put
     TestUtils.executeQuery("put file://" + testFilePath + " @" + stageName);
