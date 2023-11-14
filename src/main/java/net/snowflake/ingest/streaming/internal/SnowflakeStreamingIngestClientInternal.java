@@ -719,7 +719,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),
                     relevantChunks,
-                    blobMetadata.getBlobStats()));
+                    blobMetadata.getBlobStats(),
+                    // Important to not change the spansMixedTables value in case of retries. The
+                    // correct value is the value that the already uploaded blob has.
+                    blobMetadata.getSpansMixedTables()));
           }
         });
 
