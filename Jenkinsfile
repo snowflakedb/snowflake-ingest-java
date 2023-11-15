@@ -1,3 +1,9 @@
+def scale_factor_system_prop = tpcds_scale_factor ? "-Dscale_factor=${tpcds_scale_factor}" : ""
+def database_system_prop = database ? "-Ddatabase=${database}" : ""
+def account_system_prop = account ? "-Daccount=${account}" : ""
+def port_system_prop = db_port ? "-Dport=${db_port}" : ""
+def host_system_prop = host ? "-Dhost=${host}" : ""
+
 pipeline {
     agent {
         node {
@@ -15,13 +21,6 @@ pipeline {
         setup_dir = "${WORKSPACE}/streaming-ingest-benchmark"
         setup_git_specifier = 'main'
         setup_reference = "/mnt/jenkins/git_repo/streaming-ingest-benchmark"
-
-        scale_factor_system_prop = tpcds_scale_factor ? "-Dscale_factor=${tpcds_scale_factor}" : ""
-        database_system_prop = database ? "-Ddatabase=${database}" : ""
-        account_system_prop = account ? "-Daccount=${account}" : ""
-        port_system_prop = db_port ? "-Dport=${db_port}" : ""
-        host_system_prop = host ? "-Dhost=${host}" : ""
-
     }
     stages {
         stage('CheckoutSetupApplication') {
