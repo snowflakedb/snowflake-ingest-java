@@ -8,10 +8,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo "The current workspace is ${env.Workspace}"
-                echo "test change"
-                script {
-                    sh "ls" // we are in streaming-ingest-benchmark repo
-                }
+                echo "passed param: $tpcds_scale_factor"
             }
         }
     }
