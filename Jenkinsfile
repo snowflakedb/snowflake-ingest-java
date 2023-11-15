@@ -1,7 +1,3 @@
-import com.snowflake.BasePerfTest
-
-base_perf = new com.snowflake.BasePerfTest()
-
 pipeline {
     agent {
         node {
@@ -14,15 +10,25 @@ pipeline {
         ingest_sdk_dir = 'snowflake-ingest-java'
         ingest_sdk_tag = sh(returnStdout: true, script: "git describe --tags").trim()
 
-        bdec_setup_git_remote = 'https://github.com/snowflakedb/streaming-ingest-benchmark.git'
-        bdec_setup_git_specifier = 'main'
-        bdec_setup_relative_dir = 'streaming-ingest-benchmark'
-        bdec_setup_reference = "/mnt/jenkins/git_repo/streaming-ingest-benchmark"
+        setup_git_remote = 'https://github.com/snowflakedb/streaming-ingest-benchmark.git'
+        setup_git_specifier = 'main'
+        setup_relative_dir = 'streaming-ingest-benchmark'
+        setup_reference = "/mnt/jenkins/git_repo/streaming-ingest-benchmark"
     }
     stages {
         stage('CheckoutSetupApplication') {
             steps {
-                bdec_setup_workspace_path = base_perf.clone(bdec_setup_git_remote, bdec_setup_git_specifier, bdec_setup_relative_dir, bdec_setup_reference, jenkins_github_credential_id)
+                checkout(changelog: false,
+                        poll: false,
+                        scm: [$class: 'GitSCM',
+                              branches: [[name: setup_git_specifier]],
+                              doGenerateSubmoduleConfigurations: false,
+                              extensions: [[$class: 'CloneOption', honorRefspec: true, noTags: false, reference: setup_reference, shallow: false],
+                                           [$class: 'RelativeTargetDirectory', relativeTargetDir: setup_relative_dir]],
+                              submoduleCfg: [],
+                              userRemoteConfigs: [[refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*/head:refs/remotes/origin/pr/*', url: setup_git_remote, credentialsId: jenkins_github_credential_id]]
+                        ]
+                )
             }
         }
         stage('Build') {
