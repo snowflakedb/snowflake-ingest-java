@@ -8,7 +8,7 @@ pipeline {
         jenkins_github_credential_id = 'b4f59663-ae0a-4384-9fdc-c7f2fe1c4fca'
 
         ingest_sdk_dir = 'snowflake-ingest-java'
-        ingest_sdk_tag = sh(returnStdout: true, script: "git describe --tags").trim()
+        ingest_sdk_tag = sh(returnStdout: true, script: "cd $ingest_sdk_dir && git describe --tags").trim()
 
         setup_git_remote = 'https://github.com/snowflakedb/streaming-ingest-benchmark.git'
         setup_git_specifier = 'main'
