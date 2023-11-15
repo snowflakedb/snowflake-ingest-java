@@ -57,7 +57,7 @@ pipeline {
                     }
                      */
                     withCredentials([usernamePassword(credentialsId: jenkins_deployment_credential_id, usernameVariable: 'USER_KEY', passwordVariable: 'PASSWORD_KEY')]) {
-                        println("success")
+                        println("successfully accessed deployment credentials")
                     }
                 }
             }
