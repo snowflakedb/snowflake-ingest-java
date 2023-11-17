@@ -19,7 +19,7 @@ pipeline {
 
         setup_git_remote = 'https://github.com/snowflakedb/streaming-ingest-benchmark.git'
         setup_dir = "${WORKSPACE}/streaming-ingest-benchmark"
-        setup_git_specifier = 'main'
+        setup_git_specifier = 'lthiede-SNOW-964536-Mark-complete-dataset'
         setup_reference = "/mnt/jenkins/git_repo/streaming-ingest-benchmark"
     }
     stages {
