@@ -1,6 +1,6 @@
 def account_list = accounts.split(" ")
 def host_list = hosts.split(" ")
-def port_lists = db_ports.split(" ")
+def port_list = db_ports.split(" ")
 def jenkins_deployment_credential_id_list = jenkins_deployment_credential_ids.split()
 
 for (i = 0; i < account_list.size(); i++) {
