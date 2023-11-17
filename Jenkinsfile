@@ -47,6 +47,7 @@ pipeline {
         }
         stage('SetupDataset') {
             steps {
+                println("change to trigger pipeline")
                 dir(setup_dir) {
                     withCredentials([string(credentialsId: jenkins_cred_id_profile_decryption, variable: "DECRYPTION_PASSPHRASE")]) {
                         sh "gpg --passphrase \$DECRYPTION_PASSPHRASE --batch --output profile.json --decrypt profile.json.gpg"
