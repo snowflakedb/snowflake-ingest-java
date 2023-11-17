@@ -48,16 +48,11 @@ pipeline {
         stage('SetupDataset') {
             steps {
                 dir(setup_dir) {
-                    /*
                     withCredentials([string(credentialsId: jenkins_cred_id_profile_decryption, variable: "DECRYPTION_PASSPHRASE")]) {
                         sh "gpg --passphrase \$DECRYPTION_PASSPHRASE --batch --output profile.json --decrypt profile.json.gpg"
                     }
                     withCredentials([usernamePassword(credentialsId: jenkins_deployment_credential_id, usernameVariable: 'USER_KEY', passwordVariable: 'PASSWORD_KEY')]) {
                         sh "java ${scale_factor_system_prop} ${database_system_prop} ${account_system_prop} ${port_system_prop} ${host_system_prop} -Djdbc_user=\\$USER_KEY -Dpassword=\\$PASSWORD_KEY -jar target/streaming-ingest-benchmark.jar"
-                    }
-                     */
-                    withCredentials([usernamePassword(credentialsId: jenkins_deployment_credential_id, usernameVariable: 'USER_KEY', passwordVariable: 'PASSWORD_KEY')]) {
-                        println("successfully accessed deployment credentials")
                     }
                 }
             }
