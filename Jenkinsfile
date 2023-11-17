@@ -25,7 +25,9 @@ pipeline {
     stages {
         stage('CheckoutSetupApplication') {
             steps {
-                deleteDir(setup_dir)
+                dir(setup_dir) {
+                    deleteDir()
+                }
                 checkout(changelog: false,
                         poll: false,
                         scm: [$class: 'GitSCM',
