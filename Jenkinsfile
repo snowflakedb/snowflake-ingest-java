@@ -25,7 +25,9 @@ pipeline {
     stages {
         stage('CheckoutSetupApplication') {
             steps {
+                sh "ls"
                 cleanWs()
+                sh "ls"
                 checkout(changelog: false,
                         poll: false,
                         scm: [$class: 'GitSCM',
@@ -41,6 +43,7 @@ pipeline {
         }
         stage('Build') {
             steps {
+                sh "ls ${ingest_sdk_dir}"
                 sh "mvn -f ${ingest_sdk_dir}/pom.xml package -DskipTests"
                 sh "mvn install::install-file -Dfile=${ingest_sdk_dir}/target/snowflake-ingest-sdk.jar -DgroupId=net.snowflake -DartifactId=snowflake-ingest-sdk -Dversion=${ingest_sdk_tag} -Dpackaging=jar -DgeneratePom=true"
                 sh "mvn -f ${setup_dir} -Dingest-sdk-version=${ingest_sdk_tag} clean compile assembly:single"
