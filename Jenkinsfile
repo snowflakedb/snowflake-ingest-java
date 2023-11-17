@@ -25,6 +25,7 @@ pipeline {
     stages {
         stage('CheckoutSetupApplication') {
             steps {
+                cleanWs()
                 checkout(changelog: false,
                         poll: false,
                         scm: [$class: 'GitSCM',
@@ -49,7 +50,6 @@ pipeline {
             steps {
                 dir(setup_dir) {
                     withCredentials([string(credentialsId: jenkins_cred_id_profile_decryption, variable: "DECRYPTION_PASSPHRASE")]) {
-                        sh "ls"
                         sh "gpg --passphrase \$DECRYPTION_PASSPHRASE --batch --output profile.json --decrypt profile.json.gpg"
                     }
                     withCredentials([usernamePassword(credentialsId: jenkins_deployment_credential_id, usernameVariable: 'USER_KEY', passwordVariable: 'PASSWORD_KEY')]) {
