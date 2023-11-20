@@ -1,72 +1,29 @@
-def account_list = accounts.split(" ")
-def host_list = hosts.split(" ")
-def port_list = db_ports.split(" ")
-def jenkins_deployment_credential_id_list = jenkins_deployment_credential_ids.split()
+ingest_sdk_dir = "${WORKSPACE}/snowflake-ingest-java"
+ingest_sdk_tag = sh(returnStdout: true, script: "cd $ingest_sdk_dir && git describe --tags").trim()
 
-for (i = 0; i < account_list.size(); i++) {
-    def scale_factor_system_prop = tpcds_scale_factor ? "-Dscale_factor=${tpcds_scale_factor}" : ""
-    def database_system_prop = database ? "-Ddatabase=${database}" : ""
-    def account_system_prop = account_list[i] ? "-Daccount=${account_list[i]}" : ""
-    def port_system_prop = port_list[i] ? "-Dport=${port_list[i]}" : ""
-    def host_system_prop = host_list[i] ? "-Dhost=${host_list[i]}" : ""
-    def jenkins_deployment_credential_id = jenkins_deployment_credential_id_list[i]
-
-    pipeline {
-        agent {
-            node {
-                label "regular-memory-node-c7"
-            }
+deployments = [
+        "qa3": {
+            build job: "SFPerf-Other-Jobs/TPCDS_BDEC_Setup",
+                    parameters: [
+                            string(name: 'ingest_sdk_github_branch', value: ingest_sdk_tag),
+                            string(name: 'setup_branch', value: 'lthiede-SNOW-964536-Mark-complete-dataset'),
+                            string(name: 'database', value: "STREAMING_INGEST_BENCHMARK_DB_${ingest_sdk_tag}"),
+                            string(name: 'deployment', value: 'qa3.us-west-2.aws'),
+                            string(name: 'tpcds_scale_factor', value: 'sf1')
+                    ],
+                    propagate: true
+        },
+        "preprod12": {
+            build job: "SFPerf-Other-Jobs/TPCDS_BDEC_Setup",
+                    parameters: [
+                            string(name: 'ingest_sdk_github_branch', value: ingest_sdk_tag),
+                            string(name: 'setup_branch', value: 'lthiede-SNOW-964536-Mark-complete-dataset'),
+                            string(name: 'database', value: "STREAMING_INGEST_BENCHMARK_DB_${ingest_sdk_tag}"),
+                            string(name: 'deployment', value: 'preprod12.us-west-2.aws'),
+                            string(name: 'tpcds_scale_factor', value: 'sf1')
+                    ],
+                    propagate: true
         }
-        environment {
-            jenkins_github_credential_id = 'b4f59663-ae0a-4384-9fdc-c7f2fe1c4fca'
-            jenkins_cred_id_profile_decryption = '223990f0-cceb-449a-9275-83aa58662224'
+]
 
-            ingest_sdk_dir = "${WORKSPACE}/snowflake-ingest-java"
-            ingest_sdk_tag = sh(returnStdout: true, script: "cd $ingest_sdk_dir && git describe --tags").trim()
-
-            setup_git_remote = 'https://github.com/snowflakedb/streaming-ingest-benchmark.git'
-            setup_dir = "${WORKSPACE}/streaming-ingest-benchmark"
-            setup_git_specifier = 'lthiede-SNOW-964536-Mark-complete-dataset'
-            setup_reference = "/mnt/jenkins/git_repo/streaming-ingest-benchmark"
-        }
-        stages {
-            stage('CheckoutSetupApplication') {
-                steps {
-                    dir(setup_dir) {
-                        deleteDir()
-                    }
-                    checkout(changelog: false,
-                            poll: false,
-                            scm: [$class: 'GitSCM',
-                                  branches: [[name: setup_git_specifier]],
-                                  doGenerateSubmoduleConfigurations: false,
-                                  extensions: [[$class: 'CloneOption', honorRefspec: true, noTags: false, reference: setup_reference, shallow: false],
-                                               [$class: 'RelativeTargetDirectory', relativeTargetDir: setup_dir]],
-                                  submoduleCfg: [],
-                                  userRemoteConfigs: [[refspec: '+refs/heads/*:refs/remotes/origin/* +refs/pull/*/head:refs/remotes/origin/pr/*', url: setup_git_remote, credentialsId: jenkins_github_credential_id]]
-                            ]
-                    )
-                }
-            }
-            stage('Build') {
-                steps {
-                    sh "mvn -f ${ingest_sdk_dir}/pom.xml package -DskipTests"
-                    sh "mvn install::install-file -Dfile=${ingest_sdk_dir}/target/snowflake-ingest-sdk.jar -DgroupId=net.snowflake -DartifactId=snowflake-ingest-sdk -Dversion=${ingest_sdk_tag} -Dpackaging=jar -DgeneratePom=true"
-                    sh "mvn -f ${setup_dir} -Dingest-sdk-version=${ingest_sdk_tag} clean compile assembly:single"
-                }
-            }
-            stage('SetupDataset') {
-                steps {
-                    dir(setup_dir) {
-                        withCredentials([string(credentialsId: jenkins_cred_id_profile_decryption, variable: "DECRYPTION_PASSPHRASE")]) {
-                            sh "gpg --passphrase \$DECRYPTION_PASSPHRASE --batch --output profile.json --decrypt profile.json.gpg"
-                        }
-                        withCredentials([usernamePassword(credentialsId: jenkins_deployment_credential_id, usernameVariable: 'USER_KEY', passwordVariable: 'PASSWORD_KEY')]) {
-                            sh "java ${scale_factor_system_prop} ${database_system_prop} ${account_system_prop} ${port_system_prop} ${host_system_prop} -Djdbc_user=\\$USER_KEY -Dpassword=\\$PASSWORD_KEY -jar target/streaming-ingest-benchmark.jar"
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+parallel deployments
