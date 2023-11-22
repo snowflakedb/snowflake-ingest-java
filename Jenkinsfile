@@ -10,10 +10,7 @@ pipeline {
         stage('TriggerJobs') {
             steps {
                 script {
-                    def split = ingest_sdk_tag.split('.')
-                    println(split)
-                    def valid_db_name_tag = split.join('_')
-                    println(valid_db_name_tag)
+                    def valid_db_name_tag = ingest_sdk_tag.split('\\.').join('_')
                     def deployments = [
                             /*
                             "qa3": {
@@ -39,7 +36,7 @@ pipeline {
                                         propagate: true
                             }
                             */
-                            "preprod6": {
+                            "preprod12": {
                                 build job: "SFPerf-Other-Jobs/TPCDS_BDEC_Setup",
                                         parameters: [
                                                 string(name: 'ingest_sdk_github_branch', value: ingest_sdk_tag),
