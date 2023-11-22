@@ -10,13 +10,14 @@ pipeline {
         stage('TriggerJobs') {
             steps {
                 script {
+                    def valid_db_name_tag = ingest_sdk_tag.split('.').join('_')
                     def deployments = [
                             "qa3": {
                                 build job: "SFPerf-Other-Jobs/TPCDS_BDEC_Setup",
                                         parameters: [
                                                 string(name: 'ingest_sdk_github_branch', value: ingest_sdk_tag),
                                                 string(name: 'setup_branch', value: 'lthiede-SNOW-964536-Mark-complete-dataset'),
-                                                string(name: 'database', value: "STREAMING_INGEST_BENCHMARK_DB_${ingest_sdk_tag}"),
+                                                string(name: 'database', value: "STREAMING_INGEST_BENCHMARK_DB_${valid_db_name_tag}"),
                                                 string(name: 'deployment', value: 'qa3.us-west-2.aws'),
                                                 string(name: 'tpcds_scale_factor', value: 'sf1')
                                         ],
@@ -27,7 +28,7 @@ pipeline {
                                         parameters: [
                                                 string(name: 'ingest_sdk_github_branch', value: ingest_sdk_tag),
                                                 string(name: 'setup_branch', value: 'lthiede-SNOW-964536-Mark-complete-dataset'),
-                                                string(name: 'database', value: "STREAMING_INGEST_BENCHMARK_DB_${ingest_sdk_tag}"),
+                                                string(name: 'database', value: "STREAMING_INGEST_BENCHMARK_DB_${valid_db_name_tag}"),
                                                 string(name: 'deployment', value: 'preprod12.us-west-2.aws'),
                                                 string(name: 'tpcds_scale_factor', value: 'sf1')
                                         ],
