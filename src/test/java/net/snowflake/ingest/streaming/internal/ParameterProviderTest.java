@@ -322,7 +322,7 @@ public class ParameterProviderTest {
     } catch (IllegalArgumentException e) {
       Assert.assertEquals(
           "Unsupported BDEC_PARQUET_COMPRESSION_ALGORITHM = 'invalid_comp', allowed values are"
-              + " [GZIP]",
+              + " [GZIP, ZSTD]",
           e.getMessage());
     }
   }
