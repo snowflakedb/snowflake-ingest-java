@@ -128,7 +128,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             new ClientBufferParameters(owningClient));
     this.tableColumns = new HashMap<>();
     logger.logInfo(
-        "Channel={} created for table={}",
+        "Channel={} created for table_added_delay={}",
         this.channelFlushContext.getName(),
         this.channelFlushContext.getTableName());
   }
@@ -360,6 +360,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
+
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
     // Start flush task if the chunk size reaches a certain size
