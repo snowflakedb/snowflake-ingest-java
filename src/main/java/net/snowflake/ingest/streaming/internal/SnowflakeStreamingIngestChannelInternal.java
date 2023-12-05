@@ -355,11 +355,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // that defensive copies of all mutable objects are created.
     final List<Map<String, Object>> rowsCopy = new LinkedList<>();
     rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
-    try {
-      Thread.sleep(20);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+    long startTime =System.nanoTime();
+    long targetTime=startTime+1;
+    while(System.nanoTime() < targetTime){}
 
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
