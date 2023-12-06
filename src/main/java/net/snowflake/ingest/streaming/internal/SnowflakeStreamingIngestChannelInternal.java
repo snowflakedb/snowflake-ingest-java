@@ -322,9 +322,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public InsertValidationResponse insertRow(Map<String, Object> row, String offsetToken) {
-    long startTime =System.nanoTime();
-    long targetTime=startTime+2;
-    while(System.nanoTime() < targetTime){}
     return insertRows(Collections.singletonList(row), offsetToken);
   }
 
@@ -359,8 +356,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     final List<Map<String, Object>> rowsCopy = new LinkedList<>();
     rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
     long startTime =System.nanoTime();
-    long targetTime=startTime+2;
-    while(System.nanoTime() < targetTime){}
+
+    while(System.nanoTime()-startTime < 10000){}
 
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
