@@ -128,7 +128,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             new ClientBufferParameters(owningClient));
     this.tableColumns = new HashMap<>();
     logger.logInfo(
-        "Channel={} created for table_added_delay={}",
+        "Channel={} created for table_added_delay_dhara={}",
         this.channelFlushContext.getName(),
         this.channelFlushContext.getTableName());
   }
