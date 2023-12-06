@@ -357,7 +357,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
     long startTime =System.nanoTime();
 
-    while(System.nanoTime()-startTime < 10000){}
+    while(System.nanoTime()-startTime < 1000){}
 
     InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
 
