@@ -322,6 +322,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public InsertValidationResponse insertRow(Map<String, Object> row, String offsetToken) {
+    long startTime =System.nanoTime();
+    long targetTime=startTime+5;
+    while(System.nanoTime() < targetTime){}
     return insertRows(Collections.singletonList(row), offsetToken);
   }
 
