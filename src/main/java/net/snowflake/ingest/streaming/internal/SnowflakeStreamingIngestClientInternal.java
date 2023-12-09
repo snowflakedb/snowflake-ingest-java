@@ -59,10 +59,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.ingest.connection.IngestResponseException;
-import net.snowflake.ingest.connection.OAuthCredential;
-import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.TelemetryService;
+import net.snowflake.ingest.connection.*;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
@@ -151,13 +148,36 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param parameterOverrides parameters we override in case we want to set different values
    */
   SnowflakeStreamingIngestClientInternal(
-      String name,
-      SnowflakeURL accountURL,
-      Properties prop,
-      CloseableHttpClient httpClient,
-      boolean isTestMode,
-      RequestBuilder requestBuilder,
-      Map<String, Object> parameterOverrides) {
+          String name,
+          SnowflakeURL accountURL,
+          Properties prop,
+          CloseableHttpClient httpClient,
+          boolean isTestMode,
+          RequestBuilder requestBuilder,
+          Map<String, Object> parameterOverrides) {
+    this(name, accountURL, prop, httpClient, isTestMode, requestBuilder, parameterOverrides, new RequestBuilderFactory());
+  }
+  /**
+   * Constructor
+   *
+   * @param name the name of the client
+   * @param accountURL Snowflake account url
+   * @param prop connection properties
+   * @param httpClient http client for sending request
+   * @param isTestMode whether we're under test mode
+   * @param requestBuilder http request builder
+   * @param parameterOverrides parameters we override in case we want to set different values
+   * @param requestBuilderFactory instance of RequestBuilderFactory
+   */
+  SnowflakeStreamingIngestClientInternal(
+          String name,
+          SnowflakeURL accountURL,
+          Properties prop,
+          CloseableHttpClient httpClient,
+          boolean isTestMode,
+          RequestBuilder requestBuilder,
+          Map<String, Object> parameterOverrides,
+          RequestBuilderFactory requestBuilderFactory) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
@@ -190,8 +210,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                 prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
       }
-      this.requestBuilder =
-          new RequestBuilder(
+      this.requestBuilder = requestBuilderFactory.build(
               accountURL,
               prop.get(USER).toString(),
               credential,
@@ -234,6 +253,24 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Properties prop,
       Map<String, Object> parameterOverrides) {
     this(name, accountURL, prop, null, false, null, parameterOverrides);
+  }
+
+  /**
+   * Default Constructor
+   *
+   * @param name the name of the client
+   * @param accountURL Snowflake account url
+   * @param prop connection properties
+   * @param parameterOverrides map of parameters to override for this client
+   * @param requestBuilderFactory instance of RequestBuilderFactory
+   */
+  public SnowflakeStreamingIngestClientInternal(
+          String name,
+          SnowflakeURL accountURL,
+          Properties prop,
+          Map<String, Object> parameterOverrides,
+          RequestBuilderFactory requestBuilderFactory) {
+    this(name, accountURL, prop, null, false, null, parameterOverrides, requestBuilderFactory);
   }
 
   /**

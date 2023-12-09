@@ -6,6 +6,8 @@ package net.snowflake.ingest.streaming;
 
 import java.util.Map;
 import java.util.Properties;
+
+import net.snowflake.ingest.connection.RequestBuilderFactory;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -28,12 +30,26 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
+    private SnowflakeURL snowflakeURL;
+
+    private RequestBuilderFactory requestBuilderFactory;
+
     private Builder(String name) {
       this.name = name;
     }
 
     public Builder setProperties(Properties prop) {
       this.prop = prop;
+      return this;
+    }
+
+    public Builder setSnowflakeURL(SnowflakeURL snowflakeURL) {
+      this.snowflakeURL = snowflakeURL;
+      return this;
+    }
+
+    public Builder setRequestBuilderFactory(RequestBuilderFactory requestBuilderFactory) {
+      this.requestBuilderFactory = requestBuilderFactory;
       return this;
     }
 
@@ -47,8 +63,15 @@ public class SnowflakeStreamingIngestClientFactory {
       Utils.assertNotNull("connection properties", this.prop);
 
       Properties prop = Utils.createProperties(this.prop);
-      SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
+      SnowflakeURL accountURL = this.snowflakeURL;
+      if (accountURL == null) {
+        accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
+      }
 
+      if (requestBuilderFactory != null) {
+        return new SnowflakeStreamingIngestClientInternal<>(
+                this.name, accountURL, prop, this.parameterOverrides, requestBuilderFactory);
+      }
       return new SnowflakeStreamingIngestClientInternal<>(
           this.name, accountURL, prop, this.parameterOverrides);
     }
