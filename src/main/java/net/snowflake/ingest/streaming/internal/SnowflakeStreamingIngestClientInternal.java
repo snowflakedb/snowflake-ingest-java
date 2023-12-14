@@ -155,8 +155,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           boolean isTestMode,
           RequestBuilder requestBuilder,
           Map<String, Object> parameterOverrides) {
-    this(name, accountURL, prop, httpClient, isTestMode, requestBuilder, parameterOverrides, new RequestBuilderFactory());
+    this(name, accountURL, prop, httpClient, isTestMode, requestBuilder, parameterOverrides, false);
   }
+
   /**
    * Constructor
    *
@@ -167,17 +168,17 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param isTestMode whether we're under test mode
    * @param requestBuilder http request builder
    * @param parameterOverrides parameters we override in case we want to set different values
-   * @param requestBuilderFactory instance of RequestBuilderFactory
+   * @param addAccountNameInRequest if true, will add account name in request header
    */
   SnowflakeStreamingIngestClientInternal(
-          String name,
-          SnowflakeURL accountURL,
-          Properties prop,
-          CloseableHttpClient httpClient,
-          boolean isTestMode,
-          RequestBuilder requestBuilder,
-          Map<String, Object> parameterOverrides,
-          RequestBuilderFactory requestBuilderFactory) {
+      String name,
+      SnowflakeURL accountURL,
+      Properties prop,
+      CloseableHttpClient httpClient,
+      boolean isTestMode,
+      RequestBuilder requestBuilder,
+      Map<String, Object> parameterOverrides,
+      boolean addAccountNameInRequest) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
@@ -210,12 +211,13 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                 prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
       }
-      this.requestBuilder = requestBuilderFactory.build(
+      this.requestBuilder = new RequestBuilder(
               accountURL,
               prop.get(USER).toString(),
               credential,
               this.httpClient,
-              String.format("%s_%s", this.name, System.currentTimeMillis()));
+              String.format("%s_%s", this.name, System.currentTimeMillis()),
+              addAccountNameInRequest);
 
       logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
 
@@ -262,15 +264,22 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param parameterOverrides map of parameters to override for this client
-   * @param requestBuilderFactory instance of RequestBuilderFactory
+   * @param addAccountNameInRequest if true, add account name in request header
    */
   public SnowflakeStreamingIngestClientInternal(
-          String name,
-          SnowflakeURL accountURL,
-          Properties prop,
-          Map<String, Object> parameterOverrides,
-          RequestBuilderFactory requestBuilderFactory) {
-    this(name, accountURL, prop, null, false, null, parameterOverrides, requestBuilderFactory);
+      String name,
+      SnowflakeURL accountURL,
+      Properties prop,
+      Map<String, Object> parameterOverrides,
+      boolean addAccountNameInRequest) {
+    this(name,
+        accountURL,
+        prop,
+        null,
+        false,
+        null,
+        parameterOverrides,
+        addAccountNameInRequest);
   }
 
   /**

@@ -7,7 +7,7 @@ package net.snowflake.ingest.streaming;
 import java.util.Map;
 import java.util.Properties;
 
-import net.snowflake.ingest.connection.RequestBuilderFactory;
+import jdk.internal.joptsimple.internal.Strings;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -30,9 +30,11 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
+    // preset SnowflakeURL instance
     private SnowflakeURL snowflakeURL;
 
-    private RequestBuilderFactory requestBuilderFactory;
+    // flag to specify if we need to add account name in the request header
+    private boolean addAccountNameInRequest;
 
     private Builder(String name) {
       this.name = name;
@@ -48,8 +50,8 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
-    public Builder setRequestBuilderFactory(RequestBuilderFactory requestBuilderFactory) {
-      this.requestBuilderFactory = requestBuilderFactory;
+    public Builder setAddAccountNameInRequest(boolean addAccountNameInRequest) {
+      this.addAccountNameInRequest = addAccountNameInRequest;
       return this;
     }
 
@@ -68,12 +70,12 @@ public class SnowflakeStreamingIngestClientFactory {
         accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
       }
 
-      if (requestBuilderFactory != null) {
+      if (addAccountNameInRequest) {
         return new SnowflakeStreamingIngestClientInternal<>(
-                this.name, accountURL, prop, this.parameterOverrides, requestBuilderFactory);
+          this.name, accountURL, prop, this.parameterOverrides, addAccountNameInRequest);
       }
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides);
+        this.name, accountURL, prop, this.parameterOverrides);
     }
   }
 }
