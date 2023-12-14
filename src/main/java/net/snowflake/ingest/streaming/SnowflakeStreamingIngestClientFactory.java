@@ -7,7 +7,6 @@ package net.snowflake.ingest.streaming;
 import java.util.Map;
 import java.util.Properties;
 
-import jdk.internal.joptsimple.internal.Strings;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SnowflakeURL;

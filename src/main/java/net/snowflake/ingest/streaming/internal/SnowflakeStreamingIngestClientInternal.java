@@ -148,13 +148,13 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param parameterOverrides parameters we override in case we want to set different values
    */
   SnowflakeStreamingIngestClientInternal(
-          String name,
-          SnowflakeURL accountURL,
-          Properties prop,
-          CloseableHttpClient httpClient,
-          boolean isTestMode,
-          RequestBuilder requestBuilder,
-          Map<String, Object> parameterOverrides) {
+      String name,
+      SnowflakeURL accountURL,
+      Properties prop,
+      CloseableHttpClient httpClient,
+      boolean isTestMode,
+      RequestBuilder requestBuilder,
+      Map<String, Object> parameterOverrides) {
     this(name, accountURL, prop, httpClient, isTestMode, requestBuilder, parameterOverrides, false);
   }
 
