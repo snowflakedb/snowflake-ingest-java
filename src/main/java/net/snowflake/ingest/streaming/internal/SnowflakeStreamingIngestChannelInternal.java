@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -43,6 +44,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   // Reference to the row buffer
   private final RowBuffer<T> rowBuffer;
+  private final boolean dropOnClose;
 
   // Indicates whether the channel is closed
   private volatile boolean isClosed;
@@ -80,7 +82,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       String encryptionKey,
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
-      ZoneOffset defaultTimezone) {
+      ZoneOffset defaultTimezone,
+      boolean dropOnClose) {
     this(
         name,
         dbName,
@@ -94,7 +97,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKeyId,
         onErrorOption,
         defaultTimezone,
-        client.getParameterProvider().getBlobFormatVersion());
+        client.getParameterProvider().getBlobFormatVersion(),
+        dropOnClose);
   }
 
   /** Default constructor */
@@ -111,7 +115,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      Constants.BdecVersion bdecVersion) {
+      Constants.BdecVersion bdecVersion,
+      boolean dropOnClose) {
     this.isClosed = false;
     this.owningClient = client;
     this.channelFlushContext =
@@ -128,6 +133,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             channelState,
             new ClientBufferParameters(owningClient));
     this.tableColumns = new HashMap<>();
+    this.dropOnClose = dropOnClose;
     logger.logInfo(
         "Channel={} created for table={}",
         this.channelFlushContext.getName(),
@@ -291,6 +297,19 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                     uncommittedChannels.stream()
                         .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
                         .collect(Collectors.toList()));
+              }
+              if (this.dropOnClose) {
+                this.owningClient.dropChannel(
+                    DropChannelRequest.builder(this.getChannelContext().getName())
+                        .setDBName(this.getDBName())
+                        .setTableName(this.getTableName())
+                        .setSchemaName(this.getSchemaName())
+                        .setClientSequencer(this.getChannelSequencer())
+                        .build());
+                System.out.println(
+                    "SUCCESSFULLY dropped "
+                        + this.getChannelContext().getFullyQualifiedName()
+                        + " channel");
               }
             });
   }

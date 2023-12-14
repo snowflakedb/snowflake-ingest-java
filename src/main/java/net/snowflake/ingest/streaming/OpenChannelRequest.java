@@ -43,6 +43,10 @@ public class OpenChannelRequest {
   private final String offsetToken;
   private final boolean isOffsetTokenProvided;
 
+  // If true, the channel will be dropped when it is closed after any pending data is fully
+  // committed.
+  private final boolean dropOnClose;
+
   public static OpenChannelRequestBuilder builder(String channelName) {
     return new OpenChannelRequestBuilder(channelName);
   }
@@ -58,6 +62,8 @@ public class OpenChannelRequest {
 
     private String offsetToken;
     private boolean isOffsetTokenProvided = false;
+
+    private boolean dropOnClose = false;
 
     public OpenChannelRequestBuilder(String channelName) {
       this.channelName = channelName;
@@ -95,6 +101,11 @@ public class OpenChannelRequest {
       return this;
     }
 
+    public OpenChannelRequestBuilder setDropOnClose(boolean dropOnClose) {
+      this.dropOnClose = dropOnClose;
+      return this;
+    }
+
     public OpenChannelRequest build() {
       return new OpenChannelRequest(this);
     }
@@ -116,6 +127,7 @@ public class OpenChannelRequest {
     this.defaultTimezone = builder.defaultTimezone;
     this.offsetToken = builder.offsetToken;
     this.isOffsetTokenProvided = builder.isOffsetTokenProvided;
+    this.dropOnClose = builder.dropOnClose;
   }
 
   public String getDBName() {
@@ -152,5 +164,9 @@ public class OpenChannelRequest {
 
   public boolean isOffsetTokenProvided() {
     return this.isOffsetTokenProvided;
+  }
+
+  public boolean getDropOnClose() {
+    return this.dropOnClose;
   }
 }

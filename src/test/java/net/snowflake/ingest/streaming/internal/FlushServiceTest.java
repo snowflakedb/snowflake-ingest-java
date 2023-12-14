@@ -258,7 +258,8 @@ public class FlushServiceTest {
           encryptionKeyId,
           onErrorOption,
           defaultTimezone,
-          Constants.BdecVersion.THREE);
+          Constants.BdecVersion.THREE,
+          false);
     }
 
     @Override
@@ -877,7 +878,8 @@ public class FlushServiceTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            ZoneOffset.UTC);
+            ZoneOffset.UTC,
+            false);
 
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -892,7 +894,8 @@ public class FlushServiceTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            ZoneOffset.UTC);
+            ZoneOffset.UTC,
+            false);
 
     channelCache.addChannel(channel1);
     channelCache.addChannel(channel2);
