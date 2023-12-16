@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming;
 
 import java.util.Map;
 import java.util.Properties;
+
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -28,12 +29,28 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
+    // preset SnowflakeURL instance
+    private SnowflakeURL snowflakeURL;
+
+    // flag to specify if we need to add account name in the request header
+    private boolean addAccountNameInRequest;
+
     private Builder(String name) {
       this.name = name;
     }
 
     public Builder setProperties(Properties prop) {
       this.prop = prop;
+      return this;
+    }
+
+    public Builder setSnowflakeURL(SnowflakeURL snowflakeURL) {
+      this.snowflakeURL = snowflakeURL;
+      return this;
+    }
+
+    public Builder setAddAccountNameInRequest(boolean addAccountNameInRequest) {
+      this.addAccountNameInRequest = addAccountNameInRequest;
       return this;
     }
 
@@ -47,10 +64,17 @@ public class SnowflakeStreamingIngestClientFactory {
       Utils.assertNotNull("connection properties", this.prop);
 
       Properties prop = Utils.createProperties(this.prop);
-      SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
+      SnowflakeURL accountURL = this.snowflakeURL;
+      if (accountURL == null) {
+        accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
+      }
 
+      if (addAccountNameInRequest) {
+        return new SnowflakeStreamingIngestClientInternal<>(
+          this.name, accountURL, prop, this.parameterOverrides, addAccountNameInRequest);
+      }
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides);
+        this.name, accountURL, prop, this.parameterOverrides);
     }
   }
 }
