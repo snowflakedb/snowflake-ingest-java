@@ -8,6 +8,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+
+import com.github.luben.zstd.BufferPool;
+import com.github.luben.zstd.RecyclingBufferPool;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -17,7 +20,6 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -86,7 +88,6 @@ public class BdecParquetWriter implements AutoCloseable {
     To get code access to this internal initialisation, we have to move the BdecParquetWriter class in the parquet.hadoop package.
     */
     codecFactory = new CodecFactory(conf, ParquetWriter.DEFAULT_PAGE_SIZE);
-    System.out.println(java.util.Arrays.asList(CompressionCodecName.values()));
     @SuppressWarnings("deprecation") // Parquet does not support the new one now
     CodecFactory.BytesCompressor compressor =
         codecFactory.getCompressor(bdecParquetCompression.getCompressionCodec());
@@ -113,7 +114,7 @@ public class BdecParquetWriter implements AutoCloseable {
   @Override
   public void close() throws IOException {
     try {
-      System.out.println(java.util.Arrays.asList(CompressionCodecName.values()));
+      BufferPool pool = RecyclingBufferPool.INSTANCE;
       writer.close();
     } catch (InterruptedException e) {
       throw new IOException(e);
