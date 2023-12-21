@@ -9,8 +9,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import com.github.luben.zstd.BufferPool;
-import com.github.luben.zstd.RecyclingBufferPool;
+import com.github.luben.zstd.ZstdInputStreamNoFinalizer;
+import com.github.luben.zstd.ZstdOutputStreamNoFinalizer;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -114,7 +114,8 @@ public class BdecParquetWriter implements AutoCloseable {
   @Override
   public void close() throws IOException {
     try {
-      BufferPool pool = RecyclingBufferPool.INSTANCE;
+      int test = Math.max(Math.max((int) ZstdOutputStreamNoFinalizer.recommendedCOutSize(), (int) ZstdInputStreamNoFinalizer.recommendedDInSize()), (int)ZstdInputStreamNoFinalizer.recommendedDOutSize());
+      System.out.println(test);
       writer.close();
     } catch (InterruptedException e) {
       throw new IOException(e);
