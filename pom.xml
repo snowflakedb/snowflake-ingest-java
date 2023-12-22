@@ -1087,6 +1087,12 @@
                     <exclude>org/slf4j/**</exclude>
                   </excludes>
                 </filter>
+                <filter>
+                  <artifact>com.github.luben:zstd-jni</artifact>
+                  <excludes>
+                    <exclude>com/github/luben/zstd/**</exclude>
+                  </excludes>
+                </filter>
               </filters>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
