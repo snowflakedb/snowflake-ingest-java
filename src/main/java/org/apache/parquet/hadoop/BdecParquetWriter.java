@@ -114,9 +114,12 @@ public class BdecParquetWriter implements AutoCloseable {
   @Override
   public void close() throws IOException {
     try {
-      int test = Math.max(Math.max((int) ZstdOutputStreamNoFinalizer.recommendedCOutSize(), (int) ZstdInputStreamNoFinalizer.recommendedDInSize()), (int)ZstdInputStreamNoFinalizer.recommendedDOutSize());
+      int test = Math.max(Math.max((int) ZstdOutputStreamNoFinalizer.recommendedCOutSize(), (int) ZstdInputStreamNoFinalizer.recommendedDInSize()), (int) ZstdInputStreamNoFinalizer.recommendedDOutSize());
       System.out.println(test);
       writer.close();
+    } catch (java.lang.UnsatisfiedLinkError e) {
+      System.out.println(e);
+      throw new IOException(e);
     } catch (InterruptedException e) {
       throw new IOException(e);
     } finally {
