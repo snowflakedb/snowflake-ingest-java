@@ -1039,10 +1039,6 @@
                   <shadedPattern>${shadeBase}.com.ctc</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>com.github.luben</pattern>
-                  <shadedPattern>${shadeBase}.com.github.luben</shadedPattern>
-                </relocation>
-                <relocation>
                   <pattern>com.thoughtworks</pattern>
                   <shadedPattern>${shadeBase}.com.thoughtworks</shadedPattern>
                 </relocation>
