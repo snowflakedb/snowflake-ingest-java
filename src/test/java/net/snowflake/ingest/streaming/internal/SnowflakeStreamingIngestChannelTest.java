@@ -33,7 +33,6 @@ import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -173,8 +172,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
 
     Assert.assertTrue(channel.isValid());
     channel.invalidate("from testChannelValid");
@@ -224,8 +222,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
 
     Assert.assertFalse(channel.isClosed());
     channel.markClosed();
@@ -554,8 +551,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
 
     ColumnMetadata col = new ColumnMetadata();
     col.setOrdinal(1);
@@ -641,8 +637,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
     channel.setupSchema(schema);
 
     InsertValidationResponse insertValidationResponse = channel.insertRow(row, "token-1");
@@ -666,8 +661,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.ABORT,
-            UTC,
-            false);
+            UTC);
     channel.setupSchema(schema);
 
     try {
@@ -692,8 +686,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.SKIP_BATCH,
-            UTC,
-            false);
+            UTC);
     channel.setupSchema(schema);
 
     insertValidationResponse = channel.insertRow(row, "token-1");
@@ -726,8 +719,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
 
     ParameterProvider parameterProvider = new ParameterProvider();
     memoryInfoProvider.freeMemory =
@@ -773,8 +765,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -810,8 +801,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -845,8 +835,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            true);
+            UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -855,16 +844,47 @@ public class SnowflakeStreamingIngestChannelTest {
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
     Assert.assertFalse(channel.isClosed());
-    DropChannelResponse dropChannelResponse = new DropChannelResponse();
     Mockito.doNothing().when(client).dropChannel(Mockito.any());
-    channel.close().get();
+    channel.close(true).get();
     Assert.assertTrue(channel.isClosed());
     Mockito.verify(client, Mockito.times(1))
         .dropChannel(
             argThat(
-                (DropChannelRequest req) ->
+                (DropChannelVersionRequest req) ->
                     req.getChannelName().equals(channel.getName())
                         && req.getClientSequencer().equals(channel.getChannelSequencer())));
+  }
+
+  @Test
+  public void testDropOnCloseInvalidChannel() throws Exception {
+    SnowflakeStreamingIngestClientInternal<?> client =
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            1L,
+            0L,
+            client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("Success");
+    response.setChannels(new ArrayList<>());
+
+    Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
+
+    Assert.assertFalse(channel.isClosed());
+    channel.invalidate("test");
+    Mockito.doNothing().when(client).dropChannel(Mockito.any());
+    Assert.assertThrows(SFException.class, () -> channel.close(true).get());
+    Mockito.verify(client, Mockito.never()).dropChannel(Mockito.any());
   }
 
   @Test
@@ -885,8 +905,7 @@ public class SnowflakeStreamingIngestChannelTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC,
-            false);
+            UTC);
 
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);

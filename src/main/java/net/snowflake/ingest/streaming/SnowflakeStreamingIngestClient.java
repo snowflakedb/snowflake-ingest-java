@@ -28,12 +28,10 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
   /**
    * Drop the specified channel on the server using a {@link DropChannelRequest}
    *
-   * <p>Note that {@link DropChannelRequest.DropChannelRequestBuilder#setClientSequencer(Long)}} can
-   * be used to drop a specific version of the channel and prevent accidentally dropping a channel
-   * concurrently opened by another client. If it is not specified, this call will blindly drop the
-   * latest version of the channel and any pending data will be lost. Also see {@link
-   * OpenChannelRequest.OpenChannelRequestBuilder#setDropOnClose(boolean)} to automatically drop
-   * channels on close.
+   * <p>Note that this call will blindly drop the latest version of the channel and any pending data
+   * will be lost. Also see {@link SnowflakeStreamingIngestChannel#close(boolean)} to drop channels
+   * on close. That approach will drop the local version of the channel and if the channel has been
+   * concurrently reopened by another client, that version of the channel won't be affected.
    *
    * @param request the drop channel request
    */

@@ -356,7 +356,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
               .setDefaultTimezone(request.getDefaultTimezone())
-              .setDropOnClose(request.getDropOnClose())
               .build();
 
       // Setup the row buffer schema
@@ -392,8 +391,12 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("database", request.getDBName());
       payload.put("schema", request.getSchemaName());
       payload.put("role", this.role);
-      if (request.getClientSequencer() != null) {
-        payload.put("client_sequencer", request.getClientSequencer());
+      Long clientSequencer = null;
+      if (request instanceof DropChannelVersionRequest) {
+        clientSequencer = ((DropChannelVersionRequest) request).getClientSequencer();
+        if (clientSequencer != null) {
+          payload.put("client_sequencer", clientSequencer);
+        }
       }
 
       DropChannelResponse response =
@@ -421,11 +424,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           "Drop channel request succeeded, channel={}, table={}, clientSequencer={} client={}",
           request.getChannelName(),
           request.getFullyQualifiedTableName(),
-          request.getClientSequencer(),
+          clientSequencer,
           getName());
 
     } catch (IOException | IngestResponseException e) {
-      throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
+      throw new SFException(e, ErrorCode.DROP_CHANNEL_FAILURE, e.getMessage());
     }
   }
 

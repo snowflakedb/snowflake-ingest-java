@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming;
@@ -20,9 +20,6 @@ public class DropChannelRequest {
   // Name of the table that the channel belongs to
   private final String tableName;
 
-  // Optional client sequencer to verify when dropping the channel.
-  private final Long clientSequencer;
-
   public static DropChannelRequestBuilder builder(String channelName) {
     return new DropChannelRequestBuilder(channelName);
   }
@@ -33,8 +30,6 @@ public class DropChannelRequest {
     private String dbName;
     private String schemaName;
     private String tableName;
-
-    private Long clientSequencer = null;
 
     public DropChannelRequestBuilder(String channelName) {
       this.channelName = channelName;
@@ -55,17 +50,12 @@ public class DropChannelRequest {
       return this;
     }
 
-    public DropChannelRequestBuilder setClientSequencer(Long clientSequencer) {
-      this.clientSequencer = clientSequencer;
-      return this;
-    }
-
     public DropChannelRequest build() {
       return new DropChannelRequest(this);
     }
   }
 
-  private DropChannelRequest(DropChannelRequestBuilder builder) {
+  public DropChannelRequest(DropChannelRequestBuilder builder) {
     Utils.assertStringNotNullOrEmpty("channel name", builder.channelName);
     Utils.assertStringNotNullOrEmpty("database name", builder.dbName);
     Utils.assertStringNotNullOrEmpty("schema name", builder.schemaName);
@@ -75,7 +65,6 @@ public class DropChannelRequest {
     this.dbName = builder.dbName;
     this.schemaName = builder.schemaName;
     this.tableName = builder.tableName;
-    this.clientSequencer = builder.clientSequencer;
   }
 
   public String getDBName() {
@@ -96,9 +85,5 @@ public class DropChannelRequest {
 
   public String getFullyQualifiedTableName() {
     return String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
-  }
-
-  public Long getClientSequencer() {
-    return this.clientSequencer;
   }
 }

@@ -80,6 +80,14 @@ public interface SnowflakeStreamingIngestChannel {
   CompletableFuture<Void> close();
 
   /**
+   * Close the channel, this function will make sure all the data in this channel is committed
+   *
+   * @param drop if true, the channel will be dropped after all data is successfully committed.
+   * @return a completable future which will be completed when the channel is closed
+   */
+  CompletableFuture<Void> close(boolean drop);
+
+  /**
    * Insert one row into the channel, the row is represented using Map where the key is column name
    * and the value is a row of data. The following table summarizes supported value types and their
    * formats:

@@ -30,8 +30,6 @@ class SnowflakeStreamingIngestChannelFactory {
 
     private ZoneId defaultTimezone;
 
-    private boolean dropOnClose;
-
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;
     }
@@ -93,11 +91,6 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
-    SnowflakeStreamingIngestChannelBuilder<T> setDropOnClose(boolean dropOnClose) {
-      this.dropOnClose = dropOnClose;
-      return this;
-    }
-
     SnowflakeStreamingIngestChannelInternal<T> build() {
       Utils.assertStringNotNullOrEmpty("channel name", this.name);
       Utils.assertStringNotNullOrEmpty("table name", this.tableName);
@@ -123,8 +116,7 @@ class SnowflakeStreamingIngestChannelFactory {
           this.encryptionKeyId,
           this.onErrorOption,
           this.defaultTimezone,
-          this.owningClient.getParameterProvider().getBlobFormatVersion(),
-          this.dropOnClose);
+          this.owningClient.getParameterProvider().getBlobFormatVersion());
     }
   }
 }

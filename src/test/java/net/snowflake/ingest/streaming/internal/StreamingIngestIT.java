@@ -222,18 +222,17 @@ public class StreamingIngestIT {
             .setSchemaName(TEST_SCHEMA)
             .setTableName(TEST_TABLE)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
-            .setDropOnClose(true)
             .build();
 
     // Open a streaming ingest channel from the given client
     SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
     // Close the channel after insertion
-    channel1.close().get();
+    channel1.close(true).get();
 
     // verify expected request sent to server
     Mockito.verify(requestBuilder)
         .generateStreamingIngestPostRequest(
-            ArgumentMatchers.contains("channel"),
+            ArgumentMatchers.contains("client_sequencer"),
             ArgumentMatchers.refEq(DROP_CHANNEL_ENDPOINT),
             ArgumentMatchers.refEq("drop channel"));
   }
