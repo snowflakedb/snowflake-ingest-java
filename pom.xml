@@ -44,6 +44,7 @@
     <commonslang3.version>3.12.0</commonslang3.version>
     <commonslogging.version>1.2</commonslogging.version>
     <commonstext.version>1.10.0</commonstext.version>
+    <Daether.priority.org.eclipse.aether.transport.wagon.WagonTransporterFactory>999</Daether.priority.org.eclipse.aether.transport.wagon.WagonTransporterFactory>
     <fasterxml.version>2.14.0</fasterxml.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.3.6</hadoop.version>
@@ -67,7 +68,6 @@
     <snappy.version>1.1.10.4</snappy.version>
     <snowjdbc.version>3.13.30</snowjdbc.version>
     <yetus.version>0.13.0</yetus.version>
-    <Daether.priority.org.eclipse.aether.transport.wagon.WagonTransporterFactory>999</Daether.priority.org.eclipse.aether.transport.wagon.WagonTransporterFactory>
   </properties>
 
   <dependencyManagement>
