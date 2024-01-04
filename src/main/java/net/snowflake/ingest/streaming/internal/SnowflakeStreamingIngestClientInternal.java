@@ -304,7 +304,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("schema", request.getSchemaName());
       payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
       payload.put("role", this.role);
-      if (request.isOffsetTokenProvided()){
+      if (request.isOffsetTokenProvided()) {
         payload.put("offset_token", request.getOffsetToken());
       }
 

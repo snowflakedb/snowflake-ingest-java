@@ -89,10 +89,10 @@ public class OpenChannelRequest {
       return this;
     }
 
-    public OpenChannelRequestBuilder setOffsetToken(String offsetToken){
+    public OpenChannelRequestBuilder setOffsetToken(String offsetToken) {
       this.offsetToken = offsetToken;
       this.isOffsetTokenProvided = true;
-      return  this;
+      return this;
     }
 
     public OpenChannelRequest build() {
