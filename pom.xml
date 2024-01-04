@@ -953,6 +953,7 @@
                 <excludes>
                   <exclude>net.snowflake:snowflake-jdbc</exclude>
                   <exclude>org.slf4j:slf4j-api</exclude>
+                  <exclude>com.github.luben:zstd-jni</exclude>
                 </excludes>
               </artifactSet>
               <relocations>
