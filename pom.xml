@@ -709,6 +709,10 @@
                 <banDuplicateClasses>
                   <findAllDuplicates>true</findAllDuplicates>
                   <ignoreWhenIdentical>true</ignoreWhenIdentical>
+                  <ignoreClasses>
+                    <!-- ignoring multirelease jar classes -->
+                    <ignoreClass>META-INF/versions/*</ignoreClass>
+                  </ignoreClasses>
                 </banDuplicateClasses>
                 <banDuplicatePomDependencyVersions/>
                 <bannedDependencies/>
