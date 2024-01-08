@@ -6,7 +6,10 @@ package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
+import java.security.SecureRandom;
 import java.security.Security;
+import java.security.cert.X509Certificate;
+import java.security.cert.CertificateException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -15,7 +18,11 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
+import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHost;
 import net.snowflake.client.jdbc.internal.apache.http.HttpRequest;
@@ -120,11 +127,33 @@ public class HttpUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
 
+  private static class DefaultTrustManager implements X509TrustManager {
+
+    @Override
+    public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {}
+
+    @Override
+    public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {}
+
+    @Override
+    public X509Certificate[] getAcceptedIssuers() {
+      return null;
+    }
+  }
+
   private static void initHttpClient(String accountName) {
 
     Security.setProperty("ocsp.enable", "true");
 
-    SSLContext sslContext = SSLContexts.createDefault();
+    // SSLContext sslContext = SSLContexts.createDefault();
+    SSLContext sslContext = null;
+    try {
+      sslContext = SSLContext.getInstance("TLS");
+      sslContext.init(new KeyManager[0], new TrustManager[] {new DefaultTrustManager()}, new SecureRandom());
+      SSLContext.setDefault(sslContext);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
 
     SSLConnectionSocketFactory f =
         new SSLConnectionSocketFactory(
