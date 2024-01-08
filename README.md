@@ -27,7 +27,7 @@ using a build system, please make sure these dependencies are on the classpath.
 
 ## Java 8+
 
-The Snowflake Ingest Service SDK can only be used with Java 8 or higher.
+This Snowflake Ingest Service SDK can only be used with Java 8 or higher.
 Backwards compatibility with Java 7 and prior is not planned at this
 time.
 
