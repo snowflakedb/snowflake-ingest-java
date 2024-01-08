@@ -1,6 +1,7 @@
 Snowflake Ingest Service Java SDK
 ---
 
+
 [![image](http://img.shields.io/:license-Apache%202-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.txt)
 [![image](https://github.com/snowflakedb/snowflake-ingest-java/workflows/Snowpipe%20Java%20SDK%20Tests/badge.svg)](https://github.com/snowflakedb/snowflake-ingest-java/actions)
 [![image](https://maven-badges.herokuapp.com/maven-central/net.snowflake/snowflake-ingest-sdk/badge.svg?style=plastic)](https://repo.maven.apache.org/maven2/net/snowflake/snowflake-ingest-sdk/)
