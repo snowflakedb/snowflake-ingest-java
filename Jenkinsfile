@@ -9,6 +9,7 @@ pipeline {
     stages {
         stage('TriggerJobs') {
             steps {
+                println("\n\n*** Change to script ***")
                 script {
                     def valid_db_name_tag = ingest_sdk_tag.split('\\.').join('_')
                     def deployments = [
