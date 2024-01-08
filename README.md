@@ -46,7 +46,7 @@ tests.
 
 # Adding as a Dependency
 
-You can add the Snowflake Ingest Service SDK by adding the following to
+One can add the Snowflake Ingest Service SDK by adding the following to
 your project
 
 ``` {.xml}
