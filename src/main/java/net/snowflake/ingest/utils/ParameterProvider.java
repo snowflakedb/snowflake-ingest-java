@@ -109,6 +109,16 @@ public class ParameterProvider {
    * @param props Properties file provided to client constructor
    */
   private void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
+    // BUFFER_FLUSH_INTERVAL_IN_MILLIS is deprecated and disallowed
+    if ((parameterOverrides != null
+            && parameterOverrides.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS))
+        || (props != null && props.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS))) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s is deprecated, please use %s instead",
+              BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
+    }
+
     this.updateValue(
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS,
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
@@ -182,14 +192,6 @@ public class ParameterProvider {
 
   /** @return Longest interval in milliseconds between buffer flushes */
   public long getCachedMaxClientLagInMs() {
-    // BUFFER_FLUSH_INTERVAL_IN_MILLIS is deprecated and disallowed
-    if (this.parameterMap.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS)) {
-      throw new IllegalArgumentException(
-          String.format(
-              "%s is deprecated, please use %s instead",
-              BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
-    }
-
     if (cachedBufferFlushIntervalMs != -1L) {
       return cachedBufferFlushIntervalMs;
     }

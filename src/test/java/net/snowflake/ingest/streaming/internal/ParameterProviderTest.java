@@ -273,6 +273,20 @@ public class ParameterProviderTest {
   }
 
   @Test
+  public void testMaxClientLagEnableEmptyInput() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "");
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    try {
+      parameterProvider.getCachedMaxClientLagInMs();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals(e.getCause().getClass(), NumberFormatException.class);
+    }
+  }
+
+  @Test
   public void testMaxChunksInBlobAndRegistrationRequest() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();

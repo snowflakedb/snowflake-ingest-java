@@ -214,7 +214,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                 prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
       }
-      this.requestBuilder = new RequestBuilder(
+      this.requestBuilder =
+          new RequestBuilder(
               accountURL,
               prop.get(USER).toString(),
               credential,
@@ -275,14 +276,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Properties prop,
       Map<String, Object> parameterOverrides,
       boolean addAccountNameInRequest) {
-    this(name,
-        accountURL,
-        prop,
-        null,
-        false,
-        null,
-        parameterOverrides,
-        addAccountNameInRequest);
+    this(name, accountURL, prop, null, false, null, parameterOverrides, addAccountNameInRequest);
   }
 
   /**

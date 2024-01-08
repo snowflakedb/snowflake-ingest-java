@@ -6,7 +6,6 @@ package net.snowflake.ingest.streaming;
 
 import java.util.Map;
 import java.util.Properties;
-
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -71,10 +70,10 @@ public class SnowflakeStreamingIngestClientFactory {
 
       if (addAccountNameInRequest) {
         return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides, addAccountNameInRequest);
+            this.name, accountURL, prop, this.parameterOverrides, addAccountNameInRequest);
       }
       return new SnowflakeStreamingIngestClientInternal<>(
-        this.name, accountURL, prop, this.parameterOverrides);
+          this.name, accountURL, prop, this.parameterOverrides);
     }
   }
 }
