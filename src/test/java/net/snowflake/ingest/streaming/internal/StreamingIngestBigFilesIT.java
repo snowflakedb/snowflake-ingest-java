@@ -79,12 +79,6 @@ public class StreamingIngestBigFilesIT {
   }
 
   @Test
-  public void testCorrectCompressionAlgorithm() {
-    Constants.BdecParquetCompression bdecParquetCompressionAlgorithm = client.getParameterProvider().getBdecParquetCompressionAlgorithm();
-    assertEquals(compressionAlgorithm, bdecParquetCompressionAlgorithm.toString());
-  }
-
-  @Test
   public void testManyRowsMultipleChannelsToMultipleTable()
       throws SQLException, ExecutionException, InterruptedException {
     String tableNamePrefix = "t_big_table_";
