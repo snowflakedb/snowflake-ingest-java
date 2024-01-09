@@ -308,6 +308,17 @@ public class ParameterProviderTest {
               Constants.BdecParquetCompression.GZIP,
               parameterProvider.getBdecParquetCompressionAlgorithm());
         });
+    List<String> zstdValues = Arrays.asList("ZSTD", "zstd", "Zstd", "zStd");
+    zstdValues.forEach(
+            v -> {
+              Properties prop = new Properties();
+              Map<String, Object> parameterMap = getStartingParameterMap();
+              parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, v);
+              ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+              Assert.assertEquals(
+                      Constants.BdecParquetCompression.ZSTD,
+                      parameterProvider.getBdecParquetCompressionAlgorithm());
+            });
   }
 
   @Test
