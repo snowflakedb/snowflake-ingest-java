@@ -14,7 +14,7 @@ public class ParameterProviderTest {
 
   private Map<String, Object> getStartingParameterMap() {
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 1000L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
@@ -31,10 +31,9 @@ public class ParameterProviderTest {
   public void withValuesSet() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, false);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
 
-    Assert.assertEquals(3L, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(1000L, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(4L, parameterProvider.getBufferFlushCheckIntervalInMs());
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
     Assert.assertEquals(1024, parameterProvider.getInsertThrottleThresholdInBytes());
@@ -51,14 +50,13 @@ public class ParameterProviderTest {
   @Test
   public void withNullProps() {
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 3000L);
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, false);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, null);
 
-    Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
     Assert.assertEquals(1024, parameterProvider.getInsertThrottleThresholdInBytes());
@@ -70,14 +68,13 @@ public class ParameterProviderTest {
   @Test
   public void withNullParameterMap() {
     Properties props = new Properties();
-    props.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 3L);
+    props.put(ParameterProvider.MAX_CLIENT_LAG, 3000L);
     props.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 4L);
     props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
     props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
-    props.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, false);
     ParameterProvider parameterProvider = new ParameterProvider(null, props);
 
-    Assert.assertEquals(3, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
     Assert.assertEquals(6, parameterProvider.getInsertThrottleThresholdInPercentage());
     Assert.assertEquals(1024, parameterProvider.getInsertThrottleThresholdInBytes());
@@ -91,8 +88,7 @@ public class ParameterProviderTest {
     ParameterProvider parameterProvider = new ParameterProvider(null, null);
 
     Assert.assertEquals(
-        ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT,
-        parameterProvider.getBufferFlushIntervalInMs());
+        ParameterProvider.MAX_CLIENT_LAG_DEFAULT, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(
         ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -112,8 +108,7 @@ public class ParameterProviderTest {
     ParameterProvider parameterProvider = new ParameterProvider();
 
     Assert.assertEquals(
-        ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT,
-        parameterProvider.getBufferFlushIntervalInMs());
+        ParameterProvider.MAX_CLIENT_LAG_DEFAULT, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(
         ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -146,77 +141,75 @@ public class ParameterProviderTest {
   public void testMaxClientLagEnabled() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "2 second");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    Assert.assertEquals(2000, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(2000, parameterProvider.getCachedMaxClientLagInMs());
     // call again to trigger caching logic
-    Assert.assertEquals(2000, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(2000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
   @Test
   public void testMaxClientLagEnabledPluralTimeUnit() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "2 seconds");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    Assert.assertEquals(2000, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(2000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
   @Test
   public void testMaxClientLagEnabledMinuteTimeUnit() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "1 minute");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    Assert.assertEquals(60000, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(60000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
   @Test
   public void testMaxClientLagEnabledMinuteTimeUnitPluralTimeUnit() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "2 minutes");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    Assert.assertEquals(120000, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(120000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
   @Test
   public void testMaxClientLagEnabledDefaultValue() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    Assert.assertEquals(1000, parameterProvider.getBufferFlushIntervalInMs());
+    Assert.assertEquals(
+        ParameterProvider.MAX_CLIENT_LAG_DEFAULT, parameterProvider.getCachedMaxClientLagInMs());
   }
 
   @Test
-  public void testMaxClientLagEnabledMissingUnit() {
+  public void testMaxClientLagEnabledDefaultUnit() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "1");
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "3000");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
-    try {
-      parameterProvider.getBufferFlushIntervalInMs();
-      Assert.fail("Should not have succeeded");
-    } catch (IllegalArgumentException e) {
-      Assert.assertTrue(e.getMessage().startsWith("Failed to parse"));
-    }
+    Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
+  }
+
+  @Test
+  public void testMaxClientLagEnabledLongInput() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 3000L);
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
   @Test
   public void testMaxClientLagEnabledMissingUnitTimeUnitSupplied() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, " year");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
     try {
-      parameterProvider.getBufferFlushIntervalInMs();
+      parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
     } catch (IllegalArgumentException e) {
       Assert.assertTrue(e.getMessage().startsWith("Failed to parse"));
@@ -227,11 +220,10 @@ public class ParameterProviderTest {
   public void testMaxClientLagEnabledInvalidTimeUnit() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "1 year");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
     try {
-      parameterProvider.getBufferFlushIntervalInMs();
+      parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
     } catch (IllegalArgumentException e) {
       Assert.assertTrue(e.getMessage().startsWith("Invalid time unit"));
@@ -242,11 +234,10 @@ public class ParameterProviderTest {
   public void testMaxClientLagEnabledInvalidUnit() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "banana minute");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
     try {
-      parameterProvider.getBufferFlushIntervalInMs();
+      parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
     } catch (IllegalArgumentException e) {
       Assert.assertTrue(e.getMessage().startsWith("Failed to parse"));
@@ -257,11 +248,10 @@ public class ParameterProviderTest {
   public void testMaxClientLagEnabledThresholdBelow() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "0 second");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
     try {
-      parameterProvider.getBufferFlushIntervalInMs();
+      parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
     } catch (IllegalArgumentException e) {
       Assert.assertTrue(e.getMessage().startsWith("Lag falls outside"));
@@ -272,14 +262,27 @@ public class ParameterProviderTest {
   public void testMaxClientLagEnabledThresholdAbove() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG_ENABLED, true);
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "11 minutes");
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
     try {
-      parameterProvider.getBufferFlushIntervalInMs();
+      parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
     } catch (IllegalArgumentException e) {
       Assert.assertTrue(e.getMessage().startsWith("Lag falls outside"));
+    }
+  }
+
+  @Test
+  public void testMaxClientLagEnableEmptyInput() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "");
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    try {
+      parameterProvider.getCachedMaxClientLagInMs();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals(e.getCause().getClass(), NumberFormatException.class);
     }
   }
 

@@ -36,13 +36,10 @@ public class ParameterProvider {
 
   public static final String MAX_CLIENT_LAG = "MAX_CLIENT_LAG".toLowerCase();
 
-  public static final String MAX_CLIENT_LAG_ENABLED = "MAX_CLIENT_LAG_ENABLED".toLowerCase();
-
   public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
       "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
 
   // Default values
-  public static final long BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
   public static final int INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT = 10;
@@ -57,12 +54,10 @@ public class ParameterProvider {
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 128000000L;
 
   // Lag related parameters
-  public static final String MAX_CLIENT_LAG_DEFAULT = "1 second";
-  public static final boolean MAX_CLIENT_LAG_ENABLED_DEFAULT = true;
-
+  public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
   static final long MAX_CLIENT_LAG_MS_MIN = TimeUnit.SECONDS.toMillis(1);
-
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
+
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
   public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT = 100;
 
@@ -114,11 +109,15 @@ public class ParameterProvider {
    * @param props Properties file provided to client constructor
    */
   private void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
-    this.updateValue(
-        BUFFER_FLUSH_INTERVAL_IN_MILLIS,
-        BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT,
-        parameterOverrides,
-        props);
+    // BUFFER_FLUSH_INTERVAL_IN_MILLIS is deprecated and disallowed
+    if ((parameterOverrides != null
+            && parameterOverrides.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS))
+        || (props != null && props.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS))) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s is deprecated, please use %s instead",
+              BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
+    }
 
     this.updateValue(
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS,
@@ -177,8 +176,7 @@ public class ParameterProvider {
         MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
 
     this.updateValue(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT, parameterOverrides, props);
-    this.updateValue(
-        MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT, parameterOverrides, props);
+
     this.updateValue(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
@@ -193,57 +191,52 @@ public class ParameterProvider {
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
-  public long getBufferFlushIntervalInMs() {
-    if (getMaxClientLagEnabled()) {
-      if (cachedBufferFlushIntervalMs != -1L) {
-        return cachedBufferFlushIntervalMs;
-      }
-      long lag = getMaxClientLagMs();
-      if (cachedBufferFlushIntervalMs == -1L) {
-        cachedBufferFlushIntervalMs = lag;
-      }
+  public long getCachedMaxClientLagInMs() {
+    if (cachedBufferFlushIntervalMs != -1L) {
       return cachedBufferFlushIntervalMs;
-    } else {
-      Object val =
-          this.parameterMap.getOrDefault(
-              BUFFER_FLUSH_INTERVAL_IN_MILLIS, BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT);
-      return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
     }
+
+    cachedBufferFlushIntervalMs = getMaxClientLagInMs();
+    return cachedBufferFlushIntervalMs;
   }
 
-  private long getMaxClientLagMs() {
+  private long getMaxClientLagInMs() {
     Object val = this.parameterMap.getOrDefault(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT);
-    if (!(val instanceof String)) {
-      return BUFFER_FLUSH_INTERVAL_IN_MILLIS_DEFAULT;
-    }
-    String maxLag = (String) val;
-    String[] lagParts = maxLag.split(" ");
-    if (lagParts.length != 2
-        || (lagParts[0] == null || "".equals(lagParts[0]))
-        || (lagParts[1] == null || "".equals(lagParts[1]))) {
-      throw new IllegalArgumentException(
-          String.format("Failed to parse MAX_CLIENT_LAG = '%s'", maxLag));
-    }
-    long lag;
-    try {
-      lag = Long.parseLong(lagParts[0]);
-    } catch (Throwable t) {
-      throw new IllegalArgumentException(
-          String.format("Failed to parse MAX_CLIENT_LAG = '%s'", lagParts[0]), t);
-    }
     long computedLag;
-    switch (lagParts[1].toLowerCase()) {
-      case "second":
-      case "seconds":
-        computedLag = lag * TimeUnit.SECONDS.toMillis(1);
-        break;
-      case "minute":
-      case "minutes":
-        computedLag = lag * TimeUnit.SECONDS.toMillis(60);
-        break;
-      default:
+    if (val instanceof String) {
+      String maxLag = (String) val;
+      String[] lagParts = maxLag.split(" ");
+      if (lagParts.length > 2) {
         throw new IllegalArgumentException(
-            String.format("Invalid time unit supplied = '%s", lagParts[1]));
+            String.format("Failed to parse MAX_CLIENT_LAG = '%s'", maxLag));
+      }
+
+      // Compute the actual value
+      try {
+        computedLag = Long.parseLong(lagParts[0]);
+      } catch (Throwable t) {
+        throw new IllegalArgumentException(
+            String.format("Failed to parse MAX_CLIENT_LAG = '%s'", lagParts[0]), t);
+      }
+
+      // Compute the time unit if needed
+      if (lagParts.length == 2) {
+        switch (lagParts[1].toLowerCase()) {
+          case "second":
+          case "seconds":
+            computedLag = computedLag * TimeUnit.SECONDS.toMillis(1);
+            break;
+          case "minute":
+          case "minutes":
+            computedLag = computedLag * TimeUnit.SECONDS.toMillis(60);
+            break;
+          default:
+            throw new IllegalArgumentException(
+                String.format("Invalid time unit supplied = '%s", lagParts[1]));
+        }
+      }
+    } else {
+      computedLag = (long) val;
     }
 
     if (!(computedLag >= MAX_CLIENT_LAG_MS_MIN && computedLag <= MAX_CLIENT_LAG_MS_MAX)) {
@@ -253,13 +246,8 @@ public class ParameterProvider {
                   + " (milliseconds) = %s",
               MAX_CLIENT_LAG_MS_MIN, MAX_CLIENT_LAG_MS_MAX));
     }
-    return computedLag;
-  }
 
-  private boolean getMaxClientLagEnabled() {
-    Object val =
-        this.parameterMap.getOrDefault(MAX_CLIENT_LAG_ENABLED, MAX_CLIENT_LAG_ENABLED_DEFAULT);
-    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
+    return computedLag;
   }
 
   /** @return Time in milliseconds between checks to see if the buffer should be flushed */
@@ -411,8 +399,8 @@ public class ParameterProvider {
   /** @return BDEC compression algorithm */
   public Constants.BdecParquetCompression getBdecParquetCompressionAlgorithm() {
     Object val =
-            this.parameterMap.getOrDefault(
-                    BDEC_PARQUET_COMPRESSION_ALGORITHM, BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT);
+        this.parameterMap.getOrDefault(
+            BDEC_PARQUET_COMPRESSION_ALGORITHM, BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT);
     if (val instanceof Constants.BdecParquetCompression) {
       return (Constants.BdecParquetCompression) val;
     }

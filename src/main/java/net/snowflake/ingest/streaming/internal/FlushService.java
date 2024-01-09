@@ -261,7 +261,7 @@ class FlushService<T> {
             && !isTestMode()
             && (this.isNeedFlush
                 || timeDiffMillis
-                    >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
+                    >= this.owningClient.getParameterProvider().getCachedMaxClientLagInMs()))) {
 
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))

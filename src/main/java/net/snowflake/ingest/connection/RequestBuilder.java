@@ -295,7 +295,8 @@ public class RequestBuilder {
       SecurityManager securityManager,
       CloseableHttpClient httpClient,
       String clientName) {
-    this(accountName,
+    this(
+        accountName,
         userName,
         credential,
         schemeName,
@@ -648,7 +649,7 @@ public class RequestBuilder {
   public void addToken(HttpUriRequest request) {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + securityManager.getToken());
     request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, this.securityManager.getTokenType());
-    if(addAccountNameInRequest) {
+    if (addAccountNameInRequest) {
       request.setHeader(SF_HEADER_ACCOUNT_NAME, accountName);
     }
   }

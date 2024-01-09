@@ -214,7 +214,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                 prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
       }
-      this.requestBuilder = new RequestBuilder(
+      this.requestBuilder =
+          new RequestBuilder(
               accountURL,
               prop.get(USER).toString(),
               credential,
@@ -275,14 +276,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Properties prop,
       Map<String, Object> parameterOverrides,
       boolean addAccountNameInRequest) {
-    this(name,
-        accountURL,
-        prop,
-        null,
-        false,
-        null,
-        parameterOverrides,
-        addAccountNameInRequest);
+    this(name, accountURL, prop, null, false, null, parameterOverrides, addAccountNameInRequest);
   }
 
   /**
@@ -353,7 +347,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("schema", request.getSchemaName());
       payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
       payload.put("role", this.role);
-      if (request.isOffsetTokenProvided()){
+      if (request.isOffsetTokenProvided()) {
         payload.put("offset_token", request.getOffsetToken());
       }
 
