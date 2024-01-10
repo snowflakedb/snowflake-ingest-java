@@ -158,7 +158,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
-    this(name, accountURL, prop, httpClient, isTestMode, requestBuilder, parameterOverrides, false);
+    this(name, accountURL, prop, httpClient, isTestMode, requestBuilder, parameterOverrides, false, 0);
   }
 
   /**
@@ -181,13 +181,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides,
-      boolean addAccountNameInRequest) {
+      boolean addAccountNameInRequest,
+      int method) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
     this.isTestMode = isTestMode;
-    this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
+    this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName, method) : httpClient;
     this.channelCache = new ChannelCache<>();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
@@ -274,7 +275,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       SnowflakeURL accountURL,
       Properties prop,
       Map<String, Object> parameterOverrides,
-      boolean addAccountNameInRequest) {
+      boolean addAccountNameInRequest,
+      int method) {
     this(name,
         accountURL,
         prop,
@@ -282,7 +284,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         false,
         null,
         parameterOverrides,
-        addAccountNameInRequest);
+        addAccountNameInRequest,
+        method);
   }
 
   /**

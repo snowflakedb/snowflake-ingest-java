@@ -6,8 +6,13 @@ package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.cert.CertificateException;
 import java.time.Duration;
@@ -18,10 +23,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.*;
 
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHost;
@@ -39,9 +41,11 @@ import net.snowflake.client.jdbc.internal.apache.http.client.protocol.HttpClient
 import net.snowflake.client.jdbc.internal.apache.http.conn.routing.HttpRoute;
 import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.DefaultHostnameVerifier;
 import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.TrustAllStrategy;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.BasicCredentialsProvider;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClientBuilder;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClients;
 import net.snowflake.client.jdbc.internal.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import net.snowflake.client.jdbc.internal.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import net.snowflake.client.jdbc.internal.apache.http.pool.PoolStats;
@@ -112,10 +116,14 @@ public class HttpUtil {
    * @return Instance of CloseableHttpClient
    */
   public static CloseableHttpClient getHttpClient(String accountName) {
+    return getHttpClient(accountName, 0);
+  }
+
+    public static CloseableHttpClient getHttpClient(String accountName, int method) {
     if (httpClient == null) {
       synchronized (HttpUtil.class) {
         if (httpClient == null) {
-          initHttpClient(accountName);
+          initHttpClient(accountName, method);
         }
       }
     }
@@ -127,31 +135,44 @@ public class HttpUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
 
-  private static class DefaultTrustManager implements X509TrustManager {
-
-    @Override
-    public void checkClientTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {}
-
-    @Override
-    public void checkServerTrusted(X509Certificate[] arg0, String arg1) throws CertificateException {}
-
-    @Override
-    public X509Certificate[] getAcceptedIssuers() {
-      return null;
-    }
-  }
-
-  private static void initHttpClient(String accountName) {
+  private static void initHttpClient(String accountName, int method) {
 
     Security.setProperty("ocsp.enable", "true");
 
     // SSLContext sslContext = SSLContexts.createDefault();
     SSLContext sslContext = null;
     try {
-      sslContext = SSLContext.getInstance("TLS");
-      sslContext.init(new KeyManager[0], new TrustManager[] {new DefaultTrustManager()}, new SecureRandom());
-      SSLContext.setDefault(sslContext);
+      final String CA_FILE = "/etc/pki/ca-trust/source/anchors/may_2020_ca_cert_dev.pem";
+      if (method  == 0) {
+        LOGGER.info("using original way");
+        sslContext = SSLContexts.createDefault();
+      } else if (method == 1) {
+        LOGGER.info("using trustallstrategy");
+        sslContext = SSLContexts.custom().loadTrustMaterial(null, new TrustAllStrategy()).build();
+      } else if (method== 2) {
+        LOGGER.info("using trust store");
+
+        FileInputStream fis = new FileInputStream(CA_FILE);
+        X509Certificate ca = (X509Certificate) CertificateFactory.getInstance("X.509")
+                .generateCertificate(new BufferedInputStream(fis));
+
+        KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+        ks.load(null, null);
+        ks.setCertificateEntry(Integer.toString(1), ca);
+
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(ks);
+
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, tmf.getTrustManagers(), null);
+      } else {
+        LOGGER.info("using system parameter way");
+        System.setProperty("javax.net.ssl.trustStore", CA_FILE);
+        sslContext = SSLContexts.createDefault();
+      }
     } catch (Exception e) {
+      LOGGER.info(e.getMessage());
+      LOGGER.info(e.toString());
       e.printStackTrace();
     }
 

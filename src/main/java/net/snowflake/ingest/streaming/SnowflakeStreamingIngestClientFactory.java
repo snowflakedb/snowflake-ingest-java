@@ -35,6 +35,8 @@ public class SnowflakeStreamingIngestClientFactory {
     // flag to specify if we need to add account name in the request header
     private boolean addAccountNameInRequest;
 
+    private int method;
+
     private Builder(String name) {
       this.name = name;
     }
@@ -59,6 +61,11 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
+    public Builder setMethod(int method) {
+      this.method = method;
+      return this;
+    }
+
     public SnowflakeStreamingIngestClient build() {
       Utils.assertStringNotNullOrEmpty("client name", this.name);
       Utils.assertNotNull("connection properties", this.prop);
@@ -71,7 +78,7 @@ public class SnowflakeStreamingIngestClientFactory {
 
       if (addAccountNameInRequest) {
         return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides, addAccountNameInRequest);
+          this.name, accountURL, prop, this.parameterOverrides, addAccountNameInRequest, method);
       }
       return new SnowflakeStreamingIngestClientInternal<>(
         this.name, accountURL, prop, this.parameterOverrides);
