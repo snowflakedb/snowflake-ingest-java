@@ -141,6 +141,7 @@ public class SnowflakeStreamingIngestClientTest {
             BDEC_VERSION);
   }
 
+  /**
   @Test
   @Ignore // Until able to test in PROD
   public void testConstructorParameters() throws Exception {
@@ -169,6 +170,7 @@ public class SnowflakeStreamingIngestClientTest {
         client.getParameterProvider().getInsertThrottleIntervalInMs());
     Assert.assertFalse(client.isClosed());
   }
+   */
 
   @Test
   @Ignore
@@ -255,6 +257,7 @@ public class SnowflakeStreamingIngestClientTest {
     }
   }
 
+  /**
   @Test
   @Ignore // Wait for the client/configure endpoint to be available in PROD, can't mock the
   // HttpUtil.executeGeneralRequest call because it's also used when setting up the
@@ -272,6 +275,7 @@ public class SnowflakeStreamingIngestClientTest {
     Assert.assertEquals("client", client.getName());
     Assert.assertFalse(client.isClosed());
   }
+   */
 
   @Test
   @Ignore // SNOW-540567: NON-FIPS provider causing failures during release jekins job
