@@ -41,6 +41,7 @@ public class Utils {
 
   private static final Logging logger = new Logging(Utils.class);
 
+
   private static final String DEFAULT_SECURITY_PROVIDER_NAME =
       "org.bouncycastle.jce.provider.BouncyCastleProvider";
 
@@ -48,7 +49,7 @@ public class Utils {
   private static final String BOUNCY_CASTLE_PROVIDER = "BC";
   /** provider name for FIPS */
   private static final String BOUNCY_CASTLE_FIPS_PROVIDER = "BCFIPS";
-
+/**
   static {
     // Add Bouncy Castle to the security provider. This is required to
     // verify the signature on OCSP response and attached certificates.
@@ -87,7 +88,7 @@ public class Utils {
           ErrorCode.CRYPTO_PROVIDER_ERROR, DEFAULT_SECURITY_PROVIDER_NAME, ex.getMessage());
     }
   }
-
+*/
   /**
    * Assert when the String is null or Empty
    *
@@ -270,8 +271,8 @@ public class Utils {
       pemParser.close();
       InputDecryptorProvider pkcs8Prov =
           new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase.toCharArray());
-      JcaPEMKeyConverter converter =
-          new JcaPEMKeyConverter().setProvider(Utils.getProvider().getName());
+      JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
+      //new JcaPEMKeyConverter().setProvider(Utils.getProvider().getName());
       PrivateKeyInfo decryptedPrivateKeyInfo =
           encryptedPrivateKeyInfo.decryptPrivateKeyInfo(pkcs8Prov);
       return converter.getPrivateKey(decryptedPrivateKeyInfo);

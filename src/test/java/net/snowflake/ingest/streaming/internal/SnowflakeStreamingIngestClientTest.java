@@ -304,7 +304,7 @@ public class SnowflakeStreamingIngestClientTest {
     pemWriter.writeObject(
         pkcs8EncryptedPrivateKeyInfoBuilder.build(
             new JcePKCSPBEOutputEncryptorBuilder(NISTObjectIdentifiers.id_aes256_CBC)
-                .setProvider(Utils.getProvider().getName())
+//                .setProvider(Utils.getProvider().getName())
                 .build(passwd)));
     pemWriter.close();
     return writer.toString();
