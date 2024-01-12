@@ -163,8 +163,8 @@ public class HttpUtil {
         TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         tmf.init(ks);
 
-        SSLContext context = SSLContext.getInstance("TLS");
-        context.init(null, tmf.getTrustManagers(), null);
+        sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, tmf.getTrustManagers(), null);
       } else {
         LOGGER.info("using system parameter way");
         System.setProperty("javax.net.ssl.trustStore", CA_FILE);
