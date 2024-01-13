@@ -13,6 +13,9 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
@@ -26,6 +29,8 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IngestTestUtils {
   private static final String PROFILE_PATH = "profile.json";
@@ -37,6 +42,8 @@ public class IngestTestUtils {
   private final String table;
 
   private final String testId;
+
+  private static final Logger logger = LoggerFactory.getLogger(IngestTestUtils.class);
 
   private final SnowflakeStreamingIngestClient client;
 
@@ -146,7 +153,7 @@ public class IngestTestUtils {
                     expectedOffset, lastCommittedOffset));
   }
 
-  public void test() throws InterruptedException {
+  public void runBasicTest() throws InterruptedException {
     // Insert few rows one by one
     for (int offset = 2; offset < 1000; offset++) {
       offset++;
@@ -159,6 +166,30 @@ public class IngestTestUtils {
             Arrays.asList(createRow(), createRow(), createRow(), createRow(), createRow()), offset);
 
     waitForOffset(channel, offset);
+  }
+
+  public void runLongRunningTest(Duration testDuration) throws InterruptedException {
+    final Instant testStart = Instant.now();
+    int counter = 0;
+    while(true) {
+      counter++;
+
+      channel.insertRow(createRow(), String.valueOf(counter));
+
+      if (!channel.isValid()) {
+        throw new IllegalStateException("Channel has been invalidated");
+      }
+      Thread.sleep(60000);
+
+      final Duration elapsed = Duration.between(testStart, Instant.now());
+
+      logger.info("Test loop_nr={} duration={}s/{}s committed_offset={}", counter, elapsed.get(ChronoUnit.SECONDS), testDuration.get(ChronoUnit.SECONDS), channel.getLatestCommittedOffsetToken());
+
+      if (elapsed.compareTo(testDuration) > 0) {
+        break;
+      }
+    }
+    waitForOffset(channel, String.valueOf(counter));
   }
 
   public void close() throws Exception {

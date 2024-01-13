@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.ingest.streaming.internal.StreamingIngestStage.isCredentialsExpiredException;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_PASSWORD;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_USER;
 import static net.snowflake.ingest.utils.HttpUtil.NON_PROXY_HOSTS;
@@ -39,11 +40,13 @@ import net.snowflake.client.jdbc.internal.apache.http.entity.BasicHttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -121,7 +124,8 @@ public class StreamingIngestStageTest {
             null,
             "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
-                originalMetadata, Optional.of(System.currentTimeMillis())));
+                originalMetadata, Optional.of(System.currentTimeMillis())),
+            1);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
 
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
@@ -163,7 +167,8 @@ public class StreamingIngestStageTest {
                 null,
                 "clientName",
                 new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
-                    fullFilePath, Optional.of(System.currentTimeMillis()))));
+                    fullFilePath, Optional.of(System.currentTimeMillis())),
+                1));
     Mockito.doReturn(true).when(stage).isLocalFS();
 
     stage.put(fileName, dataBytes);
@@ -174,7 +179,8 @@ public class StreamingIngestStageTest {
   }
 
   @Test
-  public void testPutRemoteRefreshes() throws Exception {
+  public void doTestPutRemoteRefreshes() throws Exception {
+    int maxUploadRetryCount = 2;
     JsonNode exampleJson = mapper.readTree(exampleRemoteMeta);
     SnowflakeFileTransferMetadataV1 originalMetadata =
         (SnowflakeFileTransferMetadataV1)
@@ -190,7 +196,8 @@ public class StreamingIngestStageTest {
             null,
             "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
-                originalMetadata, Optional.of(System.currentTimeMillis())));
+                originalMetadata, Optional.of(System.currentTimeMillis())),
+            maxUploadRetryCount);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
     SnowflakeSQLException e =
         new SnowflakeSQLException(
@@ -202,16 +209,15 @@ public class StreamingIngestStageTest {
 
     try {
       stage.putRemote("test/path", dataBytes);
-      Assert.assertTrue(false);
-    } catch (SnowflakeSQLException ex) {
+      Assert.fail("Should not succeed");
+    } catch (SFException ex) {
       // Expected behavior given mocked response
     }
-    PowerMockito.verifyStatic(
-        SnowflakeFileTransferAgent.class, times(StreamingIngestStage.MAX_RETRY_COUNT + 1));
+    PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class, times(maxUploadRetryCount + 1));
     SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());
     SnowflakeFileTransferConfig capturedConfig = captor.getValue();
 
-    Assert.assertEquals(false, capturedConfig.getRequireCompress());
+    Assert.assertFalse(capturedConfig.getRequireCompress());
     Assert.assertEquals(OCSPMode.FAIL_OPEN, capturedConfig.getOcspMode());
 
     SnowflakeFileTransferMetadataV1 capturedMetadata =
@@ -245,7 +251,8 @@ public class StreamingIngestStageTest {
                 null,
                 "clientName",
                 new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
-                    originalMetadata, Optional.of(System.currentTimeMillis()))));
+                    originalMetadata, Optional.of(System.currentTimeMillis())),
+                1));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
     SnowflakeFileTransferMetadataV1 metaMock = Mockito.mock(SnowflakeFileTransferMetadataV1.class);
 
@@ -273,7 +280,7 @@ public class StreamingIngestStageTest {
 
     ParameterProvider parameterProvider = new ParameterProvider();
     StreamingIngestStage stage =
-        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName");
+        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName", 1);
 
     StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
         stage.refreshSnowflakeMetadata(true);
@@ -314,7 +321,7 @@ public class StreamingIngestStageTest {
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
     StreamingIngestStage stage =
-        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName");
+        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName", 1);
 
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
 
@@ -359,7 +366,8 @@ public class StreamingIngestStageTest {
             mockBuilder,
             "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
-                originalMetadata, Optional.of(0L)));
+                originalMetadata, Optional.of(0L)),
+            1);
 
     ThreadFactory buildUploadThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
@@ -475,5 +483,23 @@ public class StreamingIngestStageTest {
     if (oldNonProxyHosts != null) {
       System.setProperty(NON_PROXY_HOSTS, oldNonProxyHosts);
     }
+  }
+
+  @Test
+  public void testIsCredentialExpiredException() {
+    Assert.assertTrue(
+        isCredentialsExpiredException(
+            new SnowflakeSQLException("Error", CLOUD_STORAGE_CREDENTIALS_EXPIRED)));
+    Assert.assertTrue(isCredentialsExpiredException(new StorageException(401, "unauthorized")));
+
+    Assert.assertFalse(isCredentialsExpiredException(new StorageException(400, "bad request")));
+    Assert.assertFalse(isCredentialsExpiredException(null));
+    Assert.assertFalse(isCredentialsExpiredException(new RuntimeException()));
+    Assert.assertFalse(
+        isCredentialsExpiredException(
+            new RuntimeException(String.valueOf(CLOUD_STORAGE_CREDENTIALS_EXPIRED))));
+    Assert.assertFalse(
+        isCredentialsExpiredException(
+            new SnowflakeSQLException("Error", CLOUD_STORAGE_CREDENTIALS_EXPIRED + 1)));
   }
 }

@@ -59,6 +59,9 @@ import net.snowflake.ingest.utils.Utils;
  */
 class FlushService<T> {
 
+  // The max number of upload retry attempts to the stage
+  private static final int DEFAULT_MAX_UPLOAD_RETRIES = 5;
+
   // Static class to save the list of channels that are used to build a blob, which is mainly used
   // to invalidate all the channels when there is a failure
   static class BlobData<T> {
@@ -163,7 +166,8 @@ class FlushService<T> {
               client.getRole(),
               client.getHttpClient(),
               client.getRequestBuilder(),
-              client.getName());
+              client.getName(),
+              DEFAULT_MAX_UPLOAD_RETRIES);
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
     }
