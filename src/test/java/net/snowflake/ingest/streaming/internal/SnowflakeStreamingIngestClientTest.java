@@ -158,6 +158,7 @@ public class SnowflakeStreamingIngestClientTest {
             SnowflakeStreamingIngestClientFactory.builder("client")
                 .setProperties(prop)
                 .setParameterOverrides(parameterMap)
+                .setIsTestMode(true)
                 .build();
 
     Assert.assertEquals("client", client.getName());
@@ -263,7 +264,10 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(ROLE, TestUtils.getRole());
 
     SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("client").setProperties(prop).build();
+        SnowflakeStreamingIngestClientFactory.builder("client")
+            .setProperties(prop)
+            .setIsTestMode(true)
+            .build();
 
     Assert.assertEquals("client", client.getName());
     Assert.assertFalse(client.isClosed());
