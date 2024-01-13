@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
@@ -27,15 +28,21 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final boolean enableParquetInternalBuffering;
   private final long maxChunkSizeInBytes;
 
+  private final Constants.BdecParquetCompression bdecParquetCompression;
+
   /**
    * Construct parquet flusher from its schema and set flag that indicates whether Parquet memory
    * optimization is enabled, i.e. rows will be buffered in internal Parquet buffer.
    */
   public ParquetFlusher(
-      MessageType schema, boolean enableParquetInternalBuffering, long maxChunkSizeInBytes) {
+      MessageType schema,
+      boolean enableParquetInternalBuffering,
+      long maxChunkSizeInBytes,
+      Constants.BdecParquetCompression bdecParquetCompression) {
     this.schema = schema;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
+    this.bdecParquetCompression = bdecParquetCompression;
   }
 
   @Override
@@ -198,7 +205,12 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     parquetWriter =
         new BdecParquetWriter(
-            mergedData, schema, metadata, firstChannelFullyQualifiedTableName, maxChunkSizeInBytes);
+            mergedData,
+            schema,
+            metadata,
+            firstChannelFullyQualifiedTableName,
+            maxChunkSizeInBytes,
+            bdecParquetCompression);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 

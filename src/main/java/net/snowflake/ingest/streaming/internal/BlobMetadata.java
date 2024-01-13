@@ -18,11 +18,18 @@ class BlobMetadata {
   private final Constants.BdecVersion bdecVersion;
   private final List<ChunkMetadata> chunks;
   private final BlobStats blobStats;
+  private final boolean spansMixedTables;
 
   // used for testing only
   @VisibleForTesting
   BlobMetadata(String path, String md5, List<ChunkMetadata> chunks, BlobStats blobStats) {
-    this(path, md5, ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, chunks, blobStats);
+    this(
+        path,
+        md5,
+        ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT,
+        chunks,
+        blobStats,
+        chunks == null ? false : chunks.size() > 1);
   }
 
   BlobMetadata(
@@ -30,12 +37,14 @@ class BlobMetadata {
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      BlobStats blobStats) {
+      BlobStats blobStats,
+      boolean spansMixedTables) {
     this.path = path;
     this.md5 = md5;
     this.bdecVersion = bdecVersion;
     this.chunks = chunks;
     this.blobStats = blobStats;
+    this.spansMixedTables = spansMixedTables;
   }
 
   @JsonIgnore
@@ -68,13 +77,19 @@ class BlobMetadata {
     return this.blobStats;
   }
 
+  @JsonProperty("spans_mixed_tables")
+  boolean getSpansMixedTables() {
+    return this.spansMixedTables;
+  }
+
   /** Create {@link BlobMetadata}. */
   static BlobMetadata createBlobMetadata(
       String path,
       String md5,
       Constants.BdecVersion bdecVersion,
       List<ChunkMetadata> chunks,
-      BlobStats blobStats) {
-    return new BlobMetadata(path, md5, bdecVersion, chunks, blobStats);
+      BlobStats blobStats,
+      boolean spansMixedTables) {
+    return new BlobMetadata(path, md5, bdecVersion, chunks, blobStats, spansMixedTables);
   }
 }

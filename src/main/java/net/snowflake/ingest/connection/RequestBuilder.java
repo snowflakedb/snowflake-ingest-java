@@ -54,6 +54,10 @@ public class RequestBuilder {
   // whatever the actual host is
   private final String host;
 
+  private final String accountName;
+
+  private final boolean addAccountNameInRequest;
+
   private final String userAgentSuffix;
 
   // Reference to the telemetry service
@@ -110,7 +114,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.0.4";
+  public static final String DEFAULT_VERSION = "2.0.5";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -122,6 +126,8 @@ public class RequestBuilder {
   public static final String JWT_TOKEN_TYPE = "KEYPAIR_JWT";
 
   public static final String HTTP_HEADER_CONTENT_TYPE_JSON = "application/json";
+
+  private static final String SF_HEADER_ACCOUNT_NAME = "Snowflake-Account";
 
   /**
    * RequestBuilder - general usage constructor
@@ -220,6 +226,36 @@ public class RequestBuilder {
       String userName,
       Object credential,
       CloseableHttpClient httpClient,
+      String clientName,
+      boolean addAccountNameInRequest) {
+    this(
+        url.getAccount(),
+        userName,
+        credential,
+        url.getScheme(),
+        url.getUrlWithoutPort(),
+        url.getPort(),
+        null,
+        null,
+        httpClient,
+        clientName,
+        addAccountNameInRequest);
+  }
+
+  /**
+   * RequestBuilder - constructor used by streaming ingest
+   *
+   * @param url - the Snowflake account to which we're connecting
+   * @param userName - the username of the entity loading files
+   * @param credential - the credential we'll use to authenticate
+   * @param httpClient - reference to the http client
+   * @param clientName - name of the client, used to uniquely identify a client if used
+   */
+  public RequestBuilder(
+      SnowflakeURL url,
+      String userName,
+      Object credential,
+      CloseableHttpClient httpClient,
       String clientName) {
     this(
         url.getAccount(),
@@ -259,6 +295,47 @@ public class RequestBuilder {
       SecurityManager securityManager,
       CloseableHttpClient httpClient,
       String clientName) {
+    this(
+        accountName,
+        userName,
+        credential,
+        schemeName,
+        hostName,
+        portNum,
+        userAgentSuffix,
+        securityManager,
+        httpClient,
+        clientName,
+        false);
+  }
+
+  /**
+   * RequestBuilder - this constructor is for testing purposes only
+   *
+   * @param accountName - the account name to which we're connecting
+   * @param userName - for whom are we connecting?
+   * @param credential - our auth credentials, either JWT key pair or OAuth credential
+   * @param schemeName - are we HTTP or HTTPS?
+   * @param hostName - the host for this snowflake instance
+   * @param portNum - the port number
+   * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
+   * @param securityManager - The security manager for authentication
+   * @param httpClient - reference to the http client
+   * @param clientName - name of the client, used to uniquely identify a client if used
+   * @param addAccountNameInRequest if ture, add account name in request header
+   */
+  public RequestBuilder(
+      String accountName,
+      String userName,
+      Object credential,
+      String schemeName,
+      String hostName,
+      int portNum,
+      String userAgentSuffix,
+      SecurityManager securityManager,
+      CloseableHttpClient httpClient,
+      String clientName,
+      boolean addAccountNameInRequest) {
     // none of these arguments should be null
     if (accountName == null || userName == null || credential == null) {
       throw new IllegalArgumentException();
@@ -281,6 +358,8 @@ public class RequestBuilder {
     this.scheme = schemeName;
     this.host = hostName;
     this.userAgentSuffix = userAgentSuffix;
+    this.accountName = accountName;
+    this.addAccountNameInRequest = addAccountNameInRequest;
 
     // create our security/token manager
     if (securityManager == null) {
@@ -570,6 +649,9 @@ public class RequestBuilder {
   public void addToken(HttpUriRequest request) {
     request.setHeader(HttpHeaders.AUTHORIZATION, BEARER_PARAMETER + securityManager.getToken());
     request.setHeader(SF_HEADER_AUTHORIZATION_TOKEN_TYPE, this.securityManager.getTokenType());
+    if (addAccountNameInRequest) {
+      request.setHeader(SF_HEADER_ACCOUNT_NAME, accountName);
+    }
   }
 
   /**

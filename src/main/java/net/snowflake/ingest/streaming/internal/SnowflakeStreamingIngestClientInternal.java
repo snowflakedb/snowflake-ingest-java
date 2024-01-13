@@ -158,6 +158,30 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
+    this(name, accountURL, prop, httpClient, isTestMode, requestBuilder, parameterOverrides, false);
+  }
+
+  /**
+   * Constructor
+   *
+   * @param name the name of the client
+   * @param accountURL Snowflake account url
+   * @param prop connection properties
+   * @param httpClient http client for sending request
+   * @param isTestMode whether we're under test mode
+   * @param requestBuilder http request builder
+   * @param parameterOverrides parameters we override in case we want to set different values
+   * @param addAccountNameInRequest if true, will add account name in request header
+   */
+  SnowflakeStreamingIngestClientInternal(
+      String name,
+      SnowflakeURL accountURL,
+      Properties prop,
+      CloseableHttpClient httpClient,
+      boolean isTestMode,
+      RequestBuilder requestBuilder,
+      Map<String, Object> parameterOverrides,
+      boolean addAccountNameInRequest) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
@@ -196,7 +220,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               prop.get(USER).toString(),
               credential,
               this.httpClient,
-              String.format("%s_%s", this.name, System.currentTimeMillis()));
+              String.format("%s_%s", this.name, System.currentTimeMillis()),
+              addAccountNameInRequest);
 
       logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
 
@@ -234,6 +259,24 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Properties prop,
       Map<String, Object> parameterOverrides) {
     this(name, accountURL, prop, null, false, null, parameterOverrides);
+  }
+
+  /**
+   * Default Constructor
+   *
+   * @param name the name of the client
+   * @param accountURL Snowflake account url
+   * @param prop connection properties
+   * @param parameterOverrides map of parameters to override for this client
+   * @param addAccountNameInRequest if true, add account name in request header
+   */
+  public SnowflakeStreamingIngestClientInternal(
+      String name,
+      SnowflakeURL accountURL,
+      Properties prop,
+      Map<String, Object> parameterOverrides,
+      boolean addAccountNameInRequest) {
+    this(name, accountURL, prop, null, false, null, parameterOverrides, addAccountNameInRequest);
   }
 
   /**
@@ -304,6 +347,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("schema", request.getSchemaName());
       payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
       payload.put("role", this.role);
+      if (request.isOffsetTokenProvided()) {
+        payload.put("offset_token", request.getOffsetToken());
+      }
 
       OpenChannelResponse response =
           executeWithRetries(
@@ -667,7 +713,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                     blobMetadata.getMD5(),
                     blobMetadata.getVersion(),
                     relevantChunks,
-                    blobMetadata.getBlobStats()));
+                    blobMetadata.getBlobStats(),
+                    // Important to not change the spansMixedTables value in case of retries. The
+                    // correct value is the value that the already uploaded blob has.
+                    blobMetadata.getSpansMixedTables()));
           }
         });
 

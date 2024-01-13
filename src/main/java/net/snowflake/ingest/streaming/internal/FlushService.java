@@ -261,7 +261,7 @@ class FlushService<T> {
             && !isTestMode()
             && (this.isNeedFlush
                 || timeDiffMillis
-                    >= this.owningClient.getParameterProvider().getBufferFlushIntervalInMs()))) {
+                    >= this.owningClient.getParameterProvider().getCachedMaxClientLagInMs()))) {
 
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
@@ -568,8 +568,15 @@ class FlushService<T> {
         blob.length,
         System.currentTimeMillis() - startTime);
 
+    // at this point we know for sure if the BDEC file has data for more than one chunk, i.e.
+    // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
-        blobPath, BlobBuilder.computeMD5(blob), bdecVersion, metadata, blobStats);
+        blobPath,
+        BlobBuilder.computeMD5(blob),
+        bdecVersion,
+        metadata,
+        blobStats,
+        metadata == null ? false : metadata.size() > 1);
   }
 
   /**

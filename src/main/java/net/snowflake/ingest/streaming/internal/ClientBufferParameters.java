@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 
 /** Channel's buffer relevant parameters that are set at the owning client level. */
@@ -14,6 +15,8 @@ public class ClientBufferParameters {
   private long maxChunkSizeInBytes;
 
   private long maxAllowedRowSizeInBytes;
+
+  private Constants.BdecParquetCompression bdecParquetCompression;
 
   /**
    * Private constructor used for test methods
@@ -26,10 +29,12 @@ public class ClientBufferParameters {
   private ClientBufferParameters(
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
-      long maxAllowedRowSizeInBytes) {
+      long maxAllowedRowSizeInBytes,
+      Constants.BdecParquetCompression bdecParquetCompression) {
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
+    this.bdecParquetCompression = bdecParquetCompression;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
@@ -46,6 +51,10 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().getMaxAllowedRowSizeInBytes()
             : ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
+    this.bdecParquetCompression =
+        clientInternal != null
+            ? clientInternal.getParameterProvider().getBdecParquetCompressionAlgorithm()
+            : ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT;
   }
 
   /**
@@ -58,9 +67,13 @@ public class ClientBufferParameters {
   public static ClientBufferParameters test_createClientBufferParameters(
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
-      long maxAllowedRowSizeInBytes) {
+      long maxAllowedRowSizeInBytes,
+      Constants.BdecParquetCompression bdecParquetCompression) {
     return new ClientBufferParameters(
-        enableParquetInternalBuffering, maxChunkSizeInBytes, maxAllowedRowSizeInBytes);
+        enableParquetInternalBuffering,
+        maxChunkSizeInBytes,
+        maxAllowedRowSizeInBytes,
+        bdecParquetCompression);
   }
 
   public boolean getEnableParquetInternalBuffering() {
@@ -73,5 +86,9 @@ public class ClientBufferParameters {
 
   public long getMaxAllowedRowSizeInBytes() {
     return maxAllowedRowSizeInBytes;
+  }
+
+  public Constants.BdecParquetCompression getBdecParquetCompression() {
+    return bdecParquetCompression;
   }
 }

@@ -192,7 +192,7 @@ public class StreamingIngestIT {
   @Test
   public void testParameterOverrides() throws Exception {
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.BUFFER_FLUSH_INTERVAL_IN_MILLIS, 30L);
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "3 sec");
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 50L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 1);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
@@ -524,6 +524,38 @@ public class StreamingIngestIT {
         Assert.assertEquals("{\n" + "  \"e\": 2.7\n" + "}", result.getString("VAR"));
         Assert.assertEquals(timestamp * 1000, result.getTimestamp("T", cal).getTime());
         Assert.assertEquals(-1, TimeUnit.MILLISECONDS.toDays(result.getDate("D", cal).getTime()));
+        return;
+      } else {
+        Thread.sleep(2000);
+      }
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testOpenChannelOffsetToken() throws Exception {
+    String tableName = "offsetTokenTest";
+    jdbcConnection
+        .createStatement()
+        .execute(String.format("create or replace table %s (s text);", tableName));
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("TEST_CHANNEL")
+            .setDBName(testDb)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(tableName)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .setOffsetToken("TEST_OFFSET")
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+
+    // Close the channel after insertion
+    channel1.close().get();
+
+    for (int i = 1; i < 15; i++) {
+      if (channel1.getLatestCommittedOffsetToken() != null
+          && channel1.getLatestCommittedOffsetToken().equals("TEST_OFFSET")) {
         return;
       } else {
         Thread.sleep(2000);

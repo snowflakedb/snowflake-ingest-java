@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import net.snowflake.ingest.utils.Pair;
@@ -17,7 +18,7 @@ import org.junit.Test;
 public class RegisterServiceTest {
 
   @Test
-  public void testRegisterService() {
+  public void testRegisterService() throws ExecutionException, InterruptedException {
     RegisterService<StubChunkData> rs = new RegisterService<>(null, true);
 
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
@@ -26,6 +27,7 @@ public class RegisterServiceTest {
             CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, null)));
     rs.addBlobs(Collections.singletonList(blobFuture));
     Assert.assertEquals(1, rs.getBlobsList().size());
+    Assert.assertEquals(false, blobFuture.getValue().get().getSpansMixedTables());
     List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
     Assert.assertEquals(0, rs.getBlobsList().size());
     Assert.assertEquals(0, errorBlobs.size());

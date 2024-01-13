@@ -40,6 +40,9 @@ public class OpenChannelRequest {
   // Default timezone for TIMESTAMP_LTZ and TIMESTAMP_TZ columns
   private final ZoneId defaultTimezone;
 
+  private final String offsetToken;
+  private final boolean isOffsetTokenProvided;
+
   public static OpenChannelRequestBuilder builder(String channelName) {
     return new OpenChannelRequestBuilder(channelName);
   }
@@ -52,6 +55,9 @@ public class OpenChannelRequest {
     private String tableName;
     private OnErrorOption onErrorOption;
     private ZoneId defaultTimezone;
+
+    private String offsetToken;
+    private boolean isOffsetTokenProvided = false;
 
     public OpenChannelRequestBuilder(String channelName) {
       this.channelName = channelName;
@@ -83,6 +89,12 @@ public class OpenChannelRequest {
       return this;
     }
 
+    public OpenChannelRequestBuilder setOffsetToken(String offsetToken) {
+      this.offsetToken = offsetToken;
+      this.isOffsetTokenProvided = true;
+      return this;
+    }
+
     public OpenChannelRequest build() {
       return new OpenChannelRequest(this);
     }
@@ -102,6 +114,8 @@ public class OpenChannelRequest {
     this.tableName = builder.tableName;
     this.onErrorOption = builder.onErrorOption;
     this.defaultTimezone = builder.defaultTimezone;
+    this.offsetToken = builder.offsetToken;
+    this.isOffsetTokenProvided = builder.isOffsetTokenProvided;
   }
 
   public String getDBName() {
@@ -130,5 +144,13 @@ public class OpenChannelRequest {
 
   public OnErrorOption getOnErrorOption() {
     return this.onErrorOption;
+  }
+
+  public String getOffsetToken() {
+    return this.offsetToken;
+  }
+
+  public boolean isOffsetTokenProvided() {
+    return this.isOffsetTokenProvided;
   }
 }
