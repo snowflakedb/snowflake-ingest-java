@@ -74,7 +74,7 @@ jobs:
       fail-fast: false
       matrix:
         java: [ 8 ]
-        snowflake_cloud: [ 'AWS' ]
+        snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
