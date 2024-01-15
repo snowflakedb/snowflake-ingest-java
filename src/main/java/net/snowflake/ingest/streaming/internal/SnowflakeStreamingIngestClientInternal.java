@@ -227,13 +227,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param parameterOverrides map of parameters to override for this client
+   * @param isTestMode indicates whether it's under test mode
    */
   public SnowflakeStreamingIngestClientInternal(
       String name,
       SnowflakeURL accountURL,
       Properties prop,
-      Map<String, Object> parameterOverrides) {
-    this(name, accountURL, prop, null, false, null, parameterOverrides);
+      Map<String, Object> parameterOverrides,
+      boolean isTestMode) {
+    this(name, accountURL, prop, null, isTestMode, null, parameterOverrides);
   }
 
   /*** Constructor for TEST ONLY

@@ -28,6 +28,9 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
+    // Indicates whether it's under test mode
+    private boolean isTestMode;
+
     private Builder(String name) {
       this.name = name;
     }
@@ -42,6 +45,11 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
+    public Builder setIsTestMode(boolean isTestMode) {
+      this.isTestMode = isTestMode;
+      return this;
+    }
+
     public SnowflakeStreamingIngestClient build() {
       Utils.assertStringNotNullOrEmpty("client name", this.name);
       Utils.assertNotNull("connection properties", this.prop);
@@ -50,7 +58,7 @@ public class SnowflakeStreamingIngestClientFactory {
       SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides);
+          this.name, accountURL, prop, this.parameterOverrides, this.isTestMode);
     }
   }
 }
