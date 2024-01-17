@@ -34,6 +34,7 @@ import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpC
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageException;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -46,7 +47,6 @@ class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
-  static final int MAX_RETRY_COUNT = 1;
 
   private static final Logging logger = new Logging(StreamingIngestStage.class);
 
@@ -86,6 +86,8 @@ class StreamingIngestStage {
   private final String clientName;
   private String clientPrefix;
 
+  private final int maxUploadRetries;
+
   // Proxy parameters that we set while calling the Snowflake JDBC to upload the streams
   private final Properties proxyProperties;
 
@@ -94,13 +96,15 @@ class StreamingIngestStage {
       String role,
       CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
-      String clientName)
+      String clientName,
+      int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this.httpClient = httpClient;
     this.role = role;
     this.requestBuilder = requestBuilder;
     this.clientName = clientName;
     this.proxyProperties = generateProxyPropertiesForJDBC();
+    this.maxUploadRetries = maxUploadRetries;
 
     if (!isTestMode) {
       refreshSnowflakeMetadata();
@@ -123,9 +127,10 @@ class StreamingIngestStage {
       CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
       String clientName,
-      SnowflakeFileTransferMetadataWithAge testMetadata)
+      SnowflakeFileTransferMetadataWithAge testMetadata,
+      int maxRetryCount)
       throws SnowflakeSQLException, IOException {
-    this(isTestMode, role, httpClient, requestBuilder, clientName);
+    this(isTestMode, role, httpClient, requestBuilder, clientName, maxRetryCount);
     if (!isTestMode) {
       throw new SFException(ErrorCode.INTERNAL_ERROR);
     }
@@ -187,17 +192,46 @@ class StreamingIngestStage {
               .setProxyProperties(this.proxyProperties)
               .setDestFileName(fullFilePath)
               .build());
-    } catch (SnowflakeSQLException e) {
-      if (e.getErrorCode() != CLOUD_STORAGE_CREDENTIALS_EXPIRED || retryCount >= MAX_RETRY_COUNT) {
-        logger.logError(
-            "Failed to upload to stage, client={}, message={}", clientName, e.getMessage());
-        throw e;
-      }
-      this.refreshSnowflakeMetadata();
-      this.putRemote(fullFilePath, data, ++retryCount);
     } catch (Exception e) {
-      throw new SFException(e, ErrorCode.IO_ERROR);
+      if (retryCount >= maxUploadRetries) {
+        logger.logError(
+            "Failed to upload to stage, retry attempts exhausted ({}), client={}, message={}",
+            maxUploadRetries,
+            clientName,
+            e.getMessage());
+        throw new SFException(e, ErrorCode.IO_ERROR);
+      }
+
+      if (isCredentialsExpiredException(e)) {
+        logger.logInfo(
+            "Stage metadata need to be refreshed due to upload error: {}", e.getMessage());
+        this.refreshSnowflakeMetadata();
+      }
+      retryCount++;
+      StreamingIngestUtils.sleepForRetry(retryCount);
+      logger.logInfo(
+          "Retrying upload, attempt {}/{} {}", retryCount, maxUploadRetries, e.getMessage());
+      this.putRemote(fullFilePath, data, retryCount);
     }
+  }
+
+  /**
+   * @return Whether the passed exception means that credentials expired and the stage metadata
+   *     should be refreshed from Snowflake. The reasons for refresh is SnowflakeSQLException with
+   *     error code 240001 (thrown by the JDBC driver) or GCP StorageException with HTTP status 401.
+   */
+  static boolean isCredentialsExpiredException(Exception e) {
+    if (e == null || e.getClass() == null) {
+      return false;
+    }
+
+    if (e instanceof SnowflakeSQLException) {
+      return ((SnowflakeSQLException) e).getErrorCode() == CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+    } else if (e instanceof StorageException) {
+      return ((StorageException) e).getCode() == 401;
+    }
+
+    return false;
   }
 
   SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata()
@@ -399,7 +433,6 @@ class StreamingIngestStage {
       String stageLocation = this.fileTransferMetadataWithAge.localLocation;
       File destFile = Paths.get(stageLocation, fullFilePath).toFile();
       FileUtils.copyInputStreamToFile(input, destFile);
-      System.out.println("Filename: " + destFile); // TODO @rcheng - remove this before merge
     } catch (Exception ex) {
       throw new SFException(ex, ErrorCode.BLOB_UPLOAD_FAILURE);
     }
