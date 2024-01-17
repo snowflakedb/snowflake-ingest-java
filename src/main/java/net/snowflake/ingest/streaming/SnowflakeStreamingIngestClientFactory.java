@@ -28,11 +28,8 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
-    // preset SnowflakeURL instance
-    private SnowflakeURL snowflakeURL;
-
-    // flag to specify if we need to add account name in the request header
-    private boolean addAccountNameInRequest;
+    // Indicates whether it's under test mode
+    private boolean isTestMode;
 
     private Builder(String name) {
       this.name = name;
@@ -43,18 +40,13 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
-    public Builder setSnowflakeURL(SnowflakeURL snowflakeURL) {
-      this.snowflakeURL = snowflakeURL;
-      return this;
-    }
-
-    public Builder setAddAccountNameInRequest(boolean addAccountNameInRequest) {
-      this.addAccountNameInRequest = addAccountNameInRequest;
-      return this;
-    }
-
     public Builder setParameterOverrides(Map<String, Object> parameterOverrides) {
       this.parameterOverrides = parameterOverrides;
+      return this;
+    }
+
+    public Builder setIsTestMode(boolean isTestMode) {
+      this.isTestMode = isTestMode;
       return this;
     }
 
@@ -63,17 +55,10 @@ public class SnowflakeStreamingIngestClientFactory {
       Utils.assertNotNull("connection properties", this.prop);
 
       Properties prop = Utils.createProperties(this.prop);
-      SnowflakeURL accountURL = this.snowflakeURL;
-      if (accountURL == null) {
-        accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
-      }
+      SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
-      if (addAccountNameInRequest) {
-        return new SnowflakeStreamingIngestClientInternal<>(
-            this.name, accountURL, prop, this.parameterOverrides, addAccountNameInRequest);
-      }
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides);
+          this.name, accountURL, prop, this.parameterOverrides, this.isTestMode);
     }
   }
 }
