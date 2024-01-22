@@ -260,7 +260,7 @@ public interface SnowflakeStreamingIngestChannel {
    * time of a channel open event. The schema may be changed on the Snowflake side in which case
    * this will continue to show an old schema version until the channel is re-opened.
    *
-   * @return map representing Column Name -> Column Properties
+   * @return map representing Column Name to Column Properties
    */
   Map<String, ColumnProperties> getTableSchema();
 }
