@@ -3,6 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 
@@ -45,10 +46,15 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 /** Example streaming ingest sdk integration test */
+@RunWith(Parameterized.class)
 public class StreamingIngestIT {
   private static final String TEST_TABLE = "STREAMING_INGEST_TEST_TABLE";
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
@@ -63,6 +69,14 @@ public class StreamingIngestIT {
   private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
+
+  @Parameters(name = "{index}: {0}")
+  public static Object[] compressionAlgorithms() {
+    return new Object[] {"GZIP", "ZSTD"};
+  }
+
+  @Parameter
+  public String compressionAlgorithm;
 
   @Before
   public void beforeAll() throws Exception {
@@ -90,7 +104,7 @@ public class StreamingIngestIT {
 
     // Test without role param
     prop = TestUtils.getProperties(Constants.BdecVersion.THREE, true);
-
+    prop.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
     client =
         (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();

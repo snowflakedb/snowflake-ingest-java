@@ -3,7 +3,6 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.TestUtils.verifyTableRowCount;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
-import static org.junit.Assert.assertEquals;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
