@@ -1389,7 +1389,7 @@ public class StreamingIngestIT {
                   "create or replace table %s (num NUMBER, -- default FIXED\n"
                       + "                                    num_10_5 NUMBER(10, 5), -- FIXED with"
                       + " non zero scale: big dec\n"
-                      + "                                    num_38_0 NUMBER(38, 0), -- FIXED sb16:"
+                      + "                                    num_38_0 NUMBER(38, 0), -- FIhXED sb16:"
                       + " big dec\n"
                       + "                                    num_2_0 NUMBER(2, 0), -- FIXED sb1\n"
                       + "                                    num_4_0 NUMBER(4, 0), -- FIXED sb2\n"
