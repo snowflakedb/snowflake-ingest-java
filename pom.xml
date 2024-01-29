@@ -392,6 +392,7 @@
       <groupId>com.github.luben</groupId>
       <artifactId>zstd-jni</artifactId>
       <version>1.5.0-1</version>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
@@ -694,9 +695,6 @@
             <configuration>
               <failOnWarning>true</failOnWarning>
               <ignoreNonCompile>true</ignoreNonCompile>
-              <ignoredDependencies>
-                <ignoredDependency>com.github.luben:zstd-jni</ignoredDependency>
-              </ignoredDependencies>
             </configuration>
           </execution>
         </executions>
