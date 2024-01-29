@@ -84,7 +84,7 @@ public abstract class AbstractDataTypeTest {
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
-    prop.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
+    props.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
     client = SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(props).build();
   }
 
