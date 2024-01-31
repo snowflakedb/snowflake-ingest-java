@@ -333,7 +333,7 @@ public class ParameterProviderTest {
 
   @Test
   public void testValidParquetVersionsWithUppercaseLowerCase() {
-    List<String> gzipValues = Arrays.asList("PARQUET_0_2", "Parquet_0_2", "parquet_0_2", "pArquet_0_2");
+    List<String> gzipValues = Arrays.asList("PARQUET_2_0", "Parquet_2_0", "parquet_2_0", "pArquet_2_0");
     gzipValues.forEach(
         v -> {
           Properties prop = new Properties();
