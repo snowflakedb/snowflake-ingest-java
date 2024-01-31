@@ -51,10 +51,11 @@ public class BdecParquetWriter implements AutoCloseable {
       Map<String, String> extraMetaData,
       String channelName,
       long maxChunkSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression)
+      Constants.BdecParquetCompression bdecParquetCompression,
+      Constants.BdecParquetVersion bdecParquetVersion)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
-    ParquetProperties encodingProps = createParquetProperties();
+    ParquetProperties encodingProps = createParquetProperties(bdecParquetVersion);
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
         new BdecWriteSupport(schema, extraMetaData, channelName);
@@ -119,7 +120,7 @@ public class BdecParquetWriter implements AutoCloseable {
     }
   }
 
-  private static ParquetProperties createParquetProperties() {
+  private static ParquetProperties createParquetProperties(Constants.BdecParquetVersion bdecParquetVersion) {
     /**
      * There are two main limitations on the server side that we have to overcome by tweaking
      * Parquet limits:
@@ -147,8 +148,8 @@ public class BdecParquetWriter implements AutoCloseable {
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
-        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
-        .withValuesWriterFactory(new DefaultV1ValuesWriterFactory())
+        .withWriterVersion(bdecParquetVersion.getWriterVersion())
+        .withValuesWriterFactory(bdecParquetVersion.getValuesWriterFactory())
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)

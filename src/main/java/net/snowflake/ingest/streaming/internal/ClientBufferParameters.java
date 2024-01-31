@@ -18,6 +18,8 @@ public class ClientBufferParameters {
 
   private Constants.BdecParquetCompression bdecParquetCompression;
 
+  private Constants.BdecParquetVersion bdecParquetVersion;
+
   /**
    * Private constructor used for test methods
    *
@@ -25,16 +27,20 @@ public class ClientBufferParameters {
    *     enabled
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
+   * @param bdecParquetCompression compression algorithm used by parquet
+   * @param bdecParquetVersion version of parquet used in bdec files
    */
   private ClientBufferParameters(
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      Constants.BdecParquetVersion bdecParquetVersion) {
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.bdecParquetVersion = bdecParquetVersion;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
@@ -55,6 +61,10 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().getBdecParquetCompressionAlgorithm()
             : ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT;
+    this.bdecParquetVersion =
+            clientInternal != null
+                    ? clientInternal.getParameterProvider().getBdecParquetVersion()
+                    : ParameterProvider.BDEC_PARQUET_VERSION_DEFAULT;
   }
 
   /**
@@ -62,18 +72,22 @@ public class ClientBufferParameters {
    *     enabled
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
+   * @param bdecParquetCompression compression algorithm used by parquet
+   * @param bdecParquetVersion version of parquet used in bdec files
    * @return ClientBufferParameters object
    */
   public static ClientBufferParameters test_createClientBufferParameters(
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      Constants.BdecParquetVersion bdecParquetVersion) {
     return new ClientBufferParameters(
         enableParquetInternalBuffering,
         maxChunkSizeInBytes,
         maxAllowedRowSizeInBytes,
-        bdecParquetCompression);
+        bdecParquetCompression,
+        bdecParquetVersion);
   }
 
   public boolean getEnableParquetInternalBuffering() {
@@ -90,5 +104,9 @@ public class ClientBufferParameters {
 
   public Constants.BdecParquetCompression getBdecParquetCompression() {
     return bdecParquetCompression;
+  }
+
+  public Constants.BdecParquetVersion getBdecParquetVersion() {
+    return bdecParquetVersion;
   }
 }

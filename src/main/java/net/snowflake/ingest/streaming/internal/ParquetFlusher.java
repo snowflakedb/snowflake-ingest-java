@@ -30,6 +30,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
 
+  private final Constants.BdecParquetVersion bdecParquetVersion;
+
   /**
    * Construct parquet flusher from its schema and set flag that indicates whether Parquet memory
    * optimization is enabled, i.e. rows will be buffered in internal Parquet buffer.
@@ -38,11 +40,13 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       MessageType schema,
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      Constants.BdecParquetVersion bdecParquetVersion) {
     this.schema = schema;
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.bdecParquetVersion = bdecParquetVersion;
   }
 
   @Override
@@ -210,7 +214,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             metadata,
             firstChannelFullyQualifiedTableName,
             maxChunkSizeInBytes,
-            bdecParquetCompression);
+            bdecParquetCompression,
+            bdecParquetVersion);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 

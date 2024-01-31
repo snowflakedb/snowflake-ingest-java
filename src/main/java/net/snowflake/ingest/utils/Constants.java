@@ -5,6 +5,11 @@
 package net.snowflake.ingest.utils;
 
 import java.util.Arrays;
+
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
+import org.apache.parquet.column.values.factory.DefaultV2ValuesWriterFactory;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /** Contains all the constants needed for Streaming Ingest */
@@ -135,6 +140,44 @@ public class Constants {
           String.format(
               "Unsupported BDEC_PARQUET_COMPRESSION_ALGORITHM = '%s', allowed values are %s",
               name, Arrays.asList(BdecParquetCompression.values())));
+    }
+  }
+
+  /**
+   * Version of Parquet. It is a wrapper around Parquet's lib ParquetProperties.WriterVersion.
+   * We want to control the available options even though we currently support all existing options
+   */
+  public enum BdecParquetVersion {
+    PARQUET_1_0,
+    PARQUET_2_0;
+
+    public ParquetProperties.WriterVersion getWriterVersion() {
+      return ParquetProperties.WriterVersion.valueOf(this.name());
+    }
+
+    public ValuesWriterFactory getValuesWriterFactory() {
+      if (this == PARQUET_1_0) {
+        return new DefaultV1ValuesWriterFactory();
+      } else if (this == PARQUET_2_0) {
+        return new DefaultV2ValuesWriterFactory();
+      } else {
+        throw new IllegalArgumentException(
+            String.format(
+                "Unsupported BDEC_PARQUET_VERSION = '%s', allowed values are \"PARQUET_1_0\", \"PARQUET_2_0\"",
+                this.name()));
+      }
+    }
+
+    public static BdecParquetVersion fromName(String name) {
+      for (BdecParquetVersion v : BdecParquetVersion.values()) {
+        if (v.name().toLowerCase().equals(name.toLowerCase())) {
+          return v;
+        }
+      }
+      throw new IllegalArgumentException(
+              String.format(
+                      "Unsupported BDEC_PARQUET_VERSION = '%s', allowed values are %s",
+                      name, Arrays.asList(BdecParquetVersion.values())));
     }
   }
   // Parameters
