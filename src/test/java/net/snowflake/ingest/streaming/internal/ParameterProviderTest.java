@@ -24,6 +24,7 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES, 1000L);
     parameterMap.put(ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES, 1000000L);
     parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, "gzip");
+    parameterMap.put(ParameterProvider.BDEC_PARQUET_VERSION, "PARQUET_2_0");
     return parameterMap;
   }
 
@@ -135,6 +136,9 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterProvider.getBdecParquetCompressionAlgorithm());
+    Assert.assertEquals(
+        ParameterProvider.BDEC_PARQUET_VERSION_DEFAULT,
+        parameterProvider.getBdecParquetVersion());
   }
 
   @Test
@@ -296,7 +300,7 @@ public class ParameterProviderTest {
   }
 
   @Test
-  public void testValidCompressionAlgorithmsAndWithUppercaseLowerCase() {
+  public void testValidCompressionAlgorithmsWithUppercaseLowerCase() {
     List<String> gzipValues = Arrays.asList("GZIP", "gzip", "Gzip", "gZip");
     gzipValues.forEach(
         v -> {
@@ -323,6 +327,38 @@ public class ParameterProviderTest {
       Assert.assertEquals(
           "Unsupported BDEC_PARQUET_COMPRESSION_ALGORITHM = 'invalid_comp', allowed values are"
               + " [GZIP]",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testValidParquetVersionsWithUppercaseLowerCase() {
+    List<String> gzipValues = Arrays.asList("PARQUET_0_2", "Parquet_0_2", "parquet_0_2", "pArquet_0_2");
+    gzipValues.forEach(
+        v -> {
+          Properties prop = new Properties();
+          Map<String, Object> parameterMap = getStartingParameterMap();
+          parameterMap.put(ParameterProvider.BDEC_PARQUET_VERSION, v);
+          ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+          Assert.assertEquals(
+              Constants.BdecParquetVersion.PARQUET_2_0,
+              parameterProvider.getBdecParquetVersion());
+        });
+  }
+
+  @Test
+  public void testInvalidParquetVersion() {
+    Properties prop = new Properties();
+    Map<String, Object> parameterMap = getStartingParameterMap();
+    parameterMap.put(ParameterProvider.BDEC_PARQUET_VERSION, "invalid_version");
+    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop);
+    try {
+      parameterProvider.getBdecParquetVersion();
+      Assert.fail("Should not have succeeded");
+    } catch (IllegalArgumentException e) {
+      Assert.assertEquals(
+          "Unsupported BDEC_PARQUET_VERSION = 'invalid_version', allowed values are"
+              + " [PARQUET_1_0, PARQUET_2_0]",
           e.getMessage());
     }
   }
