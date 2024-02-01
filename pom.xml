@@ -356,7 +356,6 @@
 
   <!-- All of our needed dependencies -->
   <dependencies>
-
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
@@ -389,7 +388,6 @@
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
@@ -472,6 +470,12 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.luben</groupId>
+      <artifactId>zstd-jni</artifactId>
+      <version>1.5.0-1</version>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>com.google.protobuf</groupId>
@@ -954,6 +958,7 @@
                 <excludes>
                   <exclude>net.snowflake:snowflake-jdbc</exclude>
                   <exclude>org.slf4j:slf4j-api</exclude>
+                  <exclude>com.github.luben:zstd-jni</exclude>
                 </excludes>
               </artifactSet>
               <relocations>
@@ -1033,10 +1038,6 @@
                 <relocation>
                   <pattern>com.ctc</pattern>
                   <shadedPattern>${shadeBase}.com.ctc</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>com.github.luben</pattern>
-                  <shadedPattern>${shadeBase}.com.github.luben</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.thoughtworks</pattern>

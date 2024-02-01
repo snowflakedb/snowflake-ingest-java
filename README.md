@@ -17,6 +17,7 @@ The Snowflake Ingest Service SDK depends on the following libraries:
 
 * snowflake-jdbc (3.13.30 to 3.13.33) 
 * slf4j-api
+* com.github.luben:zstd-jni (1.5.0-1)
 
 These dependencies will be fetched automatically by build systems like Maven or Gradle. If you don't build your project
 using a build system, please make sure these dependencies are on the classpath.
