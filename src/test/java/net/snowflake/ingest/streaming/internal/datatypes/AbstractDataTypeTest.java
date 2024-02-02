@@ -76,7 +76,9 @@ public abstract class AbstractDataTypeTest {
   @After
   public void after() throws Exception {
     this.defaultTimezone = Optional.empty();
-    conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
+    if (conn != null) {
+      conn.createStatement().executeQuery(String.format("drop database %s", databaseName));
+    }
     if (client != null) {
       client.close();
     }

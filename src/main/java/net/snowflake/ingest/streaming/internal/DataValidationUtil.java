@@ -733,11 +733,11 @@ class DataValidationUtil {
       long val = Long.parseLong(input);
 
       if (val > -SECONDS_LIMIT_FOR_EPOCH && val < SECONDS_LIMIT_FOR_EPOCH) {
-        epochNanos = BigInteger.valueOf(val).multiply(BigInteger.valueOf(Power10.intTable[9]));
+        epochNanos = BigInteger.valueOf(val).multiply(Power10.sb16Table[9]);
       } else if (val > -MILLISECONDS_LIMIT_FOR_EPOCH && val < MILLISECONDS_LIMIT_FOR_EPOCH) {
-        epochNanos = BigInteger.valueOf(val).multiply(BigInteger.valueOf(Power10.intTable[6]));
+        epochNanos = BigInteger.valueOf(val).multiply(Power10.sb16Table[6]);
       } else if (val > -MICROSECONDS_LIMIT_FOR_EPOCH && val < MICROSECONDS_LIMIT_FOR_EPOCH) {
-        epochNanos = BigInteger.valueOf(val).multiply(BigInteger.valueOf(Power10.intTable[3]));
+        epochNanos = BigInteger.valueOf(val).multiply(Power10.sb16Table[3]);
       } else {
         epochNanos = BigInteger.valueOf(val);
       }
@@ -747,8 +747,8 @@ class DataValidationUtil {
     }
 
     return Instant.ofEpochSecond(
-        epochNanos.divide(BigInteger.valueOf(Power10.intTable[9])).longValue(),
-        epochNanos.remainder(BigInteger.valueOf(Power10.intTable[9])).longValue());
+        epochNanos.divide(Power10.sb16Table[9]).longValue(),
+        epochNanos.remainder(Power10.sb16Table[9]).longValue());
   }
 
   /**

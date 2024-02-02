@@ -27,7 +27,9 @@ public class DateTimeIT extends AbstractDataTypeTest {
 
   @After
   public void tearDown() throws Exception {
-    conn.createStatement().execute("alter session unset timezone;");
+    if (conn != null) {
+      conn.createStatement().execute("alter session unset timezone;");
+    }
   }
 
   @Test
@@ -637,6 +639,36 @@ public class DateTimeIT extends AbstractDataTypeTest {
         "TIMESTAMP_NTZ",
         "-1674478926123456789",
         "1916-12-09 10:57:53.876543211 Z",
+        new StringProvider(),
+        new StringProvider());
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_NTZ",
+        "31536000001",
+        "1971-01-01 00:00:00.001000000 Z",
+        new StringProvider(),
+        new StringProvider());
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_NTZ",
+        "31535999999999",
+        "2969-05-02 23:59:59.999000000 Z",
+        new StringProvider(),
+        new StringProvider());
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_NTZ",
+        "31536000000000",
+        "1971-01-01 00:00:00.000000000 Z",
+        new StringProvider(),
+        new StringProvider());
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_NTZ",
+        "31535999999999",
+        "2969-05-02 23:59:59.999000000 Z",
+        new StringProvider(),
+        new StringProvider());
+    testJdbcTypeCompatibility(
+        "TIMESTAMP_NTZ",
+        "31536000000000000",
+        "1971-01-01 00:00:00.000000000 Z",
         new StringProvider(),
         new StringProvider());
 
