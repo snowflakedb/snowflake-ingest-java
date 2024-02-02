@@ -257,13 +257,13 @@ public class DataValidationUtilTest {
     TimestampWrapper wrapper =
         DataValidationUtil.validateAndParseTimestamp(
             "COL", "2021-01-01T01:00:00.123+01:00", 4, UTC, false, 0);
-    assertEquals(1609459200L, wrapper.getEpoch());
+    assertEquals(1609459200, wrapper.getEpochSecond());
     assertEquals(123000000, wrapper.getFraction());
     assertEquals(3600, wrapper.getTimezoneOffsetSeconds());
     assertEquals(1500, wrapper.getTimeZoneIndex());
 
     wrapper = validateAndParseTimestamp("COL", "  2021-01-01T01:00:00.123 \t\n", 9, UTC, true, 0);
-    Assert.assertEquals(1609462800L, wrapper.getEpoch());
+    Assert.assertEquals(1609462800, wrapper.getEpochSecond());
     Assert.assertEquals(123000000, wrapper.getFraction());
     Assert.assertEquals(new BigInteger("1609462800123000000"), wrapper.toBinary(false));
 
