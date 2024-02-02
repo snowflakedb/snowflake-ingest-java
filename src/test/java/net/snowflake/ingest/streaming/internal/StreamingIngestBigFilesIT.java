@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.TestUtils.verifyTableRowCount;
 import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -17,8 +18,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 /** Ingest large amount of rows. */
+@RunWith(Parameterized.class)
 public class StreamingIngestBigFilesIT {
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
@@ -28,6 +34,14 @@ public class StreamingIngestBigFilesIT {
   private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
+
+  @Parameters(name = "{index}: {0}")
+  public static Object[] compressionAlgorithms() {
+    return new Object[] {"GZIP", "ZSTD"};
+  }
+
+  @Parameter
+  public String compressionAlgorithm;
 
   @Before
   public void beforeAll() throws Exception {
@@ -51,6 +65,7 @@ public class StreamingIngestBigFilesIT {
     if (prop.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }
+    prop.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
     client =
         (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
