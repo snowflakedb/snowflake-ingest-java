@@ -22,11 +22,17 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
+import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public abstract class AbstractDataTypeTest {
   private static final String SOURCE_COLUMN_NAME = "source";
   private static final String VALUE_COLUMN_NAME = "value";
@@ -56,6 +62,14 @@ public abstract class AbstractDataTypeTest {
   private SnowflakeStreamingIngestClient client;
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
+  @Parameters(name = "{index}: {0}")
+  public static Object[] compressionAlgorithms() {
+    return new Object[] {"GZIP", "ZSTD"};
+  }
+
+  @Parameter
+  public String compressionAlgorithm;
+
   @Before
   public void before() throws Exception {
     databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
@@ -70,6 +84,7 @@ public abstract class AbstractDataTypeTest {
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
+    props.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
     client = SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(props).build();
   }
 
