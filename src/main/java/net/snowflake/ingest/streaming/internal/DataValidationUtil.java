@@ -728,20 +728,33 @@ class DataValidationUtil {
    * @throws NumberFormatException If the input in not a valid long
    */
   private static Instant parseInstantGuessScale(String input) {
-    long epochNanos;
-    long val = Long.parseLong(input);
+    BigInteger epochNanos;
+    try {
+      long val = Long.parseLong(input);
 
-    if (val > -SECONDS_LIMIT_FOR_EPOCH && val < SECONDS_LIMIT_FOR_EPOCH) {
-      epochNanos = val * Power10.intTable[9];
-    } else if (val > -MILLISECONDS_LIMIT_FOR_EPOCH && val < MILLISECONDS_LIMIT_FOR_EPOCH) {
-      epochNanos = val * Power10.intTable[6];
-    } else if (val > -MICROSECONDS_LIMIT_FOR_EPOCH && val < MICROSECONDS_LIMIT_FOR_EPOCH) {
-      epochNanos = val * Power10.intTable[3];
-    } else {
-      epochNanos = val;
+      if (val > -SECONDS_LIMIT_FOR_EPOCH && val < SECONDS_LIMIT_FOR_EPOCH) {
+        epochNanos = BigInteger.valueOf(val).multiply(BigInteger.valueOf(Power10.intTable[9]));
+      } else if (val > -MILLISECONDS_LIMIT_FOR_EPOCH && val < MILLISECONDS_LIMIT_FOR_EPOCH) {
+        epochNanos = BigInteger.valueOf(val).multiply(BigInteger.valueOf(Power10.intTable[6]));
+      } else if (val > -MICROSECONDS_LIMIT_FOR_EPOCH && val < MICROSECONDS_LIMIT_FOR_EPOCH) {
+        epochNanos = BigInteger.valueOf(val).multiply(BigInteger.valueOf(Power10.intTable[3]));
+      } else {
+        epochNanos = BigInteger.valueOf(val);
+      }
+    } catch (NumberFormatException e) {
+      // The input is bigger than max long value, treat it as nano-seconds directly
+      epochNanos = new BigInteger(input);
     }
+
+    long a = epochNanos.divide(BigInteger.valueOf(Power10.intTable[9])).longValue();
+    long b = epochNanos.remainder(BigInteger.valueOf(Power10.intTable[9])).longValue();
+    Instant c = Instant.ofEpochSecond(a, b);
+    LocalDateTime d = LocalDateTime.ofInstant(c, ZoneOffset.UTC);
+    LocalTime e = d.toLocalTime();
+
     return Instant.ofEpochSecond(
-        epochNanos / Power10.intTable[9], epochNanos % Power10.intTable[9]);
+        epochNanos.divide(BigInteger.valueOf(Power10.intTable[9])).longValue(),
+        epochNanos.remainder(BigInteger.valueOf(Power10.intTable[9])).longValue());
   }
 
   /**
