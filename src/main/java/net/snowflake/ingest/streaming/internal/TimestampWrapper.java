@@ -74,7 +74,7 @@ public class TimestampWrapper {
   }
 
   /** Get epoch in seconds */
-  public long getEpoch() {
+  public long getEpochSecond() {
     return epoch;
   }
 

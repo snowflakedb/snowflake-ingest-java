@@ -26,6 +26,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -251,19 +253,46 @@ public class DataValidationUtilTest {
   }
 
   @Test
-  public void testValidateAndParseTimestamp() {
+  public void testValidateAndParseTimestamp() throws ParseException {
     TimestampWrapper wrapper =
         DataValidationUtil.validateAndParseTimestamp(
             "COL", "2021-01-01T01:00:00.123+01:00", 4, UTC, false, 0);
-    assertEquals(1609459200, wrapper.getEpoch());
+    assertEquals(1609459200, wrapper.getEpochSecond());
     assertEquals(123000000, wrapper.getFraction());
     assertEquals(3600, wrapper.getTimezoneOffsetSeconds());
     assertEquals(1500, wrapper.getTimeZoneIndex());
 
     wrapper = validateAndParseTimestamp("COL", "  2021-01-01T01:00:00.123 \t\n", 9, UTC, true, 0);
-    Assert.assertEquals(1609462800, wrapper.getEpoch());
+    Assert.assertEquals(1609462800, wrapper.getEpochSecond());
     Assert.assertEquals(123000000, wrapper.getFraction());
     Assert.assertEquals(new BigInteger("1609462800123000000"), wrapper.toBinary(false));
+
+    // Test integer-stored time and scale guessing
+    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    assertEquals(
+        BigInteger.valueOf(df.parse("1971-01-01 00:00:00.001").getTime())
+            .multiply(BigInteger.valueOf(1000000)),
+        validateAndParseTimestamp("COL", "31536000001", 9, UTC, true, 0).toBinary(false));
+
+    assertEquals(
+        BigInteger.valueOf(df.parse("2969-05-02 23:59:59.999").getTime())
+            .multiply(BigInteger.valueOf(1000000)),
+        validateAndParseTimestamp("COL", "31535999999999", 9, UTC, true, 0).toBinary(false));
+
+    assertEquals(
+        BigInteger.valueOf(df.parse("1971-01-01 00:00:00.000").getTime())
+            .multiply(BigInteger.valueOf(1000000)),
+        validateAndParseTimestamp("COL", "31536000000000", 9, UTC, true, 0).toBinary(false));
+
+    assertEquals(
+        BigInteger.valueOf(df.parse("2969-05-02 23:59:59.999").getTime())
+            .multiply(BigInteger.valueOf(1000000)),
+        validateAndParseTimestamp("COL", "31535999999999", 9, UTC, true, 0).toBinary(false));
+
+    assertEquals(
+        BigInteger.valueOf(df.parse("1971-01-01 00:00:00.000").getTime())
+            .multiply(BigInteger.valueOf(1000000)),
+        validateAndParseTimestamp("COL", "31536000000000000", 9, UTC, true, 0).toBinary(false));
 
     // Time input is not supported
     expectError(
