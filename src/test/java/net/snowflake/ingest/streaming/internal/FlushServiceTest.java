@@ -349,6 +349,7 @@ public class FlushServiceTest {
 
   private static ColumnMetadata createTestIntegerColumn(String name) {
     ColumnMetadata colInt = new ColumnMetadata();
+    colInt.setOrdinal(1);
     colInt.setName(name);
     colInt.setPhysicalType("SB4");
     colInt.setNullable(true);
@@ -360,6 +361,7 @@ public class FlushServiceTest {
 
   private static ColumnMetadata createTestTextColumn(String name) {
     ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setOrdinal(1);
     colChar.setName(name);
     colChar.setPhysicalType("LOB");
     colChar.setNullable(true);
@@ -372,6 +374,7 @@ public class FlushServiceTest {
 
   private static ColumnMetadata createLargeTestTextColumn(String name) {
     ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setOrdinal(1);
     colChar.setName(name);
     colChar.setPhysicalType("LOB");
     colChar.setNullable(true);
