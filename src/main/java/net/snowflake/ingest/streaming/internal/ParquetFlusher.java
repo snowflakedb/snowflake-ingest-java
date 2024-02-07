@@ -74,6 +74,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               .setOwningChannelFromContext(data.getChannelContext())
               .setRowSequencer(data.getRowSequencer())
               .setOffsetToken(data.getOffsetToken())
+              .setStartOffsetToken(data.getStartOffsetToken())
               .build();
       // Add channel metadata to the metadata list
       channelsMetadataList.add(channelMetadata);
@@ -153,6 +154,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               .setOwningChannelFromContext(data.getChannelContext())
               .setRowSequencer(data.getRowSequencer())
               .setOffsetToken(data.getOffsetToken())
+              .setStartOffsetToken(data.getStartOffsetToken())
               .build();
       // Add channel metadata to the metadata list
       channelsMetadataList.add(channelMetadata);
