@@ -121,7 +121,8 @@ public class RowBufferTest {
             enableParquetMemoryOptimization,
             MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
             MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
-            Constants.BdecParquetCompression.GZIP));
+            Constants.BdecParquetCompression.GZIP),
+        null);
   }
 
   @Test
@@ -296,7 +297,7 @@ public class RowBufferTest {
     row.put("colChar", "1111111111111111111111"); // too big
     rows.add(row);
 
-    InsertValidationResponse response = rowBuffer.insertRows(rows, null);
+    InsertValidationResponse response = rowBuffer.insertRows(rows, null, null);
     Assert.assertTrue(response.hasErrors());
 
     Assert.assertEquals(2, response.getErrorRowCount());
@@ -350,7 +351,8 @@ public class RowBufferTest {
     row.put("colDecimal", 1.23);
     row.put("colChar", "1234567890"); // still fits
 
-    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
+    InsertValidationResponse response =
+        rowBuffer.insertRows(Collections.singletonList(row), null, null);
     Assert.assertFalse(response.hasErrors());
 
     row.put("colTinyInt", (byte) 1);
@@ -362,7 +364,7 @@ public class RowBufferTest {
     row.put("colChar", "1111111111111111111111"); // too big
 
     if (rowBuffer.onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
-      response = rowBuffer.insertRows(Collections.singletonList(row), null);
+      response = rowBuffer.insertRows(Collections.singletonList(row), null, null);
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(1, response.getErrorRowCount());
       Assert.assertEquals(
@@ -371,7 +373,7 @@ public class RowBufferTest {
       Assert.assertTrue(response.getInsertErrors().get(0).getMessage().contains("String too long"));
     } else {
       try {
-        rowBuffer.insertRows(Collections.singletonList(row), null);
+        rowBuffer.insertRows(Collections.singletonList(row), null, null);
       } catch (SFException e) {
         Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), e.getVendorCode());
       }
@@ -395,7 +397,8 @@ public class RowBufferTest {
     row.put("colDecimal", 1.23);
     row.put("colChar", "2");
 
-    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
+    InsertValidationResponse response =
+        rowBuffer.insertRows(Collections.singletonList(row), null, null);
     Assert.assertFalse(response.hasErrors());
   }
 
@@ -416,7 +419,8 @@ public class RowBufferTest {
     row.put("colDecimal", null);
     row.put("colChar", null);
 
-    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row), null);
+    InsertValidationResponse response =
+        rowBuffer.insertRows(Collections.singletonList(row), null, null);
     Assert.assertFalse(response.hasErrors());
   }
 
@@ -446,7 +450,7 @@ public class RowBufferTest {
     row2.put("colDecimal", 2.34);
     row2.put("colChar", "3");
 
-    InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null);
+    InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null, null);
     Assert.assertFalse(response.hasErrors());
   }
 
@@ -478,7 +482,7 @@ public class RowBufferTest {
     row2.put("colChar", "3");
 
     InsertValidationResponse response =
-        rowBuffer.insertRows(Arrays.asList(row1, row2), offsetToken);
+        rowBuffer.insertRows(Arrays.asList(row1, row2), offsetToken, offsetToken);
     Assert.assertFalse(response.hasErrors());
     float bufferSize = rowBuffer.getSize();
 
@@ -519,7 +523,7 @@ public class RowBufferTest {
     row.put("\"colDoubleQuotes\"", 1);
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Collections.singletonList(row), null);
+        innerBuffer.insertRows(Collections.singletonList(row), null, null);
     Assert.assertFalse(response.hasErrors());
   }
 
@@ -640,7 +644,8 @@ public class RowBufferTest {
     row1.put("colDecimal", 4);
     row1.put("colChar", "2");
 
-    InsertValidationResponse response = rowBuffer.insertRows(Collections.singletonList(row1), null);
+    InsertValidationResponse response =
+        rowBuffer.insertRows(Collections.singletonList(row1), null, null);
     Assert.assertFalse(response.hasErrors());
 
     Assert.assertEquals((byte) 10, rowBuffer.getVectorValueAt("colTinyInt", 0));
@@ -676,14 +681,14 @@ public class RowBufferTest {
 
     if (innerBuffer.onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
       InsertValidationResponse response =
-          innerBuffer.insertRows(Collections.singletonList(row), null);
+          innerBuffer.insertRows(Collections.singletonList(row), null, null);
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
           ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
-        innerBuffer.insertRows(Collections.singletonList(row), null);
+        innerBuffer.insertRows(Collections.singletonList(row), null, null);
       } catch (SFException e) {
         Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
@@ -717,7 +722,7 @@ public class RowBufferTest {
     row2.put("colChar", "alice");
 
     final String filename = "testStatsE2EHelper_streaming.bdec";
-    InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null);
+    InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null, null);
     Assert.assertFalse(response.hasErrors());
     ChannelData<?> result = rowBuffer.flush(filename);
     Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
@@ -821,7 +826,7 @@ public class RowBufferTest {
     row3.put("COLTIMESTAMPLTZ_SB16_SCALE6", null);
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null, null);
     Assert.assertFalse(response.hasErrors());
     ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
     Assert.assertEquals(3, result.getRowCount());
@@ -882,7 +887,7 @@ public class RowBufferTest {
     row3.put("COLDATE", null);
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -941,7 +946,7 @@ public class RowBufferTest {
     row3.put("COLTIMESB8", null);
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -999,13 +1004,13 @@ public class RowBufferTest {
     }
 
     // Insert rows should succeed
-    innerBuffer.insertRows(rows, "");
+    innerBuffer.insertRows(rows, "", "");
 
     // After adding another row, it should fail due to too large batch of rows passed to
     // insertRows() in one go
     rows.add(Collections.singletonMap("COLBINARY", arr));
     try {
-      innerBuffer.insertRows(rows, "");
+      innerBuffer.insertRows(rows, "", "");
       Assert.fail("Inserting rows should have failed");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.MAX_BATCH_SIZE_EXCEEDED.getMessageCode(), e.getVendorCode());
@@ -1033,19 +1038,20 @@ public class RowBufferTest {
     Map<String, Object> row = new HashMap<>();
     row.put("COLBOOLEAN", true);
 
-    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Collections.singletonList(row), "1", "1");
     Assert.assertFalse(response.hasErrors());
 
     row.put("COLBOOLEAN", null);
     if (innerBuffer.onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
-      response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+      response = innerBuffer.insertRows(Collections.singletonList(row), "1", "1");
       Assert.assertTrue(response.hasErrors());
       Assert.assertEquals(
           ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
           response.getInsertErrors().get(0).getException().getVendorCode());
     } else {
       try {
-        innerBuffer.insertRows(Collections.singletonList(row), "1");
+        innerBuffer.insertRows(Collections.singletonList(row), "1", "1");
       } catch (SFException e) {
         Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
@@ -1080,13 +1086,14 @@ public class RowBufferTest {
     Map<String, Object> row = new HashMap<>();
     row.put("COLBOOLEAN", true);
 
-    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Collections.singletonList(row), "1", "1");
     Assert.assertFalse(response.hasErrors());
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLBOOLEAN2", true);
     if (innerBuffer.onErrorOption == OpenChannelRequest.OnErrorOption.CONTINUE) {
-      response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
+      response = innerBuffer.insertRows(Collections.singletonList(row2), "1", "2");
       Assert.assertTrue(response.hasErrors());
       InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
       Assert.assertEquals(
@@ -1095,7 +1102,7 @@ public class RowBufferTest {
           Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
     } else {
       try {
-        innerBuffer.insertRows(Collections.singletonList(row2), "2");
+        innerBuffer.insertRows(Collections.singletonList(row2), "1", "2");
       } catch (SFException e) {
         Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
       }
@@ -1119,7 +1126,8 @@ public class RowBufferTest {
     row.put("COLBOOLEAN2", true);
     row.put("COLBOOLEAN3", true);
 
-    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Collections.singletonList(row), "1", "1");
     Assert.assertTrue(response.hasErrors());
     InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
@@ -1178,7 +1186,7 @@ public class RowBufferTest {
 
     for (Map<String, Object> row : Arrays.asList(row1, row2, row3)) {
       try {
-        innerBuffer.insertRows(Collections.singletonList(row), "");
+        innerBuffer.insertRows(Collections.singletonList(row), "", "");
       } catch (Exception ignored) {
         // we ignore exceptions, for ABORT option there will be some, but we don't care in this test
       }
@@ -1234,7 +1242,7 @@ public class RowBufferTest {
 
     // innerBuffer.insertRows(Collections.singletonList(row1));
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1284,7 +1292,7 @@ public class RowBufferTest {
     row3.put("COLBINARY", null);
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1339,7 +1347,7 @@ public class RowBufferTest {
     row3.put("COLREAL", null);
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1374,7 +1382,8 @@ public class RowBufferTest {
     Map<String, Object> row = new HashMap<>();
     row.put("COLDECIMAL", 1);
 
-    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Collections.singletonList(row), "1", "1");
     Assert.assertFalse(response.hasErrors());
 
     Assert.assertEquals(1, innerBuffer.bufferedRowCount);
@@ -1388,7 +1397,7 @@ public class RowBufferTest {
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLDECIMAL", 2);
-    response = innerBuffer.insertRows(Collections.singletonList(row2), "2");
+    response = innerBuffer.insertRows(Collections.singletonList(row2), "1", "2");
     Assert.assertFalse(response.hasErrors());
 
     Assert.assertEquals(2, innerBuffer.bufferedRowCount);
@@ -1403,7 +1412,7 @@ public class RowBufferTest {
     Map<String, Object> row3 = new HashMap<>();
     row3.put("COLDECIMAL", true);
     try {
-      innerBuffer.insertRows(Collections.singletonList(row3), "3");
+      innerBuffer.insertRows(Collections.singletonList(row3), "1", "3");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), e.getVendorCode());
     }
@@ -1418,7 +1427,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
     row3.put("COLDECIMAL", 3);
-    response = innerBuffer.insertRows(Collections.singletonList(row3), "3");
+    response = innerBuffer.insertRows(Collections.singletonList(row3), "1", "3");
     Assert.assertFalse(response.hasErrors());
     Assert.assertEquals(3, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
@@ -1451,7 +1460,8 @@ public class RowBufferTest {
     Map<String, Object> row = new HashMap<>();
     row.put("COLDECIMAL", 1);
 
-    InsertValidationResponse response = innerBuffer.insertRows(Collections.singletonList(row), "1");
+    InsertValidationResponse response =
+        innerBuffer.insertRows(Collections.singletonList(row), "1", "1");
     Assert.assertFalse(response.hasErrors());
 
     Assert.assertEquals(1, innerBuffer.bufferedRowCount);
@@ -1468,7 +1478,7 @@ public class RowBufferTest {
     Map<String, Object> row3 = new HashMap<>();
     row3.put("COLDECIMAL", true);
 
-    response = innerBuffer.insertRows(Arrays.asList(row2, row3), "3");
+    response = innerBuffer.insertRows(Arrays.asList(row2, row3), "1", "3");
     Assert.assertTrue(response.hasErrors());
 
     Assert.assertEquals(1, innerBuffer.bufferedRowCount);
@@ -1490,7 +1500,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
     row3.put("COLDECIMAL", 3);
-    response = innerBuffer.insertRows(Arrays.asList(row2, row3), "3");
+    response = innerBuffer.insertRows(Arrays.asList(row2, row3), "1", "3");
     Assert.assertFalse(response.hasErrors());
     Assert.assertEquals(3, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
@@ -1540,7 +1550,7 @@ public class RowBufferTest {
     row5.put("COLVARIANT", 3);
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1577,7 +1587,7 @@ public class RowBufferTest {
     Map<String, Object> row1 = new HashMap<>();
     row1.put("COLOBJECT", "{\"key\":1}");
 
-    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row1), null);
+    InsertValidationResponse response = innerBuffer.insertRows(Arrays.asList(row1), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1622,7 +1632,7 @@ public class RowBufferTest {
     row5.put("COLARRAY", Arrays.asList(1, 2, 3));
 
     InsertValidationResponse response =
-        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null);
+        innerBuffer.insertRows(Arrays.asList(row1, row2, row3, row4, row5), null, null);
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
@@ -1662,9 +1672,9 @@ public class RowBufferTest {
     List<Map<String, Object>> validRows = new ArrayList<>();
     validRows.add(Collections.singletonMap("colChar", "a"));
 
-    InsertValidationResponse response = innerBufferOnErrorContinue.insertRows(validRows, "1");
+    InsertValidationResponse response = innerBufferOnErrorContinue.insertRows(validRows, "1", "1");
     Assert.assertFalse(response.hasErrors());
-    response = innerBufferOnErrorAbort.insertRows(validRows, "1");
+    response = innerBufferOnErrorAbort.insertRows(validRows, "1", "1");
     Assert.assertFalse(response.hasErrors());
 
     // insert one valid and one invalid row
@@ -1672,11 +1682,11 @@ public class RowBufferTest {
     mixedRows.add(Collections.singletonMap("colChar", "b"));
     mixedRows.add(Collections.singletonMap("colChar", "1111111111111111111111")); // too big
 
-    response = innerBufferOnErrorContinue.insertRows(mixedRows, "3");
+    response = innerBufferOnErrorContinue.insertRows(mixedRows, "1", "3");
     Assert.assertTrue(response.hasErrors());
 
     Assert.assertThrows(
-        SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "3"));
+        SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "1", "3"));
 
     List<List<Object>> snapshotContinueParquet =
         ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;

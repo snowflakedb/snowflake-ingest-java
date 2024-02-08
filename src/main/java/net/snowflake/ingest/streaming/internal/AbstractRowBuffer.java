@@ -17,6 +17,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -142,7 +143,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   public class ContinueIngestionStrategy<T> implements IngestionStrategy<T> {
     @Override
     public InsertValidationResponse insertRows(
-        AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken) {
+        AbstractRowBuffer<T> rowBuffer,
+        Iterable<Map<String, Object>> rows,
+        String startOffsetToken,
+        String endOffsetToken) {
       InsertValidationResponse response = new InsertValidationResponse();
       float rowsSizeInBytes = 0F;
       int rowIndex = 0;
@@ -169,7 +173,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         rowIndex++;
       }
       checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
-      rowBuffer.channelState.setOffsetToken(offsetToken);
+      checkOffsetMismatch(
+          rowBuffer.channelState.getOffsetToken(), startOffsetToken, endOffsetToken, rowIndex);
+      rowBuffer.channelState.setOffsetToken(endOffsetToken);
       rowBuffer.bufferSize += rowsSizeInBytes;
       rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       return response;
@@ -180,7 +186,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   public class AbortIngestionStrategy<T> implements IngestionStrategy<T> {
     @Override
     public InsertValidationResponse insertRows(
-        AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken) {
+        AbstractRowBuffer<T> rowBuffer,
+        Iterable<Map<String, Object>> rows,
+        String startOffsetToken,
+        String endOffsetToken) {
       // If the on_error option is ABORT, simply throw the first exception
       InsertValidationResponse response = new InsertValidationResponse();
       float rowsSizeInBytes = 0F;
@@ -207,7 +216,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               rowBuffer.statsMap.put(
                   colName,
                   RowBufferStats.getCombinedStats(stats, rowBuffer.tempStatsMap.get(colName))));
-      rowBuffer.channelState.setOffsetToken(offsetToken);
+      checkOffsetMismatch(
+          rowBuffer.channelState.getOffsetToken(), startOffsetToken, endOffsetToken, tempRowCount);
+      rowBuffer.channelState.setOffsetToken(endOffsetToken);
       rowBuffer.bufferSize += rowsSizeInBytes;
       rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       return response;
@@ -218,7 +229,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   public class SkipBatchIngestionStrategy<T> implements IngestionStrategy<T> {
     @Override
     public InsertValidationResponse insertRows(
-        AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken) {
+        AbstractRowBuffer<T> rowBuffer,
+        Iterable<Map<String, Object>> rows,
+        String startOffsetToken,
+        String endOffsetToken) {
       InsertValidationResponse response = new InsertValidationResponse();
       float rowsSizeInBytes = 0F;
       float tempRowsSizeInBytes = 0F;
@@ -257,7 +271,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 rowBuffer.statsMap.put(
                     colName,
                     RowBufferStats.getCombinedStats(stats, rowBuffer.tempStatsMap.get(colName))));
-        rowBuffer.channelState.setOffsetToken(offsetToken);
+        checkOffsetMismatch(
+            rowBuffer.channelState.getOffsetToken(), startOffsetToken, endOffsetToken, rowIndex);
+        rowBuffer.channelState.setOffsetToken(endOffsetToken);
         rowBuffer.bufferSize += rowsSizeInBytes;
         rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       }
@@ -300,13 +316,16 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Buffer parameters that are set at the owning client level
   final ClientBufferParameters clientBufferParameters;
 
+  private final TelemetryService telemetryService;
+
   AbstractRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      ClientBufferParameters clientBufferParameters) {
+      ClientBufferParameters clientBufferParameters,
+      TelemetryService telemetryService) {
     this.onErrorOption = onErrorOption;
     this.defaultTimezone = defaultTimezone;
     this.rowSizeMetric = rowSizeMetric;
@@ -317,6 +336,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.bufferedRowCount = 0;
     this.bufferSize = 0F;
     this.clientBufferParameters = clientBufferParameters;
+    this.telemetryService = telemetryService;
 
     // Initialize empty stats
     this.statsMap = new HashMap<>();
@@ -418,12 +438,13 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * Insert a batch of rows into the row buffer
    *
    * @param rows input row
-   * @param offsetToken offset token of the latest row in the batch
+   * @param startOffsetToken start offset token of the batch
+   * @param endOffsetToken offset token of the latest row in the batch
    * @return insert response that possibly contains errors because of insertion failures
    */
   @Override
   public InsertValidationResponse insertRows(
-      Iterable<Map<String, Object>> rows, String offsetToken) {
+      Iterable<Map<String, Object>> rows, String startOffsetToken, String endOffsetToken) {
     if (!hasColumns()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
     }
@@ -432,7 +453,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     try {
       this.channelState.updateInsertStats(System.currentTimeMillis(), this.bufferedRowCount);
       IngestionStrategy<T> ingestionStrategy = createIngestionStrategy(onErrorOption);
-      response = ingestionStrategy.insertRows(this, rows, offsetToken);
+      response = ingestionStrategy.insertRows(this, rows, startOffsetToken, endOffsetToken);
     } finally {
       this.tempStatsMap.values().forEach(RowBufferStats::reset);
       clearTempRows();
@@ -614,7 +635,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      ClientBufferParameters clientBufferParameters) {
+      ClientBufferParameters clientBufferParameters,
+      TelemetryService telemetryService) {
     switch (bdecVersion) {
       case THREE:
         //noinspection unchecked
@@ -625,7 +647,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 fullyQualifiedChannelName,
                 rowSizeMetric,
                 channelRuntimeState,
-                clientBufferParameters);
+                clientBufferParameters,
+                telemetryService);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
@@ -650,6 +673,40 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               + " call insertRows for each smaller batch separately.",
           batchSizeInBytes,
           INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES);
+    }
+  }
+
+  // We verify some offset expect behavior and report to SF if there is a mismatch. Note that
+  // there are false positives because the input could give us a batch with offset gaps. For example
+  // in Kafka Connector, we could have gaps if some of the offsets are filtered out by SMT.
+  private void checkOffsetMismatch(
+      String prevEndOffset, String curStartOffset, String curEndOffset, int rowCount) {
+    if (telemetryService != null && curStartOffset != null) {
+      boolean reportMismatch = false;
+      try {
+        long curStart = Long.parseLong(curStartOffset);
+        long curEnd = Long.parseLong(curEndOffset);
+
+        // We verify that the end_offset - start_offset + 1 = row_count
+        if (curEnd - curStart + 1 != rowCount) {
+          reportMismatch = true;
+        }
+
+        // We verify that start_offset_of_current_batch = end_offset_of_previous_batch+1
+        if (prevEndOffset != null) {
+          long prevEnd = Long.parseLong(prevEndOffset);
+          if (curStart != prevEnd + 1) {
+            reportMismatch = true;
+          }
+        }
+      } catch (Exception ignored) {
+        // Do nothing since we can't compare the offset
+      }
+
+      if (reportMismatch) {
+        this.telemetryService.reportBatchOffsetMismatch(
+            channelFullyQualifiedName, prevEndOffset, curStartOffset, curEndOffset, rowCount);
+      }
     }
   }
 

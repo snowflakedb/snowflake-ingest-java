@@ -66,10 +66,14 @@ public interface SnowflakeStreamingIngestChannel {
    */
   String getFullyQualifiedTableName();
 
-  /** @return a boolean which indicates whether the channel is valid */
+  /**
+   * @return a boolean which indicates whether the channel is valid
+   */
   boolean isValid();
 
-  /** @return a boolean which indicates whether the channel is closed */
+  /**
+   * @return a boolean which indicates whether the channel is closed
+   */
   boolean isClosed();
 
   /**
@@ -240,9 +244,19 @@ public interface SnowflakeStreamingIngestChannel {
    * values.
    *
    * @param rows object data to write
-   * @param offsetToken offset of last row in the row-set, used for replay in case of failures, It
-   *     could be null if you don't plan on replaying or can't replay
+   * @param startOffsetToken start offset of the batch/row-set
+   * @param endOffsetToken end offset of the batch/row-set, used for replay in case of failures, *
+   *     It could be null if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
+   */
+  InsertValidationResponse insertRows(
+      Iterable<Map<String, Object>> rows,
+      @Nullable String startOffsetToken,
+      @Nullable String endOffsetToken);
+
+  /**
+   * Insert a batch of rows into the channel with the end offset token only, please see {@link
+   * SnowflakeStreamingIngestChannel#insertRows(Iterable, String, String)} for more information.
    */
   InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, @Nullable String offsetToken);

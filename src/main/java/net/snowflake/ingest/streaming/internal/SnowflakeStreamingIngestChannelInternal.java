@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -125,7 +126,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
-            new ClientBufferParameters(owningClient));
+            new ClientBufferParameters(owningClient),
+            owningClient.getTelemetryService());
     this.tableColumns = new HashMap<>();
     logger.logInfo(
         "Channel={} created for table={}",
@@ -173,7 +175,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.channelFlushContext.getChannelSequencer();
   }
 
-  /** @return current state of the channel */
+  /**
+   * @return current state of the channel
+   */
   @VisibleForTesting
   ChannelRuntimeState getChannelState() {
     return this.channelState;
@@ -203,7 +207,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return data;
   }
 
-  /** @return a boolean to indicate whether the channel is valid or not */
+  /**
+   * @return a boolean to indicate whether the channel is valid or not
+   */
   @Override
   public boolean isValid() {
     return this.channelState.isValid();
@@ -221,7 +227,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         message);
   }
 
-  /** @return a boolean to indicate whether the channel is closed or not */
+  /**
+   * @return a boolean to indicate whether the channel is closed or not
+   */
   @Override
   public boolean isClosed() {
     return this.isClosed;
@@ -322,7 +330,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public InsertValidationResponse insertRow(Map<String, Object> row, String offsetToken) {
-    return insertRows(Collections.singletonList(row), offsetToken);
+    return insertRows(Collections.singletonList(row), offsetToken, offsetToken);
   }
 
   /**
@@ -332,16 +340,22 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
 
   /**
-   * Each row is represented using Map where the key is column name and the value is a row of data
+   * Insert a batch of rows into the channel, each row is represented using Map where the key is
+   * column name and the value is a row of data. See {@link
+   * SnowflakeStreamingIngestChannel#insertRow(Map, String)} for more information about accepted
+   * values.
    *
    * @param rows object data to write
-   * @param offsetToken offset of last row in the row-set, used for replay in case of failures
+   * @param startOffsetToken start offset of the batch/row-set
+   * @param endOffsetToken end offset of the batch/row-set, used for replay in case of failures, *
+   *     It could be null if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
-   * @throws SFException when the channel is invalid or closed
    */
   @Override
   public InsertValidationResponse insertRows(
-      Iterable<Map<String, Object>> rows, String offsetToken) {
+      Iterable<Map<String, Object>> rows,
+      @Nullable String startOffsetToken,
+      @Nullable String endOffsetToken) {
     throttleInsertIfNeeded(new MemoryInfoProviderFromRuntime());
     checkValidation();
 
@@ -356,7 +370,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     final List<Map<String, Object>> rowsCopy = new LinkedList<>();
     rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
 
-    InsertValidationResponse response = this.rowBuffer.insertRows(rowsCopy, offsetToken);
+    InsertValidationResponse response =
+        this.rowBuffer.insertRows(rowsCopy, startOffsetToken, endOffsetToken);
 
     // Start flush task if the chunk size reaches a certain size
     // TODO: Checking table/chunk level size reduces throughput a lot, we may want to check it only
@@ -367,6 +382,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     }
 
     return response;
+  }
+
+  /**
+   * Insert a batch of rows into the channel with the end offset token only, please see {@link
+   * SnowflakeStreamingIngestChannel#insertRows(Iterable, String, String)} for more information.
+   */
+  @Override
+  public InsertValidationResponse insertRows(
+      Iterable<Map<String, Object>> rows, String offsetToken) {
+    return insertRows(rows, null, offsetToken);
   }
 
   /** Collect the row size from row buffer if required */

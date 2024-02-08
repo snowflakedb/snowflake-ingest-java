@@ -13,9 +13,13 @@ public interface IngestionStrategy<T> {
    * Insert a batch of rows into the row buffer
    *
    * @param rows input row
-   * @param offsetToken offset token of the latest row in the batch
+   * @param startOffsetToken start offset token of the batch
+   * @param endOffsetToken offset token of the latest row in the batch
    * @return insert response that possibly contains errors because of insertion failures
    */
   InsertValidationResponse insertRows(
-      AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken);
+      AbstractRowBuffer<T> rowBuffer,
+      Iterable<Map<String, Object>> rows,
+      String startOffsetToken,
+      String endOffsetToken);
 }
