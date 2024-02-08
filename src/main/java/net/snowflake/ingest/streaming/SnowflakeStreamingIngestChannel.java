@@ -66,14 +66,10 @@ public interface SnowflakeStreamingIngestChannel {
    */
   String getFullyQualifiedTableName();
 
-  /**
-   * @return a boolean which indicates whether the channel is valid
-   */
+  /** @return a boolean which indicates whether the channel is valid */
   boolean isValid();
 
-  /**
-   * @return a boolean which indicates whether the channel is closed
-   */
+  /** @return a boolean which indicates whether the channel is closed */
   boolean isClosed();
 
   /**

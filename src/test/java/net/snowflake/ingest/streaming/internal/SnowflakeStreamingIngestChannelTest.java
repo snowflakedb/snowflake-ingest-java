@@ -573,14 +573,16 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertFalse(response.hasErrors());
     response = channel.insertRows(Collections.singletonList(row), "2");
     Assert.assertFalse(response.hasErrors());
+    response = channel.insertRows(Collections.singletonList(row), "3", "3");
+    Assert.assertFalse(response.hasErrors());
     long insertEndTimeInMs = System.currentTimeMillis();
 
     // Get data again to verify the row is inserted
     data = channel.getData("my_snowpipe_streaming.bdec");
-    Assert.assertEquals(2, data.getRowCount());
+    Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(1, ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
-    Assert.assertEquals("2", data.getOffsetToken());
+    Assert.assertEquals("3", data.getOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
     Assert.assertTrue(insertEndTimeInMs >= data.getMinMaxInsertTimeInMs().getSecond());

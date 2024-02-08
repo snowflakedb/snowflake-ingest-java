@@ -75,7 +75,7 @@ public class TelemetryServiceTest {
   }
 
   @Test
-  public void testBatchOffsetMismatch() {
+  public void testReportBatchOffsetMismatch() {
     CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
 
     TelemetryService telemetryService =

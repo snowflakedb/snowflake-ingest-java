@@ -40,8 +40,7 @@ public class StreamingIngestBigFilesIT {
     return new Object[] {"GZIP", "ZSTD"};
   }
 
-  @Parameter
-  public String compressionAlgorithm;
+  @Parameter public String compressionAlgorithm;
 
   @Before
   public void beforeAll() throws Exception {

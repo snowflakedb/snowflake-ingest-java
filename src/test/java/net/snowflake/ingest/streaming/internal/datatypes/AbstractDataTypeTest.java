@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -22,7 +23,6 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
-import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
@@ -67,8 +67,7 @@ public abstract class AbstractDataTypeTest {
     return new Object[] {"GZIP", "ZSTD"};
   }
 
-  @Parameter
-  public String compressionAlgorithm;
+  @Parameter public String compressionAlgorithm;
 
   @Before
   public void before() throws Exception {

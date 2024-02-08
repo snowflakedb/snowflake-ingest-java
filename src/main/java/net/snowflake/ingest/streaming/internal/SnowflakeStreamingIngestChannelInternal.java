@@ -175,9 +175,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.channelFlushContext.getChannelSequencer();
   }
 
-  /**
-   * @return current state of the channel
-   */
+  /** @return current state of the channel */
   @VisibleForTesting
   ChannelRuntimeState getChannelState() {
     return this.channelState;
@@ -207,9 +205,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return data;
   }
 
-  /**
-   * @return a boolean to indicate whether the channel is valid or not
-   */
+  /** @return a boolean to indicate whether the channel is valid or not */
   @Override
   public boolean isValid() {
     return this.channelState.isValid();
@@ -227,9 +223,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         message);
   }
 
-  /**
-   * @return a boolean to indicate whether the channel is closed or not
-   */
+  /** @return a boolean to indicate whether the channel is closed or not */
   @Override
   public boolean isClosed() {
     return this.isClosed;

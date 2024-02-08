@@ -75,8 +75,7 @@ public class StreamingIngestIT {
     return new Object[] {"GZIP", "ZSTD"};
   }
 
-  @Parameter
-  public String compressionAlgorithm;
+  @Parameter public String compressionAlgorithm;
 
   @Before
   public void beforeAll() throws Exception {
@@ -956,6 +955,116 @@ public class StreamingIngestIT {
         Assert.assertEquals("2", result.getString(1));
         Assert.assertEquals("1", result.getString(2));
         Assert.assertEquals("4", result.getString(3));
+        return;
+      }
+      Thread.sleep(1000);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testInsertRowsWithValidStartOffsetToken() throws Exception {
+    String insertRowsWithValidStartOffsetToken = "insert_rows_with_valid_start_offset_token";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (c1 int);", insertRowsWithValidStartOffsetToken));
+
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(testDb)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(insertRowsWithValidStartOffsetToken)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel = client.openChannel(request);
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("c1", 1);
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("c1", 2);
+    Map<String, Object> row3 = new HashMap<>();
+    row3.put("c1", "a");
+
+    verifyInsertValidationResponse(channel.insertRow(row1, "1"));
+
+    InsertValidationResponse response =
+        channel.insertRows(Arrays.asList(row1, row2, row3), "2", "4");
+    Assert.assertTrue(response.hasErrors());
+
+    // Close the channel after insertion
+    channel.close().get();
+
+    for (int i = 1; i < 15; i++) {
+      if (channel.getLatestCommittedOffsetToken() != null
+          && channel.getLatestCommittedOffsetToken().equals("4")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(c1), min(c1), max(c1) from %s.%s.%s",
+                        testDb, TEST_SCHEMA, insertRowsWithValidStartOffsetToken));
+        result.next();
+        Assert.assertEquals("3", result.getString(1));
+        Assert.assertEquals("1", result.getString(2));
+        Assert.assertEquals("2", result.getString(3));
+        return;
+      }
+      Thread.sleep(1000);
+    }
+    Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testInsertRowsWithInvalidStartOffsetToken() throws Exception {
+    String insertRowsWithInvalidStartOffsetToken = "insert_rows_with_invalid_start_offset_token";
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (c1 int);", insertRowsWithInvalidStartOffsetToken));
+
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(testDb)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(insertRowsWithInvalidStartOffsetToken)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel = client.openChannel(request);
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put("c1", 1);
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put("c1", 2);
+
+    // end-start != rowcount
+    channel.insertRows(Arrays.asList(row1, row2), "1", "4");
+
+    // offset != prevEnd+1
+    channel.insertRow(row1, "7");
+
+    // Close the channel after insertion
+    channel.close().get();
+
+    for (int i = 1; i < 15; i++) {
+      if (channel.getLatestCommittedOffsetToken() != null
+          && channel.getLatestCommittedOffsetToken().equals("7")) {
+        ResultSet result =
+            jdbcConnection
+                .createStatement()
+                .executeQuery(
+                    String.format(
+                        "select count(c1), min(c1), max(c1) from %s.%s.%s",
+                        testDb, TEST_SCHEMA, insertRowsWithInvalidStartOffsetToken));
+        result.next();
+        Assert.assertEquals("3", result.getString(1));
+        Assert.assertEquals("1", result.getString(2));
+        Assert.assertEquals("2", result.getString(3));
         return;
       }
       Thread.sleep(1000);
