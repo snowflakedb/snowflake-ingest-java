@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.client.jdbc.ErrorCode.S3_OPERATION_ERROR;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
@@ -28,6 +29,7 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
@@ -225,7 +227,10 @@ class StreamingIngestStage {
       return false;
     }
 
-    if (e instanceof SnowflakeSQLException) {
+    if (e instanceof SnowflakeSQLLoggedException) {
+      return ((SnowflakeSQLLoggedException) e).getErrorCode()
+          == S3_OPERATION_ERROR.getMessageCode();
+    } else if (e instanceof SnowflakeSQLException) {
       return ((SnowflakeSQLException) e).getErrorCode() == CLOUD_STORAGE_CREDENTIALS_EXPIRED;
     } else if (e instanceof StorageException) {
       return ((StorageException) e).getCode() == 401;

@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.client.jdbc.ErrorCode.S3_OPERATION_ERROR;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestStage.isCredentialsExpiredException;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_PASSWORD;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_USER;
@@ -42,6 +43,7 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.Constants;
@@ -491,6 +493,13 @@ public class StreamingIngestStageTest {
         isCredentialsExpiredException(
             new SnowflakeSQLException("Error", CLOUD_STORAGE_CREDENTIALS_EXPIRED)));
     Assert.assertTrue(isCredentialsExpiredException(new StorageException(401, "unauthorized")));
+    Assert.assertTrue(
+        isCredentialsExpiredException(
+            new net.snowflake.client.jdbc.SnowflakeSQLLoggedException(
+                "randomQueryId",
+                null,
+                S3_OPERATION_ERROR.getMessageCode(),
+                SqlState.SYSTEM_ERROR)));
 
     Assert.assertFalse(isCredentialsExpiredException(new StorageException(400, "bad request")));
     Assert.assertFalse(isCredentialsExpiredException(null));
