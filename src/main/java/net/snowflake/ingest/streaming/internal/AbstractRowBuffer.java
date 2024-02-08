@@ -313,7 +313,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
 
   final ZoneId defaultTimezone;
 
-  // Buffer parameters that are set at the owning client levelprivate void checkOffsetMismatch(
+  // Buffer parameters that are set at the owning client level
   final ClientBufferParameters clientBufferParameters;
 
   // Telemetry service use to report telemetry to SF
