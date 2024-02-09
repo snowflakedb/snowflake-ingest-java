@@ -44,6 +44,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
+
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.DecoderException;
@@ -269,6 +271,7 @@ public class DataValidationUtilTest {
 
     // Test integer-stored time and scale guessing
     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    df.setTimeZone(TimeZone.getTimeZone("UTC"));
     assertEquals(
         BigInteger.valueOf(df.parse("1971-01-01 00:00:00.001").getTime())
             .multiply(BigInteger.valueOf(1000000)),
