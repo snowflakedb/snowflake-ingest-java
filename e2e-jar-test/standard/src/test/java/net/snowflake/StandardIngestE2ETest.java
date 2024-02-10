@@ -28,7 +28,6 @@ public class StandardIngestE2ETest {
   }
 
   @Test
-  @Ignore("Takes too long to run")
   public void longRunningTest() throws InterruptedException {
     ingestTestUtils.runLongRunningTest(Duration.of(80, ChronoUnit.MINUTES));
   }
