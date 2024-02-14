@@ -801,7 +801,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
             channelStatus.getStatusCode(),
             channel.getChannelSequencer(),
             rowSequencer,
-            channel.getChannelState().getOffsetToken(),
+            channel.getChannelState().getEndOffsetToken(),
             channelStatus.getPersistedRowSequencer(),
             channelStatus.getPersistedOffsetToken());
         if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {

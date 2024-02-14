@@ -143,7 +143,7 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertEquals(dbName, channel.getDBName());
     Assert.assertEquals(schemaName, channel.getSchemaName());
     Assert.assertEquals(tableName, channel.getTableName());
-    Assert.assertEquals(offsetToken, channel.getChannelState().getOffsetToken());
+    Assert.assertEquals(offsetToken, channel.getChannelState().getEndOffsetToken());
     Assert.assertEquals(channelSequencer, channel.getChannelSequencer());
     Assert.assertEquals(rowSequencer + 1L, channel.getChannelState().incrementAndGetRowSequencer());
     Assert.assertEquals(

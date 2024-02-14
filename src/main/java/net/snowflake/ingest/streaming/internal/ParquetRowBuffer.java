@@ -67,8 +67,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         fullyQualifiedChannelName,
         rowSizeMetric,
         channelRuntimeState,
-        clientBufferParameters,
-        telemetryService);
+        clientBufferParameters);
     this.fieldIndex = new HashMap<>();
     this.metadata = new HashMap<>();
     this.data = new ArrayList<>();

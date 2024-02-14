@@ -28,8 +28,7 @@ public class TelemetryService {
     STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_ms"),
     STREAMING_INGEST_CLIENT_FAILURE("streaming_ingest_client_failure"),
     STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC("streaming_ingest_throughput_bytes_per_sec"),
-    STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage"),
-    STREAMING_INGEST_BATCH_OFFSET_MISMATCH("streaming_ingest_batch_offset_mismatch");
+    STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage");
 
     private final String name;
 
@@ -121,21 +120,6 @@ public class TelemetryService {
       msg.put("free_memory", runTime.freeMemory());
       send(TelemetryType.STREAMING_INGEST_CPU_MEMORY_USAGE, msg);
     }
-  }
-
-  public void reportBatchOffsetMismatch(
-      String channelName,
-      String prevBatchEndOffset,
-      String startOffset,
-      String endOffset,
-      long rowCount) {
-    ObjectNode msg = MAPPER.createObjectNode();
-    msg.put("channel_name", channelName);
-    msg.put("prev_batch_end_offset", prevBatchEndOffset);
-    msg.put("start_offset", startOffset);
-    msg.put("end_offset", endOffset);
-    msg.put("row_count", rowCount);
-    send(TelemetryType.STREAMING_INGEST_BATCH_OFFSET_MISMATCH, msg);
   }
 
   /** Send log to Snowflake asynchronously through JDBC client telemetry */

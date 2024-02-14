@@ -11,8 +11,11 @@ class ChannelRuntimeState {
   // Indicates whether the channel is still valid
   private volatile boolean isValid;
 
-  // The channel's current offset token
-  private volatile String offsetToken;
+  // The channel's current start offset token
+  private volatile String startOffsetToken;
+
+  // The channel's current end offset token
+  private volatile String endOffsetToken;
 
   // The channel's current row sequencer
   private final AtomicLong rowSequencer;
@@ -21,8 +24,8 @@ class ChannelRuntimeState {
   private Long firstInsertInMs;
   private Long lastInsertInMs;
 
-  ChannelRuntimeState(String offsetToken, long rowSequencer, boolean isValid) {
-    this.offsetToken = offsetToken;
+  ChannelRuntimeState(String endOffsetToken, long rowSequencer, boolean isValid) {
+    this.endOffsetToken = endOffsetToken;
     this.rowSequencer = new AtomicLong(rowSequencer);
     this.isValid = isValid;
   }
@@ -41,9 +44,14 @@ class ChannelRuntimeState {
     isValid = false;
   }
 
-  /** @return current offset token */
-  String getOffsetToken() {
-    return offsetToken;
+  /** @return current end offset token */
+  String getEndOffsetToken() {
+    return endOffsetToken;
+  }
+
+  /** @return current start offset token */
+  String getStartOffsetToken() {
+    return startOffsetToken;
   }
 
   /** @return current offset token after first incrementing it by one. */
@@ -57,12 +65,16 @@ class ChannelRuntimeState {
   }
 
   /**
-   * Updates the channel's offset token.
+   * Updates the channel's start and end offset token.
    *
-   * @param offsetToken new offset token
+   * @param startOffsetToken new start offset token of the batch
+   * @param endOffsetToken new end offset token
    */
-  void setOffsetToken(String offsetToken) {
-    this.offsetToken = offsetToken;
+  void updateOffsetToken(String startOffsetToken, String endOffsetToken, int rowCount) {
+    if (rowCount == 0) {
+      this.startOffsetToken = startOffsetToken;
+    }
+    this.endOffsetToken = endOffsetToken;
   }
 
   /** Update the insert stats for the current row buffer whenever needed */

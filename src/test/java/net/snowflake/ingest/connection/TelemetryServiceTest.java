@@ -73,18 +73,4 @@ public class TelemetryServiceTest {
     // Make sure there is no exception thrown
     telemetryService.reportCpuMemoryUsage(cpuHistogram);
   }
-
-  @Test
-  public void testReportBatchOffsetMismatch() {
-    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
-
-    TelemetryService telemetryService =
-        Mockito.spy(
-            new TelemetryService(
-                httpClient, "testReportClientFailure", "snowflake.dev.local:8082"));
-    Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
-
-    // Make sure there is no exception thrown
-    telemetryService.reportBatchOffsetMismatch("channel", "0", "1", "2", 1);
-  }
 }

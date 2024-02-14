@@ -103,7 +103,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       String dbName,
       String schemaName,
       String tableName,
-      String offsetToken,
+      String endOffsetToken,
       Long channelSequencer,
       Long rowSequencer,
       SnowflakeStreamingIngestClientInternal<T> client,
@@ -117,7 +117,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     this.channelFlushContext =
         new ChannelFlushContext(
             name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
-    this.channelState = new ChannelRuntimeState(offsetToken, rowSequencer, true);
+    this.channelState = new ChannelRuntimeState(endOffsetToken, rowSequencer, true);
     this.rowBuffer =
         AbstractRowBuffer.createRowBuffer(
             onErrorOption,
