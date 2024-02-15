@@ -195,6 +195,12 @@ class StreamingIngestStage {
               .setDestFileName(fullFilePath)
               .build());
     } catch (Exception e) {
+      if (retryCount == 0) {
+        // for the first exception, we always perform a metadata refresh.
+        logger.logInfo(
+                "Stage metadata need to be refreshed due to upload error: {} on first retry attempt", e.getMessage());
+        this.refreshSnowflakeMetadata();
+      }
       if (retryCount >= maxUploadRetries) {
         logger.logError(
             "Failed to upload to stage, retry attempts exhausted ({}), client={}, message={}",
@@ -202,12 +208,6 @@ class StreamingIngestStage {
             clientName,
             e.getMessage());
         throw new SFException(e, ErrorCode.IO_ERROR);
-      }
-
-      if (isCredentialsExpiredException(e)) {
-        logger.logInfo(
-            "Stage metadata need to be refreshed due to upload error: {}", e.getMessage());
-        this.refreshSnowflakeMetadata();
       }
       retryCount++;
       StreamingIngestUtils.sleepForRetry(retryCount);
