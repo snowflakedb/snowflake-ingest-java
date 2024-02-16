@@ -455,6 +455,7 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  \"offset_token\" : \"\",\n"
             + "  \"encryption_key_id\" : 17229585102,\n"
             + "  \"table_columns\" : [ {\n"
+            + "    \"ordinal\" : 1,\n"
             + "    \"name\" : \"C1\",\n"
             + "    \"type\" : \"NUMBER(38,0)\",\n"
             + "    \"logical_type\" : \"fixed\",\n"
@@ -465,6 +466,7 @@ public class SnowflakeStreamingIngestChannelTest {
             + "    \"length\" : null,\n"
             + "    \"nullable\" : true\n"
             + "  }, {\n"
+            + "    \"ordinal\" : 2,\n"
             + "    \"name\" : \"C2\",\n"
             + "    \"type\" : \"NUMBER(38,0)\",\n"
             + "    \"logical_type\" : \"fixed\",\n"
@@ -551,6 +553,7 @@ public class SnowflakeStreamingIngestChannelTest {
             UTC);
 
     ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
     col.setName("COL");
     col.setPhysicalType("SB16");
     col.setNullable(false);
@@ -595,9 +598,10 @@ public class SnowflakeStreamingIngestChannelTest {
     List<ColumnMetadata> schema =
         IntStream.range(0, 64)
             .mapToObj(
-                rowId -> {
+                colId -> {
                   ColumnMetadata col = new ColumnMetadata();
-                  col.setName("COL" + rowId);
+                  col.setOrdinal(colId + 1);
+                  col.setName("COL" + colId);
                   col.setPhysicalType("LOB");
                   col.setNullable(false);
                   col.setLogicalType("BINARY");
