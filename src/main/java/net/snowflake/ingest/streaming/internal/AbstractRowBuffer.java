@@ -142,10 +142,14 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   public class ContinueIngestionStrategy<T> implements IngestionStrategy<T> {
     @Override
     public InsertValidationResponse insertRows(
-        AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken) {
+        AbstractRowBuffer<T> rowBuffer,
+        Iterable<Map<String, Object>> rows,
+        String startOffsetToken,
+        String endOffsetToken) {
       InsertValidationResponse response = new InsertValidationResponse();
       float rowsSizeInBytes = 0F;
       int rowIndex = 0;
+      int prevRowCount = rowBuffer.bufferedRowCount;
       for (Map<String, Object> row : rows) {
         InsertValidationResponse.InsertError error =
             new InsertValidationResponse.InsertError(row, rowIndex);
@@ -169,7 +173,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         rowIndex++;
       }
       checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
-      rowBuffer.channelState.setOffsetToken(offsetToken);
+      rowBuffer.channelState.updateOffsetToken(startOffsetToken, endOffsetToken, prevRowCount);
       rowBuffer.bufferSize += rowsSizeInBytes;
       rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       return response;
@@ -180,7 +184,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   public class AbortIngestionStrategy<T> implements IngestionStrategy<T> {
     @Override
     public InsertValidationResponse insertRows(
-        AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken) {
+        AbstractRowBuffer<T> rowBuffer,
+        Iterable<Map<String, Object>> rows,
+        String startOffsetToken,
+        String endOffsetToken) {
       // If the on_error option is ABORT, simply throw the first exception
       InsertValidationResponse response = new InsertValidationResponse();
       float rowsSizeInBytes = 0F;
@@ -201,13 +208,14 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       moveTempRowsToActualBuffer(tempRowCount);
 
       rowsSizeInBytes = tempRowsSizeInBytes;
-      rowBuffer.bufferedRowCount += tempRowCount;
       rowBuffer.statsMap.forEach(
           (colName, stats) ->
               rowBuffer.statsMap.put(
                   colName,
                   RowBufferStats.getCombinedStats(stats, rowBuffer.tempStatsMap.get(colName))));
-      rowBuffer.channelState.setOffsetToken(offsetToken);
+      rowBuffer.channelState.updateOffsetToken(
+          startOffsetToken, endOffsetToken, rowBuffer.bufferedRowCount);
+      rowBuffer.bufferedRowCount += tempRowCount;
       rowBuffer.bufferSize += rowsSizeInBytes;
       rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       return response;
@@ -218,7 +226,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   public class SkipBatchIngestionStrategy<T> implements IngestionStrategy<T> {
     @Override
     public InsertValidationResponse insertRows(
-        AbstractRowBuffer<T> rowBuffer, Iterable<Map<String, Object>> rows, String offsetToken) {
+        AbstractRowBuffer<T> rowBuffer,
+        Iterable<Map<String, Object>> rows,
+        String startOffsetToken,
+        String endOffsetToken) {
       InsertValidationResponse response = new InsertValidationResponse();
       float rowsSizeInBytes = 0F;
       float tempRowsSizeInBytes = 0F;
@@ -251,13 +262,14 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         checkBatchSizeRecommendedMaximum(tempRowsSizeInBytes);
         moveTempRowsToActualBuffer(tempRowCount);
         rowsSizeInBytes = tempRowsSizeInBytes;
-        rowBuffer.bufferedRowCount += tempRowCount;
         rowBuffer.statsMap.forEach(
             (colName, stats) ->
                 rowBuffer.statsMap.put(
                     colName,
                     RowBufferStats.getCombinedStats(stats, rowBuffer.tempStatsMap.get(colName))));
-        rowBuffer.channelState.setOffsetToken(offsetToken);
+        rowBuffer.channelState.updateOffsetToken(
+            startOffsetToken, endOffsetToken, rowBuffer.bufferedRowCount);
+        rowBuffer.bufferedRowCount += tempRowCount;
         rowBuffer.bufferSize += rowsSizeInBytes;
         rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
       }
@@ -418,12 +430,13 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * Insert a batch of rows into the row buffer
    *
    * @param rows input row
-   * @param offsetToken offset token of the latest row in the batch
+   * @param startOffsetToken start offset token of the batch
+   * @param endOffsetToken offset token of the latest row in the batch
    * @return insert response that possibly contains errors because of insertion failures
    */
   @Override
   public InsertValidationResponse insertRows(
-      Iterable<Map<String, Object>> rows, String offsetToken) {
+      Iterable<Map<String, Object>> rows, String startOffsetToken, String endOffsetToken) {
     if (!hasColumns()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "Empty column fields");
     }
@@ -432,7 +445,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     try {
       this.channelState.updateInsertStats(System.currentTimeMillis(), this.bufferedRowCount);
       IngestionStrategy<T> ingestionStrategy = createIngestionStrategy(onErrorOption);
-      response = ingestionStrategy.insertRows(this, rows, offsetToken);
+      response = ingestionStrategy.insertRows(this, rows, startOffsetToken, endOffsetToken);
     } finally {
       this.tempStatsMap.values().forEach(RowBufferStats::reset);
       clearTempRows();
@@ -470,7 +483,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldRowCount = this.bufferedRowCount;
           oldBufferSize = this.bufferSize;
           oldRowSequencer = this.channelState.incrementAndGetRowSequencer();
-          oldOffsetToken = this.channelState.getOffsetToken();
+          oldOffsetToken = this.channelState.getEndOffsetToken();
           oldColumnEps = new HashMap<>(this.statsMap);
           oldMinMaxInsertTimeInMs =
               new Pair<>(

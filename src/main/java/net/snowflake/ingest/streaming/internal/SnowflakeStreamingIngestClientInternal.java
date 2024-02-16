@@ -796,12 +796,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         long rowSequencer = channel.getChannelState().getRowSequencer();
         logger.logInfo(
             "Get channel status name={}, status={}, clientSequencer={}, rowSequencer={},"
-                + " offsetToken={}, persistedRowSequencer={}, persistedOffsetToken={}",
+                + " startOffsetToken={}, endOffsetToken={}, persistedRowSequencer={},"
+                + " persistedOffsetToken={}",
             channel.getName(),
             channelStatus.getStatusCode(),
             channel.getChannelSequencer(),
             rowSequencer,
-            channel.getChannelState().getOffsetToken(),
+            channel.getChannelState().getStartOffsetToken(),
+            channel.getChannelState().getEndOffsetToken(),
             channelStatus.getPersistedRowSequencer(),
             channelStatus.getPersistedOffsetToken());
         if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {

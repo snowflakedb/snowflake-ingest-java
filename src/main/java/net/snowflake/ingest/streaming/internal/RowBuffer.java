@@ -26,10 +26,12 @@ interface RowBuffer<T> {
    * Insert a batch of rows into the row buffer
    *
    * @param rows input row
-   * @param offsetToken offset token of the latest row in the batch
+   * @param startOffsetToken start offset token of the batch
+   * @param endOffsetToken offset token of the latest row in the batch
    * @return insert response that possibly contains errors because of insertion failures
    */
-  InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows, String offsetToken);
+  InsertValidationResponse insertRows(
+      Iterable<Map<String, Object>> rows, String startOffsetToken, String endOffsetToken);
 
   /**
    * Flush the data in the row buffer by taking the ownership of the old vectors and pass all the

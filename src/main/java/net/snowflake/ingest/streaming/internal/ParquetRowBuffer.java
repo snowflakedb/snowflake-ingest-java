@@ -48,7 +48,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private ByteArrayOutputStream fileOutput;
   private final List<List<Object>> tempData;
-  private final String channelName;
 
   private MessageType schema;
 
@@ -71,7 +70,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.metadata = new HashMap<>();
     this.data = new ArrayList<>();
     this.tempData = new ArrayList<>();
-    this.channelName = fullyQualifiedChannelName;
   }
 
   @Override
@@ -121,7 +119,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                 fileOutput,
                 schema,
                 metadata,
-                channelName,
+                channelFullyQualifiedName,
                 clientBufferParameters.getMaxChunkSizeInBytes(),
                 clientBufferParameters.getBdecParquetCompression());
       } else {
