@@ -104,8 +104,13 @@ public class RowBufferTest {
     colChar.setLength(11);
     colChar.setScale(0);
 
-    return Arrays.asList(
-        colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
+    List<ColumnMetadata> columns =
+        Arrays.asList(
+            colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
+    for (int i = 0; i < columns.size(); i++) {
+      columns.get(i).setOrdinal(i + 1);
+    }
+    return columns;
   }
 
   private AbstractRowBuffer<?> createTestBuffer(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -461,7 +466,8 @@ public class RowBufferTest {
   }
 
   private void testFlushHelper(AbstractRowBuffer<?> rowBuffer) {
-    String offsetToken = "1";
+    String startOffsetToken = "1";
+    String endOffsetToken = "2";
     Map<String, Object> row1 = new HashMap<>();
     row1.put("colTinyInt", (byte) 1);
     row1.put("\"colTinyInt\"", (byte) 1);
@@ -481,7 +487,7 @@ public class RowBufferTest {
     row2.put("colChar", "3");
 
     InsertValidationResponse response =
-        rowBuffer.insertRows(Arrays.asList(row1, row2), offsetToken, offsetToken);
+        rowBuffer.insertRows(Arrays.asList(row1, row2), startOffsetToken, endOffsetToken);
     Assert.assertFalse(response.hasErrors());
     float bufferSize = rowBuffer.getSize();
 
@@ -489,7 +495,8 @@ public class RowBufferTest {
     ChannelData<?> data = rowBuffer.flush(filename);
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
-    Assert.assertEquals(offsetToken, data.getOffsetToken());
+    Assert.assertEquals(startOffsetToken, data.getEndOffsetToken());
+    Assert.assertEquals(endOffsetToken, data.getStartOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
 
     final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
@@ -509,6 +516,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colDoubleQuotes = new ColumnMetadata();
+    colDoubleQuotes.setOrdinal(1);
     colDoubleQuotes.setName("\"colDoubleQuotes\"");
     colDoubleQuotes.setPhysicalType("SB16");
     colDoubleQuotes.setNullable(true);
@@ -666,6 +674,7 @@ public class RowBufferTest {
   private void testE2ETimestampErrorsHelper(AbstractRowBuffer<?> innerBuffer) {
 
     ColumnMetadata colTimestampLtzSB16 = new ColumnMetadata();
+    colTimestampLtzSB16.setOrdinal(1);
     colTimestampLtzSB16.setName("COLTIMESTAMPLTZ_SB16");
     colTimestampLtzSB16.setPhysicalType("SB16");
     colTimestampLtzSB16.setNullable(false);
@@ -786,6 +795,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colTimestampLtzSB8 = new ColumnMetadata();
+    colTimestampLtzSB8.setOrdinal(1);
     colTimestampLtzSB8.setName("COLTIMESTAMPLTZ_SB8");
     colTimestampLtzSB8.setPhysicalType("SB8");
     colTimestampLtzSB8.setNullable(true);
@@ -793,6 +803,7 @@ public class RowBufferTest {
     colTimestampLtzSB8.setScale(0);
 
     ColumnMetadata colTimestampLtzSB16 = new ColumnMetadata();
+    colTimestampLtzSB16.setOrdinal(2);
     colTimestampLtzSB16.setName("COLTIMESTAMPLTZ_SB16");
     colTimestampLtzSB16.setPhysicalType("SB16");
     colTimestampLtzSB16.setNullable(true);
@@ -800,6 +811,7 @@ public class RowBufferTest {
     colTimestampLtzSB16.setScale(9);
 
     ColumnMetadata colTimestampLtzSB16Scale6 = new ColumnMetadata();
+    colTimestampLtzSB16Scale6.setOrdinal(2);
     colTimestampLtzSB16Scale6.setName("COLTIMESTAMPLTZ_SB16_SCALE6");
     colTimestampLtzSB16Scale6.setPhysicalType("SB16");
     colTimestampLtzSB16Scale6.setNullable(true);
@@ -868,6 +880,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colDate = new ColumnMetadata();
+    colDate.setOrdinal(1);
     colDate.setName("COLDATE");
     colDate.setPhysicalType("SB8");
     colDate.setNullable(true);
@@ -917,6 +930,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colTimeSB4 = new ColumnMetadata();
+    colTimeSB4.setOrdinal(1);
     colTimeSB4.setName("COLTIMESB4");
     colTimeSB4.setPhysicalType("SB4");
     colTimeSB4.setNullable(true);
@@ -924,6 +938,7 @@ public class RowBufferTest {
     colTimeSB4.setScale(0);
 
     ColumnMetadata colTimeSB8 = new ColumnMetadata();
+    colTimeSB8.setOrdinal(2);
     colTimeSB8.setName("COLTIMESB8");
     colTimeSB8.setPhysicalType("SB8");
     colTimeSB8.setNullable(true);
@@ -988,6 +1003,7 @@ public class RowBufferTest {
   private void testMaxInsertRowsBatchSizeHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
     ColumnMetadata colBinary = new ColumnMetadata();
+    colBinary.setOrdinal(1);
     colBinary.setName("COLBINARY");
     colBinary.setPhysicalType("LOB");
     colBinary.setNullable(true);
@@ -1027,6 +1043,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setOrdinal(1);
     colBoolean.setName("COLBOOLEAN");
     colBoolean.setPhysicalType("SB1");
     colBoolean.setNullable(false);
@@ -1068,6 +1085,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setOrdinal(1);
     colBoolean.setName("COLBOOLEAN");
     colBoolean.setPhysicalType("SB1");
     colBoolean.setNullable(false);
@@ -1075,6 +1093,7 @@ public class RowBufferTest {
     colBoolean.setScale(0);
 
     ColumnMetadata colBoolean2 = new ColumnMetadata();
+    colBoolean2.setOrdinal(2);
     colBoolean2.setName("COLBOOLEAN2");
     colBoolean2.setPhysicalType("SB1");
     colBoolean2.setNullable(true);
@@ -1113,6 +1132,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setOrdinal(1);
     colBoolean.setName("COLBOOLEAN1");
     colBoolean.setPhysicalType("SB1");
     colBoolean.setNullable(false);
@@ -1146,6 +1166,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colVarchar1 = new ColumnMetadata();
+    colVarchar1.setOrdinal(1);
     colVarchar1.setName("COLVARCHAR1");
     colVarchar1.setPhysicalType("LOB");
     colVarchar1.setNullable(true);
@@ -1153,6 +1174,7 @@ public class RowBufferTest {
     colVarchar1.setLength(1000);
 
     ColumnMetadata colVarchar2 = new ColumnMetadata();
+    colVarchar2.setOrdinal(2);
     colVarchar2.setName("COLVARCHAR2");
     colVarchar2.setPhysicalType("LOB");
     colVarchar2.setNullable(true);
@@ -1160,6 +1182,7 @@ public class RowBufferTest {
     colVarchar2.setLength(1000);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setOrdinal(3);
     colBoolean.setName("COLBOOLEAN1");
     colBoolean.setPhysicalType("SB1");
     colBoolean.setNullable(true);
@@ -1222,6 +1245,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colBoolean = new ColumnMetadata();
+    colBoolean.setOrdinal(1);
     colBoolean.setName("COLBOOLEAN");
     colBoolean.setPhysicalType("SB1");
     colBoolean.setNullable(true);
@@ -1271,6 +1295,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colBinary = new ColumnMetadata();
+    colBinary.setOrdinal(1);
     colBinary.setName("COLBINARY");
     colBinary.setPhysicalType("LOB");
     colBinary.setNullable(true);
@@ -1328,6 +1353,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colReal = new ColumnMetadata();
+    colReal.setOrdinal(1);
     colReal.setName("COLREAL");
     colReal.setPhysicalType("SB16");
     colReal.setNullable(true);
@@ -1370,6 +1396,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT);
 
     ColumnMetadata colDecimal = new ColumnMetadata();
+    colDecimal.setOrdinal(1);
     colDecimal.setName("COLDECIMAL");
     colDecimal.setPhysicalType("SB16");
     colDecimal.setNullable(true);
@@ -1448,6 +1475,7 @@ public class RowBufferTest {
         createTestBuffer(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
 
     ColumnMetadata colDecimal = new ColumnMetadata();
+    colDecimal.setOrdinal(1);
     colDecimal.setName("COLDECIMAL");
     colDecimal.setPhysicalType("SB16");
     colDecimal.setNullable(true);
@@ -1526,6 +1554,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colVariant = new ColumnMetadata();
+    colVariant.setOrdinal(1);
     colVariant.setName("COLVARIANT");
     colVariant.setPhysicalType("LOB");
     colVariant.setNullable(true);
@@ -1576,6 +1605,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colObject = new ColumnMetadata();
+    colObject.setOrdinal(1);
     colObject.setName("COLOBJECT");
     colObject.setPhysicalType("LOB");
     colObject.setNullable(true);
@@ -1608,6 +1638,7 @@ public class RowBufferTest {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     ColumnMetadata colObject = new ColumnMetadata();
+    colObject.setOrdinal(1);
     colObject.setName("COLARRAY");
     colObject.setPhysicalType("LOB");
     colObject.setNullable(true);
@@ -1656,6 +1687,7 @@ public class RowBufferTest {
         createTestBuffer(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
 
     ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setOrdinal(1);
     colChar.setName("COLCHAR");
     colChar.setPhysicalType("LOB");
     colChar.setNullable(true);

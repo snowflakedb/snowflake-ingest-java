@@ -15,6 +15,7 @@ import net.snowflake.ingest.utils.SFException;
 /** Keeps track of the active EP stats, used to generate a file EP info */
 class RowBufferStats {
 
+  private final int ordinal;
   private byte[] currentMinStrValue;
   private byte[] currentMaxStrValue;
   private BigInteger currentMinIntValue;
@@ -29,14 +30,15 @@ class RowBufferStats {
   private final String columnDisplayName;
 
   /** Creates empty stats */
-  RowBufferStats(String columnDisplayName, String collationDefinitionString) {
+  RowBufferStats(String columnDisplayName, String collationDefinitionString, int ordinal) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
+    this.ordinal = ordinal;
     reset();
   }
 
   RowBufferStats(String columnDisplayName) {
-    this(columnDisplayName, null);
+    this(columnDisplayName, null, -1);
   }
 
   void reset() {
@@ -52,7 +54,8 @@ class RowBufferStats {
 
   /** Create new statistics for the same column, with all calculated values set to empty */
   RowBufferStats forkEmpty() {
-    return new RowBufferStats(this.getColumnDisplayName(), this.getCollationDefinitionString());
+    return new RowBufferStats(
+        this.getColumnDisplayName(), this.getCollationDefinitionString(), this.getOrdinal());
   }
 
   // TODO performance test this vs in place update
@@ -66,7 +69,8 @@ class RowBufferStats {
               left.getCollationDefinitionString(), right.getCollationDefinitionString()));
     }
     RowBufferStats combined =
-        new RowBufferStats(left.columnDisplayName, left.getCollationDefinitionString());
+        new RowBufferStats(
+            left.columnDisplayName, left.getCollationDefinitionString(), left.getOrdinal());
 
     if (left.currentMinIntValue != null) {
       combined.addIntValue(left.currentMinIntValue);
@@ -207,6 +211,10 @@ class RowBufferStats {
 
   String getColumnDisplayName() {
     return columnDisplayName;
+  }
+
+  public int getOrdinal() {
+    return ordinal;
   }
 
   /**

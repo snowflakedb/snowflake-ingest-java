@@ -469,7 +469,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       int oldRowCount = 0;
       float oldBufferSize = 0F;
       long oldRowSequencer = 0;
-      String oldOffsetToken = null;
+      String oldEndOffsetToken = null;
+      String oldStartOffsetToken = null;
       Map<String, RowBufferStats> oldColumnEps = null;
       Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
 
@@ -483,7 +484,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldRowCount = this.bufferedRowCount;
           oldBufferSize = this.bufferSize;
           oldRowSequencer = this.channelState.incrementAndGetRowSequencer();
-          oldOffsetToken = this.channelState.getEndOffsetToken();
+          oldEndOffsetToken = this.channelState.getEndOffsetToken();
+          oldStartOffsetToken = this.channelState.getStartOffsetToken();
           oldColumnEps = new HashMap<>(this.statsMap);
           oldMinMaxInsertTimeInMs =
               new Pair<>(
@@ -507,7 +509,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         data.setRowCount(oldRowCount);
         data.setBufferSize(oldBufferSize);
         data.setRowSequencer(oldRowSequencer);
-        data.setOffsetToken(oldOffsetToken);
+        data.setEndOffsetToken(oldEndOffsetToken);
+        data.setStartOffsetToken(oldStartOffsetToken);
         data.setColumnEps(oldColumnEps);
         data.setMinMaxInsertTimeInMs(oldMinMaxInsertTimeInMs);
         data.setFlusherFactory(this::createFlusher);

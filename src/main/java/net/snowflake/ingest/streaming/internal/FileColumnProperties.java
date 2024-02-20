@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /** Audit register endpoint/FileColumnPropertyDTO property list. */
 class FileColumnProperties {
-
+  private int columnOrdinal;
   private String minStrValue;
 
   private String maxStrValue;
@@ -45,6 +45,7 @@ class FileColumnProperties {
   public static final Double DEFAULT_MIN_MAX_REAL_VAL_FOR_EP = 0d;
 
   FileColumnProperties(RowBufferStats stats) {
+    this.setColumnOrdinal(stats.getOrdinal());
     this.setCollation(stats.getCollationDefinitionString());
     this.setMaxIntValue(
         stats.getCurrentMaxIntValue() == null
@@ -81,6 +82,15 @@ class FileColumnProperties {
 
     this.setNullCount(stats.getCurrentNullCount());
     this.setDistinctValues(stats.getDistinctValues());
+  }
+
+  @JsonProperty("columnId")
+  public int getColumnOrdinal() {
+    return columnOrdinal;
+  }
+
+  public void setColumnOrdinal(int columnOrdinal) {
+    this.columnOrdinal = columnOrdinal;
   }
 
   // Annotation required in order to have package private fields serialized
@@ -195,6 +205,7 @@ class FileColumnProperties {
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("{");
+    sb.append("\"columnOrdinal\": ").append(columnOrdinal);
     if (minIntValue != null) {
       sb.append(", \"minIntValue\": ").append(minIntValue);
       sb.append(", \"maxIntValue\": ").append(maxIntValue);
@@ -220,7 +231,8 @@ class FileColumnProperties {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     FileColumnProperties that = (FileColumnProperties) o;
-    return distinctValues == that.distinctValues
+    return Objects.equals(columnOrdinal, that.columnOrdinal)
+        && distinctValues == that.distinctValues
         && nullCount == that.nullCount
         && maxLength == that.maxLength
         && Objects.equals(minStrValue, that.minStrValue)
@@ -237,6 +249,7 @@ class FileColumnProperties {
   @Override
   public int hashCode() {
     return Objects.hash(
+        columnOrdinal,
         minStrValue,
         maxStrValue,
         collation,
