@@ -586,6 +586,7 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(1, ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
     Assert.assertEquals("3", data.getOffsetToken());
+    Assert.assertEquals("1", data.getStartOffsetToken());
     Assert.assertTrue(data.getBufferSize() > 0);
     Assert.assertTrue(insertStartTimeInMs <= data.getMinMaxInsertTimeInMs().getFirst());
     Assert.assertTrue(insertEndTimeInMs >= data.getMinMaxInsertTimeInMs().getSecond());

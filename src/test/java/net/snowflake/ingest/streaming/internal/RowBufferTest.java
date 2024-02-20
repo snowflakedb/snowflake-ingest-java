@@ -495,6 +495,7 @@ public class RowBufferTest {
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(offsetToken, data.getOffsetToken());
+    Assert.assertEquals(offsetToken, data.getStartOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
 
     final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();

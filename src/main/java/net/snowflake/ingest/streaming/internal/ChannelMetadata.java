@@ -17,6 +17,7 @@ class ChannelMetadata {
   private final Long clientSequencer;
   private final Long rowSequencer;
   @Nullable private final String offsetToken;
+  @Nullable private final String startOffsetToken;
 
   static Builder builder() {
     return new Builder();
@@ -28,6 +29,7 @@ class ChannelMetadata {
     private Long clientSequencer;
     private Long rowSequencer;
     @Nullable private String offsetToken; // offset token could be null
+    @Nullable private String startOffsetToken; // start offset token could be null
 
     Builder setOwningChannelFromContext(ChannelFlushContext channelFlushContext) {
       this.channelName = channelFlushContext.getName();
@@ -45,6 +47,12 @@ class ChannelMetadata {
       return this;
     }
 
+
+    Builder setStartOffsetToken(String startOffsetToken) {
+      this.startOffsetToken = startOffsetToken;
+      return this;
+    }
+
     ChannelMetadata build() {
       return new ChannelMetadata(this);
     }
@@ -59,6 +67,7 @@ class ChannelMetadata {
     this.clientSequencer = builder.clientSequencer;
     this.rowSequencer = builder.rowSequencer;
     this.offsetToken = builder.offsetToken;
+    this.startOffsetToken = builder.startOffsetToken;
   }
 
   @JsonProperty("channel_name")
@@ -79,6 +88,18 @@ class ChannelMetadata {
   @Nullable
   @JsonProperty("offset_token")
   String getOffsetToken() {
+    return this.offsetToken;
+  }
+
+  @Nullable
+  @JsonProperty("start_offset_token")
+  String getStartOffsetToken() {
+    return this.startOffsetToken;
+  }
+
+  @Nullable
+  @JsonProperty("end_offset_token")
+  String getEndOffsetToken() {
     return this.offsetToken;
   }
 }

@@ -20,6 +20,7 @@ import net.snowflake.ingest.utils.SFException;
 class ChannelData<T> {
   private Long rowSequencer;
   private String offsetToken;
+  private String startOffsetToken;
   private T vectors;
   private float bufferSize;
   private int rowCount;
@@ -98,8 +99,16 @@ class ChannelData<T> {
     return this.offsetToken;
   }
 
+  String getStartOffsetToken() {
+    return this.startOffsetToken;
+  }
+
   void setOffsetToken(String offsetToken) {
     this.offsetToken = offsetToken;
+  }
+
+  void setStartOffsetToken(String startOffsetToken) {
+    this.startOffsetToken = startOffsetToken;
   }
 
   T getVectors() {
@@ -157,6 +166,8 @@ class ChannelData<T> {
         + rowSequencer
         + ", offsetToken='"
         + offsetToken
+        + ", startOffsetToken='"
+        + startOffsetToken
         + '\''
         + ", bufferSize="
         + bufferSize
