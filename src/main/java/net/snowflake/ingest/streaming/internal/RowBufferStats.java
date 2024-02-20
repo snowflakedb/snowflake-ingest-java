@@ -33,7 +33,7 @@ class RowBufferStats {
   RowBufferStats(String columnDisplayName, String collationDefinitionString, int ordinal) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
-    this.ordinal= ordinal;
+    this.ordinal = ordinal;
     reset();
   }
 
@@ -54,7 +54,8 @@ class RowBufferStats {
 
   /** Create new statistics for the same column, with all calculated values set to empty */
   RowBufferStats forkEmpty() {
-    return new RowBufferStats(this.getColumnDisplayName(), this.getCollationDefinitionString(), this.getOrdinal());
+    return new RowBufferStats(
+        this.getColumnDisplayName(), this.getCollationDefinitionString(), this.getOrdinal());
   }
 
   // TODO performance test this vs in place update
@@ -68,7 +69,8 @@ class RowBufferStats {
               left.getCollationDefinitionString(), right.getCollationDefinitionString()));
     }
     RowBufferStats combined =
-        new RowBufferStats(left.columnDisplayName, left.getCollationDefinitionString(), left.getOrdinal());
+        new RowBufferStats(
+            left.columnDisplayName, left.getCollationDefinitionString(), left.getOrdinal());
 
     if (left.currentMinIntValue != null) {
       combined.addIntValue(left.currentMinIntValue);

@@ -20,7 +20,6 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
-import org.checkerframework.common.value.qual.IntRange;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,7 +104,8 @@ public class RowBufferTest {
     colChar.setLength(11);
     colChar.setScale(0);
 
-    List<ColumnMetadata> columns = Arrays.asList(
+    List<ColumnMetadata> columns =
+        Arrays.asList(
             colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
     for (int i = 0; i < columns.size(); i++) {
       columns.get(i).setOrdinal(i + 1);

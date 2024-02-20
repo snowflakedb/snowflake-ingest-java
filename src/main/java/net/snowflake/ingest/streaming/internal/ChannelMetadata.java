@@ -47,7 +47,6 @@ class ChannelMetadata {
       return this;
     }
 
-
     Builder setStartOffsetToken(String startOffsetToken) {
       this.startOffsetToken = startOffsetToken;
       return this;
