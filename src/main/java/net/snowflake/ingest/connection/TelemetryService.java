@@ -30,7 +30,6 @@ public class TelemetryService {
     STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC("streaming_ingest_throughput_bytes_per_sec"),
     STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage"),
     STREAMING_INGEST_BATCH_OFFSET_MISMATCH("streaming_ingest_batch_offset_mismatch");
-    ;
 
     private final String name;
 
