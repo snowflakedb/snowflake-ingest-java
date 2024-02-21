@@ -76,7 +76,7 @@ public class StreamingIngestIT {
 
   private static final OffsetTokenVerificationFunction offsetTokenVerificationFunction =
       (prevBatchEndOffset, curBatchStartOffset, curBatchEndOffset, rowCount) -> {
-        boolean reportMismatch = false;
+        boolean hasMismatch = false;
 
         if (curBatchStartOffset != null) {
           try {
@@ -85,14 +85,14 @@ public class StreamingIngestIT {
 
             // We verify that the end_offset - start_offset + 1 = row_count
             if (curEnd - curStart + 1 != rowCount) {
-              reportMismatch = true;
+              hasMismatch = true;
             }
 
             // We verify that start_offset_of_current_batch = end_offset_of_previous_batch+1
             if (prevBatchEndOffset != null) {
               long prevEnd = Long.parseLong(prevBatchEndOffset);
               if (curStart != prevEnd + 1) {
-                reportMismatch = true;
+                hasMismatch = true;
               }
             }
           } catch (NumberFormatException ignored) {
@@ -100,7 +100,7 @@ public class StreamingIngestIT {
           }
         }
 
-        return reportMismatch;
+        return hasMismatch;
       };
 
   @Before

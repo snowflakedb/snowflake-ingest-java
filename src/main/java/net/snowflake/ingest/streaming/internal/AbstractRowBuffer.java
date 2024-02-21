@@ -695,15 +695,23 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   /**
-   * We verify some offset expect behavior and report to SF if there is a mismatch. Note that there
-   * are false positives because the input could give us a batch with offset gaps. For example in
-   * Kafka Connector, we could have gaps if some of the offsets are filtered out by SMT.
+   * We verify some offset expect behaviors based on the provided verification logic and report to
+   * SF if there is a mismatch.
    */
   private void checkOffsetMismatch(
       String prevEndOffset, String curStartOffset, String curEndOffset, int rowCount) {
     if (telemetryService != null
         && !offsetTokenVerificationFunction.verify(
             prevEndOffset, curStartOffset, curEndOffset, rowCount)) {
+      logger.logError(
+          "The channel {} might have an offset token mismatch based on the provided offset token"
+              + " verification logic, preEndOffset={}, curStartOffset={}, curEndOffset={},"
+              + " rowCount={}.",
+          channelFullyQualifiedName,
+          prevEndOffset,
+          curStartOffset,
+          curEndOffset,
+          rowCount);
       telemetryService.reportBatchOffsetMismatch(
           channelFullyQualifiedName, prevEndOffset, curStartOffset, curEndOffset, rowCount);
     }
