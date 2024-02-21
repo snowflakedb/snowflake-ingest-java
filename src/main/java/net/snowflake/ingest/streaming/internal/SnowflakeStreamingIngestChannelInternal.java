@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
@@ -94,7 +95,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         encryptionKeyId,
         onErrorOption,
         defaultTimezone,
-        client.getParameterProvider().getBlobFormatVersion());
+        client.getParameterProvider().getBlobFormatVersion(),
+        null);
   }
 
   /** Default constructor */
@@ -111,7 +113,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      Constants.BdecVersion bdecVersion) {
+      Constants.BdecVersion bdecVersion,
+      OffsetTokenVerificationFunction offsetTokenVerificationFunction) {
     this.isClosed = false;
     this.owningClient = client;
     this.channelFlushContext =
@@ -126,7 +129,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
-            new ClientBufferParameters(owningClient));
+            new ClientBufferParameters(owningClient),
+            offsetTokenVerificationFunction,
+            owningClient == null ? null : owningClient.getTelemetryService());
     this.tableColumns = new HashMap<>();
     logger.logInfo(
         "Channel={} created for table={}",

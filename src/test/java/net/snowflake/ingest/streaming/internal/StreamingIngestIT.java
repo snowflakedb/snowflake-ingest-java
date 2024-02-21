@@ -32,10 +32,7 @@ import java.util.function.IntConsumer;
 import java.util.stream.IntStream;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.streaming.InsertValidationResponse;
-import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.streaming.*;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
@@ -76,6 +73,35 @@ public class StreamingIngestIT {
   }
 
   @Parameter public String compressionAlgorithm;
+
+  private static final OffsetTokenVerificationFunction offsetTokenVerificationFunction =
+      (prevBatchEndOffset, curBatchStartOffset, curBatchEndOffset, rowCount) -> {
+        boolean reportMismatch = false;
+
+        if (curBatchStartOffset != null) {
+          try {
+            long curStart = Long.parseLong(curBatchStartOffset);
+            long curEnd = Long.parseLong(curBatchEndOffset);
+
+            // We verify that the end_offset - start_offset + 1 = row_count
+            if (curEnd - curStart + 1 != rowCount) {
+              reportMismatch = true;
+            }
+
+            // We verify that start_offset_of_current_batch = end_offset_of_previous_batch+1
+            if (prevBatchEndOffset != null) {
+              long prevEnd = Long.parseLong(prevBatchEndOffset);
+              if (curStart != prevEnd + 1) {
+                reportMismatch = true;
+              }
+            }
+          } catch (NumberFormatException ignored) {
+            // Do nothing since we can't compare the offset
+          }
+        }
+
+        return reportMismatch;
+      };
 
   @Before
   public void beforeAll() throws Exception {
@@ -977,6 +1003,7 @@ public class StreamingIngestIT {
             .setSchemaName(TEST_SCHEMA)
             .setTableName(insertRowsWithValidStartOffsetToken)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .setOffsetTokenVerificationFunction(offsetTokenVerificationFunction)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -1033,6 +1060,7 @@ public class StreamingIngestIT {
             .setSchemaName(TEST_SCHEMA)
             .setTableName(insertRowsWithInvalidStartOffsetToken)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .setOffsetTokenVerificationFunction(offsetTokenVerificationFunction)
             .build();
 
     // Open a streaming ingest channel from the given client

@@ -17,7 +17,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -173,6 +175,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         rowIndex++;
       }
       checkBatchSizeRecommendedMaximum(rowsSizeInBytes);
+      checkOffsetMismatch(
+          rowBuffer.channelState.getEndOffsetToken(), startOffsetToken, endOffsetToken, rowIndex);
       rowBuffer.channelState.updateOffsetToken(startOffsetToken, endOffsetToken, prevRowCount);
       rowBuffer.bufferSize += rowsSizeInBytes;
       rowBuffer.rowSizeMetric.accept(rowsSizeInBytes);
@@ -213,6 +217,11 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               rowBuffer.statsMap.put(
                   colName,
                   RowBufferStats.getCombinedStats(stats, rowBuffer.tempStatsMap.get(colName))));
+      checkOffsetMismatch(
+          rowBuffer.channelState.getEndOffsetToken(),
+          startOffsetToken,
+          endOffsetToken,
+          tempRowCount);
       rowBuffer.channelState.updateOffsetToken(
           startOffsetToken, endOffsetToken, rowBuffer.bufferedRowCount);
       rowBuffer.bufferedRowCount += tempRowCount;
@@ -267,6 +276,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 rowBuffer.statsMap.put(
                     colName,
                     RowBufferStats.getCombinedStats(stats, rowBuffer.tempStatsMap.get(colName))));
+        checkOffsetMismatch(
+            rowBuffer.channelState.getEndOffsetToken(), startOffsetToken, endOffsetToken, rowIndex);
         rowBuffer.channelState.updateOffsetToken(
             startOffsetToken, endOffsetToken, rowBuffer.bufferedRowCount);
         rowBuffer.bufferedRowCount += tempRowCount;
@@ -312,13 +323,21 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Buffer parameters that are set at the owning client level
   final ClientBufferParameters clientBufferParameters;
 
+  // Function used to verify offset token logic
+  final OffsetTokenVerificationFunction offsetTokenVerificationFunction;
+
+  // Telemetry service use to report telemetry to SF
+  final TelemetryService telemetryService;
+
   AbstractRowBuffer(
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      ClientBufferParameters clientBufferParameters) {
+      ClientBufferParameters clientBufferParameters,
+      OffsetTokenVerificationFunction offsetTokenVerificationFunction,
+      TelemetryService telemetryService) {
     this.onErrorOption = onErrorOption;
     this.defaultTimezone = defaultTimezone;
     this.rowSizeMetric = rowSizeMetric;
@@ -329,6 +348,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.bufferedRowCount = 0;
     this.bufferSize = 0F;
     this.clientBufferParameters = clientBufferParameters;
+    this.offsetTokenVerificationFunction = offsetTokenVerificationFunction;
+    this.telemetryService = telemetryService;
 
     // Initialize empty stats
     this.statsMap = new HashMap<>();
@@ -630,7 +651,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String fullyQualifiedChannelName,
       Consumer<Float> rowSizeMetric,
       ChannelRuntimeState channelRuntimeState,
-      ClientBufferParameters clientBufferParameters) {
+      ClientBufferParameters clientBufferParameters,
+      OffsetTokenVerificationFunction offsetTokenVerificationFunction,
+      TelemetryService telemetryService) {
     switch (bdecVersion) {
       case THREE:
         //noinspection unchecked
@@ -641,7 +664,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 fullyQualifiedChannelName,
                 rowSizeMetric,
                 channelRuntimeState,
-                clientBufferParameters);
+                clientBufferParameters,
+                offsetTokenVerificationFunction,
+                telemetryService);
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
@@ -666,6 +691,21 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               + " call insertRows for each smaller batch separately.",
           batchSizeInBytes,
           INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES);
+    }
+  }
+
+  /**
+   * We verify some offset expect behavior and report to SF if there is a mismatch. Note that there
+   * are false positives because the input could give us a batch with offset gaps. For example in
+   * Kafka Connector, we could have gaps if some of the offsets are filtered out by SMT.
+   */
+  private void checkOffsetMismatch(
+      String prevEndOffset, String curStartOffset, String curEndOffset, int rowCount) {
+    if (telemetryService != null
+        && !offsetTokenVerificationFunction.verify(
+            prevEndOffset, curStartOffset, curEndOffset, rowCount)) {
+      telemetryService.reportBatchOffsetMismatch(
+          channelFullyQualifiedName, prevEndOffset, curStartOffset, curEndOffset, rowCount);
     }
   }
 
