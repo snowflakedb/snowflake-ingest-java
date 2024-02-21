@@ -9,6 +9,7 @@ import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.execu
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
@@ -209,7 +210,11 @@ class StreamingIngestStage {
       retryCount++;
       StreamingIngestUtils.sleepForRetry(retryCount);
       logger.logInfo(
-          "Retrying upload, attempt {}/{} {}", retryCount, maxUploadRetries, e.getMessage());
+          "Retrying upload, attempt {}/{} msg: {}, stackTrace:{}",
+          retryCount,
+          maxUploadRetries,
+          e.getMessage(),
+          getStackTrace(e));
       this.putRemote(fullFilePath, data, retryCount);
     }
   }
