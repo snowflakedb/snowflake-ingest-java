@@ -6,7 +6,7 @@ package net.snowflake.ingest.streaming;
 
 /**
  * Interface to create a user defined offset token verification function that is used to verify
- * offset behaviors, if the verification failed, we will log an error and report it to SF
+ * offset behaviors, if the verification failed, we will log a warning and report it to SF
  *
  * <p>Below is an example that verifies all offset tokens need to monotonically increment numbers:
  *
@@ -49,8 +49,8 @@ public interface OffsetTokenVerificationFunction {
    * @param curBatchStartOffset start offset token of the current batch
    * @param curBatchEndOffset end offset token of the current batch
    * @param rowCount number of rows in the current batch
-   * @return a boolean indicates whether the verification passed or not, if not, we will log an
-   *     error and report it to SF
+   * @return a boolean indicates whether the verification passed or not, if not, we will log a
+   *     warning and report it to SF
    */
   boolean verify(
       String prevBatchEndOffset,
