@@ -701,6 +701,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   private void checkOffsetMismatch(
       String prevEndOffset, String curStartOffset, String curEndOffset, int rowCount) {
     if (telemetryService != null
+        && offsetTokenVerificationFunction != null
         && !offsetTokenVerificationFunction.verify(
             prevEndOffset, curStartOffset, curEndOffset, rowCount)) {
       logger.logError(
