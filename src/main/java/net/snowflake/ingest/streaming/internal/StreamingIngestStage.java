@@ -4,12 +4,12 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
+import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
@@ -34,7 +34,6 @@ import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpC
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
-import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageException;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -193,6 +192,13 @@ class StreamingIngestStage {
               .setDestFileName(fullFilePath)
               .build());
     } catch (Exception e) {
+      if (retryCount == 0) {
+        // for the first exception, we always perform a metadata refresh.
+        logger.logInfo(
+            "Stage metadata need to be refreshed due to upload error: {} on first retry attempt",
+            e.getMessage());
+        this.refreshSnowflakeMetadata();
+      }
       if (retryCount >= maxUploadRetries) {
         logger.logError(
             "Failed to upload to stage, retry attempts exhausted ({}), client={}, message={}",
@@ -201,37 +207,16 @@ class StreamingIngestStage {
             e.getMessage());
         throw new SFException(e, ErrorCode.IO_ERROR);
       }
-
-      if (isCredentialsExpiredException(e)) {
-        logger.logInfo(
-            "Stage metadata need to be refreshed due to upload error: {}", e.getMessage());
-        this.refreshSnowflakeMetadata();
-      }
       retryCount++;
       StreamingIngestUtils.sleepForRetry(retryCount);
       logger.logInfo(
-          "Retrying upload, attempt {}/{} {}", retryCount, maxUploadRetries, e.getMessage());
+          "Retrying upload, attempt {}/{} msg: {}, stackTrace:{}",
+          retryCount,
+          maxUploadRetries,
+          e.getMessage(),
+          getStackTrace(e));
       this.putRemote(fullFilePath, data, retryCount);
     }
-  }
-
-  /**
-   * @return Whether the passed exception means that credentials expired and the stage metadata
-   *     should be refreshed from Snowflake. The reasons for refresh is SnowflakeSQLException with
-   *     error code 240001 (thrown by the JDBC driver) or GCP StorageException with HTTP status 401.
-   */
-  static boolean isCredentialsExpiredException(Exception e) {
-    if (e == null || e.getClass() == null) {
-      return false;
-    }
-
-    if (e instanceof SnowflakeSQLException) {
-      return ((SnowflakeSQLException) e).getErrorCode() == CLOUD_STORAGE_CREDENTIALS_EXPIRED;
-    } else if (e instanceof StorageException) {
-      return ((StorageException) e).getCode() == 401;
-    }
-
-    return false;
   }
 
   SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata()

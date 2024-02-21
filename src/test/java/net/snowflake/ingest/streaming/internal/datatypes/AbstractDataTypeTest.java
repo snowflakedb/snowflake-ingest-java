@@ -319,6 +319,21 @@ public abstract class AbstractDataTypeTest {
       String expectedValue,
       String expectedType)
       throws Exception {
+    assertVariant(
+        dataType,
+        streamingIngestWriteValue,
+        expectedValue,
+        expectedType,
+        false /*Not max variant or max array*/);
+  }
+
+  <STREAMING_INGEST_WRITE> void assertVariant(
+      String dataType,
+      STREAMING_INGEST_WRITE streamingIngestWriteValue,
+      String expectedValue,
+      String expectedType,
+      boolean isAtMaxValueForDataType)
+      throws Exception {
 
     String tableName = createTable(dataType);
     String offsetToken = UUID.randomUUID().toString();
@@ -328,24 +343,36 @@ public abstract class AbstractDataTypeTest {
     channel.insertRow(createStreamingIngestRow(streamingIngestWriteValue), offsetToken);
     TestUtils.waitForOffset(channel, offsetToken);
 
-    String query =
-        String.format(
-            "select %s, typeof(%s) from %s", VALUE_COLUMN_NAME, VALUE_COLUMN_NAME, tableName);
+    String query;
+    // if added row value is using max possible value, we will not verify its returned type since
+    // JDBC doesnt parse it properly because of Jackson Databind version 2.15
+    // we will only verify type of it.
+    // Check this: https://github.com/snowflakedb/snowflake-sdks-drivers-issues-teamwork/issues/819
+    // TODO:: SNOW-1051731
+    if (isAtMaxValueForDataType) {
+      query = String.format("select typeof(%s) from %s", VALUE_COLUMN_NAME, tableName);
+    } else {
+      query =
+          String.format(
+              "select typeof(%s), %s  from %s", VALUE_COLUMN_NAME, VALUE_COLUMN_NAME, tableName);
+    }
     ResultSet resultSet = conn.createStatement().executeQuery(query);
     int counter = 0;
     String value = null;
     String typeof = null;
     while (resultSet.next()) {
       counter++;
-      value = resultSet.getString(1);
-      typeof = resultSet.getString(2);
+      typeof = resultSet.getString(1);
+      if (!isAtMaxValueForDataType) value = resultSet.getString(2);
     }
 
     Assert.assertEquals(1, counter);
-    if (expectedValue == null) {
-      Assert.assertNull(value);
-    } else {
-      Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+    if (!isAtMaxValueForDataType) {
+      if (expectedValue == null) {
+        Assert.assertNull(value);
+      } else {
+        Assert.assertEquals(objectMapper.readTree(expectedValue), objectMapper.readTree(value));
+      }
     }
     Assert.assertEquals(expectedType, typeof);
     migrateTable(tableName); // migration should always succeed

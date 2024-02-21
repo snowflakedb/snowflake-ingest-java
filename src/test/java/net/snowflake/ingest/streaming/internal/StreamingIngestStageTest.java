@@ -1,7 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
-import static net.snowflake.ingest.streaming.internal.StreamingIngestStage.isCredentialsExpiredException;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_PASSWORD;
 import static net.snowflake.ingest.utils.HttpUtil.HTTP_PROXY_USER;
 import static net.snowflake.ingest.utils.HttpUtil.NON_PROXY_HOSTS;
@@ -40,7 +39,6 @@ import net.snowflake.client.jdbc.internal.apache.http.entity.BasicHttpEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -486,20 +484,66 @@ public class StreamingIngestStageTest {
   }
 
   @Test
-  public void testIsCredentialExpiredException() {
-    Assert.assertTrue(
-        isCredentialsExpiredException(
-            new SnowflakeSQLException("Error", CLOUD_STORAGE_CREDENTIALS_EXPIRED)));
-    Assert.assertTrue(isCredentialsExpiredException(new StorageException(401, "unauthorized")));
+  public void testRefreshMetadataOnFirstPutException() throws Exception {
+    int maxUploadRetryCount = 2;
+    JsonNode exampleJson = mapper.readTree(exampleRemoteMeta);
+    SnowflakeFileTransferMetadataV1 originalMetadata =
+        (SnowflakeFileTransferMetadataV1)
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(exampleJson).get(0);
 
-    Assert.assertFalse(isCredentialsExpiredException(new StorageException(400, "bad request")));
-    Assert.assertFalse(isCredentialsExpiredException(null));
-    Assert.assertFalse(isCredentialsExpiredException(new RuntimeException()));
-    Assert.assertFalse(
-        isCredentialsExpiredException(
-            new RuntimeException(String.valueOf(CLOUD_STORAGE_CREDENTIALS_EXPIRED))));
-    Assert.assertFalse(
-        isCredentialsExpiredException(
-            new SnowflakeSQLException("Error", CLOUD_STORAGE_CREDENTIALS_EXPIRED + 1)));
+    byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
+
+    StreamingIngestStage stage =
+        new StreamingIngestStage(
+            true,
+            "role",
+            null,
+            null,
+            "clientName",
+            new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+                originalMetadata, Optional.of(System.currentTimeMillis())),
+            maxUploadRetryCount);
+    PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
+    SnowflakeSQLException e =
+        new SnowflakeSQLException(
+            "Fake bad creds", CLOUD_STORAGE_CREDENTIALS_EXPIRED, "S3 credentials have expired");
+    PowerMockito.doAnswer(
+            new org.mockito.stubbing.Answer() {
+              private boolean firstInvocation = true;
+
+              public Object answer(org.mockito.invocation.InvocationOnMock invocation)
+                  throws Throwable {
+                if (firstInvocation) {
+                  firstInvocation = false;
+                  throw e; // Throw the exception only for the first invocation
+                }
+                return null; // Do nothing on subsequent invocations
+              }
+            })
+        .when(SnowflakeFileTransferAgent.class);
+    SnowflakeFileTransferAgent.uploadWithoutConnection(Mockito.any());
+    final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
+        ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
+
+    stage.putRemote("test/path", dataBytes);
+
+    PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class, times(maxUploadRetryCount));
+    SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());
+    SnowflakeFileTransferConfig capturedConfig = captor.getValue();
+
+    Assert.assertFalse(capturedConfig.getRequireCompress());
+    Assert.assertEquals(OCSPMode.FAIL_OPEN, capturedConfig.getOcspMode());
+
+    SnowflakeFileTransferMetadataV1 capturedMetadata =
+        (SnowflakeFileTransferMetadataV1) capturedConfig.getSnowflakeFileTransferMetadata();
+    Assert.assertEquals("test/path", capturedMetadata.getPresignedUrlFileName());
+    Assert.assertEquals(originalMetadata.getCommandType(), capturedMetadata.getCommandType());
+    Assert.assertEquals(originalMetadata.getPresignedUrl(), capturedMetadata.getPresignedUrl());
+    Assert.assertEquals(
+        originalMetadata.getStageInfo().getStageType(),
+        capturedMetadata.getStageInfo().getStageType());
+
+    InputStream capturedInput = capturedConfig.getUploadStream();
+    Assert.assertEquals("Hello Upload", IOUtils.toString(capturedInput));
   }
 }
