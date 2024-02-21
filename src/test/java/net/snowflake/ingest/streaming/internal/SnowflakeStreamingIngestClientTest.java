@@ -3,6 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
@@ -19,6 +20,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.charset.Charset;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.time.ZoneOffset;
@@ -43,6 +45,7 @@ import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpC
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
@@ -63,6 +66,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 public class SnowflakeStreamingIngestClientTest {
@@ -366,6 +370,51 @@ public class SnowflakeStreamingIngestClientTest {
     Mockito.verify(requestBuilder)
         .generateStreamingIngestPostRequest(
             objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
+  }
+
+  @Test
+  public void testDropChannel() throws Exception {
+    DropChannelResponse response = new DropChannelResponse();
+    response.setStatusCode(RESPONSE_SUCCESS);
+    response.setMessage("dropped");
+    String responseString = objectMapper.writeValueAsString(response);
+
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent())
+        .thenReturn(IOUtils.toInputStream(responseString, Charset.defaultCharset()));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        Mockito.spy(
+            new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair()));
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
+
+    DropChannelRequest request =
+        DropChannelRequest.builder("channel")
+            .setDBName("db")
+            .setTableName("table")
+            .setSchemaName("schema")
+            .build();
+    client.dropChannel(request);
+    Mockito.verify(requestBuilder)
+        .generateStreamingIngestPostRequest(
+            ArgumentMatchers.contains("channel"),
+            ArgumentMatchers.refEq(DROP_CHANNEL_ENDPOINT),
+            ArgumentMatchers.refEq("drop channel"));
   }
 
   @Test

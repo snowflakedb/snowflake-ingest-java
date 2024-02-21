@@ -26,6 +26,18 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
   SnowflakeStreamingIngestChannel openChannel(OpenChannelRequest request);
 
   /**
+   * Drop the specified channel on the server using a {@link DropChannelRequest}
+   *
+   * <p>Note that this call will blindly drop the latest version of the channel and any pending data
+   * will be lost. Also see {@link SnowflakeStreamingIngestChannel#close(boolean)} to drop channels
+   * on close. That approach will drop the local version of the channel and if the channel has been
+   * concurrently reopened by another client, that version of the channel won't be affected.
+   *
+   * @param request the drop channel request
+   */
+  void dropChannel(DropChannelRequest request);
+
+  /**
    * Get the client name
    *
    * @return the client name

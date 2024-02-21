@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -267,6 +268,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   @Override
   public CompletableFuture<Void> close() {
+    return this.close(false);
+  }
+
+  @Override
+  public CompletableFuture<Void> close(boolean drop) {
     checkValidation();
 
     if (isClosed()) {
@@ -291,6 +297,15 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                     uncommittedChannels.stream()
                         .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
                         .collect(Collectors.toList()));
+              }
+              if (drop) {
+                DropChannelRequest.DropChannelRequestBuilder builder =
+                    DropChannelRequest.builder(this.getChannelContext().getName())
+                        .setDBName(this.getDBName())
+                        .setTableName(this.getTableName())
+                        .setSchemaName(this.getSchemaName());
+                this.owningClient.dropChannel(
+                    new DropChannelVersionRequest(builder, this.getChannelSequencer()));
               }
             });
   }
