@@ -797,12 +797,12 @@ public class FlushServiceTest {
     Assert.assertEquals(2, metadataResult.getChannels().size()); // Two channels on the table
 
     Assert.assertEquals("channel1", channelMetadataResult.get(0).getChannelName());
-    Assert.assertEquals("offset1", channelMetadataResult.get(0).getOffsetToken());
+    Assert.assertEquals("offset1", channelMetadataResult.get(0).getEndOffsetToken());
     Assert.assertEquals(0L, (long) channelMetadataResult.get(0).getRowSequencer());
     Assert.assertEquals(0L, (long) channelMetadataResult.get(0).getClientSequencer());
 
     Assert.assertEquals("channel2", channelMetadataResult.get(1).getChannelName());
-    Assert.assertEquals("offset2", channelMetadataResult.get(1).getOffsetToken());
+    Assert.assertEquals("offset2", channelMetadataResult.get(1).getEndOffsetToken());
     Assert.assertEquals(10L, (long) channelMetadataResult.get(1).getRowSequencer());
     Assert.assertEquals(10L, (long) channelMetadataResult.get(1).getClientSequencer());
 

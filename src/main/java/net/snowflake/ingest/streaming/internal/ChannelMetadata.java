@@ -16,7 +16,7 @@ class ChannelMetadata {
   private final String channelName;
   private final Long clientSequencer;
   private final Long rowSequencer;
-  @Nullable private final String offsetToken;
+  @Nullable private final String endOffsetToken;
   @Nullable private final String startOffsetToken;
 
   static Builder builder() {
@@ -65,7 +65,7 @@ class ChannelMetadata {
     this.channelName = builder.channelName;
     this.clientSequencer = builder.clientSequencer;
     this.rowSequencer = builder.rowSequencer;
-    this.offsetToken = builder.offsetToken;
+    this.endOffsetToken = builder.offsetToken;
     this.startOffsetToken = builder.startOffsetToken;
   }
 
@@ -87,7 +87,7 @@ class ChannelMetadata {
   @Nullable
   @JsonProperty("offset_token")
   String getOffsetToken() {
-    return this.offsetToken;
+    return this.endOffsetToken;
   }
 
   @Nullable
@@ -99,6 +99,6 @@ class ChannelMetadata {
   @Nullable
   @JsonProperty("end_offset_token")
   String getEndOffsetToken() {
-    return this.offsetToken;
+    return this.endOffsetToken;
   }
 }
