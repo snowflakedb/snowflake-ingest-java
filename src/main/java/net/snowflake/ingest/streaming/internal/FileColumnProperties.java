@@ -231,7 +231,7 @@ class FileColumnProperties {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     FileColumnProperties that = (FileColumnProperties) o;
-    return Objects.equals(columnOrdinal,that.columnOrdinal)
+    return Objects.equals(columnOrdinal, that.columnOrdinal)
         && distinctValues == that.distinctValues
         && nullCount == that.nullCount
         && maxLength == that.maxLength

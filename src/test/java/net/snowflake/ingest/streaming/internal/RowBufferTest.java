@@ -20,7 +20,6 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
-import org.checkerframework.common.value.qual.IntRange;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,7 +104,8 @@ public class RowBufferTest {
     colChar.setLength(11);
     colChar.setScale(0);
 
-    List<ColumnMetadata> columns = Arrays.asList(
+    List<ColumnMetadata> columns =
+        Arrays.asList(
             colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
     for (int i = 0; i < columns.size(); i++) {
       columns.get(i).setOrdinal(i + 1);
@@ -466,7 +466,8 @@ public class RowBufferTest {
   }
 
   private void testFlushHelper(AbstractRowBuffer<?> rowBuffer) {
-    String offsetToken = "1";
+    String startOffsetToken = "1";
+    String endOffsetToken = "2";
     Map<String, Object> row1 = new HashMap<>();
     row1.put("colTinyInt", (byte) 1);
     row1.put("\"colTinyInt\"", (byte) 1);
@@ -486,7 +487,7 @@ public class RowBufferTest {
     row2.put("colChar", "3");
 
     InsertValidationResponse response =
-        rowBuffer.insertRows(Arrays.asList(row1, row2), offsetToken, offsetToken);
+        rowBuffer.insertRows(Arrays.asList(row1, row2), startOffsetToken, endOffsetToken);
     Assert.assertFalse(response.hasErrors());
     float bufferSize = rowBuffer.getSize();
 
@@ -494,8 +495,8 @@ public class RowBufferTest {
     ChannelData<?> data = rowBuffer.flush(filename);
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
-    Assert.assertEquals(offsetToken, data.getOffsetToken());
-    Assert.assertEquals(offsetToken, data.getStartOffsetToken());
+    Assert.assertEquals(startOffsetToken, data.getStartOffsetToken());
+    Assert.assertEquals(endOffsetToken, data.getEndOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
 
     final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
