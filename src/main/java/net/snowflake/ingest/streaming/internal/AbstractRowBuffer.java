@@ -704,7 +704,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         && offsetTokenVerificationFunction != null
         && !offsetTokenVerificationFunction.verify(
             prevEndOffset, curStartOffset, curEndOffset, rowCount)) {
-      logger.logError(
+      logger.logWarn(
           "The channel {} might have an offset token mismatch based on the provided offset token"
               + " verification logic, preEndOffset={}, curStartOffset={}, curEndOffset={},"
               + " rowCount={}.",

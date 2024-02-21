@@ -10,6 +10,7 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.google.common.util.concurrent.RateLimiter;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
@@ -56,6 +57,7 @@ public class TelemetryService {
   private static final String PERCENTILE99TH = "99thPercentile";
   private final TelemetryClient telemetry;
   private final String clientName;
+  private final RateLimiter rateLimiter;
 
   /**
    * Default constructor
@@ -67,6 +69,8 @@ public class TelemetryService {
   TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
     this.clientName = clientName;
     this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
+    // At most once every seconds
+    this.rateLimiter = RateLimiter.create(1.0);
   }
 
   /** Flush the telemetry buffer and close the telemetry service */
@@ -129,13 +133,18 @@ public class TelemetryService {
       String startOffset,
       String endOffset,
       long rowCount) {
-    ObjectNode msg = MAPPER.createObjectNode();
-    msg.put("channel_name", channelName);
-    msg.put("prev_batch_end_offset", prevBatchEndOffset);
-    msg.put("start_offset", startOffset);
-    msg.put("end_offset", endOffset);
-    msg.put("row_count", rowCount);
-    send(TelemetryType.STREAMING_INGEST_BATCH_OFFSET_MISMATCH, msg);
+    if (rateLimiter.tryAcquire()) {
+      ObjectNode msg = MAPPER.createObjectNode();
+      msg.put("channel_name", channelName);
+      msg.put("prev_batch_end_offset", prevBatchEndOffset);
+      msg.put("start_offset", startOffset);
+      msg.put("end_offset", endOffset);
+      msg.put("row_count", rowCount);
+      send(TelemetryType.STREAMING_INGEST_BATCH_OFFSET_MISMATCH, msg);
+    } else {
+      logger.logDebug(
+          "Rate limit exceeded on reportBatchOffsetMismatch, skipping report it to SF.");
+    }
   }
 
   /** Send log to Snowflake asynchronously through JDBC client telemetry */
