@@ -28,9 +28,15 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
   /**
    * Drop the specified channel on the server using a {@link DropChannelRequest}
    *
-   * <p>Note that this call will blindly drop the latest version of the channel and any pending data
-   * will be lost. Also see {@link SnowflakeStreamingIngestChannel#close(boolean)} to drop channels
-   * on close. That approach will drop the local version of the channel and if the channel has been
+   * <p>Note that this call will <em>blindly</em> drop the latest version of the channel and any
+   * pending data will be lost. It will also delete <a
+   * href=https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview#offset-tokens>Offset
+   * Token</a> and other state from Snowflake servers. So only use it if you are completely done
+   * ingesting data for this channel. If you open a channel with the same name in the future, it
+   * will behave like a new channel.
+   *
+   * <p>Also see {@link SnowflakeStreamingIngestChannel#close(boolean)} to drop channels on close.
+   * That approach will drop the local version of the channel and if the channel has been
    * concurrently reopened by another client, that version of the channel won't be affected.
    *
    * @param request the drop channel request

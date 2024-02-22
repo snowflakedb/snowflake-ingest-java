@@ -82,6 +82,12 @@ public interface SnowflakeStreamingIngestChannel {
   /**
    * Close the channel, this function will make sure all the data in this channel is committed
    *
+   * <p>Note that this call with drop=true will delete <a
+   * href=https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview#offset-tokens>Offset
+   * Token</a> and other state from Snowflake servers unless the channel has already been opened in
+   * another client. So only use it if you are completely done ingesting data for this channel. If
+   * you open a channel with the same name in the future, it will behave like a new channel.
+   *
    * @param drop if true, the channel will be dropped after all data is successfully committed.
    * @return a completable future which will be completed when the channel is closed
    */
