@@ -84,7 +84,7 @@ public interface SnowflakeStreamingIngestChannel {
    *
    * <p>Note that this call with drop=true will delete <a
    * href=https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview#offset-tokens>Offset
-   * Token</a> information from Snowflake servers unless the channel has already been opened in
+   * Token</a> and other state from Snowflake servers unless the channel has already been opened in
    * another client. So only use it if you are completely done ingesting data for this channel. If
    * you open a channel with the same name in the future, it will behave like a new channel.
    *

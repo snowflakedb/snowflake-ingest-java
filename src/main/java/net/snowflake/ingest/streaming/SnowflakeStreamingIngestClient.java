@@ -31,7 +31,7 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
    * <p>Note that this call will <em>blindly</em> drop the latest version of the channel and any
    * pending data will be lost. It will also delete <a
    * href=https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview#offset-tokens>Offset
-   * Token</a> information from Snowflake servers. So only use it if you are completely done
+   * Token</a> and other state from Snowflake servers. So only use it if you are completely done
    * ingesting data for this channel. If you open a channel with the same name in the future, it
    * will behave like a new channel.
    *
