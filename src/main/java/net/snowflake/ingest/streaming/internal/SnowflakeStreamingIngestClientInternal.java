@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_DROP_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
@@ -12,6 +13,7 @@ import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.sleep
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.COMMIT_RETRY_INTERVAL_IN_MS;
+import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
 import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
@@ -63,6 +65,7 @@ import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
+import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
@@ -365,6 +368,68 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       return channel;
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
+    }
+  }
+
+  @Override
+  public void dropChannel(DropChannelRequest request) {
+    if (isClosed) {
+      throw new SFException(ErrorCode.CLOSED_CLIENT);
+    }
+
+    logger.logDebug(
+        "Drop channel request start, channel={}, table={}, client={}",
+        request.getChannelName(),
+        request.getFullyQualifiedTableName(),
+        getName());
+
+    try {
+      Map<Object, Object> payload = new HashMap<>();
+      payload.put(
+          "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
+      payload.put("channel", request.getChannelName());
+      payload.put("table", request.getTableName());
+      payload.put("database", request.getDBName());
+      payload.put("schema", request.getSchemaName());
+      payload.put("role", this.role);
+      Long clientSequencer = null;
+      if (request instanceof DropChannelVersionRequest) {
+        clientSequencer = ((DropChannelVersionRequest) request).getClientSequencer();
+        if (clientSequencer != null) {
+          payload.put("client_sequencer", clientSequencer);
+        }
+      }
+
+      DropChannelResponse response =
+          executeWithRetries(
+              DropChannelResponse.class,
+              DROP_CHANNEL_ENDPOINT,
+              payload,
+              "drop channel",
+              STREAMING_DROP_CHANNEL,
+              httpClient,
+              requestBuilder);
+
+      // Check for Snowflake specific response code
+      if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        logger.logDebug(
+            "Drop channel request failed, channel={}, table={}, client={}, message={}",
+            request.getChannelName(),
+            request.getFullyQualifiedTableName(),
+            getName(),
+            response.getMessage());
+        throw new SFException(ErrorCode.DROP_CHANNEL_FAILURE, response.getMessage());
+      }
+
+      logger.logInfo(
+          "Drop channel request succeeded, channel={}, table={}, clientSequencer={} client={}",
+          request.getChannelName(),
+          request.getFullyQualifiedTableName(),
+          clientSequencer,
+          getName());
+
+    } catch (IOException | IngestResponseException e) {
+      throw new SFException(e, ErrorCode.DROP_CHANNEL_FAILURE, e.getMessage());
     }
   }
 

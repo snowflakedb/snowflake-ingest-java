@@ -62,6 +62,7 @@ public class Constants {
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
+  public static final String DROP_CHANNEL_ENDPOINT = "/v1/streaming/channels/drop/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
   public enum WriteMode {

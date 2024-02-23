@@ -7,6 +7,7 @@ import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
+import static org.mockito.ArgumentMatchers.argThat;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -814,6 +815,76 @@ public class SnowflakeStreamingIngestChannelTest {
 
     // Calling close again on closed channel shouldn't fail
     channel.close().get();
+    Mockito.verify(client, Mockito.times(0)).dropChannel(Mockito.any());
+  }
+
+  @Test
+  public void testDropOnClose() throws Exception {
+    SnowflakeStreamingIngestClientInternal<?> client =
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            1L,
+            0L,
+            client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("Success");
+    response.setChannels(new ArrayList<>());
+
+    Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
+
+    Assert.assertFalse(channel.isClosed());
+    Mockito.doNothing().when(client).dropChannel(Mockito.any());
+    channel.close(true).get();
+    Assert.assertTrue(channel.isClosed());
+    Mockito.verify(client, Mockito.times(1))
+        .dropChannel(
+            argThat(
+                (DropChannelVersionRequest req) ->
+                    req.getChannelName().equals(channel.getName())
+                        && req.getClientSequencer().equals(channel.getChannelSequencer())));
+  }
+
+  @Test
+  public void testDropOnCloseInvalidChannel() throws Exception {
+    SnowflakeStreamingIngestClientInternal<?> client =
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+    SnowflakeStreamingIngestChannelInternal channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            "channel",
+            "db",
+            "schema",
+            "table",
+            "0",
+            1L,
+            0L,
+            client,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC);
+    ChannelsStatusResponse response = new ChannelsStatusResponse();
+    response.setStatusCode(0L);
+    response.setMessage("Success");
+    response.setChannels(new ArrayList<>());
+
+    Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
+
+    Assert.assertFalse(channel.isClosed());
+    channel.invalidate("test");
+    Mockito.doNothing().when(client).dropChannel(Mockito.any());
+    Assert.assertThrows(SFException.class, () -> channel.close(true).get());
+    Mockito.verify(client, Mockito.never()).dropChannel(Mockito.any());
   }
 
   @Test

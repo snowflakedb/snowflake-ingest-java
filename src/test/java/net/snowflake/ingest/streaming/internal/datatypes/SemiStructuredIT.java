@@ -171,17 +171,31 @@ public class SemiStructuredIT extends AbstractDataTypeTest {
     assertVariant("VARIANT", null, null, null);
   }
 
+  /**
+   * For JDBC version > 3.13.3 we dont verify the value returned from max variant, max array and max
+   * object because of
+   * https://github.com/snowflakedb/snowflake-sdks-drivers-issues-teamwork/issues/819
+   *
+   * @throws Exception
+   */
   @Test
   public void testMaxVariantAndObject() throws Exception {
     String maxObject = createLargeVariantObject(MAX_ALLOWED_LENGTH);
-    assertVariant("VARIANT", maxObject, maxObject, "OBJECT");
-    assertVariant("OBJECT", maxObject, maxObject, "OBJECT");
+    assertVariant("VARIANT", maxObject, maxObject, "OBJECT", true);
+    assertVariant("OBJECT", maxObject, maxObject, "OBJECT", true);
   }
 
+  /**
+   * For JDBC version > 3.13.3 we dont verify the value returned from max variant, max array and max
+   * object because of
+   * https://github.com/snowflakedb/snowflake-sdks-drivers-issues-teamwork/issues/819
+   *
+   * @throws Exception
+   */
   @Test
   public void testMaxArray() throws Exception {
     String maxArray = "[" + createLargeVariantObject(MAX_ALLOWED_LENGTH - 2) + "]";
-    assertVariant("ARRAY", maxArray, maxArray, "ARRAY");
+    assertVariant("ARRAY", maxArray, maxArray, "ARRAY", true);
   }
 
   @Test
