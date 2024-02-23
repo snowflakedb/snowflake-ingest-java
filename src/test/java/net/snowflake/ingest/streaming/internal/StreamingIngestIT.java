@@ -1140,6 +1140,17 @@ public class StreamingIngestIT {
   }
 
   @Test
+  public void testOffsetTokenVerificationFunction() {
+    Assert.assertTrue(offsetTokenVerificationFunction.verify("1", "2", "4", 3));
+    Assert.assertTrue(offsetTokenVerificationFunction.verify(null, "2", "4", 3));
+    Assert.assertTrue(offsetTokenVerificationFunction.verify("1", "2", null, 3));
+    Assert.assertTrue(offsetTokenVerificationFunction.verify("a", "2", "4", 3));
+    Assert.assertFalse(offsetTokenVerificationFunction.verify("1", "3", "4", 3));
+    Assert.assertFalse(offsetTokenVerificationFunction.verify("2", "1", "4", 3));
+    Assert.assertFalse(offsetTokenVerificationFunction.verify("1", "2", "4", 2));
+  }
+
+  @Test
   public void testChannelClose() throws Exception {
     OpenChannelRequest request1 =
         OpenChannelRequest.builder("CHANNEL")

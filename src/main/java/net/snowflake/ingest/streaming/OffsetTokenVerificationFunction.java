@@ -7,8 +7,8 @@ package net.snowflake.ingest.streaming;
 /**
  * Interface to provide a custom offset verification logic. If specified, verification failures will
  * be logged as warnings and reported to Snowflake. This interface could be used when there are
- * certain assumption about the offset token behavior and please reach out to Snowflake if you
- * notice any unexpected behaviors.
+ * certain assumption about the offset token behavior. Please reach out to Snowflake if you notice
+ * any unexpected behaviors.
  *
  * <p>Below is an example that verifies that all offset tokens are monotonically increasing numbers:
  *
