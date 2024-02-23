@@ -69,7 +69,7 @@ public class TelemetryService {
   TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
     this.clientName = clientName;
     this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
-    // At most once every seconds
+    // At most once every second
     this.rateLimiter = RateLimiter.create(1.0);
   }
 

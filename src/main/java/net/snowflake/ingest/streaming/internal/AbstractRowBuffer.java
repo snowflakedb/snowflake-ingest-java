@@ -695,13 +695,12 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   /**
-   * We verify some offset expect behaviors based on the provided verification logic and report to
-   * SF if there is a mismatch.
+   * We verify the offset token based on the provided verification logic and report to SF if there
+   * is a mismatch.
    */
   private void checkOffsetMismatch(
       String prevEndOffset, String curStartOffset, String curEndOffset, int rowCount) {
-    if (telemetryService != null
-        && offsetTokenVerificationFunction != null
+    if (offsetTokenVerificationFunction != null
         && !offsetTokenVerificationFunction.verify(
             prevEndOffset, curStartOffset, curEndOffset, rowCount)) {
       logger.logWarn(
@@ -713,8 +712,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           curStartOffset,
           curEndOffset,
           rowCount);
-      telemetryService.reportBatchOffsetMismatch(
-          channelFullyQualifiedName, prevEndOffset, curStartOffset, curEndOffset, rowCount);
+      if (telemetryService != null) {
+        telemetryService.reportBatchOffsetMismatch(
+            channelFullyQualifiedName, prevEndOffset, curStartOffset, curEndOffset, rowCount);
+      }
     }
   }
 

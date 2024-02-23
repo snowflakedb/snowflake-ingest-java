@@ -5,10 +5,12 @@
 package net.snowflake.ingest.streaming;
 
 /**
- * Interface to create a user defined offset token verification function that is used to verify
- * offset behaviors, if the verification failed, we will log a warning and report it to SF
+ * Interface to provide a custom offset verification logic. If specified, verification failures will
+ * be logged as warnings and reported to Snowflake. This interface could be used when there are
+ * certain assumption about the offset token behavior and please reach out to Snowflake if you
+ * notice any unexpected behaviors.
  *
- * <p>Below is an example that verifies all offset tokens need to monotonically increment numbers:
+ * <p>Below is an example that verifies that all offset tokens are monotonically increasing numbers:
  *
  * <pre>
  *     <code>
