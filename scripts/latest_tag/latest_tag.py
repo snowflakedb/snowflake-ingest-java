@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-import os
 import re
 import subprocess
 import sys
-
-import snowflake.connector
 
 STARTING_AFTER_MAJOR = 2
 STARTING_AFTER_MINOR = 0
 STARTING_AFTER_PATCH = 4
 
 def tags_from_git():
-    result = subprocess.run(["git", "tag"], check=True, text=True)
+    result = subprocess.run(["git", "tag"], check=True, universal_newlines=True)
     tags = result.stdout.splitlines()
     return tags
 
