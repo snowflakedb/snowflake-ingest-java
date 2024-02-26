@@ -10,8 +10,8 @@ STARTING_AFTER_MINOR = 0
 STARTING_AFTER_PATCH = 4
 
 def tags_from_git():
-    result = subprocess.run(["git", "tag"], check=True, universal_newlines=True)
-    tags = result.stdout.splitlines()
+    result = subprocess.run(["git", "tag"], check=True, stdout=subprocess.PIPE)
+    tags = result.stdout.decode('utf-8').splitlines()
     return tags
 
 def classify_tags(tags):
