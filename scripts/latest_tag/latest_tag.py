@@ -15,14 +15,14 @@ def tags_from_git():
     return tags
 
 def classify_tags(tags):
-    version_number = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
+    version_number_regex = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
     tags_without_version_number = []
     old_tags = []
     invalid_tags = []
     valid_tags = []
     for i in range(len(tags)):
         tag = tags[i]
-        match = version_number.search(tag)
+        match = version_number_regex.search(tag)
         if not match:
             tags_without_version_number.append(tag)
             continue
