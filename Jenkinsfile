@@ -3,7 +3,7 @@ pipeline {
     options { timestamps() }
     environment {
         ingest_sdk_dir = "${WORKSPACE}/snowflake-ingest-java"
-        ingest_sdk_tag = sh(returnStdout: true, script: "cd $ingest_sdk_dir/latest_tag && ./run.sh").trim()
+        ingest_sdk_tag = sh(returnStdout: true, script: "cd $ingest_sdk_dir/scripts/latest_tag && ./run.sh").trim()
 
     }
     stages {
