@@ -39,6 +39,8 @@ public class ParameterProvider {
   public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
       "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
 
+  public static final String BDEC_PARQUET_VERSION = "BDEC_PARQUET_VERSION".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -63,6 +65,9 @@ public class ParameterProvider {
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
+
+  public static final Constants.BdecParquetVersion BDEC_PARQUET_VERSION_DEFAULT =
+          Constants.BdecParquetVersion.PARQUET_2_0;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -186,6 +191,12 @@ public class ParameterProvider {
     this.updateValue(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
         BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
+        parameterOverrides,
+        props);
+
+    this.updateValue(
+        BDEC_PARQUET_VERSION,
+        BDEC_PARQUET_VERSION_DEFAULT,
         parameterOverrides,
         props);
   }
@@ -405,6 +416,17 @@ public class ParameterProvider {
       return (Constants.BdecParquetCompression) val;
     }
     return Constants.BdecParquetCompression.fromName((String) val);
+  }
+
+  /** @return BDEC parquet version */
+  public Constants.BdecParquetVersion getBdecParquetVersion() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            BDEC_PARQUET_VERSION, BDEC_PARQUET_VERSION_DEFAULT);
+    if (val instanceof Constants.BdecParquetVersion) {
+      return (Constants.BdecParquetVersion) val;
+    }
+    return Constants.BdecParquetVersion.fromName((String) val);
   }
 
   @Override
