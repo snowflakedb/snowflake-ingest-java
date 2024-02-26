@@ -10,7 +10,7 @@ pipeline {
         stage('TriggerJobs') {
             steps {
                 script {
-                       print("hallo")
+                       print(ingest_sdk_tag)
 //                     def valid_db_name_tag = ingest_sdk_tag.split('\\.').join('_')
 //                     def deployments = [
 //                             "qa3": {
