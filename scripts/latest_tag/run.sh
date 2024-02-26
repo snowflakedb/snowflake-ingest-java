@@ -11,5 +11,5 @@ else
     source $PVENV_DIR/bin/activate > /dev/null
 fi
 
-${PWD}/tpcds_bdec_latest_database.py
+${PWD}/latest_tag.py
 exit $?
