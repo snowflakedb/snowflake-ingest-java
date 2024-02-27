@@ -50,7 +50,7 @@ def classify_tags(tags):
             invalid_tags.append(tag)
             continue
         valid_tags.append({"tag": tag, "version_number": (major, minor, patch)})
-    return valid_tags, old_tags, invalid_tags, tags_without_version_number
+    return valid_tags, old_tags, invalid_tags, tags_without_version_number, old_tags
 
 def latest(valid_tags):
     valid_tags.sort(key=lambda tag: tag["version_number"], reverse=True)
@@ -60,7 +60,7 @@ def main():
     tags = tags_from_git()
     # old_tags, invalid_tags and tags_without_version_number are ignored
     # we could issue a warning for invalid_tags but decided that they are not probable
-    valid_tags, old_tags, invalid_tags, tags_without_version_number = classify_tags(tags)
+    valid_tags, old_tags, invalid_tags, tags_without_version_number, old_tags = classify_tags(tags)
     if (len(valid_tags) == 0):
         sys.exit(1)
     latest_tag = latest(valid_tags)
