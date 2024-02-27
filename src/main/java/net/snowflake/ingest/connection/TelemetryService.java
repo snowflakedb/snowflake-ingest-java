@@ -71,7 +71,6 @@ public class TelemetryService {
   TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
     this.clientName = clientName;
     this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
-    // At most once every second
     this.rateLimitersMap = new HashMap<>();
   }
 
