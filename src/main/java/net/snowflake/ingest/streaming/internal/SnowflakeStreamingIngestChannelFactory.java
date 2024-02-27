@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.time.ZoneId;
+import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Utils;
 
@@ -27,8 +28,8 @@ class SnowflakeStreamingIngestChannelFactory {
     private String encryptionKey;
     private Long encryptionKeyId;
     private OpenChannelRequest.OnErrorOption onErrorOption;
-
     private ZoneId defaultTimezone;
+    private OffsetTokenVerificationFunction offsetTokenVerificationFunction;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;
@@ -91,6 +92,12 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
+    SnowflakeStreamingIngestChannelBuilder<T> setOffsetTokenVerificationFunction(
+        OffsetTokenVerificationFunction function) {
+      this.offsetTokenVerificationFunction = function;
+      return this;
+    }
+
     SnowflakeStreamingIngestChannelInternal<T> build() {
       Utils.assertStringNotNullOrEmpty("channel name", this.name);
       Utils.assertStringNotNullOrEmpty("table name", this.tableName);
@@ -116,7 +123,8 @@ class SnowflakeStreamingIngestChannelFactory {
           this.encryptionKeyId,
           this.onErrorOption,
           this.defaultTimezone,
-          this.owningClient.getParameterProvider().getBlobFormatVersion());
+          this.owningClient.getParameterProvider().getBlobFormatVersion(),
+          this.offsetTokenVerificationFunction);
     }
   }
 }

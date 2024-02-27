@@ -43,6 +43,8 @@ public class OpenChannelRequest {
   private final String offsetToken;
   private final boolean isOffsetTokenProvided;
 
+  private final OffsetTokenVerificationFunction offsetTokenVerificationFunction;
+
   public static OpenChannelRequestBuilder builder(String channelName) {
     return new OpenChannelRequestBuilder(channelName);
   }
@@ -58,6 +60,8 @@ public class OpenChannelRequest {
 
     private String offsetToken;
     private boolean isOffsetTokenProvided = false;
+
+    private OffsetTokenVerificationFunction offsetTokenVerificationFunction;
 
     public OpenChannelRequestBuilder(String channelName) {
       this.channelName = channelName;
@@ -95,6 +99,12 @@ public class OpenChannelRequest {
       return this;
     }
 
+    public OpenChannelRequestBuilder setOffsetTokenVerificationFunction(
+        OffsetTokenVerificationFunction function) {
+      this.offsetTokenVerificationFunction = function;
+      return this;
+    }
+
     public OpenChannelRequest build() {
       return new OpenChannelRequest(this);
     }
@@ -116,6 +126,7 @@ public class OpenChannelRequest {
     this.defaultTimezone = builder.defaultTimezone;
     this.offsetToken = builder.offsetToken;
     this.isOffsetTokenProvided = builder.isOffsetTokenProvided;
+    this.offsetTokenVerificationFunction = builder.offsetTokenVerificationFunction;
   }
 
   public String getDBName() {
@@ -152,5 +163,9 @@ public class OpenChannelRequest {
 
   public boolean isOffsetTokenProvided() {
     return this.isOffsetTokenProvided;
+  }
+
+  public OffsetTokenVerificationFunction getOffsetTokenVerificationFunction() {
+    return this.offsetTokenVerificationFunction;
   }
 }

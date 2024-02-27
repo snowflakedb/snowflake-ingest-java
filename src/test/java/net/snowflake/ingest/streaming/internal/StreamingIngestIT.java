@@ -34,6 +34,7 @@ import java.util.stream.IntStream;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
@@ -77,6 +78,35 @@ public class StreamingIngestIT {
   }
 
   @Parameter public String compressionAlgorithm;
+
+  private static final OffsetTokenVerificationFunction offsetTokenVerificationFunction =
+      (prevBatchEndOffset, curBatchStartOffset, curBatchEndOffset, rowCount) -> {
+        boolean isMatch = true;
+
+        if (curBatchStartOffset != null) {
+          try {
+            long curStart = Long.parseLong(curBatchStartOffset);
+            long curEnd = Long.parseLong(curBatchEndOffset);
+
+            // We verify that the end_offset - start_offset + 1 = row_count
+            if (curEnd - curStart + 1 != rowCount) {
+              isMatch = false;
+            }
+
+            // We verify that start_offset_of_current_batch = end_offset_of_previous_batch+1
+            if (prevBatchEndOffset != null) {
+              long prevEnd = Long.parseLong(prevBatchEndOffset);
+              if (curStart != prevEnd + 1) {
+                isMatch = false;
+              }
+            }
+          } catch (NumberFormatException ignored) {
+            // Do nothing since we can't compare the offset
+          }
+        }
+
+        return isMatch;
+      };
 
   @Before
   public void beforeAll() throws Exception {
@@ -1012,6 +1042,7 @@ public class StreamingIngestIT {
             .setSchemaName(TEST_SCHEMA)
             .setTableName(insertRowsWithValidStartOffsetToken)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .setOffsetTokenVerificationFunction(offsetTokenVerificationFunction)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -1068,6 +1099,7 @@ public class StreamingIngestIT {
             .setSchemaName(TEST_SCHEMA)
             .setTableName(insertRowsWithInvalidStartOffsetToken)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .setOffsetTokenVerificationFunction(offsetTokenVerificationFunction)
             .build();
 
     // Open a streaming ingest channel from the given client
@@ -1105,6 +1137,17 @@ public class StreamingIngestIT {
       Thread.sleep(1000);
     }
     Assert.fail("Row sequencer not updated before timeout");
+  }
+
+  @Test
+  public void testOffsetTokenVerificationFunction() {
+    Assert.assertTrue(offsetTokenVerificationFunction.verify("1", "2", "4", 3));
+    Assert.assertTrue(offsetTokenVerificationFunction.verify(null, "2", "4", 3));
+    Assert.assertTrue(offsetTokenVerificationFunction.verify("1", "2", null, 3));
+    Assert.assertTrue(offsetTokenVerificationFunction.verify("a", "2", "4", 3));
+    Assert.assertFalse(offsetTokenVerificationFunction.verify("1", "3", "4", 3));
+    Assert.assertFalse(offsetTokenVerificationFunction.verify("2", "1", "4", 3));
+    Assert.assertFalse(offsetTokenVerificationFunction.verify("1", "2", "4", 2));
   }
 
   @Test

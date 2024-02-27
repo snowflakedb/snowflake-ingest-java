@@ -258,7 +258,8 @@ public class FlushServiceTest {
           encryptionKeyId,
           onErrorOption,
           defaultTimezone,
-          Constants.BdecVersion.THREE);
+          Constants.BdecVersion.THREE,
+          null);
     }
 
     @Override

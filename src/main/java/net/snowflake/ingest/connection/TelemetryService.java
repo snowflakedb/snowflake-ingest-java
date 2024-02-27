@@ -10,6 +10,9 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
+import com.google.common.util.concurrent.RateLimiter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +31,8 @@ public class TelemetryService {
     STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_ms"),
     STREAMING_INGEST_CLIENT_FAILURE("streaming_ingest_client_failure"),
     STREAMING_INGEST_THROUGHPUT_BYTES_PER_SEC("streaming_ingest_throughput_bytes_per_sec"),
-    STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage");
+    STREAMING_INGEST_CPU_MEMORY_USAGE("streaming_ingest_cpu_memory_usage"),
+    STREAMING_INGEST_BATCH_OFFSET_MISMATCH("streaming_ingest_batch_offset_mismatch");
 
     private final String name;
 
@@ -55,6 +59,7 @@ public class TelemetryService {
   private static final String PERCENTILE99TH = "99thPercentile";
   private final TelemetryClient telemetry;
   private final String clientName;
+  private final Map<String, RateLimiter> rateLimitersMap;
 
   /**
    * Default constructor
@@ -66,6 +71,7 @@ public class TelemetryService {
   TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
     this.clientName = clientName;
     this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
+    this.rateLimitersMap = new HashMap<>();
   }
 
   /** Flush the telemetry buffer and close the telemetry service */
@@ -119,6 +125,30 @@ public class TelemetryService {
       msg.put("total_memory", runTime.totalMemory());
       msg.put("free_memory", runTime.freeMemory());
       send(TelemetryType.STREAMING_INGEST_CPU_MEMORY_USAGE, msg);
+    }
+  }
+
+  /** Report the offset token mismatch in a batch */
+  public void reportBatchOffsetMismatch(
+      String channelName,
+      String prevBatchEndOffset,
+      String startOffset,
+      String endOffset,
+      long rowCount) {
+    // Add a rate limiter to report the mismatch at most once every second per channel
+    RateLimiter rateLimiter =
+        rateLimitersMap.computeIfAbsent(channelName, v -> RateLimiter.create(1.0));
+    if (rateLimiter.tryAcquire()) {
+      ObjectNode msg = MAPPER.createObjectNode();
+      msg.put("channel_name", channelName);
+      msg.put("prev_batch_end_offset", prevBatchEndOffset);
+      msg.put("start_offset", startOffset);
+      msg.put("end_offset", endOffset);
+      msg.put("row_count", rowCount);
+      send(TelemetryType.STREAMING_INGEST_BATCH_OFFSET_MISMATCH, msg);
+    } else {
+      logger.logDebug(
+          "Rate limit exceeded on reportBatchOffsetMismatch, skipping report it to SF.");
     }
   }
 
