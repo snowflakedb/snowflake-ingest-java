@@ -6,7 +6,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>2.1.0</version>
+  <version>2.1.0-unshaded</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -786,9 +786,9 @@
         <configuration>
           <errorRemedy>failFast</errorRemedy>
           <!--
-                                         The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
-                                        check your dependencies", verify the conditions of the license and add the reference to it here.
-                                      -->
+                                                   The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+                                                  check your dependencies", verify the conditions of the license and add the reference to it here.
+                                                -->
           <includedLicenses>
             <includedLicense>Apache License 2.0</includedLicense>
             <includedLicense>BSD 2-Clause License</includedLicense>
@@ -906,9 +906,9 @@
       <build>
         <plugins>
           <!--
-                                                  Copy all project dependencies to target/dependency-jars. License processing Python script will look here for
-                                                  license files of SDK dependencies.
-                                                  -->
+                                                            Copy all project dependencies to target/dependency-jars. License processing Python script will look here for
+                                                            license files of SDK dependencies.
+                                                            -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-dependency-plugin</artifactId>
@@ -930,9 +930,9 @@
           </plugin>
 
           <!--
-                                                  Compile the list of SDK dependencies in 'compile' and 'runtime' scopes.
-                                                  This list is an entry point for the license processing python script.
-                                                  -->
+                                                            Compile the list of SDK dependencies in 'compile' and 'runtime' scopes.
+                                                            This list is an entry point for the license processing python script.
+                                                            -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-dependency-plugin</artifactId>
@@ -1112,9 +1112,9 @@
             </executions>
           </plugin>
           <!--
-                                                  Plugin executes license processing Python script, which copies third party license files into the directory
-                                                  target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR.
-                                                  -->
+                                                            Plugin executes license processing Python script, which copies third party license files into the directory
+                                                            target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR.
+                                                            -->
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
