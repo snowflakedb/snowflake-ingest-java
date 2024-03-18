@@ -31,6 +31,8 @@ public class Constants {
   public static final String OAUTH_CLIENT_ID = "oauth_client_id";
   public static final String OAUTH_CLIENT_SECRET = "oauth_client_secret";
   public static final String OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
+  public static final String OAUTH_TOKEN_ENDPOINT = "oauth_token_endpoint";
+  public static final String SNOWFLAKE_OAUTH_TOKEN_ENDPOINT = "/oauth/token-request";
   public static final String PRIMARY_FILE_ID_KEY =
       "primaryFileId"; // Don't change, should match Parquet Scanner
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side

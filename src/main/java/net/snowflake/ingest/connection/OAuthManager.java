@@ -88,7 +88,7 @@ public final class OAuthManager extends SecurityManager {
       throw new IllegalArgumentException("updateThresholdRatio should fall in (0, 1)");
     }
     this.updateThresholdRatio = updateThresholdRatio;
-    this.oAuthClient = new SnowflakeOAuthClient(accountName, oAuthCredential, baseURIBuilder);
+    this.oAuthClient = new OAuthClient(accountName, oAuthCredential, baseURIBuilder);
 
     // generate our first token
     refreshToken();
@@ -119,7 +119,7 @@ public final class OAuthManager extends SecurityManager {
     if (refreshFailed.get()) {
       throw new SecurityException("getToken request failed due to token refresh failure");
     }
-    return oAuthClient.getoAuthCredentialRef().get().getAccessToken();
+    return oAuthClient.getOAuthCredentialRef().get().getAccessToken();
   }
 
   @Override
@@ -134,7 +134,7 @@ public final class OAuthManager extends SecurityManager {
    * @param refreshToken the new refresh token
    */
   void setRefreshToken(String refreshToken) {
-    oAuthClient.getoAuthCredentialRef().get().setRefreshToken(refreshToken);
+    oAuthClient.getOAuthCredentialRef().get().setRefreshToken(refreshToken);
   }
 
   /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
@@ -147,7 +147,7 @@ public final class OAuthManager extends SecurityManager {
         // Schedule next refresh
         long nextRefreshDelay =
             (long)
-                (oAuthClient.getoAuthCredentialRef().get().getExpiresIn()
+                (oAuthClient.getOAuthCredentialRef().get().getExpiresIn()
                     * this.updateThresholdRatio);
         tokenRefresher.schedule(this::refreshToken, nextRefreshDelay, TimeUnit.SECONDS);
         LOGGER.debug(
