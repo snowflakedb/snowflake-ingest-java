@@ -80,7 +80,24 @@ public class OAuthBasicTest {
         new SFException(ErrorCode.MISSING_CONFIG, Constants.OAUTH_REFRESH_TOKEN).getMessage());
   }
 
-  /** Create client with mock credential, should fail when refreshing token */
+  /**
+   * Create a client with mock credential using snowflake oauth, should fail when refreshing token
+   */
+  @Test(expected = SecurityException.class)
+  public void testCreateSnowflakeOAuthClient() throws Exception {
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
+    props.remove(Constants.PRIVATE_KEY);
+    props.put(Constants.AUTHORIZATION_TYPE, Constants.OAUTH);
+    props.put(Constants.OAUTH_CLIENT_ID, "MOCK_CLIENT_ID");
+    props.put(Constants.OAUTH_CLIENT_SECRET, "MOCK_CLIENT_SECRET");
+    props.put(Constants.OAUTH_REFRESH_TOKEN, "MOCK_REFRESH_TOKEN");
+    SnowflakeStreamingIngestClient client =
+        SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build();
+  }
+
+  /**
+   * Create a client with mock credential using external oauth, should fail when refreshing token
+   */
   @Test(expected = SecurityException.class)
   public void testCreateOAuthClient() throws Exception {
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
@@ -89,6 +106,7 @@ public class OAuthBasicTest {
     props.put(Constants.OAUTH_CLIENT_ID, "MOCK_CLIENT_ID");
     props.put(Constants.OAUTH_CLIENT_SECRET, "MOCK_CLIENT_SECRET");
     props.put(Constants.OAUTH_REFRESH_TOKEN, "MOCK_REFRESH_TOKEN");
+    props.put(Constants.OAUTH_TOKEN_ENDPOINT, "https://mockexternaloauthendpoint.test/token");
     SnowflakeStreamingIngestClient client =
         SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build();
   }
