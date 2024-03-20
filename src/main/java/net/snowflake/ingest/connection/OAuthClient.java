@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -87,12 +88,12 @@ public class OAuthClient {
           return;
         }
       }
-      throw new SFException(
-          ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
-          "Refresh access token fail with response: " + respBodyString);
-    } catch (Exception e) {
+    } catch (IOException e) {
       throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
     }
+    throw new SFException(
+            ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
+            "Refresh access token fail with response: " + respBodyString);
   }
 
   /** Helper method for making refresh request */
