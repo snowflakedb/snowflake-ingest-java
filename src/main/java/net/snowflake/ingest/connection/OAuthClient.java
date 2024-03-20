@@ -85,15 +85,15 @@ public class OAuthClient {
 
           oAuthCredential.get().setAccessToken(newAccessToken);
           oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).getAsInt());
-          return;
+        } else {
+          throw new SFException(
+              ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
+              "Refresh access token fail with response: " + respBodyString);
         }
       }
     } catch (IOException e) {
       throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
     }
-    throw new SFException(
-            ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
-            "Refresh access token fail with response: " + respBodyString);
   }
 
   /** Helper method for making refresh request */
