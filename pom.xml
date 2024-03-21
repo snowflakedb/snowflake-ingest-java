@@ -35,7 +35,7 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
-    <bouncycastle.version>1.74</bouncycastle.version>
+    <bouncycastle.version>1.77</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
@@ -442,6 +442,10 @@
       <artifactId>snowflake-jdbc</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
     </dependency>
@@ -695,6 +699,12 @@
             <configuration>
               <failOnWarning>true</failOnWarning>
               <ignoreNonCompile>true</ignoreNonCompile>
+              <ignoredDependencies>
+                <!-- We defined common-compress as a direct dependency (as opposed to just declaring it in dependencyManagement)
+                to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency analyzer complains that
+                the dependency is unused, so we ignore it here-->
+                <ignoredDependency>org.apache.commons:commons-compress</ignoredDependency>
+              </ignoredDependencies>
             </configuration>
           </execution>
         </executions>
