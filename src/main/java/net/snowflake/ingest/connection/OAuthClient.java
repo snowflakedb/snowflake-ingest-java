@@ -82,15 +82,14 @@ public class OAuthClient {
         if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
           // Trim surrounding quotation marks
           String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
-
           oAuthCredential.get().setAccessToken(newAccessToken);
           oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).getAsInt());
-        } else {
-          throw new SFException(
-              ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
-              "Refresh access token fail with response: " + respBodyString);
+          return;
         }
       }
+      throw new SFException(
+          ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
+          "Refresh access token fail with response: " + respBodyString);
     } catch (IOException e) {
       throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
     }
@@ -115,10 +114,7 @@ public class OAuthClient {
         payload.entrySet().stream()
             .map(e -> e.getKey() + "=" + e.getValue())
             .collect(Collectors.joining("&"));
-
-    final StringEntity entity =
-        new StringEntity(payloadString, ContentType.APPLICATION_FORM_URLENCODED);
-    post.setEntity(entity);
+    post.setEntity(new StringEntity(payloadString, ContentType.APPLICATION_FORM_URLENCODED));
 
     return post;
   }
