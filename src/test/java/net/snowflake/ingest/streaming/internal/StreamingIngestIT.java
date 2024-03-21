@@ -4,6 +4,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.COMPRESS_BLOB_TWICE;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
@@ -37,6 +38,7 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -142,7 +144,9 @@ public class StreamingIngestIT {
 
   @After
   public void afterAll() throws Exception {
-    client.close();
+    if (client != null) {
+      client.close();
+    }
     jdbcConnection.createStatement().execute(String.format("drop database %s", testDb));
   }
 
@@ -1397,6 +1401,22 @@ public class StreamingIngestIT {
     // add one more column after change tracking columns
     executeQuery(String.format("alter table %s add column c6 varchar;", tableFullName));
     ingestByColIndexAndVerifyTable(tableName, channelNum, Arrays.asList(2, 3, 5, 6), rowNum);
+  }
+
+  @Test
+  public void testLeakedHTTPConnectionFix() throws Exception {
+    prop = TestUtils.getProperties(Constants.BdecVersion.THREE, true);
+    prop.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
+    prop.setProperty(USER, "badUser");
+
+    for (int i = 0; i < 20; i++) {
+      try (SnowflakeStreamingIngestClient client =
+          SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(prop).build()) {
+      } catch (Exception ignored) {
+
+      }
+      Thread.sleep(5000);
+    }
   }
 
   /**
