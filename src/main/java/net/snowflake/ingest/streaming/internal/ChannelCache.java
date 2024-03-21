@@ -37,7 +37,9 @@ class ChannelCache<T> {
         channels.put(channel.getName(), channel);
     // Invalidate old channel if it exits to block new inserts and return error to users earlier
     if (oldChannel != null) {
-      oldChannel.invalidate("removed from cache");
+      String errorMessage =
+          String.format("Old channel removed from cache, channelName=%s", channel.getName());
+      oldChannel.invalidate("removed from cache", errorMessage);
     }
   }
 
@@ -82,14 +84,15 @@ class ChannelCache<T> {
       String schemaName,
       String tableName,
       String channelName,
-      Long channelSequencer) {
+      Long channelSequencer,
+      String invalidateCause) {
     String fullyQualifiedTableName = String.format("%s.%s.%s", dbName, schemaName, tableName);
     ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> channelsMapPerTable =
         cache.get(fullyQualifiedTableName);
     if (channelsMapPerTable != null) {
       SnowflakeStreamingIngestChannelInternal<T> channel = channelsMapPerTable.get(channelName);
       if (channel != null && channel.getChannelSequencer().equals(channelSequencer)) {
-        channel.invalidate("invalidate with matched sequencer");
+        channel.invalidate("invalidate with matched sequencer", invalidateCause);
       }
     }
   }

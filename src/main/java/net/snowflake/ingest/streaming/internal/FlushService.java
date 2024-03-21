@@ -464,7 +464,7 @@ class FlushService<T> {
                         }
 
                         if (e instanceof IOException) {
-                          invalidateAllChannelsInBlob(blobData);
+                          invalidateAllChannelsInBlob(blobData, errorMessage);
                           return null;
                         } else if (e instanceof NoSuchAlgorithmException) {
                           throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
@@ -657,7 +657,7 @@ class FlushService<T> {
    *
    * @param blobData list of channels that belongs to the blob
    */
-  <CD> void invalidateAllChannelsInBlob(List<List<ChannelData<CD>>> blobData) {
+  <CD> void invalidateAllChannelsInBlob(List<List<ChannelData<CD>>> blobData, String errorMessage) {
     blobData.forEach(
         chunkData ->
             chunkData.forEach(
@@ -669,7 +669,8 @@ class FlushService<T> {
                           channelData.getChannelContext().getSchemaName(),
                           channelData.getChannelContext().getTableName(),
                           channelData.getChannelContext().getName(),
-                          channelData.getChannelContext().getChannelSequencer());
+                          channelData.getChannelContext().getChannelSequencer(),
+                          errorMessage);
                 }));
   }
 
