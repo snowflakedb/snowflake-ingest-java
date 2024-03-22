@@ -85,14 +85,14 @@ class ChannelCache<T> {
       String tableName,
       String channelName,
       Long channelSequencer,
-      String invalidateCause) {
+      String invalidationCause) {
     String fullyQualifiedTableName = String.format("%s.%s.%s", dbName, schemaName, tableName);
     ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> channelsMapPerTable =
         cache.get(fullyQualifiedTableName);
     if (channelsMapPerTable != null) {
       SnowflakeStreamingIngestChannelInternal<T> channel = channelsMapPerTable.get(channelName);
       if (channel != null && channel.getChannelSequencer().equals(channelSequencer)) {
-        channel.invalidate("invalidate with matched sequencer", invalidateCause);
+        channel.invalidate("invalidate with matched sequencer", invalidationCause);
       }
     }
   }
