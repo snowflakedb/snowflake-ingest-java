@@ -37,9 +37,9 @@ class ChannelCache<T> {
         channels.put(channel.getName(), channel);
     // Invalidate old channel if it exits to block new inserts and return error to users earlier
     if (oldChannel != null) {
-      String errorMessage =
+      String invalidationCause =
           String.format("Old channel removed from cache, channelName=%s", channel.getName());
-      oldChannel.invalidate("removed from cache", errorMessage);
+      oldChannel.invalidate("removed from cache", invalidationCause);
     }
   }
 

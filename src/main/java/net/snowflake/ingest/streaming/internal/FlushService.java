@@ -657,7 +657,8 @@ class FlushService<T> {
    *
    * @param blobData list of channels that belongs to the blob
    */
-  <CD> void invalidateAllChannelsInBlob(List<List<ChannelData<CD>>> blobData, String errorMessage) {
+  <CD> void invalidateAllChannelsInBlob(
+      List<List<ChannelData<CD>>> blobData, String invalidationCause) {
     blobData.forEach(
         chunkData ->
             chunkData.forEach(
@@ -670,7 +671,7 @@ class FlushService<T> {
                           channelData.getChannelContext().getTableName(),
                           channelData.getChannelContext().getName(),
                           channelData.getChannelContext().getChannelSequencer(),
-                          errorMessage);
+                          invalidationCause);
                 }));
   }
 

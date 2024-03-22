@@ -58,7 +58,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // Internal map of column name -> column properties
   private final Map<String, ColumnProperties> tableColumns;
 
-  // The cause of channel invalidation
+  // The latest cause of channel invalidation
   private String invalidationCause;
 
   /**
