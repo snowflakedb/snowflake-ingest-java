@@ -4,25 +4,29 @@
 
 package net.snowflake.ingest.connection;
 
+import java.net.URI;
 import java.util.Base64;
 
 /** This class hold credentials for OAuth authentication */
 public class OAuthCredential {
   private static final String BASIC_AUTH_HEADER_PREFIX = "Basic ";
   private final String authHeader;
-  private final String clientId;
-  private final String clientSecret;
-  private String accessToken;
-  private String refreshToken;
+  private final URI oAuthTokenEndpoint;
+  private transient String accessToken;
+  private transient String refreshToken;
   private int expiresIn;
 
   public OAuthCredential(String clientId, String clientSecret, String refreshToken) {
+    this(clientId, clientSecret, refreshToken, null);
+  }
+
+  public OAuthCredential(
+      String clientId, String clientSecret, String refreshToken, URI oAuthTokenEndpoint) {
     this.authHeader =
         BASIC_AUTH_HEADER_PREFIX
             + Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes());
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
     this.refreshToken = refreshToken;
+    this.oAuthTokenEndpoint = oAuthTokenEndpoint;
   }
 
   public String getAuthHeader() {
@@ -43,6 +47,10 @@ public class OAuthCredential {
 
   public void setRefreshToken(String refreshToken) {
     this.refreshToken = refreshToken;
+  }
+
+  public URI getOAuthTokenEndpoint() {
+    return oAuthTokenEndpoint;
   }
 
   public void setExpiresIn(int expiresIn) {

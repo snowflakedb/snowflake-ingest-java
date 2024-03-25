@@ -40,6 +40,8 @@ import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
@@ -60,6 +62,7 @@ import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
+import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.OAuthCredential;
@@ -187,11 +190,29 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           throw new SFException(e, ErrorCode.KEYPAIR_CREATION_FAILURE);
         }
       } else {
+        URI oAuthTokenEndpoint;
+        try {
+          if (prop.getProperty(Constants.OAUTH_TOKEN_ENDPOINT) == null) {
+            // Set OAuth token endpoint to Snowflake OAuth by default
+            oAuthTokenEndpoint =
+                new URIBuilder()
+                    .setScheme(accountURL.getScheme())
+                    .setHost(accountURL.getUrlWithoutPort())
+                    .setPort(accountURL.getPort())
+                    .setPath(Constants.SNOWFLAKE_OAUTH_TOKEN_ENDPOINT)
+                    .build();
+          } else {
+            oAuthTokenEndpoint = new URI(prop.getProperty(Constants.OAUTH_TOKEN_ENDPOINT));
+          }
+        } catch (URISyntaxException e) {
+          throw new SFException(e, ErrorCode.INVALID_URL);
+        }
         credential =
             new OAuthCredential(
                 prop.getProperty(Constants.OAUTH_CLIENT_ID),
                 prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
-                prop.getProperty(Constants.OAUTH_REFRESH_TOKEN));
+                prop.getProperty(Constants.OAUTH_REFRESH_TOKEN),
+                oAuthTokenEndpoint);
       }
       this.requestBuilder =
           new RequestBuilder(
