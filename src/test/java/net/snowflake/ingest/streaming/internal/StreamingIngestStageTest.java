@@ -287,7 +287,7 @@ public class StreamingIngestStageTest {
     final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
-            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
+            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any(), Mockito.any());
     Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
     Assert.assertTrue(metadataWithAge.timestamp.isPresent());
     Assert.assertEquals(
@@ -327,7 +327,7 @@ public class StreamingIngestStageTest {
     final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
-            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
+            stringCaptor.capture(), endpointCaptor.capture(), Mockito.any(), Mockito.any());
     Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
     Assert.assertEquals(StageInfo.StageType.S3, metadata.getStageInfo().getStageType());
     Assert.assertEquals("foo/streaming_ingest/", metadata.getStageInfo().getLocation());

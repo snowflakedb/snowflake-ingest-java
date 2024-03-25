@@ -8,6 +8,7 @@ import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STR
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_DROP_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_ROWSET_OPEN_CHANNEL;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.sleepForRetry;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
@@ -17,6 +18,8 @@ import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.ENABLE_TELEMETRY_TO_SF;
 import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.OPEN_ROWSET_CHANNEL_ON_PIPE_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.OPEN_ROWSET_CHANNEL_ON_TABLE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
@@ -44,6 +47,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,7 +64,9 @@ import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
+import net.snowflake.client.jdbc.internal.apache.http.NameValuePair;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.message.BasicNameValuePair;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -287,7 +293,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @return a SnowflakeStreamingIngestChannel object
    */
   @Override
-  public SnowflakeStreamingIngestChannelInternal<?> openChannel(OpenChannelRequest request) {
+  public SnowflakeStreamingIngestChannel openChannel(OpenChannelRequest request) {
     if (isClosed) {
       throw new SFException(ErrorCode.CLOSED_CLIENT);
     }
@@ -299,76 +305,156 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         getName());
 
     try {
-      Map<Object, Object> payload = new HashMap<>();
-      payload.put(
-          "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
-      payload.put("channel", request.getChannelName());
-      payload.put("table", request.getTableName());
-      payload.put("database", request.getDBName());
-      payload.put("schema", request.getSchemaName());
-      payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
-      payload.put("role", this.role);
-      if (request.isOffsetTokenProvided()) {
-        payload.put("offset_token", request.getOffsetToken());
-      }
+      if (request.getChannelType() == OpenChannelRequest.ChannelType.CLOUD_STOARGE) {
+        Map<Object, Object> payload = new HashMap<>();
+        payload.put(
+            "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
+        payload.put("channel", request.getChannelName());
+        payload.put("table", request.getTableName());
+        payload.put("database", request.getDBName());
+        payload.put("schema", request.getSchemaName());
+        payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
+        payload.put("role", this.role);
+        if (request.isOffsetTokenProvided()) {
+          payload.put("offset_token", request.getOffsetToken());
+        }
 
-      OpenChannelResponse response =
-          executeWithRetries(
-              OpenChannelResponse.class,
-              OPEN_CHANNEL_ENDPOINT,
-              payload,
-              "open channel",
-              STREAMING_OPEN_CHANNEL,
-              httpClient,
-              requestBuilder);
+        OpenChannelResponse response =
+            executeWithRetries(
+                OpenChannelResponse.class,
+                OPEN_CHANNEL_ENDPOINT,
+                payload,
+                "open channel",
+                STREAMING_OPEN_CHANNEL,
+                httpClient,
+                requestBuilder,
+                null);
 
-      // Check for Snowflake specific response code
-      if (response.getStatusCode() != RESPONSE_SUCCESS) {
-        logger.logDebug(
-            "Open channel request failed, channel={}, table={}, client={}, message={}",
+        // Check for Snowflake specific response code
+        if (response.getStatusCode() != RESPONSE_SUCCESS) {
+          logger.logDebug(
+              "Open channel request failed, channel={}, table={}, client={}, message={}",
+              request.getChannelName(),
+              request.getFullyQualifiedTableName(),
+              getName(),
+              response.getMessage());
+          throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
+        }
+
+        logger.logInfo(
+            "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
+                + " rowSequencer={}, client={}",
             request.getChannelName(),
             request.getFullyQualifiedTableName(),
-            getName(),
-            response.getMessage());
-        throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
+            response.getClientSequencer(),
+            response.getRowSequencer(),
+            getName());
+
+        // Channel is now registered, add it to the in-memory channel pool
+        SnowflakeStreamingIngestChannel channel =
+            SnowflakeStreamingIngestChannelFactory.<T>builder(response.getChannelName())
+                .setDBName(response.getDBName())
+                .setSchemaName(response.getSchemaName())
+                .setTableName(response.getTableName())
+                .setOffsetToken(response.getOffsetToken())
+                .setRowSequencer(response.getRowSequencer())
+                .setChannelSequencer(response.getClientSequencer())
+                .setOwningClient(this)
+                .setEncryptionKey(response.getEncryptionKey())
+                .setEncryptionKeyId(response.getEncryptionKeyId())
+                .setOnErrorOption(request.getOnErrorOption())
+                .setDefaultTimezone(request.getDefaultTimezone())
+                .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
+                .setChannelType(request.getChannelType())
+                .build();
+
+        // Setup the row buffer schema
+        ((SnowflakeStreamingIngestChannelInternal<?>) channel)
+            .setupSchema(response.getTableColumns());
+
+        // Add channel to the channel cache
+        this.channelCache.addChannel((SnowflakeStreamingIngestChannelInternal<T>) channel);
+
+        return channel;
+      } else {
+        return openRowsetApiChannel(request);
       }
-
-      logger.logInfo(
-          "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
-              + " rowSequencer={}, client={}",
-          request.getChannelName(),
-          request.getFullyQualifiedTableName(),
-          response.getClientSequencer(),
-          response.getRowSequencer(),
-          getName());
-
-      // Channel is now registered, add it to the in-memory channel pool
-      SnowflakeStreamingIngestChannelInternal<T> channel =
-          SnowflakeStreamingIngestChannelFactory.<T>builder(response.getChannelName())
-              .setDBName(response.getDBName())
-              .setSchemaName(response.getSchemaName())
-              .setTableName(response.getTableName())
-              .setOffsetToken(response.getOffsetToken())
-              .setRowSequencer(response.getRowSequencer())
-              .setChannelSequencer(response.getClientSequencer())
-              .setOwningClient(this)
-              .setEncryptionKey(response.getEncryptionKey())
-              .setEncryptionKeyId(response.getEncryptionKeyId())
-              .setOnErrorOption(request.getOnErrorOption())
-              .setDefaultTimezone(request.getDefaultTimezone())
-              .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
-              .build();
-
-      // Setup the row buffer schema
-      channel.setupSchema(response.getTableColumns());
-
-      // Add channel to the channel cache
-      this.channelCache.addChannel(channel);
-
-      return channel;
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
+  }
+
+  private SnowflakeStreamingIngestChannel openRowsetApiChannel(OpenChannelRequest request)
+      throws IngestResponseException, IOException {
+    Map<Object, Object> payload = new HashMap<>();
+    payload.put("channel_name", request.getChannelName());
+    if (request.isOffsetTokenProvided()) {
+      payload.put("offset_token", request.getOffsetToken());
+    }
+
+    List<NameValuePair> queryParameters =
+        Collections.singletonList(
+            new BasicNameValuePair(
+                "request_id",
+                this.flushService.getClientPrefix() + "_" + counter.getAndIncrement()));
+
+    String path =
+        request.getPipeName() != null
+            ? OPEN_ROWSET_CHANNEL_ON_PIPE_ENDPOINT
+            : OPEN_ROWSET_CHANNEL_ON_TABLE_ENDPOINT;
+    path = path.replace("{databaseName}", request.getDBName());
+    path = path.replace("{schemaName}", request.getSchemaName());
+    if (request.getPipeName() != null) {
+      path = path.replace("{pipeName}", request.getPipeName());
+    } else {
+      path = path.replace("{tableName}", request.getTableName());
+    }
+
+    OpenRowsetChannelResponse response =
+        executeWithRetries(
+            OpenRowsetChannelResponse.class,
+            path,
+            payload,
+            "open rowset channel on pipe or table",
+            STREAMING_ROWSET_OPEN_CHANNEL,
+            httpClient,
+            requestBuilder,
+            queryParameters);
+
+    // Check for Snowflake specific response code
+    if (response.getMessage() != null) {
+      logger.logDebug(
+          "Open rowset channel request failed, channel={}, table={}, pipe={}, client={},"
+              + " message={}",
+          request.getChannelName(),
+          request.getFullyQualifiedTableName(),
+          request.getFullyQualifiedPipeName(),
+          getName(),
+          response.getMessage());
+      throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
+    }
+
+    logger.logInfo(
+        "Open rowset channel request succeeded, channel={}, table={}, pipe={},"
+            + " continuationToken={}, client={}",
+        request.getChannelName(),
+        request.getFullyQualifiedTableName(),
+        request.getFullyQualifiedPipeName(),
+        response.getContinuationToken(),
+        getName());
+
+    // Channel is now registered, add it to the in-memory channel pool
+    return SnowflakeStreamingIngestChannelFactory.<T>builder(request.getChannelName())
+        .setDBName(request.getDBName())
+        .setSchemaName(request.getSchemaName())
+        .setTableName(request.getTableName())
+        .setOffsetToken(response.getOffsetToken())
+        .setContinuationToken(response.getContinuationToken())
+        .setOwningClient(this)
+        .setOnErrorOption(request.getOnErrorOption())
+        .setDefaultTimezone(request.getDefaultTimezone())
+        .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
+        .build();
   }
 
   @Override
@@ -408,7 +494,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               "drop channel",
               STREAMING_DROP_CHANNEL,
               httpClient,
-              requestBuilder);
+              requestBuilder,
+              null);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
@@ -484,7 +571,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               "channel status",
               STREAMING_CHANNEL_STATUS,
               httpClient,
-              requestBuilder);
+              requestBuilder,
+              null);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {
@@ -600,7 +688,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               "register blob",
               STREAMING_REGISTER_BLOB,
               httpClient,
-              requestBuilder);
+              requestBuilder,
+              null);
 
       // Check for Snowflake specific response code
       if (response.getStatusCode() != RESPONSE_SUCCESS) {

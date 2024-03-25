@@ -85,7 +85,15 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Object[] fields =
         new Object[] {
-          name, dbName, schemaName, tableName, channelSequencer, rowSequencer, client, UTC
+          name,
+          dbName,
+          schemaName,
+          tableName,
+          channelSequencer,
+          rowSequencer,
+          client,
+          UTC,
+          OpenChannelRequest.ChannelType.CLOUD_STOARGE
         };
 
     for (int i = 0; i < fields.length; i++) {
@@ -100,6 +108,7 @@ public class SnowflakeStreamingIngestChannelTest {
             .setChannelSequencer((Long) fields[5])
             .setOwningClient((SnowflakeStreamingIngestClientInternal<StubChunkData>) fields[6])
             .setDefaultTimezone((ZoneId) fields[7])
+            .setChannelType((OpenChannelRequest.ChannelType) fields[8])
             .build();
         Assert.fail("Channel factory should fail with null fields");
       } catch (SFException e) {
@@ -125,7 +134,7 @@ public class SnowflakeStreamingIngestChannelTest {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
 
-    SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
+    SnowflakeStreamingIngestChannel channel =
         SnowflakeStreamingIngestChannelFactory.<StubChunkData>builder(name)
             .setDBName(dbName)
             .setSchemaName(schemaName)
@@ -138,15 +147,26 @@ public class SnowflakeStreamingIngestChannelTest {
             .setEncryptionKeyId(1234L)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .setDefaultTimezone(UTC)
+            .setChannelType(OpenChannelRequest.ChannelType.CLOUD_STOARGE)
             .build();
 
     Assert.assertEquals(name, channel.getName());
     Assert.assertEquals(dbName, channel.getDBName());
     Assert.assertEquals(schemaName, channel.getSchemaName());
     Assert.assertEquals(tableName, channel.getTableName());
-    Assert.assertEquals(offsetToken, channel.getChannelState().getEndOffsetToken());
-    Assert.assertEquals(channelSequencer, channel.getChannelSequencer());
-    Assert.assertEquals(rowSequencer + 1L, channel.getChannelState().incrementAndGetRowSequencer());
+    Assert.assertEquals(
+        offsetToken,
+        ((SnowflakeStreamingIngestChannelInternal<StubChunkData>) channel)
+            .getChannelState()
+            .getEndOffsetToken());
+    Assert.assertEquals(
+        channelSequencer,
+        ((SnowflakeStreamingIngestChannelInternal<StubChunkData>) channel).getChannelSequencer());
+    Assert.assertEquals(
+        rowSequencer + 1L,
+        ((SnowflakeStreamingIngestChannelInternal<StubChunkData>) channel)
+            .getChannelState()
+            .incrementAndGetRowSequencer());
     Assert.assertEquals(
         String.format("%s.%s.%s.%s", dbName, schemaName, tableName, name),
         channel.getFullyQualifiedName());
@@ -311,7 +331,7 @@ public class SnowflakeStreamingIngestChannelTest {
 
     HttpPost request =
         requestBuilder.generateStreamingIngestPostRequest(
-            payload, OPEN_CHANNEL_ENDPOINT, "open channel");
+            payload, OPEN_CHANNEL_ENDPOINT, "open channel", null);
 
     Assert.assertEquals(
         String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT), request.getRequestLine().getUri());

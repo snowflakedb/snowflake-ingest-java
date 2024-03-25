@@ -12,10 +12,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyPair;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
+import net.snowflake.client.jdbc.internal.apache.http.NameValuePair;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpGet;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
@@ -674,16 +676,24 @@ public class RequestBuilder {
    * @param payload POST request payload as string
    * @param endPoint REST API endpoint
    * @param message error message if there are failures during HTTP building
+   * @param queryParameters POST request query parameters
    * @return URI for the POST request
    */
   public HttpPost generateStreamingIngestPostRequest(
-      String payload, String endPoint, String message) {
+      String payload, String endPoint, String message, List<NameValuePair> queryParameters) {
     LOGGER.debug("Generate Snowpipe streaming request: endpoint={}, payload={}", endPoint, payload);
     // Make the corresponding URI
     URI uri = null;
+    queryParameters = queryParameters == null ? new ArrayList<>() : queryParameters;
     try {
       uri =
-          new URIBuilder().setScheme(scheme).setHost(host).setPort(port).setPath(endPoint).build();
+          new URIBuilder()
+              .setScheme(scheme)
+              .setHost(host)
+              .setPort(port)
+              .setPath(endPoint)
+              .setParameters(queryParameters)
+              .build();
     } catch (URISyntaxException e) {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }
@@ -706,10 +716,14 @@ public class RequestBuilder {
    * @param payload POST request payload
    * @param endPoint REST API endpoint
    * @param message error message if there are failures during HTTP building
+   * @param queryParameters
    * @return URI for the POST request
    */
   public HttpPost generateStreamingIngestPostRequest(
-      Map<Object, Object> payload, String endPoint, String message) {
+      Map<Object, Object> payload,
+      String endPoint,
+      String message,
+      List<NameValuePair> queryParameters) {
     // Convert the payload to string
     String payloadInString = null;
     try {
@@ -718,7 +732,8 @@ public class RequestBuilder {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }
 
-    return this.generateStreamingIngestPostRequest(payloadInString, endPoint, message);
+    return this.generateStreamingIngestPostRequest(
+        payloadInString, endPoint, message, queryParameters);
   }
 
   /**

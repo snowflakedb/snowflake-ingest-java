@@ -18,6 +18,7 @@ class RegisterBlobResponse extends StreamingIngestResponse {
     this.statusCode = statusCode;
   }
 
+  @Override
   Long getStatusCode() {
     return this.statusCode;
   }
@@ -27,6 +28,7 @@ class RegisterBlobResponse extends StreamingIngestResponse {
     this.message = message;
   }
 
+  @Override
   String getMessage() {
     return this.message;
   }

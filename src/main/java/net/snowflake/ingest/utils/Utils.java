@@ -24,6 +24,7 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -46,6 +47,7 @@ public class Utils {
 
   /** provider name */
   private static final String BOUNCY_CASTLE_PROVIDER = "BC";
+
   /** provider name for FIPS */
   private static final String BOUNCY_CASTLE_FIPS_PROVIDER = "BCFIPS";
 
@@ -88,26 +90,25 @@ public class Utils {
     }
   }
 
-  /**
-   * Assert when the String is null or Empty
-   *
-   * @param name
-   * @param value
-   * @throws SFException
-   */
+  /** Assert when the String is null or Empty */
   public static void assertStringNotNullOrEmpty(String name, String value) throws SFException {
     if (isNullOrEmpty(value)) {
       throw new SFException(ErrorCode.NULL_OR_EMPTY_STRING, name);
     }
   }
 
-  /**
-   * Assert when the value is null
-   *
-   * @param name
-   * @param value
-   * @throws SFException
-   */
+  /** Assert when all the Strings are either null or Empty */
+  public static void assertStringsNotNullOrEmpty(String name, Collection<String> values)
+      throws SFException {
+    for (String value : values) {
+      if (!isNullOrEmpty(value)) {
+        return;
+      }
+    }
+    throw new SFException(ErrorCode.NULL_OR_EMPTY_STRING, name);
+  }
+
+  /** Assert when the value is null */
   public static void assertNotNull(String name, Object value) throws SFException {
     if (value == null) {
       throw new SFException(ErrorCode.NULL_VALUE, name);

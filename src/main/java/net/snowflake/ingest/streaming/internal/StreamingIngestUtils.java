@@ -6,8 +6,10 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTIO
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import net.snowflake.client.jdbc.internal.apache.http.NameValuePair;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
@@ -81,7 +83,8 @@ public class StreamingIngestUtils {
       String message,
       ServiceResponseHandler.ApiName apiName,
       CloseableHttpClient httpClient,
-      RequestBuilder requestBuilder)
+      RequestBuilder requestBuilder,
+      List<NameValuePair> queryParameters)
       throws IOException, IngestResponseException {
     String payloadInString;
     try {
@@ -90,7 +93,14 @@ public class StreamingIngestUtils {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }
     return executeWithRetries(
-        targetClass, endpoint, payloadInString, message, apiName, httpClient, requestBuilder);
+        targetClass,
+        endpoint,
+        payloadInString,
+        message,
+        apiName,
+        httpClient,
+        requestBuilder,
+        queryParameters);
   }
 
   static <T extends StreamingIngestResponse> T executeWithRetries(
@@ -100,7 +110,8 @@ public class StreamingIngestUtils {
       String message,
       ServiceResponseHandler.ApiName apiName,
       CloseableHttpClient httpClient,
-      RequestBuilder requestBuilder)
+      RequestBuilder requestBuilder,
+      List<NameValuePair> queryParameters)
       throws IOException, IngestResponseException {
     return (T)
         executeWithRetries(
@@ -111,7 +122,8 @@ public class StreamingIngestUtils {
             apiName,
             httpClient,
             requestBuilder,
-            defaultStatusGetter);
+            defaultStatusGetter,
+            queryParameters);
   }
 
   static <T> T executeWithRetries(
@@ -122,12 +134,14 @@ public class StreamingIngestUtils {
       ServiceResponseHandler.ApiName apiName,
       CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
-      Function<T, Long> statusGetter)
+      Function<T, Long> statusGetter,
+      List<NameValuePair> queryParameters)
       throws IOException, IngestResponseException {
     int retries = 0;
     T response;
     HttpUriRequest request =
-        requestBuilder.generateStreamingIngestPostRequest(payload, endpoint, message);
+        requestBuilder.generateStreamingIngestPostRequest(
+            payload, endpoint, message, queryParameters);
     do {
       try (CloseableHttpResponse httpResponse = httpClient.execute(request)) {
         response =

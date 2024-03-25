@@ -346,6 +346,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return insertRows(Collections.singletonList(row), offsetToken, offsetToken);
   }
 
+  @Override
+  public InsertValidationResponse insertRow(Map<String, Object> row) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * --------------------------------------------------------------------------------------------
    * Insert a batch of rows into the channel
@@ -407,6 +412,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return insertRows(rows, null, offsetToken);
   }
 
+  @Override
+  public InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows) {
+    throw new UnsupportedOperationException();
+  }
+
   /** Collect the row size from row buffer if required */
   void collectRowSize(float rowSize) {
     if (this.owningClient.inputThroughput != null) {
@@ -439,6 +449,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @Override
   public Map<String, ColumnProperties> getTableSchema() {
     return this.tableColumns;
+  }
+
+  @Override
+  public OpenChannelRequest.ChannelType getType() {
+    return OpenChannelRequest.ChannelType.CLOUD_STOARGE;
   }
 
   /** Check whether we need to throttle the insertRows API */
