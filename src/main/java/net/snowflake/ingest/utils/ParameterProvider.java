@@ -50,16 +50,16 @@ public class ParameterProvider {
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
-  public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 32000000L;
-  public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 128000000L;
+  public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 64000000L;
+  public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 256000000L;
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
   static final long MAX_CLIENT_LAG_MS_MIN = TimeUnit.SECONDS.toMillis(1);
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
 
-  public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT = 100;
+  public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 128 * 1024 * 1024; // 128 MB
+  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT = 200;
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
