@@ -916,7 +916,7 @@ public class FlushServiceTest {
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     FlushService<StubChunkData> flushService =
         new FlushService<>(client, channelCache, stage, false);
-    flushService.invalidateAllChannelsInBlob(blobData);
+    flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");
 
     Assert.assertFalse(channel1.isValid());
     Assert.assertTrue(channel2.isValid());

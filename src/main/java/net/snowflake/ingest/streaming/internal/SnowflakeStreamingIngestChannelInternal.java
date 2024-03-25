@@ -58,6 +58,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   // Internal map of column name -> column properties
   private final Map<String, ColumnProperties> tableColumns;
 
+  // The latest cause of channel invalidation
+  private String invalidationCause;
+
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
    *
@@ -217,8 +220,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Mark the channel as invalid, and release resources */
-  void invalidate(String message) {
+  void invalidate(String message, String invalidationCause) {
     this.channelState.invalidate();
+    this.invalidationCause = invalidationCause;
     this.rowBuffer.close("invalidate");
     logger.logWarn(
         "Channel is invalidated, name={}, channel sequencer={}, row sequencer={}, message={}",
@@ -500,7 +504,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     if (!isValid()) {
       this.owningClient.removeChannelIfSequencersMatch(this);
       this.rowBuffer.close("checkValidation");
-      throw new SFException(ErrorCode.INVALID_CHANNEL, getFullyQualifiedName());
+      throw new SFException(
+          ErrorCode.INVALID_CHANNEL, getFullyQualifiedName(), this.invalidationCause);
     }
   }
 
