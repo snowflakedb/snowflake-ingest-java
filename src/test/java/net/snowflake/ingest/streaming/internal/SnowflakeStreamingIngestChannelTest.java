@@ -175,7 +175,7 @@ public class SnowflakeStreamingIngestChannelTest {
             UTC);
 
     Assert.assertTrue(channel.isValid());
-    channel.invalidate("from testChannelValid");
+    channel.invalidate("from testChannelValid", "Invalidated by test");
     Assert.assertFalse(channel.isValid());
 
     // Can't insert rows to invalid channel
@@ -881,7 +881,7 @@ public class SnowflakeStreamingIngestChannelTest {
     Mockito.doReturn(response).when(client).getChannelsStatus(Mockito.any());
 
     Assert.assertFalse(channel.isClosed());
-    channel.invalidate("test");
+    channel.invalidate("test", "Invalidated by test");
     Mockito.doNothing().when(client).dropChannel(Mockito.any());
     Assert.assertThrows(SFException.class, () -> channel.close(true).get());
     Mockito.verify(client, Mockito.never()).dropChannel(Mockito.any());

@@ -175,7 +175,7 @@ class RegisterService<T> {
               }
               this.owningClient
                   .getFlushService()
-                  .invalidateAllChannelsInBlob(futureBlob.getKey().getData());
+                  .invalidateAllChannelsInBlob(futureBlob.getKey().getData(), errorMessage);
               errorBlobs.add(futureBlob.getKey());
               retry = 0;
               idx++;

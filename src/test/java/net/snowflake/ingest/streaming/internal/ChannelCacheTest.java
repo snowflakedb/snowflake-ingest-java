@@ -213,7 +213,8 @@ public class ChannelCacheTest {
         channel1.getSchemaName(),
         channel1.getTableName(),
         channel1.getName(),
-        channel1.getChannelSequencer());
+        channel1.getChannelSequencer(),
+        "Invalidated by test");
     Assert.assertFalse(channel1.isValid());
 
     cache.invalidateChannelIfSequencersMatch(
@@ -221,7 +222,8 @@ public class ChannelCacheTest {
         channel2.getSchemaName(),
         channel2.getTableName(),
         channel2.getName(),
-        channel2.getChannelSequencer());
+        channel2.getChannelSequencer(),
+        "Invalidated by test");
     Assert.assertFalse(channel2.isValid());
 
     cache.invalidateChannelIfSequencersMatch(
@@ -229,7 +231,8 @@ public class ChannelCacheTest {
         channel3.getSchemaName(),
         channel3.getTableName(),
         channel3.getName(),
-        channel3.getChannelSequencer());
+        channel3.getChannelSequencer(),
+        "Invalidated by test");
     Assert.assertFalse(channel3.isValid());
   }
 }
