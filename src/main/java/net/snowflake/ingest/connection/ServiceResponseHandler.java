@@ -252,6 +252,9 @@ public final class ServiceResponseHandler {
           apiName,
           requestId == null ? "" : requestId.toString());
 
+      // Consume the response to release the connection
+      String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
+
       // if we have a 503 exception throw a backoff
       switch (statusLine.getStatusCode()) {
           // If we have a 503, BACKOFF
@@ -263,11 +266,12 @@ public final class ServiceResponseHandler {
           requestBuilder.addToken(request);
           response = httpClient.execute(request);
           if (!isStatusOK(response.getStatusLine())) {
+            // Consume the response to release the connection
+            consumeAndReturnResponseEntityAsString(response.getEntity());
             throw new SecurityException("Authorization failed after retry");
           }
           break;
         default:
-          String blob = consumeAndReturnResponseEntityAsString(response.getEntity());
           throw new IngestResponseException(
               statusLine.getStatusCode(),
               IngestResponseException.IngestExceptionBody.parseBody(blob));
