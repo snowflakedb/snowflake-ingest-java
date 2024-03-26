@@ -950,7 +950,9 @@ public class SnowflakeStreamingIngestClientTest {
         1, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2)).size());
     assertEquals(
         2,
-        client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 200)).size());
+        client
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 200))
+            .size());
     assertEquals(
         3,
         client
