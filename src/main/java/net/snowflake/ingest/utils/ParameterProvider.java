@@ -58,7 +58,7 @@ public class ParameterProvider {
   static final long MAX_CLIENT_LAG_MS_MIN = TimeUnit.SECONDS.toMillis(1);
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
 
-  public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 128 * 1024 * 1024; // 128 MB
+  public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 134217728L; // 128 MB
   public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT = 200;
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
