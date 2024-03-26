@@ -716,7 +716,7 @@ public class RequestBuilder {
    * @param payload POST request payload
    * @param endPoint REST API endpoint
    * @param message error message if there are failures during HTTP building
-   * @param queryParameters
+   * @param queryParameters POST request query parameters
    * @return URI for the POST request
    */
   public HttpPost generateStreamingIngestPostRequest(

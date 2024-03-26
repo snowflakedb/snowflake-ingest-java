@@ -384,6 +384,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     }
   }
 
+  /**
+   * This function builds and sends an open channel request that opens a rowset api channel against
+   * a pipe or table. It will return a {@link SnowflakeStreamingIngestChannel} object if succeeded,
+   * otherwise it will throw an exception with failure HTTP response code.
+   */
   private SnowflakeStreamingIngestChannel openRowsetApiChannel(OpenChannelRequest request)
       throws IngestResponseException, IOException {
     Map<Object, Object> payload = new HashMap<>();

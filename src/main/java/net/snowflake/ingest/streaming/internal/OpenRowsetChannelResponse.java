@@ -1,12 +1,12 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/** Response to the OpenChannelRequest */
+/** Response to the open channel request to open a rowset api channel */
 class OpenRowsetChannelResponse extends StreamingIngestResponse {
   private String message;
   private String continuationToken;

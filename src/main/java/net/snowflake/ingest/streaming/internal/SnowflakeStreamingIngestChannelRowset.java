@@ -12,21 +12,22 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Logging;
 
+/** The implementation for Rowset API channel */
 public class SnowflakeStreamingIngestChannelRowset implements SnowflakeStreamingIngestChannel {
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelRowset.class);
 
-  private String dbName;
+  private final String dbName;
 
-  private String schemaName;
+  private final String schemaName;
 
-  private String pipeName;
+  private final String pipeName;
 
-  private String tableName;
+  private final String tableName;
 
-  private String name;
+  private final String name;
 
-  private String fullyQualifiedName;
+  private final String fullyQualifiedName;
 
   private boolean isClosed;
 
