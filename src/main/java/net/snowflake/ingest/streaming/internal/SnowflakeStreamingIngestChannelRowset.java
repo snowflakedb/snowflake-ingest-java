@@ -61,7 +61,7 @@ public class SnowflakeStreamingIngestChannelRowset implements SnowflakeStreaming
    * Get the fully qualified channel name
    *
    * @return fully qualified name of the channel, in the format of
-   *     dbName.schemaName.tableName.channelName
+   *     dbName.schemaName.pipeName.channelName or dbName.schemaName.tableName.channelName
    */
   @Override
   public String getFullyQualifiedName() {

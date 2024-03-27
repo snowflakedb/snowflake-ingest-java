@@ -306,82 +306,91 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     try {
       if (request.getChannelType() == OpenChannelRequest.ChannelType.CLOUD_STORAGE) {
-        Map<Object, Object> payload = new HashMap<>();
-        payload.put(
-            "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
-        payload.put("channel", request.getChannelName());
-        payload.put("table", request.getTableName());
-        payload.put("database", request.getDBName());
-        payload.put("schema", request.getSchemaName());
-        payload.put("write_mode", request.getChannelType().name());
-        payload.put("role", this.role);
-        if (request.isOffsetTokenProvided()) {
-          payload.put("offset_token", request.getOffsetToken());
-        }
-
-        OpenChannelResponse response =
-            executeWithRetries(
-                OpenChannelResponse.class,
-                OPEN_CHANNEL_ENDPOINT,
-                payload,
-                "open channel",
-                STREAMING_OPEN_CHANNEL,
-                httpClient,
-                requestBuilder,
-                null);
-
-        // Check for Snowflake specific response code
-        if (response.getStatusCode() != RESPONSE_SUCCESS) {
-          logger.logDebug(
-              "Open channel request failed, channel={}, table={}, client={}, message={}",
-              request.getChannelName(),
-              request.getFullyQualifiedTableName(),
-              getName(),
-              response.getMessage());
-          throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
-        }
-
-        logger.logInfo(
-            "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
-                + " rowSequencer={}, client={}",
-            request.getChannelName(),
-            request.getFullyQualifiedTableName(),
-            response.getClientSequencer(),
-            response.getRowSequencer(),
-            getName());
-
-        // Channel is now registered, add it to the in-memory channel pool
-        SnowflakeStreamingIngestChannel channel =
-            SnowflakeStreamingIngestChannelFactory.<T>builder(response.getChannelName())
-                .setDBName(response.getDBName())
-                .setSchemaName(response.getSchemaName())
-                .setTableName(response.getTableName())
-                .setOffsetToken(response.getOffsetToken())
-                .setRowSequencer(response.getRowSequencer())
-                .setChannelSequencer(response.getClientSequencer())
-                .setOwningClient(this)
-                .setEncryptionKey(response.getEncryptionKey())
-                .setEncryptionKeyId(response.getEncryptionKeyId())
-                .setOnErrorOption(request.getOnErrorOption())
-                .setDefaultTimezone(request.getDefaultTimezone())
-                .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
-                .setChannelType(request.getChannelType())
-                .build();
-
-        // Setup the row buffer schema
-        ((SnowflakeStreamingIngestChannelInternal<?>) channel)
-            .setupSchema(response.getTableColumns());
-
-        // Add channel to the channel cache
-        this.channelCache.addChannel((SnowflakeStreamingIngestChannelInternal<T>) channel);
-
-        return channel;
+        return openCloudStorageChannel(request);
       } else {
         return openRowsetApiChannel(request);
       }
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
+  }
+
+  /**
+   * This function builds and sends an open channel request that opens a cloud storage channel
+   * against a table. It will return a {@link SnowflakeStreamingIngestChannel} object if succeeded,
+   * otherwise it will throw an exception with failure HTTP response code.
+   */
+  private SnowflakeStreamingIngestChannel openCloudStorageChannel(OpenChannelRequest request)
+      throws IngestResponseException, IOException {
+    Map<Object, Object> payload = new HashMap<>();
+    payload.put(
+        "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
+    payload.put("channel", request.getChannelName());
+    payload.put("table", request.getTableName());
+    payload.put("database", request.getDBName());
+    payload.put("schema", request.getSchemaName());
+    payload.put("write_mode", request.getChannelType().name());
+    payload.put("role", this.role);
+    if (request.isOffsetTokenProvided()) {
+      payload.put("offset_token", request.getOffsetToken());
+    }
+
+    OpenChannelResponse response =
+        executeWithRetries(
+            OpenChannelResponse.class,
+            OPEN_CHANNEL_ENDPOINT,
+            payload,
+            "open channel",
+            STREAMING_OPEN_CHANNEL,
+            httpClient,
+            requestBuilder,
+            null);
+
+    // Check for Snowflake specific response code
+    if (response.getStatusCode() != RESPONSE_SUCCESS) {
+      logger.logDebug(
+          "Open channel request failed, channel={}, table={}, client={}, message={}",
+          request.getChannelName(),
+          request.getFullyQualifiedTableName(),
+          getName(),
+          response.getMessage());
+      throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
+    }
+
+    logger.logInfo(
+        "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
+            + " rowSequencer={}, client={}",
+        request.getChannelName(),
+        request.getFullyQualifiedTableName(),
+        response.getClientSequencer(),
+        response.getRowSequencer(),
+        getName());
+
+    // Channel is now registered, add it to the in-memory channel pool
+    SnowflakeStreamingIngestChannel channel =
+        SnowflakeStreamingIngestChannelFactory.<T>builder(response.getChannelName())
+            .setDBName(response.getDBName())
+            .setSchemaName(response.getSchemaName())
+            .setTableName(response.getTableName())
+            .setOffsetToken(response.getOffsetToken())
+            .setRowSequencer(response.getRowSequencer())
+            .setChannelSequencer(response.getClientSequencer())
+            .setOwningClient(this)
+            .setEncryptionKey(response.getEncryptionKey())
+            .setEncryptionKeyId(response.getEncryptionKeyId())
+            .setOnErrorOption(request.getOnErrorOption())
+            .setDefaultTimezone(request.getDefaultTimezone())
+            .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
+            .setChannelType(request.getChannelType())
+            .build();
+
+    // Setup the row buffer schema
+    ((SnowflakeStreamingIngestChannelInternal<?>) channel).setupSchema(response.getTableColumns());
+
+    // Add channel to the channel cache
+    this.channelCache.addChannel((SnowflakeStreamingIngestChannelInternal<T>) channel);
+
+    return channel;
   }
 
   /**
@@ -453,6 +462,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         .setDBName(request.getDBName())
         .setSchemaName(request.getSchemaName())
         .setTableName(request.getTableName())
+        .setPipeName(request.getPipeName())
         .setOffsetToken(response.getOffsetToken())
         .setContinuationToken(response.getContinuationToken())
         .setOwningClient(this)

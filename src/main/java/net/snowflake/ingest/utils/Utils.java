@@ -98,7 +98,7 @@ public class Utils {
   }
 
   /** Assert when all the Strings are either null or Empty */
-  public static void assertStringsNotNullOrEmpty(String name, Collection<String> values)
+  public static void assertAtLeastOneStringNotNullOrEmpty(String name, Collection<String> values)
       throws SFException {
     for (String value : values) {
       if (!isNullOrEmpty(value)) {

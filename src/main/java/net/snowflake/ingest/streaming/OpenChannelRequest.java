@@ -135,7 +135,7 @@ public class OpenChannelRequest {
     Utils.assertStringNotNullOrEmpty("channel name", builder.channelName);
     Utils.assertStringNotNullOrEmpty("database name", builder.dbName);
     Utils.assertStringNotNullOrEmpty("schema name", builder.schemaName);
-    Utils.assertStringsNotNullOrEmpty(
+    Utils.assertAtLeastOneStringNotNullOrEmpty(
         "table or pipe name", Arrays.asList(builder.tableName, builder.pipeName));
     Utils.assertNotNull("on_error option", builder.onErrorOption);
     Utils.assertNotNull("default_timezone", builder.defaultTimezone);
