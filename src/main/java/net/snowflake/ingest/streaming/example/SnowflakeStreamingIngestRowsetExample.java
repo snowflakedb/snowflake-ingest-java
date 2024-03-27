@@ -50,7 +50,7 @@ public class SnowflakeStreamingIngestRowsetExample {
           OpenChannelRequest.builder("MY_CHANNEL")
               .setDBName("MY_DATABASE")
               .setSchemaName("MY_SCHEMA")
-              .setTableName("MY_TABLE")
+              .setPipeName("MY_PIPE")
               .setChannelType(OpenChannelRequest.ChannelType.ROWSET_API)
               .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
               .build();
@@ -75,6 +75,7 @@ public class SnowflakeStreamingIngestRowsetExample {
         }
       }
 
+      // TODO: Wait for 20sec for now, will use get status endpoint once we have it
       Thread.sleep(20000);
 
       // Close the channel, the function internally will make sure everything is committed (or throw

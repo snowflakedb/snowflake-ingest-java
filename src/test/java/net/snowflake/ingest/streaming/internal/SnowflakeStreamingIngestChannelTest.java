@@ -36,7 +36,6 @@ import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
@@ -327,7 +326,7 @@ public class SnowflakeStreamingIngestChannelTest {
     payload.put("table", "T_STREAMINGINGEST");
     payload.put("database", "STREAMINGINGEST_TEST");
     payload.put("schema", "PUBLIC");
-    payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
+    payload.put("write_mode", OpenChannelRequest.ChannelType.CLOUD_STOARGE.name());
 
     HttpPost request =
         requestBuilder.generateStreamingIngestPostRequest(

@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.time.ZoneId;
+import java.util.Arrays;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -26,7 +27,7 @@ class SnowflakeStreamingIngestChannelFactory {
     private String offsetToken;
     private Long channelSequencer;
     private Long rowSequencer;
-    private String continationToken;
+    private String continuationToken;
     private SnowflakeStreamingIngestClientInternal<T> owningClient;
     private String encryptionKey;
     private Long encryptionKeyId;
@@ -75,7 +76,7 @@ class SnowflakeStreamingIngestChannelFactory {
     }
 
     SnowflakeStreamingIngestChannelBuilder<T> setContinuationToken(String token) {
-      this.continationToken = token;
+      this.continuationToken = token;
       return this;
     }
 
@@ -119,11 +120,12 @@ class SnowflakeStreamingIngestChannelFactory {
 
     SnowflakeStreamingIngestChannel build() {
       Utils.assertStringNotNullOrEmpty("channel name", this.name);
-      Utils.assertStringNotNullOrEmpty("table name", this.tableName);
       Utils.assertStringNotNullOrEmpty("schema name", this.schemaName);
       Utils.assertStringNotNullOrEmpty("database name", this.dbName);
       Utils.assertNotNull("channel owning client", this.owningClient);
       Utils.assertNotNull("channel type", this.type);
+      Utils.assertStringsNotNullOrEmpty(
+          "table or pipe name", Arrays.asList(this.tableName, this.pipeName));
       if (this.type == OpenChannelRequest.ChannelType.CLOUD_STOARGE) {
         Utils.assertNotNull("channel sequencer", this.channelSequencer);
         Utils.assertNotNull("row sequencer", this.rowSequencer);
@@ -147,6 +149,7 @@ class SnowflakeStreamingIngestChannelFactory {
             this.owningClient.getParameterProvider().getBlobFormatVersion(),
             this.offsetTokenVerificationFunction);
       } else {
+        Utils.assertNotNull("continuation token", this.continuationToken);
         return new SnowflakeStreamingIngestChannelRowset(
             this.name,
             this.dbName,
@@ -154,7 +157,7 @@ class SnowflakeStreamingIngestChannelFactory {
             this.pipeName,
             this.tableName,
             this.offsetToken,
-            this.continationToken);
+            this.continuationToken);
       }
     }
   }

@@ -60,11 +60,26 @@ public interface SnowflakeStreamingIngestChannel {
   String getTableName();
 
   /**
+   * Get the name of the table or pipe based on the ownership of the channel (either a table or
+   * pipe)
+   *
+   * @return name of the table or pipe
+   */
+  String getTableOrPipeName();
+
+  /**
    * Get the fully qualified table name that the channel belongs to
    *
    * @return fully qualified table name, in the format of dbName.schemaName.tableName
    */
   String getFullyQualifiedTableName();
+
+  /**
+   * Get the fully qualified table or pipe name that the channel belongs to
+   *
+   * @return fully qualified table or pipe name
+   */
+  String getFullyQualifiedTableOrPipeName();
 
   /** @return a boolean which indicates whether the channel is valid */
   boolean isValid();

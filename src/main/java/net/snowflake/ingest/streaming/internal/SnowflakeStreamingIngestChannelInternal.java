@@ -176,6 +176,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.channelFlushContext.getTableName();
   }
 
+  /**
+   * Get the name of the table or pipe based on the ownership of the channel (either a table or
+   * pipe)
+   *
+   * @return name of the table or pipe
+   */
+  @Override
+  public String getTableOrPipeName() {
+    return getTableName();
+  }
+
   Long getChannelSequencer() {
     return this.channelFlushContext.getChannelSequencer();
   }
@@ -194,6 +205,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @Override
   public String getFullyQualifiedTableName() {
     return channelFlushContext.getFullyQualifiedTableName();
+  }
+
+  /**
+   * Get the fully qualified table or pipe name that the channel belongs to
+   *
+   * @return fully qualified table or pipe name
+   */
+  @Override
+  public String getFullyQualifiedTableOrPipeName() {
+    return getFullyQualifiedTableName();
   }
 
   /**

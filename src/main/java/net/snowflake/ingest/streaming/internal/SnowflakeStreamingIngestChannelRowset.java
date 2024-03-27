@@ -50,7 +50,9 @@ public class SnowflakeStreamingIngestChannelRowset implements SnowflakeStreaming
     this.pipeName = pipeName;
     this.tableName = tableName;
     this.name = name;
-    this.fullyQualifiedName = String.format("%s.%s.%s.%s", dbName, schemaName, tableName, name);
+    this.fullyQualifiedName =
+        String.format(
+            "%s.%s.%s.%s", dbName, schemaName, pipeName == null ? tableName : pipeName, name);
     this.offsetToken = offsetToken;
     this.continuationToken = continuationToken;
   }
@@ -107,12 +109,14 @@ public class SnowflakeStreamingIngestChannelRowset implements SnowflakeStreaming
   }
 
   /**
-   * Get the table name
+   * Get the name of the table or pipe based on the ownership of the channel (either a table or
+   * pipe)
    *
-   * @return name of the table
+   * @return name of the table or pipe
    */
-  public String getPipeName() {
-    return this.pipeName;
+  @Override
+  public String getTableOrPipeName() {
+    return this.pipeName != null ? this.pipeName : this.tableName;
   }
 
   /**
@@ -123,6 +127,17 @@ public class SnowflakeStreamingIngestChannelRowset implements SnowflakeStreaming
   @Override
   public String getFullyQualifiedTableName() {
     return this.fullyQualifiedName;
+  }
+
+  /**
+   * Get the fully qualified table or pipe name that the channel belongs to
+   *
+   * @return fully qualified table or pipe name
+   */
+  @Override
+  public String getFullyQualifiedTableOrPipeName() {
+    return String.format(
+        "%s.%s.%s", this.getDBName(), this.getSchemaName(), this.getTableOrPipeName());
   }
 
   /** @return a boolean which indicates whether the channel is valid */
@@ -250,5 +265,10 @@ public class SnowflakeStreamingIngestChannelRowset implements SnowflakeStreaming
   @Override
   public OpenChannelRequest.ChannelType getType() {
     return OpenChannelRequest.ChannelType.ROWSET_API;
+  }
+
+  /** Get the latest continuation token */
+  public String getContinuationToken() {
+    return this.continuationToken;
   }
 }

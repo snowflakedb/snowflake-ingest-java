@@ -313,7 +313,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         payload.put("table", request.getTableName());
         payload.put("database", request.getDBName());
         payload.put("schema", request.getSchemaName());
-        payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
+        payload.put("write_mode", request.getChannelType().name());
         payload.put("role", this.role);
         if (request.isOffsetTokenProvided()) {
           payload.put("offset_token", request.getOffsetToken());
@@ -459,6 +459,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         .setOnErrorOption(request.getOnErrorOption())
         .setDefaultTimezone(request.getDefaultTimezone())
         .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
+        .setChannelType(request.getChannelType())
         .build();
   }
 

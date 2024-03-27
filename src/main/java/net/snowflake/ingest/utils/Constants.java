@@ -77,7 +77,7 @@ public class Constants {
 
   public enum WriteMode {
     CLOUD_STORAGE,
-    REST_API,
+    ROWSET_API,
   }
 
   /** The write mode to generate BDEC file. */
