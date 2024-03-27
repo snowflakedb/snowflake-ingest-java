@@ -75,11 +75,6 @@ public class Constants {
   public static final String INSERT_ROWS_ON_TABLE_ENDPOINT =
       "/v1/streaming/rowset/databases/{databaseName}/schemas/{schemaName}/tables/{tableName}/channels/{channelName}/rows";
 
-  public enum WriteMode {
-    CLOUD_STORAGE,
-    ROWSET_API,
-  }
-
   /** The write mode to generate BDEC file. */
   public enum BdecVersion {
     // Unused (previously Arrow)

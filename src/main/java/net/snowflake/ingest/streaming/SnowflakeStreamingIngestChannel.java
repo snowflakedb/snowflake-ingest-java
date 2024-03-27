@@ -307,5 +307,11 @@ public interface SnowflakeStreamingIngestChannel {
    */
   Map<String, ColumnProperties> getTableSchema();
 
+  /**
+   * Get the type of channel, please referring to {@link
+   * net.snowflake.ingest.streaming.OpenChannelRequest.ChannelType} for the supported channel type
+   *
+   * @return type of the channel
+   */
   OpenChannelRequest.ChannelType getType();
 }

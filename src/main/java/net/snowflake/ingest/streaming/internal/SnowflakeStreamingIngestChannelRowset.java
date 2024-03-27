@@ -262,6 +262,12 @@ public class SnowflakeStreamingIngestChannelRowset implements SnowflakeStreaming
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * Get the type of channel, please referring to {@link
+   * net.snowflake.ingest.streaming.OpenChannelRequest.ChannelType} for the supported channel type
+   *
+   * @return type of the channel
+   */
   @Override
   public OpenChannelRequest.ChannelType getType() {
     return OpenChannelRequest.ChannelType.ROWSET_API;

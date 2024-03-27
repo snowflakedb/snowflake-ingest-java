@@ -472,9 +472,15 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.tableColumns;
   }
 
+  /**
+   * Get the type of channel, please referring to {@link
+   * net.snowflake.ingest.streaming.OpenChannelRequest.ChannelType} for the supported channel type
+   *
+   * @return type of the channel
+   */
   @Override
   public OpenChannelRequest.ChannelType getType() {
-    return OpenChannelRequest.ChannelType.CLOUD_STOARGE;
+    return OpenChannelRequest.ChannelType.CLOUD_STORAGE;
   }
 
   /** Check whether we need to throttle the insertRows API */

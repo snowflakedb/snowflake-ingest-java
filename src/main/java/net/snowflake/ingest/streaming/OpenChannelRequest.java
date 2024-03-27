@@ -18,7 +18,7 @@ public class OpenChannelRequest {
   }
 
   public enum ChannelType {
-    CLOUD_STOARGE,
+    CLOUD_STORAGE,
     ROWSET_API,
   }
 
@@ -72,7 +72,7 @@ public class OpenChannelRequest {
     private String offsetToken;
     private boolean isOffsetTokenProvided = false;
     private OffsetTokenVerificationFunction offsetTokenVerificationFunction;
-    private ChannelType channelType = ChannelType.CLOUD_STOARGE;
+    private ChannelType channelType = ChannelType.CLOUD_STORAGE;
 
     public OpenChannelRequestBuilder(String channelName) {
       this.channelName = channelName;

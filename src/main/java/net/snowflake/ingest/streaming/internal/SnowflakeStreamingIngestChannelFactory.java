@@ -126,7 +126,7 @@ class SnowflakeStreamingIngestChannelFactory {
       Utils.assertNotNull("channel type", this.type);
       Utils.assertStringsNotNullOrEmpty(
           "table or pipe name", Arrays.asList(this.tableName, this.pipeName));
-      if (this.type == OpenChannelRequest.ChannelType.CLOUD_STOARGE) {
+      if (this.type == OpenChannelRequest.ChannelType.CLOUD_STORAGE) {
         Utils.assertNotNull("channel sequencer", this.channelSequencer);
         Utils.assertNotNull("row sequencer", this.rowSequencer);
         Utils.assertStringNotNullOrEmpty("encryption key", this.encryptionKey);

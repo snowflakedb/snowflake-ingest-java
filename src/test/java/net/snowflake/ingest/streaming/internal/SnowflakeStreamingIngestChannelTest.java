@@ -92,7 +92,7 @@ public class SnowflakeStreamingIngestChannelTest {
           rowSequencer,
           client,
           UTC,
-          OpenChannelRequest.ChannelType.CLOUD_STOARGE
+          OpenChannelRequest.ChannelType.CLOUD_STORAGE
         };
 
     for (int i = 0; i < fields.length; i++) {
@@ -146,7 +146,7 @@ public class SnowflakeStreamingIngestChannelTest {
             .setEncryptionKeyId(1234L)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .setDefaultTimezone(UTC)
-            .setChannelType(OpenChannelRequest.ChannelType.CLOUD_STOARGE)
+            .setChannelType(OpenChannelRequest.ChannelType.CLOUD_STORAGE)
             .build();
 
     Assert.assertEquals(name, channel.getName());
@@ -326,7 +326,7 @@ public class SnowflakeStreamingIngestChannelTest {
     payload.put("table", "T_STREAMINGINGEST");
     payload.put("database", "STREAMINGINGEST_TEST");
     payload.put("schema", "PUBLIC");
-    payload.put("write_mode", OpenChannelRequest.ChannelType.CLOUD_STOARGE.name());
+    payload.put("write_mode", OpenChannelRequest.ChannelType.CLOUD_STORAGE.name());
 
     HttpPost request =
         requestBuilder.generateStreamingIngestPostRequest(

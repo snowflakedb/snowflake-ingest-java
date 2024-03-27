@@ -305,7 +305,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         getName());
 
     try {
-      if (request.getChannelType() == OpenChannelRequest.ChannelType.CLOUD_STOARGE) {
+      if (request.getChannelType() == OpenChannelRequest.ChannelType.CLOUD_STORAGE) {
         Map<Object, Object> payload = new HashMap<>();
         payload.put(
             "request_id", this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
