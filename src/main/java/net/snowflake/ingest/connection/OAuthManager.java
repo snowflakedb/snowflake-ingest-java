@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.connection;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.ingest.utils.Constants;
@@ -154,6 +155,9 @@ public final class OAuthManager extends SecurityManager {
             "Refresh access token, next refresh is scheduled after {} seconds", nextRefreshDelay);
 
         return;
+      } catch (IOException e) {
+        // Http client already retried on IO exception, skip retires
+        break;
       } catch (SFException e1) {
         // Exponential backoff retries
         try {
