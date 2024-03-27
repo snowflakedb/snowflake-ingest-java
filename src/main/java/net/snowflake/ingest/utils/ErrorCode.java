@@ -40,9 +40,8 @@ public enum ErrorCode {
   MAKE_URI_FAILURE("0032"),
   OAUTH_REFRESH_TOKEN_ERROR("0033"),
   INVALID_CONFIG_PARAMETER("0034"),
-  MAX_BATCH_SIZE_EXCEEDED("0035"),
-  CRYPTO_PROVIDER_ERROR("0036"),
-  DROP_CHANNEL_FAILURE("0037");
+  CRYPTO_PROVIDER_ERROR("0035"),
+  DROP_CHANNEL_FAILURE("0036");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 
