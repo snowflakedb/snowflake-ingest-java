@@ -37,6 +37,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
     this.message = message;
   }
 
+  @Override
   String getMessage() {
     return this.message;
   }

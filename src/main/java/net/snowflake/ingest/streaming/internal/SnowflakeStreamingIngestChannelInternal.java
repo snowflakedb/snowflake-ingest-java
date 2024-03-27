@@ -176,6 +176,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.channelFlushContext.getTableName();
   }
 
+  /**
+   * Get the name of the table or pipe based on the ownership of the channel (either a table or
+   * pipe)
+   *
+   * @return name of the table or pipe
+   */
+  @Override
+  public String getTableOrPipeName() {
+    return getTableName();
+  }
+
   Long getChannelSequencer() {
     return this.channelFlushContext.getChannelSequencer();
   }
@@ -194,6 +205,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @Override
   public String getFullyQualifiedTableName() {
     return channelFlushContext.getFullyQualifiedTableName();
+  }
+
+  /**
+   * Get the fully qualified table or pipe name that the channel belongs to
+   *
+   * @return fully qualified table or pipe name
+   */
+  @Override
+  public String getFullyQualifiedTableOrPipeName() {
+    return getFullyQualifiedTableName();
   }
 
   /**
@@ -346,6 +367,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return insertRows(Collections.singletonList(row), offsetToken, offsetToken);
   }
 
+  @Override
+  public InsertValidationResponse insertRow(Map<String, Object> row) {
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * --------------------------------------------------------------------------------------------
    * Insert a batch of rows into the channel
@@ -407,6 +433,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return insertRows(rows, null, offsetToken);
   }
 
+  @Override
+  public InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows) {
+    throw new UnsupportedOperationException();
+  }
+
   /** Collect the row size from row buffer if required */
   void collectRowSize(float rowSize) {
     if (this.owningClient.inputThroughput != null) {
@@ -439,6 +470,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   @Override
   public Map<String, ColumnProperties> getTableSchema() {
     return this.tableColumns;
+  }
+
+  /**
+   * Get the type of channel, please referring to {@link
+   * net.snowflake.ingest.streaming.OpenChannelRequest.ChannelType} for the supported channel type
+   *
+   * @return type of the channel
+   */
+  @Override
+  public OpenChannelRequest.ChannelType getType() {
+    return OpenChannelRequest.ChannelType.CLOUD_STORAGE;
   }
 
   /** Check whether we need to throttle the insertRows API */

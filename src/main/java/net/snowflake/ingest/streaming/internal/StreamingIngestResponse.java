@@ -5,5 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 abstract class StreamingIngestResponse {
+  abstract String getMessage();
+
   abstract Long getStatusCode();
 }

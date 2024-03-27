@@ -55,10 +55,12 @@ public class StreamingIngestUtilsTest {
         "channel status",
         STREAMING_CHANNEL_STATUS,
         httpClient,
-        requestBuilder);
+        requestBuilder,
+        null);
 
     Mockito.verify(requestBuilder, Mockito.times(1))
-        .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
+        .generateStreamingIngestPostRequest(
+            Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   InputStream getInputStream(String value) {
@@ -106,10 +108,12 @@ public class StreamingIngestUtilsTest {
             "channel status",
             STREAMING_CHANNEL_STATUS,
             httpClient,
-            requestBuilder);
+            requestBuilder,
+            null);
 
     Mockito.verify(requestBuilder, Mockito.times(1))
-        .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
+        .generateStreamingIngestPostRequest(
+            Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
     Assert.assertEquals("honk", result.getMessage());
   }
 
@@ -156,10 +160,12 @@ public class StreamingIngestUtilsTest {
             "channel status",
             STREAMING_CHANNEL_STATUS,
             httpClient,
-            requestBuilder);
+            requestBuilder,
+            null);
 
     Mockito.verify(requestBuilder, Mockito.times(1))
-        .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
+        .generateStreamingIngestPostRequest(
+            Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
 
     Assert.assertEquals("honkSuccess", result.getMessage());
   }

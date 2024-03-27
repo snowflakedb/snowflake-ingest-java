@@ -65,10 +65,15 @@ public class Constants {
   public static final String DROP_CHANNEL_ENDPOINT = "/v1/streaming/channels/drop/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
-  public enum WriteMode {
-    CLOUD_STORAGE,
-    REST_API,
-  }
+  // Rowset API related endpoints
+  public static final String OPEN_ROWSET_CHANNEL_ON_PIPE_ENDPOINT =
+      "/v1/streaming/rowset/databases/{databaseName}/schemas/{schemaName}/pipes/{pipeName}/channels";
+  public static final String OPEN_ROWSET_CHANNEL_ON_TABLE_ENDPOINT =
+      "/v1/streaming/rowset/databases/{databaseName}/schemas/{schemaName}/tables/{tableName}/channels";
+  public static final String INSERT_ROWS_ON_PIPE_ENDPOINT =
+      "/v1/streaming/rowset/databases/{databaseName}/schemas/{schemaName}/pipes/{pipeName}/channels/{channelName}/rows";
+  public static final String INSERT_ROWS_ON_TABLE_ENDPOINT =
+      "/v1/streaming/rowset/databases/{databaseName}/schemas/{schemaName}/tables/{tableName}/channels/{channelName}/rows";
 
   /** The write mode to generate BDEC file. */
   public enum BdecVersion {
@@ -139,6 +144,7 @@ public class Constants {
               name, Arrays.asList(BdecParquetCompression.values())));
     }
   }
+
   // Parameters
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;

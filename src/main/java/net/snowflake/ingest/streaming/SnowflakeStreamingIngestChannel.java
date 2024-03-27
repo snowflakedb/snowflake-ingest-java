@@ -60,11 +60,26 @@ public interface SnowflakeStreamingIngestChannel {
   String getTableName();
 
   /**
+   * Get the name of the table or pipe based on the ownership of the channel (either a table or
+   * pipe)
+   *
+   * @return name of the table or pipe
+   */
+  String getTableOrPipeName();
+
+  /**
    * Get the fully qualified table name that the channel belongs to
    *
    * @return fully qualified table name, in the format of dbName.schemaName.tableName
    */
   String getFullyQualifiedTableName();
+
+  /**
+   * Get the fully qualified table or pipe name that the channel belongs to
+   *
+   * @return fully qualified table or pipe name
+   */
+  String getFullyQualifiedTableOrPipeName();
 
   /** @return a boolean which indicates whether the channel is valid */
   boolean isValid();
@@ -247,6 +262,8 @@ public interface SnowflakeStreamingIngestChannel {
    */
   InsertValidationResponse insertRow(Map<String, Object> row, @Nullable String offsetToken);
 
+  InsertValidationResponse insertRow(Map<String, Object> row);
+
   /**
    * Insert a batch of rows into the channel, each row is represented using Map where the key is
    * column name and the value is a row of data. See {@link
@@ -271,6 +288,8 @@ public interface SnowflakeStreamingIngestChannel {
   InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
 
+  InsertValidationResponse insertRows(Iterable<Map<String, Object>> rows);
+
   /**
    * Get the latest committed offset token from Snowflake
    *
@@ -287,4 +306,12 @@ public interface SnowflakeStreamingIngestChannel {
    * @return map representing Column Name to Column Properties
    */
   Map<String, ColumnProperties> getTableSchema();
+
+  /**
+   * Get the type of channel, please referring to {@link
+   * net.snowflake.ingest.streaming.OpenChannelRequest.ChannelType} for the supported channel type
+   *
+   * @return type of the channel
+   */
+  OpenChannelRequest.ChannelType getType();
 }

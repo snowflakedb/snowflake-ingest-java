@@ -374,7 +374,10 @@ public class SnowflakeStreamingIngestClientTest {
     Assert.assertEquals(response.getMessage(), result.getMessage());
     Mockito.verify(requestBuilder)
         .generateStreamingIngestPostRequest(
-            objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
+            objectMapper.writeValueAsString(request),
+            CHANNEL_STATUS_ENDPOINT,
+            "channel status",
+            null);
   }
 
   @Test
@@ -419,7 +422,8 @@ public class SnowflakeStreamingIngestClientTest {
         .generateStreamingIngestPostRequest(
             ArgumentMatchers.contains("channel"),
             ArgumentMatchers.refEq(DROP_CHANNEL_ENDPOINT),
-            ArgumentMatchers.refEq("drop channel"));
+            ArgumentMatchers.refEq("drop channel"),
+            ArgumentMatchers.refEq(null));
   }
 
   @Test
@@ -546,7 +550,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     HttpPost request =
         requestBuilder.generateStreamingIngestPostRequest(
-            payload, REGISTER_BLOB_ENDPOINT, "register blob");
+            payload, REGISTER_BLOB_ENDPOINT, "register blob", null);
 
     Assert.assertEquals(
         String.format("%s%s", urlStr, REGISTER_BLOB_ENDPOINT), request.getRequestLine().getUri());
@@ -915,7 +919,8 @@ public class SnowflakeStreamingIngestClientTest {
     client.getChannelCache().addChannel(channel4);
     client.registerBlobs(blobs);
     Mockito.verify(requestBuilder, Mockito.times(MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1))
-        .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
+        .generateStreamingIngestPostRequest(
+            Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
     Assert.assertFalse(channel1.isValid());
     Assert.assertFalse(channel2.isValid());
   }
@@ -1117,7 +1122,8 @@ public class SnowflakeStreamingIngestClientTest {
 
     client.registerBlobs(blobs);
     Mockito.verify(requestBuilder, Mockito.times(2))
-        .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
+        .generateStreamingIngestPostRequest(
+            Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
     Assert.assertTrue(channel1.isValid());
     Assert.assertTrue(channel2.isValid());
   }
@@ -1440,6 +1446,9 @@ public class SnowflakeStreamingIngestClientTest {
         channelStatus.getPersistedOffsetToken(), result.get(channel.getFullyQualifiedName()));
     Mockito.verify(requestBuilder)
         .generateStreamingIngestPostRequest(
-            objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
+            objectMapper.writeValueAsString(request),
+            CHANNEL_STATUS_ENDPOINT,
+            "channel status",
+            null);
   }
 }

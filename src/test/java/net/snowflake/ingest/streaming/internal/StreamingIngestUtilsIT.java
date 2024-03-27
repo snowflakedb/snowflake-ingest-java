@@ -70,7 +70,8 @@ public class StreamingIngestUtilsIT {
               "client configure",
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
-              requestBuilder);
+              requestBuilder,
+              null);
       Assert.fail("Expected error for invalid token");
     } catch (SecurityException ignored) {
     }
@@ -88,7 +89,8 @@ public class StreamingIngestUtilsIT {
               "client configure",
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
-              requestBuilder);
+              requestBuilder,
+              null);
       Assert.fail("Expected error for invalid token");
     } catch (IngestResponseException ignored) {
     }
@@ -105,7 +107,8 @@ public class StreamingIngestUtilsIT {
             "client configure",
             STREAMING_CLIENT_CONFIGURE,
             httpClient,
-            requestBuilder);
+            requestBuilder,
+            null);
 
     assert (response.getStatusCode() == RESPONSE_SUCCESS);
     Mockito.verify(requestBuilder, Mockito.times(1)).refreshToken();

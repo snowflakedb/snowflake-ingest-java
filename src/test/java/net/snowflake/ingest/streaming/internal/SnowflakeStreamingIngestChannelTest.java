@@ -36,7 +36,6 @@ import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
@@ -85,7 +84,15 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Object[] fields =
         new Object[] {
-          name, dbName, schemaName, tableName, channelSequencer, rowSequencer, client, UTC
+          name,
+          dbName,
+          schemaName,
+          tableName,
+          channelSequencer,
+          rowSequencer,
+          client,
+          UTC,
+          OpenChannelRequest.ChannelType.CLOUD_STORAGE
         };
 
     for (int i = 0; i < fields.length; i++) {
@@ -100,6 +107,7 @@ public class SnowflakeStreamingIngestChannelTest {
             .setChannelSequencer((Long) fields[5])
             .setOwningClient((SnowflakeStreamingIngestClientInternal<StubChunkData>) fields[6])
             .setDefaultTimezone((ZoneId) fields[7])
+            .setChannelType((OpenChannelRequest.ChannelType) fields[8])
             .build();
         Assert.fail("Channel factory should fail with null fields");
       } catch (SFException e) {
@@ -125,7 +133,7 @@ public class SnowflakeStreamingIngestChannelTest {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         new SnowflakeStreamingIngestClientInternal<>("client");
 
-    SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
+    SnowflakeStreamingIngestChannel channel =
         SnowflakeStreamingIngestChannelFactory.<StubChunkData>builder(name)
             .setDBName(dbName)
             .setSchemaName(schemaName)
@@ -138,15 +146,26 @@ public class SnowflakeStreamingIngestChannelTest {
             .setEncryptionKeyId(1234L)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .setDefaultTimezone(UTC)
+            .setChannelType(OpenChannelRequest.ChannelType.CLOUD_STORAGE)
             .build();
 
     Assert.assertEquals(name, channel.getName());
     Assert.assertEquals(dbName, channel.getDBName());
     Assert.assertEquals(schemaName, channel.getSchemaName());
     Assert.assertEquals(tableName, channel.getTableName());
-    Assert.assertEquals(offsetToken, channel.getChannelState().getEndOffsetToken());
-    Assert.assertEquals(channelSequencer, channel.getChannelSequencer());
-    Assert.assertEquals(rowSequencer + 1L, channel.getChannelState().incrementAndGetRowSequencer());
+    Assert.assertEquals(
+        offsetToken,
+        ((SnowflakeStreamingIngestChannelInternal<StubChunkData>) channel)
+            .getChannelState()
+            .getEndOffsetToken());
+    Assert.assertEquals(
+        channelSequencer,
+        ((SnowflakeStreamingIngestChannelInternal<StubChunkData>) channel).getChannelSequencer());
+    Assert.assertEquals(
+        rowSequencer + 1L,
+        ((SnowflakeStreamingIngestChannelInternal<StubChunkData>) channel)
+            .getChannelState()
+            .incrementAndGetRowSequencer());
     Assert.assertEquals(
         String.format("%s.%s.%s.%s", dbName, schemaName, tableName, name),
         channel.getFullyQualifiedName());
@@ -307,11 +326,11 @@ public class SnowflakeStreamingIngestChannelTest {
     payload.put("table", "T_STREAMINGINGEST");
     payload.put("database", "STREAMINGINGEST_TEST");
     payload.put("schema", "PUBLIC");
-    payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
+    payload.put("write_mode", OpenChannelRequest.ChannelType.CLOUD_STORAGE.name());
 
     HttpPost request =
         requestBuilder.generateStreamingIngestPostRequest(
-            payload, OPEN_CHANNEL_ENDPOINT, "open channel");
+            payload, OPEN_CHANNEL_ENDPOINT, "open channel", null);
 
     Assert.assertEquals(
         String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT), request.getRequestLine().getUri());

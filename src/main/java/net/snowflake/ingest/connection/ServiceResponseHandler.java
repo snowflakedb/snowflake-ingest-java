@@ -42,7 +42,9 @@ public final class ServiceResponseHandler {
     STREAMING_DROP_CHANNEL("POST"),
     STREAMING_CHANNEL_STATUS("POST"),
     STREAMING_REGISTER_BLOB("POST"),
-    STREAMING_CLIENT_CONFIGURE("POST");
+    STREAMING_CLIENT_CONFIGURE("POST"),
+    STREAMING_ROWSET_OPEN_CHANNEL("POST"),
+    STREAMING_ROWSET_INSERT_ROWS("POST");
     private final String httpMethod;
 
     private ApiName(String httpMethod) {
@@ -53,6 +55,7 @@ public final class ServiceResponseHandler {
       return httpMethod;
     }
   }
+
   // the object mapper we use for deserialization
   static ObjectMapper mapper = new ObjectMapper();
 

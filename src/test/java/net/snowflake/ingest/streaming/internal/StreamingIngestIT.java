@@ -190,7 +190,8 @@ public class StreamingIngestIT {
           .generateStreamingIngestPostRequest(
               ArgumentMatchers.contains(expectedParam),
               ArgumentMatchers.refEq(REGISTER_BLOB_ENDPOINT),
-              ArgumentMatchers.refEq("register blob"));
+              ArgumentMatchers.refEq("register blob"),
+              ArgumentMatchers.refEq(null));
     }
 
     for (int i = 1; i < 15; i++) {
@@ -268,7 +269,8 @@ public class StreamingIngestIT {
         .generateStreamingIngestPostRequest(
             ArgumentMatchers.contains("client_sequencer"),
             ArgumentMatchers.refEq(DROP_CHANNEL_ENDPOINT),
-            ArgumentMatchers.refEq("drop channel"));
+            ArgumentMatchers.refEq("drop channel"),
+            ArgumentMatchers.refEq(null));
   }
 
   @Test

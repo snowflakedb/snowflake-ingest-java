@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming;
 
 import java.time.ZoneId;
+import java.util.Arrays;
 import net.snowflake.ingest.utils.Utils;
 
 /** A class that is used to open/create a {@link SnowflakeStreamingIngestChannel} */
@@ -14,6 +15,11 @@ public class OpenChannelRequest {
     ABORT, // ABORT the entire batch, and throw an exception when we hit the first error
     SKIP_BATCH, // If an error in the batch is detected return a response containing all error row
     // indexes. No data is ingested
+  }
+
+  public enum ChannelType {
+    CLOUD_STORAGE,
+    ROWSET_API,
   }
 
   /**
@@ -34,6 +40,9 @@ public class OpenChannelRequest {
   // Name of the table that the channel belongs to
   private final String tableName;
 
+  // Name of the pipe that the channel belongs to
+  private final String pipeName;
+
   // On_error option on this channel
   private final OnErrorOption onErrorOption;
 
@@ -45,6 +54,8 @@ public class OpenChannelRequest {
 
   private final OffsetTokenVerificationFunction offsetTokenVerificationFunction;
 
+  private final ChannelType channelType;
+
   public static OpenChannelRequestBuilder builder(String channelName) {
     return new OpenChannelRequestBuilder(channelName);
   }
@@ -55,13 +66,13 @@ public class OpenChannelRequest {
     private String dbName;
     private String schemaName;
     private String tableName;
+    private String pipeName;
     private OnErrorOption onErrorOption;
     private ZoneId defaultTimezone;
-
     private String offsetToken;
     private boolean isOffsetTokenProvided = false;
-
     private OffsetTokenVerificationFunction offsetTokenVerificationFunction;
+    private ChannelType channelType = ChannelType.CLOUD_STORAGE;
 
     public OpenChannelRequestBuilder(String channelName) {
       this.channelName = channelName;
@@ -80,6 +91,11 @@ public class OpenChannelRequest {
 
     public OpenChannelRequestBuilder setTableName(String tableName) {
       this.tableName = tableName;
+      return this;
+    }
+
+    public OpenChannelRequestBuilder setPipeName(String pipeName) {
+      this.pipeName = pipeName;
       return this;
     }
 
@@ -105,6 +121,11 @@ public class OpenChannelRequest {
       return this;
     }
 
+    public OpenChannelRequestBuilder setChannelType(ChannelType type) {
+      this.channelType = type;
+      return this;
+    }
+
     public OpenChannelRequest build() {
       return new OpenChannelRequest(this);
     }
@@ -114,19 +135,23 @@ public class OpenChannelRequest {
     Utils.assertStringNotNullOrEmpty("channel name", builder.channelName);
     Utils.assertStringNotNullOrEmpty("database name", builder.dbName);
     Utils.assertStringNotNullOrEmpty("schema name", builder.schemaName);
-    Utils.assertStringNotNullOrEmpty("table name", builder.tableName);
+    Utils.assertAtLeastOneStringNotNullOrEmpty(
+        "table or pipe name", Arrays.asList(builder.tableName, builder.pipeName));
     Utils.assertNotNull("on_error option", builder.onErrorOption);
     Utils.assertNotNull("default_timezone", builder.defaultTimezone);
+    Utils.assertNotNull("channel_type", builder.channelType);
 
     this.channelName = builder.channelName;
     this.dbName = builder.dbName;
     this.schemaName = builder.schemaName;
     this.tableName = builder.tableName;
+    this.pipeName = builder.pipeName;
     this.onErrorOption = builder.onErrorOption;
     this.defaultTimezone = builder.defaultTimezone;
     this.offsetToken = builder.offsetToken;
     this.isOffsetTokenProvided = builder.isOffsetTokenProvided;
     this.offsetTokenVerificationFunction = builder.offsetTokenVerificationFunction;
+    this.channelType = builder.channelType;
   }
 
   public String getDBName() {
@@ -141,6 +166,10 @@ public class OpenChannelRequest {
     return this.tableName;
   }
 
+  public String getPipeName() {
+    return this.pipeName;
+  }
+
   public String getChannelName() {
     return this.channelName;
   }
@@ -151,6 +180,10 @@ public class OpenChannelRequest {
 
   public String getFullyQualifiedTableName() {
     return String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
+  }
+
+  public String getFullyQualifiedPipeName() {
+    return String.format("%s.%s.%s", this.dbName, this.schemaName, this.pipeName);
   }
 
   public OnErrorOption getOnErrorOption() {
@@ -167,5 +200,9 @@ public class OpenChannelRequest {
 
   public OffsetTokenVerificationFunction getOffsetTokenVerificationFunction() {
     return this.offsetTokenVerificationFunction;
+  }
+
+  public ChannelType getChannelType() {
+    return this.channelType;
   }
 }

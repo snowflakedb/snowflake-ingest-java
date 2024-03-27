@@ -366,7 +366,8 @@ class StreamingIngestStage {
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
               requestBuilder,
-              statusGetter);
+              statusGetter,
+              null);
 
       // Check for Snowflake specific response code
       if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {

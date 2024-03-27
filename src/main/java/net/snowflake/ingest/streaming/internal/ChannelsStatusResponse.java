@@ -86,6 +86,7 @@ class ChannelsStatusResponse extends StreamingIngestResponse {
   }
 
   @JsonProperty("message")
+  @Override
   String getMessage() {
     return this.message;
   }
