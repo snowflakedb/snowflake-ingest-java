@@ -595,7 +595,7 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testInsertTooLargeRow() {
-    byte[] byteArrayTwoMb = new byte[2 * 1024 * 1024];
+    byte[] byteArrayOneMb = new byte[1024 * 1024];
 
     List<ColumnMetadata> schema =
         IntStream.range(0, 64)
@@ -607,18 +607,18 @@ public class SnowflakeStreamingIngestChannelTest {
                   col.setPhysicalType("LOB");
                   col.setNullable(false);
                   col.setLogicalType("BINARY");
-                  col.setLength(16777216);
-                  col.setByteLength(16777216);
+                  col.setLength(8388608);
+                  col.setByteLength(8388608);
                   return col;
                 })
             .collect(Collectors.toList());
 
     String expectedMessage =
-        "The given row exceeds the maximum allowed row size rowSizeInBytes:134218112.000,"
-            + " maxAllowedRowSizeInBytes:134217728, rowIndex:0";
+        "The given row exceeds the maximum allowed row size rowSizeInBytes:67109128.000,"
+            + " maxAllowedRowSizeInBytes:67108864, rowIndex:0";
 
     Map<String, Object> row = new HashMap<>();
-    schema.forEach(x -> row.put(x.getName(), byteArrayTwoMb));
+    schema.forEach(x -> row.put(x.getName(), byteArrayOneMb));
 
     SnowflakeStreamingIngestClientInternal<?> client;
     client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("test_client");

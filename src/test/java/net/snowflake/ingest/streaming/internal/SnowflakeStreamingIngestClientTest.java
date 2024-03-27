@@ -951,29 +951,29 @@ public class SnowflakeStreamingIngestClientTest {
     assertEquals(
         2,
         client
-            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 200))
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 100))
             .size());
     assertEquals(
         3,
         client
-            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 200, 100))
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(3, 95, 2, 100, 2))
             .size());
     assertEquals(
-        2, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(200, 2)).size());
+        2, client.partitionBlobListForRegistrationRequest(createTestBlobMetadata(100, 2)).size());
     assertEquals(
         2,
         client
-            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 200))
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 50))
             .size());
     assertEquals(
         3,
         client
-            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 200, 2, 150))
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 80, 40))
             .size());
     assertEquals(
         3,
         client
-            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 99, 200, 2))
+            .partitionBlobListForRegistrationRequest(createTestBlobMetadata(55, 44, 2, 49, 50, 2))
             .size());
   }
 
