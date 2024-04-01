@@ -71,28 +71,24 @@ public class OAuthClient {
   }
 
   /** Refresh access token using a valid refresh token */
-  public void refreshToken() {
-    String respBodyString = null;
-    try (CloseableHttpResponse httpResponse = httpClient.execute(makeRefreshTokenRequest())) {
-      respBodyString = EntityUtils.toString(httpResponse.getEntity());
+  public void refreshToken() throws IOException {
+    CloseableHttpResponse httpResponse = httpClient.execute(makeRefreshTokenRequest());
+    String respBodyString = EntityUtils.toString(httpResponse.getEntity());
 
-      if (httpResponse.getStatusLine().getStatusCode() == HttpStatusCodes.STATUS_CODE_OK) {
-        JsonObject respBody = JsonParser.parseString(respBodyString).getAsJsonObject();
+    if (httpResponse.getStatusLine().getStatusCode() == HttpStatusCodes.STATUS_CODE_OK) {
+      JsonObject respBody = JsonParser.parseString(respBodyString).getAsJsonObject();
 
-        if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
-          // Trim surrounding quotation marks
-          String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
-          oAuthCredential.get().setAccessToken(newAccessToken);
-          oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).getAsInt());
-          return;
-        }
+      if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
+        // Trim surrounding quotation marks
+        String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
+        oAuthCredential.get().setAccessToken(newAccessToken);
+        oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).getAsInt());
+        return;
       }
-      throw new SFException(
-          ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
-          "Refresh access token fail with response: " + respBodyString);
-    } catch (IOException e) {
-      throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e.getMessage());
     }
+    throw new SFException(
+        ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
+        "Refresh access token fail with response: " + respBodyString);
   }
 
   /** Helper method for making refresh request */
