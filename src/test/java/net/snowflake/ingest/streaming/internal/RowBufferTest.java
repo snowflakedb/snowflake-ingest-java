@@ -1021,17 +1021,8 @@ public class RowBufferTest {
     }
 
     // Insert rows should succeed
-    innerBuffer.insertRows(rows, "", "");
-
-    // After adding another row, it should fail due to too large batch of rows passed to
-    // insertRows() in one go
     rows.add(Collections.singletonMap("COLBINARY", arr));
-    try {
-      innerBuffer.insertRows(rows, "", "");
-      Assert.fail("Inserting rows should have failed");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.MAX_BATCH_SIZE_EXCEEDED.getMessageCode(), e.getVendorCode());
-    }
+    innerBuffer.insertRows(rows, "", "");
   }
 
   @Test

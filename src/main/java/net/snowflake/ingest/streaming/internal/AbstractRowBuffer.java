@@ -202,7 +202,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
         tempRowsSizeInBytes +=
             addTempRow(row, tempRowCount, rowBuffer.tempStatsMap, inputColumnNames, tempRowCount);
         tempRowCount++;
-        checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
         if ((long) rowBuffer.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
         }
@@ -261,7 +260,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           response.addError(error);
         }
         rowIndex++;
-        checkBatchSizeEnforcedMaximum(tempRowsSizeInBytes);
         if ((long) rowBuffer.bufferedRowCount + rowIndex >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
         }
@@ -670,15 +668,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       default:
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
-    }
-  }
-
-  private void checkBatchSizeEnforcedMaximum(float batchSizeInBytes) {
-    if (batchSizeInBytes > clientBufferParameters.getMaxChunkSizeInBytes()) {
-      throw new SFException(
-          ErrorCode.MAX_BATCH_SIZE_EXCEEDED,
-          clientBufferParameters.getMaxChunkSizeInBytes(),
-          INSERT_ROWS_RECOMMENDED_MAX_BATCH_SIZE_IN_BYTES);
     }
   }
 
