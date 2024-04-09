@@ -116,6 +116,8 @@ ADDITIONAL_LICENSES_MAP = {
     "net.minidev:accessors-smart": APACHE_LICENSE,
     "org.ow2.asm:asm": BSD_3_CLAUSE_LICENSE,
     "com.google.flatbuffers:flatbuffers-java": APACHE_LICENSE,
+    "com.google.http-client:google-http-client": APACHE_LICENSE,
+    "io.grpc:grpc-context": APACHE_LICENSE,
 }
 
 

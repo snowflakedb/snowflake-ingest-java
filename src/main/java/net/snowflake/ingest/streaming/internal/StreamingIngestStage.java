@@ -11,6 +11,9 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -29,17 +32,14 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.commons.io.FileUtils;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
