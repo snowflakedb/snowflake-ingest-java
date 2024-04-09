@@ -28,6 +28,7 @@ if jar tvf $DIR/../target/snowflake-ingest-sdk.jar  | awk '{print $8}' | \
     grep -v PropertyList-1.0.dtd | \
     grep -v properties.dtd | \
     grep -v parquet.thrift | \
+    grep -v dependencies.properties | \
 
     # Native zstd libraries are allowed
     grep -v -E '^darwin' | \

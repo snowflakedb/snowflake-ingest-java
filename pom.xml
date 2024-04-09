@@ -1058,6 +1058,66 @@
               </artifactSet>
               <relocations>
                 <relocation>
+                  <pattern>io.perfmark</pattern>
+                  <shadedPattern>${shadeBase}.io.perfmark</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.grpc</pattern>
+                  <shadedPattern>${shadeBase}.io.grpc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.opencensus</pattern>
+                  <shadedPattern>${shadeBase}.io.opencensus</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.amazonaws</pattern>
+                  <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.conscrypt</pattern>
+                  <shadedPattern>${shadeBase}.org.conscrypt</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.microsoft</pattern>
+                  <shadedPattern>${shadeBase}.com.microsoft</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.yammer</pattern>
+                  <shadedPattern>${shadeBase}.com.yammer</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.jsoup</pattern>
+                  <shadedPattern>${shadeBase}.org.jsoup</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.joda</pattern>
+                  <shadedPattern>${shadeBase}.org.joda</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.threeten</pattern>
+                  <shadedPattern>${shadeBase}.org.threeten</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>google</pattern>
+                  <shadedPattern>${shadeBase}.google</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>grpc</pattern>
+                  <shadedPattern>${shadeBase}.grpc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>android</pattern>
+                  <shadedPattern>${shadeBase}.android</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>opencensus</pattern>
+                  <shadedPattern>${shadeBase}.opencensus</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>javax.servlet</pattern>
+                  <shadedPattern>${shadeBase}.javax.servlet</shadedPattern>
+                </relocation>
+                <relocation>
                   <pattern>com.nimbusds</pattern>
                   <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
                 </relocation>
