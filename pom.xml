@@ -44,8 +44,8 @@
     <commonslang3.version>3.14.0</commonslang3.version>
     <commonslogging.version>1.2</commonslogging.version>
     <commonstext.version>1.10.0</commonstext.version>
-    <fasterxml.version>2.14.0</fasterxml.version>
-    <guava.version>32.0.1-jre</guava.version>
+    <fasterxml.version>2.15.3</fasterxml.version>
+    <guava.version>32.1.1-jre</guava.version>
     <hadoop.version>3.3.6</hadoop.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.5</jacoco.version>
@@ -61,7 +61,7 @@
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.13.1</parquet.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <protobuf.version>3.19.6</protobuf.version>
+    <protobuf.version>3.23.2</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.4</snappy.version>
@@ -130,8 +130,34 @@
       </dependency>
       <dependency>
         <groupId>net.snowflake</groupId>
-        <artifactId>snowflake-jdbc</artifactId>
+        <artifactId>snowflake-jdbc-thin</artifactId>
         <version>${snowjdbc.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.errorprone</groupId>
+            <artifactId>error_prone_annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-gson</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-context</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -160,6 +186,10 @@
           <exclusion>
             <groupId>com.github.pjfanning</groupId>
             <artifactId>jersey-json</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.re2j</groupId>
+            <artifactId>re2j</artifactId>
           </exclusion>
           <exclusion>
             <groupId>com.jcraft</groupId>
@@ -439,7 +469,7 @@
     <!-- Snowflake JDBC used to connect to the service-->
     <dependency>
       <groupId>net.snowflake</groupId>
-      <artifactId>snowflake-jdbc</artifactId>
+      <artifactId>snowflake-jdbc-thin</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -807,6 +837,7 @@
             <includedLicense>EDL 1.0</includedLicense>
             <includedLicense>The Go license</includedLicense>
             <includedLicense>Bouncy Castle Licence</includedLicense>
+            <includedLicense>CDDL + GPLv2 with classpath exception</includedLicense>
           </includedLicenses>
           <excludedScopes>test,provided,system</excludedScopes>
           <failOnBlacklist>true</failOnBlacklist>
@@ -817,10 +848,15 @@
                             |Apache-2.0
                             |Apache License, Version 2.0
                             |Apache 2.0
-                            |Apache License V2.0</licenseMerge>
+                            |Apache License V2.0
+                            |Apache 2</licenseMerge>
             <licenseMerge>BSD 2-Clause License
                             |The BSD License</licenseMerge>
-            <licenseMerge>The MIT License|MIT License</licenseMerge>
+            <licenseMerge>3-Clause BSD License
+                            |BSD-3-Clause
+                            |BSD New license</licenseMerge>
+            <licenseMerge>The MIT License|MIT License|MIT license</licenseMerge>
+            <licenseMerge>The Go license|Go License</licenseMerge>
           </licenseMerges>
         </configuration>
         <executions>
@@ -971,7 +1007,7 @@
             <configuration>
               <artifactSet>
                 <excludes>
-                  <exclude>net.snowflake:snowflake-jdbc</exclude>
+                  <exclude>net.snowflake:snowflake-jdbc-thin</exclude>
                   <exclude>org.slf4j:slf4j-api</exclude>
                   <exclude>com.github.luben:zstd-jni</exclude>
                 </excludes>
