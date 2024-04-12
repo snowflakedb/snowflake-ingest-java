@@ -545,6 +545,11 @@
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-core</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
       <groupId>com.github.luben</groupId>
       <artifactId>zstd-jni</artifactId>
       <version>1.5.0-1</version>
@@ -559,11 +564,6 @@
       <groupId>org.xerial.snappy</groupId>
       <artifactId>snappy-java</artifactId>
       <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk-core</artifactId>
-      <scope>test</scope>
     </dependency>
 
     <!-- JUnit so that we can make some basic unit tests -->
@@ -1051,7 +1051,6 @@
             <configuration>
               <artifactSet>
                 <excludes>
-                  <exclude>net.snowflake:snowflake-jdbc-thin</exclude>
                   <exclude>org.slf4j:slf4j-api</exclude>
                   <exclude>com.github.luben:zstd-jni</exclude>
                 </excludes>
@@ -1068,10 +1067,6 @@
                 <relocation>
                   <pattern>io.opencensus</pattern>
                   <shadedPattern>${shadeBase}.io.opencensus</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>com.amazonaws</pattern>
-                  <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.conscrypt</pattern>
