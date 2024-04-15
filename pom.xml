@@ -38,7 +38,7 @@
     <apache.httpclient.version>4.5.14</apache.httpclient.version>
     <apache.httpcomponments.version>4.4.16</apache.httpcomponments.version>
     <aws.version>1.12.501</aws.version>
-    <bouncycastle.version>1.77</bouncycastle.version>
+    <bouncycastle.version>1.78</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
@@ -1047,7 +1047,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-shade-plugin</artifactId>
-            <version>3.4.1</version>
+            <version>3.5.2</version>
             <configuration>
               <artifactSet>
                 <excludes>
