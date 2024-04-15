@@ -1210,6 +1210,22 @@
                   <pattern>io.airlift.compress</pattern>
                   <shadedPattern>${shadeBase}.io.airlift.compress</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>net.snowflake</pattern>
+                  <shadedPattern>${shadeBase}.net.snowflake</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.snowflake</pattern>
+                  <shadedPattern>${shadeBase}.com.snowflake</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.amazonaws</pattern>
+                  <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>software.amazon</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
