@@ -1211,20 +1211,20 @@
                   <shadedPattern>${shadeBase}.io.airlift.compress</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>net.snowflake</pattern>
-                  <shadedPattern>${shadeBase}.net.snowflake</shadedPattern>
+                  <pattern>net.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>com.snowflake</pattern>
-                  <shadedPattern>${shadeBase}.com.snowflake</shadedPattern>
+                  <pattern>com.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.com.snowflake.client</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.amazonaws</pattern>
                   <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>software.amazon</pattern>
-                  <shadedPattern>${shadeBase}.software.amazon</shadedPattern>
+                  <pattern>software.amazon.ion</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon.ion</shadedPattern>
                 </relocation>
               </relocations>
               <filters>
