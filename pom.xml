@@ -723,6 +723,7 @@
                 <banDuplicateClasses>
                   <ignoreClasses>
                     <ignoreClass>META-INF/versions/*/org/bouncycastle/*</ignoreClass>
+                    <ignoreClass>META-INF/versions/*/com/fasterxml/jackson/core/io/doubleparser/*</ignoreClass>
                   </ignoreClasses>
                   <findAllDuplicates>true</findAllDuplicates>
                   <ignoreWhenIdentical>true</ignoreWhenIdentical>
