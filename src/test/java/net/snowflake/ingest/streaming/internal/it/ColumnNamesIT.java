@@ -161,6 +161,33 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
             insertValidationResponse.getInsertErrors().get(0).getMissingNotNullColNames()));
   }
 
+  /** Test that display names are shown in null values for not null columns validation response */
+  @Test
+  public void testNullValuesForNotNullColNames() throws Exception {
+    String tableName = "t1";
+    conn.createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (col1 int not null,  a int not null, \"a\" int not"
+                    + " null, col2 int not null, \"col3\" int);",
+                tableName));
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+
+    HashMap<String, Object> row = new HashMap<>();
+    row.put("col1", null);
+    row.put("col2", null);
+    row.put("a", "null");
+    row.put("\"a\"", "someValue");
+    InsertValidationResponse insertValidationResponse =
+        channel.insertRow(row, UUID.randomUUID().toString());
+    Assert.assertEquals(1, insertValidationResponse.getInsertErrors().size());
+    Assert.assertEquals(
+        new HashSet<>(Arrays.asList("COL1", "COL2")),
+        new HashSet<>(
+            insertValidationResponse.getInsertErrors().get(0).getNullValueForNotNullColNames()));
+  }
+
   /**
    * Tests that data can be ingested for specific row key into a specific column
    *

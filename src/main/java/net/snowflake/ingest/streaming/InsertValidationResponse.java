@@ -60,6 +60,10 @@ public class InsertValidationResponse {
     // List of missing non-nullable column names in the input row compared with the table schema
     private List<String> missingNotNullColNames;
 
+    // List of names of non-nullable column which have null value in the input row compared with the
+    // table schema
+    private List<String> nullValueForNotNullColNames;
+
     public InsertError(Object row, long rowIndex) {
       this.rowContent = row;
       this.rowIndex = rowIndex;
@@ -127,6 +131,22 @@ public class InsertValidationResponse {
      */
     public List<String> getMissingNotNullColNames() {
       return missingNotNullColNames;
+    }
+
+    /**
+     * Set the list of names of non-nullable column which have null value in the input row compared
+     * with the table schema
+     */
+    public void setNullValueForNotNullColNames(List<String> nullValueForNotNullColNames) {
+      this.nullValueForNotNullColNames = nullValueForNotNullColNames;
+    }
+
+    /**
+     * Get the list of names of non-nullable column which have null value in the input row compared
+     * with the table schema
+     */
+    public List<String> getNullValueForNotNullColNames() {
+      return nullValueForNotNullColNames;
     }
   }
 }
