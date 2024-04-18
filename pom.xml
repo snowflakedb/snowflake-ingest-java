@@ -36,7 +36,7 @@
   <!-- Set our Language Level to Java 8 -->
   <properties>
     <apache.httpclient.version>4.5.14</apache.httpclient.version>
-    <apache.httpcomponments.version>4.4.16</apache.httpcomponments.version>
+    <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
     <aws.version>1.12.501</aws.version>
     <bouncycastle.version>1.78</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
@@ -301,7 +301,7 @@
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpcore</artifactId>
-        <version>${apache.httpcomponments.version}</version>
+        <version>${apache.httpcomponents.version}</version>
       </dependency>
 
       <dependency>
@@ -665,7 +665,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>3.0.0-M5</version>
+          <version>3.2.5</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -1385,6 +1385,15 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <additionalClasspathDependencies>
+                <additionalClasspathDependency>
+                  <groupId>org.apache.httpcomponents</groupId>
+                  <artifactId>httpclient</artifactId>
+                  <version>${apache.httpclient.version}</version>
+                </additionalClasspathDependency>
+              </additionalClasspathDependencies>
+            </configuration>
             <executions>
               <execution>
                 <goals>
