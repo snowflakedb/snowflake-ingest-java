@@ -1386,13 +1386,7 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
             <configuration>
-              <additionalClasspathDependencies>
-                <additionalClasspathDependency>
-                  <groupId>org.apache.httpcomponents</groupId>
-                  <artifactId>httpclient</artifactId>
-                  <version>${apache.httpclient.version}</version>
-                </additionalClasspathDependency>
-              </additionalClasspathDependencies>
+              <classesDirectory>${project.build.OutputDirectory}</classesDirectory>
             </configuration>
             <executions>
               <execution>
