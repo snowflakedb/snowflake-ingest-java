@@ -163,10 +163,6 @@
             <artifactId>error_prone_annotations</artifactId>
           </exclusion>
           <exclusion>
-            <groupId>com.google.http-client</groupId>
-            <artifactId>google-http-client-gson</artifactId>
-          </exclusion>
-          <exclusion>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-context</artifactId>
           </exclusion>
