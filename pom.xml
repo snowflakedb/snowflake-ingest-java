@@ -48,7 +48,6 @@
     <commonslogging.version>1.2</commonslogging.version>
     <commonstext.version>1.10.0</commonstext.version>
     <fasterxml.version>2.15.3</fasterxml.version>
-    <google.api.client.version>2.3.0</google.api.client.version>
     <google.httpclient.version>1.43.3</google.httpclient.version>
     <gson.version>2.10.1</gson.version>
     <guava.version>32.1.1-jre</guava.version>
@@ -88,11 +87,6 @@
         <groupId>com.amazonaws</groupId>
         <artifactId>aws-java-sdk-core</artifactId>
         <version>${aws.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.google.api-client</groupId>
-        <artifactId>google-api-client</artifactId>
-        <version>${google.api.client.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.code.gson</groupId>
@@ -1100,24 +1094,12 @@
                   <shadedPattern>${shadeBase}.org.threeten</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>google</pattern>
-                  <shadedPattern>${shadeBase}.google</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>grpc</pattern>
-                  <shadedPattern>${shadeBase}.grpc</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>android</pattern>
-                  <shadedPattern>${shadeBase}.android</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>opencensus</pattern>
-                  <shadedPattern>${shadeBase}.opencensus</shadedPattern>
-                </relocation>
-                <relocation>
                   <pattern>javax.servlet</pattern>
                   <shadedPattern>${shadeBase}.javax.servlet</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>android.annotation</pattern>
+                  <shadedPattern>${shadeBase}.android.annotation</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.nimbusds</pattern>
@@ -1251,8 +1233,9 @@
                     <exclude>META-INF/*.SF</exclude>
                     <exclude>META-INF/*.DSA</exclude>
                     <exclude>META-INF/*.RSA</exclude>
-                    <exclude>google/protobuf/**/*.proto</exclude>
-                    <exclude>google-api-client.properties</exclude>
+                    <exclude>google/**/**/*.proto</exclude>
+                    <exclude>grpc/**/**/*.proto</exclude>
+                    <exclude>opencensus/proto/**/v1/*.proto</exclude>
                   </excludes>
                 </filter>
                 <filter>
