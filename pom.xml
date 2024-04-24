@@ -37,7 +37,7 @@
   <properties>
     <apache.httpclient.version>4.5.14</apache.httpclient.version>
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
-    <aws.version>1.12.501</aws.version>
+    <aws.version>1.12.706</aws.version>
     <bouncycastle.version>1.78</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
@@ -71,6 +71,7 @@
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.4</snappy.version>
     <snowjdbc.version>3.14.5</snowjdbc.version>
+    <threetenbp.version>1.6.9</threetenbp.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
 
@@ -165,6 +166,18 @@
           <exclusion>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-context</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -369,6 +382,11 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.threeten</groupId>
+        <artifactId>threetenbp</artifactId>
+        <version>${threetenbp.version}</version>
       </dependency>
       <dependency>
         <groupId>org.xerial.snappy</groupId>
@@ -882,7 +900,6 @@
             <includedLicense>EDL 1.0</includedLicense>
             <includedLicense>The Go license</includedLicense>
             <includedLicense>Bouncy Castle Licence</includedLicense>
-            <includedLicense>CDDL + GPLv2 with classpath exception</includedLicense>
           </includedLicenses>
           <excludedScopes>test,provided,system</excludedScopes>
           <failOnBlacklist>true</failOnBlacklist>
