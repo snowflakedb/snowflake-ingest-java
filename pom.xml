@@ -38,7 +38,7 @@
     <apache.httpclient.version>4.5.14</apache.httpclient.version>
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
     <aws.version>1.12.706</aws.version>
-    <bouncycastle.version>1.78</bouncycastle.version>
+    <bouncycastle.version>1.78.1</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>

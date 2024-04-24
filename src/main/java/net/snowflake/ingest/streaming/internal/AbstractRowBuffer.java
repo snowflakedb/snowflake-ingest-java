@@ -390,7 +390,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * Verify that the input row columns are all valid.
    *
    * <p>Checks that the columns, specified in the row, are present in the table and values for all
-   * non-nullable columns are specified.
+   * non-nullable columns are specified and different from null.
    *
    * @param row the input row
    * @param error the insert error that we return to the customer
@@ -440,6 +440,26 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           "Missing columns: " + missingCols,
           String.format(
               "Values for all non-nullable columns must be specified, rowIndex:%d", rowIndex));
+    }
+
+    // Check for null values in not-nullable columns in the row
+    List<String> nullValueNotNullCols = new ArrayList<>();
+    for (String columnName : this.nonNullableFieldNames) {
+      if (inputColNamesMap.containsKey(columnName)
+          && row.get(inputColNamesMap.get(columnName)) == null) {
+        nullValueNotNullCols.add(statsMap.get(columnName).getColumnDisplayName());
+      }
+    }
+
+    if (!nullValueNotNullCols.isEmpty()) {
+      if (error != null) {
+        error.setNullValueForNotNullColNames(nullValueNotNullCols);
+      }
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          "Not-nullable columns with null values: " + nullValueNotNullCols,
+          String.format(
+              "Values for all non-nullable columns must not be null, rowIndex:%d", rowIndex));
     }
 
     return inputColNamesMap.keySet();
