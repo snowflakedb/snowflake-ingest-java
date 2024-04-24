@@ -35,6 +35,9 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
+    <apache.httpclient.version>4.5.14</apache.httpclient.version>
+    <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
+    <aws.version>1.12.706</aws.version>
     <bouncycastle.version>1.78.1</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
@@ -44,8 +47,10 @@
     <commonslang3.version>3.14.0</commonslang3.version>
     <commonslogging.version>1.2</commonslogging.version>
     <commonstext.version>1.10.0</commonstext.version>
-    <fasterxml.version>2.14.0</fasterxml.version>
-    <guava.version>32.0.1-jre</guava.version>
+    <fasterxml.version>2.15.3</fasterxml.version>
+    <google.httpclient.version>1.43.3</google.httpclient.version>
+    <gson.version>2.10.1</gson.version>
+    <guava.version>32.1.1-jre</guava.version>
     <hadoop.version>3.3.6</hadoop.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.5</jacoco.version>
@@ -61,11 +66,12 @@
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.13.1</parquet.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <protobuf.version>3.19.6</protobuf.version>
+    <protobuf.version>3.23.2</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.4</snappy.version>
     <snowjdbc.version>3.14.5</snowjdbc.version>
+    <threetenbp.version>1.6.9</threetenbp.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
 
@@ -79,9 +85,29 @@
         <scope>import</scope>
       </dependency>
       <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-core</artifactId>
+        <version>${aws.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.code.gson</groupId>
+        <artifactId>gson</artifactId>
+        <version>${gson.version}</version>
+      </dependency>
+      <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>${guava.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.http-client</groupId>
+        <artifactId>google-http-client</artifactId>
+        <version>${google.httpclient.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.http-client</groupId>
+        <artifactId>google-http-client-gson</artifactId>
+        <version>${google.httpclient.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.protobuf</groupId>
@@ -130,8 +156,30 @@
       </dependency>
       <dependency>
         <groupId>net.snowflake</groupId>
-        <artifactId>snowflake-jdbc</artifactId>
+        <artifactId>snowflake-jdbc-thin</artifactId>
         <version>${snowjdbc.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.google.errorprone</groupId>
+            <artifactId>error_prone_annotations</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-context</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -160,6 +208,10 @@
           <exclusion>
             <groupId>com.github.pjfanning</groupId>
             <artifactId>jersey-json</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>com.google.re2j</groupId>
+            <artifactId>re2j</artifactId>
           </exclusion>
           <exclusion>
             <groupId>com.jcraft</groupId>
@@ -256,6 +308,17 @@
         </exclusions>
       </dependency>
       <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpclient</artifactId>
+        <version>${apache.httpclient.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpcore</artifactId>
+        <version>${apache.httpcomponents.version}</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.apache.parquet</groupId>
         <artifactId>parquet-column</artifactId>
         <version>${parquet.version}</version>
@@ -319,6 +382,11 @@
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.threeten</groupId>
+        <artifactId>threetenbp</artifactId>
+        <version>${threetenbp.version}</version>
       </dependency>
       <dependency>
         <groupId>org.xerial.snappy</groupId>
@@ -394,8 +462,16 @@
       <version>3.0.2</version>
     </dependency>
     <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client</artifactId>
     </dependency>
 
     <!-- jwt token for key pair authentication with GS -->
@@ -406,6 +482,10 @@
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-core -->
@@ -439,7 +519,7 @@
     <!-- Snowflake JDBC used to connect to the service-->
     <dependency>
       <groupId>net.snowflake</groupId>
-      <artifactId>snowflake-jdbc</artifactId>
+      <artifactId>snowflake-jdbc-thin</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -448,6 +528,14 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpcore</artifactId>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop -->
     <dependency>
@@ -474,6 +562,11 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-core</artifactId>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>com.github.luben</groupId>
@@ -591,7 +684,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>3.0.0-M5</version>
+          <version>3.2.5</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -817,10 +910,15 @@
                             |Apache-2.0
                             |Apache License, Version 2.0
                             |Apache 2.0
-                            |Apache License V2.0</licenseMerge>
+                            |Apache License V2.0
+                            |Apache 2</licenseMerge>
             <licenseMerge>BSD 2-Clause License
                             |The BSD License</licenseMerge>
-            <licenseMerge>The MIT License|MIT License</licenseMerge>
+            <licenseMerge>3-Clause BSD License
+                            |BSD-3-Clause
+                            |BSD New license</licenseMerge>
+            <licenseMerge>The MIT License|MIT License|MIT license</licenseMerge>
+            <licenseMerge>The Go license|Go License</licenseMerge>
           </licenseMerges>
         </configuration>
         <executions>
@@ -971,12 +1069,55 @@
             <configuration>
               <artifactSet>
                 <excludes>
-                  <exclude>net.snowflake:snowflake-jdbc</exclude>
                   <exclude>org.slf4j:slf4j-api</exclude>
                   <exclude>com.github.luben:zstd-jni</exclude>
                 </excludes>
               </artifactSet>
               <relocations>
+                <relocation>
+                  <pattern>io.perfmark</pattern>
+                  <shadedPattern>${shadeBase}.io.perfmark</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.grpc</pattern>
+                  <shadedPattern>${shadeBase}.io.grpc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.opencensus</pattern>
+                  <shadedPattern>${shadeBase}.io.opencensus</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.conscrypt</pattern>
+                  <shadedPattern>${shadeBase}.org.conscrypt</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.microsoft</pattern>
+                  <shadedPattern>${shadeBase}.com.microsoft</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.yammer</pattern>
+                  <shadedPattern>${shadeBase}.com.yammer</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.jsoup</pattern>
+                  <shadedPattern>${shadeBase}.org.jsoup</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.joda</pattern>
+                  <shadedPattern>${shadeBase}.org.joda</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.threeten</pattern>
+                  <shadedPattern>${shadeBase}.org.threeten</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>javax.servlet</pattern>
+                  <shadedPattern>${shadeBase}.javax.servlet</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>android.annotation</pattern>
+                  <shadedPattern>${shadeBase}.android.annotation</shadedPattern>
+                </relocation>
                 <relocation>
                   <pattern>com.nimbusds</pattern>
                   <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
@@ -1075,6 +1216,22 @@
                   <pattern>io.airlift.compress</pattern>
                   <shadedPattern>${shadeBase}.io.airlift.compress</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>net.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.com.snowflake.client</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.amazonaws</pattern>
+                  <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>software.amazon.ion</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon.ion</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
@@ -1093,7 +1250,9 @@
                     <exclude>META-INF/*.SF</exclude>
                     <exclude>META-INF/*.DSA</exclude>
                     <exclude>META-INF/*.RSA</exclude>
-                    <exclude>google/protobuf/**/*.proto</exclude>
+                    <exclude>google/**/**/*.proto</exclude>
+                    <exclude>grpc/**/**/*.proto</exclude>
+                    <exclude>opencensus/proto/**/v1/*.proto</exclude>
                   </excludes>
                 </filter>
                 <filter>
@@ -1234,6 +1393,9 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <classesDirectory>${project.build.OutputDirectory}</classesDirectory>
+            </configuration>
             <executions>
               <execution>
                 <goals>
