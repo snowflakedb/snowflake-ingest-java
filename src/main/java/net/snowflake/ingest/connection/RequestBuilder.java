@@ -683,7 +683,13 @@ public class RequestBuilder {
     URI uri = null;
     try {
       uri =
-          new URIBuilder().setScheme(scheme).setHost(host).setPort(port).setPath(endPoint).build();
+          new URIBuilder()
+                  .setScheme(scheme)
+                  .setHost(host)
+                  .setPort(port)
+                  .setPath(endPoint)
+                  .setParameter(REQUEST_ID, UUID.randomUUID().toString())
+                  .build();
     } catch (URISyntaxException e) {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }
