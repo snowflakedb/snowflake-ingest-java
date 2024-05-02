@@ -282,25 +282,36 @@ class FlushService<T> {
     this.flushWorker = Executors.newSingleThreadScheduledExecutor(flushThreadFactory);
     this.flushWorker.scheduleWithFixedDelay(
         () -> {
-          flush(false)
-              .exceptionally(
-                  e -> {
-                    String errorMessage =
-                        String.format(
-                            "Background flush task failed, client=%s, exception=%s, detail=%s,"
-                                + " trace=%s.",
-                            this.owningClient.getName(),
-                            e.getCause(),
-                            e.getCause().getMessage(),
-                            getStackTrace(e.getCause()));
-                    logger.logError(errorMessage);
-                    if (this.owningClient.getTelemetryService() != null) {
-                      this.owningClient
-                          .getTelemetryService()
-                          .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
-                    }
-                    return null;
-                  });
+          try {
+            flush(false)
+                .exceptionally(
+                    e -> {
+                      String errorMessage =
+                          String.format(
+                              "Background flush task failed, client=%s, exception=%s, detail=%s,"
+                                  + " trace=%s.",
+                              this.owningClient.getName(),
+                              e.getCause(),
+                              e.getCause().getMessage(),
+                              getStackTrace(e.getCause()));
+                      logger.logError(errorMessage);
+                      if (this.owningClient.getTelemetryService() != null) {
+                        this.owningClient
+                            .getTelemetryService()
+                            .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+                      }
+                      return null;
+                    });
+          } catch (Exception e) {
+            String errorMessage =
+                String.format(
+                    "Failed to schedule a flush task, client=%s, exception=%s, detail=%s, trace=%s.",
+                    this.owningClient.getName(),
+                    e.getClass().getName(),
+                    e.getMessage(),
+                    getStackTrace(e));
+            logger.logError(errorMessage);
+          }
         },
         0,
         this.owningClient.getParameterProvider().getBufferFlushCheckIntervalInMs(),
