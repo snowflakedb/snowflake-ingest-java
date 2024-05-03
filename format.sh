@@ -4,8 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-DOWNLOAD_URL="https://github.com/google/google-java-format/releases/download/v1.10.0/google-java-format-1.10.0-all-deps.jar"
-JAR_FILE="./.cache/google-java-format-1.10.0-all-deps.jar"
+GOOGLE_FORMAT_VERSION="1.10.0"
+DOWNLOAD_URL="https://github.com/google/google-java-format/releases/download/v${GOOGLE_FORMAT_VERSION}/google-java-format-${GOOGLE_FORMAT_VERSION}-all-deps.jar"
+JAR_FILE="./.cache/google-java-format-${GOOGLE_FORMAT_VERSION}-all-deps.jar"
 
 if [ ! -f "${JAR_FILE}" ]; then
   mkdir -p "$(dirname "${JAR_FILE}")"
@@ -17,8 +18,12 @@ if ! command -v java > /dev/null; then
   echo "Java not installed."
   exit 1
 fi
-echo "Running Google Java Format"
-find ./src -type f -name "*.java" -print0 | xargs -0 java -jar "${JAR_FILE}" --replace --set-exit-if-changed && echo "OK"
 
-echo "Sorting pom.xml"
 mvn com.github.ekryd.sortpom:sortpom-maven-plugin:sort
+(cd e2e-jar-test && mvn com.github.ekryd.sortpom:sortpom-maven-plugin:sort)
+
+echo "Formatting java sources"
+if ! find ./ -type f -name "*.java" -print0 | xargs -0 java -jar "${JAR_FILE}" --replace --set-exit-if-changed; then
+  echo "Java sources were not properly formatted"
+  exit 1
+fi

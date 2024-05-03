@@ -46,6 +46,7 @@ public class Utils {
 
   /** provider name */
   private static final String BOUNCY_CASTLE_PROVIDER = "BC";
+
   /** provider name for FIPS */
   private static final String BOUNCY_CASTLE_FIPS_PROVIDER = "BCFIPS";
 
