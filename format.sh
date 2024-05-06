@@ -19,6 +19,7 @@ if ! command -v java > /dev/null; then
   exit 1
 fi
 
+echo "Sorting pom.xml"
 mvn com.github.ekryd.sortpom:sortpom-maven-plugin:sort
 (cd e2e-jar-test && mvn com.github.ekryd.sortpom:sortpom-maven-plugin:sort)
 
