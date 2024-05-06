@@ -1,12 +1,11 @@
 package net.snowflake;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 
 public class StandardIngestE2ETest {
 

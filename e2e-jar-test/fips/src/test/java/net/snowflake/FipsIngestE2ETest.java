@@ -1,14 +1,13 @@
 package net.snowflake;
 
+import java.security.Security;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-
-import java.security.Security;
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 
 public class FipsIngestE2ETest {
 
