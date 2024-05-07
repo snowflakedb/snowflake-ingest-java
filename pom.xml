@@ -40,11 +40,12 @@
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
     <commonscompress.version>1.26.0</commonscompress.version>
+    <commonsconfiguration2.version>2.10.1</commonsconfiguration2.version>
     <commonsio.version>2.15.1</commonsio.version>
     <commonslang3.version>3.14.0</commonslang3.version>
-    <commonslogging.version>1.2</commonslogging.version>
-    <commonstext.version>1.10.0</commonstext.version>
-    <fasterxml.version>2.14.0</fasterxml.version>
+    <commonslogging.version>1.3.1</commonslogging.version>
+    <commonstext.version>1.11.0</commonstext.version>
+    <fasterxml.version>2.16.1</fasterxml.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.3.6</hadoop.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
@@ -60,6 +61,7 @@
     <nimbusds.version>9.37.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.13.1</parquet.version>
+    <powermock.version>2.0.9</powermock.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf.version>3.19.6</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
@@ -137,6 +139,11 @@
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-compress</artifactId>
         <version>${commonscompress.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-configuration2</artifactId>
+        <version>${commonsconfiguration2.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -445,6 +452,12 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-compress</artifactId>
     </dependency>
+
+    <!-- Transitive dependency; declared here to use a specific version -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-configuration2</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
@@ -517,19 +530,19 @@
     <dependency>
       <groupId>org.powermock</groupId>
       <artifactId>powermock-api-mockito2</artifactId>
-      <version>2.0.2</version>
+      <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.powermock</groupId>
       <artifactId>powermock-core</artifactId>
-      <version>2.0.2</version>
+      <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.powermock</groupId>
       <artifactId>powermock-module-junit4</artifactId>
-      <version>2.0.2</version>
+      <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- Change the 'test' scope to 'runtime' to enable console logging in examples -->
@@ -556,6 +569,11 @@
     <!-- disable default maven deploy plugin since we are using gpg:sign-and-deploy-file -->
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
+          <version>3.6.0</version>
+        </plugin>
         <plugin>
           <artifactId>maven-deploy-plugin</artifactId>
           <configuration>
@@ -596,7 +614,12 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.19.1</version>
+          <version>3.2.5</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>3.2.0</version>
         </plugin>
         <plugin>
           <groupId>org.jacoco</groupId>
@@ -689,7 +712,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
-        <version>3.3.0</version>
         <executions>
           <execution>
             <id>analyze</id>
@@ -700,10 +722,11 @@
               <failOnWarning>true</failOnWarning>
               <ignoreNonCompile>true</ignoreNonCompile>
               <ignoredDependencies>
-                <!-- We defined common-compress as a direct dependency (as opposed to just declaring it in dependencyManagement)
+                <!-- We defined these as direct dependencies (as opposed to just declaring it in dependencyManagement)
                 to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency analyzer complains that
                 the dependency is unused, so we ignore it here-->
                 <ignoredDependency>org.apache.commons:commons-compress</ignoredDependency>
+                <ignoredDependency>org.apache.commons:commons-configuration2</ignoredDependency>
               </ignoredDependencies>
             </configuration>
           </execution>
@@ -723,6 +746,7 @@
                 <banDuplicateClasses>
                   <ignoreClasses>
                     <ignoreClass>META-INF/versions/*/org/bouncycastle/*</ignoreClass>
+                    <ignoreClass>META-INF/versions/*/com/fasterxml/jackson/core/io/doubleparser/*</ignoreClass>
                   </ignoreClasses>
                   <findAllDuplicates>true</findAllDuplicates>
                   <ignoreWhenIdentical>true</ignoreWhenIdentical>
@@ -782,7 +806,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.19.1</version>
         <configuration>
           <excludes>
             <exclude>**/TestSimpleIngestLocal.java</exclude>
@@ -917,14 +940,22 @@
       </activation>
       <build>
         <plugins>
-          <!--
-                                                  Copy all project dependencies to target/dependency-jars. License processing Python script will look here for
-                                                  license files of SDK dependencies.
-                                                  -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-dependency-plugin</artifactId>
             <executions>
+              <!--Compile the list of SDK dependencies in 'compile' and 'runtime' scopes. This list is an entry point for the license processing python script. -->
+              <execution>
+                <goals>
+                  <goal>list</goal>
+                </goals>
+                <phase>generate-resources</phase>
+                <configuration>
+                  <includeScope>runtime</includeScope>
+                  <outputFile>${license.processing.dependencyListFile}</outputFile>
+                </configuration>
+              </execution>
+              <!--Copy all project dependencies to target/dependency-jars. License processing Python script will look here for license files of SDK dependencies. -->
               <execution>
                 <id>copy-dependencies</id>
                 <goals>
@@ -937,28 +968,6 @@
                   <overWriteSnapshots>false</overWriteSnapshots>
                   <overWriteIfNewer>true</overWriteIfNewer>
                 </configuration>
-              </execution>
-            </executions>
-          </plugin>
-
-          <!--
-                                                  Compile the list of SDK dependencies in 'compile' and 'runtime' scopes.
-                                                  This list is an entry point for the license processing python script.
-                                                  -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-dependency-plugin</artifactId>
-            <version>3.6.0</version>
-            <configuration>
-              <includeScope>runtime</includeScope>
-              <outputFile>${license.processing.dependencyListFile}</outputFile>
-            </configuration>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>list</goal>
-                </goals>
-                <phase>generate-resources</phase>
               </execution>
             </executions>
           </plugin>

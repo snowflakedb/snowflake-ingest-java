@@ -3,6 +3,7 @@ package net.snowflake;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
@@ -22,9 +23,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
 import java.util.UUID;
-
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
@@ -38,7 +37,6 @@ public class IngestTestUtils {
   private final Connection connection;
 
   private final String database;
-  private final String schema;
   private final String table;
 
   private final String testId;
@@ -51,38 +49,51 @@ public class IngestTestUtils {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  private final Random random = new Random();
-
   private final Base64.Decoder base64Decoder = Base64.getDecoder();
 
   public IngestTestUtils(String testName)
-      throws SQLException,
-          IOException,
-          ClassNotFoundException,
-          NoSuchAlgorithmException,
+      throws SQLException, IOException, ClassNotFoundException, NoSuchAlgorithmException,
           InvalidKeySpecException {
     testId = String.format("%s_%s", testName, UUID.randomUUID().toString().replace("-", "_"));
     connection = getConnection();
-    database = String.format("database_%s", testId);
-    schema = String.format("schema_%s", testId);
-    table = String.format("table_%s", testId);
+    database = String.format("ingest_sdk_e2e_jar_database_%s", testId);
+    table = String.format("ingest_sdk_e2e_jar_table_%s", testId);
 
     connection.createStatement().execute(String.format("create database %s", database));
-    connection.createStatement().execute(String.format("create schema %s", schema));
-    connection.createStatement().execute(String.format("create table %s (c1 int, c2 varchar, c3 binary)", table));
-
+    connection
+        .createStatement()
+        .execute(
+            String.format(
+                "create table %s ("
+                    + "boolean_col boolean,"
+                    + "int_col int,"
+                    + "number_col number(10, 5),"
+                    + "float_col float,"
+                    + "text_col text,"
+                    + "binary_col binary,"
+                    + "variant_col variant,"
+                    + "array_col array,"
+                    + "object_col object,"
+                    + "time_col time,"
+                    + "date_col date,"
+                    + "timestamp_ntz_col timestamp_ntz,"
+                    + "timestamp_ltz_col timestamp_ltz,"
+                    + "timestamp_tz_col timestamp_tz"
+                    + ");",
+                table));
     client =
         SnowflakeStreamingIngestClientFactory.builder("TestClient01")
             .setProperties(loadProperties())
             .build();
 
-    channel = client.openChannel(
+    channel =
+        client.openChannel(
             OpenChannelRequest.builder(String.format("channel_%s", this.testId))
-                    .setDBName(database)
-                    .setSchemaName(schema)
-                    .setTableName(table)
-                    .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
-                    .build());
+                .setDBName(database)
+                .setSchemaName("PUBLIC")
+                .setTableName(table)
+                .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+                .build());
   }
 
   private Properties loadProperties() throws IOException {
@@ -97,7 +108,8 @@ public class IngestTestUtils {
   }
 
   private Connection getConnection()
-      throws IOException, ClassNotFoundException, SQLException, NoSuchAlgorithmException, InvalidKeySpecException {
+      throws IOException, ClassNotFoundException, SQLException, NoSuchAlgorithmException,
+          InvalidKeySpecException {
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
 
     Properties loadedProps = loadProperties();
@@ -118,14 +130,20 @@ public class IngestTestUtils {
 
   private Map<String, Object> createRow() {
     Map<String, Object> row = new HashMap<>();
-
-    byte[] bytes = new byte[1024];
-    random.nextBytes(bytes);
-
-    row.put("c1", random.nextInt());
-    row.put("c2", String.valueOf(random.nextInt()));
-    row.put("c3", bytes);
-
+    row.put("boolean_col", false);
+    row.put("int_col", 1);
+    row.put("number_col", new BigDecimal("11111.11111"));
+    row.put("float_col", 1.234);
+    row.put("text_col", "test");
+    row.put("binary_col", new byte[] {1, 2, 3, 4, 5});
+    row.put("variant_col", "\"Hello, World!\"");
+    row.put("array_col", "[{\"k1\": \"v1\"}]");
+    row.put("object_col", "{\"k1\": \"v1\"}");
+    row.put("time_col", "00:00");
+    row.put("date_col", "2000-01-01");
+    row.put("timestamp_ntz_col", "2000-01-01T11:00");
+    row.put("timestamp_ltz_col", "2000-01-01T11:00");
+    row.put("timestamp_tz_col", "2000-01-01T11:00-07:00");
     return row;
   }
 
@@ -134,7 +152,7 @@ public class IngestTestUtils {
    * committed offset is equal to the passed offset
    */
   private void waitForOffset(SnowflakeStreamingIngestChannel channel, String expectedOffset)
-          throws InterruptedException {
+      throws InterruptedException {
     int counter = 0;
     String lastCommittedOffset = null;
     while (counter < 600) {
@@ -142,20 +160,21 @@ public class IngestTestUtils {
       if (expectedOffset.equals(currentOffset)) {
         return;
       }
-      System.out.printf("Waiting for offset expected=%s actual=%s%n", expectedOffset, currentOffset);
+      System.out.printf(
+          "Waiting for offset expected=%s actual=%s%n", expectedOffset, currentOffset);
       lastCommittedOffset = currentOffset;
       counter++;
       Thread.sleep(100);
     }
     throw new RuntimeException(
-            String.format(
-                    "Timeout exceeded while waiting for offset %s. Last committed offset: %s",
-                    expectedOffset, lastCommittedOffset));
+        String.format(
+            "Timeout exceeded while waiting for offset %s. Last committed offset: %s",
+            expectedOffset, lastCommittedOffset));
   }
 
   public void runBasicTest() throws InterruptedException {
     // Insert few rows one by one
-    for (int offset = 2; offset < 1000; offset++) {
+    for (int offset = 0; offset < 1000; offset++) {
       offset++;
       channel.insertRow(createRow(), String.valueOf(offset));
     }
@@ -163,15 +182,14 @@ public class IngestTestUtils {
     // Insert a batch of rows
     String offset = "final-offset";
     channel.insertRows(
-            Arrays.asList(createRow(), createRow(), createRow(), createRow(), createRow()), offset);
-
+        Arrays.asList(createRow(), createRow(), createRow(), createRow(), createRow()), offset);
     waitForOffset(channel, offset);
   }
 
   public void runLongRunningTest(Duration testDuration) throws InterruptedException {
     final Instant testStart = Instant.now();
     int counter = 0;
-    while(true) {
+    while (true) {
       counter++;
 
       channel.insertRow(createRow(), String.valueOf(counter));
@@ -183,7 +201,12 @@ public class IngestTestUtils {
 
       final Duration elapsed = Duration.between(testStart, Instant.now());
 
-      logger.info("Test loop_nr={} duration={}s/{}s committed_offset={}", counter, elapsed.get(ChronoUnit.SECONDS), testDuration.get(ChronoUnit.SECONDS), channel.getLatestCommittedOffsetToken());
+      logger.info(
+          "Test loop_nr={} duration={}s/{}s committed_offset={}",
+          counter,
+          elapsed.get(ChronoUnit.SECONDS),
+          testDuration.get(ChronoUnit.SECONDS),
+          channel.getLatestCommittedOffsetToken());
 
       if (elapsed.compareTo(testDuration) > 0) {
         break;
@@ -193,8 +216,11 @@ public class IngestTestUtils {
   }
 
   public void close() throws Exception {
-    connection.close();
     channel.close().get();
     client.close();
+    connection
+        .createStatement()
+        .execute(String.format(String.format("drop database %s", database)));
+    connection.close();
   }
 }
