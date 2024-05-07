@@ -68,21 +68,24 @@ jobs:
         continue-on-error: false
         run: mvn -DghActionsIT verify --batch-mode
   build-e2e-jar-test:
-    name: E2E JAR Test - ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
+    name: E2E JAR Test - Cloud ${{ matrix.snowflake_cloud }}
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
-        java: [ 8 ]
         snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
-      - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v2
+      - name: Install Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
+          java-version: | # Install all LTS java versions, the last mentioned one here will be the default
+            21
+            17
+            11
+            8
           cache: maven
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
