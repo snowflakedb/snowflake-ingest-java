@@ -305,7 +305,8 @@ class FlushService<T> {
           } catch (Exception e) {
             String errorMessage =
                 String.format(
-                    "Failed to schedule a flush task, client=%s, exception=%s, detail=%s, trace=%s.",
+                    "Failed to schedule a flush task, client=%s, exception=%s, detail=%s,"
+                        + " trace=%s.",
                     this.owningClient.getName(),
                     e.getClass().getName(),
                     e.getMessage(),
