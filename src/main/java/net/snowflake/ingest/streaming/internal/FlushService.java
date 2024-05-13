@@ -317,6 +317,7 @@ class FlushService<T> {
                   .getTelemetryService()
                   .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
             }
+            throw e;
           }
         },
         0,
