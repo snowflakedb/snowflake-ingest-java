@@ -312,6 +312,11 @@ class FlushService<T> {
                     e.getMessage(),
                     getStackTrace(e));
             logger.logError(errorMessage);
+            if (this.owningClient.getTelemetryService() != null) {
+              this.owningClient
+                  .getTelemetryService()
+                  .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+            }
           }
         },
         0,
