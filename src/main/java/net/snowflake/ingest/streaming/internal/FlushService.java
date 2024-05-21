@@ -536,7 +536,6 @@ class FlushService<T> {
     BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion);
 
     blob.blobStats.setBuildDurationMs(buildContext);
-
     return upload(blobPath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
   }
 

@@ -35,7 +35,7 @@ import org.apache.parquet.schema.Type;
  * converted to Parquet format for faster processing
  */
 public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
-  private static final String PARQUET_MESSAGE_TYPE_NAME = "bdec";
+  private static final String PARQUET_MESSAGE_TYPE_NAME = "schema";
 
   private final Map<String, ParquetColumn> fieldIndex;
 

@@ -16,6 +16,7 @@ import static net.snowflake.ingest.utils.Utils.toByteArray;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
@@ -32,6 +33,7 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.io.FileUtils;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -84,6 +86,9 @@ class BlobBuilder {
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         ByteArrayOutputStream chunkData = serializedChunk.chunkData;
+        logger.logInfo("writing chunk to client.parquet");
+        FileUtils.writeByteArrayToFile(
+            new File("/home/alhuang/tmp/client_v2.parquet"), chunkData.toByteArray());
         Pair<byte[], Integer> paddedChunk =
             padChunk(chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
         byte[] paddedChunkData = paddedChunk.getFirst();
