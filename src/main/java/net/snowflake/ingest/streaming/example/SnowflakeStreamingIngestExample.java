@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
+import org.bouncycastle.util.encoders.Hex;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -94,20 +95,23 @@ public class SnowflakeStreamingIngestExample {
       //      } while (retryCount < maxRetries);
 
       Map<String, Object> row = new HashMap<>();
-      row.put("boolean_col", false);
-      //      row.put("int_col", 1234567890);
-      //      row.put("long_col", 1234567890123456789L);
-      //      row.put("float_col", 1234567.1234567);
-      //      row.put("double_col", 1234567.1234567f);
-      //      row.put("decimal_col", 12345.12345);
-      //      row.put("string_col", "Streaming Ingest to Iceberg Table");
-      //      row.put("fixed_col", Hex.decode("41424344454647484950"));
-      //      row.put("binary_col", Hex.decode("41424344454647484950515253545556"));
-      //      row.put("date_col", "1998-09-09");
-      //      row.put("time_col", "16:00:00");
-      //      row.put("timestamp_ntz_col", "2014-01-02T16:00:00");
-      //      row.put("timestamp_ltz_col", "2014-01-02T16:00:00+08:00");
+
+      row.put("int_col", 1234567890);
+      row.put("long_col", 1234567890123456789L);
+      row.put("float_col", 1234567.1234567);
+      row.put("double_col", 1234567.1234567f);
+      row.put("decimal_col", 12345.12345);
+      row.put("string_col", "Streaming Ingest to Iceberg Table");
+      row.put("fixed_col", Hex.decode("41424344454647484950"));
+      row.put("binary_col", Hex.decode("41424344454647484950515253545556"));
+      row.put("date_col", "1998-09-09");
+      row.put("time_col", "16:00:00");
+      row.put("timestamp_ntz_col", "2014-01-02T16:00:00");
+      row.put("timestamp_ltz_col", "2014-01-02T16:00:00+08:00");
+
       InsertValidationResponse response = channel1.insertRow(row, "1");
+
+
       if (response.hasErrors()) {
         // Simply throw if there is an exception, or you can do whatever you want with the
         // erroneous row
