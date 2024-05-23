@@ -28,6 +28,9 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
+    // Indicates whether it's streaming to Iceberg tables
+    private boolean isIcebergMode;
+
     // Indicates whether it's under test mode
     private boolean isTestMode;
 
@@ -45,6 +48,11 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
+    public Builder setIcebergMode(boolean isIcebergMode) {
+      this.isIcebergMode = isIcebergMode;
+      return this;
+    }
+
     public Builder setIsTestMode(boolean isTestMode) {
       this.isTestMode = isTestMode;
       return this;
@@ -58,7 +66,12 @@ public class SnowflakeStreamingIngestClientFactory {
       SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides, this.isTestMode);
+          this.name,
+          accountURL,
+          prop,
+          this.parameterOverrides,
+          this.isIcebergMode,
+          this.isTestMode);
     }
   }
 }

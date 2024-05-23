@@ -344,6 +344,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -404,6 +405,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -449,6 +451,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -677,6 +680,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -718,6 +722,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -765,6 +770,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -821,6 +827,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -905,6 +912,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -934,6 +942,7 @@ public class SnowflakeStreamingIngestClientTest {
                 new SnowflakeURL("snowflake.dev.local:8082"),
                 null,
                 httpClient,
+                false,
                 true,
                 requestBuilder,
                 null));
@@ -1106,6 +1115,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -1180,6 +1190,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
@@ -1372,6 +1383,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             parameterMap);
@@ -1408,6 +1420,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            false,
             true,
             requestBuilder,
             null);
