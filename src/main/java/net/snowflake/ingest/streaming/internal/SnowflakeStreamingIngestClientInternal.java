@@ -235,7 +235,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     }
 
     try {
-      this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+      this.flushService =
+          new FlushService<>(this, this.channelCache, this.isIcebergMode, this.isTestMode);
     } catch (Exception e) {
       // Need to clean up the resources before throwing any exceptions
       cleanUpResources();

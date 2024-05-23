@@ -123,6 +123,10 @@ class FlushService<T> {
   // blob encoding version
   private final Constants.BdecVersion bdecVersion;
 
+  // Indicates if it's flushing to Iceberg tables, a blob could only contain one chunk under Iceberg
+  // mode
+  private final boolean isIcebergMode;
+
   /**
    * Constructor for TESTING that takes (usually mocked) StreamingIngestStage
    *
@@ -134,6 +138,7 @@ class FlushService<T> {
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
       StreamingIngestStage targetStage, // For testing
+      boolean isIcebergMode,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
@@ -142,6 +147,7 @@ class FlushService<T> {
     this.registerService = new RegisterService<>(client, isTestMode);
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
+    this.isIcebergMode = isIcebergMode;
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
@@ -156,7 +162,10 @@ class FlushService<T> {
    * @param isTestMode
    */
   FlushService(
-      SnowflakeStreamingIngestClientInternal<T> client, ChannelCache<T> cache, boolean isTestMode) {
+      SnowflakeStreamingIngestClientInternal<T> client,
+      ChannelCache<T> cache,
+      boolean isIcebergMode,
+      boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
     try {
@@ -176,6 +185,7 @@ class FlushService<T> {
     this.counter = new AtomicLong(0);
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
+    this.isIcebergMode = isIcebergMode;
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
@@ -437,7 +447,7 @@ class FlushService<T> {
           }
           // Add processed channels to the current blob, stop if we need to create a new blob
           blobData.add(channelsDataPerTable.subList(0, idx));
-          if (idx != channelsDataPerTable.size()) {
+          if (idx != channelsDataPerTable.size() || isIcebergMode) {
             break;
           }
         }
