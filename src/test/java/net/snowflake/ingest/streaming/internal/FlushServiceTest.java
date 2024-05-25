@@ -98,7 +98,7 @@ public class FlushServiceTest {
     TestContext(boolean isIcebergMode) {
       stage = Mockito.mock(StreamingIngestStage.class);
       Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
-      parameterProvider = new ParameterProvider(isIcebergMode);
+      parameterProvider = new ParameterProvider();
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       channelCache = new ChannelCache<>();
