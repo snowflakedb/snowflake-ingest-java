@@ -28,7 +28,8 @@ public class SnowflakeStreamingIngestClientFactory {
     // Allows client to override some default parameter values
     private Map<String, Object> parameterOverrides;
 
-    // Indicates whether it's streaming to Iceberg tables
+    // Indicates whether it's streaming to Iceberg tables. Open channels on regular tables should
+    // fail in this mode.
     private boolean isIcebergMode;
 
     // Indicates whether it's under test mode
