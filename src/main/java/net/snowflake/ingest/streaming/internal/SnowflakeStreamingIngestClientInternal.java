@@ -169,7 +169,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
-    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
+    this.parameterProvider = new ParameterProvider(parameterOverrides, prop, isIcebergMode);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -235,8 +235,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     }
 
     try {
-      this.flushService =
-          new FlushService<>(this, this.channelCache, this.isIcebergMode, this.isTestMode);
+      this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
     } catch (Exception e) {
       // Need to clean up the resources before throwing any exceptions
       cleanUpResources();
@@ -274,8 +273,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    *
    * @param name the name of the client
    */
-  SnowflakeStreamingIngestClientInternal(String name) {
-    this(name, null, null, null, false, true, null, new HashMap<>());
+  SnowflakeStreamingIngestClientInternal(String name, boolean isIcebergMode) {
+    this(name, null, null, null, isIcebergMode, true, null, new HashMap<>());
   }
 
   // TESTING ONLY - inject the request builder

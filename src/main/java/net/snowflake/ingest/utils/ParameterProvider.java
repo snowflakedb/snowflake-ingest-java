@@ -64,6 +64,12 @@ public class ParameterProvider {
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
 
+  // Iceberg mode default parameters
+  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
+
+  // If the provided parameters need to be verified and modified to meet Iceberg mode
+  private final boolean isIcebergMode;
+
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
   public static final boolean ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT = false;
@@ -80,14 +86,18 @@ public class ParameterProvider {
    *
    * @param parameterOverrides Map of parameter name to value
    * @param props Properties from profile file
+   * @param isIcebergMode If the provided parameters need to be verified and modified to meet
+   *     Iceberg mode
    */
-  public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
+  public ParameterProvider(
+      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
+    this.isIcebergMode = isIcebergMode;
     this.setParameterMap(parameterOverrides, props);
   }
 
   /** Empty constructor for tests */
-  public ParameterProvider() {
-    this(null, null);
+  public ParameterProvider(boolean isIcebergMode) {
+    this(null, null, isIcebergMode);
   }
 
   private void updateValue(
@@ -99,6 +109,8 @@ public class ParameterProvider {
       this.parameterMap.put(key, parameterOverrides.getOrDefault(key, defaultValue));
     } else if (props != null) {
       this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
+    } else {
+      this.parameterMap.put(key, defaultValue);
     }
   }
 
@@ -188,6 +200,13 @@ public class ParameterProvider {
         BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
         props);
+
+    // Required parameter override for Iceberg mode
+    if (this.isIcebergMode) {
+      this.parameterMap.put(
+          MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
+          MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT);
+    }
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */

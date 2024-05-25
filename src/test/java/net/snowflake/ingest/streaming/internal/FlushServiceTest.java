@@ -48,11 +48,22 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+@RunWith(Parameterized.class)
 public class FlushServiceTest {
+
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public static boolean isIcebergMode;
+
   public FlushServiceTest() {
     this.testContextFactory = ParquetTestContext.createFactory();
   }
@@ -64,7 +75,7 @@ public class FlushServiceTest {
       this.name = name;
     }
 
-    abstract TestContext<T> create(boolean isIcebergMode);
+    abstract TestContext<T> create();
 
     @Override
     public String toString() {
@@ -83,17 +94,16 @@ public class FlushServiceTest {
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
-    TestContext(boolean isIcebergMode) {
+    TestContext() {
       stage = Mockito.mock(StreamingIngestStage.class);
       Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
-      parameterProvider = new ParameterProvider();
+      parameterProvider = new ParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
-      flushService =
-          Mockito.spy(new FlushService<>(client, channelCache, stage, isIcebergMode, true));
+      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, true));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -234,10 +244,6 @@ public class FlushServiceTest {
 
   private static class ParquetTestContext extends TestContext<List<List<Object>>> {
 
-    ParquetTestContext(boolean isIcebergMode) {
-      super(isIcebergMode);
-    }
-
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> createChannel(
         String name,
         String dbName,
@@ -273,8 +279,8 @@ public class FlushServiceTest {
     static TestContextFactory<List<List<Object>>> createFactory() {
       return new TestContextFactory<List<List<Object>>>("Parquet") {
         @Override
-        TestContext<List<List<Object>>> create(boolean isIcebergMode) {
-          return new ParquetTestContext(isIcebergMode);
+        TestContext<List<List<Object>>> create() {
+          return new ParquetTestContext();
         }
       };
     }
@@ -393,7 +399,7 @@ public class FlushServiceTest {
 
   @Test
   public void testGetFilePath() {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
@@ -427,7 +433,7 @@ public class FlushServiceTest {
 
   @Test
   public void testFlush() throws Exception {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
     Mockito.when(flushService.isTestMode()).thenReturn(false);
 
@@ -455,7 +461,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobCreation() throws Exception {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel4 = addChannel4(testContext);
@@ -490,7 +496,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobSplitDueToDifferentSchema() throws Exception {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     String colName1 = "testBlobSplitDueToDifferentSchema1";
@@ -539,7 +545,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobSplitDueToChunkSizeLimit() throws Exception {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     String colName1 = "testBlobSplitDueToChunkSizeLimit1";
@@ -591,9 +597,12 @@ public class FlushServiceTest {
             Math.ceil(
                 (double) numberOfRows
                     / channelsPerTable
-                    / ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT);
+                    / (isIcebergMode
+                        ? ParameterProvider
+                            .MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
+                        : ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT));
 
-    final TestContext<List<List<Object>>> testContext = testContextFactory.create(false);
+    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
 
     for (int i = 0; i < numberOfRows; i++) {
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
@@ -619,7 +628,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobSplitDueToNumberOfChunksWithLeftoverChannels() throws Exception {
-    final TestContext<List<List<Object>>> testContext = testContextFactory.create(false);
+    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
 
     for (int i = 0; i < 99; i++) { // 19 simple chunks
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
@@ -660,32 +669,6 @@ public class FlushServiceTest {
     Assert.assertEquals(102, getRows(allUploadedBlobs).size());
   }
 
-  @Test
-  public void testBlobSplitDueToIcebergMode() throws Exception {
-    int numberOfTables = 5;
-    int channelsPerTable = 5;
-    final TestContext<List<List<Object>>> testContext = testContextFactory.create(true);
-
-    for (int i = 0; i < numberOfTables * channelsPerTable; i++) {
-      SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
-          addChannel(testContext, i % numberOfTables, 1);
-      channel.setupSchema(Collections.singletonList(createTestTextColumn("C1")));
-      channel.insertRow(Collections.singletonMap("C1", i), "");
-    }
-
-    FlushService<List<List<Object>>> flushService = testContext.flushService;
-    flushService.flush(true).get();
-
-    ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
-        ArgumentCaptor.forClass(List.class);
-    Mockito.verify(flushService, Mockito.times(numberOfTables))
-        .buildAndUpload(Mockito.any(), blobDataCaptor.capture());
-
-    List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
-        blobDataCaptor.getAllValues();
-    allUploadedBlobs.forEach(chunks -> Assert.assertEquals(1, chunks.size()));
-  }
-
   private List<List<Object>> getRows(List<List<List<ChannelData<List<List<Object>>>>>> blobs) {
     List<List<Object>> result = new ArrayList<>();
     blobs.forEach(
@@ -703,7 +686,7 @@ public class FlushServiceTest {
     long expectedBuildLatencyMs = 100;
     long expectedUploadLatencyMs = 200;
 
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     String colName1 = "testBuildAndUpload1";
@@ -851,7 +834,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildErrors() throws Exception {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel3 = addChannel3(testContext);
     String colName1 = "testBuildErrors1";
@@ -892,7 +875,7 @@ public class FlushServiceTest {
     // Create a new Client in order to not interfere with other tests
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
-    ParameterProvider parameterProvider = new ParameterProvider();
+    ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
@@ -946,7 +929,7 @@ public class FlushServiceTest {
     StreamingIngestStage stage = Mockito.mock(StreamingIngestStage.class);
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     FlushService<StubChunkData> flushService =
-        new FlushService<>(client, channelCache, stage, false, false);
+        new FlushService<>(client, channelCache, stage, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");
 
     Assert.assertFalse(channel1.isValid());
@@ -955,7 +938,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobBuilder() throws Exception {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
 
     ObjectMapper mapper = new ObjectMapper();
@@ -1057,7 +1040,7 @@ public class FlushServiceTest {
 
   @Test
   public void testShutDown() throws Exception {
-    TestContext<?> testContext = testContextFactory.create(false);
+    TestContext<?> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());
