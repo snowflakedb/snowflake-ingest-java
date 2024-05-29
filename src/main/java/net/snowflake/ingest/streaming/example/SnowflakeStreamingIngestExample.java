@@ -95,12 +95,12 @@ public class SnowflakeStreamingIngestExample {
       //      } while (retryCount < maxRetries);
 
       Map<String, Object> row = new HashMap<>();
-
+      row.put("boolean_col", false);
       row.put("int_col", 1234567890);
       row.put("long_col", 1234567890123456789L);
       row.put("float_col", 1234567.1234567);
       row.put("double_col", 1234567.1234567f);
-      row.put("decimal_col", 12345.12345);
+      row.put("decimal_col", 1234.45678);
       row.put("string_col", "Streaming Ingest to Iceberg Table");
       row.put("fixed_col", Hex.decode("41424344454647484950"));
       row.put("binary_col", Hex.decode("41424344454647484950515253545556"));

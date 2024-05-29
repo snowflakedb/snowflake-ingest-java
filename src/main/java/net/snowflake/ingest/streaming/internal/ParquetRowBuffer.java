@@ -26,9 +26,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.hadoop.BdecParquetWriter;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.*;
 
 /**
  * The buffer in the Streaming Ingest channel that holds the un-flushed rows, these rows will be
@@ -89,6 +87,36 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       validateColumnCollation(column);
       ParquetTypeGenerator.ParquetTypeInfo typeInfo =
           ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
+      if (id == 2) {
+        typeInfo.setParquetType(Types.primitive(PrimitiveType.PrimitiveTypeName.INT32, Type.Repetition.OPTIONAL)
+                .as(LogicalTypeAnnotation.IntLogicalTypeAnnotation.intType(32, true))
+                .id(id)
+                .length(4)
+                .named(column.getInternalName()));
+        Map<String, String> metadata_ = new HashMap<>();
+        metadata_.put("2", "2,4");
+        typeInfo.setMetadata(metadata_);
+      }
+      if (id == 3) {
+        typeInfo.setParquetType(Types.primitive(PrimitiveType.PrimitiveTypeName.INT64, Type.Repetition.OPTIONAL)
+                .as(LogicalTypeAnnotation.IntLogicalTypeAnnotation.intType(64, true))
+                .id(id)
+                .length(8)
+                .named(column.getInternalName()));
+        Map<String, String> metadata_ = new HashMap<>();
+        metadata_.put("3", "2,5");
+        typeInfo.setMetadata(metadata_);
+      }
+      if (id == 6) {
+        typeInfo.setParquetType(Types.primitive(PrimitiveType.PrimitiveTypeName.INT64, Type.Repetition.OPTIONAL)
+                .as(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.decimalType(5, 10))
+                .id(id)
+                .length(8)
+                .named(column.getInternalName()));
+        Map<String, String> metadata_ = new HashMap<>();
+        metadata_.put("6", "2,4");
+        typeInfo.setMetadata(metadata_);
+      }
       parquetTypes.add(typeInfo.getParquetType());
       this.metadata.putAll(typeInfo.getMetadata());
       int columnIndex = parquetTypes.size() - 1;

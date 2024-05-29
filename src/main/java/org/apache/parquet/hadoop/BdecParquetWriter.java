@@ -15,6 +15,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
+import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
@@ -147,8 +148,8 @@ public class BdecParquetWriter implements AutoCloseable {
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
-        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
-        .withValuesWriterFactory(new DefaultV1ValuesWriterFactory())
+        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_2_0)
+        .withValuesWriterFactory(new DefaultValuesWriterFactory())
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
         .withDictionaryEncoding(false)
