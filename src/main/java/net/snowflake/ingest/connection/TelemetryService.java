@@ -68,9 +68,10 @@ public class TelemetryService {
    * @param clientName name of the client
    * @param url account url
    */
-  TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
+  TelemetryService(CloseableHttpClient httpClient, String clientName, String url, String authType) {
     this.clientName = clientName;
-    this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
+    this.telemetry =
+        (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url, authType);
     this.rateLimitersMap = new HashMap<>();
   }
 
@@ -177,7 +178,7 @@ public class TelemetryService {
     return msg;
   }
 
-  /** Refresh JWT token stored in the telemetry client */
+  /** Refresh JWT or OAuth token stored in the telemetry client */
   public void refreshToken(String token) {
     telemetry.refreshToken(token);
   }

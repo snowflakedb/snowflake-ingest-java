@@ -12,14 +12,25 @@ public class OAuthCredential {
   private static final String BASIC_AUTH_HEADER_PREFIX = "Basic ";
   private final String authHeader;
   private final URI oAuthTokenEndpoint;
-  private transient String accessToken;
+  private transient volatile String accessToken;
   private transient String refreshToken;
   private int expiresIn;
+  private final boolean autoRefresh;
 
+  /* Constructor for manually setting access token without auto refresh */
+  public OAuthCredential(String accessToken) {
+    this.authHeader = null;
+    this.oAuthTokenEndpoint = null;
+    this.accessToken = accessToken;
+    this.autoRefresh = false;
+  }
+
+  /* Constructor for Snowflake OAuth with auto refresh */
   public OAuthCredential(String clientId, String clientSecret, String refreshToken) {
     this(clientId, clientSecret, refreshToken, null);
   }
 
+  /* Constructor for OAuth with auto refresh */
   public OAuthCredential(
       String clientId, String clientSecret, String refreshToken, URI oAuthTokenEndpoint) {
     this.authHeader =
@@ -27,6 +38,7 @@ public class OAuthCredential {
             + Base64.getEncoder().encodeToString((clientId + ":" + clientSecret).getBytes());
     this.refreshToken = refreshToken;
     this.oAuthTokenEndpoint = oAuthTokenEndpoint;
+    this.autoRefresh = true;
   }
 
   public String getAuthHeader() {
@@ -59,5 +71,9 @@ public class OAuthCredential {
 
   public int getExpiresIn() {
     return expiresIn;
+  }
+
+  public boolean getIsAutoRefresh() {
+    return autoRefresh;
   }
 }

@@ -23,6 +23,7 @@ import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
 import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -266,11 +267,23 @@ public class RequestBuilder {
 
     // Set up the telemetry service if needed
     // TODO: SNOW-854272 Support telemetry service when using OAuth authentication
-    this.telemetryService =
-        ENABLE_TELEMETRY_TO_SF && credential instanceof KeyPair
-            ? new TelemetryService(
-                httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
-            : null;
+    if (!ENABLE_TELEMETRY_TO_SF) {
+      this.telemetryService = null;
+    } else if (credential instanceof KeyPair) {
+      this.telemetryService =
+          new TelemetryService(
+              httpClient,
+              clientName,
+              schemeName + "://" + hostName + ":" + portNum,
+              Constants.KEYPAIR_JWT);
+    } else {
+      this.telemetryService =
+          new TelemetryService(
+              httpClient,
+              clientName,
+              schemeName + "://" + hostName + ":" + portNum,
+              Constants.OAUTH);
+    }
 
     // stash references to the account and username as well
     String account = accountName.toUpperCase();
@@ -730,6 +743,18 @@ public class RequestBuilder {
   public void setRefreshToken(String refreshToken) {
     if (securityManager instanceof OAuthManager) {
       ((OAuthManager) securityManager).setRefreshToken(refreshToken);
+    }
+  }
+
+  /**
+   * Set access token, this method is for access token renewal without requiring to restart client.
+   * This method only works when the authorization type is OAuth.
+   *
+   * @param accessToken the new access token
+   */
+  public void setAccessToken(String accessToken) {
+    if (securityManager instanceof OAuthManager) {
+      ((OAuthManager) securityManager).setAccessToken(accessToken);
     }
   }
 

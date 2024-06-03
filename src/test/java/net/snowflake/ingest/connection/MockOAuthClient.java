@@ -12,13 +12,18 @@ public class MockOAuthClient extends OAuthClient {
 
   private int futureRefreshFailCount = 0;
 
-  public MockOAuthClient() {
+  public MockOAuthClient(boolean autoRefresh) {
     super(
         "ACCOUNT_NAME",
-        new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN"),
+        autoRefresh
+            ? new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN")
+            : new OAuthCredential("ACCESS_TOKEN"),
         new URIBuilder());
     oAuthCredential =
-        new AtomicReference<>(new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN"));
+        new AtomicReference<>(
+            autoRefresh
+                ? new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN")
+                : new OAuthCredential("ACCESS_TOKEN"));
     oAuthCredential.get().setExpiresIn(600);
   }
 

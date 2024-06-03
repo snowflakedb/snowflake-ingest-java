@@ -11,7 +11,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
-/** This class manages creating and automatically refresh the OAuth token */
+/** This class manages creating and optionally refresh the OAuth token */
 public final class OAuthManager extends SecurityManager {
   private static final double DEFAULT_UPDATE_THRESHOLD_RATIO = 0.8;
 
@@ -27,10 +27,11 @@ public final class OAuthManager extends SecurityManager {
   // Update threshold, a floating-point value representing the ratio between the expiration time of
   // an access token and the time needed to update it. It must be a value greater than 0 and less
   // than 1. E.g. An access token with expires_in=600 and update_threshold_ratio=0.8 would be
-  // updated after 600*0.8 = 480.
+  // updated after 600*0.8 = 480. Only works when OAuthClient.OAuthCredential.autoRefresh is set
+  // to true.
   private final double updateThresholdRatio;
 
-  private OAuthClient oAuthClient;
+  private final OAuthClient oAuthClient;
 
   /**
    * Creates a OAuthManager entity for a given account, user and OAuthCredential with default time
@@ -66,7 +67,7 @@ public final class OAuthManager extends SecurityManager {
    * @param oAuthCredential - the OAuth credential we're using to connect
    * @param baseURIBuilder - the uri builder with common scheme, host and port
    * @param updateThresholdRatio - the ratio between the expiration time of a token and the time
-   *     needed to refresh it.
+   *     needed to refresh it. Only works if OAuthClient.OAuthCredential.autoRefresh is true.
    * @param telemetryService reference to the telemetry service
    */
   OAuthManager(
@@ -76,8 +77,7 @@ public final class OAuthManager extends SecurityManager {
       URIBuilder baseURIBuilder,
       double updateThresholdRatio,
       TelemetryService telemetryService) {
-    // disable telemetry service until jdbc v3.13.34 is released
-    super(accountName, username, null);
+    super(accountName, username, telemetryService);
 
     // if any of our arguments are null, throw an exception
     if (oAuthCredential == null || baseURIBuilder == null) {
@@ -91,7 +91,7 @@ public final class OAuthManager extends SecurityManager {
     this.updateThresholdRatio = updateThresholdRatio;
     this.oAuthClient = new OAuthClient(accountName, oAuthCredential, baseURIBuilder);
 
-    // generate our first token
+    // generate our first token if auto refresh is on
     refreshToken();
   }
 
@@ -138,9 +138,26 @@ public final class OAuthManager extends SecurityManager {
     oAuthClient.getOAuthCredentialRef().get().setRefreshToken(refreshToken);
   }
 
-  /** refreshToken - Get new access token using refresh_token, client_id, client_secret */
+  /**
+   * Set access token, this method is for access token renewal without requiring to restart client.
+   *
+   * @param accessToken the new access token
+   */
+  void setAccessToken(String accessToken) {
+    oAuthClient.getOAuthCredentialRef().get().setAccessToken(accessToken);
+    if (telemetryService != null) {
+      telemetryService.refreshToken(accessToken);
+    }
+  }
+
+  /**
+   * refreshToken - Get new access token using refresh_token, client_id, client_secret. Only works
+   * when autoRefresh is true
+   */
   @Override
   void refreshToken() {
+    if (!oAuthClient.getOAuthCredentialRef().get().getIsAutoRefresh()) return;
+
     for (int retries = 0; retries < Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY; retries++) {
       try {
         oAuthClient.refreshToken();
@@ -165,6 +182,10 @@ public final class OAuthManager extends SecurityManager {
         } catch (InterruptedException e2) {
           throw new SFException(ErrorCode.OAUTH_REFRESH_TOKEN_ERROR, e2.getMessage());
         }
+      }
+
+      if (telemetryService != null) {
+        telemetryService.refreshToken(oAuthClient.getOAuthCredentialRef().get().getAccessToken());
       }
     }
 

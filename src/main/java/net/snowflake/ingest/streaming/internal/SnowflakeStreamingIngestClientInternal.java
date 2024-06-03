@@ -181,7 +181,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Object credential = null;
 
       // Authorization type will be set to jwt by default
-      if (prop.getProperty(Constants.AUTHORIZATION_TYPE).equals(Constants.JWT)) {
+      if (prop.getProperty(Constants.AUTHORIZATION_TYPE).equals(Constants.KEYPAIR_JWT)) {
         try {
           credential =
               Utils.createKeyPairFromPrivateKey(
@@ -207,12 +207,17 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         } catch (URISyntaxException e) {
           throw new SFException(e, ErrorCode.INVALID_URL);
         }
-        credential =
-            new OAuthCredential(
-                prop.getProperty(Constants.OAUTH_CLIENT_ID),
-                prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
-                prop.getProperty(Constants.OAUTH_REFRESH_TOKEN),
-                oAuthTokenEndpoint);
+        if (Boolean.parseBoolean(
+            prop.getOrDefault(Constants.OAUTH_AUTO_REFRESH, false).toString())) {
+          credential =
+              new OAuthCredential(
+                  prop.getProperty(Constants.OAUTH_CLIENT_ID),
+                  prop.getProperty(Constants.OAUTH_CLIENT_SECRET),
+                  prop.getProperty(Constants.OAUTH_REFRESH_TOKEN),
+                  oAuthTokenEndpoint);
+        } else {
+          credential = new OAuthCredential(prop.getProperty(Constants.OAUTH_ACCESS_TOKEN));
+        }
       }
       this.requestBuilder =
           new RequestBuilder(
@@ -222,7 +227,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.httpClient,
               String.format("%s_%s", this.name, System.currentTimeMillis()));
 
-      logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
+      logger.logInfo(
+          "Using {} for authorization",
+          (this.requestBuilder.getAuthType()
+              + (prop.getProperty(Constants.AUTHORIZATION_TYPE).equals(Constants.OAUTH)
+                  ? String.format(
+                      " with auto refresh = %s",
+                      prop.getOrDefault(Constants.OAUTH_AUTO_REFRESH, false))
+                  : "")));
 
       // Setup client telemetries if needed
       this.setupMetricsForClient();
@@ -966,6 +978,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   public void setRefreshToken(String refreshToken) {
     if (requestBuilder != null) {
       requestBuilder.setRefreshToken(refreshToken);
+    }
+  }
+
+  /**
+   * Set access token, this method is for refresh token renewal without requiring to restart client.
+   * This method only works when the authorization type is OAuth
+   *
+   * @param accessToken the new refresh token
+   */
+  @Override
+  public void setAccessToken(String accessToken) {
+    if (requestBuilder != null) {
+      requestBuilder.setAccessToken(accessToken);
     }
   }
 

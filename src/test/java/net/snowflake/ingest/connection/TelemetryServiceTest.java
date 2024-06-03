@@ -5,6 +5,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.ingest.utils.Constants;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -15,7 +16,11 @@ public class TelemetryServiceTest {
 
     TelemetryService telemetryService =
         Mockito.spy(
-            new TelemetryService(httpClient, "testReportLatencyInSec", "snowflake.dev.local:8082"));
+            new TelemetryService(
+                httpClient,
+                "testReportLatencyInSec",
+                "snowflake.dev.local:8082",
+                Constants.KEYPAIR_JWT));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
     MetricRegistry metrics = new MetricRegistry();
     Timer flushLatency = metrics.timer(MetricRegistry.name("latency", "flush"));
@@ -34,7 +39,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportClientFailure", "snowflake.dev.local:8082"));
+                httpClient,
+                "testReportClientFailure",
+                "snowflake.dev.local:8082",
+                Constants.KEYPAIR_JWT));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
 
     // Make sure there is no exception thrown
@@ -48,7 +56,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportThroughputBytesPerSecond", "snowflake.dev.local:8082"));
+                httpClient,
+                "testReportThroughputBytesPerSecond",
+                "snowflake.dev.local:8082",
+                Constants.KEYPAIR_JWT));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
     MetricRegistry metrics = new MetricRegistry();
     Meter uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
@@ -65,7 +76,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportCpuMemoryUsage", "snowflake.dev.local:8082"));
+                httpClient,
+                "testReportCpuMemoryUsage",
+                "snowflake.dev.local:8082",
+                Constants.OAUTH));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
     MetricRegistry metrics = new MetricRegistry();
     Histogram cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
@@ -81,7 +95,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportClientFailure", "snowflake.dev.local:8082"));
+                httpClient,
+                "testReportClientFailure",
+                "snowflake.dev.local:8082",
+                Constants.OAUTH));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
 
     // Make sure there is no exception thrown

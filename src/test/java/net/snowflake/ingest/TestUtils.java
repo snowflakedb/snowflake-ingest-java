@@ -16,9 +16,10 @@ import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,9 +39,20 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
+import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
+import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
+import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.HttpClientBuilder;
+import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
+import net.snowflake.client.jdbc.internal.google.gson.JsonObject;
+import net.snowflake.client.jdbc.internal.google.gson.JsonParser;
+import net.snowflake.ingest.connection.JWTManager;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
@@ -470,15 +482,120 @@ public class TestUtils {
     return new URIBuilder().setScheme(scheme).setHost(host).setPort(port);
   }
 
-  public static URI getTokenRequestURI() {
-    URI tokenRequestURI = null;
-    try {
-      tokenRequestURI = getBaseURIBuilder().setPath("/oauth/token-request").build();
-    } catch (URISyntaxException e) {
-      throw new RuntimeException("Fail to construct token request uri", e);
-    }
+  public static String getOAuthAccessToken() throws Exception {
+    // Setup security integration
+    Connection jdbcConnection = TestUtils.getConnection(true);
+    jdbcConnection
+        .createStatement()
+        .execute(
+            "create or replace security integration SDK_TEST\n"
+                + "        type=oauth\n"
+                + "        oauth_client=CUSTOM\n"
+                + "        oauth_client_type=CONFIDENTIAL\n"
+                + "        oauth_redirect_uri='https://localhost.com/oauth'\n"
+                + "        oauth_issue_refresh_tokens=true\n"
+                + "        enabled=true\n"
+                + "        oauth_refresh_token_validity=7776000;\n");
+    jdbcConnection
+        .createStatement()
+        .execute(
+            String.format(
+                "alter user %s add delegated authorization of role %s to security integration"
+                    + " SDK_TEST;",
+                user, role));
+    ResultSet resultSet =
+        jdbcConnection
+            .createStatement()
+            .executeQuery("select SYSTEM$SHOW_OAUTH_CLIENT_SECRETS('SDK_TEST');");
+    resultSet.next();
+    JsonObject obj = JsonParser.parseString(resultSet.getString(1)).getAsJsonObject();
+    String clientId = obj.get("OAUTH_CLIENT_ID").getAsString();
+    String clientSecret = obj.get("OAUTH_CLIENT_SECRET").getAsString();
+    String jwtToken = new JWTManager(account, user, keyPair, null).getToken();
 
-    return tokenRequestURI;
+    URI loginRequestURI = getBaseURIBuilder().setPath("/session/authenticate-request").build();
+    URI authRequestURI = getBaseURIBuilder().setPath("/oauth/authorization-request").build();
+    URI tokenRequestURI = getBaseURIBuilder().setPath("/oauth/token-request").build();
+
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+
+    // Request master token
+    HttpPost loginPost = new HttpPost(loginRequestURI);
+    loginPost.setHeader("Content-type", "application/json");
+    String loginPayload =
+        String.format(
+            "{"
+                + "\"data\":{"
+                + "\"ACCOUNT_NAME\":\"%s\","
+                + "\"LOGIN_NAME\":\"%s\","
+                + "\"TOKEN\":\"%s\","
+                + "\"AUTHENTICATOR\":\"SNOWFLAKE_JWT\","
+                + "\"clientId\":\"%s\","
+                + "\"responseType\":\"code\","
+                + "\"scope\":\"refresh_token session:role:%s\""
+                + "}"
+                + "}",
+            account.toUpperCase(), user, jwtToken, clientId, role.toUpperCase());
+    loginPost.setEntity(new StringEntity(loginPayload, ContentType.APPLICATION_JSON));
+
+    CloseableHttpResponse response = httpClient.execute(loginPost);
+    String respBodyString = EntityUtils.toString(response.getEntity());
+    obj = JsonParser.parseString(respBodyString).getAsJsonObject();
+    String masterToken =
+        obj.getAsJsonObject("data").get("masterToken").toString().replaceAll("^\"|\"$", "");
+
+    // Get AZCode using masterToken
+    HttpPost authPost = new HttpPost(authRequestURI);
+    authPost.setHeader("Content-type", "application/json");
+    String authPayload =
+        String.format(
+            "{"
+                + "\"clientId\":\"%s\","
+                + "\"masterToken\":\"%s\","
+                + "\"responseType\":\"code\","
+                + "\"scope\":\"refresh_token session:role:%s\""
+                + "}",
+            clientId, masterToken, role.toUpperCase());
+    authPost.setEntity(new StringEntity(authPayload, ContentType.APPLICATION_JSON));
+    response = httpClient.execute(authPost);
+    respBodyString = EntityUtils.toString(response.getEntity());
+    obj = JsonParser.parseString(respBodyString).getAsJsonObject();
+    String authCode =
+        obj.getAsJsonObject("data")
+            .get("redirectUrl")
+            .toString()
+            .replaceAll("^\"|\"$", "")
+            .split("=")[1];
+
+    // Get access token using AZCode
+    HttpPost tokenPost = new HttpPost(tokenRequestURI);
+    tokenPost.setHeader("Content-type", "application/x-www-form-urlencoded");
+    tokenPost.setHeader(
+        "Authorization",
+        "Basic "
+            + java.util.Base64.getEncoder()
+                .encodeToString((clientId + ":" + clientSecret).getBytes()));
+    HashMap<String, String> tokenPayload = new HashMap<>();
+    tokenPayload.put("grant_type", "authorization_code");
+    tokenPayload.put("code", authCode);
+    tokenPayload.put("redirect_uri", "https://localhost.com/oauth");
+    String tokenPayloadString =
+        tokenPayload.entrySet().stream()
+            .map(
+                e -> {
+                  try {
+                    return e.getKey() + "=" + URLEncoder.encode(e.getValue(), "UTF-8");
+                  } catch (UnsupportedEncodingException ex) {
+                    throw new RuntimeException(ex);
+                  }
+                })
+            .collect(Collectors.joining("&"));
+    tokenPost.setEntity(
+        new StringEntity(tokenPayloadString, ContentType.APPLICATION_FORM_URLENCODED));
+    response = httpClient.execute(tokenPost);
+    respBodyString = EntityUtils.toString(response.getEntity());
+    obj = JsonParser.parseString(respBodyString).getAsJsonObject();
+    return obj.get("access_token").toString().replaceAll("^\"|\"$", "");
   }
 
   private static <T> T nullOrIfNullable(boolean nullable, Random r, Supplier<T> value) {

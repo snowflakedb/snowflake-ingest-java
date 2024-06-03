@@ -8,6 +8,7 @@ import java.security.KeyPairGenerator;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.utils.Constants;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,11 +45,12 @@ public class SecurityManagerTest {
   public void testGetTokenType() throws Exception {
     SecurityManager jwtManager =
         new JWTManager("account", "user", keyPair, 3, TimeUnit.SECONDS, null);
-    assertEquals(jwtManager.getTokenType(), "KEYPAIR_JWT");
+    assertEquals("KEYPAIR_JWT", jwtManager.getTokenType());
 
     SecurityManager oAuthManager =
-        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), new MockOAuthClient(), 0.8);
-    assertEquals(oAuthManager.getTokenType(), "OAUTH");
+        new OAuthManager(
+            TestUtils.getAccount(), TestUtils.getUser(), new MockOAuthClient(true), 0.8);
+    assertEquals("OAUTH", oAuthManager.getTokenType());
   }
 
   /** Evaluates whether or not we are actually renewing jwt tokens */
@@ -77,7 +79,8 @@ public class SecurityManagerTest {
 
     // Set update threshold ratio to 5e-3, access token should be refreshed after 3 seconds
     SecurityManager securityManager =
-        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), new MockOAuthClient(), 5e-3);
+        new OAuthManager(
+            TestUtils.getAccount(), TestUtils.getUser(), new MockOAuthClient(true), 5e-3);
 
     String token = securityManager.getToken();
 
@@ -106,7 +109,7 @@ public class SecurityManagerTest {
   /** Test behavior of getting token after refresh failed */
   @Test(expected = SecurityException.class)
   public void testGetOAuthTokenFail() throws Exception {
-    MockOAuthClient mockOAuthClient = new MockOAuthClient();
+    MockOAuthClient mockOAuthClient = new MockOAuthClient(true);
 
     SecurityManager manager =
         new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
@@ -117,7 +120,7 @@ public class SecurityManagerTest {
   /** Test refresh oauth token fail */
   @Test(expected = SecurityException.class)
   public void testOAuthRefreshFail() throws Exception {
-    MockOAuthClient mockOAuthClient = new MockOAuthClient();
+    MockOAuthClient mockOAuthClient = new MockOAuthClient(true);
     mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY);
 
     SecurityManager securityManager =
@@ -128,11 +131,23 @@ public class SecurityManagerTest {
   /** Test retry, should success */
   @Test
   public void testOAuthRefreshRetry() throws Exception {
-    MockOAuthClient mockOAuthClient = new MockOAuthClient();
+    MockOAuthClient mockOAuthClient = new MockOAuthClient(true);
     mockOAuthClient.setFutureRefreshFailCount(Constants.MAX_OAUTH_REFRESH_TOKEN_RETRY - 1);
 
     SecurityManager securityManager =
         new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
     securityManager.close();
+  }
+
+  /** Test set access token, should success */
+  @Test
+  public void testSetOAuthToken() throws Exception {
+    MockOAuthClient mockOAuthClient = new MockOAuthClient(false);
+    OAuthManager oAuthManager =
+        new OAuthManager(TestUtils.getAccount(), TestUtils.getUser(), mockOAuthClient, 0.8);
+    Assert.assertEquals("ACCESS_TOKEN", oAuthManager.getToken());
+    oAuthManager.setAccessToken("NEW_TOKEN");
+    Assert.assertEquals("NEW_TOKEN", oAuthManager.getToken());
+    oAuthManager.close();
   }
 }

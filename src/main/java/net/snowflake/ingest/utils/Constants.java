@@ -24,14 +24,16 @@ public class Constants {
   public static final String ACCOUNT_URL = "url";
   public static final String ROLE = "role";
   public static final String AUTHORIZATION_TYPE = "authorization_type";
-  public static final String JWT = "JWT";
-  public static final String OAUTH = "OAuth";
+  public static final String KEYPAIR_JWT = "KEYPAIR_JWT";
+  public static final String OAUTH = "OAUTH";
   public static final String PRIVATE_KEY = "private_key";
   public static final String PRIVATE_KEY_PASSPHRASE = "private_key_passphrase";
   public static final String OAUTH_CLIENT_ID = "oauth_client_id";
   public static final String OAUTH_CLIENT_SECRET = "oauth_client_secret";
+  public static final String OAUTH_ACCESS_TOKEN = "oauth_access_token";
   public static final String OAUTH_REFRESH_TOKEN = "oauth_refresh_token";
   public static final String OAUTH_TOKEN_ENDPOINT = "oauth_token_endpoint";
+  public static final String OAUTH_AUTO_REFRESH = "oauth_auto_refresh";
   public static final String SNOWFLAKE_OAUTH_TOKEN_ENDPOINT = "/oauth/token-request";
   public static final String PRIMARY_FILE_ID_KEY =
       "primaryFileId"; // Don't change, should match Parquet Scanner
