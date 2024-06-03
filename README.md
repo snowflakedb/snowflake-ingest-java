@@ -15,7 +15,7 @@ authentication. Currently, we support ingestion through the following APIs:
 
 The Snowflake Ingest Service SDK depends on the following libraries:
 
-* snowflake-jdbc (3.13.30 to 3.14.5) 
+* snowflake-jdbc (3.16.1+) 
 * slf4j-api
 * com.github.luben:zstd-jni (1.5.0-1)
 
