@@ -177,7 +177,7 @@ public class SnowflakeStreamingIngestClientTest {
             SnowflakeStreamingIngestClientFactory.builder("client")
                 .setProperties(prop)
                 .setParameterOverrides(parameterMap)
-                .setIcebergMode(isIcebergMode)
+                .setIsIceberg(isIcebergMode)
                 .setIsTestMode(true)
                 .build();
 
@@ -205,7 +205,7 @@ public class SnowflakeStreamingIngestClientTest {
                 .setProperties(prop)
                 .setParameterOverrides(
                     Collections.singletonMap(ENABLE_SNOWPIPE_STREAMING_METRICS, true))
-                .setIcebergMode(isIcebergMode)
+                .setIsIceberg(isIcebergMode)
                 .build();
 
     Assert.assertEquals("client", client.getName());

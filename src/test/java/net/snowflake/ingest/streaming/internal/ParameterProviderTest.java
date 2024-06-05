@@ -170,7 +170,7 @@ public class ParameterProviderTest {
         ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterProvider.getBdecParquetCompressionAlgorithm());
     Assert.assertEquals(
-        ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT,
+        Constants.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT,
         parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
   }
 

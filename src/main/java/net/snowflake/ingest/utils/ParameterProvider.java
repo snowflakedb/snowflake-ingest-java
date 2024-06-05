@@ -1,5 +1,7 @@
 package net.snowflake.ingest.utils;
 
+import static net.snowflake.ingest.utils.Constants.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -63,9 +65,6 @@ public class ParameterProvider {
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
-
-  // Iceberg mode default parameters
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
 
   // If the provided parameters need to be verified and modified to meet Iceberg mode
   private final boolean isIcebergMode;

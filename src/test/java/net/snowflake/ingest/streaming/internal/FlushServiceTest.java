@@ -598,8 +598,7 @@ public class FlushServiceTest {
                 (double) numberOfRows
                     / channelsPerTable
                     / (isIcebergMode
-                        ? ParameterProvider
-                            .MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
+                        ? Constants.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
                         : ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT));
 
     final TestContext<List<List<Object>>> testContext = testContextFactory.create();

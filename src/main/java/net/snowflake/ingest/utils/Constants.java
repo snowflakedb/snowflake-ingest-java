@@ -61,6 +61,9 @@ public class Constants {
   public static final long EP_NDV_UNKNOWN = -1L;
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;
 
+  // Iceberg mode parameters
+  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
+
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";

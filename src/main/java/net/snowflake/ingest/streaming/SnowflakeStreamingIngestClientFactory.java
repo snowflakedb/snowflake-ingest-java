@@ -49,7 +49,7 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
-    public Builder setIcebergMode(boolean isIcebergMode) {
+    public Builder setIsIceberg(boolean isIcebergMode) {
       this.isIcebergMode = isIcebergMode;
       return this;
     }
