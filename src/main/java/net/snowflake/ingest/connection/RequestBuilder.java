@@ -678,18 +678,23 @@ public class RequestBuilder {
    */
   public HttpPost generateStreamingIngestPostRequest(
       String payload, String endPoint, String message) {
-    LOGGER.debug("Generate Snowpipe streaming request: endpoint={}, payload={}", endPoint, payload);
+    final String requestId = UUID.randomUUID().toString();
+    LOGGER.debug(
+        "Generate Snowpipe streaming request: endpoint={}, payload={}, requestId={}",
+        endPoint,
+        payload,
+        requestId);
     // Make the corresponding URI
     URI uri = null;
     try {
       uri =
           new URIBuilder()
-                  .setScheme(scheme)
-                  .setHost(host)
-                  .setPort(port)
-                  .setPath(endPoint)
-                  .setParameter(REQUEST_ID, UUID.randomUUID().toString())
-                  .build();
+              .setScheme(scheme)
+              .setHost(host)
+              .setPort(port)
+              .setPath(endPoint)
+              .setParameter(REQUEST_ID, requestId)
+              .build();
     } catch (URISyntaxException e) {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }

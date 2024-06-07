@@ -1,12 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
-import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
-import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
-import static net.snowflake.ingest.utils.Constants.ROLE;
-import static net.snowflake.ingest.utils.Constants.USER;
+import static net.snowflake.ingest.utils.Constants.*;
 import static org.mockito.ArgumentMatchers.argThat;
 
 import java.security.KeyPair;
@@ -313,8 +308,14 @@ public class SnowflakeStreamingIngestChannelTest {
         requestBuilder.generateStreamingIngestPostRequest(
             payload, OPEN_CHANNEL_ENDPOINT, "open channel");
 
-    Assert.assertEquals(
-        String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT), request.getRequestLine().getUri());
+    String expectedUrlPattern =
+            String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT) + "(\\?requestId=[a-f0-9\\-]{36})?";
+
+    Assert.assertTrue(
+            String.format(
+                    "Expected URL to match pattern: %s but was: %s",
+                    expectedUrlPattern, request.getRequestLine().getUri()),
+            request.getRequestLine().getUri().matches(expectedUrlPattern));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
     Assert.assertEquals("POST", request.getMethod());
