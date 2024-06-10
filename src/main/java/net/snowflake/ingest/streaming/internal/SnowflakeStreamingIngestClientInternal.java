@@ -235,7 +235,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     }
 
     try {
-      this.flushService = new FlushService<>(this, this.channelCache, this.isTestMode);
+      this.flushService =
+          new FlushService<>(this, this.channelCache, this.isIcebergMode, this.isTestMode);
     } catch (Exception e) {
       // Need to clean up the resources before throwing any exceptions
       cleanUpResources();
@@ -337,6 +338,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("schema", request.getSchemaName());
       payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
       payload.put("role", this.role);
+      payload.put("is_iceberg_client", isIcebergMode);
       if (request.isOffsetTokenProvided()) {
         payload.put("offset_token", request.getOffsetToken());
       }
@@ -393,6 +395,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);
+
+      if (isIcebergMode) {
+        this.flushService.addExternalVolume(request.getFullyQualifiedTableName(), response);
+      }
 
       return channel;
     } catch (IOException | IngestResponseException e) {

@@ -41,6 +41,8 @@ public class ParameterProvider {
   public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
       "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
 
+  public static final String DISABLE_CHUNK_ENCRYPTION = "DISABLE_CHUNK_ENCRYPTION".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -66,9 +68,15 @@ public class ParameterProvider {
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
 
+  public static final boolean DISABLE_CHUNK_ENCRYPTION_DEFAULT = false;
+
   /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT =
-      1; // 1 parquet file per blob
+  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
+  public static final boolean DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT = true;
+  public static final long MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT = 30000;
+
+  // If the provided parameters need to be verified and modified to meet Iceberg mode
+  private final boolean isIcebergMode;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -189,7 +197,11 @@ public class ParameterProvider {
     this.updateValue(
         MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
 
-    this.updateValue(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT, parameterOverrides, props);
+    this.updateValue(
+        MAX_CLIENT_LAG,
+        isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT,
+        parameterOverrides,
+        props);
 
     this.updateValue(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
@@ -205,11 +217,20 @@ public class ParameterProvider {
         parameterOverrides,
         props);
 
+    this.updateValue(
+        DISABLE_CHUNK_ENCRYPTION,
+        isIcebergMode
+            ? DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT
+            : DISABLE_CHUNK_ENCRYPTION_DEFAULT,
+        parameterOverrides,
+        props);
+
     // Required parameter override for Iceberg mode
     if (isIcebergMode) {
       icebergModeValidation(
           MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
           MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT);
+      icebergModeValidation(DISABLE_CHUNK_ENCRYPTION, DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT);
     }
   }
 
@@ -428,6 +449,13 @@ public class ParameterProvider {
       return (Constants.BdecParquetCompression) val;
     }
     return Constants.BdecParquetCompression.fromName((String) val);
+  }
+
+  /** @return If the chunk encryption is disabled */
+  public boolean getDisableChunkEncryption() {
+    Object val =
+        this.parameterMap.getOrDefault(DISABLE_CHUNK_ENCRYPTION, DISABLE_CHUNK_ENCRYPTION_DEFAULT);
+    return (val instanceof String) ? Boolean.parseBoolean((String) val) : (boolean) val;
   }
 
   @Override

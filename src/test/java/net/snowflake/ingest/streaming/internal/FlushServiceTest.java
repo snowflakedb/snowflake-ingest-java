@@ -409,7 +409,7 @@ public class FlushServiceTest {
     FlushService<?> flushService = testContext.flushService;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
-    String outputString = flushService.getBlobPath(calendar, clientPrefix);
+    String outputString = flushService.getBlobPath(calendar, null);
     Path outputPath = Paths.get(outputString);
     Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
     Assert.assertTrue(
@@ -809,6 +809,8 @@ public class FlushServiceTest {
             .build();
 
     // Check FlushService.upload called with correct arguments
+    final ArgumentCaptor<AbstractCloudStorage> cloudStorageCaptor =
+        ArgumentCaptor.forClass(AbstractCloudStorage.class);
     final ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
     final ArgumentCaptor<byte[]> blobCaptor = ArgumentCaptor.forClass(byte[].class);
     final ArgumentCaptor<List<ChunkMetadata>> metadataCaptor = ArgumentCaptor.forClass(List.class);
@@ -818,7 +820,8 @@ public class FlushServiceTest {
             nameCaptor.capture(),
             blobCaptor.capture(),
             metadataCaptor.capture(),
-            ArgumentMatchers.any());
+            ArgumentMatchers.any(),
+            cloudStorageCaptor.capture());
     Assert.assertEquals("file_name", nameCaptor.getValue());
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
@@ -960,7 +963,7 @@ public class FlushServiceTest {
     StreamingIngestStage stage = Mockito.mock(StreamingIngestStage.class);
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     FlushService<StubChunkData> flushService =
-        new FlushService<>(client, channelCache, stage, false, false);
+        new FlushService<>(client, channelCache, stage, isIcebergMode, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");
 
     Assert.assertFalse(channel1.isValid());

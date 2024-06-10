@@ -281,7 +281,7 @@ public class StreamingIngestStageTest {
         new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName", 1);
 
     StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
-        stage.refreshSnowflakeMetadata(true);
+        stage.refreshCloudStorageMetadata(true);
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
     final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
@@ -376,7 +376,7 @@ public class StreamingIngestStageTest {
     workers.submit(
         () -> {
           try {
-            stage.refreshSnowflakeMetadata();
+            stage.refreshCloudStorageMetadata();
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -384,7 +384,7 @@ public class StreamingIngestStageTest {
     workers.submit(
         () -> {
           try {
-            stage.refreshSnowflakeMetadata();
+            stage.refreshCloudStorageMetadata();
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
