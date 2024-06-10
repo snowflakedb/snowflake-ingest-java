@@ -123,4 +123,10 @@ class StreamingIngestExternalVolume extends AbstractCloudStorage {
   public String getVolumeHash() {
     return volumeHash;
   }
+
+  private JsonNode parseStageLocation(JsonNode stageLocation) {
+    Map<String, Object> response = new HashMap<>();
+    response.put("stage_location", stageLocation);
+    return parseConfigureResponse(response);
+  }
 }

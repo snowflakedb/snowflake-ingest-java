@@ -253,8 +253,7 @@ abstract class AbstractCloudStorage {
     payload.put("file_name", fileName);
     Map<String, Object> response = this.makeConfigureCall(payload);
 
-    JsonNode responseNode =
-        this.parseStageLocation(mapper.valueToTree(response).get("stage_location"));
+    JsonNode responseNode = this.parseConfigureResponse(response);
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
@@ -264,14 +263,15 @@ abstract class AbstractCloudStorage {
     return metadata;
   }
 
-  protected JsonNode parseStageLocation(JsonNode stageLocation) {
-    ObjectNode responseNode = mapper.createObjectNode();
+  protected JsonNode parseConfigureResponse(Map<String, Object> response) {
+    JsonNode responseNode = mapper.valueToTree(response);
 
     // Currently there are a few mismatches between the client/configure response and what
     // SnowflakeFileTransferAgent expects
-    responseNode.putObject("data");
-    ObjectNode dataNode = (ObjectNode) responseNode.get("data");
-    dataNode.set("stageInfo", stageLocation);
+    ObjectNode mutable = (ObjectNode) responseNode;
+    mutable.putObject("data");
+    ObjectNode dataNode = (ObjectNode) mutable.get("data");
+    dataNode.set("stageInfo", responseNode.get("stage_location"));
 
     // JDBC expects this field which maps to presignedFileUrlName.  We will set this later
     dataNode.putArray("src_locations").add("placeholder");
@@ -300,8 +300,7 @@ abstract class AbstractCloudStorage {
     Map<Object, Object> payload = getConfigurePayload();
     Map<String, Object> response = this.makeConfigureCall(payload);
 
-    JsonNode responseNode =
-        this.parseStageLocation(mapper.valueToTree(response).get("stage_location"));
+    JsonNode responseNode = this.parseConfigureResponse(response);
     // Do not change the prefix everytime we have to refresh credentials
     if (Utils.isNullOrEmpty(this.clientPrefix)) {
       this.clientPrefix = createClientPrefix(responseNode);
