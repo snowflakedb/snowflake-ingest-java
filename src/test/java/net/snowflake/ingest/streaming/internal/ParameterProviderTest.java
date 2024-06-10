@@ -1,5 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -170,7 +172,7 @@ public class ParameterProviderTest {
         ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterProvider.getBdecParquetCompressionAlgorithm());
     Assert.assertEquals(
-        Constants.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT,
+        MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT,
         parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
   }
 
