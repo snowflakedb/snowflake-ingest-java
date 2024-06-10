@@ -68,12 +68,14 @@ jobs:
         continue-on-error: false
         run: mvn -DghActionsIT verify --batch-mode
   build-e2e-jar-test:
-    name: E2E JAR Test - Cloud ${{ matrix.snowflake_cloud }}
+    name: e2e-jar-test cloud=${{ matrix.snowflake_cloud }} test_type=${{ matrix.test_type }} java=${{ matrix.java_path_env_var }}
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
+        test_type: [ 'shaded', 'unshaded', 'fips']
+        java_path_env_var: [ "JAVA_HOME_8_X64", "JAVA_HOME_11_X64", "JAVA_HOME_17_X64", "JAVA_HOME_21_X64" ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -92,4 +94,7 @@ jobs:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
         run: ./scripts/decrypt_secret.sh ${{ matrix.snowflake_cloud }}
       - name: Run E2E JAR Test
+        env:
+          test_type: ${{ matrix.test_type }}
+          java_path_env_var: ${{ matrix.java_path_env_var }}
         run: ./e2e-jar-test/run_e2e_jar_test.sh
