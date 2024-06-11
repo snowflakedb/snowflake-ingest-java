@@ -257,6 +257,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param parameterOverrides map of parameters to override for this client
+   * @param isIcebergMode whether we're streaming to iceberg tables
    * @param isTestMode indicates whether it's under test mode
    */
   public SnowflakeStreamingIngestClientInternal(

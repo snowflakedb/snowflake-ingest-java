@@ -1,5 +1,7 @@
 package net.snowflake.ingest.utils;
 
+import static net.snowflake.ingest.utils.ErrorCode.INVALID_CONFIG_PARAMETER;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -39,8 +41,6 @@ public class ParameterProvider {
   public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
       "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
 
-  private static final Logging logger = new Logging(ParameterProvider.class);
-
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -66,8 +66,9 @@ public class ParameterProvider {
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
 
-  // Iceberg mode parameters
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
+  /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
+  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT =
+      1; // 1 parquet file per blob
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -437,11 +438,10 @@ public class ParameterProvider {
   private void icebergModeValidation(String key, Object expected) {
     Object val = this.parameterMap.get(key);
     if (!val.equals(expected)) {
-      logger.logWarn(
+      throw new SFException(
+          INVALID_CONFIG_PARAMETER,
           String.format(
-              "The value %s for %s is invalid in Iceberg mode, %s will be used instead.",
-              val, key, expected));
-      this.parameterMap.put(key, expected);
+              "The value %s for %s is invalid in Iceberg mode, should be %s.", val, key, expected));
     }
   }
 }

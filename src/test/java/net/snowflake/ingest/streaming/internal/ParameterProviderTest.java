@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -333,9 +335,17 @@ public class ParameterProviderTest {
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop, false);
     Assert.assertEquals(1, parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
 
-    parameterMap.put("max_chunks_in_blob_and_registration_request", 100);
     parameterProvider = new ParameterProvider(parameterMap, prop, true);
     Assert.assertEquals(1, parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
+
+    SFException e =
+        Assert.assertThrows(
+            SFException.class,
+            () -> {
+              parameterMap.put("max_chunks_in_blob_and_registration_request", 100);
+              new ParameterProvider(parameterMap, prop, true);
+            });
+    Assert.assertEquals(e.getVendorCode(), ErrorCode.INVALID_CONFIG_PARAMETER.getMessageCode());
   }
 
   @Test
