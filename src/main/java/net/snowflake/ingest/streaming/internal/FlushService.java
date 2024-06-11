@@ -152,6 +152,9 @@ class FlushService<T> {
     this.owningClient = client;
     this.channelCache = cache;
     this.targetStage = targetStage;
+    if (this.targetStage != null) {
+      this.clientPrefix = this.targetStage.getClientPrefix();
+    }
     this.counter = new AtomicLong(0);
     this.registerService = new RegisterService<>(client, isTestMode);
     this.isNeedFlush = false;
@@ -188,7 +191,7 @@ class FlushService<T> {
                 client.getRequestBuilder(),
                 client.getName(),
                 DEFAULT_MAX_UPLOAD_RETRIES);
-        this.clientPrefix = this.targetStage.clientPrefix;
+        this.clientPrefix = this.targetStage.getClientPrefix();
       } else {
         this.targetStage = null;
       }
@@ -730,7 +733,7 @@ class FlushService<T> {
 
   /** For TESTING */
   String getBlobPath(Calendar calendar, String volumeHash) {
-    if (isTestMode) {
+    if (isTestMode && this.clientPrefix == null) {
       this.clientPrefix = "testPrefix";
     }
     Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
