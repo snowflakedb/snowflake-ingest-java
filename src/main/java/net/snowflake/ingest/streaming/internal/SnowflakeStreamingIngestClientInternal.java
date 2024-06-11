@@ -121,6 +121,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Indicates whether the client has closed
   private volatile boolean isClosed;
 
+  // Indicates wheter the client is streaming to Iceberg tables
+  private final boolean isIcebergMode;
+
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
@@ -152,6 +155,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param httpClient http client for sending request
+   * @param isIcebergMode whether we're streaming to iceberg tables
    * @param isTestMode whether we're under test mode
    * @param requestBuilder http request builder
    * @param parameterOverrides parameters we override in case we want to set different values
@@ -161,13 +165,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       SnowflakeURL accountURL,
       Properties prop,
       CloseableHttpClient httpClient,
+      boolean isIcebergMode,
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
-    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
+    this.parameterProvider = new ParameterProvider(parameterOverrides, prop, isIcebergMode);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
+    this.isIcebergMode = isIcebergMode;
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
     this.channelCache = new ChannelCache<>();
@@ -251,6 +257,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param parameterOverrides map of parameters to override for this client
+   * @param isIcebergMode whether we're streaming to iceberg tables
    * @param isTestMode indicates whether it's under test mode
    */
   public SnowflakeStreamingIngestClientInternal(
@@ -258,16 +265,17 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       SnowflakeURL accountURL,
       Properties prop,
       Map<String, Object> parameterOverrides,
+      boolean isIcebergMode,
       boolean isTestMode) {
-    this(name, accountURL, prop, null, isTestMode, null, parameterOverrides);
+    this(name, accountURL, prop, null, isIcebergMode, isTestMode, null, parameterOverrides);
   }
 
   /*** Constructor for TEST ONLY
    *
    * @param name the name of the client
    */
-  SnowflakeStreamingIngestClientInternal(String name) {
-    this(name, null, null, null, true, null, new HashMap<>());
+  SnowflakeStreamingIngestClientInternal(String name, boolean isIcebergMode) {
+    this(name, null, null, null, isIcebergMode, true, null, new HashMap<>());
   }
 
   // TESTING ONLY - inject the request builder

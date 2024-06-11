@@ -66,9 +66,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+@RunWith(Parameterized.class)
 public class SnowflakeStreamingIngestClientTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -78,6 +81,14 @@ public class SnowflakeStreamingIngestClientTest {
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2;
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel3;
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel4;
+
+  // TODO: Add IcebergMode = True after Streaming to Iceberg is supported.
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false};
+  }
+
+  @Parameterized.Parameter public boolean isIcebergMode;
 
   @Before
   public void setup() {
@@ -166,6 +177,7 @@ public class SnowflakeStreamingIngestClientTest {
             SnowflakeStreamingIngestClientFactory.builder("client")
                 .setProperties(prop)
                 .setParameterOverrides(parameterMap)
+                .setIsIceberg(isIcebergMode)
                 .setIsTestMode(true)
                 .build();
 
@@ -193,6 +205,7 @@ public class SnowflakeStreamingIngestClientTest {
                 .setProperties(prop)
                 .setParameterOverrides(
                     Collections.singletonMap(ENABLE_SNOWPIPE_STREAMING_METRICS, true))
+                .setIsIceberg(isIcebergMode)
                 .build();
 
     Assert.assertEquals("client", client.getName());
@@ -344,6 +357,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -404,6 +418,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -449,6 +464,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -677,6 +693,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -718,6 +735,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -765,6 +783,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -821,6 +840,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -905,6 +925,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -934,6 +955,7 @@ public class SnowflakeStreamingIngestClientTest {
                 new SnowflakeURL("snowflake.dev.local:8082"),
                 null,
                 httpClient,
+                isIcebergMode,
                 true,
                 requestBuilder,
                 null));
@@ -1106,6 +1128,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -1180,6 +1203,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -1230,7 +1254,7 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testFlush() throws Exception {
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -1252,7 +1276,7 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testClose() throws Exception {
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(0L);
     response.setMessage("Success");
@@ -1286,7 +1310,7 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testCloseWithError() throws Exception {
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
 
     CompletableFuture<Void> future = new CompletableFuture<>();
     future.completeExceptionally(new Exception("Simulating Error"));
@@ -1324,7 +1348,7 @@ public class SnowflakeStreamingIngestClientTest {
   @Test
   public void testVerifyChannelsAreFullyCommittedSuccess() throws Exception {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
@@ -1372,6 +1396,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             parameterMap);
@@ -1408,6 +1433,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);

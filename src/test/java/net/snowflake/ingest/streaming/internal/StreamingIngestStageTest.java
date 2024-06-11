@@ -276,7 +276,7 @@ public class StreamingIngestStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(entity);
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    ParameterProvider parameterProvider = new ParameterProvider();
+    ParameterProvider parameterProvider = new ParameterProvider(false);
     StreamingIngestStage stage =
         new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName", 1);
 
