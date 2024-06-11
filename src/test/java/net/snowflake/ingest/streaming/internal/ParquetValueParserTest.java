@@ -10,6 +10,8 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
@@ -31,7 +33,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            12, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
+            12, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -57,7 +59,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            1234, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
+            1234, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -83,7 +85,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            123456789, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
+            123456789, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -114,7 +116,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.INT64,
             rowBufferStats,
             UTC,
-            0);
+            0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -145,7 +147,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
             rowBufferStats,
             UTC,
-            0);
+            0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -178,7 +180,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.DOUBLE,
             rowBufferStats,
             UTC,
-            0);
+            0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -202,7 +204,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            12345.54321d, testCol, PrimitiveType.PrimitiveTypeName.DOUBLE, rowBufferStats, UTC, 0);
+            12345.54321d, testCol, PrimitiveType.PrimitiveTypeName.DOUBLE, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -226,7 +228,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            true, testCol, PrimitiveType.PrimitiveTypeName.BOOLEAN, rowBufferStats, UTC, 0);
+            true, testCol, PrimitiveType.PrimitiveTypeName.BOOLEAN, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -255,7 +257,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.BINARY,
             rowBufferStats,
             UTC,
-            0);
+            0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -292,7 +294,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
+            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -333,7 +335,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
+            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -363,7 +365,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
+            input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     String resultArray = "[{\"a\":\"1\",\"b\":\"2\",\"c\":\"3\"}]";
 
@@ -395,7 +397,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            text, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
+            text, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     String result = text;
 
@@ -434,7 +436,7 @@ public class ParquetValueParserTest {
                     PrimitiveType.PrimitiveTypeName.INT32,
                     rowBufferStats,
                     UTC,
-                    0));
+                    0, Constants.BinaryStringEncoding.HEX));
     Assert.assertEquals(
         "Unknown data type for logical: TIMESTAMP_NTZ, physical: SB4.", exception.getMessage());
   }
@@ -458,7 +460,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.INT64,
             rowBufferStats,
             UTC,
-            0);
+            0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -488,7 +490,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
             rowBufferStats,
             UTC,
-            0);
+            0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -514,7 +516,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
+            "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -539,7 +541,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "01:00:00", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
+            "01:00:00", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -564,7 +566,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "01:00:00.123", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats, UTC, 0);
+            "01:00:00.123", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats, UTC, 0, Constants.BinaryStringEncoding.HEX);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -597,7 +599,7 @@ public class ParquetValueParserTest {
                     PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
                     rowBufferStats,
                     UTC,
-                    0));
+                    0, Constants.BinaryStringEncoding.HEX));
     Assert.assertEquals(
         "Unknown data type for logical: TIME, physical: SB16.", exception.getMessage());
   }

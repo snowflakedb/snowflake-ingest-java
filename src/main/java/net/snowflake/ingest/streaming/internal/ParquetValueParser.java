@@ -10,6 +10,8 @@ import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.Optional;
 import javax.annotation.Nullable;
+
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
@@ -80,12 +82,12 @@ class ParquetValueParser {
    * @return parsed value and byte size of Parquet internal representation
    */
   static ParquetBufferValue parseColumnValueToParquet(
-      Object value,
-      ColumnMetadata columnMetadata,
-      PrimitiveType.PrimitiveTypeName typeName,
-      RowBufferStats stats,
-      ZoneId defaultTimezone,
-      long insertRowsCurrIndex) {
+          Object value,
+          ColumnMetadata columnMetadata,
+          PrimitiveType.PrimitiveTypeName typeName,
+          RowBufferStats stats,
+          ZoneId defaultTimezone,
+          long insertRowsCurrIndex, Constants.BinaryStringEncoding binaryStringEncoding) {
     Utils.assertNotNull("Parquet column stats", stats);
     float estimatedParquetSize = 0F;
     estimatedParquetSize += DEFINITION_LEVEL_ENCODING_BYTE_LEN;
@@ -144,7 +146,7 @@ class ParquetValueParser {
           int length = 0;
           if (logicalType == AbstractRowBuffer.ColumnLogicalType.BINARY) {
             value =
-                getBinaryValueForLogicalBinary(value, stats, columnMetadata, insertRowsCurrIndex);
+                getBinaryValueForLogicalBinary(value, stats, columnMetadata, insertRowsCurrIndex, binaryStringEncoding);
             length = ((byte[]) value).length;
           } else {
             String str = getBinaryValue(value, stats, columnMetadata, insertRowsCurrIndex);
@@ -414,14 +416,16 @@ class ParquetValueParser {
       Object value,
       RowBufferStats stats,
       ColumnMetadata columnMetadata,
-      final long insertRowsCurrIndex) {
+      final long insertRowsCurrIndex,
+      final Constants.BinaryStringEncoding binaryStringEncoding) {
     String maxLengthString = columnMetadata.getByteLength().toString();
     byte[] bytes =
         DataValidationUtil.validateAndParseBinary(
             columnMetadata.getName(),
             value,
             Optional.of(maxLengthString).map(Integer::parseInt),
-            insertRowsCurrIndex);
+            insertRowsCurrIndex, binaryStringEncoding
+        );
     stats.addBinaryValue(bytes);
     return bytes;
   }

@@ -141,6 +141,24 @@ public class Constants {
               name, Arrays.asList(BdecParquetCompression.values())));
     }
   }
+
+  public enum BinaryStringEncoding {
+    HEX,
+    BASE64;
+
+    public static BinaryStringEncoding fromName(String name) {
+      for (BinaryStringEncoding e : BinaryStringEncoding.values()) {
+        if (e.name().toLowerCase().equals(name.toLowerCase())) {
+          return e;
+        }
+      }
+      throw new IllegalArgumentException(
+              String.format(
+                      "Unsupported BinaryStringEncoding = '%s', allowed values are %s",
+                      name, Arrays.asList(BinaryStringEncoding.values())));
+    }
+  }
+
   // Parameters
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;

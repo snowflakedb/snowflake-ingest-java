@@ -45,6 +45,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TimeZone;
+
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.DecoderException;
@@ -888,76 +890,76 @@ public class DataValidationUtilTest {
     assertArrayEquals(
         "honk".getBytes(StandardCharsets.UTF_8),
         validateAndParseBinary(
-            "COL", "honk".getBytes(StandardCharsets.UTF_8), Optional.empty(), 0));
+            "COL", "honk".getBytes(StandardCharsets.UTF_8), Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
 
     assertArrayEquals(
         new byte[] {-1, 0, 1},
-        validateAndParseBinary("COL", new byte[] {-1, 0, 1}, Optional.empty(), 0));
+        validateAndParseBinary("COL", new byte[] {-1, 0, 1}, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     assertArrayEquals(
         Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL",
             "1234567890abcdef", // pragma: allowlist secret NOT A SECRET
             Optional.empty(),
-            0)); // pragma: allowlist secret NOT A SECRET
+            0, Constants.BinaryStringEncoding.HEX)); // pragma: allowlist secret NOT A SECRET
     assertArrayEquals(
         Hex.decodeHex("1234567890abcdef"), // pragma: allowlist secret NOT A SECRET
         validateAndParseBinary(
             "COL",
             "  1234567890abcdef \t\n",
             Optional.empty(),
-            0)); // pragma: allowlist secret NOT A SECRET
+            0, Constants.BinaryStringEncoding.HEX)); // pragma: allowlist secret NOT A SECRET
 
     assertArrayEquals(
-        maxAllowedArray, validateAndParseBinary("COL", maxAllowedArray, Optional.empty(), 0));
+        maxAllowedArray, validateAndParseBinary("COL", maxAllowedArray, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     assertArrayEquals(
         maxAllowedArrayMinusOne,
-        validateAndParseBinary("COL", maxAllowedArrayMinusOne, Optional.empty(), 0));
+        validateAndParseBinary("COL", maxAllowedArrayMinusOne, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
 
     // Too large arrays should be rejected
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseBinary("COL", new byte[1], Optional.of(0), 0));
+        () -> validateAndParseBinary("COL", new byte[1], Optional.of(0), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseBinary("COL", new byte[BYTES_8_MB + 1], Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", new byte[BYTES_8_MB + 1], Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseBinary("COL", new byte[8], Optional.of(7), 0));
+        () -> validateAndParseBinary("COL", new byte[8], Optional.of(7), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseBinary("COL", "aabb", Optional.of(1), 0));
+        () -> validateAndParseBinary("COL", "aabb", Optional.of(1), 0, Constants.BinaryStringEncoding.HEX));
 
     // unsupported data types should fail
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseBinary("COL", "000", Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", "000", Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseBinary("COL", "abcg", Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", "abcg", Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
-        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBinary("COL", "c", Optional.empty(), 0));
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBinary("COL", "c", Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () ->
             validateAndParseBinary(
-                "COL", Arrays.asList((byte) 1, (byte) 2, (byte) 3), Optional.empty(), 0));
+                "COL", Arrays.asList((byte) 1, (byte) 2, (byte) 3), Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
-        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBinary("COL", 1, Optional.empty(), 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBinary("COL", 1, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
-        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBinary("COL", 12, Optional.empty(), 0));
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseBinary("COL", 1.5, Optional.empty(), 0));
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBinary("COL", 12, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseBinary("COL", BigInteger.ONE, Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", 1.5, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseBinary("COL", false, Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", BigInteger.ONE, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseBinary("COL", new Object(), Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", false, Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseBinary("COL", new Object(), Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
   }
 
   @Test
@@ -1179,19 +1181,19 @@ public class DataValidationUtilTest {
         "The given row cannot be converted to the internal format: Object of type java.lang.Object"
             + " cannot be ingested into Snowflake column COL of type BINARY, rowIndex:0. Allowed"
             + " Java types: byte[], String",
-        () -> validateAndParseBinary("COL", new Object(), Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", new Object(), Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
             + " cannot be ingested into Snowflake column COL of type BINARY, rowIndex:0, reason:"
             + " Binary too long: length=2 maxLength=1",
-        () -> validateAndParseBinary("COL", new byte[] {1, 2}, Optional.of(1), 0));
+        () -> validateAndParseBinary("COL", new byte[] {1, 2}, Optional.of(1), 0, Constants.BinaryStringEncoding.HEX));
     expectErrorCodeAndMessage(
         ErrorCode.INVALID_VALUE_ROW,
         "The given row cannot be converted to the internal format due to invalid value: Value"
             + " cannot be ingested into Snowflake column COL of type BINARY, rowIndex:0, reason:"
             + " Not a valid hex string",
-        () -> validateAndParseBinary("COL", "ghi", Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", "ghi", Optional.empty(), 0, Constants.BinaryStringEncoding.HEX));
 
     // VARIANT
     expectErrorCodeAndMessage(
