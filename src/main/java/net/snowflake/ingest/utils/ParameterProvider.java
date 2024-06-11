@@ -75,9 +75,6 @@ public class ParameterProvider {
   public static final boolean DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT = true;
   public static final long MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT = 30000;
 
-  // If the provided parameters need to be verified and modified to meet Iceberg mode
-  private final boolean isIcebergMode;
-
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
   public static final boolean ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT = false;
@@ -230,7 +227,8 @@ public class ParameterProvider {
       icebergModeValidation(
           MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
           MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT);
-      icebergModeValidation(DISABLE_CHUNK_ENCRYPTION, DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT);
+      icebergModeValidation(
+          DISABLE_CHUNK_ENCRYPTION, DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT);
     }
   }
 
