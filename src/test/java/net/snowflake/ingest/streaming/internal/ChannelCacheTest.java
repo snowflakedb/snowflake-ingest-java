@@ -24,7 +24,7 @@ public class ChannelCacheTest {
   @Before
   public void setup() {
     cache = new ChannelCache<>();
-    client = new SnowflakeStreamingIngestClientInternal<>("client", false);
+    client = new SnowflakeStreamingIngestClientInternal<>("client");
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",

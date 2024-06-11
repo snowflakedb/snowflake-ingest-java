@@ -1,7 +1,5 @@
 package net.snowflake.ingest.utils;
 
-import static net.snowflake.ingest.utils.ErrorCode.INVALID_CONFIG_PARAMETER;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -66,10 +64,6 @@ public class ParameterProvider {
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
 
-  /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT =
-      1; // 1 parquet file per blob
-
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
   public static final boolean ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT = false;
@@ -86,17 +80,14 @@ public class ParameterProvider {
    *
    * @param parameterOverrides Map of parameter name to value
    * @param props Properties from profile file
-   * @param isIcebergMode If the provided parameters need to be verified and modified to meet
-   *     Iceberg mode
    */
-  public ParameterProvider(
-      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
-    this.setParameterMap(parameterOverrides, props, isIcebergMode);
+  public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
+    this.setParameterMap(parameterOverrides, props);
   }
 
   /** Empty constructor for tests */
-  public ParameterProvider(boolean isIcebergMode) {
-    this(null, null, isIcebergMode);
+  public ParameterProvider() {
+    this(null, null);
   }
 
   private void updateValue(
@@ -108,8 +99,6 @@ public class ParameterProvider {
       this.parameterMap.put(key, parameterOverrides.getOrDefault(key, defaultValue));
     } else if (props != null) {
       this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
-    } else {
-      this.parameterMap.put(key, defaultValue);
     }
   }
 
@@ -118,11 +107,8 @@ public class ParameterProvider {
    *
    * @param parameterOverrides Map<String, Object> of parameter name -> value
    * @param props Properties file provided to client constructor
-   * @param isIcebergMode If the provided parameters need to be verified and modified to meet
-   *     Iceberg mode
    */
-  private void setParameterMap(
-      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
+  private void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
     // BUFFER_FLUSH_INTERVAL_IN_MILLIS is deprecated and disallowed
     if ((parameterOverrides != null
             && parameterOverrides.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS))
@@ -193,9 +179,7 @@ public class ParameterProvider {
 
     this.updateValue(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
-        isIcebergMode
-            ? MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
-            : MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
+        MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
         parameterOverrides,
         props);
 
@@ -204,13 +188,6 @@ public class ParameterProvider {
         BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
         props);
-
-    // Required parameter override for Iceberg mode
-    if (isIcebergMode) {
-      icebergModeValidation(
-          MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
-          MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT);
-    }
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -433,15 +410,5 @@ public class ParameterProvider {
   @Override
   public String toString() {
     return "ParameterProvider{" + "parameterMap=" + parameterMap + '}';
-  }
-
-  private void icebergModeValidation(String key, Object expected) {
-    Object val = this.parameterMap.get(key);
-    if (!val.equals(expected)) {
-      throw new SFException(
-          INVALID_CONFIG_PARAMETER,
-          String.format(
-              "The value %s for %s is invalid in Iceberg mode, should be %s.", val, key, expected));
-    }
   }
 }
