@@ -309,13 +309,13 @@ public class SnowflakeStreamingIngestChannelTest {
             payload, OPEN_CHANNEL_ENDPOINT, "open channel");
 
     String expectedUrlPattern =
-            String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT) + "(\\?requestId=[a-f0-9\\-]{36})?";
+        String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT) + "(\\?requestId=[a-f0-9\\-]{36})?";
 
     Assert.assertTrue(
-            String.format(
-                    "Expected URL to match pattern: %s but was: %s",
-                    expectedUrlPattern, request.getRequestLine().getUri()),
-            request.getRequestLine().getUri().matches(expectedUrlPattern));
+        String.format(
+            "Expected URL to match pattern: %s but was: %s",
+            expectedUrlPattern, request.getRequestLine().getUri()),
+        request.getRequestLine().getUri().matches(expectedUrlPattern));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
     Assert.assertEquals("POST", request.getMethod());
