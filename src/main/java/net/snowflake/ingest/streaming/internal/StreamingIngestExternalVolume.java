@@ -32,6 +32,7 @@ class StreamingIngestExternalVolume extends AbstractCloudStorage {
   /**
    * General constructor
    *
+   * @param isTestMode whether it's testing mode
    * @param role Snowflake role used by the Client
    * @param httpClient http client reference
    * @param requestBuilder request builder to build the HTTP request
@@ -40,6 +41,7 @@ class StreamingIngestExternalVolume extends AbstractCloudStorage {
    * @param maxUploadRetries maximum time of upload retries
    */
   StreamingIngestExternalVolume(
+      boolean isTestMode,
       String role,
       CloseableHttpClient httpClient,
       RequestBuilder requestBuilder,
@@ -49,14 +51,18 @@ class StreamingIngestExternalVolume extends AbstractCloudStorage {
       throws SnowflakeSQLException {
     super(
         role, httpClient, requestBuilder, clientName, CHANNEL_CONFIGURE_ENDPOINT, maxUploadRetries);
-    this.fileTransferMetadataWithAge =
-        new SnowflakeFileTransferMetadataWithAge(
-            (SnowflakeFileTransferMetadataV1)
-                SnowflakeFileTransferAgent.getFileTransferMetadatas(
-                        parseStageLocation(stageLocation))
-                    .get(0),
-            Optional.of(System.currentTimeMillis()));
-    this.volumeHash = stageLocation.get("volume_hash").asText();
+    if (!isTestMode) {
+      this.fileTransferMetadataWithAge =
+          new SnowflakeFileTransferMetadataWithAge(
+              (SnowflakeFileTransferMetadataV1)
+                  SnowflakeFileTransferAgent.getFileTransferMetadatas(
+                          parseStageLocation(stageLocation))
+                      .get(0),
+              Optional.of(System.currentTimeMillis()));
+      this.volumeHash = stageLocation.get("volume_hash").asText();
+    } else {
+      this.volumeHash = "testVolumeHash";
+    }
   }
 
   /**
@@ -80,7 +86,7 @@ class StreamingIngestExternalVolume extends AbstractCloudStorage {
       AbstractCloudStorage.SnowflakeFileTransferMetadataWithAge testMetadata,
       int maxRetryCount)
       throws SnowflakeSQLException {
-    this(role, httpClient, requestBuilder, clientName, stageLocation, maxRetryCount);
+    this(isTestMode, role, httpClient, requestBuilder, clientName, stageLocation, maxRetryCount);
     if (!isTestMode) {
       throw new SFException(ErrorCode.INTERNAL_ERROR);
     }

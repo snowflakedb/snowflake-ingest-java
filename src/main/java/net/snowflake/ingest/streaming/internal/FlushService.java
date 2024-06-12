@@ -671,6 +671,7 @@ class FlushService<T> {
       try {
         StreamingIngestExternalVolume streamingIngestExternalVolume =
             new StreamingIngestExternalVolume(
+                this.isTestMode,
                 this.owningClient.getRole(),
                 this.owningClient.getHttpClient(),
                 this.owningClient.getRequestBuilder(),
