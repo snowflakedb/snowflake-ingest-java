@@ -137,23 +137,36 @@ class FlushService<T> {
   private String clientPrefix;
 
   /**
-   * Constructor for TESTING that takes (usually mocked) StreamingIngestStage
+   * Constructor for TESTING that takes (usually mocked) StreamingIngestStage or external volume map
    *
    * @param client
    * @param cache
+   * @param targetStageOrExtervalVolumeMap
+   * @param isIcebergMode
    * @param isTestMode
    */
   FlushService(
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
-      StreamingIngestStage targetStage, // For testing
+      Object targetStageOrExtervalVolumeMap, // For testing
       boolean isIcebergMode,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
-    this.targetStage = targetStage;
-    if (this.targetStage != null) {
-      this.clientPrefix = this.targetStage.getClientPrefix();
+    if (!isIcebergMode) {
+      this.targetStage = (StreamingIngestStage) targetStageOrExtervalVolumeMap;
+      this.externalVolumeMap = null;
+      if (this.targetStage != null) {
+        this.clientPrefix = this.targetStage.getClientPrefix();
+      }
+    } else {
+      this.targetStage = null;
+      this.externalVolumeMap =
+          (Map<String, StreamingIngestExternalVolume>) targetStageOrExtervalVolumeMap;
+      if (externalVolumeMap != null && !externalVolumeMap.isEmpty()) {
+        this.clientPrefix =
+            externalVolumeMap.entrySet().iterator().next().getValue().getClientPrefix();
+      }
     }
     this.counter = new AtomicLong(0);
     this.registerService = new RegisterService<>(client, isTestMode);
@@ -161,7 +174,6 @@ class FlushService<T> {
     this.lastFlushTime = System.currentTimeMillis();
     this.isIcebergMode = isIcebergMode;
     this.isTestMode = isTestMode;
-    this.externalVolumeMap = isIcebergMode ? new ConcurrentHashMap<>() : null;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
     createWorkers();
@@ -724,7 +736,7 @@ class FlushService<T> {
    * thread id + counter>.BDEC". Blob path of an external volume is: "snow_<volume hash + current
    * utc timestamp + client unique prefix + thread id + counter>.parquet".
    *
-   * @param volumeHash volume hash of an external volume, only works when isIcebergMode is true
+   * @param volumeHash volume hash of an external volume, only matters when isIcebergMode is true
    * @return the generated blob file path
    */
   private String getBlobPath(String volumeHash) {
