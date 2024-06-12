@@ -12,6 +12,7 @@ import static net.snowflake.ingest.utils.HttpUtil.shouldBypassProxy;
 import static org.mockito.Mockito.times;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -48,15 +49,25 @@ import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
+import org.powermock.modules.junit4.PowerMockRunnerDelegate;
 
 @RunWith(PowerMockRunner.class)
+@PowerMockRunnerDelegate(Parameterized.class)
 @PrepareForTest({TestUtils.class, HttpUtil.class, SnowflakeFileTransferAgent.class})
-public class StreamingIngestStageTest {
+public class CloudStorageTest {
+
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {true, false};
+  }
+
+  @Parameterized.Parameter public static boolean isIcebergMode;
 
   private final String prefix = "EXAMPLE_PREFIX";
 
@@ -105,6 +116,29 @@ public class StreamingIngestStageTest {
     PowerMockito.mockStatic(TestUtils.class);
   }
 
+  private AbstractCloudStorage getCloudStorage(
+      boolean isIcebergMode,
+      CloseableHttpClient httpClient,
+      RequestBuilder requestBuilder,
+      AbstractCloudStorage.SnowflakeFileTransferMetadataWithAge testMetadata,
+      int maxUploadRetries)
+      throws SnowflakeSQLException, IOException {
+    if (isIcebergMode) {
+      return new StreamingIngestExternalVolume(
+          true,
+          "role",
+          httpClient,
+          requestBuilder,
+          "clientName",
+          null,
+          testMetadata,
+          maxUploadRetries);
+    } else {
+      return new StreamingIngestStage(
+          true, "role", httpClient, requestBuilder, "clientName", testMetadata, maxUploadRetries);
+    }
+  }
+
   @Test
   public void testPutRemote() throws Exception {
     JsonNode exampleJson = mapper.readTree(exampleRemoteMeta);
@@ -114,14 +148,12 @@ public class StreamingIngestStageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage =
-        new StreamingIngestStage(
-            true,
-            "role",
+    AbstractCloudStorage cloudStorage =
+        getCloudStorage(
+            isIcebergMode,
             null,
             null,
-            "clientName",
-            new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+            new AbstractCloudStorage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             1);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
@@ -129,7 +161,7 @@ public class StreamingIngestStageTest {
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
-    stage.putRemote("test/path", dataBytes);
+    cloudStorage.putRemote("test/path", dataBytes);
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class);
     SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());
     SnowflakeFileTransferConfig capturedConfig = captor.getValue();
@@ -152,24 +184,23 @@ public class StreamingIngestStageTest {
 
   @Test
   public void testPutLocal() throws Exception {
+    if (isIcebergMode) return; // No put local in Iceberg mode
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
     String fullFilePath = "testOutput";
     String fileName = "putLocalOutput";
 
-    StreamingIngestStage stage =
+    AbstractCloudStorage cloudStorage =
         Mockito.spy(
-            new StreamingIngestStage(
-                true,
-                "role",
+            getCloudStorage(
+                isIcebergMode,
                 null,
                 null,
-                "clientName",
-                new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+                new AbstractCloudStorage.SnowflakeFileTransferMetadataWithAge(
                     fullFilePath, Optional.of(System.currentTimeMillis())),
                 1));
-    Mockito.doReturn(true).when(stage).isLocalFS();
+    Mockito.doReturn(true).when(cloudStorage).isLocalFS();
 
-    stage.put(fileName, dataBytes);
+    cloudStorage.put(fileName, dataBytes);
     Path outputPath = Paths.get(fullFilePath, fileName);
     List<String> output = Files.readAllLines(outputPath);
     Assert.assertEquals(1, output.size());
@@ -186,13 +217,11 @@ public class StreamingIngestStageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage =
-        new StreamingIngestStage(
-            true,
-            "role",
+    AbstractCloudStorage cloudStorage =
+        getCloudStorage(
+            isIcebergMode,
             null,
             null,
-            "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -206,7 +235,7 @@ public class StreamingIngestStageTest {
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
     try {
-      stage.putRemote("test/path", dataBytes);
+      cloudStorage.putRemote("test/path", dataBytes);
       Assert.fail("Should not succeed");
     } catch (SFException ex) {
       // Expected behavior given mocked response
@@ -240,24 +269,22 @@ public class StreamingIngestStageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage =
+    AbstractCloudStorage cloudStorage =
         Mockito.spy(
-            new StreamingIngestStage(
-                true,
-                "role",
+            getCloudStorage(
+                isIcebergMode,
                 null,
                 null,
-                "clientName",
-                new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
+                new AbstractCloudStorage.SnowflakeFileTransferMetadataWithAge(
                     originalMetadata, Optional.of(System.currentTimeMillis())),
                 1));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
     SnowflakeFileTransferMetadataV1 metaMock = Mockito.mock(SnowflakeFileTransferMetadataV1.class);
 
-    Mockito.doReturn(metaMock).when(stage).fetchSignedURL(Mockito.any());
-    stage.putRemote("test/path", dataBytes);
+    Mockito.doReturn(metaMock).when(cloudStorage).fetchSignedURL(Mockito.any());
+    cloudStorage.putRemote("test/path", dataBytes);
     SnowflakeFileTransferAgent.uploadWithoutConnection(Mockito.any());
-    Mockito.verify(stage, times(1)).fetchSignedURL("test/path");
+    Mockito.verify(cloudStorage, times(1)).fetchSignedURL("test/path");
   }
 
   @Test
@@ -277,18 +304,20 @@ public class StreamingIngestStageTest {
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
     ParameterProvider parameterProvider = new ParameterProvider(false);
-    StreamingIngestStage stage =
-        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName", 1);
+    AbstractCloudStorage cloudStorage =
+        getCloudStorage(isIcebergMode, mockClient, mockBuilder, null, 1);
 
-    StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
-        stage.refreshCloudStorageMetadata(true);
+    AbstractCloudStorage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
+        cloudStorage.refreshCloudStorageMetadata(true);
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
     final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
             stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
-    Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
+    Assert.assertEquals(
+        isIcebergMode ? Constants.CHANNEL_CONFIGURE_ENDPOINT : Constants.CLIENT_CONFIGURE_ENDPOINT,
+        endpointCaptor.getValue());
     Assert.assertTrue(metadataWithAge.timestamp.isPresent());
     Assert.assertEquals(
         StageInfo.StageType.S3, metadataWithAge.fileTransferMetadata.getStageInfo().getStageType());
@@ -299,7 +328,7 @@ public class StreamingIngestStageTest {
     Assert.assertEquals(
         Paths.get("placeholder").toAbsolutePath(),
         Paths.get(metadataWithAge.fileTransferMetadata.getPresignedUrlFileName()).toAbsolutePath());
-    Assert.assertEquals(prefix + "_" + deploymentId, stage.getClientPrefix());
+    Assert.assertEquals(prefix + "_" + deploymentId, cloudStorage.getClientPrefix());
   }
 
   @Test
@@ -318,17 +347,19 @@ public class StreamingIngestStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(entity);
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    StreamingIngestStage stage =
-        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName", 1);
+    AbstractCloudStorage cloudStorage =
+        getCloudStorage(isIcebergMode, mockClient, mockBuilder, null, 1);
 
-    SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
+    SnowflakeFileTransferMetadataV1 metadata = cloudStorage.fetchSignedURL("path/fileName");
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
     final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(mockBuilder)
         .generateStreamingIngestPostRequest(
             stringCaptor.capture(), endpointCaptor.capture(), Mockito.any());
-    Assert.assertEquals(Constants.CLIENT_CONFIGURE_ENDPOINT, endpointCaptor.getValue());
+    Assert.assertEquals(
+        isIcebergMode ? Constants.CHANNEL_CONFIGURE_ENDPOINT : Constants.CLIENT_CONFIGURE_ENDPOINT,
+        endpointCaptor.getValue());
     Assert.assertEquals(StageInfo.StageType.S3, metadata.getStageInfo().getStageType());
     Assert.assertEquals("foo/streaming_ingest/", metadata.getStageInfo().getLocation());
     Assert.assertEquals("path/fileName", metadata.getPresignedUrlFileName());
@@ -356,13 +387,11 @@ public class StreamingIngestStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(entity);
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    StreamingIngestStage stage =
-        new StreamingIngestStage(
-            true,
-            "role",
+    AbstractCloudStorage cloudStorage =
+        getCloudStorage(
+            isIcebergMode,
             mockClient,
             mockBuilder,
-            "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(0L)),
             1);
@@ -376,7 +405,7 @@ public class StreamingIngestStageTest {
     workers.submit(
         () -> {
           try {
-            stage.refreshCloudStorageMetadata();
+            cloudStorage.refreshCloudStorageMetadata();
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -384,7 +413,7 @@ public class StreamingIngestStageTest {
     workers.submit(
         () -> {
           try {
-            stage.refreshCloudStorageMetadata();
+            cloudStorage.refreshCloudStorageMetadata();
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -433,6 +462,12 @@ public class StreamingIngestStageTest {
           nonProxyHosts, props.get(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey()));
     } finally {
       // Cleanup
+      System.clearProperty(USE_PROXY);
+      System.clearProperty(PROXY_HOST);
+      System.clearProperty(PROXY_PORT);
+      System.clearProperty(HTTP_PROXY_USER);
+      System.clearProperty(HTTP_PROXY_PASSWORD);
+      System.clearProperty(NON_PROXY_HOSTS);
       if (oldUseProxy != null) {
         System.setProperty(USE_PROXY, oldUseProxy);
         System.setProperty(PROXY_HOST, oldProxyHost);
@@ -493,13 +528,11 @@ public class StreamingIngestStageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StreamingIngestStage stage =
-        new StreamingIngestStage(
-            true,
-            "role",
+    AbstractCloudStorage cloudStorage =
+        getCloudStorage(
+            isIcebergMode,
             null,
             null,
-            "clientName",
             new StreamingIngestStage.SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -525,7 +558,7 @@ public class StreamingIngestStageTest {
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
-    stage.putRemote("test/path", dataBytes);
+    cloudStorage.putRemote("test/path", dataBytes);
 
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class, times(maxUploadRetryCount));
     SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());

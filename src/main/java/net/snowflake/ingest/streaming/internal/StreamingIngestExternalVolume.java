@@ -62,6 +62,15 @@ class StreamingIngestExternalVolume extends AbstractCloudStorage {
       this.volumeHash = stageLocation.get("volume_hash").asText();
     } else {
       this.volumeHash = "testVolumeHash";
+      this.arbitraryValidChannelFlushContext =
+          new ChannelFlushContext(
+              "testChannelFlushContext",
+              "dbName",
+              "schemaName",
+              "tableName",
+              0L,
+              "encryptionKey",
+              0L);
     }
   }
 
