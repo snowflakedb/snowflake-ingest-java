@@ -1,7 +1,12 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
+import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.Constants.USER;
 import static org.mockito.ArgumentMatchers.argThat;
 
 import java.security.KeyPair;
