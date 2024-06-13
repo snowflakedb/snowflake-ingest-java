@@ -91,13 +91,14 @@ public class Cryptor {
    * Encrypts input bytes using AES CTR mode with zero initialization vector.
    *
    * @param compressedChunkData bytes to encrypt
+   * @param length length of the bytes to encrypt
    * @param encryptionKey symmetric encryption key
    * @param diversifier diversifier for the encryption key
    * @param iv IV to use for encryption
    * @return encrypted bytes, padded, prefixed with initialization vector
    */
   public static byte[] encrypt(
-      byte[] compressedChunkData, String encryptionKey, String diversifier, long iv)
+      byte[] compressedChunkData, int length, String encryptionKey, String diversifier, long iv)
       throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
     // Generate the derived key
@@ -107,7 +108,7 @@ public class Cryptor {
     Cipher cipher = Cipher.getInstance(ENCRYPTION_ALGORITHM);
     byte[] ivBytes = ByteBuffer.allocate(2 * Long.BYTES).putLong(0).putLong(iv).array();
     cipher.init(Cipher.ENCRYPT_MODE, derivedKey, new IvParameterSpec(ivBytes));
-    return cipher.doFinal(compressedChunkData);
+    return cipher.doFinal(compressedChunkData, 0, length);
   }
 
   /**
