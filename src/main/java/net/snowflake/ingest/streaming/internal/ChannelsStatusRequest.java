@@ -61,19 +61,11 @@ class ChannelsStatusRequest {
     }
   }
 
-  // Optional Request ID. Used for diagnostic purposes.
-  private String requestId;
-
   // Channels in request
   private List<ChannelStatusRequestDTO> channels;
 
   // Snowflake role used by client
   private String role;
-
-  @JsonProperty("request_id")
-  String getRequestId() {
-    return requestId;
-  }
 
   @JsonProperty("role")
   public String getRole() {
@@ -83,11 +75,6 @@ class ChannelsStatusRequest {
   @JsonProperty("role")
   public void setRole(String role) {
     this.role = role;
-  }
-
-  @JsonProperty("request_id")
-  void setRequestId(String requestId) {
-    this.requestId = requestId;
   }
 
   @JsonProperty("channels")
