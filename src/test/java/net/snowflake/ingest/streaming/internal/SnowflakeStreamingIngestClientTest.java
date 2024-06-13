@@ -368,7 +368,6 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
     ChannelsStatusRequest request = new ChannelsStatusRequest();
-    request.setRequestId("null_0");
     request.setChannels(Collections.singletonList(dto));
     ChannelsStatusResponse result = client.getChannelsStatus(Collections.singletonList(channel));
     Assert.assertEquals(response.getMessage(), result.getMessage());
@@ -547,9 +546,15 @@ public class SnowflakeStreamingIngestClientTest {
     HttpPost request =
         requestBuilder.generateStreamingIngestPostRequest(
             payload, REGISTER_BLOB_ENDPOINT, "register blob");
+    String expectedUrlPattern =
+        String.format("%s%s", urlStr, REGISTER_BLOB_ENDPOINT) + "(\\?requestId=[a-f0-9\\-]{36})?";
 
-    Assert.assertEquals(
-        String.format("%s%s", urlStr, REGISTER_BLOB_ENDPOINT), request.getRequestLine().getUri());
+    Assert.assertTrue(
+        String.format(
+            "Expected URL to match pattern: %s but was: %s",
+            expectedUrlPattern, request.getRequestLine().getUri()),
+        request.getRequestLine().getUri().matches(expectedUrlPattern));
+
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
     Assert.assertEquals("POST", request.getMethod());
@@ -1432,7 +1437,6 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
     ChannelsStatusRequest request = new ChannelsStatusRequest();
-    request.setRequestId("null_0");
     request.setChannels(Collections.singletonList(dto));
     Map<String, String> result =
         client.getLatestCommittedOffsetTokens(Collections.singletonList(channel));
