@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -24,6 +23,7 @@ import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.ExtendedByteArrayOutputStream;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
@@ -48,7 +48,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   /* BDEC Parquet writer. It is used to buffer unflushed data in Parquet internal buffers instead of using Java objects */
   private BdecParquetWriter bdecParquetWriter;
 
-  private ByteArrayOutputStream fileOutput;
+  private ExtendedByteArrayOutputStream fileOutput;
   private final List<List<Object>> tempData;
 
   private MessageType schema;
@@ -119,7 +119,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   /** Create BDEC file writer if Parquet memory optimization is enabled. */
   private void createFileWriter() {
-    fileOutput = new ByteArrayOutputStream();
+    fileOutput = new ExtendedByteArrayOutputStream();
     try {
       if (clientBufferParameters.getEnableParquetInternalBuffering()) {
         bdecParquetWriter =

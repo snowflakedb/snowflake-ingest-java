@@ -47,6 +47,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
@@ -985,12 +986,12 @@ public class FlushServiceTest {
 
     ObjectMapper mapper = new ObjectMapper();
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
-    List<byte[]> chunksDataList = new ArrayList<>();
+    List<Pair<byte[], Integer>> chunksDataAndSizeList = new ArrayList<>();
     long checksum = 100;
     byte[] data = "fake data".getBytes(StandardCharsets.UTF_8);
     int dataSize = data.length;
 
-    chunksDataList.add(data);
+    chunksDataAndSizeList.add(new Pair<>(data, dataSize));
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
 
@@ -1026,7 +1027,8 @@ public class FlushServiceTest {
 
     final Constants.BdecVersion bdecVersion = ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
     byte[] blob =
-        BlobBuilder.buildBlob(chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
+        BlobBuilder.buildBlob(
+            chunksMetadataList, chunksDataAndSizeList, checksum, dataSize, bdecVersion);
 
     // Read the blob byte array back to valid the behavior
     InputStream input = new ByteArrayInputStream(blob);
@@ -1105,7 +1107,7 @@ public class FlushServiceTest {
         Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));
     String diversifier = "2021/08/10/blob.bdec";
 
-    byte[] encryptedData = Cryptor.encrypt(data, encryptionKey, diversifier, 0);
+    byte[] encryptedData = Cryptor.encrypt(data, data.length, encryptionKey, diversifier, 0);
     byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier, 0);
 
     Assert.assertArrayEquals(data, decryptedData);
