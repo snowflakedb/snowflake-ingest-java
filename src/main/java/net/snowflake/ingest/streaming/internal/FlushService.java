@@ -605,7 +605,7 @@ class FlushService<T> {
             blobPath,
             blobData,
             bdecVersion,
-            this.owningClient.getParameterProvider().getDisableChunkEncryption());
+            this.owningClient.getParameterProvider().getEnableChunkEncryption());
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

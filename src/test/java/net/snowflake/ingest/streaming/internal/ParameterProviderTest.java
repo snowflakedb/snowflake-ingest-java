@@ -146,7 +146,7 @@ public class ParameterProviderTest {
     Properties props = new Properties();
     props.put(
         ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT, 100L);
-    props.put(ParameterProvider.DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT, false);
+    props.put(ParameterProvider.ENABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT, false);
     ParameterProvider parameterProvider = new ParameterProvider(null, props, true);
 
     Assert.assertEquals(
@@ -182,8 +182,8 @@ public class ParameterProviderTest {
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT,
         parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
     Assert.assertEquals(
-        ParameterProvider.DISABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT,
-        parameterProvider.getDisableChunkEncryption());
+        ParameterProvider.ENABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT,
+        parameterProvider.getEnableChunkEncryption());
   }
 
   @Test

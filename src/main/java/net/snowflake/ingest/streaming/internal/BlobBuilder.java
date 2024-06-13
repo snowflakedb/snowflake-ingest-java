@@ -61,14 +61,14 @@ class BlobBuilder {
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
-   * @param disableChunkEncryption If the encryption is disabled
+   * @param encrypt If the chunk encryption is enabled
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
-      boolean disableChunkEncryption)
+      boolean encrypt)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -89,11 +89,11 @@ class BlobBuilder {
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         int chunkLength = serializedChunk.chunkData.size();
 
-        if (!disableChunkEncryption) {
-          PadChunkResult padChunkResult =
+        if (encrypt) {
+          Pair<byte[], Integer> padChunkResult =
               padChunk(serializedChunk.chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
-          byte[] paddedChunkData = padChunkResult.chunkData;
-          chunkLength = padChunkResult.chunkLength;
+          byte[] paddedChunkData = padChunkResult.getFirst();
+          Integer paddedChunkLength = padChunkResult.getSecond();
 
           // Encrypt the compressed chunk data, the encryption key is derived using the key from
           // server with the full blob path.
@@ -104,7 +104,7 @@ class BlobBuilder {
           chunkData =
               Cryptor.encrypt(
                   paddedChunkData,
-                  padChunkResult.byteLength,
+                  paddedChunkLength,
                   firstChannelFlushContext.getEncryptionKey(),
                   filePath,
                   iv);
@@ -146,8 +146,8 @@ class BlobBuilder {
 
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
-                + " estimatedUncompressedSize={}, paddedChunkLength={}, encryptedCompressedSize={},"
-                + " bdecVersion={}",
+                + " estimatedUncompressedSize={}, paddedChunkLength={}, compressedSize={},"
+                + " encryption={}, bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
@@ -155,6 +155,7 @@ class BlobBuilder {
             serializedChunk.chunkEstimatedUncompressedSize,
             chunkLength,
             compressedChunkDataSize,
+            encrypt,
             bdecVersion);
       }
     }
@@ -165,19 +166,6 @@ class BlobBuilder {
     return new Blob(blobBytes, chunksMetadataList, new BlobStats());
   }
 
-  /* simple class to store results of padChunk */
-  private static class PadChunkResult {
-    byte[] chunkData;
-    int byteLength;
-    int chunkLength;
-
-    PadChunkResult(byte[] chunkData, int chunkLength, int actualSize) {
-      this.chunkData = chunkData;
-      this.byteLength = chunkLength;
-      this.chunkLength = actualSize;
-    }
-  }
-
   /**
    * Pad the compressed data for encryption. Encryption needs padding to the
    * ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES to align with decryption on the Snowflake query path
@@ -185,16 +173,15 @@ class BlobBuilder {
    *
    * @param chunkData uncompressed chunk data
    * @param blockSizeToAlignTo block size to align to for encryption
-   * @return padded compressed chunk data, aligned to blockSizeToAlignTo, length after padding,
-   *     actual length of compressed data before padding at the end
+   * @return padded compressed chunk data, aligned to blockSizeToAlignTo, and length after padding
    * @throws IOException
    */
-  static PadChunkResult padChunk(ExtendedByteArrayOutputStream chunkData, int blockSizeToAlignTo)
-      throws IOException {
+  static Pair<byte[], Integer> padChunk(
+      ExtendedByteArrayOutputStream chunkData, int blockSizeToAlignTo) throws IOException {
     int actualSize = chunkData.size();
     int paddingSize = blockSizeToAlignTo - actualSize % blockSizeToAlignTo;
     chunkData.write(new byte[paddingSize]);
-    return new PadChunkResult(chunkData.getBytes(), chunkData.size(), actualSize);
+    return new Pair<>(chunkData.getBytes(), chunkData.size());
   }
 
   /**

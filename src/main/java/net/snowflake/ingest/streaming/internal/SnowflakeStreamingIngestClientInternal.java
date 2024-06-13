@@ -338,7 +338,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("schema", request.getSchemaName());
       payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
       payload.put("role", this.role);
-      payload.put("is_iceberg_client", isIcebergMode);
+      payload.put("is_iceberg", isIcebergMode);
       if (request.isOffsetTokenProvided()) {
         payload.put("offset_token", request.getOffsetToken());
       }
@@ -427,6 +427,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("database", request.getDBName());
       payload.put("schema", request.getSchemaName());
       payload.put("role", this.role);
+      payload.put("is_iceberg", isIcebergMode);
       Long clientSequencer = null;
       if (request instanceof DropChannelVersionRequest) {
         clientSequencer = ((DropChannelVersionRequest) request).getClientSequencer();
