@@ -7,7 +7,8 @@ import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT;
+import static net.snowflake.ingest.utils.Constants.ICEBERG_MODE_BLOB_EXTENSION_TYPE;
+import static net.snowflake.ingest.utils.Constants.ICEBERG_MODE_BLOB_PREFIX;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import com.codahale.metrics.Histogram;
@@ -26,6 +27,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -45,6 +47,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
@@ -76,7 +79,7 @@ public class FlushServiceTest {
       this.name = name;
     }
 
-    abstract TestContext<T> create();
+    abstract TestContext<T> create(boolean isIcebergMode);
 
     @Override
     public String toString() {
@@ -85,9 +88,14 @@ public class FlushServiceTest {
   }
 
   private abstract static class TestContext<T> implements AutoCloseable {
+    static final String clientPrefix = "client_prefix";
+    static final String volumeHash = "volume_hash";
+
     SnowflakeStreamingIngestClientInternal<T> client;
     ChannelCache<T> channelCache;
     final Map<String, SnowflakeStreamingIngestChannelInternal<T>> channels = new HashMap<>();
+    StreamingIngestExternalVolume externalVolume;
+    Map<String, StreamingIngestExternalVolume> externalVolumeMap;
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
@@ -95,16 +103,30 @@ public class FlushServiceTest {
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
-    TestContext() {
+    TestContext(boolean isIcebergMode) {
       stage = Mockito.mock(StreamingIngestStage.class);
-      Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
+      Mockito.when(stage.getClientPrefix()).thenReturn(clientPrefix);
+      externalVolume = Mockito.mock(StreamingIngestExternalVolume.class);
+      Mockito.when(externalVolume.getClientPrefix()).thenReturn(clientPrefix);
+      externalVolumeMap = Mockito.mock(Map.class);
+      Mockito.when(externalVolumeMap.get(Mockito.any(String.class))).thenReturn(externalVolume);
+      Mockito.doReturn(Collections.singleton(new AbstractMap.SimpleEntry<>("_", externalVolume)))
+          .when(externalVolumeMap)
+          .entrySet();
       parameterProvider = new ParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
-      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, true));
+      flushService =
+          Mockito.spy(
+              new FlushService<>(
+                  client,
+                  channelCache,
+                  isIcebergMode ? externalVolumeMap : stage,
+                  isIcebergMode,
+                  true));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -245,6 +267,10 @@ public class FlushServiceTest {
 
   private static class ParquetTestContext extends TestContext<List<List<Object>>> {
 
+    ParquetTestContext(boolean isIcebergMode) {
+      super(isIcebergMode);
+    }
+
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> createChannel(
         String name,
         String dbName,
@@ -280,8 +306,8 @@ public class FlushServiceTest {
     static TestContextFactory<List<List<Object>>> createFactory() {
       return new TestContextFactory<List<List<Object>>>("Parquet") {
         @Override
-        TestContext<List<List<Object>>> create() {
-          return new ParquetTestContext();
+        TestContext<List<List<Object>>> create(boolean isIcebergMode) {
+          return new ParquetTestContext(isIcebergMode);
         }
       };
     }
@@ -400,41 +426,48 @@ public class FlushServiceTest {
 
   @Test
   public void testGetFilePath() {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     FlushService<?> flushService = testContext.flushService;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    String clientPrefix = "honk";
-    String outputString = flushService.getBlobPath(calendar, clientPrefix);
+    String outputString = flushService.getBlobPath(calendar, TestContext.volumeHash);
     Path outputPath = Paths.get(outputString);
-    Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
-    Assert.assertTrue(
-        calendar.get(Calendar.MINUTE)
-                - Integer.parseInt(outputPath.getParent().getFileName().toString())
-            <= 1);
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
-        outputPath.getParent().getParent().getFileName().toString());
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
-        outputPath.getParent().getParent().getParent().getFileName().toString());
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.MONTH) + 1),
-        outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.YEAR)),
-        outputPath
-            .getParent()
-            .getParent()
-            .getParent()
-            .getParent()
-            .getParent()
-            .getFileName()
-            .toString());
+    Assert.assertTrue(outputPath.getFileName().toString().contains(TestContext.clientPrefix));
+    if (!isIcebergMode) {
+      Assert.assertTrue(
+          calendar.get(Calendar.MINUTE)
+                  - Integer.parseInt(outputPath.getParent().getFileName().toString())
+              <= 1);
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
+          outputPath.getParent().getParent().getFileName().toString());
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
+          outputPath.getParent().getParent().getParent().getFileName().toString());
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.MONTH) + 1),
+          outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.YEAR)),
+          outputPath
+              .getParent()
+              .getParent()
+              .getParent()
+              .getParent()
+              .getParent()
+              .getFileName()
+              .toString());
+      Assert.assertTrue(outputPath.getFileName().toString().endsWith(BLOB_EXTENSION_TYPE));
+    } else {
+      Assert.assertTrue(outputPath.getFileName().toString().startsWith(ICEBERG_MODE_BLOB_PREFIX));
+      Assert.assertTrue(outputPath.getFileName().toString().contains(TestContext.volumeHash));
+      Assert.assertTrue(
+          outputPath.getFileName().toString().endsWith(ICEBERG_MODE_BLOB_EXTENSION_TYPE));
+    }
   }
 
   @Test
   public void testFlush() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     FlushService<?> flushService = testContext.flushService;
     Mockito.when(flushService.isTestMode()).thenReturn(false);
 
@@ -462,7 +495,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobCreation() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel4 = addChannel4(testContext);
@@ -497,7 +530,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobSplitDueToDifferentSchema() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     String colName1 = "testBlobSplitDueToDifferentSchema1";
@@ -546,7 +579,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobSplitDueToChunkSizeLimit() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     String colName1 = "testBlobSplitDueToChunkSizeLimit1";
@@ -599,10 +632,11 @@ public class FlushServiceTest {
                 (double) numberOfRows
                     / channelsPerTable
                     / (isIcebergMode
-                        ? MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
+                        ? ParameterProvider
+                            .MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
                         : ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT));
 
-    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
+    final TestContext<List<List<Object>>> testContext = testContextFactory.create(isIcebergMode);
 
     for (int i = 0; i < numberOfRows; i++) {
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
@@ -628,7 +662,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobSplitDueToNumberOfChunksWithLeftoverChannels() throws Exception {
-    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
+    final TestContext<List<List<Object>>> testContext = testContextFactory.create(isIcebergMode);
 
     for (int i = 0; i < 99; i++) { // 19 simple chunks
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
@@ -686,7 +720,7 @@ public class FlushServiceTest {
     long expectedBuildLatencyMs = 100;
     long expectedUploadLatencyMs = 200;
 
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel2 = addChannel2(testContext);
     String colName1 = "testBuildAndUpload1";
@@ -778,6 +812,8 @@ public class FlushServiceTest {
             .build();
 
     // Check FlushService.upload called with correct arguments
+    final ArgumentCaptor<UploadService> cloudStorageCaptor =
+        ArgumentCaptor.forClass(UploadService.class);
     final ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
     final ArgumentCaptor<byte[]> blobCaptor = ArgumentCaptor.forClass(byte[].class);
     final ArgumentCaptor<List<ChunkMetadata>> metadataCaptor = ArgumentCaptor.forClass(List.class);
@@ -787,7 +823,8 @@ public class FlushServiceTest {
             nameCaptor.capture(),
             blobCaptor.capture(),
             metadataCaptor.capture(),
-            ArgumentMatchers.any());
+            ArgumentMatchers.any(),
+            cloudStorageCaptor.capture());
     Assert.assertEquals("file_name", nameCaptor.getValue());
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
@@ -834,7 +871,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBuildErrors() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
     SnowflakeStreamingIngestChannelInternal<?> channel3 = addChannel3(testContext);
     String colName1 = "testBuildErrors1";
@@ -927,9 +964,15 @@ public class FlushServiceTest {
     innerData.add(channel2Data);
 
     StreamingIngestStage stage = Mockito.mock(StreamingIngestStage.class);
-    Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
+    Mockito.when(stage.getClientPrefix()).thenReturn(TestContext.clientPrefix);
+    StreamingIngestExternalVolume externalVolume =
+        Mockito.mock(StreamingIngestExternalVolume.class);
+    Mockito.when(externalVolume.getClientPrefix()).thenReturn(TestContext.clientPrefix);
+    Map<String, StreamingIngestExternalVolume> externalVolumeMap = new HashMap<>();
+    externalVolumeMap.put("db1.schema1.table1", externalVolume);
     FlushService<StubChunkData> flushService =
-        new FlushService<>(client, channelCache, stage, false);
+        new FlushService<>(
+            client, channelCache, isIcebergMode ? externalVolumeMap : stage, isIcebergMode, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");
 
     Assert.assertFalse(channel1.isValid());
@@ -938,17 +981,17 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobBuilder() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel1 = addChannel1(testContext);
 
     ObjectMapper mapper = new ObjectMapper();
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
-    List<byte[]> chunksDataList = new ArrayList<>();
+    List<Pair<byte[], Integer>> chunksDataAndSizeList = new ArrayList<>();
     long checksum = 100;
     byte[] data = "fake data".getBytes(StandardCharsets.UTF_8);
     int dataSize = data.length;
 
-    chunksDataList.add(data);
+    chunksDataAndSizeList.add(new Pair<>(data, dataSize));
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
 
@@ -984,7 +1027,8 @@ public class FlushServiceTest {
 
     final Constants.BdecVersion bdecVersion = ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT;
     byte[] blob =
-        BlobBuilder.buildBlob(chunksMetadataList, chunksDataList, checksum, dataSize, bdecVersion);
+        BlobBuilder.buildBlob(
+            chunksMetadataList, chunksDataAndSizeList, checksum, dataSize, bdecVersion);
 
     // Read the blob byte array back to valid the behavior
     InputStream input = new ByteArrayInputStream(blob);
@@ -1040,7 +1084,7 @@ public class FlushServiceTest {
 
   @Test
   public void testShutDown() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    TestContext<?> testContext = testContextFactory.create(isIcebergMode);
     FlushService<?> flushService = testContext.flushService;
 
     Assert.assertFalse(flushService.buildUploadWorkers.isShutdown());
@@ -1063,7 +1107,7 @@ public class FlushServiceTest {
         Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));
     String diversifier = "2021/08/10/blob.bdec";
 
-    byte[] encryptedData = Cryptor.encrypt(data, encryptionKey, diversifier, 0);
+    byte[] encryptedData = Cryptor.encrypt(data, data.length, encryptionKey, diversifier, 0);
     byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier, 0);
 
     Assert.assertArrayEquals(data, decryptedData);

@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
 
 /** Response to the OpenChannelRequest */
 class OpenChannelResponse extends StreamingIngestResponse {
@@ -21,6 +22,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private List<ColumnMetadata> tableColumns;
   private String encryptionKey;
   private Long encryptionKeyId;
+  private StageMetadata stageLocation;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -129,5 +131,14 @@ class OpenChannelResponse extends StreamingIngestResponse {
 
   Long getEncryptionKeyId() {
     return this.encryptionKeyId;
+  }
+
+  @JsonProperty("stage_location")
+  void setStageLocation(StageMetadata stageLocation) {
+    this.stageLocation = stageLocation;
+  }
+
+  StageMetadata getStageLocation() {
+    return this.stageLocation;
   }
 }

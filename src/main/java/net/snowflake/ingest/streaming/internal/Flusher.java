@@ -4,10 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import net.snowflake.ingest.utils.ExtendedByteArrayOutputStream;
 import net.snowflake.ingest.utils.Pair;
 
 /**
@@ -34,7 +34,7 @@ public interface Flusher<T> {
     final Map<String, RowBufferStats> columnEpStatsMapCombined;
     final long rowCount;
     final float chunkEstimatedUncompressedSize;
-    final ByteArrayOutputStream chunkData;
+    final ExtendedByteArrayOutputStream chunkData;
     final Pair<Long, Long> chunkMinMaxInsertTimeInMs;
 
     public SerializationResult(
@@ -42,7 +42,7 @@ public interface Flusher<T> {
         Map<String, RowBufferStats> columnEpStatsMapCombined,
         long rowCount,
         float chunkEstimatedUncompressedSize,
-        ByteArrayOutputStream chunkData,
+        ExtendedByteArrayOutputStream chunkData,
         Pair<Long, Long> chunkMinMaxInsertTimeInMs) {
       this.channelsMetadataList = channelsMetadataList;
       this.columnEpStatsMapCombined = columnEpStatsMapCombined;

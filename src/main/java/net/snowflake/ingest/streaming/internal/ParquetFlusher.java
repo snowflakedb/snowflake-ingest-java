@@ -4,13 +4,13 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.ExtendedByteArrayOutputStream;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
@@ -64,7 +64,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     BdecParquetWriter mergedChannelWriter = null;
-    ByteArrayOutputStream mergedChunkData = new ByteArrayOutputStream();
+    ExtendedByteArrayOutputStream mergedChunkData = new ExtendedByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
     for (ChannelData<ParquetChunkData> data : channelsDataPerTable) {
@@ -144,7 +144,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
     BdecParquetWriter parquetWriter;
-    ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
+    ExtendedByteArrayOutputStream mergedData = new ExtendedByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
     for (ChannelData<ParquetChunkData> data : channelsDataPerTable) {
