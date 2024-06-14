@@ -493,7 +493,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .collect(Collectors.toList());
       request.setChannels(requestDTOs);
       request.setRole(this.role);
-      request.setRequestId(this.flushService.getClientPrefix() + "_" + counter.getAndIncrement());
 
       String payload = objectMapper.writeValueAsString(request);
 
