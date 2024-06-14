@@ -18,6 +18,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -744,7 +745,8 @@ public class StreamingIngestIT {
     int numRows = 10000;
     ExecutorService testThreadPool = Executors.newFixedThreadPool(numThreads);
     CompletableFuture[] futures = new CompletableFuture[numThreads];
-    List<SnowflakeStreamingIngestChannel> channelList = new ArrayList<>();
+    List<SnowflakeStreamingIngestChannel> channelList =
+        Collections.synchronizedList(new ArrayList<>());
     for (int i = 0; i < numThreads; i++) {
       final String channelName = "CHANNEL" + i;
       futures[i] =
