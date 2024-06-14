@@ -551,7 +551,12 @@ class FlushService<T> {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion);
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            blobPath,
+            blobData,
+            bdecVersion,
+            this.owningClient.getParameterProvider().getEnableChunkEncryption());
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

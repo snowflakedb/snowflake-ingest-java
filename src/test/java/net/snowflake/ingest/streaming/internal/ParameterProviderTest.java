@@ -146,7 +146,8 @@ public class ParameterProviderTest {
     ParameterProvider parameterProvider = new ParameterProvider(true);
 
     Assert.assertEquals(
-        ParameterProvider.MAX_CLIENT_LAG_DEFAULT, parameterProvider.getCachedMaxClientLagInMs());
+        ParameterProvider.MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT,
+        parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(
         ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -176,6 +177,9 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT,
         parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
+    Assert.assertEquals(
+        ParameterProvider.ENABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT,
+        parameterProvider.getEnableChunkEncryption());
   }
 
   @Test
