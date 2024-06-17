@@ -60,7 +60,7 @@
     <netty.version>4.1.94.Final</netty.version>
     <nimbusds.version>9.37.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
-    <parquet.version>1.13.1</parquet.version>
+    <parquet.version>1.14.1</parquet.version>
     <powermock.version>2.0.9</powermock.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf.version>3.19.6</protobuf.version>
