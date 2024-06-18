@@ -221,6 +221,7 @@ class BlobBuilder {
       blob.write(toByteArray(chunkMetadataListInBytes.length));
       blob.write(chunkMetadataListInBytes);
     }
+
     for (byte[] chunkData : chunksDataList) {
       blob.write(chunkData);
     }
@@ -230,6 +231,7 @@ class BlobBuilder {
     for (ChunkMetadata chunkMetadata : chunksMetadataList) {
       chunkMetadata.advanceStartOffset(metadataSize);
     }
+
     return blob.toByteArray();
   }
 
