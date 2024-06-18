@@ -211,6 +211,7 @@ class BlobBuilder {
                 + BLOB_CHECKSUM_SIZE_IN_BYTES
                 + BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES
                 + chunkMetadataListInBytes.length;
+
     // Create the blob file and add the metadata
     ByteArrayOutputStream blob = new ByteArrayOutputStream();
     if (!BLOB_NO_HEADER) {
@@ -221,7 +222,6 @@ class BlobBuilder {
       blob.write(toByteArray(chunkMetadataListInBytes.length));
       blob.write(chunkMetadataListInBytes);
     }
-
     for (byte[] chunkData : chunksDataList) {
       blob.write(chunkData);
     }
