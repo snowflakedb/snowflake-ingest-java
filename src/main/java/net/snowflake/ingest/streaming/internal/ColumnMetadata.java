@@ -4,9 +4,9 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
 import java.util.Map;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
 /** Column metadata for each column in a Snowflake table */
 class ColumnMetadata {

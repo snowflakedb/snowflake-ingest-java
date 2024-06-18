@@ -4,10 +4,10 @@
 
 package net.snowflake.ingest.connection;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonParseException;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonMappingException;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Exception will capture error message when Snowflake encounters an error during ingest or if

@@ -4,10 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonIgnore;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 

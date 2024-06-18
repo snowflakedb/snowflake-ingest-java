@@ -4,8 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.annotation.Nullable;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.utils.Utils;
 
 /**

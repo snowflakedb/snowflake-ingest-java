@@ -104,7 +104,6 @@ class StreamingIngestStage {
     this.clientName = clientName;
     this.proxyProperties = generateProxyPropertiesForJDBC();
     this.maxUploadRetries = maxUploadRetries;
-
     if (!isTestMode) {
       refreshSnowflakeMetadata();
     }
@@ -246,7 +245,7 @@ class StreamingIngestStage {
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("role", this.role);
-    Map<String, Object> response = this.makeClientConfigureCall(payload);
+    ConfigureResponse response = this.makeClientConfigureCall(payload);
 
     JsonNode responseNode = this.parseClientConfigureResponse(response);
     // Do not change the prefix everytime we have to refresh credentials
@@ -255,21 +254,17 @@ class StreamingIngestStage {
     }
     Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
 
-    if (responseNode
-        .get("data")
-        .get("stageInfo")
-        .get("locationType")
-        .toString()
+    if (response
+        .getStageMetadata()
+        .getStageType()
         .replaceAll(
             "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
         .equals(StageInfo.StageType.LOCAL_FS.name())) {
       this.fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
-              responseNode
-                  .get("data")
-                  .get("stageInfo")
-                  .get("location")
-                  .toString()
+              response
+                  .getStageMetadata()
+                  .getLocation()
                   .replaceAll(
                       "^[\"]|[\"]$",
                       ""), // Replace the first and last character if they're double quotes
@@ -312,7 +307,7 @@ class StreamingIngestStage {
     Map<Object, Object> payload = new HashMap<>();
     payload.put("role", this.role);
     payload.put("file_name", fileName);
-    Map<String, Object> response = this.makeClientConfigureCall(payload);
+    ConfigureResponse response = this.makeClientConfigureCall(payload);
 
     JsonNode responseNode = this.parseClientConfigureResponse(response);
 
@@ -338,7 +333,7 @@ class StreamingIngestStage {
 
   private static final MapStatusGetter statusGetter = new MapStatusGetter();
 
-  private JsonNode parseClientConfigureResponse(Map<String, Object> response) {
+  private JsonNode parseClientConfigureResponse(ConfigureResponse response) {
     JsonNode responseNode = mapper.valueToTree(response);
 
     // Currently there are a few mismatches between the client/configure response and what
@@ -353,25 +348,23 @@ class StreamingIngestStage {
     return responseNode;
   }
 
-  private Map<String, Object> makeClientConfigureCall(Map<Object, Object> payload)
+  private ConfigureResponse makeClientConfigureCall(Map<Object, Object> payload)
       throws IOException {
     try {
 
-      Map<String, Object> response =
+      ConfigureResponse response =
           executeWithRetries(
-              Map.class,
+              ConfigureResponse.class,
               CLIENT_CONFIGURE_ENDPOINT,
               mapper.writeValueAsString(payload),
               "client configure",
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
-              requestBuilder,
-              statusGetter);
+              requestBuilder);
 
       // Check for Snowflake specific response code
-      if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {
-        throw new SFException(
-            ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
+      if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        throw new SFException(ErrorCode.CLIENT_CONFIGURE_FAILURE, response.getMessage());
       }
       return response;
     } catch (IngestResponseException e) {

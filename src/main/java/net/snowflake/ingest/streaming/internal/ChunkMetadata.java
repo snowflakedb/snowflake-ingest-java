@@ -4,8 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.utils.Utils;
 
 /** Metadata for a chunk that sends to Snowflake as part of the register blob request */

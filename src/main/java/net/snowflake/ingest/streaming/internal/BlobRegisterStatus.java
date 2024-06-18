@@ -4,8 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Indicates the status of a blob registration, return from server as part of the register blob

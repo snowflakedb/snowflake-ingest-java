@@ -1,117 +1,127 @@
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
+import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
-public class StageMetadata {
-  @JsonProperty(value = "locationType", required = true)
+class StageMetadata {
+  @JsonProperty("locationType")
   private String stageType; // The stage type
 
-  @JsonProperty(value = "location", required = true)
+  @JsonProperty("location")
   private String location; // The container or bucket
 
-  @JsonProperty(value = "creds", required = true)
+  @JsonProperty("path")
+  private String path; // path of the target file
+
+  @JsonProperty("creds")
   private Map<?, ?> credentials; // the credentials required for the  stage
 
-  @JsonProperty(value = "region")
+  @JsonProperty("region")
   private String region; // AWS/S3/GCS region (S3/GCS only)
 
-  @JsonProperty(value = "endPoint")
+  @JsonProperty("endPoint")
   private String endPoint; // The Azure Storage endpoint (Azure only)
 
-  @JsonProperty(value = "storageAccount")
+  @JsonProperty("storageAccount")
   private String storageAccount; // The Azure Storage account (Azure only)
 
-  @JsonProperty(value = "presignedUrl")
+  @JsonProperty("presignedUrl")
   private String presignedUrl; // GCS gives us back a presigned URL instead of a cred
 
-  @JsonProperty(value = "isClientSideEncrypted")
+  @JsonProperty("isClientSideEncrypted")
   private boolean isClientSideEncrypted; // whether to encrypt/decrypt files on the stage
 
-  @JsonProperty(value = "useS3RegionalUrl")
+  @JsonProperty("useS3RegionalUrl")
   private boolean useS3RegionalUrl; // whether to use s3 regional URL (AWS Only)
 
-  @JsonProperty(value = "volumeHash")
+  @JsonProperty("volumeHash")
   private String volumeHash; // a unique id for volume assigned by server
 
-  public String getStageType() {
+  String getStageType() {
     return stageType;
   }
 
-  public void setLocationType(String stageType) {
+  void setLocationType(String stageType) {
     this.stageType = stageType;
   }
 
-  public String getLocation() {
+  String getLocation() {
     return location;
   }
 
-  @JsonProperty("location")
-  public void setLocation(String location) {
+  void setLocation(String location) {
     this.location = location;
   }
 
-  public Map<?, ?> getCredentials() {
+  String getPath() {
+    return path;
+  }
+
+  void setPath(String path) {
+    this.path = path;
+  }
+
+  Map<?, ?> getCredentials() {
     return credentials;
   }
 
-  public void setCredentials(Map<?, ?> credentials) {
+  void setCredentials(Map<?, ?> credentials) {
     this.credentials = credentials;
   }
 
-  public String getRegion() {
+  String getRegion() {
     return region;
   }
 
-  public void setRegion(String region) {
+  void setRegion(String region) {
     this.region = region;
   }
 
-  public String getEndPoint() {
+  String getEndPoint() {
     return endPoint;
   }
 
-  public void setEndPoint(String endPoint) {
+  void setEndPoint(String endPoint) {
     this.endPoint = endPoint;
   }
 
-  public String getStorageAccount() {
+  String getStorageAccount() {
     return storageAccount;
   }
 
-  public void setStorageAccount(String storageAccount) {
+  void setStorageAccount(String storageAccount) {
     this.storageAccount = storageAccount;
   }
 
-  public String getPresignedUrl() {
+  String getPresignedUrl() {
     return presignedUrl;
   }
 
-  public void setPresignedUrl(String presignedUrl) {
+  void setPresignedUrl(String presignedUrl) {
     this.presignedUrl = presignedUrl;
   }
 
-  public boolean getIsClientSideEncrypted() {
+  boolean getIsClientSideEncrypted() {
     return this.isClientSideEncrypted;
   }
 
-  public void setIsClientSideEncrypted(boolean isClientSideEncrypted) {
+  void setIsClientSideEncrypted(boolean isClientSideEncrypted) {
     this.isClientSideEncrypted = isClientSideEncrypted;
   }
 
-  public boolean getUseS3RegionalUrl() {
+  boolean getUseS3RegionalUrl() {
     return this.useS3RegionalUrl;
   }
 
-  public void setUseS3RegionalUrl(boolean useS3RegionalUrl) {
+  void setUseS3RegionalUrl(boolean useS3RegionalUrl) {
     this.useS3RegionalUrl = useS3RegionalUrl;
   }
 
-  public String getVolumeHash() {
+  String getVolumeHash() {
     return this.volumeHash;
   }
 
-  public void setVolumeHash(String volumeHash) {
+  void setVolumeHash(String volumeHash) {
     this.volumeHash = volumeHash;
   }
 }
