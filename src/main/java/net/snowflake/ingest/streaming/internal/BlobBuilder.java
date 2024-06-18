@@ -61,6 +61,7 @@ class BlobBuilder {
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
+   * @param encrypt If the output chunk is encrypted or not
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
@@ -86,7 +87,7 @@ class BlobBuilder {
           flusher.serialize(channelsDataPerTable, filePath);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
-        byte[] chunkData;
+        byte[] compressedChunkData;
         int chunkLength;
 
         if (encrypt) {
@@ -101,17 +102,17 @@ class BlobBuilder {
           // to align with decryption on the Snowflake query path.
           // TODO: address alignment for the header SNOW-557866
           long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
-          chunkData =
+          compressedChunkData =
               Cryptor.encrypt(
                   paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
         } else {
-          chunkData = serializedChunk.chunkData.toByteArray();
-          chunkLength = chunkData.length;
+          compressedChunkData = serializedChunk.chunkData.toByteArray();
+          chunkLength = compressedChunkData.length;
         }
 
         // Compute the md5 of the chunk data
-        String md5 = computeMD5(chunkData, chunkLength);
-        int compressedChunkDataSize = chunkData.length;
+        String md5 = computeMD5(compressedChunkData, chunkLength);
+        int compressedChunkDataSize = compressedChunkData.length;
 
         // Create chunk metadata
         long startOffset = curDataSize;
@@ -137,9 +138,9 @@ class BlobBuilder {
 
         // Add chunk metadata and data to the list
         chunksMetadataList.add(chunkMetadata);
-        chunksDataList.add(chunkData);
+        chunksDataList.add(compressedChunkData);
         curDataSize += compressedChunkDataSize;
-        crc.update(chunkData, 0, compressedChunkDataSize);
+        crc.update(compressedChunkData, 0, compressedChunkDataSize);
 
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"

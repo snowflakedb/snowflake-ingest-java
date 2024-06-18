@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Map;
@@ -5,7 +9,7 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonPrope
 
 class StageMetadata {
   @JsonProperty("locationType")
-  private String stageType; // The stage type
+  private String locationType; // The stage type
 
   @JsonProperty("location")
   private String location; // The container or bucket
@@ -14,7 +18,7 @@ class StageMetadata {
   private String path; // path of the target file
 
   @JsonProperty("creds")
-  private Map<?, ?> credentials; // the credentials required for the  stage
+  private Map<String, String> credentials; // the credentials required for the  stage
 
   @JsonProperty("region")
   private String region; // AWS/S3/GCS region (S3/GCS only)
@@ -37,12 +41,12 @@ class StageMetadata {
   @JsonProperty("volumeHash")
   private String volumeHash; // a unique id for volume assigned by server
 
-  String getStageType() {
-    return stageType;
+  String getLocationType() {
+    return locationType;
   }
 
-  void setLocationType(String stageType) {
-    this.stageType = stageType;
+  void setLocationType(String locationType) {
+    this.locationType = locationType;
   }
 
   String getLocation() {
@@ -65,7 +69,7 @@ class StageMetadata {
     return credentials;
   }
 
-  void setCredentials(Map<?, ?> credentials) {
+  void setCredentials(Map<String, String> credentials) {
     this.credentials = credentials;
   }
 

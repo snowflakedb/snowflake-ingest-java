@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
@@ -247,16 +246,15 @@ class StreamingIngestStage {
     payload.put("role", this.role);
     ConfigureResponse response = this.makeClientConfigureCall(payload);
 
-    JsonNode responseNode = this.parseClientConfigureResponse(response);
     // Do not change the prefix everytime we have to refresh credentials
     if (Utils.isNullOrEmpty(this.clientPrefix)) {
-      this.clientPrefix = createClientPrefix(responseNode);
+      this.clientPrefix = createClientPrefix(response);
     }
     Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
 
     if (response
         .getStageMetadata()
-        .getStageType()
+        .getLocationType()
         .replaceAll(
             "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
         .equals(StageInfo.StageType.LOCAL_FS.name())) {
@@ -273,7 +271,9 @@ class StreamingIngestStage {
       this.fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
               (SnowflakeFileTransferMetadataV1)
-                  SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+                  SnowflakeFileTransferAgent.getFileTransferMetadatas(
+                          parseClientConfigureResponse(response))
+                      .get(0),
               Optional.of(System.currentTimeMillis()));
     }
     return this.fileTransferMetadataWithAge;
@@ -288,10 +288,10 @@ class StreamingIngestStage {
    * @param response the client/configure response from the server
    * @return the client prefix.
    */
-  private String createClientPrefix(final JsonNode response) {
-    final String prefix = response.get("prefix").textValue();
+  private String createClientPrefix(final ConfigureResponse response) {
+    final String prefix = response.getPrefix();
     final String deploymentId =
-        response.has("deployment_id") ? "_" + response.get("deployment_id").longValue() : "";
+        response.getDeploymentId() != null ? "_" + response.getDeploymentId() : "";
     return prefix + deploymentId;
   }
 
@@ -318,20 +318,6 @@ class StreamingIngestStage {
     metadata.setPresignedUrlFileName(fileName);
     return metadata;
   }
-
-  private static class MapStatusGetter<T> implements Function<T, Long> {
-    public MapStatusGetter() {}
-
-    public Long apply(T input) {
-      try {
-        return ((Integer) ((Map<String, Object>) input).get("status_code")).longValue();
-      } catch (Exception e) {
-        throw new SFException(ErrorCode.INTERNAL_ERROR, "failed to get status_code from response");
-      }
-    }
-  }
-
-  private static final MapStatusGetter statusGetter = new MapStatusGetter();
 
   private JsonNode parseClientConfigureResponse(ConfigureResponse response) {
     JsonNode responseNode = mapper.valueToTree(response);
