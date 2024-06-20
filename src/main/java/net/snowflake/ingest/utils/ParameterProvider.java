@@ -41,8 +41,6 @@ public class ParameterProvider {
   public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
       "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
 
-  public static final String ENABLE_CHUNK_ENCRYPTION = "ENABLE_CHUNK_ENCRYPTION".toLowerCase();
-
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -68,11 +66,8 @@ public class ParameterProvider {
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
 
-  public static final boolean ENABLE_CHUNK_ENCRYPTION_DEFAULT = true;
-
   /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
   public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
-  public static final boolean ENABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT = false;
   public static final long MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT = 30000;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
@@ -104,8 +99,12 @@ public class ParameterProvider {
     this(null, null, isIcebergMode);
   }
 
-  private void updateValue(
-      String key, Object defaultValue, Map<String, Object> parameterOverrides, Properties props) {
+  private void checkAndUpdate(
+      String key,
+      Object defaultValue,
+      Map<String, Object> parameterOverrides,
+      Properties props,
+      boolean enforceDefault) {
     if (parameterOverrides != null && props != null) {
       this.parameterMap.put(
           key, parameterOverrides.getOrDefault(key, props.getOrDefault(key, defaultValue)));
@@ -114,6 +113,17 @@ public class ParameterProvider {
     } else if (props != null) {
       this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
     } else {
+      this.parameterMap.put(key, defaultValue);
+    }
+
+    if (enforceDefault) {
+      if (!this.parameterMap.getOrDefault(key, defaultValue).equals(defaultValue)) {
+        throw new SFException(
+            INVALID_CONFIG_PARAMETER,
+            String.format(
+                "The value %s for %s is not configurable, should be %s.",
+                this.parameterMap.get(key), key, defaultValue));
+      }
       this.parameterMap.put(key, defaultValue);
     }
   }
@@ -138,97 +148,101 @@ public class ParameterProvider {
               BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
     }
 
-    this.updateValue(
+    this.checkAndUpdate(
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS,
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         INSERT_THROTTLE_INTERVAL_IN_MILLIS,
         INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE,
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         INSERT_THROTTLE_THRESHOLD_IN_BYTES,
         INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         ENABLE_SNOWPIPE_STREAMING_METRICS,
         SNOWPIPE_STREAMING_METRICS_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT, parameterOverrides, props);
+    this.checkAndUpdate(
+        BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT, parameterOverrides, props, false);
     getBlobFormatVersion(); // to verify parsing the configured value
 
-    this.updateValue(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT, parameterOverrides, props);
+    this.checkAndUpdate(
+        IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT, parameterOverrides, props, false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         BLOB_UPLOAD_MAX_RETRY_COUNT,
         BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(
-        MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT, parameterOverrides, props);
+    this.checkAndUpdate(
+        MAX_MEMORY_LIMIT_IN_BYTES,
+        MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT,
+        parameterOverrides,
+        props,
+        false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         ENABLE_PARQUET_INTERNAL_BUFFERING,
         ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(
-        MAX_CHANNEL_SIZE_IN_BYTES, MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
+    this.checkAndUpdate(
+        MAX_CHANNEL_SIZE_IN_BYTES,
+        MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
+        parameterOverrides,
+        props,
+        false);
 
-    this.updateValue(
-        MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
+    this.checkAndUpdate(
+        MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props, false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         MAX_CLIENT_LAG,
         isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        false);
 
-    this.updateValue(
+    this.checkAndUpdate(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
         isIcebergMode
             ? MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
             : MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
         parameterOverrides,
-        props);
+        props,
+        isIcebergMode);
 
-    this.updateValue(
+    this.checkAndUpdate(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
         BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
-        props);
-
-    // Restricted parameters
-    this.updateValue(
-        ENABLE_CHUNK_ENCRYPTION,
-        isIcebergMode
-            ? ENABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT
-            : ENABLE_CHUNK_ENCRYPTION_DEFAULT,
-        null,
-        null);
-
-    // Required parameter override for Iceberg mode
-    if (isIcebergMode) {
-      icebergModeValidation(
-          MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
-          MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT);
-    }
+        props,
+        false);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -448,25 +462,8 @@ public class ParameterProvider {
     return Constants.BdecParquetCompression.fromName((String) val);
   }
 
-  /** @return If the chunk encryption is enabled */
-  public boolean getEnableChunkEncryption() {
-    Object val =
-        this.parameterMap.getOrDefault(ENABLE_CHUNK_ENCRYPTION, ENABLE_CHUNK_ENCRYPTION_DEFAULT);
-    return (boolean) val;
-  }
-
   @Override
   public String toString() {
     return "ParameterProvider{" + "parameterMap=" + parameterMap + '}';
-  }
-
-  private void icebergModeValidation(String key, Object expected) {
-    Object val = this.parameterMap.get(key);
-    if (!val.equals(expected)) {
-      throw new SFException(
-          INVALID_CONFIG_PARAMETER,
-          String.format(
-              "The value %s for %s is invalid in Iceberg mode, should be %s.", val, key, expected));
-    }
   }
 }

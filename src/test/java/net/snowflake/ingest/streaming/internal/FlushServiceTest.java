@@ -91,6 +91,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
+    ConstantParameterProvider constantParameterProvider;
     RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
@@ -99,8 +100,10 @@ public class FlushServiceTest {
       stage = Mockito.mock(StreamingIngestStage.class);
       Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
       parameterProvider = new ParameterProvider(isIcebergMode);
+      constantParameterProvider = new ConstantParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
+      Mockito.when(client.getConstantParameterProvider()).thenReturn(constantParameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));

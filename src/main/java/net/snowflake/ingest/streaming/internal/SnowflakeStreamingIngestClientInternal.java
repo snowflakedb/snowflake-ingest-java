@@ -103,6 +103,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Provides constant values that can be set by constructor
   private final ParameterProvider parameterProvider;
 
+  // Provides constant values which is determined by the Iceberg or non-Iceberg mode
+  private final ConstantParameterProvider constantParameterProvider;
+
   // Name of the client
   private final String name;
 
@@ -170,6 +173,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop, isIcebergMode);
+    this.constantParameterProvider = new ConstantParameterProvider(isIcebergMode);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -964,6 +968,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
+  }
+
+  /**
+   * Get ConstantParameterProvider with constants parameters
+   *
+   * @return {@link ConstantParameterProvider} used by the client
+   */
+  ConstantParameterProvider getConstantParameterProvider() {
+    return constantParameterProvider;
   }
 
   /**

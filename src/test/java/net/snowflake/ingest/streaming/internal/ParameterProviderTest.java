@@ -177,9 +177,6 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT,
         parameterProvider.getMaxChunksInBlobAndRegistrationRequest());
-    Assert.assertEquals(
-        ParameterProvider.ENABLE_CHUNK_ENCRYPTION_ICEBERG_MODE_DEFAULT,
-        parameterProvider.getEnableChunkEncryption());
   }
 
   @Test
