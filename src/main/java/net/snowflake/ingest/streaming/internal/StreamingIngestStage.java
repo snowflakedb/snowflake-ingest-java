@@ -11,6 +11,10 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -30,9 +34,6 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -43,6 +44,13 @@ import net.snowflake.ingest.utils.Utils;
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
+
+  // Object mapper for parsing the client/configure response to Jackson version the same as
+  // jdbc.internal.fasterxml.jackson
+  private static final net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper
+      parseConfigureResponseMapper =
+          new net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper();
+
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
 
@@ -319,7 +327,10 @@ class StreamingIngestStage {
     return metadata;
   }
 
-  private JsonNode parseClientConfigureResponse(ConfigureResponse response) {
+  private net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode
+      parseClientConfigureResponse(ConfigureResponse response)
+          throws JsonProcessingException,
+              net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException {
     JsonNode responseNode = mapper.valueToTree(response);
 
     // Currently there are a few mismatches between the client/configure response and what
@@ -331,7 +342,11 @@ class StreamingIngestStage {
 
     // JDBC expects this field which maps to presignedFileUrlName.  We will set this later
     dataNode.putArray("src_locations").add("placeholder");
-    return responseNode;
+
+    // use String as intermediate object to avoid Jackson version mismatch
+    // TODO: SNOW-1493470 Align Jackson version
+    String responseString = mapper.writeValueAsString(responseNode);
+    return parseConfigureResponseMapper.readTree(responseString);
   }
 
   private ConfigureResponse makeClientConfigureCall(Map<Object, Object> payload)

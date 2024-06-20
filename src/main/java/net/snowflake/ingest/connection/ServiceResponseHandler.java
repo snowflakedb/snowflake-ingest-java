@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.connection;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
@@ -15,8 +17,6 @@ import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.DeserializationFeature;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.utils.BackOffException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

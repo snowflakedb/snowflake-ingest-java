@@ -4,8 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to serialize a response for the channels status endpoint */
 class ChannelsStatusResponse extends StreamingIngestResponse {

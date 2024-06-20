@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Indicates the status of a channel registration, return from server as part of the register blob

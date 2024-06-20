@@ -4,10 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal.serialization;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import java.io.IOException;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonGenerator;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonSerializer;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.SerializerProvider;
 
 /**
  * Serialize Java byte arrays as JSON arrays of numbers instead of the default Jackson

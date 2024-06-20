@@ -5,10 +5,10 @@ import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.execu
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.JWTManager;

@@ -2,8 +2,8 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 

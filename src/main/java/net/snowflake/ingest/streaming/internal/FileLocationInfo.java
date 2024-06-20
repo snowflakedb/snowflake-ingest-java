@@ -4,8 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to deserialized volume information response by server */
 class FileLocationInfo {

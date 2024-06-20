@@ -4,9 +4,9 @@
 
 package net.snowflake.ingest.connection;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.UUID;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * IngestResponse - an object which contains a successful response from the service for the insert

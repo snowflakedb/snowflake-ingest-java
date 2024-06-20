@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Response for a {@link net.snowflake.ingest.streaming.DropChannelRequest}. */
 class DropChannelResponse extends StreamingIngestResponse {

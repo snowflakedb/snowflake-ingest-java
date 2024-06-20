@@ -7,6 +7,7 @@ import static net.snowflake.ingest.connection.RequestBuilder.OS_INFO_USER_AGENT_
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URL;
 import java.time.Instant;
 import java.util.Collections;
@@ -21,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import net.snowflake.client.jdbc.internal.apache.http.Header;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.connection.HistoryRangeResponse;
 import net.snowflake.ingest.connection.HistoryResponse;
 import net.snowflake.ingest.connection.IngestResponse;

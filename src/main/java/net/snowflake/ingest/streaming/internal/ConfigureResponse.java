@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to deserialize responses from configure endpoint */
 class ConfigureResponse extends StreamingIngestResponse {
