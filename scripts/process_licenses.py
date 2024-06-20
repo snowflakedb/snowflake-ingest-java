@@ -31,6 +31,7 @@ EDL_10_LICENSE = "EDL 1.0"
 MIT_LICENSE = "The MIT License"
 GO_LICENSE = "The Go license"
 BOUNCY_CASTLE_LICENSE = "Bouncy Castle Licence <https://www.bouncycastle.org/licence.html>"
+CDDL_GPLv2 = "CDDL + GPLv2 with classpath exception"
 
 # The SDK does not need to include licenses of dependencies, which aren't shaded
 IGNORED_DEPENDENCIES = {"net.snowflake:snowflake-jdbc", "org.slf4j:slf4j-api"}
@@ -61,6 +62,7 @@ ADDITIONAL_LICENSES_MAP = {
     "org.bouncycastle:bcpkix-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcutil-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcprov-jdk18on": BOUNCY_CASTLE_LICENSE,
+    "javax.annotation:javax.annotation-api": CDDL_GPLv2
 }
 
 
@@ -132,18 +134,21 @@ def main():
                     dependency_without_license_count += 1
                     missing_licenses_str += f"{dependency_lookup_key}: {license_name}\n"
                 else:
-                    raise Exception(f"The dependency {dependency_lookup_key} does not ship a license file, but neither is it not defined in ADDITIONAL_LICENSES_MAP")
+                    raise Exception(
+                        f"The dependency {dependency_lookup_key} does not ship a license file, but neither is it not defined in ADDITIONAL_LICENSES_MAP")
 
     with open(Path(target_dir, "ADDITIONAL_LICENCES"), "w") as additional_licenses_handle:
         additional_licenses_handle.write(missing_licenses_str)
 
     if dependency_count < 30:
-        raise Exception(f"Suspiciously low number of dependency JARs detected in {dependency_jars_path}: {dependency_count}")
+        raise Exception(
+            f"Suspiciously low number of dependency JARs detected in {dependency_jars_path}: {dependency_count}")
     print("License generation finished")
     print(f"\tTotal dependencies: {dependency_count}")
     print(f"\tTotal dependencies (with license): {dependency_with_license_count}")
     print(f"\tTotal dependencies (without license): {dependency_without_license_count}")
     print(f"\tIgnored dependencies: {dependency_ignored_count}")
+
 
 if __name__ == "__main__":
     main()
