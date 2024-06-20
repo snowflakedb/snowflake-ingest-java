@@ -24,17 +24,14 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Supplier;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.streaming.internal.serialization.ByteArraySerializer;
 import net.snowflake.ingest.streaming.internal.serialization.ZonedDateTimeSerializer;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.DecoderException;
@@ -615,7 +612,7 @@ class DataValidationUtil {
    * @return Validated array
    */
   static byte[] validateAndParseBinary(
-      String columnName, Object input, Optional<Integer> maxLengthOptional, long insertRowIndex) {
+      String columnName, Object input, Optional<Integer> maxLengthOptional, long insertRowIndex, Constants.BinaryStringEncoding binaryStringEncoding) {
     byte[] output;
     if (input instanceof byte[]) {
       // byte[] is a mutable object, we need to create a defensive copy to protect against
@@ -625,12 +622,30 @@ class DataValidationUtil {
       output = new byte[originalInputArray.length];
       System.arraycopy(originalInputArray, 0, output, 0, originalInputArray.length);
     } else if (input instanceof String) {
-      try {
-        String stringInput = ((String) input).trim();
-        output = Hex.decodeHex(stringInput);
-      } catch (DecoderException e) {
+      if(binaryStringEncoding == Constants.BinaryStringEncoding.BASE64) {
+        try {
+          String stringInput = ((String) input).trim();
+          // Remove double quotes if present
+          if (stringInput.length() >= 2 && stringInput.startsWith("\"") && stringInput.endsWith("\"")) {
+            stringInput = stringInput.substring(1, stringInput.length() - 1);
+          }
+          Base64.Decoder decoder = Base64.getDecoder();
+          output = decoder.decode(stringInput);
+        } catch (IllegalArgumentException e) {
+          throw valueFormatNotAllowedException(
+                  columnName, "BINARY", "Not a valid base64 string", insertRowIndex);
+        }
+      } else if (binaryStringEncoding == Constants.BinaryStringEncoding.HEX) {
+        try {
+          String stringInput = ((String) input).trim();
+          output = Hex.decodeHex(stringInput);
+        } catch (DecoderException e) {
+          throw valueFormatNotAllowedException(
+                  columnName, "BINARY", "Not a valid hex string", insertRowIndex);
+        }
+      } else {
         throw valueFormatNotAllowedException(
-            columnName, "BINARY", "Not a valid hex string", insertRowIndex);
+                columnName, "BINARY", "Unsupported binary string format " + binaryStringEncoding.name(), insertRowIndex);
       }
     } else {
       throw typeNotAllowedException(
