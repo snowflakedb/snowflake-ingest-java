@@ -331,6 +331,11 @@ public class Utils {
     };
   }
 
+  /** Convert a byte to a byte array */
+  public static byte[] toByteArray(byte value) {
+    return new byte[] {value};
+  }
+
   /** Utility function to check whether a string is null or empty */
   public static boolean isNullOrEmpty(String string) {
     return string == null || string.isEmpty();

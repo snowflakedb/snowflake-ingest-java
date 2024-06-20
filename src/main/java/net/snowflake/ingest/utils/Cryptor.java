@@ -15,6 +15,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.ShortBufferException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -88,7 +89,8 @@ public class Cryptor {
   }
 
   /**
-   * Encrypts input bytes using AES CTR mode with zero initialization vector.
+   * Encrypts input bytes using AES CTR mode with zero initialization vector. The {@param
+   * compressedChunkData} is invalid after this method is called.
    *
    * @param compressedChunkData bytes to encrypt
    * @param encryptionKey symmetric encryption key
@@ -99,7 +101,8 @@ public class Cryptor {
   public static byte[] encrypt(
       byte[] compressedChunkData, String encryptionKey, String diversifier, long iv)
       throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-          InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+          InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
+          ShortBufferException {
     // Generate the derived key
     SecretKey derivedKey = deriveKey(encryptionKey, diversifier);
 
@@ -107,7 +110,8 @@ public class Cryptor {
     Cipher cipher = Cipher.getInstance(ENCRYPTION_ALGORITHM);
     byte[] ivBytes = ByteBuffer.allocate(2 * Long.BYTES).putLong(0).putLong(iv).array();
     cipher.init(Cipher.ENCRYPT_MODE, derivedKey, new IvParameterSpec(ivBytes));
-    return cipher.doFinal(compressedChunkData);
+    cipher.doFinal(compressedChunkData, 0, compressedChunkData.length, compressedChunkData);
+    return compressedChunkData;
   }
 
   /**

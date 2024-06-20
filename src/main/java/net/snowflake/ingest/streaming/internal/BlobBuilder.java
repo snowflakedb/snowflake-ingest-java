@@ -15,6 +15,7 @@ import static net.snowflake.ingest.utils.Utils.toByteArray;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.primitives.Bytes;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
@@ -27,6 +28,7 @@ import java.util.zip.CRC32;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.ShortBufferException;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
@@ -67,7 +69,7 @@ class BlobBuilder {
       String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
-          BadPaddingException {
+          BadPaddingException, ShortBufferException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
     long curDataSize = 0L;
@@ -200,28 +202,24 @@ class BlobBuilder {
                 + BLOB_CHECKSUM_SIZE_IN_BYTES
                 + BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES
                 + chunkMetadataListInBytes.length;
-
-    // Create the blob file and add the metadata
-    ByteArrayOutputStream blob = new ByteArrayOutputStream();
+    // Create the list of bytes to write and add the metadata
+    List<byte[]> bytesToWrite = new ArrayList<>();
     if (!BLOB_NO_HEADER) {
-      blob.write(BLOB_EXTENSION_TYPE.getBytes());
-      blob.write(bdecVersion.toByte());
-      blob.write(toByteArray(metadataSize + chunksDataSize));
-      blob.write(toByteArray(chunksChecksum));
-      blob.write(toByteArray(chunkMetadataListInBytes.length));
-      blob.write(chunkMetadataListInBytes);
+      bytesToWrite.add(BLOB_EXTENSION_TYPE.getBytes());
+      bytesToWrite.add(toByteArray(bdecVersion.toByte()));
+      bytesToWrite.add(toByteArray(metadataSize + chunksDataSize));
+      bytesToWrite.add(toByteArray(chunksChecksum));
+      bytesToWrite.add(toByteArray(chunkMetadataListInBytes.length));
+      bytesToWrite.add(chunkMetadataListInBytes);
     }
-    for (byte[] chunkData : chunksDataList) {
-      blob.write(chunkData);
-    }
+    bytesToWrite.addAll(chunksDataList);
 
     // We need to update the start offset for the EP and Parquet data in the request since
     // some metadata was added at the beginning
     for (ChunkMetadata chunkMetadata : chunksMetadataList) {
       chunkMetadata.advanceStartOffset(metadataSize);
     }
-
-    return blob.toByteArray();
+    return Bytes.concat(bytesToWrite.toArray(new byte[0][]));
   }
 
   /**

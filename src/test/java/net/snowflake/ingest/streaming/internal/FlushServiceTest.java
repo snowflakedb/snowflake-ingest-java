@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.ShortBufferException;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
@@ -1043,7 +1044,7 @@ public class FlushServiceTest {
   @Test
   public void testEncryptionDecryption()
       throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException,
-          NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+          NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, ShortBufferException {
     byte[] data = "testEncryptionDecryption".getBytes(StandardCharsets.UTF_8);
     String encryptionKey =
         Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));
