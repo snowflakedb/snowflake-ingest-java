@@ -253,7 +253,7 @@ class StreamingIngestStage {
     Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
 
     if (response
-        .getStageMetadata()
+        .getStageLocation()
         .getLocationType()
         .replaceAll(
             "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
@@ -261,7 +261,7 @@ class StreamingIngestStage {
       this.fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
               response
-                  .getStageMetadata()
+                  .getStageLocation()
                   .getLocation()
                   .replaceAll(
                       "^[\"]|[\"]$",
@@ -309,11 +309,11 @@ class StreamingIngestStage {
     payload.put("file_name", fileName);
     ConfigureResponse response = this.makeClientConfigureCall(payload);
 
-    JsonNode responseNode = this.parseClientConfigureResponse(response);
-
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
-            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(
+                    parseClientConfigureResponse(response))
+                .get(0);
     // Transfer agent trims path for fileName
     metadata.setPresignedUrlFileName(fileName);
     return metadata;

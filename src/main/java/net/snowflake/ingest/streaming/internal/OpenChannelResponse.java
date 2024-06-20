@@ -21,7 +21,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private List<ColumnMetadata> tableColumns;
   private String encryptionKey;
   private Long encryptionKeyId;
-  private StageMetadata stageLocation;
+  private FileLocationInfo stageLocation;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -133,11 +133,11 @@ class OpenChannelResponse extends StreamingIngestResponse {
   }
 
   @JsonProperty("stage_location")
-  void setStageLocation(StageMetadata stageLocation) {
+  void setStageLocation(FileLocationInfo stageLocation) {
     this.stageLocation = stageLocation;
   }
 
-  StageMetadata getStageLocation() {
+  FileLocationInfo getStageLocation() {
     return this.stageLocation;
   }
 }

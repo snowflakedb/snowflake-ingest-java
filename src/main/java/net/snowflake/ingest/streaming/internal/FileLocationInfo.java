@@ -7,7 +7,8 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.Map;
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
-class StageMetadata {
+/** Class used to deserialized volume information response by server */
+class FileLocationInfo {
   @JsonProperty("locationType")
   private String locationType; // The stage type
 
@@ -65,7 +66,7 @@ class StageMetadata {
     this.path = path;
   }
 
-  Map<?, ?> getCredentials() {
+  Map<String, String> getCredentials() {
     return credentials;
   }
 

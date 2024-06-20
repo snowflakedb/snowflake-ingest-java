@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.annotation.JsonProperty;
 
+/** Class used to deserialize responses from configure endpoint */
 class ConfigureResponse extends StreamingIngestResponse {
   @JsonProperty("prefix")
   private String prefix;
@@ -17,7 +18,7 @@ class ConfigureResponse extends StreamingIngestResponse {
   private String message;
 
   @JsonProperty("stage_location")
-  private StageMetadata stageMetadata;
+  private FileLocationInfo stageLocation;
 
   @JsonProperty("deployment_id")
   private Long deploymentId;
@@ -47,12 +48,12 @@ class ConfigureResponse extends StreamingIngestResponse {
     this.message = message;
   }
 
-  StageMetadata getStageMetadata() {
-    return stageMetadata;
+  FileLocationInfo getStageLocation() {
+    return stageLocation;
   }
 
-  void setStageMetadata(StageMetadata stageMetadata) {
-    this.stageMetadata = stageMetadata;
+  void setStageLocation(FileLocationInfo stageLocation) {
+    this.stageLocation = stageLocation;
   }
 
   Long getDeploymentId() {
