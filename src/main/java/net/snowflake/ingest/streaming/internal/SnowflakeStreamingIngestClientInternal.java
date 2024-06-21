@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -103,6 +103,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Provides constant values that can be set by constructor
   private final ParameterProvider parameterProvider;
 
+  // Provides constant values which is determined by the Iceberg or non-Iceberg mode
+  private final InternalParameterProvider internalParameterProvider;
+
   // Name of the client
   private final String name;
 
@@ -170,6 +173,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop, isIcebergMode);
+    this.internalParameterProvider = new InternalParameterProvider(isIcebergMode);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -337,6 +341,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("schema", request.getSchemaName());
       payload.put("write_mode", Constants.WriteMode.CLOUD_STORAGE.name());
       payload.put("role", this.role);
+      payload.put("is_iceberg", isIcebergMode);
       if (request.isOffsetTokenProvided()) {
         payload.put("offset_token", request.getOffsetToken());
       }
@@ -421,6 +426,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       payload.put("database", request.getDBName());
       payload.put("schema", request.getSchemaName());
       payload.put("role", this.role);
+      payload.put("is_iceberg", isIcebergMode);
       Long clientSequencer = null;
       if (request instanceof DropChannelVersionRequest) {
         clientSequencer = ((DropChannelVersionRequest) request).getClientSequencer();
@@ -962,6 +968,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
+  }
+
+  /**
+   * Get InternalParameterProvider with internal parameters
+   *
+   * @return {@link InternalParameterProvider} used by the client
+   */
+  InternalParameterProvider getInternalParameterProvider() {
+    return internalParameterProvider;
   }
 
   /**

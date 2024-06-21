@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -551,7 +551,12 @@ class FlushService<T> {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion);
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            blobPath,
+            blobData,
+            bdecVersion,
+            this.owningClient.getInternalParameterProvider().getEnableChunkEncryption());
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

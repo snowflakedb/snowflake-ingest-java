@@ -11,6 +11,10 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -22,7 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
@@ -31,9 +34,6 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -44,6 +44,13 @@ import net.snowflake.ingest.utils.Utils;
 /** Handles uploading files to the Snowflake Streaming Ingest Stage */
 class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
+
+  // Object mapper for parsing the client/configure response to Jackson version the same as
+  // jdbc.internal.fasterxml.jackson
+  private static final net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper
+      parseConfigureResponseMapper =
+          new net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper();
+
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
 
@@ -104,7 +111,6 @@ class StreamingIngestStage {
     this.clientName = clientName;
     this.proxyProperties = generateProxyPropertiesForJDBC();
     this.maxUploadRetries = maxUploadRetries;
-
     if (!isTestMode) {
       refreshSnowflakeMetadata();
     }
@@ -246,30 +252,25 @@ class StreamingIngestStage {
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("role", this.role);
-    Map<String, Object> response = this.makeClientConfigureCall(payload);
+    ConfigureResponse response = this.makeClientConfigureCall(payload);
 
-    JsonNode responseNode = this.parseClientConfigureResponse(response);
     // Do not change the prefix everytime we have to refresh credentials
     if (Utils.isNullOrEmpty(this.clientPrefix)) {
-      this.clientPrefix = createClientPrefix(responseNode);
+      this.clientPrefix = createClientPrefix(response);
     }
     Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
 
-    if (responseNode
-        .get("data")
-        .get("stageInfo")
-        .get("locationType")
-        .toString()
+    if (response
+        .getStageLocation()
+        .getLocationType()
         .replaceAll(
             "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
         .equals(StageInfo.StageType.LOCAL_FS.name())) {
       this.fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
-              responseNode
-                  .get("data")
-                  .get("stageInfo")
-                  .get("location")
-                  .toString()
+              response
+                  .getStageLocation()
+                  .getLocation()
                   .replaceAll(
                       "^[\"]|[\"]$",
                       ""), // Replace the first and last character if they're double quotes
@@ -278,7 +279,9 @@ class StreamingIngestStage {
       this.fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
               (SnowflakeFileTransferMetadataV1)
-                  SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
+                  SnowflakeFileTransferAgent.getFileTransferMetadatas(
+                          parseClientConfigureResponse(response))
+                      .get(0),
               Optional.of(System.currentTimeMillis()));
     }
     return this.fileTransferMetadataWithAge;
@@ -293,10 +296,10 @@ class StreamingIngestStage {
    * @param response the client/configure response from the server
    * @return the client prefix.
    */
-  private String createClientPrefix(final JsonNode response) {
-    final String prefix = response.get("prefix").textValue();
+  private String createClientPrefix(final ConfigureResponse response) {
+    final String prefix = response.getPrefix();
     final String deploymentId =
-        response.has("deployment_id") ? "_" + response.get("deployment_id").longValue() : "";
+        response.getDeploymentId() != null ? "_" + response.getDeploymentId() : "";
     return prefix + deploymentId;
   }
 
@@ -312,33 +315,22 @@ class StreamingIngestStage {
     Map<Object, Object> payload = new HashMap<>();
     payload.put("role", this.role);
     payload.put("file_name", fileName);
-    Map<String, Object> response = this.makeClientConfigureCall(payload);
-
-    JsonNode responseNode = this.parseClientConfigureResponse(response);
+    ConfigureResponse response = this.makeClientConfigureCall(payload);
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
-            SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0);
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(
+                    parseClientConfigureResponse(response))
+                .get(0);
     // Transfer agent trims path for fileName
     metadata.setPresignedUrlFileName(fileName);
     return metadata;
   }
 
-  private static class MapStatusGetter<T> implements Function<T, Long> {
-    public MapStatusGetter() {}
-
-    public Long apply(T input) {
-      try {
-        return ((Integer) ((Map<String, Object>) input).get("status_code")).longValue();
-      } catch (Exception e) {
-        throw new SFException(ErrorCode.INTERNAL_ERROR, "failed to get status_code from response");
-      }
-    }
-  }
-
-  private static final MapStatusGetter statusGetter = new MapStatusGetter();
-
-  private JsonNode parseClientConfigureResponse(Map<String, Object> response) {
+  private net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode
+      parseClientConfigureResponse(ConfigureResponse response)
+          throws JsonProcessingException,
+              net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException {
     JsonNode responseNode = mapper.valueToTree(response);
 
     // Currently there are a few mismatches between the client/configure response and what
@@ -350,28 +342,30 @@ class StreamingIngestStage {
 
     // JDBC expects this field which maps to presignedFileUrlName.  We will set this later
     dataNode.putArray("src_locations").add("placeholder");
-    return responseNode;
+
+    // use String as intermediate object to avoid Jackson version mismatch
+    // TODO: SNOW-1493470 Align Jackson version
+    String responseString = mapper.writeValueAsString(responseNode);
+    return parseConfigureResponseMapper.readTree(responseString);
   }
 
-  private Map<String, Object> makeClientConfigureCall(Map<Object, Object> payload)
+  private ConfigureResponse makeClientConfigureCall(Map<Object, Object> payload)
       throws IOException {
     try {
 
-      Map<String, Object> response =
+      ConfigureResponse response =
           executeWithRetries(
-              Map.class,
+              ConfigureResponse.class,
               CLIENT_CONFIGURE_ENDPOINT,
               mapper.writeValueAsString(payload),
               "client configure",
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
-              requestBuilder,
-              statusGetter);
+              requestBuilder);
 
       // Check for Snowflake specific response code
-      if (!response.get("status_code").equals((int) RESPONSE_SUCCESS)) {
-        throw new SFException(
-            ErrorCode.CLIENT_CONFIGURE_FAILURE, response.get("message").toString());
+      if (response.getStatusCode() != RESPONSE_SUCCESS) {
+        throw new SFException(ErrorCode.CLIENT_CONFIGURE_FAILURE, response.getMessage());
       }
       return response;
     } catch (IngestResponseException e) {
