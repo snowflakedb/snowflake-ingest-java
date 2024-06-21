@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.ErrorCode.INVALID_CONFIG_PARAMETER;
@@ -57,6 +61,7 @@ public class ParameterProvider {
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
+  public static final long MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT = 30000; // 30 seconds
   static final long MAX_CLIENT_LAG_MS_MIN = TimeUnit.SECONDS.toMillis(1);
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
 
@@ -68,7 +73,6 @@ public class ParameterProvider {
 
   /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
   public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
-  public static final long MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT = 30000;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -105,17 +109,6 @@ public class ParameterProvider {
       Map<String, Object> parameterOverrides,
       Properties props,
       boolean enforceDefault) {
-    if (parameterOverrides != null && props != null) {
-      this.parameterMap.put(
-          key, parameterOverrides.getOrDefault(key, props.getOrDefault(key, defaultValue)));
-    } else if (parameterOverrides != null) {
-      this.parameterMap.put(key, parameterOverrides.getOrDefault(key, defaultValue));
-    } else if (props != null) {
-      this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
-    } else {
-      this.parameterMap.put(key, defaultValue);
-    }
-
     if (enforceDefault) {
       if (!this.parameterMap.getOrDefault(key, defaultValue).equals(defaultValue)) {
         throw new SFException(
@@ -124,6 +117,18 @@ public class ParameterProvider {
                 "The value %s for %s is not configurable, should be %s.",
                 this.parameterMap.get(key), key, defaultValue));
       }
+      this.parameterMap.put(key, defaultValue);
+      return;
+    }
+
+    if (parameterOverrides != null && props != null) {
+      this.parameterMap.put(
+          key, parameterOverrides.getOrDefault(key, props.getOrDefault(key, defaultValue)));
+    } else if (parameterOverrides != null) {
+      this.parameterMap.put(key, parameterOverrides.getOrDefault(key, defaultValue));
+    } else if (props != null) {
+      this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
+    } else {
       this.parameterMap.put(key, defaultValue);
     }
   }

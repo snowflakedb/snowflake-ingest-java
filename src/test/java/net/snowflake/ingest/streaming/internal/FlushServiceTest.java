@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
@@ -91,7 +95,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
-    ConstantParameterProvider constantParameterProvider;
+    InternalParameterProvider internalParameterProvider;
     RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
@@ -100,10 +104,10 @@ public class FlushServiceTest {
       stage = Mockito.mock(StreamingIngestStage.class);
       Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
       parameterProvider = new ParameterProvider(isIcebergMode);
-      constantParameterProvider = new ConstantParameterProvider(isIcebergMode);
+      internalParameterProvider = new InternalParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
-      Mockito.when(client.getConstantParameterProvider()).thenReturn(constantParameterProvider);
+      Mockito.when(client.getConstantParameterProvider()).thenReturn(internalParameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));

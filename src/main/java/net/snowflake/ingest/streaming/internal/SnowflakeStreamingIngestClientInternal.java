@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024. Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -104,7 +104,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   private final ParameterProvider parameterProvider;
 
   // Provides constant values which is determined by the Iceberg or non-Iceberg mode
-  private final ConstantParameterProvider constantParameterProvider;
+  private final InternalParameterProvider internalParameterProvider;
 
   // Name of the client
   private final String name;
@@ -173,7 +173,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop, isIcebergMode);
-    this.constantParameterProvider = new ConstantParameterProvider(isIcebergMode);
+    this.internalParameterProvider = new InternalParameterProvider(isIcebergMode);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -973,10 +973,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   /**
    * Get ConstantParameterProvider with constants parameters
    *
-   * @return {@link ConstantParameterProvider} used by the client
+   * @return {@link InternalParameterProvider} used by the client
    */
-  ConstantParameterProvider getConstantParameterProvider() {
-    return constantParameterProvider;
+  InternalParameterProvider getConstantParameterProvider() {
+    return internalParameterProvider;
   }
 
   /**
