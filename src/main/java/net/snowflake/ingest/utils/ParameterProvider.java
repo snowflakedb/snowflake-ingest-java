@@ -109,18 +109,6 @@ public class ParameterProvider {
       Map<String, Object> parameterOverrides,
       Properties props,
       boolean enforceDefault) {
-    if (enforceDefault) {
-      if (!this.parameterMap.getOrDefault(key, defaultValue).equals(defaultValue)) {
-        throw new SFException(
-            INVALID_CONFIG_PARAMETER,
-            String.format(
-                "The value %s for %s is not configurable, should be %s.",
-                this.parameterMap.get(key), key, defaultValue));
-      }
-      this.parameterMap.put(key, defaultValue);
-      return;
-    }
-
     if (parameterOverrides != null && props != null) {
       this.parameterMap.put(
           key, parameterOverrides.getOrDefault(key, props.getOrDefault(key, defaultValue)));
@@ -129,6 +117,17 @@ public class ParameterProvider {
     } else if (props != null) {
       this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
     } else {
+      this.parameterMap.put(key, defaultValue);
+    }
+
+    if (enforceDefault) {
+      if (!this.parameterMap.getOrDefault(key, defaultValue).equals(defaultValue)) {
+        throw new SFException(
+            INVALID_CONFIG_PARAMETER,
+            String.format(
+                "The value %s for %s is not configurable, should be %s.",
+                this.parameterMap.get(key), key, defaultValue));
+      }
       this.parameterMap.put(key, defaultValue);
     }
   }

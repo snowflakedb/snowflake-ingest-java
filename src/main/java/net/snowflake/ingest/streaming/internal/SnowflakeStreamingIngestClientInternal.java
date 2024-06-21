@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024. Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -971,11 +971,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
-   * Get ConstantParameterProvider with constants parameters
+   * Get InternalParameterProvider with internal parameters
    *
    * @return {@link InternalParameterProvider} used by the client
    */
-  InternalParameterProvider getConstantParameterProvider() {
+  InternalParameterProvider getInternalParameterProvider() {
     return internalParameterProvider;
   }
 

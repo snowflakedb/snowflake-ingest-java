@@ -107,7 +107,7 @@ public class FlushServiceTest {
       internalParameterProvider = new InternalParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
-      Mockito.when(client.getConstantParameterProvider()).thenReturn(internalParameterProvider);
+      Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
