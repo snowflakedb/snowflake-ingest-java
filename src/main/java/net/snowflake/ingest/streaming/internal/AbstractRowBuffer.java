@@ -400,10 +400,11 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   Set<String> verifyInputColumns(
       Map<String, Object> row, InsertValidationResponse.InsertError error, int rowIndex) {
     // Map of unquoted column name -> original column name
-    Map<String, String> inputColNamesMap =
-        row.keySet().stream()
-            .collect(Collectors.toMap(LiteralQuoteUtils::unquoteColumnName, value -> value));
-
+    Set<String> originalKeys = row.keySet();
+    Map<String, String> inputColNamesMap = new HashMap<>();
+    for (String key : originalKeys) {
+        inputColNamesMap.put(LiteralQuoteUtils.unquoteColumnName(key), key);
+    }
     // Check for extra columns in the row
     List<String> extraCols = new ArrayList<>();
     for (String columnName : inputColNamesMap.keySet()) {

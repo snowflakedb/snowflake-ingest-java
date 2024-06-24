@@ -86,6 +86,16 @@ class DataValidationUtil {
     objectMapper.registerModule(module);
   }
 
+  private static final BigDecimal[] POWER_10 = makePower10Table();
+
+  private static BigDecimal[] makePower10Table() {
+    BigDecimal[] power10 = new BigDecimal[Power10.sb16Size];
+    for (int i = 0; i < Power10.sb16Size; i++) {
+      power10[i] = new BigDecimal(Power10.sb16Table[i]);
+    }
+    return power10;
+  }
+
   /**
    * Validates and parses input as JSON. All types in the object tree must be valid variant types,
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
@@ -823,8 +833,9 @@ class DataValidationUtil {
 
   static void checkValueInRange(
       BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
-    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
-      throw new SFException(
+//    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
+      if (bigDecimalValue.abs().compareTo(POWER_10[precision - scale]) >= 0) {
+        throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           String.format(
               "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d",

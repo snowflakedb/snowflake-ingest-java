@@ -45,6 +45,10 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   // Reference to the row buffer
   private final RowBuffer<T> rowBuffer;
+  private final long insertThrottleIntervalInMs;
+  private final int insertThrottleThresholdInBytes;
+  private final int insertThrottleThresholdInPercentage;
+  private final long maxMemoryLimitInBytes;
 
   // Indicates whether the channel is closed
   private volatile boolean isClosed;
@@ -60,6 +64,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   // The latest cause of channel invalidation
   private String invalidationCause;
+
+  private final MemoryInfoProvider memoryInfoProvider;
+  private volatile long freeMemory = 0;
 
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
@@ -121,6 +128,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       OffsetTokenVerificationFunction offsetTokenVerificationFunction) {
     this.isClosed = false;
     this.owningClient = client;
+    this.insertThrottleIntervalInMs =
+            this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
+    this.insertThrottleThresholdInBytes =
+            this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
+    this.insertThrottleThresholdInPercentage =
+            this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
+    this.maxMemoryLimitInBytes =
+            this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
+
+    this.memoryInfoProvider = new MemoryInfoProviderFromRuntime(insertThrottleIntervalInMs);
     this.channelFlushContext =
         new ChannelFlushContext(
             name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
@@ -373,7 +390,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Iterable<Map<String, Object>> rows,
       @Nullable String startOffsetToken,
       @Nullable String endOffsetToken) {
-    throttleInsertIfNeeded(new MemoryInfoProviderFromRuntime());
+    throttleInsertIfNeeded(memoryInfoProvider);
     checkValidation();
 
     if (isClosed()) {
@@ -448,8 +465,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   /** Check whether we need to throttle the insertRows API */
   void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
-    long insertThrottleIntervalInMs =
-        this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
     while ((hasLowRuntimeMemory(memoryInfoProvider)
             || (this.owningClient.getFlushService() != null
                 && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
@@ -473,19 +488,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   /** Check whether we have a low runtime memory condition */
   private boolean hasLowRuntimeMemory(MemoryInfoProvider memoryInfoProvider) {
-    int insertThrottleThresholdInBytes =
-        this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
-    int insertThrottleThresholdInPercentage =
-        this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
-    long maxMemoryLimitInBytes =
-        this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
     long maxMemory =
         maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
             ? memoryInfoProvider.getMaxMemory()
             : maxMemoryLimitInBytes;
-    long freeMemory =
-        memoryInfoProvider.getFreeMemory()
-            + (memoryInfoProvider.getMaxMemory() - memoryInfoProvider.getTotalMemory());
+    freeMemory = memoryInfoProvider.getFreeMemory();
     boolean hasLowRuntimeMemory =
         freeMemory < insertThrottleThresholdInBytes
             && freeMemory * 100 / maxMemory < insertThrottleThresholdInPercentage;
