@@ -31,7 +31,6 @@ EDL_10_LICENSE = "EDL 1.0"
 MIT_LICENSE = "The MIT License"
 GO_LICENSE = "The Go license"
 BOUNCY_CASTLE_LICENSE = "Bouncy Castle Licence <https://www.bouncycastle.org/licence.html>"
-CDDL_GPLv2 = "CDDL + GPLv2 with classpath exception"
 
 # The SDK does not need to include licenses of dependencies, which aren't shaded
 IGNORED_DEPENDENCIES = {"net.snowflake:snowflake-jdbc", "org.slf4j:slf4j-api"}
@@ -62,7 +61,6 @@ ADDITIONAL_LICENSES_MAP = {
     "org.bouncycastle:bcpkix-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcutil-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcprov-jdk18on": BOUNCY_CASTLE_LICENSE,
-    "javax.annotation:javax.annotation-api": CDDL_GPLv2
 }
 
 
