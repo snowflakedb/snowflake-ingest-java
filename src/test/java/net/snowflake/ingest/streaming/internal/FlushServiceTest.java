@@ -93,7 +93,8 @@ public class FlushServiceTest {
     ChannelCache<T> channelCache;
     final Map<String, SnowflakeStreamingIngestChannelInternal<T>> channels = new HashMap<>();
     FlushService<T> flushService;
-    StreamingIngestStage stage;
+    StorageManager<T> storageManager;
+    StreamingIngestStorage storage;
     ParameterProvider parameterProvider;
     InternalParameterProvider internalParameterProvider;
     RegisterService registerService;
@@ -101,17 +102,19 @@ public class FlushServiceTest {
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
     TestContext() {
-      stage = Mockito.mock(StreamingIngestStage.class);
-      Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
+      storage = Mockito.mock(StreamingIngestStorage.class);
+      Mockito.when(storage.getClientPrefix()).thenReturn("client_prefix");
       parameterProvider = new ParameterProvider(isIcebergMode);
       internalParameterProvider = new InternalParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
+      storageManager = Mockito.spy(new InternalStageManager<>(true, client));
+      Mockito.when(storageManager.getStorage(ArgumentMatchers.any())).thenReturn(storage);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
-      flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, true));
+      flushService = Mockito.spy(new FlushService<>(client, channelCache, storageManager, true));
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -408,10 +411,10 @@ public class FlushServiceTest {
   @Test
   public void testGetFilePath() {
     TestContext<?> testContext = testContextFactory.create();
-    FlushService<?> flushService = testContext.flushService;
+    StorageManager<?> storageManager = testContext.storageManager;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
-    String outputString = flushService.getBlobPath(calendar, clientPrefix);
+    String outputString = storageManager.getBlobPath(calendar, clientPrefix);
     Path outputPath = Paths.get(outputString);
     Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
     Assert.assertTrue(
@@ -785,12 +788,15 @@ public class FlushServiceTest {
             .build();
 
     // Check FlushService.upload called with correct arguments
+    final ArgumentCaptor<StreamingIngestStorage> storageCaptor =
+        ArgumentCaptor.forClass(StreamingIngestStorage.class);
     final ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
     final ArgumentCaptor<byte[]> blobCaptor = ArgumentCaptor.forClass(byte[].class);
     final ArgumentCaptor<List<ChunkMetadata>> metadataCaptor = ArgumentCaptor.forClass(List.class);
 
     Mockito.verify(testContext.flushService)
         .upload(
+            storageCaptor.capture(),
             nameCaptor.capture(),
             blobCaptor.capture(),
             metadataCaptor.capture(),
@@ -933,10 +939,12 @@ public class FlushServiceTest {
     innerData.add(channel1Data);
     innerData.add(channel2Data);
 
-    StreamingIngestStage stage = Mockito.mock(StreamingIngestStage.class);
+    StreamingIngestStorage stage = Mockito.mock(StreamingIngestStorage.class);
     Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
+    StorageManager<StubChunkData> storageManager =
+        Mockito.spy(new InternalStageManager<>(true, client));
     FlushService<StubChunkData> flushService =
-        new FlushService<>(client, channelCache, stage, false);
+        new FlushService<>(client, channelCache, storageManager, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");
 
     Assert.assertFalse(channel1.isValid());

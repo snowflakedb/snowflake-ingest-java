@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.utils;
@@ -14,7 +14,7 @@ public enum ErrorCode {
   REGISTER_BLOB_FAILURE("0006"),
   OPEN_CHANNEL_FAILURE("0007"),
   BUILD_REQUEST_FAILURE("0008"),
-  CLIENT_CONFIGURE_FAILURE("0009"),
+  CONFIGURE_FAILURE("0009"),
   MISSING_CONFIG("0010"),
   BLOB_UPLOAD_FAILURE("0011"),
   RESOURCE_CLEANUP_FAILURE("0012"),
