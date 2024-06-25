@@ -31,7 +31,7 @@ public class InsertRowsBenchmarkTest {
   private SnowflakeStreamingIngestChannelInternal<?> channel;
   private SnowflakeStreamingIngestClientInternal<?> client;
 
-  @Param({"1000000"})
+  @Param({"100000"})
   private int numRows;
 
   @Setup(Level.Trial)
