@@ -13,7 +13,7 @@ public class MemoryInfoProviderFromRuntime implements MemoryInfoProvider {
   private final long maxMemory;
   private volatile long totalFreeMemory;
   private final ScheduledExecutorService executorService;
-  private static final long FREE_MEMORY_UPDATE_INTERVAL_MS = 1000;
+  private static final long FREE_MEMORY_UPDATE_INTERVAL_MS = 100;
   private static final MemoryInfoProviderFromRuntime INSTANCE =
       new MemoryInfoProviderFromRuntime(FREE_MEMORY_UPDATE_INTERVAL_MS);
 
