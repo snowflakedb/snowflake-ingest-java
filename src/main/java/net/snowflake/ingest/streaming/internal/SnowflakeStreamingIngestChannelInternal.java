@@ -138,7 +138,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     this.maxMemoryLimitInBytes =
         this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
 
-    this.memoryInfoProvider = new MemoryInfoProviderFromRuntime(insertThrottleIntervalInMs);
+    this.memoryInfoProvider = MemoryInfoProviderFromRuntime.getInstance();
     this.channelFlushContext =
         new ChannelFlushContext(
             name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
