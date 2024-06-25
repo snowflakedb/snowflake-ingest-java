@@ -833,9 +833,9 @@ class DataValidationUtil {
 
   static void checkValueInRange(
       BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
-//    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
-      if (bigDecimalValue.abs().compareTo(POWER_10[precision - scale]) >= 0) {
-        throw new SFException(
+    //    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
+    if (bigDecimalValue.abs().compareTo(POWER_10[precision - scale]) >= 0) {
+      throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           String.format(
               "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d",

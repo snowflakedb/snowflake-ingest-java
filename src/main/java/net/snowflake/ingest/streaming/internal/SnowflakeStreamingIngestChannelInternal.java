@@ -128,14 +128,15 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       OffsetTokenVerificationFunction offsetTokenVerificationFunction) {
     this.isClosed = false;
     this.owningClient = client;
+
     this.insertThrottleIntervalInMs =
-            this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
+        this.owningClient.getParameterProvider().getInsertThrottleIntervalInMs();
     this.insertThrottleThresholdInBytes =
-            this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
+        this.owningClient.getParameterProvider().getInsertThrottleThresholdInBytes();
     this.insertThrottleThresholdInPercentage =
-            this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
+        this.owningClient.getParameterProvider().getInsertThrottleThresholdInPercentage();
     this.maxMemoryLimitInBytes =
-            this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
+        this.owningClient.getParameterProvider().getMaxMemoryLimitInBytes();
 
     this.memoryInfoProvider = new MemoryInfoProviderFromRuntime(insertThrottleIntervalInMs);
     this.channelFlushContext =

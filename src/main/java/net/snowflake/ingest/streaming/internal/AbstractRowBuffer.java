@@ -16,7 +16,6 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
@@ -403,7 +402,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     Set<String> originalKeys = row.keySet();
     Map<String, String> inputColNamesMap = new HashMap<>();
     for (String key : originalKeys) {
-        inputColNamesMap.put(LiteralQuoteUtils.unquoteColumnName(key), key);
+      inputColNamesMap.put(LiteralQuoteUtils.unquoteColumnName(key), key);
     }
     // Check for extra columns in the row
     List<String> extraCols = new ArrayList<>();

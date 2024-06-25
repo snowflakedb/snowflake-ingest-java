@@ -16,17 +16,23 @@ public class MemoryInfoProviderFromRuntime implements MemoryInfoProvider {
 
   public MemoryInfoProviderFromRuntime(long freeMemoryUpdateIntervalMs) {
     maxMemory = Runtime.getRuntime().maxMemory();
-    totalFreeMemory = Runtime.getRuntime().freeMemory() + (maxMemory - Runtime.getRuntime().totalMemory());
-    executorService = new ScheduledThreadPoolExecutor(1, r -> {
-        Thread th = new Thread(r, "MemoryInfoProviderFromRuntime");
-        th.setDaemon(true);
-        return th;
-    });
-    executorService.scheduleAtFixedRate(this::updateFreeMemory, 0, freeMemoryUpdateIntervalMs, TimeUnit.MILLISECONDS);
+    totalFreeMemory =
+        Runtime.getRuntime().freeMemory() + (maxMemory - Runtime.getRuntime().totalMemory());
+    executorService =
+        new ScheduledThreadPoolExecutor(
+            1,
+            r -> {
+              Thread th = new Thread(r, "MemoryInfoProviderFromRuntime");
+              th.setDaemon(true);
+              return th;
+            });
+    executorService.scheduleAtFixedRate(
+        this::updateFreeMemory, 0, freeMemoryUpdateIntervalMs, TimeUnit.MILLISECONDS);
   }
 
   private void updateFreeMemory() {
-    totalFreeMemory = Runtime.getRuntime().freeMemory() + (maxMemory - Runtime.getRuntime().totalMemory());
+    totalFreeMemory =
+        Runtime.getRuntime().freeMemory() + (maxMemory - Runtime.getRuntime().totalMemory());
   }
 
   @Override
