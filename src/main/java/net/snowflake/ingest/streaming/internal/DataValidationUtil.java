@@ -86,6 +86,8 @@ class DataValidationUtil {
     objectMapper.registerModule(module);
   }
 
+  // Caching the powers of 10 that are used for checking the range of numbers because computing them
+  // on-demand is expensive.
   private static final BigDecimal[] POWER_10 = makePower10Table();
 
   private static BigDecimal[] makePower10Table() {

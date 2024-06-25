@@ -279,7 +279,7 @@ class FlushService<T> {
   private void createWorkers() {
     // Create thread for checking and scheduling flush job
     ThreadFactory flushThreadFactory =
-        new ThreadFactoryBuilder().setNameFormat("ingest-flush-thread").setDaemon(true).build();
+        new ThreadFactoryBuilder().setNameFormat("ingest-flush-thread").build();
     this.flushWorker = Executors.newSingleThreadScheduledExecutor(flushThreadFactory);
     this.flushWorker.scheduleWithFixedDelay(
         () -> {
