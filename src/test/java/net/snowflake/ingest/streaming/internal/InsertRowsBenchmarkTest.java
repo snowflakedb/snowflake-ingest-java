@@ -110,7 +110,7 @@ public class InsertRowsBenchmarkTest {
                     .warmupTime(TimeValue.seconds(1))
                     .warmupIterations(2)
                     .measurementTime(TimeValue.seconds(1))
-                    .measurementIterations(5)
+                    .measurementIterations(10)
                     .threads(2)
                     .forks(1)
                     .shouldFailOnError(true)
