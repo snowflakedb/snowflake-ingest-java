@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -124,6 +125,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
     if (mergedChannelWriter != null) {
       mergedChannelWriter.close();
+      this.verifyRowCounts(
+          "serializeFromParquetWriteBuffers", mergedChannelWriter, channelsDataPerTable, -1);
     }
     return new SerializationResult(
         channelsMetadataList,
@@ -216,6 +219,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 
+    this.verifyRowCounts(
+        "serializeFromJavaObjects", parquetWriter, channelsDataPerTable, rows.size());
+
     return new SerializationResult(
         channelsMetadataList,
         columnEpStatsMapCombined,
@@ -223,5 +229,65 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         chunkEstimatedUncompressedSize,
         mergedData,
         chunkMinMaxInsertTimeInMs);
+  }
+
+  /**
+   * Validates that rows count in metadata matches the row count in Parquet footer and the row count
+   * written by the parquet writer
+   *
+   * @param serializationType Serialization type, used for logging purposes only
+   * @param writer Parquet writer writing the data
+   * @param channelsDataPerTable Channel data
+   * @param javaSerializationTotalRowCount Total row count when java object serialization is used.
+   *     Used only for logging purposes if there is a mismatch.
+   */
+  private void verifyRowCounts(
+      String serializationType,
+      BdecParquetWriter writer,
+      List<ChannelData<ParquetChunkData>> channelsDataPerTable,
+      long javaSerializationTotalRowCount) {
+    long parquetTotalRowsWritten = writer.getRowsWritten();
+
+    List<Long> parquetFooterRowsPerBlock = writer.getRowCountFromFooter();
+    long parquetTotalRowsInFooter = 0;
+    for (long perBlockCount : parquetFooterRowsPerBlock) parquetTotalRowsInFooter += perBlockCount;
+
+    long totalRowsInMetadata = 0;
+    for (ChannelData<ParquetChunkData> channelData : channelsDataPerTable)
+      totalRowsInMetadata += channelData.getRowCount();
+
+    if (parquetTotalRowsInFooter != totalRowsInMetadata
+        || parquetTotalRowsWritten != totalRowsInMetadata) {
+
+      final String perChannelRowCountsInMetadata =
+          channelsDataPerTable.stream()
+              .map(x -> String.valueOf(x.getRowCount()))
+              .collect(Collectors.joining(","));
+
+      final String perBlockRowCountsInFooter =
+          parquetFooterRowsPerBlock.stream().map(String::valueOf).collect(Collectors.joining(","));
+
+      final long channelsCountInMetadata = channelsDataPerTable.size();
+
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "[%s]The number of rows in Parquet does not match the number of rows in metadata. "
+                  + "parquetTotalRowsInFooter=%d "
+                  + "totalRowsInMetadata=%d "
+                  + "parquetTotalRowsWritten=%d "
+                  + "perChannelRowCountsInMetadata=%s "
+                  + "perBlockRowCountsInFooter=%s "
+                  + "channelsCountInMetadata=%d "
+                  + "countOfSerializedJavaObjects=%d",
+              serializationType,
+              parquetTotalRowsInFooter,
+              totalRowsInMetadata,
+              parquetTotalRowsWritten,
+              perChannelRowCountsInMetadata,
+              perBlockRowCountsInFooter,
+              channelsCountInMetadata,
+              javaSerializationTotalRowCount));
+    }
   }
 }
