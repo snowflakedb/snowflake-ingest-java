@@ -833,7 +833,11 @@ class DataValidationUtil {
 
   static void checkValueInRange(
       BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
-    if (bigDecimalValue.abs().compareTo(POWER_10[precision - scale]) >= 0) {
+    BigDecimal comparand =
+        (precision >= scale) && (precision - scale) < POWER_10.length
+            ? POWER_10[precision - scale]
+            : BigDecimal.TEN.pow(precision - scale);
+    if (bigDecimalValue.abs().compareTo(comparand) >= 0) {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           String.format(

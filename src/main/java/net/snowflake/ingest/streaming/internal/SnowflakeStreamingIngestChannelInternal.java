@@ -66,7 +66,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   private String invalidationCause;
 
   private final MemoryInfoProvider memoryInfoProvider;
-  private volatile long freeMemory = 0;
+  private volatile long freeMemoryInBytes = 0;
 
   /**
    * Constructor for TESTING ONLY which allows us to set the test mode
@@ -493,10 +493,10 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
             ? memoryInfoProvider.getMaxMemory()
             : maxMemoryLimitInBytes;
-    freeMemory = memoryInfoProvider.getFreeMemory();
+    freeMemoryInBytes = memoryInfoProvider.getFreeMemory();
     boolean hasLowRuntimeMemory =
-        freeMemory < insertThrottleThresholdInBytes
-            && freeMemory * 100 / maxMemory < insertThrottleThresholdInPercentage;
+        freeMemoryInBytes < insertThrottleThresholdInBytes
+            && freeMemoryInBytes * 100 / maxMemory < insertThrottleThresholdInPercentage;
     if (hasLowRuntimeMemory) {
       logger.logWarn(
           "Throttled due to memory pressure, client={}, channel={}.",

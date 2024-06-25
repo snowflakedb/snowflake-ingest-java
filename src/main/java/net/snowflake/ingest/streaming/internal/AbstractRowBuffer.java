@@ -401,9 +401,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     // Map of unquoted column name -> original column name
     Set<String> originalKeys = row.keySet();
     Map<String, String> inputColNamesMap = new HashMap<>();
-    for (String key : originalKeys) {
-      inputColNamesMap.put(LiteralQuoteUtils.unquoteColumnName(key), key);
-    }
+    originalKeys.forEach(
+        key -> inputColNamesMap.put(LiteralQuoteUtils.unquoteColumnName(key), key));
     // Check for extra columns in the row
     List<String> extraCols = new ArrayList<>();
     for (String columnName : inputColNamesMap.keySet()) {
