@@ -132,18 +132,22 @@ def main():
                     dependency_without_license_count += 1
                     missing_licenses_str += f"{dependency_lookup_key}: {license_name}\n"
                 else:
-                    raise Exception(f"The dependency {dependency_lookup_key} does not ship a license file, but neither is it not defined in ADDITIONAL_LICENSES_MAP")
+                    raise Exception(
+                        f"The dependency {dependency_lookup_key} does not ship a license file, but neither is it not "
+                        f"defined in ADDITIONAL_LICENSES_MAP")
 
     with open(Path(target_dir, "ADDITIONAL_LICENCES"), "w") as additional_licenses_handle:
         additional_licenses_handle.write(missing_licenses_str)
 
     if dependency_count < 30:
-        raise Exception(f"Suspiciously low number of dependency JARs detected in {dependency_jars_path}: {dependency_count}")
+        raise Exception(
+            f"Suspiciously low number of dependency JARs detected in {dependency_jars_path}: {dependency_count}")
     print("License generation finished")
     print(f"\tTotal dependencies: {dependency_count}")
     print(f"\tTotal dependencies (with license): {dependency_with_license_count}")
     print(f"\tTotal dependencies (without license): {dependency_without_license_count}")
     print(f"\tIgnored dependencies: {dependency_ignored_count}")
+
 
 if __name__ == "__main__":
     main()

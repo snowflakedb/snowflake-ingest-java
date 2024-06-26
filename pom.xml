@@ -35,7 +35,6 @@
 
   <!-- Set our Language Level to Java 8 -->
   <properties>
-    <aircompressor.version>0.27</aircompressor.version>
     <bouncycastle.version>1.78.1</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
@@ -46,7 +45,7 @@
     <commonslang3.version>3.14.0</commonslang3.version>
     <commonslogging.version>1.3.1</commonslogging.version>
     <commonstext.version>1.11.0</commonstext.version>
-    <fasterxml.version>2.16.1</fasterxml.version>
+    <fasterxml.version>2.17.0</fasterxml.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.3.6</hadoop.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
@@ -61,13 +60,13 @@
     <netty.version>4.1.94.Final</netty.version>
     <nimbusds.version>9.37.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
-    <parquet.version>1.13.1</parquet.version>
+    <parquet.version>1.14.1</parquet.version>
     <powermock.version>2.0.9</powermock.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf.version>3.19.6</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
-    <snappy.version>1.1.10.4</snappy.version>
+    <snappy.version>1.1.10.5</snappy.version>
     <snowjdbc.version>3.16.1</snowjdbc.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
@@ -115,11 +114,6 @@
         <groupId>commons-logging</groupId>
         <artifactId>commons-logging</artifactId>
         <version>${commonslogging.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>io.airlift</groupId>
-        <artifactId>aircompressor</artifactId>
-        <version>${aircompressor.version}</version>
       </dependency>
       <dependency>
         <groupId>io.netty</groupId>
@@ -349,13 +343,13 @@
       <dependency>
         <groupId>net.bytebuddy</groupId>
         <artifactId>byte-buddy</artifactId>
-        <version>1.10.19</version>
+        <version>1.14.9</version>
         <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>net.bytebuddy</groupId>
         <artifactId>byte-buddy-agent</artifactId>
-        <version>1.10.19</version>
+        <version>1.14.9</version>
         <scope>test</scope>
       </dependency>
       <dependency>
@@ -432,10 +426,6 @@
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
     </dependency>
-    <dependency>
-      <groupId>io.airlift</groupId>
-      <artifactId>aircompressor</artifactId>
-    </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-core -->
     <dependency>
@@ -492,6 +482,13 @@
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
+      <exclusions>
+        <!-- Dependencies are excluded because CDDL + GPLv2 with classpath exception license is not approved -->
+        <exclusion>
+          <groupId>javax.annotation</groupId>
+          <artifactId>javax.annotation-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -513,7 +510,7 @@
     <dependency>
       <groupId>com.github.luben</groupId>
       <artifactId>zstd-jni</artifactId>
-      <version>1.5.0-1</version>
+      <version>1.5.6-2</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
@@ -755,11 +752,10 @@
               <ignoreNonCompile>true</ignoreNonCompile>
               <ignoredDependencies>
                 <!-- We defined these as direct dependencies (as opposed to just declaring it in dependencyManagement)
-                                                to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency analyzer complains that
-                                                the dependency is unused, so we ignore it here-->
+                                                                                                                                                                                                to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency analyzer complains that
+                                                                                                                                                                                                the dependency is unused, so we ignore it here-->
                 <ignoredDependency>org.apache.commons:commons-compress</ignoredDependency>
                 <ignoredDependency>org.apache.commons:commons-configuration2</ignoredDependency>
-                <ignoredDependency>io.airlift:aircompressor</ignoredDependency>
               </ignoredDependencies>
             </configuration>
           </execution>
@@ -852,9 +848,9 @@
         <configuration>
           <errorRemedy>failFast</errorRemedy>
           <!--
-                                                                       The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
-                                                                      check your dependencies", verify the conditions of the license and add the reference to it here.
-                                                                    -->
+                                                                                                                                                                 The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+                                                                                                                                                                check your dependencies", verify the conditions of the license and add the reference to it here.
+                                                                                                                                                              -->
           <includedLicenses>
             <includedLicense>Apache License 2.0</includedLicense>
             <includedLicense>BSD 2-Clause License</includedLicense>
@@ -1166,9 +1162,9 @@
             </executions>
           </plugin>
           <!--
-                                                                                Plugin executes license processing Python script, which copies third party license files into the directory
-                                                                                target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR.
-                                                                                -->
+                                                                                                                                                                          Plugin executes license processing Python script, which copies third party license files into the directory
+                                                                                                                                                                          target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR.
+                                                                                                                                                                          -->
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
