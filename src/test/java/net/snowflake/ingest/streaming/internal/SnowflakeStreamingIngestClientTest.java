@@ -80,9 +80,27 @@ public class SnowflakeStreamingIngestClientTest {
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel4;
 
   @Before
-  public void setup() {
+  public void setup() throws Exception {
     objectMapper.setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.ANY);
     objectMapper.setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.ANY);
+    Properties prop = new Properties();
+    prop.put(USER, TestUtils.getUser());
+    prop.put(ACCOUNT_URL, TestUtils.getHost());
+    prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE, TestUtils.getRole());
+
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
@@ -92,7 +110,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -108,7 +126,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             2L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -124,7 +142,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             3L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -140,7 +158,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             3L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -357,7 +375,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -461,7 +479,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -494,6 +512,16 @@ public class SnowflakeStreamingIngestClientTest {
     RequestBuilder requestBuilder =
         new RequestBuilder(url, prop.get(USER).toString(), keyPair, null, null);
 
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -503,7 +531,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -1426,7 +1454,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
