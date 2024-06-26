@@ -62,11 +62,6 @@ public class SnowflakeStreamingIngestChannelTest {
     }
 
     @Override
-    public long getTotalMemory() {
-      return maxMemory;
-    }
-
-    @Override
     public long getFreeMemory() {
       return freeMemory;
     }
