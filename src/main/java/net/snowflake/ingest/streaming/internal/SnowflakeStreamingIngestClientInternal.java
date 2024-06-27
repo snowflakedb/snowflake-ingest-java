@@ -124,6 +124,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
+  // Stores encryptionkey per table
+  private final Map<String, EncryptionKey> encryptionKeysPerTable;
+
   // Performance testing related metrics
   MetricRegistry metrics;
   Histogram blobSizeHistogram; // Histogram for blob size after compression
@@ -173,6 +176,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.channelCache = new ChannelCache<>();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
+    this.encryptionKeysPerTable = new HashMap<>();
 
     if (!isTestMode) {
       // Setup request builder for communication with the server side
@@ -1095,5 +1099,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     if (!this.isTestMode) {
       HttpUtil.shutdownHttpConnectionManagerDaemonThread();
     }
+  }
+
+  public Map<String, EncryptionKey> getEncryptionKeysPerTable() {
+    return encryptionKeysPerTable;
   }
 }
