@@ -64,8 +64,11 @@ class BlobBuilder {
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
-      String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
-      throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
+      String filePath,
+      List<List<ChannelData<T>>> blobData,
+      Constants.BdecVersion bdecVersion,
+      SnowflakeStreamingIngestClientInternal<T> owningClient
+  ) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
@@ -77,6 +80,10 @@ class BlobBuilder {
     for (List<ChannelData<T>> channelsDataPerTable : blobData) {
       ChannelFlushContext firstChannelFlushContext =
           channelsDataPerTable.get(0).getChannelContext();
+
+      // Get encryption key from client
+      String fullyQualifiedTableName = firstChannelFlushContext.getFullyQualifiedTableName();
+      EncryptionKey encryptionKey = owningClient.getEncryptionKeysPerTable().get(fullyQualifiedTableName);
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
@@ -97,7 +104,7 @@ class BlobBuilder {
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
             Cryptor.encrypt(
-                paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+                paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = computeMD5(encryptedCompressedChunkData, paddedChunkLength);
@@ -117,7 +124,7 @@ class BlobBuilder {
                 .setUncompressedChunkLength((int) serializedChunk.chunkEstimatedUncompressedSize)
                 .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
+                .setEncryptionKeyId(encryptionKey.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
                         serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
