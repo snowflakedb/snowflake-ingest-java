@@ -116,8 +116,6 @@ public class FlushServiceTest {
         String offsetToken,
         Long channelSequencer,
         Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
         OpenChannelRequest.OnErrorOption onErrorOption,
         ZoneId defaultTimezone);
 
@@ -172,16 +170,6 @@ public class FlushServiceTest {
         return this;
       }
 
-      ChannelBuilder setEncryptionKey(String encryptionKey) {
-        this.encryptionKey = encryptionKey;
-        return this;
-      }
-
-      ChannelBuilder setEncryptionKeyId(Long encryptionKeyId) {
-        this.encryptionKeyId = encryptionKeyId;
-        return this;
-      }
-
       SnowflakeStreamingIngestChannelInternal<T> buildAndAdd() {
         SnowflakeStreamingIngestChannelInternal<T> channel =
             createChannel(
@@ -192,8 +180,6 @@ public class FlushServiceTest {
                 offsetToken,
                 channelSequencer,
                 rowSequencer,
-                encryptionKey,
-                encryptionKeyId,
                 onErrorOption,
                 ZoneOffset.UTC);
         channels.put(name, channel);
@@ -241,8 +227,6 @@ public class FlushServiceTest {
         String offsetToken,
         Long channelSequencer,
         Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
         OpenChannelRequest.OnErrorOption onErrorOption,
         ZoneId defaultTimezone) {
       return new SnowflakeStreamingIngestChannelInternal<>(
@@ -254,8 +238,6 @@ public class FlushServiceTest {
           channelSequencer,
           rowSequencer,
           client,
-          encryptionKey,
-          encryptionKeyId,
           onErrorOption,
           defaultTimezone,
           Constants.BdecVersion.THREE,
@@ -287,8 +269,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset1")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
-        .setEncryptionKey("key")
-        .setEncryptionKeyId(encryptionKeyId)
         .buildAndAdd();
   }
 
@@ -301,8 +281,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset1")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
-        .setEncryptionKey("key")
-        .setEncryptionKeyId(1L)
         .buildAndAdd();
   }
 
@@ -315,8 +293,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset2")
         .setChannelSequencer(10L)
         .setRowSequencer(100L)
-        .setEncryptionKey("key")
-        .setEncryptionKeyId(1L)
         .buildAndAdd();
   }
 
@@ -329,8 +305,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset3")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
-        .setEncryptionKey("key3")
-        .setEncryptionKeyId(3L)
         .buildAndAdd();
   }
 
@@ -343,8 +317,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset2")
         .setChannelSequencer(10L)
         .setRowSequencer(100L)
-        .setEncryptionKey("key4")
-        .setEncryptionKeyId(4L)
         .buildAndAdd();
   }
 
@@ -875,8 +847,6 @@ public class FlushServiceTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC);
 
@@ -890,8 +860,6 @@ public class FlushServiceTest {
             10L,
             100L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC);
 

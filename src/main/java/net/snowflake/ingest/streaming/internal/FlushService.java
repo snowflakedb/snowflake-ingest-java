@@ -429,8 +429,6 @@ class FlushService<T> {
                   totalBufferSizeInBytes,
                   totalBufferSizePerTableInBytes,
                   channelData.getBufferSize(),
-                  channelData.getChannelContext().getEncryptionKeyId(),
-                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId(),
                   channelData.getColumnEps().keySet(),
                   channelsDataPerTable.get(idx - 1).getColumnEps().keySet());
               break;
@@ -534,9 +532,6 @@ class FlushService<T> {
     return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
         || totalBufferSizePerTableInBytes + current.getBufferSize()
             > this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()
-        || !Objects.equals(
-            current.getChannelContext().getEncryptionKeyId(),
-            prev.getChannelContext().getEncryptionKeyId())
         || !current.getColumnEps().keySet().equals(prev.getColumnEps().keySet());
   }
 
