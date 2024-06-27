@@ -131,8 +131,6 @@ public class FlushServiceTest {
       private String offsetToken = "offset1";
       private Long channelSequencer = 0L;
       private Long rowSequencer = 0L;
-      private String encryptionKey = "key";
-      private Long encryptionKeyId = 0L;
       private OpenChannelRequest.OnErrorOption onErrorOption =
           OpenChannelRequest.OnErrorOption.CONTINUE;
 

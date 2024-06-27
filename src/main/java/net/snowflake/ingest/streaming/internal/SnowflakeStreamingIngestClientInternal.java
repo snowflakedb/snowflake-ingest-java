@@ -124,7 +124,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
-  // Stores encryptionkey per table
+  // Stores encryptionkey per table: FullyQualifiedTableName -> EncryptionKey
   private final Map<String, EncryptionKey> encryptionKeysPerTable;
 
   // Performance testing related metrics
@@ -377,8 +377,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .setRowSequencer(response.getRowSequencer())
               .setChannelSequencer(response.getClientSequencer())
               .setOwningClient(this)
-              .setEncryptionKey(response.getEncryptionKey())
-              .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
               .setDefaultTimezone(request.getDefaultTimezone())
               .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
@@ -389,6 +387,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);
+
+      // Add encryption key to the client map for the table
+      if (response.getEncryptionKey() != null) {
+          this.encryptionKeysPerTable.put(
+              request.getFullyQualifiedTableName(),
+              new EncryptionKey(response.getDBName(),
+                response.getSchemaName(),
+                response.getTableName(),
+                response.getEncryptionKey(),
+                response.getEncryptionKeyId()
+              )
+          );
+      }
 
       return channel;
     } catch (IOException | IngestResponseException e) {
