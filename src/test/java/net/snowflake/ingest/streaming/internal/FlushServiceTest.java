@@ -103,14 +103,14 @@ public class FlushServiceTest {
 
     TestContext() {
       storage = Mockito.mock(StreamingIngestStorage.class);
-      Mockito.when(storage.getClientPrefix()).thenReturn("client_prefix");
       parameterProvider = new ParameterProvider(isIcebergMode);
       internalParameterProvider = new InternalParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
-      storageManager = Mockito.spy(new InternalStageManager<>(true, client));
+      storageManager = Mockito.spy(new InternalStageManager<>(true, client, null));
       Mockito.when(storageManager.getStorage(ArgumentMatchers.any())).thenReturn(storage);
+      Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
@@ -414,32 +414,38 @@ public class FlushServiceTest {
     StorageManager<?> storageManager = testContext.storageManager;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
-    String outputString = storageManager.getBlobPath(calendar, clientPrefix);
-    Path outputPath = Paths.get(outputString);
-    Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
-    Assert.assertTrue(
-        calendar.get(Calendar.MINUTE)
-                - Integer.parseInt(outputPath.getParent().getFileName().toString())
-            <= 1);
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
-        outputPath.getParent().getParent().getFileName().toString());
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
-        outputPath.getParent().getParent().getParent().getFileName().toString());
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.MONTH) + 1),
-        outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
-    Assert.assertEquals(
-        Integer.toString(calendar.get(Calendar.YEAR)),
-        outputPath
-            .getParent()
-            .getParent()
-            .getParent()
-            .getParent()
-            .getParent()
-            .getFileName()
-            .toString());
+    if (isIcebergMode) {
+      // TODO: SNOW-1502887 Blob path generation for iceberg table
+      String outputString = storageManager.generateBlobPath();
+    } else {
+      String outputString =
+          ((InternalStageManager<?>) storageManager).getBlobPath(calendar, clientPrefix);
+      Path outputPath = Paths.get(outputString);
+      Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
+      Assert.assertTrue(
+          calendar.get(Calendar.MINUTE)
+                  - Integer.parseInt(outputPath.getParent().getFileName().toString())
+              <= 1);
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
+          outputPath.getParent().getParent().getFileName().toString());
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
+          outputPath.getParent().getParent().getParent().getFileName().toString());
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.MONTH) + 1),
+          outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
+      Assert.assertEquals(
+          Integer.toString(calendar.get(Calendar.YEAR)),
+          outputPath
+              .getParent()
+              .getParent()
+              .getParent()
+              .getParent()
+              .getParent()
+              .getFileName()
+              .toString());
+    }
   }
 
   @Test
@@ -939,10 +945,8 @@ public class FlushServiceTest {
     innerData.add(channel1Data);
     innerData.add(channel2Data);
 
-    StreamingIngestStorage stage = Mockito.mock(StreamingIngestStorage.class);
-    Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
     StorageManager<StubChunkData> storageManager =
-        Mockito.spy(new InternalStageManager<>(true, client));
+        Mockito.spy(new InternalStageManager<>(true, client, null));
     FlushService<StubChunkData> flushService =
         new FlushService<>(client, channelCache, storageManager, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");

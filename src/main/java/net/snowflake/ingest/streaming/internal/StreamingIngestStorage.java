@@ -33,7 +33,7 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Storage */
-class StreamingIngestStorage {
+class StreamingIngestStorage<T> {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   // Object mapper for parsing the client/configure response to Jackson version the same as
@@ -77,9 +77,9 @@ class StreamingIngestStorage {
   }
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final ConfigureCallHandler configureCallHandler;
+  private final StorageManager<T> owningManager;
+  private final ConfigureRequest configureRequest;
   private final String clientName;
-  private String clientPrefix;
 
   private final int maxUploadRetries;
 
@@ -87,70 +87,51 @@ class StreamingIngestStorage {
   private final Properties proxyProperties;
 
   /**
-   * Default constructor for internal stage
+   * Default constructor
    *
-   * @param isTestMode Whether it's in test mode
-   * @param configureCallHandler The ConfigureCallHandler to use
-   * @param clientName The client name
-   * @param maxUploadRetries The maximum number of retries to attempt
-   * @throws SnowflakeSQLException
-   * @throws IOException
-   */
-  StreamingIngestStorage(
-      boolean isTestMode,
-      ConfigureCallHandler configureCallHandler,
-      String clientName,
-      int maxUploadRetries)
-      throws SnowflakeSQLException, IOException {
-    this.configureCallHandler = configureCallHandler;
-    this.clientName = clientName;
-    this.proxyProperties = generateProxyPropertiesForJDBC();
-    this.maxUploadRetries = maxUploadRetries;
-    if (!isTestMode) {
-      refreshSnowflakeMetadata();
-    }
-  }
-
-  /**
-   * Default constructor for external volume
-   *
-   * @param configureCallHandler The ConfigureCallHandler to use
+   * @param owningManager the storage manager owning this storage
    * @param clientName The client name
    * @param fileLocationInfo The file location information from open channel response
+   * @param configureRequest The configure request for configure call
    * @param maxUploadRetries The maximum number of retries to attempt
    */
   StreamingIngestStorage(
-      ConfigureCallHandler configureCallHandler,
+      StorageManager<T> owningManager,
       String clientName,
       FileLocationInfo fileLocationInfo,
+      ConfigureRequest configureRequest,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
-    this.configureCallHandler = configureCallHandler;
-    this.clientName = clientName;
-    this.proxyProperties = generateProxyPropertiesForJDBC();
-    this.maxUploadRetries = maxUploadRetries;
+    this(
+        owningManager,
+        clientName,
+        (SnowflakeFileTransferMetadataWithAge) null,
+        configureRequest,
+        maxUploadRetries);
     createFileTransferMetadataWithAge(fileLocationInfo);
   }
 
   /**
    * Constructor for TESTING that takes SnowflakeFileTransferMetadataWithAge as input
    *
-   * @param isTestMode must be true
-   * @param configureCallHandler the ConfigureCallHandler to use
+   * @param owningManager the storage manager owning this storage
    * @param clientName the client name
    * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
+   * @param configureRequest the configure request for configure call
+   * @param maxUploadRetries the maximum number of retries to attempt
    */
   StreamingIngestStorage(
-      boolean isTestMode,
-      ConfigureCallHandler configureCallHandler,
+      StorageManager<T> owningManager,
       String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata,
-      int maxRetryCount)
+      ConfigureRequest configureRequest,
+      int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
-    this(isTestMode, configureCallHandler, clientName, maxRetryCount);
-    if (!isTestMode) {
-      throw new SFException(ErrorCode.INTERNAL_ERROR);
-    }
+    this.owningManager = owningManager;
+    this.clientName = clientName;
+    this.maxUploadRetries = maxUploadRetries;
+    this.proxyProperties = generateProxyPropertiesForJDBC();
+    this.configureRequest = configureRequest;
     this.fileTransferMetadataWithAge = testMetadata;
   }
 
@@ -204,7 +185,7 @@ class StreamingIngestStorage {
               .setUploadStream(inStream)
               .setRequireCompress(false)
               .setOcspMode(OCSPMode.FAIL_OPEN)
-              .setStreamingIngestClientKey(this.clientPrefix)
+              .setStreamingIngestClientKey(this.owningManager.getClientPrefix())
               .setStreamingIngestClientName(this.clientName)
               .setProxyProperties(this.proxyProperties)
               .setDestFileName(fullFilePath)
@@ -262,11 +243,7 @@ class StreamingIngestStorage {
       return fileTransferMetadataWithAge;
     }
 
-    ConfigureResponse response = this.configureCallHandler.makeConfigureCall();
-    // Do not change the prefix everytime we have to refresh credentials
-    if (Utils.isNullOrEmpty(this.clientPrefix)) {
-      this.clientPrefix = createClientPrefix(response);
-    }
+    ConfigureResponse response = this.owningManager.configure(this.configureRequest);
     return createFileTransferMetadataWithAge(response.getStageLocation());
   }
 
@@ -275,7 +252,7 @@ class StreamingIngestStorage {
       throws JsonProcessingException,
           net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException,
           SnowflakeSQLException {
-    Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
+    Utils.assertStringNotNullOrEmpty("client prefix", this.owningManager.getClientPrefix());
 
     if (fileLocationInfo
         .getLocationType()
@@ -327,7 +304,8 @@ class StreamingIngestStorage {
   SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
       throws SnowflakeSQLException, IOException {
 
-    ConfigureResponse response = this.configureCallHandler.makeConfigureCall(fileName);
+    this.configureRequest.setFileName(fileName);
+    ConfigureResponse response = this.owningManager.configure(this.configureRequest);
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
@@ -404,10 +382,5 @@ class StreamingIngestStorage {
     } catch (Exception ex) {
       throw new SFException(ex, ErrorCode.BLOB_UPLOAD_FAILURE);
     }
-  }
-
-  /** Get the server generated unique prefix for this client */
-  String getClientPrefix() {
-    return this.clientPrefix;
   }
 }

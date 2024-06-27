@@ -317,17 +317,11 @@ class FlushService<T> {
         itr = this.channelCache.iterator();
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
-    boolean isBlobCreated = true;
-    String currentBlobPath = null;
 
     while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
-      if (isBlobCreated) {
-        currentBlobPath = this.storageManager.generateBlobPath();
-      }
-      isBlobCreated = false;
-      final String blobPath = currentBlobPath;
+      final String blobPath = this.storageManager.generateBlobPath();
 
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
@@ -408,8 +402,11 @@ class FlushService<T> {
       }
 
       // Kick off a build job
-      if (!blobData.isEmpty()) {
-        isBlobCreated = true;
+      if (blobData.isEmpty()) {
+        // we decrement the blob sequencer so that we do not have gaps in the blob names created by
+        // this client.
+        this.storageManager.decrementBlobSequencer();
+      } else {
         long flushStartMs = System.currentTimeMillis();
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(blobPath, this.owningClient.flushLatency.time());
@@ -522,7 +519,7 @@ class FlushService<T> {
     blob.blobStats.setBuildDurationMs(buildContext);
 
     return upload(
-        this.storageManager.getStorage(blobData),
+        this.storageManager.getStorage(blobData.get(0).get(0).getChannelContext()),
         blobPath,
         blob.blobBytes,
         blob.chunksMetadataList,
@@ -628,11 +625,6 @@ class FlushService<T> {
                           channelData.getChannelContext().getChannelSequencer(),
                           invalidationCause);
                 }));
-  }
-
-  /** Get the server generated unique prefix for this client */
-  String getClientPrefix() {
-    return this.storageManager.getClientPrefix();
   }
 
   /**

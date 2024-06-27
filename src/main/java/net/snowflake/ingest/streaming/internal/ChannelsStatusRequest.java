@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Class to deserialize a request from a channel status request */
-class ChannelsStatusRequest {
+class ChannelsStatusRequest implements StreamingIngestRequest {
 
   // Used to deserialize a channel request
   static class ChannelStatusRequestDTO {
