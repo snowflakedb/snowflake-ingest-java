@@ -448,6 +448,7 @@ public class SnowflakeStreamingIngestChannelTest {
             + "  \"client_sequencer\" : 0,\n"
             + "  \"row_sequencer\" : 0,\n"
             + "  \"offset_token\" : \"\",\n"
+            + "  \"encryption_key_id\" : 17229585102,\n"
             + "  \"table_columns\" : [ {\n"
             + "    \"ordinal\" : 1,\n"
             + "    \"name\" : \"C1\",\n"
@@ -471,7 +472,7 @@ public class SnowflakeStreamingIngestChannelTest {
             + "    \"length\" : null,\n"
             + "    \"nullable\" : true\n"
             + "  } ],\n"
-            + "\n"
+            + "  \"encryption_key\" : \"3/l6q2xeDurO4ljfde4DXA==\"\n"
             + "}";
 
     CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);

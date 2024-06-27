@@ -89,6 +89,21 @@ public class FlushServiceTest {
       parameterProvider = new ParameterProvider();
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
+
+      Map<String, EncryptionKey> encryptionKeysPerTable = new HashMap<>();
+      for (int i = 1; i <= 3; i++) {
+        encryptionKeysPerTable.put(
+            String.format("db1.schema%d.table%d", i, i),
+            new EncryptionKey("db1", String.format("schema%d", i), String.format("table%d", i), "key1", 1234L));
+      }
+
+      for (int i = 0; i <= 9999; i++) {
+          encryptionKeysPerTable.put(
+              String.format("db1.PUBLIC.table%d", i),
+              new EncryptionKey("db1", "PUBLIC", String.format("table%d", i), "key1", 1234L));
+      }
+
+      Mockito.when(client.getEncryptionKeysPerTable()).thenReturn(encryptionKeysPerTable);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
@@ -258,7 +273,7 @@ public class FlushServiceTest {
   TestContextFactory<List<List<Object>>> testContextFactory;
 
   private SnowflakeStreamingIngestChannelInternal<List<List<Object>>> addChannel(
-      TestContext<List<List<Object>>> testContext, int tableId, long encryptionKeyId) {
+      TestContext<List<List<Object>>> testContext, int tableId) {
     return testContext
         .channelBuilder("channel" + UUID.randomUUID())
         .setDBName("db1")
@@ -562,7 +577,7 @@ public class FlushServiceTest {
 
     for (int i = 0; i < numberOfRows; i++) {
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
-          addChannel(testContext, i / channelsPerTable, 1);
+          addChannel(testContext, i / channelsPerTable);
       channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
       channel.insertRow(Collections.singletonMap("C1", i), "");
     }
@@ -588,7 +603,7 @@ public class FlushServiceTest {
 
     for (int i = 0; i < 99; i++) { // 19 simple chunks
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
-          addChannel(testContext, i, 1);
+          addChannel(testContext, i);
       channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
       channel.insertRow(Collections.singletonMap("C1", i), "");
     }
@@ -596,17 +611,17 @@ public class FlushServiceTest {
     // 20th chunk would contain multiple channels, but there are some with different encryption key
     // ID, so they spill to a new blob
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel1 =
-        addChannel(testContext, 99, 1);
+        addChannel(testContext, 99);
     channel1.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
     channel1.insertRow(Collections.singletonMap("C1", 0), "");
 
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel2 =
-        addChannel(testContext, 99, 2);
+        addChannel(testContext, 99);
     channel2.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
     channel2.insertRow(Collections.singletonMap("C1", 0), "");
 
     SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel3 =
-        addChannel(testContext, 99, 2);
+        addChannel(testContext, 99);
     channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
     channel3.insertRow(Collections.singletonMap("C1", 0), "");
 

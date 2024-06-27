@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.CRC32;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -83,7 +84,13 @@ class BlobBuilder {
 
       // Get encryption key from client
       String fullyQualifiedTableName = firstChannelFlushContext.getFullyQualifiedTableName();
+      Map<String, EncryptionKey> encryptionKeysPerTable = owningClient.getEncryptionKeysPerTable();
       EncryptionKey encryptionKey = owningClient.getEncryptionKeysPerTable().get(fullyQualifiedTableName);
+      
+      if (encryptionKey == null) {
+        throw new IllegalArgumentException(
+            "No encryption key found for table: " + fullyQualifiedTableName);
+      }
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
