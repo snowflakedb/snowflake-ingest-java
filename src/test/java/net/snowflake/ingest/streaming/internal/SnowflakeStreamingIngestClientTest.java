@@ -126,8 +126,6 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -142,8 +140,6 @@ public class SnowflakeStreamingIngestClientTest {
             2L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -158,8 +154,6 @@ public class SnowflakeStreamingIngestClientTest {
             3L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -174,8 +168,6 @@ public class SnowflakeStreamingIngestClientTest {
             3L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -392,8 +384,6 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -498,8 +488,6 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -551,8 +539,6 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -840,6 +826,7 @@ public class SnowflakeStreamingIngestClientTest {
         "{\n"
             + "  \"status_code\" : 0,\n"
             + "  \"message\" : \"Success\",\n"
+            + "  \"encryption_keys\": [],\n"
             + "  \"blobs\" : [ {\n"
             + "    \"chunks\" : [ {\n"
             + "      \"database\" : \"DB_STREAMINGINGEST\",\n"
@@ -915,10 +902,12 @@ public class SnowflakeStreamingIngestClientTest {
     RegisterBlobResponse initialResponse = new RegisterBlobResponse();
     initialResponse.setMessage("successish");
     initialResponse.setStatusCode(RESPONSE_SUCCESS);
+    initialResponse.setEncryptionKeys(new ArrayList<>());
 
     RegisterBlobResponse retryResponse = new RegisterBlobResponse();
     retryResponse.setMessage("successish");
     retryResponse.setStatusCode(RESPONSE_SUCCESS);
+    retryResponse.setEncryptionKeys(new ArrayList<>());
 
     List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
     BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
@@ -1119,10 +1108,12 @@ public class SnowflakeStreamingIngestClientTest {
     RegisterBlobResponse initialResponse = new RegisterBlobResponse();
     initialResponse.setMessage("successish");
     initialResponse.setStatusCode(RESPONSE_SUCCESS);
+    initialResponse.setEncryptionKeys(new ArrayList<>());
 
     RegisterBlobResponse retryResponse = new RegisterBlobResponse();
     retryResponse.setMessage("successish");
     retryResponse.setStatusCode(RESPONSE_SUCCESS);
+    retryResponse.setEncryptionKeys(new ArrayList<>());
 
     List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
     BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
@@ -1196,6 +1187,7 @@ public class SnowflakeStreamingIngestClientTest {
             "{\n"
                 + "  \"status_code\" : 0,\n"
                 + "  \"message\" : \"Success\",\n"
+                + "  \"encryption_keys\": [],\n"
                 + "  \"blobs\" : [ {\n"
                 + "    \"chunks\" : [ {\n"
                 + "      \"database\" : \"%s\",\n"
@@ -1254,8 +1246,6 @@ public class SnowflakeStreamingIngestClientTest {
             channel1Sequencer,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
@@ -1268,8 +1258,6 @@ public class SnowflakeStreamingIngestClientTest {
             channel2Sequencer,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     client.getChannelCache().addChannel(channel1);
@@ -1285,6 +1273,77 @@ public class SnowflakeStreamingIngestClientTest {
     // Channel2 should be invalidated now
     Assert.assertTrue(channel1.isValid());
     Assert.assertFalse(channel2.isValid());
+  }
+
+  @Test
+  public void testRegisterBlobSuccessResponseWithEncryptionKeys() throws Exception {
+    String response =
+        "{\n"
+            + "  \"status_code\" : 0,\n"
+            + "  \"message\" : \"Success\",\n"
+            + "  \"encryption_keys\": [\n"
+            + "    {\n"
+            + "      \"database\" : \"DB_STREAMINGINGEST\",\n"
+            + "      \"schema\" : \"PUBLIC\",\n"
+            + "      \"table\" : \"T_STREAMINGINGEST\",\n"
+            + "      \"encryption_key\" : \"key\",\n"
+            + "      \"encryption_key_id\" : 1234\n"
+            + "    }\n"
+            + "  ],\n"
+            + "  \"blobs\" : [ {\n"
+            + "    \"chunks\" : [ {\n"
+            + "      \"database\" : \"DB_STREAMINGINGEST\",\n"
+            + "      \"schema\" : \"PUBLIC\",\n"
+            + "      \"table\" : \"T_STREAMINGINGEST\",\n"
+            + "      \"channels\" : [ {\n"
+            + "        \"status_code\" : 0,\n"
+            + "        \"channel\" : \"CHANNEL\",\n"
+            + "        \"client_sequencer\" : 0\n"
+            + "      }, {\n"
+            + "        \"status_code\" : 0,\n"
+            + "        \"channel\" : \"CHANNEL1\",\n"
+            + "        \"client_sequencer\" : 0\n"
+            + "      } ]\n"
+            + "    } ]\n"
+            + "  } ]\n"
+            + "}";
+
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent()).thenReturn(IOUtils.toInputStream(response));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
+
+    List<BlobMetadata> blobs =
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
+
+    FullyQualifiedTableName fqn =
+        new FullyQualifiedTableName("DB_STREAMINGINGEST", "PUBLIC", "T_STREAMINGINGEST");
+    client.registerBlobs(blobs);
+    Assert.assertEquals(1, client.getEncryptionKeysPerTable().size());
+    Assert.assertEquals(
+        "DB_STREAMINGINGEST", client.getEncryptionKeysPerTable().get(fqn).getDatabaseName());
+    Assert.assertEquals("PUBLIC", client.getEncryptionKeysPerTable().get(fqn).getSchemaName());
+    Assert.assertEquals(
+        "T_STREAMINGINGEST", client.getEncryptionKeysPerTable().get(fqn).getTableName());
+    Assert.assertEquals("key", client.getEncryptionKeysPerTable().get(fqn).getEncryptionKey());
+    Assert.assertEquals(1234, client.getEncryptionKeysPerTable().get(fqn).getEncryptionKeyId());
   }
 
   @Test
@@ -1395,8 +1454,6 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     client.getChannelCache().addChannel(channel);
@@ -1484,8 +1541,6 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -1502,5 +1557,61 @@ public class SnowflakeStreamingIngestClientTest {
     Mockito.verify(requestBuilder)
         .generateStreamingIngestPostRequest(
             objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
+  }
+
+  @Test
+  public void testOpenChannelWithEncryptionKey() throws Exception {
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine statusLine = Mockito.mock(StatusLine.class);
+    HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
+    when(statusLine.getStatusCode()).thenReturn(200);
+    when(httpResponse.getStatusLine()).thenReturn(statusLine);
+    when(httpResponse.getEntity()).thenReturn(httpEntity);
+    when(httpEntity.getContent())
+        .thenReturn(
+            IOUtils.toInputStream(
+                "{\n"
+                    + "  \"status_code\" : 0,\n"
+                    + "  \"message\" : \"Success\",\n"
+                    + "  \"encryption_key\" : \"key\",\n"
+                    + "  \"encryption_key_id\" : 1,\n"
+                    + "  \"database\" : \"db\",\n"
+                    + "  \"schema\" : \"schema\",\n"
+                    + "  \"table\" : \"table\",\n"
+                    + "  \"channel\" : \"channel\",\n"
+                    + "  \"row_sequencer\" : 0,\n"
+                    + "  \"table_columns\" : [],\n"
+                    + "  \"client_sequencer\" : 0\n"
+                    + "}"));
+    when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
+
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            true,
+            requestBuilder,
+            null);
+
+    OpenChannelRequest request =
+        OpenChannelRequest.builder("channel")
+            .setDBName("db")
+            .setSchemaName("schema")
+            .setTableName("table")
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+    client.openChannel(request);
+
+    FullyQualifiedTableName fqn = new FullyQualifiedTableName("db", "schema", "table");
+    Map<FullyQualifiedTableName, EncryptionKey> keys = client.getEncryptionKeysPerTable();
+    Assert.assertEquals(1, keys.size());
+    Assert.assertTrue(keys.containsKey(fqn));
+    Assert.assertEquals("key", keys.get(fqn).getEncryptionKey());
+    Assert.assertEquals(1, keys.get(fqn).getEncryptionKeyId());
   }
 }

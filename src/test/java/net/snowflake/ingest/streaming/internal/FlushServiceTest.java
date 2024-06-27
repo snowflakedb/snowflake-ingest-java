@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -98,6 +99,7 @@ public class FlushServiceTest {
     IStorageManager<T, ?> storageManager;
     StreamingIngestStorage storage;
     ParameterProvider parameterProvider;
+    Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable;
     RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
@@ -115,6 +117,22 @@ public class FlushServiceTest {
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       Mockito.when(client.getParameterProvider())
           .thenAnswer((Answer<ParameterProvider>) (i) -> parameterProvider);
+
+      encryptionKeysPerTable = new ConcurrentHashMap<>();
+      encryptionKeysPerTable.put(
+          new FullyQualifiedTableName("db1", "schema1", "table1"),
+          new EncryptionKey("db1", "schema1", "table1", "key1", 1234L));
+      encryptionKeysPerTable.put(
+          new FullyQualifiedTableName("db2", "schema1", "table2"),
+          new EncryptionKey("db2", "schema1", "table2", "key1", 1234L));
+
+      for (int i = 0; i <= 9999; i++) {
+        encryptionKeysPerTable.put(
+            new FullyQualifiedTableName("db1", "PUBLIC", String.format("table%d", i)),
+            new EncryptionKey("db1", "PUBLIC", String.format("table%d", i), "key1", 1234L));
+      }
+
+      Mockito.when(client.getEncryptionKeysPerTable()).thenReturn(encryptionKeysPerTable);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
@@ -138,7 +156,7 @@ public class FlushServiceTest {
       return flushService.buildAndUpload(
           "file_name",
           blobData,
-          blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName());
+          blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName(), encryptionKeysPerTable);
     }
 
     abstract SnowflakeStreamingIngestChannelInternal<T> createChannel(
@@ -149,8 +167,6 @@ public class FlushServiceTest {
         String offsetToken,
         Long channelSequencer,
         Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
         OpenChannelRequest.OnErrorOption onErrorOption,
         ZoneId defaultTimezone);
 
@@ -166,8 +182,6 @@ public class FlushServiceTest {
       private String offsetToken = "offset1";
       private Long channelSequencer = 0L;
       private Long rowSequencer = 0L;
-      private String encryptionKey = "key";
-      private Long encryptionKeyId = 0L;
       private OpenChannelRequest.OnErrorOption onErrorOption =
           OpenChannelRequest.OnErrorOption.CONTINUE;
 
@@ -205,16 +219,6 @@ public class FlushServiceTest {
         return this;
       }
 
-      ChannelBuilder setEncryptionKey(String encryptionKey) {
-        this.encryptionKey = encryptionKey;
-        return this;
-      }
-
-      ChannelBuilder setEncryptionKeyId(Long encryptionKeyId) {
-        this.encryptionKeyId = encryptionKeyId;
-        return this;
-      }
-
       SnowflakeStreamingIngestChannelInternal<T> buildAndAdd() {
         SnowflakeStreamingIngestChannelInternal<T> channel =
             createChannel(
@@ -225,8 +229,6 @@ public class FlushServiceTest {
                 offsetToken,
                 channelSequencer,
                 rowSequencer,
-                encryptionKey,
-                encryptionKeyId,
                 onErrorOption,
                 ZoneOffset.UTC);
         channels.put(name, channel);
@@ -274,8 +276,6 @@ public class FlushServiceTest {
         String offsetToken,
         Long channelSequencer,
         Long rowSequencer,
-        String encryptionKey,
-        Long encryptionKeyId,
         OpenChannelRequest.OnErrorOption onErrorOption,
         ZoneId defaultTimezone) {
       return new SnowflakeStreamingIngestChannelInternal<>(
@@ -287,8 +287,6 @@ public class FlushServiceTest {
           channelSequencer,
           rowSequencer,
           client,
-          encryptionKey,
-          encryptionKeyId,
           onErrorOption,
           defaultTimezone,
           Constants.BdecVersion.THREE,
@@ -311,7 +309,7 @@ public class FlushServiceTest {
   TestContextFactory<List<List<Object>>> testContextFactory;
 
   private SnowflakeStreamingIngestChannelInternal<List<List<Object>>> addChannel(
-      TestContext<List<List<Object>>> testContext, int tableId, long encryptionKeyId) {
+      TestContext<List<List<Object>>> testContext, int tableId) {
     return testContext
         .channelBuilder("channel" + UUID.randomUUID())
         .setDBName("db1")
@@ -320,8 +318,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset1")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
-        .setEncryptionKey("key")
-        .setEncryptionKeyId(encryptionKeyId)
         .buildAndAdd();
   }
 
@@ -334,8 +330,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset1")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
-        .setEncryptionKey("key")
-        .setEncryptionKeyId(1L)
         .buildAndAdd();
   }
 
@@ -348,8 +342,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset2")
         .setChannelSequencer(10L)
         .setRowSequencer(100L)
-        .setEncryptionKey("key")
-        .setEncryptionKeyId(1L)
         .buildAndAdd();
   }
 
@@ -362,8 +354,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset3")
         .setChannelSequencer(0L)
         .setRowSequencer(0L)
-        .setEncryptionKey("key3")
-        .setEncryptionKeyId(3L)
         .buildAndAdd();
   }
 
@@ -376,8 +366,6 @@ public class FlushServiceTest {
         .setOffsetToken("offset2")
         .setChannelSequencer(10L)
         .setRowSequencer(100L)
-        .setEncryptionKey("key4")
-        .setEncryptionKeyId(4L)
         .buildAndAdd();
   }
 
@@ -610,14 +598,14 @@ public class FlushServiceTest {
 
     channel1.insertRows(rows1, "offset1");
     channel2.insertRows(rows1, "offset2");
-    channel4.insertRows(rows1, "offset4");
+    channel4.insertRows(rows1, "offset3");
 
     FlushService<?> flushService = testContext.flushService;
 
     // Force = true flushes
     flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+    Mockito.verify(flushService, Mockito.atLeast(1))
+        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   @Test
@@ -733,7 +721,7 @@ public class FlushServiceTest {
 
     for (int i = 0; i < numberOfRows; i++) {
       SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
-          addChannel(testContext, i / channelsPerTable, 1);
+          addChannel(testContext, i / channelsPerTable);
       channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
       channel.insertRow(Collections.singletonMap("C1", i), "");
     }
@@ -751,49 +739,6 @@ public class FlushServiceTest {
         blobDataCaptor.getAllValues();
 
     Assert.assertEquals(numberOfRows, getRows(allUploadedBlobs).size());
-  }
-
-  @Test
-  public void testBlobSplitDueToNumberOfChunksWithLeftoverChannels() throws Exception {
-    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
-
-    for (int i = 0; i < 99; i++) { // 19 simple chunks
-      SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
-          addChannel(testContext, i, 1);
-      channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
-      channel.insertRow(Collections.singletonMap("C1", i), "");
-    }
-
-    // 20th chunk would contain multiple channels, but there are some with different encryption key
-    // ID, so they spill to a new blob
-    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel1 =
-        addChannel(testContext, 99, 1);
-    channel1.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
-    channel1.insertRow(Collections.singletonMap("C1", 0), "");
-
-    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel2 =
-        addChannel(testContext, 99, 2);
-    channel2.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
-    channel2.insertRow(Collections.singletonMap("C1", 0), "");
-
-    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel3 =
-        addChannel(testContext, 99, 2);
-    channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
-    channel3.insertRow(Collections.singletonMap("C1", 0), "");
-
-    FlushService<List<List<Object>>> flushService = testContext.flushService;
-    flushService.flush(true).get();
-
-    ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
-        ArgumentCaptor.forClass(List.class);
-    Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any());
-
-    // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
-    List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
-        blobDataCaptor.getAllValues();
-
-    Assert.assertEquals(102, getRows(allUploadedBlobs).size());
   }
 
   private List<List<Object>> getRows(List<List<List<ChannelData<List<List<Object>>>>>> blobs) {
@@ -1019,8 +964,6 @@ public class FlushServiceTest {
             0L,
             0L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC);
 
@@ -1034,8 +977,6 @@ public class FlushServiceTest {
             10L,
             100L,
             client,
-            "key",
-            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC);
 

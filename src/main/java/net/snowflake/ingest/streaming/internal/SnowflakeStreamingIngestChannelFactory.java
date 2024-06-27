@@ -25,8 +25,6 @@ class SnowflakeStreamingIngestChannelFactory {
     private Long channelSequencer;
     private Long rowSequencer;
     private SnowflakeStreamingIngestClientInternal<T> owningClient;
-    private String encryptionKey;
-    private Long encryptionKeyId;
     private OpenChannelRequest.OnErrorOption onErrorOption;
     private ZoneId defaultTimezone;
     private OffsetTokenVerificationFunction offsetTokenVerificationFunction;
@@ -65,16 +63,6 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
-    SnowflakeStreamingIngestChannelBuilder<T> setEncryptionKey(String encryptionKey) {
-      this.encryptionKey = encryptionKey;
-      return this;
-    }
-
-    SnowflakeStreamingIngestChannelBuilder<T> setEncryptionKeyId(Long encryptionKeyId) {
-      this.encryptionKeyId = encryptionKeyId;
-      return this;
-    }
-
     SnowflakeStreamingIngestChannelBuilder<T> setOnErrorOption(
         OpenChannelRequest.OnErrorOption onErrorOption) {
       this.onErrorOption = onErrorOption;
@@ -106,8 +94,6 @@ class SnowflakeStreamingIngestChannelFactory {
       Utils.assertNotNull("channel sequencer", this.channelSequencer);
       Utils.assertNotNull("row sequencer", this.rowSequencer);
       Utils.assertNotNull("channel owning client", this.owningClient);
-      Utils.assertStringNotNullOrEmpty("encryption key", this.encryptionKey);
-      Utils.assertNotNull("encryption key_id", this.encryptionKeyId);
       Utils.assertNotNull("on_error option", this.onErrorOption);
       Utils.assertNotNull("default timezone", this.defaultTimezone);
       return new SnowflakeStreamingIngestChannelInternal<>(
@@ -119,8 +105,6 @@ class SnowflakeStreamingIngestChannelFactory {
           this.channelSequencer,
           this.rowSequencer,
           this.owningClient,
-          this.encryptionKey,
-          this.encryptionKeyId,
           this.onErrorOption,
           this.defaultTimezone,
           this.owningClient.getParameterProvider().getBlobFormatVersion(),

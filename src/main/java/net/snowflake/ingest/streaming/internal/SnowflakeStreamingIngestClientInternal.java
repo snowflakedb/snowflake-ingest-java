@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -120,6 +121,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
+  // Stores encryptionkey per table: FullyQualifiedTableName -> EncryptionKey
+  private final Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable;
+
   // Performance testing related metrics
   MetricRegistry metrics;
   Histogram blobSizeHistogram; // Histogram for blob size after compression
@@ -176,6 +180,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.channelCache = new ChannelCache<>();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
+    this.encryptionKeysPerTable = new ConcurrentHashMap<>();
 
     if (!isTestMode) {
       // Setup request builder for communication with the server side
@@ -363,8 +368,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .setRowSequencer(response.getRowSequencer())
               .setChannelSequencer(response.getClientSequencer())
               .setOwningClient(this)
-              .setEncryptionKey(response.getEncryptionKey())
-              .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
               .setDefaultTimezone(request.getDefaultTimezone())
               .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
@@ -375,6 +378,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);
+
+      // Add encryption key to the client map for the table
+      if (response.getEncryptionKey() != null) {
+        this.encryptionKeysPerTable.put(
+            new FullyQualifiedTableName(
+                request.getDBName(), request.getSchemaName(), request.getTableName()),
+            new EncryptionKey(
+                response.getDBName(),
+                response.getSchemaName(),
+                response.getTableName(),
+                response.getEncryptionKey(),
+                response.getEncryptionKeyId()));
+      }
 
       return channel;
     } catch (IOException | IngestResponseException e) {
@@ -572,6 +588,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name,
         executionCount);
+
+    // Update encryption keys for the table given the response
+    for (EncryptionKey key : response.getEncryptionKeys()) {
+      this.encryptionKeysPerTable.put(
+          new FullyQualifiedTableName(
+              key.getDatabaseName(), key.getSchemaName(), key.getTableName()),
+          key);
+    }
 
     // We will retry any blob chunks that were rejected because internal Snowflake queues are full
     Set<ChunkRegisterStatus> queueFullChunks = new HashSet<>();
@@ -1035,5 +1059,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     if (!this.isTestMode) {
       HttpUtil.shutdownHttpConnectionManagerDaemonThread();
     }
+  }
+
+  public Map<FullyQualifiedTableName, EncryptionKey> getEncryptionKeysPerTable() {
+    return encryptionKeysPerTable;
   }
 }
