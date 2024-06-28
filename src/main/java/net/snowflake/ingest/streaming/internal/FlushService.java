@@ -422,8 +422,8 @@ class FlushService<T> {
               logger.logInfo(
                   "Creation of another blob is needed because of blob/chunk size limit or"
                       + " different encryption ids or different schema, client={}, table={},"
-                      + " blobSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
-                      + " encryptionId2={}, schema1={}, schema2={}",
+                      + " blobSize={}, chunkSize={}, nextChannelSize={},"
+                      + " schema1={}, schema2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
                   totalBufferSizeInBytes,
@@ -519,8 +519,6 @@ class FlushService<T> {
    * <p>When the blob size is larger than a certain threshold
    *
    * <p>When the chunk size is larger than a certain threshold
-   *
-   * <p>When the encryption key ids are not the same
    *
    * <p>When the schemas are not the same
    */

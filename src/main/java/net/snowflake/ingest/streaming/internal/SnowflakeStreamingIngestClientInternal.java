@@ -52,11 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
@@ -176,7 +172,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.channelCache = new ChannelCache<>();
     this.isClosed = false;
     this.requestBuilder = requestBuilder;
-    this.encryptionKeysPerTable = new HashMap<>();
+    this.encryptionKeysPerTable = new ConcurrentHashMap<>();
 
     if (!isTestMode) {
       // Setup request builder for communication with the server side
