@@ -451,13 +451,20 @@ class FlushService<T> {
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(blobPath, this.owningClient.flushLatency.time());
         }
+
+        // Copy encryptionKeysPerTable from owning client
+        Map<String, EncryptionKey> encryptionKeysPerTable = new ConcurrentHashMap<>();
+        this.owningClient
+                .getEncryptionKeysPerTable()
+                .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
+
         blobs.add(
             new Pair<>(
                 new BlobData<>(blobPath, blobData),
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData);
+                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData, encryptionKeysPerTable);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -537,14 +544,14 @@ class FlushService<T> {
    *     belongs to the same table. Will error if this is not the case
    * @return BlobMetadata for FlushService.upload
    */
-  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData)
+  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData, Map<String, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion, this.owningClient);
+    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion, encryptionKeysPerTable);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

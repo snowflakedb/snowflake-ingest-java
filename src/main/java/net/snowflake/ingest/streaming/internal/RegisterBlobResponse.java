@@ -43,11 +43,11 @@ class RegisterBlobResponse extends StreamingIngestResponse {
   }
 
   @JsonProperty("encryption_keys")
-  void setEncryptionKeysPerTable(List<EncryptionKey> encryptionKeys) {
+  void setEncryptionKeys(List<EncryptionKey> encryptionKeys) {
       this.encryptionKeys = encryptionKeys;
   }
 
-  List<EncryptionKey> getEncryptionKeysPerTable() {
+  List<EncryptionKey> getEncryptionKeys() {
       return this.encryptionKeys;
   }
 }

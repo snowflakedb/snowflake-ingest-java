@@ -68,7 +68,7 @@ class BlobBuilder {
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
-      SnowflakeStreamingIngestClientInternal<T> owningClient
+      Map<String, EncryptionKey> encryptionKeysPerTable
   ) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -84,7 +84,7 @@ class BlobBuilder {
 
       // Get encryption key from client
       String fullyQualifiedTableName = firstChannelFlushContext.getFullyQualifiedTableName();
-      EncryptionKey encryptionKey = owningClient.getEncryptionKeysPerTable().get(fullyQualifiedTableName);
+      EncryptionKey encryptionKey = encryptionKeysPerTable.get(fullyQualifiedTableName);
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
