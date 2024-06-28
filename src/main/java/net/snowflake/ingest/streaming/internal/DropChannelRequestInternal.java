@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.utils.Utils;
@@ -31,6 +32,7 @@ public class DropChannelRequestInternal implements StreamingIngestRequest {
   @JsonProperty("is_iceberg")
   private boolean isIceberg;
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("client_sequencer")
   Long clientSequencer;
 

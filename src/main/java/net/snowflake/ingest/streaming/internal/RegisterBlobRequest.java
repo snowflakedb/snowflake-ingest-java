@@ -4,14 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Class used to serialize the blob register request */
-@JsonInclude(Include.NON_NULL)
 public class RegisterBlobRequest implements StreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;

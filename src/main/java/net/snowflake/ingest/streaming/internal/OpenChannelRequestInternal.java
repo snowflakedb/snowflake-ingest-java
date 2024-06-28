@@ -5,14 +5,12 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize the {@link OpenChannelRequest} */
-@JsonInclude(Include.NON_NULL)
 public class OpenChannelRequestInternal implements StreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;
@@ -38,6 +36,7 @@ public class OpenChannelRequestInternal implements StreamingIngestRequest {
   @JsonProperty("is_iceberg")
   private boolean isIceberg;
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("offset_token")
   String offsetToken;
 

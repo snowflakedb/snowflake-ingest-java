@@ -9,20 +9,23 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize the client / channel configure request. */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ConfigureRequest implements StreamingIngestRequest {
   @JsonProperty("role")
   private String role;
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("database")
   private String database;
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("schema")
   private String schema;
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("table")
   private String table;
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("file_name")
   private String fileName;
 
