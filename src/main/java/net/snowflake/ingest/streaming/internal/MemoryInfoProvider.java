@@ -9,9 +9,6 @@ public interface MemoryInfoProvider {
   /** @return Max memory the JVM can allocate */
   long getMaxMemory();
 
-  /** @return Total allocated JVM memory so far */
-  long getTotalMemory();
-
   /** @return Free JVM memory */
   long getFreeMemory();
 }

@@ -16,7 +16,6 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
@@ -400,10 +399,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   Set<String> verifyInputColumns(
       Map<String, Object> row, InsertValidationResponse.InsertError error, int rowIndex) {
     // Map of unquoted column name -> original column name
-    Map<String, String> inputColNamesMap =
-        row.keySet().stream()
-            .collect(Collectors.toMap(LiteralQuoteUtils::unquoteColumnName, value -> value));
-
+    Set<String> originalKeys = row.keySet();
+    Map<String, String> inputColNamesMap = new HashMap<>();
+    originalKeys.forEach(
+        key -> inputColNamesMap.put(LiteralQuoteUtils.unquoteColumnName(key), key));
     // Check for extra columns in the row
     List<String> extraCols = new ArrayList<>();
     for (String columnName : inputColNamesMap.keySet()) {

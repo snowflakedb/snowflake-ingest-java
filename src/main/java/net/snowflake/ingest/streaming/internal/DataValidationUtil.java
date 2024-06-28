@@ -86,6 +86,18 @@ class DataValidationUtil {
     objectMapper.registerModule(module);
   }
 
+  // Caching the powers of 10 that are used for checking the range of numbers because computing them
+  // on-demand is expensive.
+  private static final BigDecimal[] POWER_10 = makePower10Table();
+
+  private static BigDecimal[] makePower10Table() {
+    BigDecimal[] power10 = new BigDecimal[Power10.sb16Size];
+    for (int i = 0; i < Power10.sb16Size; i++) {
+      power10[i] = new BigDecimal(Power10.sb16Table[i]);
+    }
+    return power10;
+  }
+
   /**
    * Validates and parses input as JSON. All types in the object tree must be valid variant types,
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
@@ -823,7 +835,11 @@ class DataValidationUtil {
 
   static void checkValueInRange(
       BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
-    if (bigDecimalValue.abs().compareTo(BigDecimal.TEN.pow(precision - scale)) >= 0) {
+    BigDecimal comparand =
+        (precision >= scale) && (precision - scale) < POWER_10.length
+            ? POWER_10[precision - scale]
+            : BigDecimal.TEN.pow(precision - scale);
+    if (bigDecimalValue.abs().compareTo(comparand) >= 0) {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           String.format(
