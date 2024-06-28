@@ -653,6 +653,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         this.name,
         executionCount);
 
+    // Update encryption keys for the table given the response
+    for (EncryptionKey key : response.getEncryptionKeys()) {
+      this.encryptionKeysPerTable.put(
+          key.getFullyQualifiedTableName(),
+          key
+      );
+    }
+
     // We will retry any blob chunks that were rejected because internal Snowflake queues are full
     Set<ChunkRegisterStatus> queueFullChunks = new HashSet<>();
     response

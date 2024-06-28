@@ -30,6 +30,18 @@ public class EncryptionKey {
         this.encryptionKeyId = encryptionKeyId;
     }
 
+    public EncryptionKey(EncryptionKey encryptionKey) {
+        this.databaseName = encryptionKey.databaseName;
+        this.schemaName = encryptionKey.schemaName;
+        this.tableName = encryptionKey.tableName;
+        this.blobTableMasterKey = encryptionKey.blobTableMasterKey;
+        this.encryptionKeyId = encryptionKey.encryptionKeyId;
+    }
+
+    public String getFullyQualifiedTableName() {
+        return String.format("%s.%s.%s", databaseName, schemaName, tableName);
+    }
+
     @JsonProperty("database")
     public String getDatabaseName() {
         return databaseName;
