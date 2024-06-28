@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.List;
 
 /** Response to the RegisterBlobRequest */
@@ -44,10 +43,10 @@ class RegisterBlobResponse extends StreamingIngestResponse {
 
   @JsonProperty("encryption_keys")
   void setEncryptionKeys(List<EncryptionKey> encryptionKeys) {
-      this.encryptionKeys = encryptionKeys;
+    this.encryptionKeys = encryptionKeys;
   }
 
   List<EncryptionKey> getEncryptionKeys() {
-      return this.encryptionKeys;
+    return this.encryptionKeys;
   }
 }

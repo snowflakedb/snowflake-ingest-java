@@ -4,67 +4,66 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Represents an encryption key for a table */
 public class EncryptionKey {
-    // Database name
-    private final String databaseName;
+  // Database name
+  private final String databaseName;
 
-    // Schema name
-    private final String schemaName;
+  // Schema name
+  private final String schemaName;
 
-    // Table Name
-    private final String tableName;
+  // Table Name
+  private final String tableName;
 
-    String blobTableMasterKey;
+  String blobTableMasterKey;
 
-    long encryptionKeyId;
+  long encryptionKeyId;
 
-    public EncryptionKey(
-            @JsonProperty("database") String databaseName,
-            @JsonProperty("schema") String schemaName,
-            @JsonProperty("table") String tableName,
-            @JsonProperty("encryption_key") String blobTableMasterKey,
-            @JsonProperty("encryption_key_id") long encryptionKeyId)
-    {
-        this.databaseName = databaseName;
-        this.schemaName = schemaName;
-        this.tableName = tableName;
-        this.blobTableMasterKey = blobTableMasterKey;
-        this.encryptionKeyId = encryptionKeyId;
-    }
+  public EncryptionKey(
+      @JsonProperty("database") String databaseName,
+      @JsonProperty("schema") String schemaName,
+      @JsonProperty("table") String tableName,
+      @JsonProperty("encryption_key") String blobTableMasterKey,
+      @JsonProperty("encryption_key_id") long encryptionKeyId) {
+    this.databaseName = databaseName;
+    this.schemaName = schemaName;
+    this.tableName = tableName;
+    this.blobTableMasterKey = blobTableMasterKey;
+    this.encryptionKeyId = encryptionKeyId;
+  }
 
-    public EncryptionKey(EncryptionKey encryptionKey) {
-        this.databaseName = encryptionKey.databaseName;
-        this.schemaName = encryptionKey.schemaName;
-        this.tableName = encryptionKey.tableName;
-        this.blobTableMasterKey = encryptionKey.blobTableMasterKey;
-        this.encryptionKeyId = encryptionKey.encryptionKeyId;
-    }
+  public EncryptionKey(EncryptionKey encryptionKey) {
+    this.databaseName = encryptionKey.databaseName;
+    this.schemaName = encryptionKey.schemaName;
+    this.tableName = encryptionKey.tableName;
+    this.blobTableMasterKey = encryptionKey.blobTableMasterKey;
+    this.encryptionKeyId = encryptionKey.encryptionKeyId;
+  }
 
-    public String getFullyQualifiedTableName() {
-        return String.format("%s.%s.%s", databaseName, schemaName, tableName);
-    }
+  public String getFullyQualifiedTableName() {
+    return String.format("%s.%s.%s", databaseName, schemaName, tableName);
+  }
 
-    @JsonProperty("database")
-    public String getDatabaseName() {
-        return databaseName;
-    }
+  @JsonProperty("database")
+  public String getDatabaseName() {
+    return databaseName;
+  }
 
-    @JsonProperty("schema")
-    public String getSchemaName() {
-        return schemaName;
-    }
+  @JsonProperty("schema")
+  public String getSchemaName() {
+    return schemaName;
+  }
 
-    @JsonProperty("table")
-    public String getTableName() {
-        return tableName;
-    }
+  @JsonProperty("table")
+  public String getTableName() {
+    return tableName;
+  }
 
-    @JsonProperty("encryption_key")
-    public String getEncryptionKey() {
-        return blobTableMasterKey;
-    }
+  @JsonProperty("encryption_key")
+  public String getEncryptionKey() {
+    return blobTableMasterKey;
+  }
 
-    @JsonProperty("encryption_key_id")
-    public long getEncryptionKeyId() {
-        return encryptionKeyId;
-    }
+  @JsonProperty("encryption_key_id")
+  public long getEncryptionKeyId() {
+    return encryptionKeyId;
+  }
 }

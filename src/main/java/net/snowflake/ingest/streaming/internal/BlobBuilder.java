@@ -68,8 +68,8 @@ class BlobBuilder {
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
-      Map<String, EncryptionKey> encryptionKeysPerTable
-  ) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
+      Map<String, EncryptionKey> encryptionKeysPerTable)
+      throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
@@ -104,8 +104,7 @@ class BlobBuilder {
         // TODO: address alignment for the header SNOW-557866
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(
-                paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
+            Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = computeMD5(encryptedCompressedChunkData, paddedChunkLength);
