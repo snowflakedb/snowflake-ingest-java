@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -459,8 +458,8 @@ class FlushService<T> {
         // Copy encryptionKeysPerTable from owning client
         Map<String, EncryptionKey> encryptionKeysPerTable = new ConcurrentHashMap<>();
         this.owningClient
-                .getEncryptionKeysPerTable()
-                .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
+            .getEncryptionKeysPerTable()
+            .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
 
         blobs.add(
             new Pair<>(
@@ -468,7 +467,8 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData, encryptionKeysPerTable);
+                        BlobMetadata blobMetadata =
+                            buildAndUpload(blobPath, blobData, encryptionKeysPerTable);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -548,14 +548,19 @@ class FlushService<T> {
    *     belongs to the same table. Will error if this is not the case
    * @return BlobMetadata for FlushService.upload
    */
-  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData, Map<String, EncryptionKey> encryptionKeysPerTable)
+  BlobMetadata buildAndUpload(
+      String blobPath,
+      List<List<ChannelData<T>>> blobData,
+      Map<String, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion, encryptionKeysPerTable);
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            blobPath, blobData, bdecVersion, encryptionKeysPerTable);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

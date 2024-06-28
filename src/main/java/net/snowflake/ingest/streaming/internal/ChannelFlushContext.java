@@ -22,11 +22,7 @@ class ChannelFlushContext {
   private final Long channelSequencer;
 
   ChannelFlushContext(
-      String name,
-      String dbName,
-      String schemaName,
-      String tableName,
-      Long channelSequencer) {
+      String name, String dbName, String schemaName, String tableName, Long channelSequencer) {
     this.name = name;
     this.fullyQualifiedName = String.format("%s.%s.%s.%s", dbName, schemaName, tableName, name);
     this.dbName = dbName;

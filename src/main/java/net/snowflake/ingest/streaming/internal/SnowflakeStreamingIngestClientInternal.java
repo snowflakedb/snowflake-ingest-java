@@ -386,15 +386,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
       // Add encryption key to the client map for the table
       if (response.getEncryptionKey() != null) {
-          this.encryptionKeysPerTable.put(
-              request.getFullyQualifiedTableName(),
-              new EncryptionKey(response.getDBName(),
+        this.encryptionKeysPerTable.put(
+            request.getFullyQualifiedTableName(),
+            new EncryptionKey(
+                response.getDBName(),
                 response.getSchemaName(),
                 response.getTableName(),
                 response.getEncryptionKey(),
-                response.getEncryptionKeyId()
-              )
-          );
+                response.getEncryptionKeyId()));
       }
 
       return channel;
@@ -655,10 +654,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     // Update encryption keys for the table given the response
     for (EncryptionKey key : response.getEncryptionKeys()) {
-      this.encryptionKeysPerTable.put(
-          key.getFullyQualifiedTableName(),
-          key
-      );
+      this.encryptionKeysPerTable.put(key.getFullyQualifiedTableName(), key);
     }
 
     // We will retry any blob chunks that were rejected because internal Snowflake queues are full
