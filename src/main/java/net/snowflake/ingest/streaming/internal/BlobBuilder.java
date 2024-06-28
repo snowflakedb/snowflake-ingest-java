@@ -84,13 +84,7 @@ class BlobBuilder {
 
       // Get encryption key from client
       String fullyQualifiedTableName = firstChannelFlushContext.getFullyQualifiedTableName();
-      Map<String, EncryptionKey> encryptionKeysPerTable = owningClient.getEncryptionKeysPerTable();
       EncryptionKey encryptionKey = owningClient.getEncryptionKeysPerTable().get(fullyQualifiedTableName);
-      
-      if (encryptionKey == null) {
-        throw new IllegalArgumentException(
-            "No encryption key found for table: " + fullyQualifiedTableName);
-      }
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
