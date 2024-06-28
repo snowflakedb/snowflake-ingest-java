@@ -18,11 +18,12 @@ public class EncryptionKey {
     long encryptionKeyId;
 
     public EncryptionKey(
-            String databaseName,
-            String schemaName,
-            String tableName,
-            String blobTableMasterKey,
-            long encryptionKeyId) {
+            @JsonProperty("database") String databaseName,
+            @JsonProperty("schema") String schemaName,
+            @JsonProperty("table") String tableName,
+            @JsonProperty("encryption_key") String blobTableMasterKey,
+            @JsonProperty("encryption_key_id") long encryptionKeyId)
+    {
         this.databaseName = databaseName;
         this.schemaName = schemaName;
         this.tableName = tableName;
