@@ -39,6 +39,7 @@ public class DropChannelRequestInternal implements StreamingIngestRequest {
     this.requestId = requestId;
     this.role = role;
     this.channel = request.getChannelName();
+    this.table = request.getTableName();
     this.database = request.getDBName();
     this.schema = request.getSchemaName();
     this.isIceberg = isIceberg;
