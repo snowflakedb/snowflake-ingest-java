@@ -1311,35 +1311,12 @@ public class SnowflakeStreamingIngestClientTest {
     client.registerBlobs(blobs);
     Assert.assertEquals(1, client.getEncryptionKeysPerTable().size());
     Assert.assertEquals(
-        "DB_STREAMINGINGEST",
-        client
-            .getEncryptionKeysPerTable()
-            .get(fqn)
-            .getDatabaseName());
+        "DB_STREAMINGINGEST", client.getEncryptionKeysPerTable().get(fqn).getDatabaseName());
+    Assert.assertEquals("PUBLIC", client.getEncryptionKeysPerTable().get(fqn).getSchemaName());
     Assert.assertEquals(
-        "PUBLIC",
-        client
-            .getEncryptionKeysPerTable()
-            .get(fqn)
-            .getSchemaName());
-    Assert.assertEquals(
-        "T_STREAMINGINGEST",
-        client
-            .getEncryptionKeysPerTable()
-            .get(fqn)
-            .getTableName());
-    Assert.assertEquals(
-        "key",
-        client
-            .getEncryptionKeysPerTable()
-            .get(fqn)
-            .getEncryptionKey());
-    Assert.assertEquals(
-        1234,
-        client
-            .getEncryptionKeysPerTable()
-            .get(fqn)
-            .getEncryptionKeyId());
+        "T_STREAMINGINGEST", client.getEncryptionKeysPerTable().get(fqn).getTableName());
+    Assert.assertEquals("key", client.getEncryptionKeysPerTable().get(fqn).getEncryptionKey());
+    Assert.assertEquals(1234, client.getEncryptionKeysPerTable().get(fqn).getEncryptionKeyId());
   }
 
   @Test
