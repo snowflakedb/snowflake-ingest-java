@@ -1306,37 +1306,39 @@ public class SnowflakeStreamingIngestClientTest {
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
 
+    FullyQualifiedTableName fqn =
+        new FullyQualifiedTableName("DB_STREAMINGINGEST", "PUBLIC", "T_STREAMINGINGEST");
     client.registerBlobs(blobs);
     Assert.assertEquals(1, client.getEncryptionKeysPerTable().size());
     Assert.assertEquals(
         "DB_STREAMINGINGEST",
         client
             .getEncryptionKeysPerTable()
-            .get("DB_STREAMINGINGEST.PUBLIC.T_STREAMINGINGEST")
+            .get(fqn)
             .getDatabaseName());
     Assert.assertEquals(
         "PUBLIC",
         client
             .getEncryptionKeysPerTable()
-            .get("DB_STREAMINGINGEST.PUBLIC.T_STREAMINGINGEST")
+            .get(fqn)
             .getSchemaName());
     Assert.assertEquals(
         "T_STREAMINGINGEST",
         client
             .getEncryptionKeysPerTable()
-            .get("DB_STREAMINGINGEST.PUBLIC.T_STREAMINGINGEST")
+            .get(fqn)
             .getTableName());
     Assert.assertEquals(
         "key",
         client
             .getEncryptionKeysPerTable()
-            .get("DB_STREAMINGINGEST.PUBLIC.T_STREAMINGINGEST")
+            .get(fqn)
             .getEncryptionKey());
     Assert.assertEquals(
         1234,
         client
             .getEncryptionKeysPerTable()
-            .get("DB_STREAMINGINGEST.PUBLIC.T_STREAMINGINGEST")
+            .get(fqn)
             .getEncryptionKeyId());
   }
 
@@ -1599,10 +1601,11 @@ public class SnowflakeStreamingIngestClientTest {
             .build();
     client.openChannel(request);
 
-    Map<String, EncryptionKey> keys = client.getEncryptionKeysPerTable();
+    FullyQualifiedTableName fqn = new FullyQualifiedTableName("db", "schema", "table");
+    Map<FullyQualifiedTableName, EncryptionKey> keys = client.getEncryptionKeysPerTable();
     Assert.assertEquals(1, keys.size());
-    Assert.assertTrue(keys.containsKey("db.schema.table"));
-    Assert.assertEquals("key", keys.get("db.schema.table").getEncryptionKey());
-    Assert.assertEquals(1, keys.get("db.schema.table").getEncryptionKeyId());
+    Assert.assertTrue(keys.containsKey(fqn));
+    Assert.assertEquals("key", keys.get(fqn).getEncryptionKey());
+    Assert.assertEquals(1, keys.get(fqn).getEncryptionKeyId());
   }
 }

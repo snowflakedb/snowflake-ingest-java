@@ -80,7 +80,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     StreamingIngestStage stage;
     ParameterProvider parameterProvider;
-    Map<String, EncryptionKey> encryptionKeysPerTable;
+    Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable;
     RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
@@ -94,13 +94,15 @@ public class FlushServiceTest {
 
       encryptionKeysPerTable = new ConcurrentHashMap<>();
       encryptionKeysPerTable.put(
-          "db1.schema1.table1", new EncryptionKey("db1", "schema1", "table1", "key1", 1234L));
+          new FullyQualifiedTableName("db1", "schema1", "table1"),
+          new EncryptionKey("db1", "schema1", "table1", "key1", 1234L));
       encryptionKeysPerTable.put(
-          "db2.schema1.table2", new EncryptionKey("db2", "schema1", "table2", "key1", 1234L));
+          new FullyQualifiedTableName("db2", "schema1", "table2"),
+          new EncryptionKey("db2", "schema1", "table2", "key1", 1234L));
 
       for (int i = 0; i <= 9999; i++) {
         encryptionKeysPerTable.put(
-            String.format("db1.PUBLIC.table%d", i),
+            new FullyQualifiedTableName("db1", "PUBLIC", String.format("table%d", i)),
             new EncryptionKey("db1", "PUBLIC", String.format("table%d", i), "key1", 1234L));
       }
 
