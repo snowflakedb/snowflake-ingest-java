@@ -248,7 +248,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       long javaSerializationTotalRowCount) {
     long parquetTotalRowsWritten = writer.getRowsWritten();
 
-    List<Long> parquetFooterRowsPerBlock = writer.getRowCountFromFooter();
+    List<Long> parquetFooterRowsPerBlock = writer.getRowCountsFromFooter();
     long parquetTotalRowsInFooter = 0;
     for (long perBlockCount : parquetFooterRowsPerBlock) parquetTotalRowsInFooter += perBlockCount;
 
