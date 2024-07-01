@@ -68,7 +68,7 @@ class BlobBuilder {
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
-      Map<String, EncryptionKey> encryptionKeysPerTable)
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -83,8 +83,12 @@ class BlobBuilder {
           channelsDataPerTable.get(0).getChannelContext();
 
       // Get encryption key from client
-      String fullyQualifiedTableName = firstChannelFlushContext.getFullyQualifiedTableName();
-      EncryptionKey encryptionKey = encryptionKeysPerTable.get(fullyQualifiedTableName);
+      EncryptionKey encryptionKey =
+          encryptionKeysPerTable.get(
+              new FullyQualifiedTableName(
+                  firstChannelFlushContext.getDbName(),
+                  firstChannelFlushContext.getSchemaName(),
+                  firstChannelFlushContext.getTableName()));
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =

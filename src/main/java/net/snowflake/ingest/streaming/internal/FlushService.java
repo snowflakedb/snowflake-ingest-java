@@ -456,7 +456,8 @@ class FlushService<T> {
         }
 
         // Copy encryptionKeysPerTable from owning client
-        Map<String, EncryptionKey> encryptionKeysPerTable = new ConcurrentHashMap<>();
+        Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable =
+            new ConcurrentHashMap<>();
         this.owningClient
             .getEncryptionKeysPerTable()
             .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
@@ -551,7 +552,7 @@ class FlushService<T> {
   BlobMetadata buildAndUpload(
       String blobPath,
       List<List<ChannelData<T>>> blobData,
-      Map<String, EncryptionKey> encryptionKeysPerTable)
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {

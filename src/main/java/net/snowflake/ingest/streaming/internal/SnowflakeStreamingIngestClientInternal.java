@@ -52,7 +52,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
@@ -121,7 +126,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   private final boolean isTestMode;
 
   // Stores encryptionkey per table: FullyQualifiedTableName -> EncryptionKey
-  private final Map<String, EncryptionKey> encryptionKeysPerTable;
+  private final Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable;
 
   // Performance testing related metrics
   MetricRegistry metrics;
@@ -387,7 +392,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       // Add encryption key to the client map for the table
       if (response.getEncryptionKey() != null) {
         this.encryptionKeysPerTable.put(
-            request.getFullyQualifiedTableName(),
+            new FullyQualifiedTableName(
+                request.getDBName(), request.getSchemaName(), request.getTableName()),
             new EncryptionKey(
                 response.getDBName(),
                 response.getSchemaName(),
@@ -654,7 +660,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     // Update encryption keys for the table given the response
     for (EncryptionKey key : response.getEncryptionKeys()) {
-      this.encryptionKeysPerTable.put(key.getFullyQualifiedTableName(), key);
+      this.encryptionKeysPerTable.put(
+          new FullyQualifiedTableName(
+              key.getDatabaseName(), key.getSchemaName(), key.getTableName()),
+          key);
     }
 
     // We will retry any blob chunks that were rejected because internal Snowflake queues are full
@@ -1112,7 +1121,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     }
   }
 
-  public Map<String, EncryptionKey> getEncryptionKeysPerTable() {
+  public Map<FullyQualifiedTableName, EncryptionKey> getEncryptionKeysPerTable() {
     return encryptionKeysPerTable;
   }
 }
