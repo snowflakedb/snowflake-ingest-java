@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -422,15 +421,13 @@ class FlushService<T> {
               logger.logInfo(
                   "Creation of another blob is needed because of blob/chunk size limit or"
                       + " different encryption ids or different schema, client={}, table={},"
-                      + " blobSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
-                      + " encryptionId2={}, schema1={}, schema2={}",
+                      + " blobSize={}, chunkSize={}, nextChannelSize={},"
+                      + " schema1={}, schema2={}",
                   this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
                   totalBufferSizeInBytes,
                   totalBufferSizePerTableInBytes,
                   channelData.getBufferSize(),
-                  channelData.getChannelContext().getEncryptionKeyId(),
-                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId(),
                   channelData.getColumnEps().keySet(),
                   channelsDataPerTable.get(idx - 1).getColumnEps().keySet());
               break;
@@ -457,13 +454,22 @@ class FlushService<T> {
         if (this.owningClient.flushLatency != null) {
           latencyTimerContextMap.putIfAbsent(blobPath, this.owningClient.flushLatency.time());
         }
+
+        // Copy encryptionKeysPerTable from owning client
+        Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable =
+            new ConcurrentHashMap<>();
+        this.owningClient
+            .getEncryptionKeysPerTable()
+            .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
+
         blobs.add(
             new Pair<>(
                 new BlobData<>(blobPath, blobData),
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData);
+                        BlobMetadata blobMetadata =
+                            buildAndUpload(blobPath, blobData, encryptionKeysPerTable);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -522,8 +528,6 @@ class FlushService<T> {
    *
    * <p>When the chunk size is larger than a certain threshold
    *
-   * <p>When the encryption key ids are not the same
-   *
    * <p>When the schemas are not the same
    */
   private boolean shouldStopProcessing(
@@ -534,9 +538,6 @@ class FlushService<T> {
     return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
         || totalBufferSizePerTableInBytes + current.getBufferSize()
             > this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()
-        || !Objects.equals(
-            current.getChannelContext().getEncryptionKeyId(),
-            prev.getChannelContext().getEncryptionKeyId())
         || !current.getColumnEps().keySet().equals(prev.getColumnEps().keySet());
   }
 
@@ -548,14 +549,19 @@ class FlushService<T> {
    *     belongs to the same table. Will error if this is not the case
    * @return BlobMetadata for FlushService.upload
    */
-  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData)
+  BlobMetadata buildAndUpload(
+      String blobPath,
+      List<List<ChannelData<T>>> blobData,
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion);
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            blobPath, blobData, bdecVersion, encryptionKeysPerTable);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
