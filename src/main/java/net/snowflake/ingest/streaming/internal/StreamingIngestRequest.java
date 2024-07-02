@@ -8,4 +8,6 @@ package net.snowflake.ingest.streaming.internal;
  * The StreamingIngestRequest interface is a marker interface used for type safety in the {@link
  * SnowflakeServiceClient} for streaming ingest API request.
  */
-public interface StreamingIngestRequest {}
+interface StreamingIngestRequest {
+  String getStringForLogging();
+}

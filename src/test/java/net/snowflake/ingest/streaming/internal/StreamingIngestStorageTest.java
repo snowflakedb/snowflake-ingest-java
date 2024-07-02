@@ -284,7 +284,7 @@ public class StreamingIngestStorageTest {
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
     StorageManager<?> storageManager =
-        new InternalStageManager(true, mockClientInternal, snowflakeServiceClient);
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
 
     ParameterProvider parameterProvider = new ParameterProvider(false);
     StreamingIngestStorage<?> stage =
@@ -328,7 +328,7 @@ public class StreamingIngestStorageTest {
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
     StorageManager storageManager =
-        new InternalStageManager(true, mockClientInternal, snowflakeServiceClient);
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -341,7 +341,7 @@ public class StreamingIngestStorageTest {
             storageManager,
             "clientName",
             (StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge) null,
-            new ConfigureRequest(mockClientInternal.getRole()),
+            new ClientConfigureRequest(mockClientInternal.getRole()),
             1);
 
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
@@ -374,7 +374,7 @@ public class StreamingIngestStorageTest {
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
     StorageManager storageManager =
-        new InternalStageManager(true, mockClientInternal, snowflakeServiceClient);
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 

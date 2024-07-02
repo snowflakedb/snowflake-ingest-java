@@ -6,6 +6,8 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.stream.Collectors;
+import net.snowflake.ingest.utils.Utils;
 
 /** Class to deserialize a request from a channel status request */
 class ChannelsStatusRequest implements StreamingIngestRequest {
@@ -98,5 +100,22 @@ class ChannelsStatusRequest implements StreamingIngestRequest {
   @JsonProperty("channels")
   List<ChannelStatusRequestDTO> getChannels() {
     return channels;
+  }
+
+  @Override
+  public String getStringForLogging() {
+    return String.format(
+        "ChannelsStatusRequest(requestId=%s, role=%s, channels=[%s])",
+        requestId,
+        role,
+        channels.stream()
+            .map(
+                r ->
+                    Utils.getFullyQualifiedChannelName(
+                        r.getDatabaseName(),
+                        r.getSchemaName(),
+                        r.getTableName(),
+                        r.getChannelName()))
+            .collect(Collectors.joining(", ")));
   }
 }

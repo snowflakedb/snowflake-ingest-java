@@ -9,6 +9,7 @@ import java.util.Calendar;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
@@ -18,8 +19,11 @@ class ExternalVolumeManager<T> implements StorageManager<T> {
   // Reference to the external volume per table
   private final Map<String, StreamingIngestStorage<T>> externalVolumeMap;
 
-  // Reference to the owning client
-  private final SnowflakeStreamingIngestClientInternal<T> owningClient;
+  // name of the owning client
+  private final String clientName;
+
+  // role of the owning client
+  private final String role;
 
   // Reference to the Snowflake service client used for configure calls
   private final SnowflakeServiceClient snowflakeServiceClient;
@@ -31,22 +35,29 @@ class ExternalVolumeManager<T> implements StorageManager<T> {
    * Constructor for ExternalVolumeManager
    *
    * @param isTestMode whether the manager in test mode
-   * @param client the owning client
+   * @param role the role of the client
+   * @param clientName the name of the client
    * @param snowflakeServiceClient the Snowflake service client used for configure calls
    */
   ExternalVolumeManager(
       boolean isTestMode,
-      SnowflakeStreamingIngestClientInternal<T> client,
+      String role,
+      String clientName,
       SnowflakeServiceClient snowflakeServiceClient) {
-    this.owningClient = client;
+    this.role = role;
+    this.clientName = clientName;
     this.snowflakeServiceClient = snowflakeServiceClient;
     this.externalVolumeMap = new ConcurrentHashMap<>();
-    this.clientPrefix =
-        isTestMode
-            ? "testPrefix"
-            : this.snowflakeServiceClient
-                .clientConfigure(new ConfigureRequest(client.getRole()))
-                .getClientPrefix();
+    try {
+      this.clientPrefix =
+          isTestMode
+              ? "testPrefix"
+              : this.snowflakeServiceClient
+                  .clientConfigure(new ClientConfigureRequest(role))
+                  .getClientPrefix();
+    } catch (IngestResponseException | IOException e) {
+      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
+    }
   }
 
   /**
@@ -89,12 +100,12 @@ class ExternalVolumeManager<T> implements StorageManager<T> {
           fullyQualifiedTableName,
           new StreamingIngestStorage<>(
               this,
-              this.owningClient.getName(),
+              this.clientName,
               fileLocationInfo,
-              new ConfigureRequest(this.owningClient.getRole(), dbName, schemaName, tableName),
+              new ChannelConfigureRequest(this.role, dbName, schemaName, tableName),
               DEFAULT_MAX_UPLOAD_RETRIES));
     } catch (SnowflakeSQLException | IOException err) {
-      throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
+      throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STORAGE);
     }
   }
 
@@ -106,7 +117,11 @@ class ExternalVolumeManager<T> implements StorageManager<T> {
    */
   @Override
   public ConfigureResponse configure(ConfigureRequest request) {
-    return this.snowflakeServiceClient.channelConfigure(request);
+    try {
+      return this.snowflakeServiceClient.channelConfigure((ChannelConfigureRequest) request);
+    } catch (IngestResponseException | IOException e) {
+      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
+    }
   }
 
   // TODO: SNOW-1502887 Blob path generation for iceberg table

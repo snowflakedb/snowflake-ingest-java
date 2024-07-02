@@ -417,7 +417,13 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData);
+                        // Get the channel flush context from the first channel in the blob. This
+                        // only matters when the client is in Iceberg mode. In Iceberg mode, all
+                        // channels in the blob belong to the same table.
+                        ChannelFlushContext channelFlushContext =
+                            blobData.get(0).get(0).getChannelContext();
+                        BlobMetadata blobMetadata =
+                            buildAndUpload(blobPath, blobData, channelFlushContext);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -500,9 +506,11 @@ class FlushService<T> {
    * @param blobPath Path of the destination blob in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
+   * @param channelFlushContext the channel flush context
    * @return BlobMetadata for FlushService.upload
    */
-  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData)
+  BlobMetadata buildAndUpload(
+      String blobPath, List<List<ChannelData<T>>> blobData, ChannelFlushContext channelFlushContext)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
@@ -519,7 +527,7 @@ class FlushService<T> {
     blob.blobStats.setBuildDurationMs(buildContext);
 
     return upload(
-        this.storageManager.getStorage(blobData.get(0).get(0).getChannelContext()),
+        this.storageManager.getStorage(channelFlushContext),
         blobPath,
         blob.blobBytes,
         blob.chunksMetadataList,

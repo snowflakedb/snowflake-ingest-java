@@ -10,7 +10,7 @@ import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize the {@link DropChannelRequest} */
-public class DropChannelRequestInternal implements StreamingIngestRequest {
+class DropChannelRequestInternal implements StreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;
 
@@ -37,17 +37,22 @@ public class DropChannelRequestInternal implements StreamingIngestRequest {
   Long clientSequencer;
 
   DropChannelRequestInternal(
-      String requestId, String role, DropChannelRequest request, boolean isIceberg) {
+      String requestId,
+      String role,
+      String database,
+      String schema,
+      String table,
+      String channel,
+      Long clientSequencer,
+      boolean isIceberg) {
     this.requestId = requestId;
     this.role = role;
-    this.channel = request.getChannelName();
-    this.table = request.getTableName();
-    this.database = request.getDBName();
-    this.schema = request.getSchemaName();
+    this.database = database;
+    this.schema = schema;
+    this.table = table;
+    this.channel = channel;
+    this.clientSequencer = clientSequencer;
     this.isIceberg = isIceberg;
-    if (request instanceof DropChannelVersionRequest) {
-      this.clientSequencer = ((DropChannelVersionRequest) request).getClientSequencer();
-    }
   }
 
   String getRequestId() {
@@ -84,5 +89,17 @@ public class DropChannelRequestInternal implements StreamingIngestRequest {
 
   String getFullyQualifiedTableName() {
     return Utils.getFullyQualifiedTableName(database, schema, table);
+  }
+
+  @Override
+  public String getStringForLogging() {
+    return String.format(
+        "DropChannelRequestInternal(requestId=%s, role=%s, channel=%s, isIceberg=%s,"
+            + " clientSequencer=%s)",
+        requestId,
+        role,
+        Utils.getFullyQualifiedChannelName(database, schema, table, channel),
+        isIceberg,
+        clientSequencer);
   }
 }

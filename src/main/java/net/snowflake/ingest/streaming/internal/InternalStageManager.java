@@ -13,6 +13,7 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
@@ -38,29 +39,26 @@ class InternalStageManager<T> implements StorageManager<T> {
    * Constructor for InternalStageManager
    *
    * @param isTestMode whether the manager in test mode
-   * @param client the owning client
+   * @param role the role of the client
+   * @param clientName the name of the client
    * @param snowflakeServiceClient the Snowflake service client to use for configure calls
    */
   InternalStageManager(
       boolean isTestMode,
-      SnowflakeStreamingIngestClientInternal<T> client,
+      String role,
+      String clientName,
       SnowflakeServiceClient snowflakeServiceClient) {
     this.snowflakeServiceClient = snowflakeServiceClient;
     this.isTestMode = isTestMode;
     this.counter = new AtomicLong(0);
     try {
       if (!isTestMode) {
-        ConfigureRequest request = new ConfigureRequest(client.getRole());
-        ConfigureResponse response =
-            this.snowflakeServiceClient.clientConfigure(new ConfigureRequest(client.getRole()));
+        ClientConfigureRequest request = new ClientConfigureRequest(role);
+        ConfigureResponse response = this.snowflakeServiceClient.clientConfigure(request);
         this.clientPrefix = response.getClientPrefix();
         this.targetStage =
             new StreamingIngestStorage<>(
-                this,
-                client.getName(),
-                response.getStageLocation(),
-                request,
-                DEFAULT_MAX_UPLOAD_RETRIES);
+                this, clientName, response.getStageLocation(), request, DEFAULT_MAX_UPLOAD_RETRIES);
       } else {
         this.clientPrefix = "testPrefix";
         this.targetStage =
@@ -68,11 +66,13 @@ class InternalStageManager<T> implements StorageManager<T> {
                 this,
                 "testClient",
                 (StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge) null,
-                new ConfigureRequest(client.getRole()),
+                new ClientConfigureRequest(role),
                 DEFAULT_MAX_UPLOAD_RETRIES);
       }
-    } catch (SnowflakeSQLException | IOException err) {
-      throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
+    } catch (IngestResponseException | IOException e) {
+      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
+    } catch (SnowflakeSQLException e) {
+      throw new SFException(e, ErrorCode.UNABLE_TO_CONNECT_TO_STORAGE, e.getMessage());
     }
   }
 
@@ -110,7 +110,11 @@ class InternalStageManager<T> implements StorageManager<T> {
    */
   @Override
   public ConfigureResponse configure(ConfigureRequest request) {
-    return snowflakeServiceClient.clientConfigure(request);
+    try {
+      return snowflakeServiceClient.clientConfigure((ClientConfigureRequest) request);
+    } catch (IngestResponseException | IOException e) {
+      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
+    }
   }
 
   /**

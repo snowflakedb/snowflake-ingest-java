@@ -54,8 +54,8 @@ public class StreamingIngestUtilsIT {
                 "testJWTRetries"));
 
     // build payload
-    ConfigureRequest request =
-        new ConfigureRequest(
+    ClientConfigureRequest request =
+        new ClientConfigureRequest(
             !TestUtils.getRole().isEmpty() && !TestUtils.getRole().equals("DEFAULT_ROLE")
                 ? TestUtils.getRole()
                 : null);

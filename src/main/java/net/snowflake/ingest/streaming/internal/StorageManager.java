@@ -43,7 +43,10 @@ interface StorageManager<T> {
    */
   String generateBlobPath();
 
-  /** Decrement the blob sequencer */
+  /**
+   * Decrement the blob sequencer, this method is needed to prevent gap between file name sequencer.
+   * See {@link StorageManager#generateBlobPath()} for more details.
+   */
   void decrementBlobSequencer();
 
   /**

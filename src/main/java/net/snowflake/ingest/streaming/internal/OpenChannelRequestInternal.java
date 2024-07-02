@@ -11,7 +11,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize the {@link OpenChannelRequest} */
-public class OpenChannelRequestInternal implements StreamingIngestRequest {
+class OpenChannelRequestInternal implements StreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;
 
@@ -43,20 +43,22 @@ public class OpenChannelRequestInternal implements StreamingIngestRequest {
   OpenChannelRequestInternal(
       String requestId,
       String role,
-      OpenChannelRequest request,
+      String database,
+      String schema,
+      String table,
+      String channel,
       Constants.WriteMode writeMode,
+      String offsetToken,
       boolean isIceberg) {
     this.requestId = requestId;
     this.role = role;
-    this.channel = request.getChannelName();
-    this.table = request.getTableName();
-    this.database = request.getDBName();
-    this.schema = request.getSchemaName();
+    this.database = database;
+    this.schema = schema;
+    this.table = table;
+    this.channel = channel;
     this.writeMode = writeMode.name();
-    if (request.isOffsetTokenProvided()) {
-      this.offsetToken = request.getOffsetToken();
-    }
     this.isIceberg = isIceberg;
+    this.offsetToken = offsetToken;
   }
 
   String getRequestId() {
@@ -97,5 +99,18 @@ public class OpenChannelRequestInternal implements StreamingIngestRequest {
 
   String getFullyQualifiedTableName() {
     return Utils.getFullyQualifiedTableName(database, schema, table);
+  }
+
+  @Override
+  public String getStringForLogging() {
+    return String.format(
+        "OpenChannelRequestInternal(requestId=%s, role=%s, channel=%s, writeMode=%s, isIceberg=%s,"
+            + " offsetToken=%s)",
+        requestId,
+        role,
+        Utils.getFullyQualifiedChannelName(database, schema, table, channel),
+        writeMode,
+        isIceberg,
+        offsetToken);
   }
 }

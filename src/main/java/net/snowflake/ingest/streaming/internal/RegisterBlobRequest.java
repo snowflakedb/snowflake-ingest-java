@@ -6,9 +6,10 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** Class used to serialize the blob register request */
-public class RegisterBlobRequest implements StreamingIngestRequest {
+class RegisterBlobRequest implements StreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;
 
@@ -34,5 +35,14 @@ public class RegisterBlobRequest implements StreamingIngestRequest {
 
   List<BlobMetadata> getBlobs() {
     return blobs;
+  }
+
+  @Override
+  public String getStringForLogging() {
+    return String.format(
+        "RegisterBlobRequest(requestId=%s, role=%s, blobs=[%s])",
+        requestId,
+        role,
+        blobs.stream().map(BlobMetadata::getPath).collect(Collectors.joining(", ")));
   }
 }

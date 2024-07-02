@@ -53,49 +53,52 @@ class SnowflakeServiceClient {
   }
 
   /**
-   * Configures the client given a {@link ConfigureRequest}.
+   * Configures the client given a {@link ClientConfigureRequest}.
    *
    * @param request the client configuration request
    * @return the response from the configuration request
    */
-  ConfigureResponse clientConfigure(ConfigureRequest request) {
+  ConfigureResponse clientConfigure(ClientConfigureRequest request)
+      throws IngestResponseException, IOException {
     ConfigureResponse response =
         executeApiRequestWithRetries(
-            request,
             ConfigureResponse.class,
+            request,
             CLIENT_CONFIGURE_ENDPOINT,
             "client configure",
-            STREAMING_CLIENT_CONFIGURE,
-            ErrorCode.CONFIGURE_FAILURE);
+            STREAMING_CLIENT_CONFIGURE);
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
-      logger.logDebug("Client configure request failed, message={}", response.getMessage());
-      throw new SFException(ErrorCode.CONFIGURE_FAILURE, response.getMessage());
+      logger.logDebug(
+          "Client configure request failed, request={}, message={}",
+          request.getStringForLogging(),
+          response.getMessage());
+      throw new SFException(ErrorCode.CLIENT_CONFIGURE_FAILURE, response.getMessage());
     }
     return response;
   }
 
   /**
-   * Configures the channel given a {@link ConfigureRequest}.
+   * Configures a storage given a {@link ChannelConfigureRequest}.
    *
    * @param request the channel configuration request
    * @return the response from the configuration request
    */
-  ConfigureResponse channelConfigure(ConfigureRequest request) {
+  ConfigureResponse channelConfigure(ChannelConfigureRequest request)
+      throws IngestResponseException, IOException {
     ConfigureResponse response =
         executeApiRequestWithRetries(
-            request,
             ConfigureResponse.class,
+            request,
             CHANNEL_CONFIGURE_ENDPOINT,
             "channel configure",
-            STREAMING_CHANNEL_CONFIGURE,
-            ErrorCode.CONFIGURE_FAILURE);
+            STREAMING_CHANNEL_CONFIGURE);
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       logger.logDebug(
-          "Channel configure request failed, table={}, message={}",
-          request.getFullyQualifiedTableName(),
+          "Channel configure request failed, request={}, response={}",
+          request.getStringForLogging(),
           response.getMessage());
-      throw new SFException(ErrorCode.CONFIGURE_FAILURE, response.getMessage());
+      throw new SFException(ErrorCode.CHANNEL_CONFIGURE_FAILURE, response.getMessage());
     }
     return response;
   }
@@ -106,20 +109,20 @@ class SnowflakeServiceClient {
    * @param request the open channel request
    * @return the response from the open channel request
    */
-  OpenChannelResponse openChannel(OpenChannelRequestInternal request) {
+  OpenChannelResponse openChannel(OpenChannelRequestInternal request)
+      throws IngestResponseException, IOException {
     OpenChannelResponse response =
         executeApiRequestWithRetries(
-            request,
             OpenChannelResponse.class,
+            request,
             OPEN_CHANNEL_ENDPOINT,
             "open channel",
-            STREAMING_OPEN_CHANNEL,
-            ErrorCode.OPEN_CHANNEL_FAILURE);
+            STREAMING_OPEN_CHANNEL);
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       logger.logDebug(
-          "Open channel request failed, table={}, message={}",
-          request.getFullyQualifiedTableName(),
+          "Open channel request failed, request={}, response={}",
+          request.getStringForLogging(),
           response.getMessage());
       throw new SFException(ErrorCode.OPEN_CHANNEL_FAILURE, response.getMessage());
     }
@@ -132,20 +135,20 @@ class SnowflakeServiceClient {
    * @param request the drop channel request
    * @return the response from the drop channel request
    */
-  DropChannelResponse dropChannel(DropChannelRequestInternal request) {
+  DropChannelResponse dropChannel(DropChannelRequestInternal request)
+      throws IngestResponseException, IOException {
     DropChannelResponse response =
         executeApiRequestWithRetries(
-            request,
             DropChannelResponse.class,
+            request,
             DROP_CHANNEL_ENDPOINT,
             "drop channel",
-            STREAMING_DROP_CHANNEL,
-            ErrorCode.DROP_CHANNEL_FAILURE);
+            STREAMING_DROP_CHANNEL);
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       logger.logDebug(
-          "Drop channel request failed, table={}, message={}",
-          request.getFullyQualifiedTableName(),
+          "Drop channel request failed, request={}, response={}",
+          request.getStringForLogging(),
           response.getMessage());
       throw new SFException(ErrorCode.DROP_CHANNEL_FAILURE, response.getMessage());
     }
@@ -158,18 +161,21 @@ class SnowflakeServiceClient {
    * @param request the channel status request
    * @return the response from the channel status request
    */
-  ChannelsStatusResponse channelStatus(ChannelsStatusRequest request) {
+  ChannelsStatusResponse channelStatus(ChannelsStatusRequest request)
+      throws IngestResponseException, IOException {
     ChannelsStatusResponse response =
         executeApiRequestWithRetries(
-            request,
             ChannelsStatusResponse.class,
+            request,
             CHANNEL_STATUS_ENDPOINT,
             "channel status",
-            STREAMING_CHANNEL_STATUS,
-            ErrorCode.CHANNEL_STATUS_FAILURE);
+            STREAMING_CHANNEL_STATUS);
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
-      logger.logDebug("Channel status request failed, message={}", response.getMessage());
+      logger.logDebug(
+          "Channel status request failed, request={}, response={}",
+          request.getStringForLogging(),
+          response.getMessage());
       throw new SFException(ErrorCode.CHANNEL_STATUS_FAILURE, response.getMessage());
     }
     return response;
@@ -182,19 +188,19 @@ class SnowflakeServiceClient {
    * @param executionCount the number of times the request has been executed, used for logging
    * @return the response from the register blob request
    */
-  RegisterBlobResponse registerBlob(RegisterBlobRequest request, final int executionCount) {
+  RegisterBlobResponse registerBlob(RegisterBlobRequest request, final int executionCount)
+      throws IngestResponseException, IOException {
     RegisterBlobResponse response =
         executeApiRequestWithRetries(
-            request,
             RegisterBlobResponse.class,
+            request,
             REGISTER_BLOB_ENDPOINT,
             "register blob",
-            STREAMING_REGISTER_BLOB,
-            ErrorCode.REGISTER_BLOB_FAILURE);
+            STREAMING_REGISTER_BLOB);
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       logger.logDebug(
-          "Register blob request failed for blob={}, message={}, executionCount={}",
+          "Register blob request, request={}",
           request.getBlobs().stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
           response.getMessage(),
           executionCount);
@@ -204,23 +210,13 @@ class SnowflakeServiceClient {
   }
 
   private <T extends StreamingIngestResponse> T executeApiRequestWithRetries(
-      StreamingIngestRequest request,
       Class<T> responseClass,
+      StreamingIngestRequest request,
       String endpoint,
       String operation,
-      ServiceResponseHandler.ApiName apiName,
-      ErrorCode errorCode) {
-    try {
-      return executeWithRetries(
-          responseClass,
-          endpoint,
-          request,
-          operation,
-          apiName,
-          this.httpClient,
-          this.requestBuilder);
-    } catch (IngestResponseException | IOException e) {
-      throw new SFException(e, errorCode, e.getMessage());
-    }
+      ServiceResponseHandler.ApiName apiName)
+      throws IngestResponseException, IOException {
+    return executeWithRetries(
+        responseClass, endpoint, request, operation, apiName, this.httpClient, this.requestBuilder);
   }
 }

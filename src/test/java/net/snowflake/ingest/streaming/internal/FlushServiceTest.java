@@ -108,7 +108,7 @@ public class FlushServiceTest {
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
-      storageManager = Mockito.spy(new InternalStageManager<>(true, client, null));
+      storageManager = Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
       Mockito.when(storageManager.getStorage(ArgumentMatchers.any())).thenReturn(storage);
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       channelCache = new ChannelCache<>();
@@ -127,7 +127,8 @@ public class FlushServiceTest {
 
     BlobMetadata buildAndUpload() throws Exception {
       List<List<ChannelData<T>>> blobData = Collections.singletonList(channelData);
-      return flushService.buildAndUpload("file_name", blobData);
+      return flushService.buildAndUpload(
+          "file_name", blobData, blobData.get(0).get(0).getChannelContext());
     }
 
     abstract SnowflakeStreamingIngestChannelInternal<T> createChannel(
@@ -508,7 +509,8 @@ public class FlushServiceTest {
 
     // Force = true flushes
     flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
+    Mockito.verify(flushService, Mockito.atLeast(2))
+        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   @Test
@@ -557,7 +559,8 @@ public class FlushServiceTest {
 
     // Force = true flushes
     flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2)).buildAndUpload(Mockito.any(), Mockito.any());
+    Mockito.verify(flushService, Mockito.atLeast(2))
+        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   @Test
@@ -591,7 +594,8 @@ public class FlushServiceTest {
 
     // Force = true flushes
     flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.times(2)).buildAndUpload(Mockito.any(), Mockito.any());
+    Mockito.verify(flushService, Mockito.times(2))
+        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   @Test
@@ -633,7 +637,7 @@ public class FlushServiceTest {
     ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
         ArgumentCaptor.forClass(List.class);
     Mockito.verify(flushService, Mockito.times(expectedBlobs))
-        .buildAndUpload(Mockito.any(), blobDataCaptor.capture());
+        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any());
 
     // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
@@ -676,7 +680,7 @@ public class FlushServiceTest {
     ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
         ArgumentCaptor.forClass(List.class);
     Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), blobDataCaptor.capture());
+        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any());
 
     // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
@@ -946,7 +950,7 @@ public class FlushServiceTest {
     innerData.add(channel2Data);
 
     StorageManager<StubChunkData> storageManager =
-        Mockito.spy(new InternalStageManager<>(true, client, null));
+        Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
     FlushService<StubChunkData> flushService =
         new FlushService<>(client, channelCache, storageManager, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");
