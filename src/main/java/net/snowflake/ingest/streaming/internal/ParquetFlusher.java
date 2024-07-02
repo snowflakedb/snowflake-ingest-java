@@ -126,7 +126,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     if (mergedChannelWriter != null) {
       mergedChannelWriter.close();
       this.verifyRowCounts(
-          "serializeFromParquetWriteBuffers", mergedChannelWriter, channelsDataPerTable, -1);
+          "serializeFromParquetWriteBuffers",
+          mergedChannelWriter,
+          rowCount,
+          channelsDataPerTable,
+          -1);
     }
     return new SerializationResult(
         channelsMetadataList,
@@ -220,7 +224,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     parquetWriter.close();
 
     this.verifyRowCounts(
-        "serializeFromJavaObjects", parquetWriter, channelsDataPerTable, rows.size());
+        "serializeFromJavaObjects", parquetWriter, rowCount, channelsDataPerTable, rows.size());
 
     return new SerializationResult(
         channelsMetadataList,
@@ -238,30 +242,35 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
    * @param serializationType Serialization type, used for logging purposes only
    * @param writer Parquet writer writing the data
    * @param channelsDataPerTable Channel data
+   * @param totalMetadataRowCount Row count calculated during metadata collection
    * @param javaSerializationTotalRowCount Total row count when java object serialization is used.
    *     Used only for logging purposes if there is a mismatch.
    */
   private void verifyRowCounts(
       String serializationType,
       BdecParquetWriter writer,
+      long totalMetadataRowCount,
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       long javaSerializationTotalRowCount) {
     long parquetTotalRowsWritten = writer.getRowsWritten();
 
     List<Long> parquetFooterRowsPerBlock = writer.getRowCountsFromFooter();
     long parquetTotalRowsInFooter = 0;
-    for (long perBlockCount : parquetFooterRowsPerBlock) parquetTotalRowsInFooter += perBlockCount;
+    for (long perBlockCount : parquetFooterRowsPerBlock) {
+      parquetTotalRowsInFooter += perBlockCount;
+    }
 
-    long totalRowsInMetadata = 0;
-    for (ChannelData<ParquetChunkData> channelData : channelsDataPerTable)
-      totalRowsInMetadata += channelData.getRowCount();
-
-    if (parquetTotalRowsInFooter != totalRowsInMetadata
-        || parquetTotalRowsWritten != totalRowsInMetadata) {
+    if (parquetTotalRowsInFooter != totalMetadataRowCount
+        || parquetTotalRowsWritten != totalMetadataRowCount) {
 
       final String perChannelRowCountsInMetadata =
           channelsDataPerTable.stream()
               .map(x -> String.valueOf(x.getRowCount()))
+              .collect(Collectors.joining(","));
+
+      final String channelNames =
+          channelsDataPerTable.stream()
+              .map(x -> String.valueOf(x.getChannelContext().getName()))
               .collect(Collectors.joining(","));
 
       final String perBlockRowCountsInFooter =
@@ -274,20 +283,22 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
           String.format(
               "[%s]The number of rows in Parquet does not match the number of rows in metadata. "
                   + "parquetTotalRowsInFooter=%d "
-                  + "totalRowsInMetadata=%d "
+                  + "totalMetadataRowCount=%d "
                   + "parquetTotalRowsWritten=%d "
                   + "perChannelRowCountsInMetadata=%s "
                   + "perBlockRowCountsInFooter=%s "
                   + "channelsCountInMetadata=%d "
-                  + "countOfSerializedJavaObjects=%d",
+                  + "countOfSerializedJavaObjects=%d "
+                  + "channelNames=%s",
               serializationType,
               parquetTotalRowsInFooter,
-              totalRowsInMetadata,
+              totalMetadataRowCount,
               parquetTotalRowsWritten,
               perChannelRowCountsInMetadata,
               perBlockRowCountsInFooter,
               channelsCountInMetadata,
-              javaSerializationTotalRowCount));
+              javaSerializationTotalRowCount,
+              channelNames));
     }
   }
 }
