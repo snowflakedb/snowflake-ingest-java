@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
@@ -382,7 +386,7 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
     ChannelsStatusRequest request = new ChannelsStatusRequest();
-    request.setRequestId("null_0");
+    request.setRequestId("testPrefix_0");
     request.setChannels(Collections.singletonList(dto));
     ChannelsStatusResponse result = client.getChannelsStatus(Collections.singletonList(channel));
     Assert.assertEquals(response.getMessage(), result.getMessage());
@@ -1458,7 +1462,7 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
     ChannelsStatusRequest request = new ChannelsStatusRequest();
-    request.setRequestId("null_0");
+    request.setRequestId("testPrefix_0");
     request.setChannels(Collections.singletonList(dto));
     Map<String, String> result =
         client.getLatestCommittedOffsetTokens(Collections.singletonList(channel));

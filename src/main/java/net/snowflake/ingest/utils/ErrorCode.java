@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.utils;
@@ -26,7 +26,7 @@ public enum ErrorCode {
   INVALID_ENCRYPTED_KEY("0018"),
   INVALID_DATA_IN_CHUNK("0019"),
   IO_ERROR("0020"),
-  UNABLE_TO_CONNECT_TO_STAGE("0021"),
+  UNABLE_TO_CONNECT_TO_STORAGE("0021"),
   KEYPAIR_CREATION_FAILURE("0022"),
   MD5_HASHING_NOT_AVAILABLE("0023"),
   CHANNEL_STATUS_FAILURE("0024"),
@@ -41,7 +41,8 @@ public enum ErrorCode {
   OAUTH_REFRESH_TOKEN_ERROR("0033"),
   INVALID_CONFIG_PARAMETER("0034"),
   CRYPTO_PROVIDER_ERROR("0035"),
-  DROP_CHANNEL_FAILURE("0036");
+  DROP_CHANNEL_FAILURE("0036"),
+  CHANNEL_CONFIGURE_FAILURE("0037");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

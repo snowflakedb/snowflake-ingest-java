@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming;
@@ -150,7 +150,7 @@ public class OpenChannelRequest {
   }
 
   public String getFullyQualifiedTableName() {
-    return String.format("%s.%s.%s", this.dbName, this.schemaName, this.tableName);
+    return Utils.getFullyQualifiedTableName(this.dbName, this.schemaName, this.tableName);
   }
 
   public OnErrorOption getOnErrorOption() {
