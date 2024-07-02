@@ -40,7 +40,7 @@ public class BlobBuilderTest {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("serializeFromJavaObjects"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
-      Assert.assertTrue(e.getMessage().contains("totalRowsInMetadata=0"));
+      Assert.assertTrue(e.getMessage().contains("totalMetadataRowCount=0"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsWritten=1"));
       Assert.assertTrue(e.getMessage().contains("perChannelRowCountsInMetadata=0"));
       Assert.assertTrue(e.getMessage().contains("perBlockRowCountsInFooter=1"));
@@ -58,7 +58,7 @@ public class BlobBuilderTest {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("serializeFromParquetWriteBuffers"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
-      Assert.assertTrue(e.getMessage().contains("totalRowsInMetadata=0"));
+      Assert.assertTrue(e.getMessage().contains("totalMetadataRowCount=0"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsWritten=1"));
       Assert.assertTrue(e.getMessage().contains("perChannelRowCountsInMetadata=0"));
       Assert.assertTrue(e.getMessage().contains("perBlockRowCountsInFooter=1"));
