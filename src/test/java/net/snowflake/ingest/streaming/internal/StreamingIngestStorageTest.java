@@ -119,10 +119,10 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?> storageManager = Mockito.mock(StorageManager.class);
+    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    StreamingIngestStorage<?> stage =
+    StreamingIngestStorage<?, ?> stage =
         new StreamingIngestStorage(
             storageManager,
             "clientName",
@@ -162,7 +162,7 @@ public class StreamingIngestStorageTest {
     String fullFilePath = "testOutput";
     String fileName = "putLocalOutput";
 
-    StreamingIngestStorage<?> stage =
+    StreamingIngestStorage<?, ?> stage =
         Mockito.spy(
             new StreamingIngestStorage(
                 null,
@@ -190,10 +190,10 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?> storageManager = Mockito.mock(StorageManager.class);
+    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    StreamingIngestStorage<?> stage =
+    StreamingIngestStorage<?, ?> stage =
         new StreamingIngestStorage(
             storageManager,
             "clientName",
@@ -245,10 +245,10 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?> storageManager = Mockito.mock(StorageManager.class);
+    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    StreamingIngestStorage<?> stage =
+    StreamingIngestStorage<?, ?> stage =
         Mockito.spy(
             new StreamingIngestStorage(
                 storageManager,
@@ -283,11 +283,11 @@ public class StreamingIngestStorageTest {
 
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    StorageManager<?> storageManager =
+    StorageManager<?, ?> storageManager =
         new InternalStageManager(true, "role", "client", snowflakeServiceClient);
 
     ParameterProvider parameterProvider = new ParameterProvider(false);
-    StreamingIngestStorage<?> stage =
+    StreamingIngestStorage<?, ?> stage =
         new StreamingIngestStorage(
             storageManager,
             "clientName",
@@ -336,7 +336,7 @@ public class StreamingIngestStorageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(createHttpEntity(exampleRemoteMetaResponse));
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    StreamingIngestStorage<?> stage =
+    StreamingIngestStorage<?, ?> stage =
         new StreamingIngestStorage(
             storageManager,
             "clientName",
@@ -516,7 +516,7 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?> storageManager = Mockito.mock(StorageManager.class);
+    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
     StreamingIngestStorage stage =

@@ -95,7 +95,7 @@ class FlushService<T> {
   private final ChannelCache<T> channelCache;
 
   // Reference to the Stream Ingest storage manager
-  private final StorageManager<T> storageManager;
+  private final StorageManager<T, ?> storageManager;
 
   // Reference to register service
   private final RegisterService<T> registerService;
@@ -126,7 +126,7 @@ class FlushService<T> {
   FlushService(
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
-      StorageManager<T> storageManager,
+      StorageManager<T, ?> storageManager,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
@@ -545,7 +545,7 @@ class FlushService<T> {
    * @return BlobMetadata object used to create the register blob request
    */
   BlobMetadata upload(
-      StreamingIngestStorage storage,
+          StreamingIngestStorage<T, ?> storage,
       String blobPath,
       byte[] blob,
       List<ChunkMetadata> metadata,

@@ -4,8 +4,15 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-/** Interface to manage {@link StreamingIngestStorage} for {@link FlushService} */
-interface StorageManager<T> {
+import java.util.Optional;
+
+/**
+ * Interface to manage {@link StreamingIngestStorage} for {@link FlushService}
+ *
+ * @param <T>         The type of chunk data
+ * @param <TLocation> the type of location that's being managed (internal stage / external volume)
+ */
+interface StorageManager<T, TLocation> {
   // Default max upload retries for streaming ingest storage
   int DEFAULT_MAX_UPLOAD_RETRIES = 5;
 
@@ -15,7 +22,7 @@ interface StorageManager<T> {
    * @param channelFlushContext the blob to upload
    * @return target stage
    */
-  StreamingIngestStorage<T> getStorage(ChannelFlushContext channelFlushContext);
+  StreamingIngestStorage<T, TLocation> getStorage(ChannelFlushContext channelFlushContext);
 
   /**
    * Add a storage to the manager
@@ -29,12 +36,14 @@ interface StorageManager<T> {
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo);
 
   /**
-   * Configure method for storage
+   * Gets the latest file location info (with a renewed short-lived access token) for the specified location
    *
-   * @param request the configure request
-   * @return the configure response
+   * @param location A reference to the target location
+   * @param fileName optional filename for single-file signed URL fetch from server
+   *
+   * @return the new location information
    */
-  ConfigureResponse configure(ConfigureRequest request);
+  FileLocationInfo refreshLocation(TLocation location, Optional<String> fileName);
 
   /**
    * Generate a unique blob path and increment the blob sequencer

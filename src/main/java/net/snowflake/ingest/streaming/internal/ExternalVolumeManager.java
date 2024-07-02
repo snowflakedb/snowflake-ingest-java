@@ -4,20 +4,33 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.io.IOException;
-import java.util.Calendar;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 
-/** Class to manage multiple external volumes */
-class ExternalVolumeManager<T> implements StorageManager<T> {
+import java.io.IOException;
+import java.util.Calendar;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
+class ExternalVolumeLocation {
+  public final String dbName;
+  public final String schemaName;
+  public final String tableName;
+
+  public ExternalVolumeLocation(String dbName, String schemaName, String tableName) {
+    this.dbName = dbName;
+    this.schemaName = schemaName;
+    this.tableName = tableName;
+  }
+}
+
+/** Class to manage multiple external volumes */
+class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocation> {
   // Reference to the external volume per table
-  private final Map<String, StreamingIngestStorage<T>> externalVolumeMap;
+  private final Map<String, StreamingIngestStorage<T, ExternalVolumeLocation>> externalVolumeMap;
 
   // name of the owning client
   private final String clientName;
@@ -67,9 +80,9 @@ class ExternalVolumeManager<T> implements StorageManager<T> {
    * @return target storage
    */
   @Override
-  public StreamingIngestStorage<T> getStorage(ChannelFlushContext channelFlushContext) {
+  public StreamingIngestStorage<T, ExternalVolumeLocation> getStorage(ChannelFlushContext channelFlushContext) {
     // Only one chunk per blob in Iceberg mode.
-    StreamingIngestStorage<T> stage =
+    StreamingIngestStorage<T, ExternalVolumeLocation> stage =
         this.externalVolumeMap.get(channelFlushContext.getFullyQualifiedTableName());
 
     if (stage == null) {
@@ -98,11 +111,11 @@ class ExternalVolumeManager<T> implements StorageManager<T> {
     try {
       this.externalVolumeMap.putIfAbsent(
           fullyQualifiedTableName,
-          new StreamingIngestStorage<>(
+              new StreamingIngestStorage<T, ExternalVolumeLocation>(
               this,
               this.clientName,
               fileLocationInfo,
-              new ChannelConfigureRequest(this.role, dbName, schemaName, tableName),
+              new ExternalVolumeLocation(dbName, schemaName, tableName),
               DEFAULT_MAX_UPLOAD_RETRIES));
     } catch (SnowflakeSQLException | IOException err) {
       throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STORAGE);
@@ -110,15 +123,20 @@ class ExternalVolumeManager<T> implements StorageManager<T> {
   }
 
   /**
-   * Configure method for storage
+   * Gets the latest file location info (with a renewed short-lived access token) for the specified location
    *
-   * @param request the configure request
-   * @return the configure response
+   * @param location A reference to the target location
+   * @param fileName optional filename for single-file signed URL fetch from server
+   * @return the new location information
    */
   @Override
-  public ConfigureResponse configure(ConfigureRequest request) {
+  public FileLocationInfo refreshLocation(ExternalVolumeLocation location, Optional<String> fileName) {
     try {
-      return this.snowflakeServiceClient.channelConfigure((ChannelConfigureRequest) request);
+      ChannelConfigureRequest request = new ChannelConfigureRequest(
+              this.role, location.dbName, location.schemaName, location.tableName);
+      fileName.ifPresent(request::setFileName);
+      ChannelConfigureResponse response = this.snowflakeServiceClient.channelConfigure(request);
+      return response.getStageLocation();
     } catch (IngestResponseException | IOException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
