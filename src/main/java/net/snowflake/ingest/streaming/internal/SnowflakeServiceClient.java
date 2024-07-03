@@ -58,11 +58,11 @@ class SnowflakeServiceClient {
    * @param request the client configuration request
    * @return the response from the configuration request
    */
-  ConfigureResponse clientConfigure(ClientConfigureRequest request)
+  ClientConfigureResponse clientConfigure(ClientConfigureRequest request)
       throws IngestResponseException, IOException {
-    ConfigureResponse response =
+    ClientConfigureResponse response =
         executeApiRequestWithRetries(
-            ConfigureResponse.class,
+                ClientConfigureResponse.class,
             request,
             CLIENT_CONFIGURE_ENDPOINT,
             "client configure",
@@ -83,11 +83,11 @@ class SnowflakeServiceClient {
    * @param request the channel configuration request
    * @return the response from the configuration request
    */
-  ConfigureResponse channelConfigure(ChannelConfigureRequest request)
+  ChannelConfigureResponse channelConfigure(ChannelConfigureRequest request)
       throws IngestResponseException, IOException {
-    ConfigureResponse response =
+    ChannelConfigureResponse response =
         executeApiRequestWithRetries(
-            ConfigureResponse.class,
+                ChannelConfigureResponse.class,
             request,
             CHANNEL_CONFIGURE_ENDPOINT,
             "channel configure",

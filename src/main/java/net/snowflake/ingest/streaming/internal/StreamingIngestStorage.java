@@ -33,7 +33,7 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Storage */
-class StreamingIngestStorage<T> {
+class StreamingIngestStorage<T, TLocation> {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   // Object mapper for parsing the client/configure response to Jackson version the same as
@@ -77,8 +77,8 @@ class StreamingIngestStorage<T> {
   }
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final StorageManager<T> owningManager;
-  private final ConfigureRequest configureRequest;
+  private final StorageManager<T, TLocation> owningManager;
+  private final TLocation location;
   private final String clientName;
 
   private final int maxUploadRetries;
@@ -92,21 +92,21 @@ class StreamingIngestStorage<T> {
    * @param owningManager the storage manager owning this storage
    * @param clientName The client name
    * @param fileLocationInfo The file location information from open channel response
-   * @param configureRequest The configure request for configure call
+   * @param location A reference to the target location
    * @param maxUploadRetries The maximum number of retries to attempt
    */
   StreamingIngestStorage(
-      StorageManager<T> owningManager,
+          StorageManager<T, TLocation> owningManager,
       String clientName,
       FileLocationInfo fileLocationInfo,
-      ConfigureRequest configureRequest,
+          TLocation location,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this(
         owningManager,
         clientName,
         (SnowflakeFileTransferMetadataWithAge) null,
-        configureRequest,
+            location,
         maxUploadRetries);
     createFileTransferMetadataWithAge(fileLocationInfo);
   }
@@ -117,21 +117,21 @@ class StreamingIngestStorage<T> {
    * @param owningManager the storage manager owning this storage
    * @param clientName the client name
    * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
-   * @param configureRequest the configure request for configure call
+   * @param location A reference to the target location
    * @param maxUploadRetries the maximum number of retries to attempt
    */
   StreamingIngestStorage(
-      StorageManager<T> owningManager,
+          StorageManager<T, TLocation> owningManager,
       String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata,
-      ConfigureRequest configureRequest,
+          TLocation location,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this.owningManager = owningManager;
     this.clientName = clientName;
     this.maxUploadRetries = maxUploadRetries;
     this.proxyProperties = generateProxyPropertiesForJDBC();
-    this.configureRequest = configureRequest;
+    this.location = location;
     this.fileTransferMetadataWithAge = testMetadata;
   }
 
@@ -243,8 +243,8 @@ class StreamingIngestStorage<T> {
       return fileTransferMetadataWithAge;
     }
 
-    ConfigureResponse response = this.owningManager.configure(this.configureRequest);
-    return createFileTransferMetadataWithAge(response.getStageLocation());
+    FileLocationInfo location = this.owningManager.refreshLocation(this.location, Optional.empty());
+    return createFileTransferMetadataWithAge(location);
   }
 
   private SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
@@ -288,7 +288,7 @@ class StreamingIngestStorage<T> {
    * @param response the client/configure response from the server
    * @return the client prefix.
    */
-  private String createClientPrefix(final ConfigureResponse response) {
+  private String createClientPrefix(final ClientConfigureResponse response) {
     final String prefix = response.getPrefix() == null ? "" : response.getPrefix();
     final String deploymentId =
         response.getDeploymentId() != null ? "_" + response.getDeploymentId() : "";
@@ -304,13 +304,12 @@ class StreamingIngestStorage<T> {
   SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
       throws SnowflakeSQLException, IOException {
 
-    this.configureRequest.setFileName(fileName);
-    ConfigureResponse response = this.owningManager.configure(this.configureRequest);
+    FileLocationInfo location = this.owningManager.refreshLocation(this.location, Optional.of(fileName));
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
             SnowflakeFileTransferAgent.getFileTransferMetadatas(
-                    parseFileLocationInfo(response.getStageLocation()))
+                            parseFileLocationInfo(location))
                 .get(0);
     // Transfer agent trims path for fileName
     metadata.setPresignedUrlFileName(fileName);

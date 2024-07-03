@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to deserialize responses from configure endpoint */
 @JsonIgnoreProperties(ignoreUnknown = true)
-class ConfigureResponse extends StreamingIngestResponse {
+class ClientConfigureResponse extends StreamingIngestResponse {
   @JsonProperty("prefix")
   private String prefix;
 

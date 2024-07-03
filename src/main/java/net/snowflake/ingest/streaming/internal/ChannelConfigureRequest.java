@@ -71,7 +71,7 @@ class ChannelConfigureRequest implements ConfigureRequest {
   @Override
   public String getStringForLogging() {
     return String.format(
-        "ChannelConfigureResponse(role=%s, table=%s, file_name=%s)",
-        role, Utils.getFullyQualifiedTableName(database, schema, table), fileName);
+        "ChannelConfigureRequest(role=%s, db=%s, schema=%s, table=%s, file_name=%s)",
+        role, database, schema, table, fileName);
   }
 }
