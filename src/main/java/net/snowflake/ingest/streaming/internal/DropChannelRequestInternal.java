@@ -93,16 +93,9 @@ class DropChannelRequestInternal implements StreamingIngestRequest {
 
   @Override
   public String getStringForLogging() {
-      return String.format(
-              "DropChannelRequest(requestId=%s, role=%s, db=%s, schema=%s, table=%s, channel=%s, isIceberg=%s,"
-            + " clientSequencer=%s)",
-              requestId,
-              role,
-              database,
-              schema,
-              table,
-              channel,
-              isIceberg,
-              clientSequencer);
+    return String.format(
+        "DropChannelRequest(requestId=%s, role=%s, db=%s, schema=%s, table=%s, channel=%s,"
+            + " isIceberg=%s, clientSequencer=%s)",
+        requestId, role, database, schema, table, channel, isIceberg, clientSequencer);
   }
 }

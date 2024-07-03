@@ -6,7 +6,6 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize the client / channel configure request. */
 class ChannelConfigureRequest implements ConfigureRequest {

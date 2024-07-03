@@ -4,25 +4,23 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.google.common.annotations.VisibleForTesting;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.ingest.connection.IngestResponseException;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
+import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 
 class InternalStageLocation {
-  public InternalStageLocation() {
-  }
+  public InternalStageLocation() {}
 }
 
 /** Class to manage single Snowflake internal stage */
@@ -64,19 +62,24 @@ class InternalStageManager<T> implements StorageManager<T, InternalStageLocation
     this.counter = new AtomicLong(0);
     try {
       if (!isTestMode) {
-        ClientConfigureResponse response = this.snowflakeServiceClient.clientConfigure(new ClientConfigureRequest(role));
+        ClientConfigureResponse response =
+            this.snowflakeServiceClient.clientConfigure(new ClientConfigureRequest(role));
         this.clientPrefix = response.getClientPrefix();
         this.targetStage =
-                new StreamingIngestStorage<T, InternalStageLocation>(
-                        this, clientName, response.getStageLocation(), new InternalStageLocation(), DEFAULT_MAX_UPLOAD_RETRIES);
+            new StreamingIngestStorage<T, InternalStageLocation>(
+                this,
+                clientName,
+                response.getStageLocation(),
+                new InternalStageLocation(),
+                DEFAULT_MAX_UPLOAD_RETRIES);
       } else {
         this.clientPrefix = "testPrefix";
         this.targetStage =
-                new StreamingIngestStorage<T, InternalStageLocation>(
+            new StreamingIngestStorage<T, InternalStageLocation>(
                 this,
                 "testClient",
                 (StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge) null,
-                        new InternalStageLocation(),
+                new InternalStageLocation(),
                 DEFAULT_MAX_UPLOAD_RETRIES);
       }
     } catch (IngestResponseException | IOException e) {
@@ -95,27 +98,28 @@ class InternalStageManager<T> implements StorageManager<T, InternalStageLocation
    */
   @Override
   @SuppressWarnings("unused")
-  public StreamingIngestStorage<T, InternalStageLocation> getStorage(ChannelFlushContext channelFlushContext) {
+  public StreamingIngestStorage<T, InternalStageLocation> getStorage(
+      ChannelFlushContext channelFlushContext) {
     // There's always only one stage for the client in non-iceberg mode
     return targetStage;
   }
 
-  /**
-   * Add storage to the manager. Do nothing as there's only one stage in non-Iceberg mode.
-   */
+  /** Add storage to the manager. Do nothing as there's only one stage in non-Iceberg mode. */
   @Override
   public void addStorage(
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo) {}
 
   /**
-   * Gets the latest file location info (with a renewed short-lived access token) for the specified location
+   * Gets the latest file location info (with a renewed short-lived access token) for the specified
+   * location
    *
    * @param location A reference to the target location
    * @param fileName optional filename for single-file signed URL fetch from server
    * @return the new location information
    */
   @Override
-  public FileLocationInfo refreshLocation(InternalStageLocation location, Optional<String> fileName) {
+  public FileLocationInfo refreshLocation(
+      InternalStageLocation location, Optional<String> fileName) {
     try {
       ClientConfigureRequest request = new ClientConfigureRequest(this.role);
       fileName.ifPresent(request::setFileName);

@@ -7,42 +7,40 @@ package net.snowflake.ingest.streaming.internal;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/**
- * Class used to deserialize responses from channel configure endpoint
- */
+/** Class used to deserialize responses from channel configure endpoint */
 @JsonIgnoreProperties(ignoreUnknown = true)
 class ChannelConfigureResponse extends StreamingIngestResponse {
-    @JsonProperty("status_code")
-    private Long statusCode;
+  @JsonProperty("status_code")
+  private Long statusCode;
 
-    @JsonProperty("message")
-    private String message;
+  @JsonProperty("message")
+  private String message;
 
-    @JsonProperty("stage_location")
-    private FileLocationInfo stageLocation;
+  @JsonProperty("stage_location")
+  private FileLocationInfo stageLocation;
 
-    @Override
-    Long getStatusCode() {
-        return statusCode;
-    }
+  @Override
+  Long getStatusCode() {
+    return statusCode;
+  }
 
-    void setStatusCode(Long statusCode) {
-        this.statusCode = statusCode;
-    }
+  void setStatusCode(Long statusCode) {
+    this.statusCode = statusCode;
+  }
 
-    String getMessage() {
-        return message;
-    }
+  String getMessage() {
+    return message;
+  }
 
-    void setMessage(String message) {
-        this.message = message;
-    }
+  void setMessage(String message) {
+    this.message = message;
+  }
 
-    FileLocationInfo getStageLocation() {
-        return stageLocation;
-    }
+  FileLocationInfo getStageLocation() {
+    return stageLocation;
+  }
 
-    void setStageLocation(FileLocationInfo stageLocation) {
-        this.stageLocation = stageLocation;
-    }
+  void setStageLocation(FileLocationInfo stageLocation) {
+    this.stageLocation = stageLocation;
+  }
 }

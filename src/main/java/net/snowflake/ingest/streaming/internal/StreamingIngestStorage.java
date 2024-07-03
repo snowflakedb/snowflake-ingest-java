@@ -96,17 +96,17 @@ class StreamingIngestStorage<T, TLocation> {
    * @param maxUploadRetries The maximum number of retries to attempt
    */
   StreamingIngestStorage(
-          StorageManager<T, TLocation> owningManager,
+      StorageManager<T, TLocation> owningManager,
       String clientName,
       FileLocationInfo fileLocationInfo,
-          TLocation location,
+      TLocation location,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this(
         owningManager,
         clientName,
         (SnowflakeFileTransferMetadataWithAge) null,
-            location,
+        location,
         maxUploadRetries);
     createFileTransferMetadataWithAge(fileLocationInfo);
   }
@@ -121,10 +121,10 @@ class StreamingIngestStorage<T, TLocation> {
    * @param maxUploadRetries the maximum number of retries to attempt
    */
   StreamingIngestStorage(
-          StorageManager<T, TLocation> owningManager,
+      StorageManager<T, TLocation> owningManager,
       String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata,
-          TLocation location,
+      TLocation location,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this.owningManager = owningManager;
@@ -304,12 +304,12 @@ class StreamingIngestStorage<T, TLocation> {
   SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
       throws SnowflakeSQLException, IOException {
 
-    FileLocationInfo location = this.owningManager.refreshLocation(this.location, Optional.of(fileName));
+    FileLocationInfo location =
+        this.owningManager.refreshLocation(this.location, Optional.of(fileName));
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
-            SnowflakeFileTransferAgent.getFileTransferMetadatas(
-                            parseFileLocationInfo(location))
+            SnowflakeFileTransferAgent.getFileTransferMetadatas(parseFileLocationInfo(location))
                 .get(0);
     // Transfer agent trims path for fileName
     metadata.setPresignedUrlFileName(fileName);

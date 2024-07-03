@@ -62,7 +62,7 @@ class SnowflakeServiceClient {
       throws IngestResponseException, IOException {
     ClientConfigureResponse response =
         executeApiRequestWithRetries(
-                ClientConfigureResponse.class,
+            ClientConfigureResponse.class,
             request,
             CLIENT_CONFIGURE_ENDPOINT,
             "client configure",
@@ -87,7 +87,7 @@ class SnowflakeServiceClient {
       throws IngestResponseException, IOException {
     ChannelConfigureResponse response =
         executeApiRequestWithRetries(
-                ChannelConfigureResponse.class,
+            ChannelConfigureResponse.class,
             request,
             CHANNEL_CONFIGURE_ENDPOINT,
             "channel configure",

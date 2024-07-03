@@ -104,16 +104,8 @@ class OpenChannelRequestInternal implements StreamingIngestRequest {
   @Override
   public String getStringForLogging() {
     return String.format(
-            "OpenChannelRequestInternal(requestId=%s, role=%s, db=%s, schema=%s, table=%s, channel=%s, writeMode=%s, isIceberg=%s,"
-            + " offsetToken=%s)",
-            requestId,
-            role,
-            database,
-            schema,
-            table,
-            channel,
-            writeMode,
-            isIceberg,
-            offsetToken);
+        "OpenChannelRequestInternal(requestId=%s, role=%s, db=%s, schema=%s, table=%s, channel=%s,"
+            + " writeMode=%s, isIceberg=%s, offsetToken=%s)",
+        requestId, role, database, schema, table, channel, writeMode, isIceberg, offsetToken);
   }
 }

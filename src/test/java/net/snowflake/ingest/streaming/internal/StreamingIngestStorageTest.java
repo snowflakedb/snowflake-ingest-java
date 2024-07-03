@@ -341,7 +341,7 @@ public class StreamingIngestStorageTest {
             storageManager,
             "clientName",
             (StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge) null,
-            new ClientConfigureRequest(mockClientInternal.getRole()),
+            null,
             1);
 
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");

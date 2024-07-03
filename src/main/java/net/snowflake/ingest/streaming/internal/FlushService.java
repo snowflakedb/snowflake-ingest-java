@@ -545,7 +545,7 @@ class FlushService<T> {
    * @return BlobMetadata object used to create the register blob request
    */
   BlobMetadata upload(
-          StreamingIngestStorage<T, ?> storage,
+      StreamingIngestStorage<T, ?> storage,
       String blobPath,
       byte[] blob,
       List<ChunkMetadata> metadata,

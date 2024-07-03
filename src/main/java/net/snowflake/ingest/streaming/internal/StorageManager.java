@@ -9,7 +9,7 @@ import java.util.Optional;
 /**
  * Interface to manage {@link StreamingIngestStorage} for {@link FlushService}
  *
- * @param <T>         The type of chunk data
+ * @param <T> The type of chunk data
  * @param <TLocation> the type of location that's being managed (internal stage / external volume)
  */
 interface StorageManager<T, TLocation> {
@@ -36,11 +36,11 @@ interface StorageManager<T, TLocation> {
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo);
 
   /**
-   * Gets the latest file location info (with a renewed short-lived access token) for the specified location
+   * Gets the latest file location info (with a renewed short-lived access token) for the specified
+   * location
    *
    * @param location A reference to the target location
    * @param fileName optional filename for single-file signed URL fetch from server
-   *
    * @return the new location information
    */
   FileLocationInfo refreshLocation(TLocation location, Optional<String> fileName);

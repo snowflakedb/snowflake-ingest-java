@@ -4,16 +4,15 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.ingest.connection.IngestResponseException;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.SFException;
-
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.ingest.connection.IngestResponseException;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
 
 class ExternalVolumeLocation {
   public final String dbName;
@@ -80,7 +79,8 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
    * @return target storage
    */
   @Override
-  public StreamingIngestStorage<T, ExternalVolumeLocation> getStorage(ChannelFlushContext channelFlushContext) {
+  public StreamingIngestStorage<T, ExternalVolumeLocation> getStorage(
+      ChannelFlushContext channelFlushContext) {
     // Only one chunk per blob in Iceberg mode.
     StreamingIngestStorage<T, ExternalVolumeLocation> stage =
         this.externalVolumeMap.get(channelFlushContext.getFullyQualifiedTableName());
@@ -111,7 +111,7 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
     try {
       this.externalVolumeMap.putIfAbsent(
           fullyQualifiedTableName,
-              new StreamingIngestStorage<T, ExternalVolumeLocation>(
+          new StreamingIngestStorage<T, ExternalVolumeLocation>(
               this,
               this.clientName,
               fileLocationInfo,
@@ -123,16 +123,19 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
   }
 
   /**
-   * Gets the latest file location info (with a renewed short-lived access token) for the specified location
+   * Gets the latest file location info (with a renewed short-lived access token) for the specified
+   * location
    *
    * @param location A reference to the target location
    * @param fileName optional filename for single-file signed URL fetch from server
    * @return the new location information
    */
   @Override
-  public FileLocationInfo refreshLocation(ExternalVolumeLocation location, Optional<String> fileName) {
+  public FileLocationInfo refreshLocation(
+      ExternalVolumeLocation location, Optional<String> fileName) {
     try {
-      ChannelConfigureRequest request = new ChannelConfigureRequest(
+      ChannelConfigureRequest request =
+          new ChannelConfigureRequest(
               this.role, location.dbName, location.schemaName, location.tableName);
       fileName.ifPresent(request::setFileName);
       ChannelConfigureResponse response = this.snowflakeServiceClient.channelConfigure(request);
