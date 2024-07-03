@@ -1,11 +1,12 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -23,6 +24,12 @@ class ChannelCache<T> {
           String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>
       cache = new ConcurrentHashMap<>();
 
+  // Last flush time for each table, the key is FullyQualifiedTableName.
+  private final ConcurrentHashMap<String, Long> lastFlushTime = new ConcurrentHashMap<>();
+
+  // Need flush flag for each table, the key is FullyQualifiedTableName.
+  private final ConcurrentHashMap<String, Boolean> needFlush = new ConcurrentHashMap<>();
+
   /**
    * Add a channel to the channel cache
    *
@@ -32,6 +39,12 @@ class ChannelCache<T> {
     ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> channels =
         this.cache.computeIfAbsent(
             channel.getFullyQualifiedTableName(), v -> new ConcurrentHashMap<>());
+
+    // Update the last flush time for the table, add jitter to avoid all channels flush at the same
+    // time when the blobs are not interleaved
+    this.lastFlushTime.putIfAbsent(
+        channel.getFullyQualifiedTableName(),
+        System.currentTimeMillis() + (long) (Math.random() * 1000));
 
     SnowflakeStreamingIngestChannelInternal<T> oldChannel =
         channels.put(channel.getName(), channel);
@@ -44,6 +57,46 @@ class ChannelCache<T> {
   }
 
   /**
+   * Get the last flush time for a table
+   *
+   * @param fullyQualifiedTableName fully qualified table name
+   * @return last flush time in milliseconds
+   */
+  Long getLastFlushTime(String fullyQualifiedTableName) {
+    return this.lastFlushTime.get(fullyQualifiedTableName);
+  }
+
+  /**
+   * Set the last flush time for a table as the current time
+   *
+   * @param fullyQualifiedTableName fully qualified table name
+   * @param lastFlushTime last flush time in milliseconds
+   */
+  void setLastFlushTime(String fullyQualifiedTableName, Long lastFlushTime) {
+    this.lastFlushTime.put(fullyQualifiedTableName, lastFlushTime);
+  }
+
+  /**
+   * Get need flush flag for a table
+   *
+   * @param fullyQualifiedTableName fully qualified table name
+   * @return need flush flag
+   */
+  Boolean getNeedFlush(String fullyQualifiedTableName) {
+    return this.needFlush.getOrDefault(fullyQualifiedTableName, false);
+  }
+
+  /**
+   * Set need flush flag for a table
+   *
+   * @param fullyQualifiedTableName fully qualified table name
+   * @param needFlush need flush flag
+   */
+  void setNeedFlush(String fullyQualifiedTableName, Boolean needFlush) {
+    this.needFlush.put(fullyQualifiedTableName, needFlush);
+  }
+
+  /**
    * Returns an iterator over the (table, channels) in this map.
    *
    * @return
@@ -51,6 +104,20 @@ class ChannelCache<T> {
   Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
       iterator() {
     return this.cache.entrySet().iterator();
+  }
+
+  /**
+   * Returns an iterator over the (table, channels) in this map, filtered by the given table name
+   * set
+   *
+   * @param tableNames the set of table names to filter
+   * @return
+   */
+  Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
+      iterator(Set<String> tableNames) {
+    return this.cache.entrySet().stream()
+        .filter(entry -> tableNames.contains(entry.getKey()))
+        .iterator();
   }
 
   /** Close all channels in the channel cache */
@@ -100,5 +167,11 @@ class ChannelCache<T> {
   /** Get the number of key-value pairs in the cache */
   int getSize() {
     return cache.size();
+  }
+
+  public Set<
+          Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
+      entrySet() {
+    return cache.entrySet();
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -820,8 +820,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /** Set the flag to indicate that a flush is needed */
-  void setNeedFlush() {
-    this.flushService.setNeedFlush();
+  void setNeedFlush(String fullyQualifiedTableName) {
+    this.flushService.setNeedFlush(fullyQualifiedTableName);
   }
 
   /** Remove the channel in the channel cache if the channel sequencer matches */

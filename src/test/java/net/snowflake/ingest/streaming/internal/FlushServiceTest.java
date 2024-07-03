@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
@@ -36,7 +40,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -51,6 +57,7 @@ import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 
 public class FlushServiceTest {
   public FlushServiceTest() {
@@ -88,11 +95,16 @@ public class FlushServiceTest {
       Mockito.when(stage.getClientPrefix()).thenReturn("client_prefix");
       parameterProvider = new ParameterProvider();
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
-      Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
+      Mockito.when(client.getParameterProvider())
+          .thenAnswer((Answer<ParameterProvider>) (i) -> parameterProvider);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
       flushService = Mockito.spy(new FlushService<>(client, channelCache, stage, true));
+    }
+
+    void setParameterOverride(Map<String, Object> parameterOverride) {
+      this.parameterProvider = new ParameterProvider(parameterOverride, null);
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -422,30 +434,118 @@ public class FlushServiceTest {
 
   @Test
   public void testFlush() throws Exception {
-    TestContext<?> testContext = testContextFactory.create();
+    int numChannels = 4;
+    TestContext<List<List<Object>>> testContext = testContextFactory.create();
+    addChannel1(testContext);
     FlushService<?> flushService = testContext.flushService;
+    ChannelCache<?> channelCache = testContext.channelCache;
     Mockito.when(flushService.isTestMode()).thenReturn(false);
 
     // Nothing to flush
     flushService.flush(false).get();
-    Mockito.verify(flushService, Mockito.times(0)).distributeFlushTasks();
+    Mockito.verify(flushService, Mockito.times(0)).distributeFlushTasks(Mockito.any());
 
     // Force = true flushes
     flushService.flush(true).get();
-    Mockito.verify(flushService).distributeFlushTasks();
-    Mockito.verify(flushService, Mockito.times(1)).distributeFlushTasks();
+    Mockito.verify(flushService, Mockito.times(1)).distributeFlushTasks(Mockito.any());
+
+    IntStream.range(0, numChannels)
+        .forEach(
+            i -> {
+              addChannel(testContext, i, 1L);
+              channelCache.setLastFlushTime(getFullyQualifiedTableName(i), Long.MAX_VALUE);
+            });
 
     // isNeedFlush = true flushes
-    flushService.isNeedFlush = true;
+    flushService.setNeedFlush(getFullyQualifiedTableName(0));
     flushService.flush(false).get();
-    Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks();
-    Assert.assertFalse(flushService.isNeedFlush);
+    Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks(Mockito.any());
+    Assert.assertNotEquals(
+        Long.MAX_VALUE, channelCache.getLastFlushTime(getFullyQualifiedTableName(0)).longValue());
+    IntStream.range(0, numChannels)
+        .forEach(
+            i -> {
+              Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
+              Assert.assertEquals(
+                  channelCache.getLastFlushTime(getFullyQualifiedTableName(0)),
+                  channelCache.getLastFlushTime(getFullyQualifiedTableName(i)));
+            });
 
     // lastFlushTime causes flush
-    flushService.lastFlushTime = 0;
+    channelCache.setLastFlushTime(getFullyQualifiedTableName(0), 0L);
     flushService.flush(false).get();
-    Mockito.verify(flushService, Mockito.times(3)).distributeFlushTasks();
-    Assert.assertTrue(flushService.lastFlushTime > 0);
+    Mockito.verify(flushService, Mockito.times(3)).distributeFlushTasks(Mockito.any());
+    Assert.assertNotEquals(
+        Long.MAX_VALUE, channelCache.getLastFlushTime(getFullyQualifiedTableName(0)).longValue());
+    IntStream.range(0, numChannels)
+        .forEach(
+            i -> {
+              Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
+              Assert.assertEquals(
+                  channelCache.getLastFlushTime(getFullyQualifiedTableName(0)),
+                  channelCache.getLastFlushTime(getFullyQualifiedTableName(i)));
+            });
+  }
+
+  @Test
+  public void testNonInterleaveFlush() throws ExecutionException, InterruptedException {
+    int numChannels = 4;
+    TestContext<List<List<Object>>> testContext = testContextFactory.create();
+    FlushService<?> flushService = testContext.flushService;
+    ChannelCache<?> channelCache = testContext.channelCache;
+    Mockito.when(flushService.isTestMode()).thenReturn(false);
+    testContext.setParameterOverride(
+        Collections.singletonMap(ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST, 1));
+
+    // Test need flush
+    IntStream.range(0, numChannels)
+        .forEach(
+            i -> {
+              addChannel(testContext, i, 1L);
+              channelCache.setLastFlushTime(getFullyQualifiedTableName(i), Long.MAX_VALUE);
+              if (i % 2 == 0) {
+                flushService.setNeedFlush(getFullyQualifiedTableName(i));
+              }
+            });
+    flushService.flush(false).get();
+    Mockito.verify(flushService, Mockito.times(1)).distributeFlushTasks(Mockito.any());
+    IntStream.range(0, numChannels)
+        .forEach(
+            i -> {
+              Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
+              if (i % 2 == 0) {
+                Assert.assertNotEquals(
+                    Long.MAX_VALUE,
+                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+              } else {
+                Assert.assertEquals(
+                    Long.MAX_VALUE,
+                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+              }
+            });
+
+    // Test time based flush
+    IntStream.range(0, numChannels)
+        .forEach(
+            i -> {
+              channelCache.setLastFlushTime(
+                  getFullyQualifiedTableName(i), i % 2 == 0 ? 0L : Long.MAX_VALUE);
+            });
+    flushService.flush(false).get();
+    Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks(Mockito.any());
+    IntStream.range(0, numChannels)
+        .forEach(
+            i -> {
+              Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
+              if (i % 2 == 0) {
+                Assert.assertNotEquals(
+                    0L, channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+              } else {
+                Assert.assertEquals(
+                    Long.MAX_VALUE,
+                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+              }
+            });
   }
 
   @Test
@@ -1062,5 +1162,9 @@ public class FlushServiceTest {
     Mockito.when(timer.time()).thenReturn(timerContext);
 
     return timer;
+  }
+
+  private String getFullyQualifiedTableName(int tableId) {
+    return String.format("db1.PUBLIC.table%d", tableId);
   }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,6 +36,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -108,9 +110,6 @@ class FlushService<T> {
   // Reference to register service
   private final RegisterService<T> registerService;
 
-  // Indicates whether we need to schedule a flush
-  @VisibleForTesting volatile boolean isNeedFlush;
-
   // Latest flush time
   @VisibleForTesting volatile long lastFlushTime;
 
@@ -141,7 +140,6 @@ class FlushService<T> {
     this.targetStage = targetStage;
     this.counter = new AtomicLong(0);
     this.registerService = new RegisterService<>(client, isTestMode);
-    this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
@@ -175,7 +173,6 @@ class FlushService<T> {
 
     this.registerService = new RegisterService<>(client, isTestMode);
     this.counter = new AtomicLong(0);
-    this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
@@ -204,36 +201,43 @@ class FlushService<T> {
 
   /**
    * @param isForce if true will flush regardless of other conditions
-   * @param timeDiffMillis Time in milliseconds since the last flush
+   * @param tablesToFlush list of tables to flush
+   * @param timeDiffMillis time difference in milliseconds
    * @return
    */
-  private CompletableFuture<Void> distributeFlush(boolean isForce, long timeDiffMillis) {
+  private CompletableFuture<Void> distributeFlush(
+      boolean isForce, Set<String> tablesToFlush, Long timeDiffMillis) {
     return CompletableFuture.runAsync(
         () -> {
-          logFlushTask(isForce, timeDiffMillis);
-          distributeFlushTasks();
-          this.isNeedFlush = false;
+          logFlushTask(isForce, tablesToFlush, timeDiffMillis);
+          distributeFlushTasks(tablesToFlush);
           this.lastFlushTime = System.currentTimeMillis();
-          return;
+          tablesToFlush.forEach(
+              table -> {
+                this.channelCache.setLastFlushTime(table, this.lastFlushTime);
+                this.channelCache.setNeedFlush(table, false);
+              });
         },
         this.flushWorker);
   }
 
   /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
-  private void logFlushTask(boolean isForce, long timeDiffMillis) {
+  private void logFlushTask(boolean isForce, Set<String> tablesToFlush, long timeDiffMillis) {
+    boolean isNeedFlush = tablesToFlush.stream().anyMatch(channelCache::getNeedFlush);
+
     final String flushTaskLogFormat =
         String.format(
             "Submit forced or ad-hoc flush task on client=%s, isForce=%s,"
                 + " isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s",
             this.owningClient.getName(),
             isForce,
-            this.isNeedFlush,
+            isNeedFlush,
             timeDiffMillis,
             System.currentTimeMillis() - this.lastFlushTime);
     if (logger.isTraceEnabled()) {
       logger.logTrace(flushTaskLogFormat);
     }
-    if (!logger.isTraceEnabled() && (this.isNeedFlush || isForce)) {
+    if (!logger.isTraceEnabled() && (isNeedFlush || isForce)) {
       logger.logDebug(flushTaskLogFormat);
     }
   }
@@ -249,27 +253,57 @@ class FlushService<T> {
   }
 
   /**
-   * Kick off a flush job and distribute the tasks if one of the following conditions is met:
-   * <li>Flush is forced by the users
-   * <li>One or more buffers have reached the flush size
-   * <li>Periodical background flush when a time interval has reached
+   * Kick off a flush job and distribute the tasks. The flush service behaves differently based on
+   * the max chunks in blob:
+   *
+   * <ul>
+   *   <li>The max chunks in blob is not 1 (interleaving is allowed), every channel will be flushed
+   *       together if one of the following conditions is met:
+   *       <ul>
+   *         <li>Flush is forced by the users
+   *         <li>One or more buffers have reached the flush size
+   *         <li>Periodical background flush when a time interval has reached
+   *       </ul>
+   *   <li>The max chunks in blob is 1 (interleaving is not allowed), a channel will be flushed if
+   *       one of the following conditions is met:
+   *       <ul>
+   *         <li>Flush is forced by the users
+   *         <li>One or more buffers with the same target table as the channel have reached the
+   *             flush size
+   *         <li>Periodical background flush of the target table when a time interval has reached
+   *       </ul>
+   * </ul>
    *
    * @param isForce
    * @return Completable future that will return when the blobs are registered successfully, or null
    *     if none of the conditions is met above
    */
   CompletableFuture<Void> flush(boolean isForce) {
-    long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
+    long currentTime = System.currentTimeMillis();
+    long timeDiffMillis = currentTime - this.lastFlushTime;
 
-    if (isForce
-        || (!DISABLE_BACKGROUND_FLUSH
-            && !isTestMode()
-            && (this.isNeedFlush
-                || timeDiffMillis
-                    >= this.owningClient.getParameterProvider().getCachedMaxClientLagInMs()))) {
+    Set<String> tablesToFlush =
+        this.channelCache.entrySet().stream()
+            .filter(
+                entry ->
+                    isForce
+                        || currentTime - this.channelCache.getLastFlushTime(entry.getKey())
+                            >= this.owningClient.getParameterProvider().getCachedMaxClientLagInMs()
+                        || this.channelCache.getNeedFlush(entry.getKey()))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toSet());
+
+    // Flush every table together when it's interleaving chunk is allowed
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() != 1
+        && !tablesToFlush.isEmpty()) {
+      tablesToFlush.addAll(
+          this.channelCache.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toSet()));
+    }
+
+    if (isForce || (!DISABLE_BACKGROUND_FLUSH && !isTestMode() && !tablesToFlush.isEmpty())) {
 
       return this.statsFuture()
-          .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
+          .thenCompose((v) -> this.distributeFlush(isForce, tablesToFlush, timeDiffMillis))
           .thenCompose((v) -> this.registerFuture());
     }
     return this.statsFuture();
@@ -352,12 +386,14 @@ class FlushService<T> {
   /**
    * Distribute the flush tasks by iterating through all the channels in the channel cache and kick
    * off a build blob work when certain size has reached or we have reached the end
+   *
+   * @param tablesToFlush list of tables to flush
    */
-  void distributeFlushTasks() {
+  void distributeFlushTasks(Set<String> tablesToFlush) {
     Iterator<
             Map.Entry<
                 String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
-        itr = this.channelCache.iterator();
+        itr = this.channelCache.iterator(tablesToFlush);
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
 
@@ -630,9 +666,13 @@ class FlushService<T> {
     }
   }
 
-  /** Set the flag to indicate that a flush is needed */
-  void setNeedFlush() {
-    this.isNeedFlush = true;
+  /**
+   * Set the flag to indicate that a flush is needed
+   *
+   * @param fullyQualifiedTableName the fully qualified table name
+   */
+  void setNeedFlush(String fullyQualifiedTableName) {
+    this.channelCache.setNeedFlush(fullyQualifiedTableName, true);
   }
 
   /**
