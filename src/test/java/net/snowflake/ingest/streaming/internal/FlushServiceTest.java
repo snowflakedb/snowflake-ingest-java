@@ -128,7 +128,9 @@ public class FlushServiceTest {
     BlobMetadata buildAndUpload() throws Exception {
       List<List<ChannelData<T>>> blobData = Collections.singletonList(channelData);
       return flushService.buildAndUpload(
-          "file_name", blobData, blobData.get(0).get(0).getChannelContext());
+          "file_name",
+          blobData,
+          blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName());
     }
 
     abstract SnowflakeStreamingIngestChannelInternal<T> createChannel(

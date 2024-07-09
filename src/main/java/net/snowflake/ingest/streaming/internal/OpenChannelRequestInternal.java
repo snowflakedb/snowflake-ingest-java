@@ -38,7 +38,7 @@ class OpenChannelRequestInternal implements StreamingIngestRequest {
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("offset_token")
-  String offsetToken;
+  private String offsetToken;
 
   OpenChannelRequestInternal(
       String requestId,

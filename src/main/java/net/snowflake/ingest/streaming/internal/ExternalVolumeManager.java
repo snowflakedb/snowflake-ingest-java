@@ -13,6 +13,7 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 
 class ExternalVolumeLocation {
   public final String dbName;
@@ -73,23 +74,22 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
   }
 
   /**
-   * Given a channel context, return the target storage by looking up the table name
+   * Given a fully qualified table name, return the target storage by looking up the table name
    *
-   * @param channelFlushContext the channel flush context containing the table name
+   * @param fullyQualifiedTableName the target fully qualified table name
    * @return target storage
    */
   @Override
   public StreamingIngestStorage<T, ExternalVolumeLocation> getStorage(
-      ChannelFlushContext channelFlushContext) {
+      String fullyQualifiedTableName) {
     // Only one chunk per blob in Iceberg mode.
     StreamingIngestStorage<T, ExternalVolumeLocation> stage =
-        this.externalVolumeMap.get(channelFlushContext.getFullyQualifiedTableName());
+        this.externalVolumeMap.get(fullyQualifiedTableName);
 
     if (stage == null) {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR,
-          String.format(
-              "No storage found for table %s", channelFlushContext.getFullyQualifiedTableName()));
+          String.format("No external volume found for table %s", fullyQualifiedTableName));
     }
 
     return stage;
@@ -106,7 +106,8 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
   @Override
   public void addStorage(
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo) {
-    String fullyQualifiedTableName = String.format("%s.%s.%s", dbName, schemaName, tableName);
+    String fullyQualifiedTableName =
+        Utils.getFullyQualifiedTableName(dbName, schemaName, tableName);
 
     try {
       this.externalVolumeMap.putIfAbsent(
@@ -123,6 +124,18 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
   }
 
   /**
+   * Remove the storage of a target table
+   *
+   * @param dbName the database name
+   * @param schemaName the schema name
+   * @param tableName the table name
+   */
+  @Override
+  public void removeStorage(String dbName, String schemaName, String tableName) {
+    this.externalVolumeMap.remove(Utils.getFullyQualifiedTableName(dbName, schemaName, tableName));
+  }
+
+  /**
    * Gets the latest file location info (with a renewed short-lived access token) for the specified
    * location
    *
@@ -131,7 +144,7 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
    * @return the new location information
    */
   @Override
-  public FileLocationInfo refreshLocation(
+  public FileLocationInfo getRefreshedLocation(
       ExternalVolumeLocation location, Optional<String> fileName) {
     try {
       ChannelConfigureRequest request =

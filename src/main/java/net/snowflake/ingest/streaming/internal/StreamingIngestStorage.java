@@ -243,7 +243,8 @@ class StreamingIngestStorage<T, TLocation> {
       return fileTransferMetadataWithAge;
     }
 
-    FileLocationInfo location = this.owningManager.refreshLocation(this.location, Optional.empty());
+    FileLocationInfo location =
+        this.owningManager.getRefreshedLocation(this.location, Optional.empty());
     return createFileTransferMetadataWithAge(location);
   }
 
@@ -305,7 +306,7 @@ class StreamingIngestStorage<T, TLocation> {
       throws SnowflakeSQLException, IOException {
 
     FileLocationInfo location =
-        this.owningManager.refreshLocation(this.location, Optional.of(fileName));
+        this.owningManager.getRefreshedLocation(this.location, Optional.of(fileName));
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)

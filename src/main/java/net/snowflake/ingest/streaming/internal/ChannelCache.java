@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -100,5 +100,12 @@ class ChannelCache<T> {
   /** Get the number of key-value pairs in the cache */
   int getSize() {
     return cache.size();
+  }
+
+  /** Get the number of channels for a given table */
+  int getSizePerTable(String fullyQualifiedTableName) {
+    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> channelsMapPerTable =
+        cache.get(fullyQualifiedTableName);
+    return channelsMapPerTable == null ? 0 : channelsMapPerTable.size();
   }
 }

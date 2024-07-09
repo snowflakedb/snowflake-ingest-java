@@ -417,13 +417,13 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        // Get the channel flush context from the first channel in the blob. This
-                        // only matters when the client is in Iceberg mode. In Iceberg mode, all
-                        // channels in the blob belong to the same table.
-                        ChannelFlushContext channelFlushContext =
-                            blobData.get(0).get(0).getChannelContext();
+                        // Get the fully qualified table name from the first channel in the blob.
+                        // This only matters when the client is in Iceberg mode. In Iceberg mode,
+                        // all channels in the blob belong to the same table.
+                        String fullyQualifiedTableName =
+                            blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName();
                         BlobMetadata blobMetadata =
-                            buildAndUpload(blobPath, blobData, channelFlushContext);
+                            buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -506,11 +506,12 @@ class FlushService<T> {
    * @param blobPath Path of the destination blob in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
-   * @param channelFlushContext the channel flush context
+   * @param fullyQualifiedTableName the table name of the first channel in the blob, only matters in
+   *     Iceberg mode
    * @return BlobMetadata for FlushService.upload
    */
   BlobMetadata buildAndUpload(
-      String blobPath, List<List<ChannelData<T>>> blobData, ChannelFlushContext channelFlushContext)
+      String blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
@@ -527,7 +528,7 @@ class FlushService<T> {
     blob.blobStats.setBuildDurationMs(buildContext);
 
     return upload(
-        this.storageManager.getStorage(channelFlushContext),
+        this.storageManager.getStorage(fullyQualifiedTableName),
         blobPath,
         blob.blobBytes,
         blob.chunksMetadataList,

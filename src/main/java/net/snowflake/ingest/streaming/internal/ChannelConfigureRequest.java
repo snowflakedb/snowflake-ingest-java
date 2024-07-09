@@ -4,14 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/** Class used to serialize the client / channel configure request. */
-class ChannelConfigureRequest implements ConfigureRequest {
-  @JsonProperty("role")
-  private String role;
-
+/** Class used to serialize the channel configure request. */
+class ChannelConfigureRequest extends ConfigureRequest {
   @JsonProperty("database")
   private String database;
 
@@ -20,10 +16,6 @@ class ChannelConfigureRequest implements ConfigureRequest {
 
   @JsonProperty("table")
   private String table;
-
-  @JsonInclude(JsonInclude.Include.NON_NULL)
-  @JsonProperty("file_name")
-  private String fileName;
 
   /**
    * Constructor for channel configure request
@@ -34,15 +26,10 @@ class ChannelConfigureRequest implements ConfigureRequest {
    * @param table Table name.
    */
   ChannelConfigureRequest(String role, String database, String schema, String table) {
-    this.role = role;
+    setRole(role);
     this.database = database;
     this.schema = schema;
     this.table = table;
-  }
-
-  @Override
-  public String getRole() {
-    return role;
   }
 
   String getDatabase() {
@@ -57,20 +44,10 @@ class ChannelConfigureRequest implements ConfigureRequest {
     return table;
   }
 
-  String getFileName() {
-    return fileName;
-  }
-
-  /** Set the file name for the GCS signed url request. */
-  @Override
-  public void setFileName(String fileName) {
-    this.fileName = fileName;
-  }
-
   @Override
   public String getStringForLogging() {
     return String.format(
         "ChannelConfigureRequest(role=%s, db=%s, schema=%s, table=%s, file_name=%s)",
-        role, database, schema, table, fileName);
+        getRole(), database, schema, table, getFileName());
   }
 }

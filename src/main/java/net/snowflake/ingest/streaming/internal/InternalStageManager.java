@@ -93,13 +93,13 @@ class InternalStageManager<T> implements StorageManager<T, InternalStageLocation
    * Get the storage. In this case, the storage is always the target stage as there's only one stage
    * in non-iceberg mode.
    *
-   * @param channelFlushContext this parameter does not affect the method outcome
+   * @param fullyQualifiedTableName the target fully qualified table name
    * @return the target storage
    */
   @Override
   @SuppressWarnings("unused")
   public StreamingIngestStorage<T, InternalStageLocation> getStorage(
-      ChannelFlushContext channelFlushContext) {
+      String fullyQualifiedTableName) {
     // There's always only one stage for the client in non-iceberg mode
     return targetStage;
   }
@@ -108,6 +108,10 @@ class InternalStageManager<T> implements StorageManager<T, InternalStageLocation
   @Override
   public void addStorage(
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo) {}
+
+  /** Remove storage from the manager. Do nothing as there's only one stage in non-Iceberg mode. */
+  @Override
+  public void removeStorage(String dbName, String schemaName, String tableName) {}
 
   /**
    * Gets the latest file location info (with a renewed short-lived access token) for the specified
@@ -118,7 +122,7 @@ class InternalStageManager<T> implements StorageManager<T, InternalStageLocation
    * @return the new location information
    */
   @Override
-  public FileLocationInfo refreshLocation(
+  public FileLocationInfo getRefreshedLocation(
       InternalStageLocation location, Optional<String> fileName) {
     try {
       ClientConfigureRequest request = new ClientConfigureRequest(this.role);

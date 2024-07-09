@@ -17,12 +17,12 @@ interface StorageManager<T, TLocation> {
   int DEFAULT_MAX_UPLOAD_RETRIES = 5;
 
   /**
-   * Given a blob, return the target storage
+   * Given a fully qualified table name, return the target storage
    *
-   * @param channelFlushContext the blob to upload
+   * @param fullyQualifiedTableName the target fully qualified table name
    * @return target stage
    */
-  StreamingIngestStorage<T, TLocation> getStorage(ChannelFlushContext channelFlushContext);
+  StreamingIngestStorage<T, TLocation> getStorage(String fullyQualifiedTableName);
 
   /**
    * Add a storage to the manager
@@ -36,6 +36,15 @@ interface StorageManager<T, TLocation> {
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo);
 
   /**
+   * Remove the storage of a target table
+   *
+   * @param dbName the database name
+   * @param schemaName the schema name
+   * @param tableName the table name
+   */
+  void removeStorage(String dbName, String schemaName, String tableName);
+
+  /**
    * Gets the latest file location info (with a renewed short-lived access token) for the specified
    * location
    *
@@ -43,7 +52,7 @@ interface StorageManager<T, TLocation> {
    * @param fileName optional filename for single-file signed URL fetch from server
    * @return the new location information
    */
-  FileLocationInfo refreshLocation(TLocation location, Optional<String> fileName);
+  FileLocationInfo getRefreshedLocation(TLocation location, Optional<String> fileName);
 
   /**
    * Generate a unique blob path and increment the blob sequencer
