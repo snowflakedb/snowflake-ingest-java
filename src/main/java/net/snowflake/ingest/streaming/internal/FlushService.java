@@ -110,9 +110,6 @@ class FlushService<T> {
   // Reference to register service
   private final RegisterService<T> registerService;
 
-  // Latest flush time
-  @VisibleForTesting volatile long lastFlushTime;
-
   // Indicates whether it's running as part of the test
   private final boolean isTestMode;
 
@@ -140,7 +137,6 @@ class FlushService<T> {
     this.targetStage = targetStage;
     this.counter = new AtomicLong(0);
     this.registerService = new RegisterService<>(client, isTestMode);
-    this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
@@ -173,7 +169,6 @@ class FlushService<T> {
 
     this.registerService = new RegisterService<>(client, isTestMode);
     this.counter = new AtomicLong(0);
-    this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
