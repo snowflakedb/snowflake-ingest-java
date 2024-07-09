@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
@@ -95,7 +99,7 @@ public class ChannelCacheTest {
             UTC);
     cache.addChannel(channel);
     Assert.assertEquals(1, cache.getSize());
-    Assert.assertTrue(channel == cache.iterator().next().getValue().get(channelName));
+    Assert.assertTrue(channel == cache.entrySet().iterator().next().getValue().get(channelName));
 
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channelDup =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -117,7 +121,7 @@ public class ChannelCacheTest {
     Assert.assertTrue(channelDup.isValid());
     Assert.assertEquals(1, cache.getSize());
     ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>> channels =
-        cache.iterator().next().getValue();
+        cache.entrySet().iterator().next().getValue();
     Assert.assertEquals(1, channels.size());
     Assert.assertTrue(channelDup == channels.get(channelName));
     Assert.assertFalse(channel == channelDup);
@@ -130,7 +134,7 @@ public class ChannelCacheTest {
             Map.Entry<
                 String,
                 ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>>
-        iter = cache.iterator();
+        iter = cache.entrySet().iterator();
     Map.Entry<
             String,
             ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>
@@ -160,7 +164,7 @@ public class ChannelCacheTest {
             Map.Entry<
                 String,
                 ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>>
-        iter = cache.iterator();
+        iter = cache.entrySet().iterator();
     while (iter.hasNext()) {
       for (SnowflakeStreamingIngestChannelInternal<?> channel : iter.next().getValue().values()) {
         Assert.assertTrue(channel.isClosed());

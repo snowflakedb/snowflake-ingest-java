@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -435,6 +436,7 @@ public class FlushServiceTest {
   @Test
   public void testFlush() throws Exception {
     int numChannels = 4;
+    Long maxLastFlushTime = Long.MAX_VALUE - 1000L; // -1000L to avoid jitter overflow
     TestContext<List<List<Object>>> testContext = testContextFactory.create();
     addChannel1(testContext);
     FlushService<?> flushService = testContext.flushService;
@@ -453,7 +455,7 @@ public class FlushServiceTest {
         .forEach(
             i -> {
               addChannel(testContext, i, 1L);
-              channelCache.setLastFlushTime(getFullyQualifiedTableName(i), Long.MAX_VALUE);
+              channelCache.setLastFlushTime(getFullyQualifiedTableName(i), maxLastFlushTime);
             });
 
     // isNeedFlush = true flushes
@@ -461,14 +463,16 @@ public class FlushServiceTest {
     flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks(Mockito.any());
     Assert.assertNotEquals(
-        Long.MAX_VALUE, channelCache.getLastFlushTime(getFullyQualifiedTableName(0)).longValue());
+        Optional.of(maxLastFlushTime),
+        channelCache.getLastFlushTime(getFullyQualifiedTableName(0)));
     IntStream.range(0, numChannels)
         .forEach(
             i -> {
               Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
-              Assert.assertEquals(
+              assertTimeDiffwithinThreshold(
                   channelCache.getLastFlushTime(getFullyQualifiedTableName(0)),
-                  channelCache.getLastFlushTime(getFullyQualifiedTableName(i)));
+                  channelCache.getLastFlushTime(getFullyQualifiedTableName(i)),
+                  1000L);
             });
 
     // lastFlushTime causes flush
@@ -476,20 +480,23 @@ public class FlushServiceTest {
     flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(3)).distributeFlushTasks(Mockito.any());
     Assert.assertNotEquals(
-        Long.MAX_VALUE, channelCache.getLastFlushTime(getFullyQualifiedTableName(0)).longValue());
+        Optional.of(maxLastFlushTime),
+        channelCache.getLastFlushTime(getFullyQualifiedTableName(0)));
     IntStream.range(0, numChannels)
         .forEach(
             i -> {
               Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
-              Assert.assertEquals(
+              assertTimeDiffwithinThreshold(
                   channelCache.getLastFlushTime(getFullyQualifiedTableName(0)),
-                  channelCache.getLastFlushTime(getFullyQualifiedTableName(i)));
+                  channelCache.getLastFlushTime(getFullyQualifiedTableName(i)),
+                  1000L);
             });
   }
 
   @Test
   public void testNonInterleaveFlush() throws ExecutionException, InterruptedException {
     int numChannels = 4;
+    Long maxLastFlushTime = Long.MAX_VALUE - 1000L; // -1000L to avoid jitter overflow
     TestContext<List<List<Object>>> testContext = testContextFactory.create();
     FlushService<?> flushService = testContext.flushService;
     ChannelCache<?> channelCache = testContext.channelCache;
@@ -502,7 +509,7 @@ public class FlushServiceTest {
         .forEach(
             i -> {
               addChannel(testContext, i, 1L);
-              channelCache.setLastFlushTime(getFullyQualifiedTableName(i), Long.MAX_VALUE);
+              channelCache.setLastFlushTime(getFullyQualifiedTableName(i), maxLastFlushTime);
               if (i % 2 == 0) {
                 flushService.setNeedFlush(getFullyQualifiedTableName(i));
               }
@@ -515,12 +522,13 @@ public class FlushServiceTest {
               Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
               if (i % 2 == 0) {
                 Assert.assertNotEquals(
-                    Long.MAX_VALUE,
-                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+                    Optional.of(maxLastFlushTime),
+                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)));
               } else {
-                Assert.assertEquals(
-                    Long.MAX_VALUE,
-                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+                assertTimeDiffwithinThreshold(
+                    Optional.of(maxLastFlushTime),
+                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)),
+                    1000L);
               }
             });
 
@@ -529,7 +537,7 @@ public class FlushServiceTest {
         .forEach(
             i -> {
               channelCache.setLastFlushTime(
-                  getFullyQualifiedTableName(i), i % 2 == 0 ? 0L : Long.MAX_VALUE);
+                  getFullyQualifiedTableName(i), i % 2 == 0 ? 0L : maxLastFlushTime);
             });
     flushService.flush(false).get();
     Mockito.verify(flushService, Mockito.times(2)).distributeFlushTasks(Mockito.any());
@@ -539,11 +547,12 @@ public class FlushServiceTest {
               Assert.assertFalse(channelCache.getNeedFlush(getFullyQualifiedTableName(i)));
               if (i % 2 == 0) {
                 Assert.assertNotEquals(
-                    0L, channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+                    Optional.of(0L), channelCache.getLastFlushTime(getFullyQualifiedTableName(i)));
               } else {
-                Assert.assertEquals(
-                    Long.MAX_VALUE,
-                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)).longValue());
+                assertTimeDiffwithinThreshold(
+                    Optional.of(maxLastFlushTime),
+                    channelCache.getLastFlushTime(getFullyQualifiedTableName(i)),
+                    1000L);
               }
             });
   }
@@ -1166,5 +1175,11 @@ public class FlushServiceTest {
 
   private String getFullyQualifiedTableName(int tableId) {
     return String.format("db1.PUBLIC.table%d", tableId);
+  }
+
+  private void assertTimeDiffwithinThreshold(
+      Optional<Long> time1, Optional<Long> time2, long threshold) {
+    Assert.assertTrue(
+        time1.isPresent() && time2.isPresent() && Math.abs(time1.get() - time2.get()) <= threshold);
   }
 }

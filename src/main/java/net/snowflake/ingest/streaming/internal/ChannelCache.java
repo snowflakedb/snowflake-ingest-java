@@ -4,8 +4,9 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.util.Iterator;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -43,8 +44,7 @@ class ChannelCache<T> {
     // Update the last flush time for the table, add jitter to avoid all channels flush at the same
     // time when the blobs are not interleaved
     this.lastFlushTime.putIfAbsent(
-        channel.getFullyQualifiedTableName(),
-        System.currentTimeMillis() + (long) (Math.random() * 1000));
+        channel.getFullyQualifiedTableName(), System.currentTimeMillis() + getRandomFlushJitter());
 
     SnowflakeStreamingIngestChannelInternal<T> oldChannel =
         channels.put(channel.getName(), channel);
@@ -62,8 +62,8 @@ class ChannelCache<T> {
    * @param fullyQualifiedTableName fully qualified table name
    * @return last flush time in milliseconds
    */
-  Long getLastFlushTime(String fullyQualifiedTableName) {
-    return this.lastFlushTime.get(fullyQualifiedTableName);
+  Optional<Long> getLastFlushTime(String fullyQualifiedTableName) {
+    return Optional.ofNullable(this.lastFlushTime.get(fullyQualifiedTableName));
   }
 
   /**
@@ -73,7 +73,7 @@ class ChannelCache<T> {
    * @param lastFlushTime last flush time in milliseconds
    */
   void setLastFlushTime(String fullyQualifiedTableName, Long lastFlushTime) {
-    this.lastFlushTime.put(fullyQualifiedTableName, lastFlushTime);
+    this.lastFlushTime.put(fullyQualifiedTableName, lastFlushTime + getRandomFlushJitter());
   }
 
   /**
@@ -96,28 +96,15 @@ class ChannelCache<T> {
     this.needFlush.put(fullyQualifiedTableName, needFlush);
   }
 
-  /**
-   * Returns an iterator over the (table, channels) in this map.
-   *
-   * @return
-   */
-  Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
-      iterator() {
-    return this.cache.entrySet().iterator();
+  /** Returns an immutable set view of the mappings contained in the channel cache. */
+  Set<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
+      entrySet() {
+    return Collections.unmodifiableSet(cache.entrySet());
   }
 
-  /**
-   * Returns an iterator over the (table, channels) in this map, filtered by the given table name
-   * set
-   *
-   * @param tableNames the set of table names to filter
-   * @return
-   */
-  Iterator<Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
-      iterator(Set<String> tableNames) {
-    return this.cache.entrySet().stream()
-        .filter(entry -> tableNames.contains(entry.getKey()))
-        .iterator();
+  /** Returns an immutable set view of the keys contained in the channel cache. */
+  Set<String> keySet() {
+    return Collections.unmodifiableSet(cache.keySet());
   }
 
   /** Close all channels in the channel cache */
@@ -169,9 +156,7 @@ class ChannelCache<T> {
     return cache.size();
   }
 
-  public Set<
-          Map.Entry<String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
-      entrySet() {
-    return cache.entrySet();
+  private long getRandomFlushJitter() {
+    return (long) (Math.random() * 1000);
   }
 }
