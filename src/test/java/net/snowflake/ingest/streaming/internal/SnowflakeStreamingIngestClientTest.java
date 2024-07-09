@@ -850,7 +850,6 @@ public class SnowflakeStreamingIngestClientTest {
     client.registerBlobs(blobs);
   }
 
-
   @Test
   public void testRegisterBlobsRetries() throws Exception {
     Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> testData = getRetryBlobMetadata();
@@ -1121,7 +1120,6 @@ public class SnowflakeStreamingIngestClientTest {
         .thenReturn(
             IOUtils.toInputStream(responseString), IOUtils.toInputStream(retryResponseString));
     when(httpClient.execute(Mockito.any())).thenReturn(httpResponse);
-
 
     RequestBuilder requestBuilder =
         Mockito.spy(
