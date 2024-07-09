@@ -110,7 +110,7 @@ class ExternalVolumeManager<T> implements StorageManager<T, ExternalVolumeLocati
         Utils.getFullyQualifiedTableName(dbName, schemaName, tableName);
 
     try {
-      this.externalVolumeMap.putIfAbsent(
+      this.externalVolumeMap.put(
           fullyQualifiedTableName,
           new StreamingIngestStorage<T, ExternalVolumeLocation>(
               this,
