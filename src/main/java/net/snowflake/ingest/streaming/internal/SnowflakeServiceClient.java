@@ -20,7 +20,6 @@ import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import java.io.IOException;
-import java.util.stream.Collectors;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -200,8 +199,8 @@ class SnowflakeServiceClient {
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       logger.logDebug(
-          "Register blob request, request={}",
-          request.getBlobs().stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
+          "Register blob request failed, request={}, response={}, executionCount={}",
+          request.getStringForLogging(),
           response.getMessage(),
           executionCount);
       throw new SFException(ErrorCode.REGISTER_BLOB_FAILURE, response.getMessage());
