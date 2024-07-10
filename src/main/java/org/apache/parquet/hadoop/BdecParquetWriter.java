@@ -6,6 +6,7 @@ package org.apache.parquet.hadoop;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.utils.Constants;
@@ -17,6 +18,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -35,6 +37,7 @@ import org.apache.parquet.schema.PrimitiveType;
 public class BdecParquetWriter implements AutoCloseable {
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
+  private long rowsWritten = 0;
 
   /**
    * Creates a BDEC specific parquet writer.
@@ -100,12 +103,26 @@ public class BdecParquetWriter implements AutoCloseable {
             encodingProps);
   }
 
+  /** @return List of row counts per block stored in the parquet footer */
+  public List<Long> getRowCountsFromFooter() {
+    final List<Long> blockRowCounts = new ArrayList<>();
+    for (BlockMetaData metadata : writer.getFooter().getBlocks()) {
+      blockRowCounts.add(metadata.getRowCount());
+    }
+    return blockRowCounts;
+  }
+
   public void writeRow(List<Object> row) {
     try {
       writer.write(row);
+      rowsWritten++;
     } catch (InterruptedException | IOException e) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "parquet row write failed", e);
     }
+  }
+
+  public long getRowsWritten() {
+    return rowsWritten;
   }
 
   @Override
