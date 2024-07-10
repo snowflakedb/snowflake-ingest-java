@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize the {@link OpenChannelRequest} */
 class OpenChannelRequestInternal implements StreamingIngestRequest {
@@ -97,15 +96,11 @@ class OpenChannelRequestInternal implements StreamingIngestRequest {
     return offsetToken;
   }
 
-  String getFullyQualifiedTableName() {
-    return Utils.getFullyQualifiedTableName(database, schema, table);
-  }
-
   @Override
   public String getStringForLogging() {
     return String.format(
         "OpenChannelRequestInternal(requestId=%s, role=%s, db=%s, schema=%s, table=%s, channel=%s,"
-            + " writeMode=%s, isIceberg=%s, offsetToken=%s)",
-        requestId, role, database, schema, table, channel, writeMode, isIceberg, offsetToken);
+            + " writeMode=%s, isIceberg=%s)",
+        requestId, role, database, schema, table, channel, writeMode, isIceberg);
   }
 }
