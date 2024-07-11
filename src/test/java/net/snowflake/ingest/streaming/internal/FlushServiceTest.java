@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
- */
-
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
@@ -11,7 +7,6 @@ import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
-import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 
 import com.codahale.metrics.Histogram;
@@ -53,22 +48,11 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-@RunWith(Parameterized.class)
 public class FlushServiceTest {
-
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
-    return new Object[] {false, true};
-  }
-
-  @Parameterized.Parameter public static boolean isIcebergMode;
-
   public FlushServiceTest() {
     this.testContextFactory = ParquetTestContext.createFactory();
   }
@@ -96,23 +80,16 @@ public class FlushServiceTest {
     StorageManager<T, ?> storageManager;
     StreamingIngestStorage storage;
     ParameterProvider parameterProvider;
-    InternalParameterProvider internalParameterProvider;
     RegisterService registerService;
 
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
     TestContext() {
       storage = Mockito.mock(StreamingIngestStorage.class);
-      parameterProvider = new ParameterProvider(isIcebergMode);
-      internalParameterProvider = new InternalParameterProvider(isIcebergMode);
+      parameterProvider = new ParameterProvider();
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
-      Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
-      storageManager =
-          Mockito.spy(
-              isIcebergMode
-                  ? new ExternalVolumeManager<>(true, "role", "client", null)
-                  : new InternalStageManager<>(true, "role", "client", null));
+      storageManager = Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
       Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       channelCache = new ChannelCache<>();
@@ -421,38 +398,33 @@ public class FlushServiceTest {
     StorageManager storageManager = testContext.storageManager;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
-    if (isIcebergMode) {
-      // TODO: SNOW-1502887 Blob path generation for iceberg table
-      String outputString = storageManager.generateBlobPath();
-    } else {
-      String outputString =
-          ((InternalStageManager<?>) storageManager).getBlobPath(calendar, clientPrefix);
-      Path outputPath = Paths.get(outputString);
-      Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
-      Assert.assertTrue(
-          calendar.get(Calendar.MINUTE)
-                  - Integer.parseInt(outputPath.getParent().getFileName().toString())
-              <= 1);
-      Assert.assertEquals(
-          Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
-          outputPath.getParent().getParent().getFileName().toString());
-      Assert.assertEquals(
-          Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
-          outputPath.getParent().getParent().getParent().getFileName().toString());
-      Assert.assertEquals(
-          Integer.toString(calendar.get(Calendar.MONTH) + 1),
-          outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
-      Assert.assertEquals(
-          Integer.toString(calendar.get(Calendar.YEAR)),
-          outputPath
-              .getParent()
-              .getParent()
-              .getParent()
-              .getParent()
-              .getParent()
-              .getFileName()
-              .toString());
-    }
+    String outputString =
+        ((InternalStageManager<?>) storageManager).getBlobPath(calendar, clientPrefix);
+    Path outputPath = Paths.get(outputString);
+    Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
+    Assert.assertTrue(
+        calendar.get(Calendar.MINUTE)
+                - Integer.parseInt(outputPath.getParent().getFileName().toString())
+            <= 1);
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.HOUR_OF_DAY)),
+        outputPath.getParent().getParent().getFileName().toString());
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.DAY_OF_MONTH)),
+        outputPath.getParent().getParent().getParent().getFileName().toString());
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.MONTH) + 1),
+        outputPath.getParent().getParent().getParent().getParent().getFileName().toString());
+    Assert.assertEquals(
+        Integer.toString(calendar.get(Calendar.YEAR)),
+        outputPath
+            .getParent()
+            .getParent()
+            .getParent()
+            .getParent()
+            .getParent()
+            .getFileName()
+            .toString());
   }
 
   @Test
@@ -624,9 +596,7 @@ public class FlushServiceTest {
             Math.ceil(
                 (double) numberOfRows
                     / channelsPerTable
-                    / (isIcebergMode
-                        ? MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
-                        : ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT));
+                    / ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT);
 
     final TestContext<List<List<Object>>> testContext = testContextFactory.create();
 
@@ -904,7 +874,7 @@ public class FlushServiceTest {
     // Create a new Client in order to not interfere with other tests
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
-    ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
+    ParameterProvider parameterProvider = new ParameterProvider();
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);

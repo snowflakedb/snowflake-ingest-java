@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
- */
-
 package net.snowflake.ingest.streaming.internal;
 
 import java.io.ByteArrayOutputStream;
@@ -27,21 +23,18 @@ public class BlobBuilderTest {
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1, false)),
-        Constants.BdecVersion.THREE,
-        true);
+        Constants.BdecVersion.THREE);
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1, true)),
-        Constants.BdecVersion.THREE,
-        true);
+        Constants.BdecVersion.THREE);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0, false)),
-          Constants.BdecVersion.THREE,
-          true);
+          Constants.BdecVersion.THREE);
       Assert.fail("Should not pass enableParquetInternalBuffering=false");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
@@ -59,8 +52,7 @@ public class BlobBuilderTest {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0, true)),
-          Constants.BdecVersion.THREE,
-          true);
+          Constants.BdecVersion.THREE);
       Assert.fail("Should not pass enableParquetInternalBuffering=true");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());

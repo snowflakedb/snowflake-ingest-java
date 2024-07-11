@@ -114,7 +114,7 @@ public class OAuthBasicTest {
   @Test
   public void testSetRefreshToken() throws Exception {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("TEST_CLIENT", false);
+        new SnowflakeStreamingIngestClientInternal<>("TEST_CLIENT");
     MockOAuthClient mockOAuthClient = new MockOAuthClient();
 
     OAuthManager oAuthManager =

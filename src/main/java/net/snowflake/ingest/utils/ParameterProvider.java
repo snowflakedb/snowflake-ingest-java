@@ -1,10 +1,4 @@
-/*
- * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
- */
-
 package net.snowflake.ingest.utils;
-
-import static net.snowflake.ingest.utils.ErrorCode.INVALID_CONFIG_PARAMETER;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -61,7 +55,6 @@ public class ParameterProvider {
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
-  public static final long MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT = 30000; // 30 seconds
   static final long MAX_CLIENT_LAG_MS_MIN = TimeUnit.SECONDS.toMillis(1);
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
 
@@ -70,9 +63,6 @@ public class ParameterProvider {
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
-
-  /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -90,25 +80,18 @@ public class ParameterProvider {
    *
    * @param parameterOverrides Map of parameter name to value
    * @param props Properties from profile file
-   * @param isIcebergMode If the provided parameters need to be verified and modified to meet
-   *     Iceberg mode
    */
-  public ParameterProvider(
-      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
-    this.setParameterMap(parameterOverrides, props, isIcebergMode);
+  public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
+    this.setParameterMap(parameterOverrides, props);
   }
 
   /** Empty constructor for tests */
-  public ParameterProvider(boolean isIcebergMode) {
-    this(null, null, isIcebergMode);
+  public ParameterProvider() {
+    this(null, null);
   }
 
-  private void checkAndUpdate(
-      String key,
-      Object defaultValue,
-      Map<String, Object> parameterOverrides,
-      Properties props,
-      boolean enforceDefault) {
+  private void updateValue(
+      String key, Object defaultValue, Map<String, Object> parameterOverrides, Properties props) {
     if (parameterOverrides != null && props != null) {
       this.parameterMap.put(
           key, parameterOverrides.getOrDefault(key, props.getOrDefault(key, defaultValue)));
@@ -116,19 +99,6 @@ public class ParameterProvider {
       this.parameterMap.put(key, parameterOverrides.getOrDefault(key, defaultValue));
     } else if (props != null) {
       this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
-    } else {
-      this.parameterMap.put(key, defaultValue);
-    }
-
-    if (enforceDefault) {
-      if (!this.parameterMap.getOrDefault(key, defaultValue).equals(defaultValue)) {
-        throw new SFException(
-            INVALID_CONFIG_PARAMETER,
-            String.format(
-                "The value %s for %s is not configurable, should be %s.",
-                this.parameterMap.get(key), key, defaultValue));
-      }
-      this.parameterMap.put(key, defaultValue);
     }
   }
 
@@ -137,11 +107,8 @@ public class ParameterProvider {
    *
    * @param parameterOverrides Map<String, Object> of parameter name -> value
    * @param props Properties file provided to client constructor
-   * @param isIcebergMode If the provided parameters need to be verified and modified to meet
-   *     Iceberg mode
    */
-  private void setParameterMap(
-      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
+  private void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
     // BUFFER_FLUSH_INTERVAL_IN_MILLIS is deprecated and disallowed
     if ((parameterOverrides != null
             && parameterOverrides.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS))
@@ -152,101 +119,75 @@ public class ParameterProvider {
               BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
     }
 
-    this.checkAndUpdate(
+    this.updateValue(
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS,
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         INSERT_THROTTLE_INTERVAL_IN_MILLIS,
         INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE,
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         INSERT_THROTTLE_THRESHOLD_IN_BYTES,
         INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         ENABLE_SNOWPIPE_STREAMING_METRICS,
         SNOWPIPE_STREAMING_METRICS_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
 
-    this.checkAndUpdate(
-        BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT, parameterOverrides, props, false);
+    this.updateValue(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT, parameterOverrides, props);
     getBlobFormatVersion(); // to verify parsing the configured value
 
-    this.checkAndUpdate(
-        IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT, parameterOverrides, props, false);
+    this.updateValue(IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT, parameterOverrides, props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         BLOB_UPLOAD_MAX_RETRY_COUNT,
         BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
 
-    this.checkAndUpdate(
-        MAX_MEMORY_LIMIT_IN_BYTES,
-        MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT,
-        parameterOverrides,
-        props,
-        false);
+    this.updateValue(
+        MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT, parameterOverrides, props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         ENABLE_PARQUET_INTERNAL_BUFFERING,
         ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
 
-    this.checkAndUpdate(
-        MAX_CHANNEL_SIZE_IN_BYTES,
-        MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
-        parameterOverrides,
-        props,
-        false);
+    this.updateValue(
+        MAX_CHANNEL_SIZE_IN_BYTES, MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
 
-    this.checkAndUpdate(
-        MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props, false);
+    this.updateValue(
+        MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props);
 
-    this.checkAndUpdate(
-        MAX_CLIENT_LAG,
-        isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT,
-        parameterOverrides,
-        props,
-        false);
+    this.updateValue(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT, parameterOverrides, props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
-        isIcebergMode
-            ? MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
-            : MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
+        MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
         parameterOverrides,
-        props,
-        isIcebergMode);
+        props);
 
-    this.checkAndUpdate(
+    this.updateValue(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
         BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
-        props,
-        false);
+        props);
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */

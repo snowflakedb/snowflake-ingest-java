@@ -281,22 +281,6 @@ class StreamingIngestStorage<T, TLocation> {
   }
 
   /**
-   * Creates a client-specific prefix that will be also part of the files registered by this client.
-   * The prefix will include a server-side generated string and the GlobalID of the deployment the
-   * client is registering blobs to. The latter (deploymentId) is needed in order to guarantee that
-   * blob filenames are unique across deployments even with replication enabled.
-   *
-   * @param response the client/configure response from the server
-   * @return the client prefix.
-   */
-  private String createClientPrefix(final ClientConfigureResponse response) {
-    final String prefix = response.getPrefix() == null ? "" : response.getPrefix();
-    final String deploymentId =
-        response.getDeploymentId() != null ? "_" + response.getDeploymentId() : "";
-    return prefix + deploymentId;
-  }
-
-  /**
    * GCS requires a signed url per file. We need to fetch this from the server for each put
    *
    * @throws SnowflakeSQLException
