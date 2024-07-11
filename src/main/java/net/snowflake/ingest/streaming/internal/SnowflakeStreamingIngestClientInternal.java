@@ -393,7 +393,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           response.getStageLocation());
 
       return channel;
-    } catch (IngestResponseException | IOException e) {
+    } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
   }
@@ -477,7 +477,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .collect(Collectors.toList());
       request.setChannels(requestDTOs);
       request.setRole(this.role);
-      request.setRequestId(this.storageManager.getClientPrefix() + "_" + counter.getAndIncrement());
 
       ChannelsStatusResponse response = snowflakeServiceClient.channelStatus(request);
 
@@ -501,7 +500,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       }
 
       return response;
-    } catch (IngestResponseException | IOException e) {
+    } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.CHANNEL_STATUS_FAILURE, e.getMessage());
     }
   }
@@ -574,7 +573,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         this.name,
         executionCount);
 
-    RegisterBlobResponse response;
+    RegisterBlobResponse response = null;
     try {
       RegisterBlobRequest request =
           new RegisterBlobRequest(
@@ -582,7 +581,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.role,
               blobs);
       response = snowflakeServiceClient.registerBlob(request, executionCount);
-    } catch (IngestResponseException | IOException e) {
+    } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
     }
 
@@ -774,7 +773,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.flushService.setNeedFlush();
   }
 
-  /** Remove the channel in the channel cache if the channel sequencer matches. Update storage */
+  /** Remove the channel in the channel cache if the channel sequencer matches */
   void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal<T> channel) {
     this.channelCache.removeChannelIfSequencersMatch(channel);
   }

@@ -95,9 +95,28 @@ public class SnowflakeStreamingIngestClientTest {
   @Parameterized.Parameter public boolean isIcebergMode;
 
   @Before
-  public void setup() {
+  public void setup() throws Exception {
     objectMapper.setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.ANY);
     objectMapper.setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.ANY);
+    Properties prop = new Properties();
+    prop.put(USER, TestUtils.getUser());
+    prop.put(ACCOUNT_URL, TestUtils.getHost());
+    prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
+    prop.put(ROLE, TestUtils.getRole());
+
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    RequestBuilder requestBuilder =
+        new RequestBuilder(TestUtils.getHost(), TestUtils.getUser(), TestUtils.getKeyPair());
+    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            isIcebergMode,
+            true,
+            requestBuilder,
+            null);
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
@@ -107,7 +126,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -123,7 +142,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             2L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -139,7 +158,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             3L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -155,7 +174,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             3L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -375,7 +394,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -386,7 +405,6 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
     ChannelsStatusRequest request = new ChannelsStatusRequest();
-    request.setRequestId("testPrefix_0");
     request.setChannels(Collections.singletonList(dto));
     ChannelsStatusResponse result = client.getChannelsStatus(Collections.singletonList(channel));
     Assert.assertEquals(response.getMessage(), result.getMessage());
@@ -482,7 +500,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -515,6 +533,17 @@ public class SnowflakeStreamingIngestClientTest {
     RequestBuilder requestBuilder =
         new RequestBuilder(url, prop.get(USER).toString(), keyPair, null, null);
 
+    CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
+    SnowflakeStreamingIngestClientInternal<?> client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client",
+            new SnowflakeURL("snowflake.dev.local:8082"),
+            null,
+            httpClient,
+            isIcebergMode,
+            true,
+            requestBuilder,
+            null);
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -524,7 +553,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -567,9 +596,15 @@ public class SnowflakeStreamingIngestClientTest {
     HttpPost request =
         requestBuilder.generateStreamingIngestPostRequest(
             payload, REGISTER_BLOB_ENDPOINT, "register blob");
+    String expectedUrlPattern =
+        String.format("%s%s", urlStr, REGISTER_BLOB_ENDPOINT) + "(\\?requestId=[a-f0-9\\-]{36})?";
 
-    Assert.assertEquals(
-        String.format("%s%s", urlStr, REGISTER_BLOB_ENDPOINT), request.getRequestLine().getUri());
+    Assert.assertTrue(
+        String.format(
+            "Expected URL to match pattern: %s but was: %s",
+            expectedUrlPattern, request.getRequestLine().getUri()),
+        request.getRequestLine().getUri().matches(expectedUrlPattern));
+
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
     Assert.assertEquals("POST", request.getMethod());
@@ -1451,7 +1486,7 @@ public class SnowflakeStreamingIngestClientTest {
             "0",
             0L,
             0L,
-            null,
+            client,
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
@@ -1462,7 +1497,6 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
     ChannelsStatusRequest request = new ChannelsStatusRequest();
-    request.setRequestId("testPrefix_0");
     request.setChannels(Collections.singletonList(dto));
     Map<String, String> result =
         client.getLatestCommittedOffsetTokens(Collections.singletonList(channel));

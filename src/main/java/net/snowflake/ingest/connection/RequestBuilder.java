@@ -110,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.1.1";
+  public static final String DEFAULT_VERSION = "2.1.2-SNAPSHOT";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -678,12 +678,23 @@ public class RequestBuilder {
    */
   public HttpPost generateStreamingIngestPostRequest(
       String payload, String endPoint, String message) {
-    LOGGER.debug("Generate Snowpipe streaming request: endpoint={}, payload={}", endPoint, payload);
+    final String requestId = UUID.randomUUID().toString();
+    LOGGER.debug(
+        "Generate Snowpipe streaming request: endpoint={}, payload={}, requestId={}",
+        endPoint,
+        payload,
+        requestId);
     // Make the corresponding URI
     URI uri = null;
     try {
       uri =
-          new URIBuilder().setScheme(scheme).setHost(host).setPort(port).setPath(endPoint).build();
+          new URIBuilder()
+              .setScheme(scheme)
+              .setHost(host)
+              .setPort(port)
+              .setPath(endPoint)
+              .setParameter(REQUEST_ID, requestId)
+              .build();
     } catch (URISyntaxException e) {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }

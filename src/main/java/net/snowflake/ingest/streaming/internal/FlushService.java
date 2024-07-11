@@ -114,6 +114,7 @@ class FlushService<T> {
 
   // blob encoding version
   private final Constants.BdecVersion bdecVersion;
+  private volatile int numProcessors = Runtime.getRuntime().availableProcessors();
 
   /**
    * Default constructor
@@ -318,6 +319,9 @@ class FlushService<T> {
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
 
+    // The API states that the number of available processors reported can change and therefore, we
+    // should poll it occasionally.
+    numProcessors = Runtime.getRuntime().availableProcessors();
     while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
@@ -642,8 +646,7 @@ class FlushService<T> {
    */
   boolean throttleDueToQueuedFlushTasks() {
     ThreadPoolExecutor buildAndUpload = (ThreadPoolExecutor) this.buildUploadWorkers;
-    boolean throttleOnQueuedTasks =
-        buildAndUpload.getQueue().size() > Runtime.getRuntime().availableProcessors();
+    boolean throttleOnQueuedTasks = buildAndUpload.getQueue().size() > numProcessors;
     if (throttleOnQueuedTasks) {
       logger.logWarn(
           "Throttled due too many queue flush tasks (probably because of slow uploading speed),"

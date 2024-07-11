@@ -69,11 +69,6 @@ public class SnowflakeStreamingIngestChannelTest {
     }
 
     @Override
-    public long getTotalMemory() {
-      return maxMemory;
-    }
-
-    @Override
     public long getFreeMemory() {
       return freeMemory;
     }
@@ -326,8 +321,14 @@ public class SnowflakeStreamingIngestChannelTest {
         requestBuilder.generateStreamingIngestPostRequest(
             payload, OPEN_CHANNEL_ENDPOINT, "open channel");
 
-    Assert.assertEquals(
-        String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT), request.getRequestLine().getUri());
+    String expectedUrlPattern =
+        String.format("%s%s", urlStr, OPEN_CHANNEL_ENDPOINT) + "(\\?requestId=[a-f0-9\\-]{36})?";
+
+    Assert.assertTrue(
+        String.format(
+            "Expected URL to match pattern: %s but was: %s",
+            expectedUrlPattern, request.getRequestLine().getUri()),
+        request.getRequestLine().getUri().matches(expectedUrlPattern));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.USER_AGENT));
     Assert.assertNotNull(request.getFirstHeader(HttpHeaders.AUTHORIZATION));
     Assert.assertEquals("POST", request.getMethod());
