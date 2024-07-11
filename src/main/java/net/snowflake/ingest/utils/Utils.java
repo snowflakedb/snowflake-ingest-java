@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.utils;
@@ -383,5 +383,32 @@ public class Utils {
       stackTrace.append(System.lineSeparator()).append(element.toString());
     }
     return stackTrace.toString();
+  }
+
+  /**
+   * Get the fully qualified table name
+   *
+   * @param dbName the database name
+   * @param schemaName the schema name
+   * @param tableName the table name
+   * @return the fully qualified table name
+   */
+  public static String getFullyQualifiedTableName(
+      String dbName, String schemaName, String tableName) {
+    return String.format("%s.%s.%s", dbName, schemaName, tableName);
+  }
+
+  /**
+   * Get the fully qualified channel name
+   *
+   * @param dbName the database name
+   * @param schemaName the schema name
+   * @param tableName the table name
+   * @param channelName the channel name
+   * @return the fully qualified channel name
+   */
+  public static String getFullyQualifiedChannelName(
+      String dbName, String schemaName, String tableName, String channelName) {
+    return String.format("%s.%s.%s.%s", dbName, schemaName, tableName, channelName);
   }
 }

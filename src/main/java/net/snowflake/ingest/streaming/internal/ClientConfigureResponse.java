@@ -4,10 +4,12 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to deserialize responses from configure endpoint */
-class ConfigureResponse extends StreamingIngestResponse {
+@JsonIgnoreProperties(ignoreUnknown = true)
+class ClientConfigureResponse extends StreamingIngestResponse {
   @JsonProperty("prefix")
   private String prefix;
 
@@ -62,5 +64,12 @@ class ConfigureResponse extends StreamingIngestResponse {
 
   void setDeploymentId(Long deploymentId) {
     this.deploymentId = deploymentId;
+  }
+
+  String getClientPrefix() {
+    if (this.deploymentId == null) {
+      return this.prefix;
+    }
+    return this.prefix + "_" + this.deploymentId;
   }
 }
