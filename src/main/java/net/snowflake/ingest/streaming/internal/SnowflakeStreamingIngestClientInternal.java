@@ -774,16 +774,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.flushService.setNeedFlush();
   }
 
-  /**
-   * Remove the channel in the channel cache if the channel sequencer matches. Update storage
-   * manager if needed.
-   */
+  /** Remove the channel in the channel cache if the channel sequencer matches. Update storage */
   void removeChannelIfSequencersMatch(SnowflakeStreamingIngestChannelInternal<T> channel) {
     this.channelCache.removeChannelIfSequencersMatch(channel);
-    if (this.channelCache.getSizePerTable(channel.getFullyQualifiedName()) == 0) {
-      this.storageManager.removeStorage(
-          channel.getDBName(), channel.getSchemaName(), channel.getTableName());
-    }
   }
 
   /** Get whether we're running under test mode */

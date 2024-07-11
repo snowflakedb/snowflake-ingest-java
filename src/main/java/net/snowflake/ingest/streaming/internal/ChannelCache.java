@@ -101,11 +101,4 @@ class ChannelCache<T> {
   int getSize() {
     return cache.size();
   }
-
-  /** Get the number of channels for a given table */
-  int getSizePerTable(String fullyQualifiedTableName) {
-    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> channelsMapPerTable =
-        cache.get(fullyQualifiedTableName);
-    return channelsMapPerTable == null ? 0 : channelsMapPerTable.size();
-  }
 }

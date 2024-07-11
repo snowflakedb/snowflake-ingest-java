@@ -41,7 +41,6 @@ public class OpenChannelRequest {
   private final ZoneId defaultTimezone;
 
   private final String offsetToken;
-  private final boolean isOffsetTokenProvided;
 
   private final OffsetTokenVerificationFunction offsetTokenVerificationFunction;
 
@@ -59,7 +58,6 @@ public class OpenChannelRequest {
     private ZoneId defaultTimezone;
 
     private String offsetToken;
-    private boolean isOffsetTokenProvided = false;
 
     private OffsetTokenVerificationFunction offsetTokenVerificationFunction;
 
@@ -95,7 +93,6 @@ public class OpenChannelRequest {
 
     public OpenChannelRequestBuilder setOffsetToken(String offsetToken) {
       this.offsetToken = offsetToken;
-      this.isOffsetTokenProvided = true;
       return this;
     }
 
@@ -125,7 +122,6 @@ public class OpenChannelRequest {
     this.onErrorOption = builder.onErrorOption;
     this.defaultTimezone = builder.defaultTimezone;
     this.offsetToken = builder.offsetToken;
-    this.isOffsetTokenProvided = builder.isOffsetTokenProvided;
     this.offsetTokenVerificationFunction = builder.offsetTokenVerificationFunction;
   }
 
@@ -159,10 +155,6 @@ public class OpenChannelRequest {
 
   public String getOffsetToken() {
     return this.offsetToken;
-  }
-
-  public boolean isOffsetTokenProvided() {
-    return this.isOffsetTokenProvided;
   }
 
   public OffsetTokenVerificationFunction getOffsetTokenVerificationFunction() {

@@ -93,7 +93,7 @@ public class FlushServiceTest {
     ChannelCache<T> channelCache;
     final Map<String, SnowflakeStreamingIngestChannelInternal<T>> channels = new HashMap<>();
     FlushService<T> flushService;
-    StorageManager<T, InternalStageLocation> storageManager;
+    StorageManager<T, ?> storageManager;
     StreamingIngestStorage storage;
     ParameterProvider parameterProvider;
     InternalParameterProvider internalParameterProvider;
@@ -108,8 +108,12 @@ public class FlushServiceTest {
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
-      storageManager = Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
-      Mockito.when(storageManager.getStorage(ArgumentMatchers.any())).thenReturn(storage);
+      storageManager =
+          Mockito.spy(
+              isIcebergMode
+                  ? new ExternalVolumeManager<>(true, "role", "client", null)
+                  : new InternalStageManager<>(true, "role", "client", null));
+      Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);

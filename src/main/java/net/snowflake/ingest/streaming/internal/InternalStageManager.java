@@ -109,10 +109,6 @@ class InternalStageManager<T> implements StorageManager<T, InternalStageLocation
   public void addStorage(
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo) {}
 
-  /** Remove storage from the manager. Do nothing as there's only one stage in non-Iceberg mode. */
-  @Override
-  public void removeStorage(String dbName, String schemaName, String tableName) {}
-
   /**
    * Gets the latest file location info (with a renewed short-lived access token) for the specified
    * location

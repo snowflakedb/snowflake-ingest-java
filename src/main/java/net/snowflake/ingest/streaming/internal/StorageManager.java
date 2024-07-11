@@ -36,15 +36,6 @@ interface StorageManager<T, TLocation> {
       String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo);
 
   /**
-   * Remove the storage of a target table
-   *
-   * @param dbName the database name
-   * @param schemaName the schema name
-   * @param tableName the table name
-   */
-  void removeStorage(String dbName, String schemaName, String tableName);
-
-  /**
    * Gets the latest file location info (with a renewed short-lived access token) for the specified
    * location
    *

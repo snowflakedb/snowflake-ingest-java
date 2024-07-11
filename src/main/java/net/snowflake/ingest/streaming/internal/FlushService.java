@@ -94,7 +94,7 @@ class FlushService<T> {
   // Reference to the channel cache
   private final ChannelCache<T> channelCache;
 
-  // Reference to the Stream Ingest storage manager
+  // Reference to the Streaming Ingest storage manager
   private final StorageManager<T, ?> storageManager;
 
   // Reference to register service
