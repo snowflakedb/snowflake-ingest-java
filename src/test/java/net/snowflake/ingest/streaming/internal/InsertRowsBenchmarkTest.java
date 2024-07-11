@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
@@ -36,7 +40,7 @@ public class InsertRowsBenchmarkTest {
 
   @Setup(Level.Trial)
   public void setUpBeforeAll() {
-    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
+    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET", false);
     channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",

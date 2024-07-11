@@ -92,8 +92,7 @@ class ChannelsStatusRequest implements StreamingIngestRequest {
   @Override
   public String getStringForLogging() {
     return String.format(
-        "ChannelsStatusRequest(requestId=%s, role=%s, channels=[%s])",
-        requestId,
+        "ChannelsStatusRequest(role=%s, channels=[%s])",
         role,
         channels.stream()
             .map(
