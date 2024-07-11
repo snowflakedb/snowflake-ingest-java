@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -88,7 +88,6 @@ class BlobBuilder {
             padChunk(chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
         byte[] paddedChunkData = paddedChunk.getFirst();
         int paddedChunkLength = paddedChunk.getSecond();
-
         // Encrypt the compressed chunk data, the encryption key is derived using the key from
         // server with the full blob path.
         // We need to maintain IV as a block counter for the whole file, even interleaved,
