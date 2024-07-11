@@ -94,9 +94,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Provides constant values that can be set by constructor
   private final ParameterProvider parameterProvider;
 
-  // Provides constant values which is determined by the Iceberg or non-Iceberg mode
-  private final InternalParameterProvider internalParameterProvider;
-
   // Name of the client
   private final String name;
 
@@ -117,9 +114,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
   // Indicates whether the client has closed
   private volatile boolean isClosed;
-
-  // Indicates wheter the client is streaming to Iceberg tables
-  private final boolean isIcebergMode;
 
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
@@ -155,7 +149,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param httpClient http client for sending request
-   * @param isIcebergMode whether we're streaming to iceberg tables
    * @param isTestMode whether we're under test mode
    * @param requestBuilder http request builder
    * @param parameterOverrides parameters we override in case we want to set different values
@@ -165,16 +158,13 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       SnowflakeURL accountURL,
       Properties prop,
       CloseableHttpClient httpClient,
-      boolean isIcebergMode,
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
-    this.parameterProvider = new ParameterProvider(parameterOverrides, prop, isIcebergMode);
-    this.internalParameterProvider = new InternalParameterProvider(isIcebergMode);
+    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
-    this.isIcebergMode = isIcebergMode;
     this.isTestMode = isTestMode;
     this.httpClient = httpClient == null ? HttpUtil.getHttpClient(accountName) : httpClient;
     this.channelCache = new ChannelCache<>();
@@ -238,11 +228,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.snowflakeServiceClient = new SnowflakeServiceClient(this.httpClient, this.requestBuilder);
 
     this.storageManager =
-        isIcebergMode
-            ? new ExternalVolumeManager<T>(
-                isTestMode, this.role, this.name, this.snowflakeServiceClient)
-            : new InternalStageManager<T>(
-                isTestMode, this.role, this.name, this.snowflakeServiceClient);
+        new InternalStageManager<T>(isTestMode, this.role, this.name, this.snowflakeServiceClient);
 
     try {
       this.flushService =
@@ -268,7 +254,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param accountURL Snowflake account url
    * @param prop connection properties
    * @param parameterOverrides map of parameters to override for this client
-   * @param isIcebergMode whether we're streaming to iceberg tables
    * @param isTestMode indicates whether it's under test mode
    */
   public SnowflakeStreamingIngestClientInternal(
@@ -276,17 +261,16 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       SnowflakeURL accountURL,
       Properties prop,
       Map<String, Object> parameterOverrides,
-      boolean isIcebergMode,
       boolean isTestMode) {
-    this(name, accountURL, prop, null, isIcebergMode, isTestMode, null, parameterOverrides);
+    this(name, accountURL, prop, null, isTestMode, null, parameterOverrides);
   }
 
   /*** Constructor for TEST ONLY
    *
    * @param name the name of the client
    */
-  SnowflakeStreamingIngestClientInternal(String name, boolean isIcebergMode) {
-    this(name, null, null, null, isIcebergMode, true, null, new HashMap<>());
+  SnowflakeStreamingIngestClientInternal(String name) {
+    this(name, null, null, null, true, null, new HashMap<>());
   }
 
   // TESTING ONLY - inject the request builder
@@ -349,8 +333,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getTableName(),
               request.getChannelName(),
               Constants.WriteMode.CLOUD_STORAGE,
-              request.getOffsetToken(),
-              isIcebergMode);
+              request.getOffsetToken());
       OpenChannelResponse response = snowflakeServiceClient.openChannel(openChannelRequest);
 
       logger.logInfo(
@@ -421,8 +404,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getChannelName(),
               request instanceof DropChannelVersionRequest
                   ? ((DropChannelVersionRequest) request).getClientSequencer()
-                  : null,
-              isIcebergMode);
+                  : null);
       snowflakeServiceClient.dropChannel(dropChannelRequest);
 
       logger.logInfo(
@@ -902,15 +884,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   ParameterProvider getParameterProvider() {
     return parameterProvider;
-  }
-
-  /**
-   * Get InternalParameterProvider with internal parameters
-   *
-   * @return {@link InternalParameterProvider} used by the client
-   */
-  InternalParameterProvider getInternalParameterProvider() {
-    return internalParameterProvider;
   }
 
   /**

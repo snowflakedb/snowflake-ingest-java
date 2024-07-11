@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
@@ -24,7 +28,7 @@ public class ChannelCacheTest {
   @Before
   public void setup() {
     cache = new ChannelCache<>();
-    client = new SnowflakeStreamingIngestClientInternal<>("client", false);
+    client = new SnowflakeStreamingIngestClientInternal<>("client");
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",

@@ -40,7 +40,7 @@ public class InsertRowsBenchmarkTest {
 
   @Setup(Level.Trial)
   public void setUpBeforeAll() {
-    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET", false);
+    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
     channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",

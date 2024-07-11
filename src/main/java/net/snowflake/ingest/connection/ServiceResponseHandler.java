@@ -42,8 +42,7 @@ public final class ServiceResponseHandler {
     STREAMING_DROP_CHANNEL("POST"),
     STREAMING_CHANNEL_STATUS("POST"),
     STREAMING_REGISTER_BLOB("POST"),
-    STREAMING_CLIENT_CONFIGURE("POST"),
-    STREAMING_CHANNEL_CONFIGURE("POST");
+    STREAMING_CLIENT_CONFIGURE("POST");
     private final String httpMethod;
 
     private ApiName(String httpMethod) {

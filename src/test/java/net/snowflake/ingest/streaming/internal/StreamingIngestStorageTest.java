@@ -48,7 +48,6 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMappe
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -286,7 +285,6 @@ public class StreamingIngestStorageTest {
     StorageManager<?, ?> storageManager =
         new InternalStageManager(true, "role", "client", snowflakeServiceClient);
 
-    ParameterProvider parameterProvider = new ParameterProvider(false);
     StreamingIngestStorage<?, ?> stage =
         new StreamingIngestStorage(
             storageManager,
