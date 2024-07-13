@@ -751,10 +751,15 @@
               <ignoreNonCompile>true</ignoreNonCompile>
               <ignoredDependencies>
                 <!-- We defined these as direct dependencies (as opposed to just declaring it in dependencyManagement)
+<<<<<<< HEAD
                                 to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency
                                 analyzer complains that
                                 the dependency is unused, so we ignore it here-->
                 &gt;&gt;&gt;&gt;&gt;&gt;&gt; master
+=======
+                     to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency analyzer complains that
+                     the dependency is unused, so we ignore it here-->
+>>>>>>> e6c4413ec391df44c2ec2ff62e59cc96b3f32ce2
                 <ignoredDependency>org.apache.commons:commons-compress</ignoredDependency>
                 <ignoredDependency>org.apache.commons:commons-configuration2</ignoredDependency>
               </ignoredDependencies>
@@ -848,6 +853,7 @@
         <version>2.0.1</version>
         <configuration>
           <errorRemedy>failFast</errorRemedy>
+<<<<<<< HEAD
           <!--
           <<<<<<< HEAD
                                                                                                                The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
@@ -859,6 +865,10 @@
                     check your dependencies", verify the conditions of the license and add the reference to it here.
                     --&gt;
                     &gt;&gt;&gt;&gt;&gt;&gt;&gt; master
+=======
+          <!--The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+              check your dependencies", verify the conditions of the license and add the reference to it here.-->
+>>>>>>> e6c4413ec391df44c2ec2ff62e59cc96b3f32ce2
           <includedLicenses>
             <includedLicense>Apache License 2.0</includedLicense>
             <includedLicense>BSD 2-Clause License</includedLicense>
@@ -1169,10 +1179,15 @@
               </execution>
             </executions>
           </plugin>
+<<<<<<< HEAD
           <!--
                                                                                                                                                                                     Plugin executes license processing Python script, which copies third party license files into the directory
                                                                                                                                                                                     target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR.
                                                                                                                                                                                     -->
+=======
+          <!-- Plugin executes license processing Python script, which copies third party license files into the directory
+               target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR. -->
+>>>>>>> e6c4413ec391df44c2ec2ff62e59cc96b3f32ce2
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
