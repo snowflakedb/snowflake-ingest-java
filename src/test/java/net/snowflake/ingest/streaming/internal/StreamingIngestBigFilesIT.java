@@ -130,7 +130,7 @@ public class StreamingIngestBigFilesIT {
       boolean isNullable)
       throws ExecutionException, InterruptedException {
 
-    List<Map<String, Object>> rows = new ArrayList<>();
+    final List<Map<String, Object>> rows = Collections.synchronizedList(new ArrayList<>());
     for (int i = 0; i < batchSize; i++) {
       Random r = new Random();
       rows.add(TestUtils.getRandomRow(r, isNullable));
@@ -138,7 +138,8 @@ public class StreamingIngestBigFilesIT {
 
     ExecutorService testThreadPool = Executors.newFixedThreadPool(numChannels);
     CompletableFuture[] futures = new CompletableFuture[numChannels];
-    List<SnowflakeStreamingIngestChannel> channelList = new ArrayList<>();
+    List<SnowflakeStreamingIngestChannel> channelList =
+        Collections.synchronizedList(new ArrayList<>());
     for (int i = 0; i < numChannels; i++) {
       final String channelName = "CHANNEL" + i;
       int finalI = i;

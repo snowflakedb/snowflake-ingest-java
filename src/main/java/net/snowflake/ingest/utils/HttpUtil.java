@@ -294,7 +294,8 @@ public class HttpUtil {
       if (exception instanceof NoHttpResponseException
           || exception instanceof javax.net.ssl.SSLException
           || exception instanceof java.net.SocketException
-          || exception instanceof java.net.UnknownHostException) {
+          || exception instanceof java.net.UnknownHostException
+          || exception instanceof java.net.SocketTimeoutException) {
         LOGGER.info(
             "Retrying request which caused {} with " + "URI:{}, retryCount:{} and maxRetryCount:{}",
             exception.getClass().getName(),
