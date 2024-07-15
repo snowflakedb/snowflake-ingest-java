@@ -32,10 +32,10 @@ import net.snowflake.ingest.utils.SFException;
 class SnowflakeServiceClient {
   private static final Logging logger = new Logging(SnowflakeServiceClient.class);
 
-  // HTTP client used for making requests
+  /** HTTP client used for making requests */
   private final CloseableHttpClient httpClient;
 
-  // Request builder for building streaming API request
+  /** Request builder for building streaming API request */
   private final RequestBuilder requestBuilder;
 
   /**

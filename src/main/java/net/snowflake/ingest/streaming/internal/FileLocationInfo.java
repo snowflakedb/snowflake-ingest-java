@@ -9,38 +9,49 @@ import java.util.Map;
 
 /** Class used to deserialized volume information response by server */
 class FileLocationInfo {
+  /** The stage type */
   @JsonProperty("locationType")
-  private String locationType; // The stage type
+  private String locationType;
 
+  /** The container or bucket */
   @JsonProperty("location")
-  private String location; // The container or bucket
+  private String location;
 
+  /** The path of the target file */
   @JsonProperty("path")
-  private String path; // path of the target file
+  private String path;
 
+  /** The credentials required for the stage */
   @JsonProperty("creds")
-  private Map<String, String> credentials; // the credentials required for the  stage
+  private Map<String, String> credentials;
 
+  /** AWS/S3/GCS region (S3/GCS only) */
   @JsonProperty("region")
-  private String region; // AWS/S3/GCS region (S3/GCS only)
+  private String region;
 
+  /** The Azure Storage endpoint (Azure only) */
   @JsonProperty("endPoint")
-  private String endPoint; // The Azure Storage endpoint (Azure only)
+  private String endPoint;
 
+  /** The Azure Storage account (Azure only) */
   @JsonProperty("storageAccount")
-  private String storageAccount; // The Azure Storage account (Azure only)
+  private String storageAccount;
 
+  /** GCS gives us back a presigned URL instead of a cred */
   @JsonProperty("presignedUrl")
-  private String presignedUrl; // GCS gives us back a presigned URL instead of a cred
+  private String presignedUrl;
 
+  /** Whether to encrypt/decrypt files on the stage */
   @JsonProperty("isClientSideEncrypted")
-  private boolean isClientSideEncrypted; // whether to encrypt/decrypt files on the stage
+  private boolean isClientSideEncrypted;
 
+  /** Whether to use s3 regional URL (AWS Only) */
   @JsonProperty("useS3RegionalUrl")
-  private boolean useS3RegionalUrl; // whether to use s3 regional URL (AWS Only)
+  private boolean useS3RegionalUrl;
 
+  /** A unique id for volume assigned by server */
   @JsonProperty("volumeHash")
-  private String volumeHash; // a unique id for volume assigned by server
+  private String volumeHash;
 
   String getLocationType() {
     return locationType;

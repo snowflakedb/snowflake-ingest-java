@@ -13,7 +13,7 @@ import java.util.Optional;
  * @param <TLocation> the type of location that's being managed (internal stage / external volume)
  */
 interface StorageManager<T, TLocation> {
-  // Default max upload retries for streaming ingest storage
+  /** Default max upload retries for streaming ingest storage */
   int DEFAULT_MAX_UPLOAD_RETRIES = 5;
 
   /**
