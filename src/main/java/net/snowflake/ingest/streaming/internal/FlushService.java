@@ -110,6 +110,15 @@ class FlushService<T> {
   // Reference to register service
   private final RegisterService<T> registerService;
 
+  /**
+   * Client level last flush time and need flush flag. This two variables are used when max chunk in
+   * blob is not 1. When max chunk in blob is 1, flush service ignores these variables and uses
+   * table level last flush time and need flush flag. See {@link ChannelCache.FlushInfo}.
+   */
+  @VisibleForTesting volatile long lastFlushTime;
+
+  @VisibleForTesting volatile boolean isNeedFlush;
+
   // Indicates whether it's running as part of the test
   private final boolean isTestMode;
 
@@ -137,6 +146,8 @@ class FlushService<T> {
     this.targetStage = targetStage;
     this.counter = new AtomicLong(0);
     this.registerService = new RegisterService<>(client, isTestMode);
+    this.isNeedFlush = false;
+    this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
@@ -169,6 +180,8 @@ class FlushService<T> {
 
     this.registerService = new RegisterService<>(client, isTestMode);
     this.counter = new AtomicLong(0);
+    this.isNeedFlush = false;
+    this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
     this.latencyTimerContextMap = new ConcurrentHashMap<>();
     this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
@@ -206,10 +219,12 @@ class FlushService<T> {
         () -> {
           logFlushTask(isForce, tablesToFlush, flushStartTime);
           distributeFlushTasks(tablesToFlush);
-          long flushEndTime = System.currentTimeMillis();
+          long prevFlushEndTime = System.currentTimeMillis();
           tablesToFlush.forEach(
               table -> {
-                this.channelCache.setLastFlushTime(table, flushEndTime);
+                this.lastFlushTime = prevFlushEndTime;
+                this.channelCache.setLastFlushTime(table, prevFlushEndTime);
+                this.isNeedFlush = false;
                 this.channelCache.setNeedFlush(table, false);
               });
         },
@@ -218,29 +233,37 @@ class FlushService<T> {
 
   /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
   private void logFlushTask(boolean isForce, Set<String> tablesToFlush, long flushStartTime) {
-    boolean isNeedFlush = tablesToFlush.stream().anyMatch(channelCache::getNeedFlush);
+    boolean isNeedFlush =
+        this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1
+            ? tablesToFlush.stream().anyMatch(channelCache::getNeedFlush)
+            : this.isNeedFlush;
     long currentTime = System.currentTimeMillis();
-
-    final String tablesToFlushLogFormat =
-        tablesToFlush.stream()
-            .map(
-                table ->
-                    String.format(
-                        "(name=%s, isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s)",
-                        table,
-                        channelCache.getNeedFlush(table),
-                        channelCache.getLastFlushTime(table).isPresent()
-                            ? flushStartTime - channelCache.getLastFlushTime(table).get()
-                            : "N/A",
-                        channelCache.getLastFlushTime(table).isPresent()
-                            ? currentTime - channelCache.getLastFlushTime(table).get()
-                            : "N/A"))
-            .collect(Collectors.joining(", "));
+    final String logInfo;
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+      logInfo =
+          String.format(
+              "Tables=[%s]",
+              tablesToFlush.stream()
+                  .map(
+                      table ->
+                          String.format(
+                              "(name=%s, isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s)",
+                              table,
+                              channelCache.getNeedFlush(table),
+                              flushStartTime - channelCache.getLastFlushTime(table),
+                              currentTime - channelCache.getLastFlushTime(table)))
+                  .collect(Collectors.joining(", ")));
+    } else {
+      logInfo =
+          String.format(
+              "isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s",
+              isNeedFlush, flushStartTime - this.lastFlushTime, currentTime - this.lastFlushTime);
+    }
 
     final String flushTaskLogFormat =
         String.format(
-            "Submit forced or ad-hoc flush task on client=%s, isForce=%s," + " Tables=[%s]",
-            this.owningClient.getName(), isForce, tablesToFlushLogFormat);
+            "Submit forced or ad-hoc flush task on client=%s, isForce=%s, %s",
+            this.owningClient.getName(), isForce, logInfo);
     if (logger.isTraceEnabled()) {
       logger.logTrace(flushTaskLogFormat);
     }
@@ -286,28 +309,37 @@ class FlushService<T> {
    *     if none of the conditions is met above
    */
   CompletableFuture<Void> flush(boolean isForce) {
-    long flushStartTime = System.currentTimeMillis();
+    final long flushStartTime = System.currentTimeMillis();
+    final long flushingInterval =
+        this.owningClient.getParameterProvider().getCachedMaxClientLagInMs();
 
-    Set<String> tablesToFlush =
-        this.channelCache.keySet().stream()
-            .filter(
-                key ->
-                    isForce
-                        || (this.channelCache.getLastFlushTime(key).isPresent()
-                            && flushStartTime - this.channelCache.getLastFlushTime(key).get()
-                                >= this.owningClient
-                                    .getParameterProvider()
-                                    .getCachedMaxClientLagInMs())
-                        || this.channelCache.getNeedFlush(key))
-            .collect(Collectors.toSet());
-
-    // Flush every table together when it's interleaving chunk is allowed
-    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() != 1
-        && !tablesToFlush.isEmpty()) {
-      tablesToFlush.addAll(this.channelCache.keySet());
+    final Set<String> tablesToFlush;
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+      tablesToFlush =
+          this.channelCache.keySet().stream()
+              .filter(
+                  key ->
+                      isForce
+                          || flushStartTime - this.channelCache.getLastFlushTime(key)
+                              >= flushingInterval
+                          || this.channelCache.getNeedFlush(key))
+              .collect(Collectors.toSet());
+    } else {
+      if (isForce
+          || (!DISABLE_BACKGROUND_FLUSH
+              && !isTestMode()
+              && (this.isNeedFlush || flushStartTime - this.lastFlushTime >= flushingInterval))) {
+        tablesToFlush = this.channelCache.keySet();
+      } else {
+        tablesToFlush = null;
+      }
     }
 
-    if (isForce || (!DISABLE_BACKGROUND_FLUSH && !isTestMode() && !tablesToFlush.isEmpty())) {
+    if (isForce
+        || (!DISABLE_BACKGROUND_FLUSH
+            && !isTestMode()
+            && tablesToFlush != null
+            && !tablesToFlush.isEmpty())) {
       return this.statsFuture()
           .thenCompose((v) -> this.distributeFlush(isForce, tablesToFlush, flushStartTime))
           .thenCompose((v) -> this.registerFuture());
@@ -681,7 +713,10 @@ class FlushService<T> {
    * @param fullyQualifiedTableName the fully qualified table name
    */
   void setNeedFlush(String fullyQualifiedTableName) {
-    this.channelCache.setNeedFlush(fullyQualifiedTableName, true);
+    this.isNeedFlush = true;
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+      this.channelCache.setNeedFlush(fullyQualifiedTableName, true);
+    }
   }
 
   /**
