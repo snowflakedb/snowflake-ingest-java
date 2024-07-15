@@ -43,6 +43,7 @@ import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFa
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
@@ -88,6 +89,21 @@ public class StreamingIngestStageTest {
       "{\"src_locations\": [\"foo/\"],"
           + " \"deployment_id\": "
           + deploymentId
+          + ","
+          + " \"status_code\": 0, \"message\": \"Success\", \"prefix\":"
+          + " \""
+          + prefix
+          + "\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
+          + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
+          + " \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true,"
+          + " \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
+          + " \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\":"
+          + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
+          + " \"endPoint\": null}}";
+  String remoteMetaResponseDifferentDeployment =
+      "{\"src_locations\": [\"foo/\"],"
+          + " \"deployment_id\": "
+          + (deploymentId + 1)
           + ","
           + " \"status_code\": 0, \"message\": \"Success\", \"prefix\":"
           + " \""
@@ -300,6 +316,52 @@ public class StreamingIngestStageTest {
         Paths.get("placeholder").toAbsolutePath(),
         Paths.get(metadataWithAge.fileTransferMetadata.getPresignedUrlFileName()).toAbsolutePath());
     Assert.assertEquals(prefix + "_" + deploymentId, stage.getClientPrefix());
+  }
+
+  @Test
+  public void testRefreshSnowflakeMetadataDeploymentIdMismatch() throws Exception {
+    RequestBuilder mockBuilder = Mockito.mock(RequestBuilder.class);
+    CloseableHttpClient mockClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse mockResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
+    Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
+
+    BasicHttpEntity entity = new BasicHttpEntity();
+    entity.setContent(
+        new ByteArrayInputStream(exampleRemoteMetaResponse.getBytes(StandardCharsets.UTF_8)));
+
+    BasicHttpEntity entityFromDifferentDeployment = new BasicHttpEntity();
+    entityFromDifferentDeployment.setContent(
+        new ByteArrayInputStream(
+            remoteMetaResponseDifferentDeployment.getBytes(StandardCharsets.UTF_8)));
+    Mockito.when(mockResponse.getEntity())
+        .thenReturn(entity)
+        .thenReturn(entityFromDifferentDeployment);
+    Mockito.when(mockClient.execute(Mockito.any()))
+        .thenReturn(mockResponse)
+        .thenReturn(mockResponse);
+
+    StreamingIngestStage stage =
+        new StreamingIngestStage(true, "role", mockClient, mockBuilder, "clientName", 1);
+
+    StreamingIngestStage.SnowflakeFileTransferMetadataWithAge metadataWithAge =
+        stage.refreshSnowflakeMetadata(true);
+
+    Assert.assertEquals(prefix + "_" + deploymentId, stage.getClientPrefix());
+
+    SFException exception =
+        Assert.assertThrows(SFException.class, () -> stage.refreshSnowflakeMetadata(true));
+    Assert.assertEquals(
+        ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH.getMessageCode(), exception.getVendorCode());
+    Assert.assertEquals(
+        "Deployment ID mismatch, Client was created on: "
+            + deploymentId
+            + ", Got upload location for: "
+            + (deploymentId + 1)
+            + ". Please"
+            + " restart client.",
+        exception.getMessage());
   }
 
   @Test

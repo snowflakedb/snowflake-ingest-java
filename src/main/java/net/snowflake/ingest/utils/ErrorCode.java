@@ -41,7 +41,9 @@ public enum ErrorCode {
   OAUTH_REFRESH_TOKEN_ERROR("0033"),
   INVALID_CONFIG_PARAMETER("0034"),
   CRYPTO_PROVIDER_ERROR("0035"),
-  DROP_CHANNEL_FAILURE("0036");
+  DROP_CHANNEL_FAILURE("0036"),
+
+  CLIENT_DEPLOYMENT_ID_MISMATCH("0037");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 
