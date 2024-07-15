@@ -36,8 +36,13 @@ import net.snowflake.ingest.utils.Utils;
 class StreamingIngestStorage<T, TLocation> {
   private static final ObjectMapper mapper = new ObjectMapper();
 
-  // Object mapper for parsing the client/configure response to Jackson version the same as
-  // jdbc.internal.fasterxml.jackson
+  /**
+   * Object mapper for parsing the client/configure response to Jackson version the same as
+   * jdbc.internal.fasterxml.jackson. We need two different versions of ObjectMapper because {@link
+   * SnowflakeFileTransferAgent#getFileTransferMetadatas(net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode)}
+   * expects a different version of json object than {@link StreamingIngestResponse}. TODO:
+   * SNOW-1493470 Align Jackson version
+   */
   private static final net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper
       parseConfigureResponseMapper =
           new net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper();

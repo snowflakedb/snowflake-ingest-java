@@ -132,7 +132,7 @@ class SnowflakeServiceClient {
    * @param request the channel status request
    * @return the response from the channel status request
    */
-  ChannelsStatusResponse channelStatus(ChannelsStatusRequest request)
+  ChannelsStatusResponse getChannelStatus(ChannelsStatusRequest request)
       throws IngestResponseException, IOException {
     ChannelsStatusResponse response =
         executeApiRequestWithRetries(

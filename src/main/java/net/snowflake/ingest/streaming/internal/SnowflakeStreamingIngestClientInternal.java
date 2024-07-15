@@ -28,7 +28,6 @@ import com.codahale.metrics.Timer;
 import com.codahale.metrics.jmx.JmxReporter;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.net.URI;
@@ -84,9 +83,6 @@ import net.snowflake.ingest.utils.Utils;
 public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStreamingIngestClient {
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestClientInternal.class);
-
-  // Object mapper for all marshalling and unmarshalling
-  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   // Counter to generate unique request ids per client
   private final AtomicLong counter = new AtomicLong(0);
@@ -368,13 +364,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);
 
-      // Add storage to the storage manager, only for external volume
-      this.storageManager.addStorage(
-          response.getDBName(),
-          response.getSchemaName(),
-          response.getTableName(),
-          response.getStageLocation());
-
       return channel;
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
@@ -460,7 +449,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       request.setChannels(requestDTOs);
       request.setRole(this.role);
 
-      ChannelsStatusResponse response = snowflakeServiceClient.channelStatus(request);
+      ChannelsStatusResponse response = snowflakeServiceClient.getChannelStatus(request);
 
       for (int idx = 0; idx < channels.size(); idx++) {
         SnowflakeStreamingIngestChannelInternal<?> channel = channels.get(idx);

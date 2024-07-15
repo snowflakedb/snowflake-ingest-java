@@ -4,15 +4,42 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /** Class used to serialize client configure request */
-class ClientConfigureRequest extends ConfigureRequest {
+class ClientConfigureRequest implements StreamingIngestRequest {
   /**
    * Constructor for client configure request
    *
    * @param role Role to be used for the request.
    */
   ClientConfigureRequest(String role) {
-    setRole(role);
+    this.role = role;
+  }
+
+  @JsonProperty("role")
+  private String role;
+
+  // File name for the GCS signed url request
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonProperty("file_name")
+  private String fileName;
+
+  String getRole() {
+    return role;
+  }
+
+  void setRole(String role) {
+    this.role = role;
+  }
+
+  String getFileName() {
+    return fileName;
+  }
+
+  void setFileName(String fileName) {
+    this.fileName = fileName;
   }
 
   @Override

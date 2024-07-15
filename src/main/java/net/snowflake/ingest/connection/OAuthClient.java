@@ -93,6 +93,7 @@ public class OAuthClient {
 
   /** Helper method for making refresh request */
   private HttpUriRequest makeRefreshTokenRequest() {
+    // TODO SNOW-1538108 Use SnowflakeServiceClient to make the request
     HttpPost post = new HttpPost(oAuthCredential.get().getOAuthTokenEndpoint());
     post.addHeader(HttpHeaders.CONTENT_TYPE, OAUTH_CONTENT_TYPE_HEADER);
     post.addHeader(HttpHeaders.AUTHORIZATION, oAuthCredential.get().getAuthHeader());
