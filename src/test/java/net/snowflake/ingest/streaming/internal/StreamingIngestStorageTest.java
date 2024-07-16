@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
- */
-
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
@@ -48,6 +44,7 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMappe
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
@@ -92,6 +89,21 @@ public class StreamingIngestStorageTest {
       "{\"src_locations\": [\"foo/\"],"
           + " \"deployment_id\": "
           + deploymentId
+          + ","
+          + " \"status_code\": 0, \"message\": \"Success\", \"prefix\":"
+          + " \""
+          + prefix
+          + "\", \"stage_location\": {\"locationType\": \"S3\", \"location\":"
+          + " \"foo/streaming_ingest/\", \"path\": \"streaming_ingest/\", \"region\":"
+          + " \"us-east-1\", \"storageAccount\": null, \"isClientSideEncrypted\": true,"
+          + " \"creds\": {\"AWS_KEY_ID\": \"EXAMPLE_AWS_KEY_ID\", \"AWS_SECRET_KEY\":"
+          + " \"EXAMPLE_AWS_SECRET_KEY\", \"AWS_TOKEN\": \"EXAMPLE_AWS_TOKEN\", \"AWS_ID\":"
+          + " \"EXAMPLE_AWS_ID\", \"AWS_KEY\": \"EXAMPLE_AWS_KEY\"}, \"presignedUrl\": null,"
+          + " \"endPoint\": null}}";
+  String remoteMetaResponseDifferentDeployment =
+      "{\"src_locations\": [\"foo/\"],"
+          + " \"deployment_id\": "
+          + (deploymentId + 1)
           + ","
           + " \"status_code\": 0, \"message\": \"Success\", \"prefix\":"
           + " \""
@@ -193,7 +205,7 @@ public class StreamingIngestStorageTest {
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
     StreamingIngestStorage<?, ?> stage =
-        new StreamingIngestStorage(
+        new StreamingIngestStorage<>(
             storageManager,
             "clientName",
             new StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge(
@@ -249,7 +261,7 @@ public class StreamingIngestStorageTest {
 
     StreamingIngestStorage<?, ?> stage =
         Mockito.spy(
-            new StreamingIngestStorage(
+            new StreamingIngestStorage<>(
                 storageManager,
                 "clientName",
                 new StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge(
@@ -283,10 +295,10 @@ public class StreamingIngestStorageTest {
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
     StorageManager<?, ?> storageManager =
-        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
+        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
 
     StreamingIngestStorage<?, ?> stage =
-        new StreamingIngestStorage(
+        new StreamingIngestStorage<>(
             storageManager,
             "clientName",
             (StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge) null,
@@ -312,7 +324,55 @@ public class StreamingIngestStorageTest {
     Assert.assertEquals(
         Paths.get("placeholder").toAbsolutePath(),
         Paths.get(metadataWithAge.fileTransferMetadata.getPresignedUrlFileName()).toAbsolutePath());
-    Assert.assertEquals("testPrefix", storageManager.getClientPrefix());
+    Assert.assertEquals(prefix + "_" + deploymentId, storageManager.getClientPrefix());
+  }
+
+  @Test
+  public void testRefreshSnowflakeMetadataDeploymentIdMismatch() throws Exception {
+    RequestBuilder mockBuilder = Mockito.mock(RequestBuilder.class);
+    CloseableHttpClient mockClient = Mockito.mock(CloseableHttpClient.class);
+    CloseableHttpResponse mockResponse = Mockito.mock(CloseableHttpResponse.class);
+    StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
+    Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
+    Mockito.when(mockResponse.getStatusLine()).thenReturn(mockStatusLine);
+
+    BasicHttpEntity entity = new BasicHttpEntity();
+    entity.setContent(
+        new ByteArrayInputStream(exampleRemoteMetaResponse.getBytes(StandardCharsets.UTF_8)));
+
+    BasicHttpEntity entityFromDifferentDeployment = new BasicHttpEntity();
+    entityFromDifferentDeployment.setContent(
+        new ByteArrayInputStream(
+            remoteMetaResponseDifferentDeployment.getBytes(StandardCharsets.UTF_8)));
+    Mockito.when(mockResponse.getEntity())
+        .thenReturn(entity)
+        .thenReturn(entityFromDifferentDeployment);
+    Mockito.when(mockClient.execute(Mockito.any()))
+        .thenReturn(mockResponse)
+        .thenReturn(mockResponse);
+
+    SnowflakeServiceClient snowflakeServiceClient =
+        new SnowflakeServiceClient(mockClient, mockBuilder);
+    StorageManager<?, ?> storageManager =
+        new InternalStageManager<>(true, "role", "clientName", snowflakeServiceClient);
+
+    StreamingIngestStorage<?, ?> storage = storageManager.getStorage("");
+    storage.refreshSnowflakeMetadata(true);
+
+    Assert.assertEquals(prefix + "_" + deploymentId, storageManager.getClientPrefix());
+
+    SFException exception =
+        Assert.assertThrows(SFException.class, () -> storage.refreshSnowflakeMetadata(true));
+    Assert.assertEquals(
+        ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH.getMessageCode(), exception.getVendorCode());
+    Assert.assertEquals(
+        "Deployment ID mismatch, Client was created on: "
+            + deploymentId
+            + ", Got upload location for: "
+            + (deploymentId + 1)
+            + ". Please"
+            + " restart client: clientName.",
+        exception.getMessage());
   }
 
   @Test
@@ -325,8 +385,8 @@ public class StreamingIngestStorageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    StorageManager storageManager =
-        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
+    StorageManager<?, ?> storageManager =
+        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -371,8 +431,8 @@ public class StreamingIngestStorageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    StorageManager storageManager =
-        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
+    StorageManager<?, ?> storageManager =
+        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -380,8 +440,8 @@ public class StreamingIngestStorageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(createHttpEntity(exampleRemoteMetaResponse));
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    StreamingIngestStorage stage =
-        new StreamingIngestStorage(
+    StreamingIngestStorage<?, ?> stage =
+        new StreamingIngestStorage<>(
             storageManager,
             "clientName",
             (StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge) null,
@@ -517,8 +577,8 @@ public class StreamingIngestStorageTest {
     StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    StreamingIngestStorage stage =
-        new StreamingIngestStorage(
+    StreamingIngestStorage<?, ?> stage =
+        new StreamingIngestStorage<>(
             storageManager,
             "clientName",
             new StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge(
