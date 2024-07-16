@@ -275,7 +275,7 @@ public class StreamingIngestIT {
   @Test
   public void testParameterOverrides() throws Exception {
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "3 sec");
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "3 seconds");
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 50L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 1);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
