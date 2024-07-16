@@ -17,6 +17,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +51,11 @@ class StreamingIngestStorage<T, TLocation> {
 
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
+
+  // Stage credential refresh interval, currently the token will expire in 1hr for GCS and 2hr for
+  // AWS/Azure, so set it a bit smaller than 1hr
+  private static final Duration refreshDuration = Duration.ofMinutes(58);
+  private static Instant prevRefresh = Instant.EPOCH;
 
   private static final Logging logger = new Logging(StreamingIngestStorage.class);
 
@@ -184,6 +191,12 @@ class StreamingIngestStorage<T, TLocation> {
     InputStream inStream = new ByteArrayInputStream(data);
 
     try {
+      // Proactively refresh the credential if it's going to expire, to avoid the token expiration
+      // error from JDBC which confuses customer
+      if (Instant.now().isAfter(prevRefresh.plus(refreshDuration))) {
+        refreshSnowflakeMetadata();
+      }
+
       SnowflakeFileTransferAgent.uploadWithoutConnection(
           SnowflakeFileTransferConfig.Builder.newInstance()
               .setSnowflakeFileTransferMetadata(fileTransferMetadataCopy)
@@ -198,9 +211,6 @@ class StreamingIngestStorage<T, TLocation> {
     } catch (Exception e) {
       if (retryCount == 0) {
         // for the first exception, we always perform a metadata refresh.
-        logger.logInfo(
-            "Stage metadata need to be refreshed due to upload error: {} on first retry attempt",
-            e.getMessage());
         this.refreshSnowflakeMetadata();
       }
       if (retryCount >= maxUploadRetries) {
@@ -282,6 +292,8 @@ class StreamingIngestStorage<T, TLocation> {
                       .get(0),
               Optional.of(System.currentTimeMillis()));
     }
+
+    prevRefresh = Instant.now();
     return this.fileTransferMetadataWithAge;
   }
 
