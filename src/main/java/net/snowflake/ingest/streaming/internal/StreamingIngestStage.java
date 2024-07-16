@@ -372,7 +372,10 @@ class StreamingIngestStage {
           responseNode.has("deployment_id") ? responseNode.get("deployment_id").longValue() : null;
       if (actualDeploymentId != null && !actualDeploymentId.equals(expectedDeploymentId)) {
         throw new SFException(
-            ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH, expectedDeploymentId, actualDeploymentId);
+            ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH,
+            expectedDeploymentId,
+            actualDeploymentId,
+            clientName);
       }
     }
     return responseNode;

@@ -360,7 +360,7 @@ public class StreamingIngestStageTest {
             + ", Got upload location for: "
             + (deploymentId + 1)
             + ". Please"
-            + " restart client.",
+            + " restart client: clientName.",
         exception.getMessage());
   }
 
