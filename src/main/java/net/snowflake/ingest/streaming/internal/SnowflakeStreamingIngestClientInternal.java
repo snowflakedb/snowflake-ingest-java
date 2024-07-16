@@ -106,7 +106,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   private final FlushService<T> flushService;
 
   // Reference to storage manager
-  private final StorageManager<T, ?> storageManager;
+  private final IStorageManager<T, ?> storageManager;
 
   // Indicates whether the client has closed
   private volatile boolean isClosed;

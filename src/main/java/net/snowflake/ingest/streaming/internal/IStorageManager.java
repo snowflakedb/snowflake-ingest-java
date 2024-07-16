@@ -12,7 +12,7 @@ import java.util.Optional;
  * @param <T> The type of chunk data
  * @param <TLocation> the type of location that's being managed (internal stage / external volume)
  */
-interface StorageManager<T, TLocation> {
+interface IStorageManager<T, TLocation> {
   /** Default max upload retries for streaming ingest storage */
   int DEFAULT_MAX_UPLOAD_RETRIES = 5;
 
@@ -54,7 +54,7 @@ interface StorageManager<T, TLocation> {
 
   /**
    * Decrement the blob sequencer, this method is needed to prevent gap between file name sequencer.
-   * See {@link StorageManager#generateBlobPath()} for more details.
+   * See {@link IStorageManager#generateBlobPath()} for more details.
    */
   void decrementBlobSequencer();
 

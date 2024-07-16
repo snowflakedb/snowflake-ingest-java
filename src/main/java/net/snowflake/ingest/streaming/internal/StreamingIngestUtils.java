@@ -80,7 +80,7 @@ public class StreamingIngestUtils {
   static <T extends StreamingIngestResponse> T executeWithRetries(
       Class<T> targetClass,
       String endpoint,
-      StreamingIngestRequest payload,
+      IStreamingIngestRequest payload,
       String message,
       ServiceResponseHandler.ApiName apiName,
       CloseableHttpClient httpClient,

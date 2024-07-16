@@ -95,7 +95,7 @@ class FlushService<T> {
   private final ChannelCache<T> channelCache;
 
   // Reference to the Streaming Ingest storage manager
-  private final StorageManager<T, ?> storageManager;
+  private final IStorageManager<T, ?> storageManager;
 
   // Reference to register service
   private final RegisterService<T> registerService;
@@ -127,7 +127,7 @@ class FlushService<T> {
   FlushService(
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
-      StorageManager<T, ?> storageManager,
+      IStorageManager<T, ?> storageManager,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;

@@ -10,7 +10,7 @@ import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize the {@link DropChannelRequest} */
-class DropChannelRequestInternal implements StreamingIngestRequest {
+class DropChannelRequestInternal implements IStreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;
 

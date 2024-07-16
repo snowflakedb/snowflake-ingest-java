@@ -130,7 +130,7 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
+    IStorageManager<?, ?> storageManager = Mockito.mock(IStorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
     StreamingIngestStorage<?, ?> stage =
@@ -201,7 +201,7 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
+    IStorageManager<?, ?> storageManager = Mockito.mock(IStorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
     StreamingIngestStorage<?, ?> stage =
@@ -256,7 +256,7 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
+    IStorageManager<?, ?> storageManager = Mockito.mock(IStorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
     StreamingIngestStorage<?, ?> stage =
@@ -294,7 +294,7 @@ public class StreamingIngestStorageTest {
 
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    StorageManager<?, ?> storageManager =
+    IStorageManager<?, ?> storageManager =
         new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
 
     StreamingIngestStorage<?, ?> stage =
@@ -353,7 +353,7 @@ public class StreamingIngestStorageTest {
 
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    StorageManager<?, ?> storageManager =
+    IStorageManager<?, ?> storageManager =
         new InternalStageManager<>(true, "role", "clientName", snowflakeServiceClient);
 
     StreamingIngestStorage<?, ?> storage = storageManager.getStorage("");
@@ -385,7 +385,7 @@ public class StreamingIngestStorageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    StorageManager<?, ?> storageManager =
+    IStorageManager<?, ?> storageManager =
         new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
@@ -431,7 +431,7 @@ public class StreamingIngestStorageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    StorageManager<?, ?> storageManager =
+    IStorageManager<?, ?> storageManager =
         new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
@@ -574,7 +574,7 @@ public class StreamingIngestStorageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    StorageManager<?, ?> storageManager = Mockito.mock(StorageManager.class);
+    IStorageManager<?, ?> storageManager = Mockito.mock(IStorageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
     StreamingIngestStorage<?, ?> stage =

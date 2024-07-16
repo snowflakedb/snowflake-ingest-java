@@ -10,7 +10,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 
 /** Class used to serialize the {@link OpenChannelRequest} */
-class OpenChannelRequestInternal implements StreamingIngestRequest {
+class OpenChannelRequestInternal implements IStreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;
 

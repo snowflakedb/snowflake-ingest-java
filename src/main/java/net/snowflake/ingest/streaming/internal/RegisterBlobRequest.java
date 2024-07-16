@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /** Class used to serialize the blob register request */
-class RegisterBlobRequest implements StreamingIngestRequest {
+class RegisterBlobRequest implements IStreamingIngestRequest {
   @JsonProperty("request_id")
   private String requestId;
 

@@ -24,7 +24,7 @@ class InternalStageLocation {
 }
 
 /** Class to manage single Snowflake internal stage */
-class InternalStageManager<T> implements StorageManager<T, InternalStageLocation> {
+class InternalStageManager<T> implements IStorageManager<T, InternalStageLocation> {
   /** Target stage for the client */
   private final StreamingIngestStorage<T, InternalStageLocation> targetStage;
 
@@ -94,7 +94,7 @@ class InternalStageManager<T> implements StorageManager<T, InternalStageLocation
     } catch (IngestResponseException | IOException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     } catch (SnowflakeSQLException e) {
-      throw new SFException(e, ErrorCode.UNABLE_TO_CONNECT_TO_STORAGE, e.getMessage());
+      throw new SFException(e, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE, e.getMessage());
     }
   }
 

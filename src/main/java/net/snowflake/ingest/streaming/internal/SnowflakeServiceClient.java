@@ -182,7 +182,7 @@ class SnowflakeServiceClient {
 
   private <T extends StreamingIngestResponse> T executeApiRequestWithRetries(
       Class<T> responseClass,
-      StreamingIngestRequest request,
+      IStreamingIngestRequest request,
       String endpoint,
       String operation,
       ServiceResponseHandler.ApiName apiName)

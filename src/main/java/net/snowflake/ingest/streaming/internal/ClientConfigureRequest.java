@@ -8,7 +8,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Class used to serialize client configure request */
-class ClientConfigureRequest implements StreamingIngestRequest {
+class ClientConfigureRequest implements IStreamingIngestRequest {
   /**
    * Constructor for client configure request
    *

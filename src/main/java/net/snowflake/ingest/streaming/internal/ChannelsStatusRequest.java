@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class to deserialize a request from a channel status request */
-class ChannelsStatusRequest implements StreamingIngestRequest {
+class ChannelsStatusRequest implements IStreamingIngestRequest {
 
   // Used to deserialize a channel request
   static class ChannelStatusRequestDTO {

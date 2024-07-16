@@ -89,7 +89,7 @@ class StreamingIngestStorage<T, TLocation> {
   }
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final StorageManager<T, TLocation> owningManager;
+  private final IStorageManager<T, TLocation> owningManager;
   private final TLocation location;
   private final String clientName;
 
@@ -108,7 +108,7 @@ class StreamingIngestStorage<T, TLocation> {
    * @param maxUploadRetries The maximum number of retries to attempt
    */
   StreamingIngestStorage(
-      StorageManager<T, TLocation> owningManager,
+      IStorageManager<T, TLocation> owningManager,
       String clientName,
       FileLocationInfo fileLocationInfo,
       TLocation location,
@@ -133,7 +133,7 @@ class StreamingIngestStorage<T, TLocation> {
    * @param maxUploadRetries the maximum number of retries to attempt
    */
   StreamingIngestStorage(
-      StorageManager<T, TLocation> owningManager,
+      IStorageManager<T, TLocation> owningManager,
       String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata,
       TLocation location,

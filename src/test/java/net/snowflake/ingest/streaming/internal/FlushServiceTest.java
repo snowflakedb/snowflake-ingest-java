@@ -77,7 +77,7 @@ public class FlushServiceTest {
     ChannelCache<T> channelCache;
     final Map<String, SnowflakeStreamingIngestChannelInternal<T>> channels = new HashMap<>();
     FlushService<T> flushService;
-    StorageManager<T, ?> storageManager;
+    IStorageManager<T, ?> storageManager;
     StreamingIngestStorage storage;
     ParameterProvider parameterProvider;
     RegisterService registerService;
@@ -395,7 +395,7 @@ public class FlushServiceTest {
   @Test
   public void testGetFilePath() {
     TestContext<?> testContext = testContextFactory.create();
-    StorageManager storageManager = testContext.storageManager;
+    IStorageManager storageManager = testContext.storageManager;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
     String outputString =
@@ -925,7 +925,7 @@ public class FlushServiceTest {
     innerData.add(channel1Data);
     innerData.add(channel2Data);
 
-    StorageManager<StubChunkData, InternalStageLocation> storageManager =
+    IStorageManager<StubChunkData, InternalStageLocation> storageManager =
         Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
     FlushService<StubChunkData> flushService =
         new FlushService<>(client, channelCache, storageManager, false);
