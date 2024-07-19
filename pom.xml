@@ -873,6 +873,7 @@
             <licenseMerge>BSD 2-Clause License
                             |The BSD License</licenseMerge>
             <licenseMerge>The MIT License|MIT License</licenseMerge>
+            <licenseMerge>3-Clause BSD License|BSD-3-Clause</licenseMerge>
           </licenseMerges>
         </configuration>
         <executions>
