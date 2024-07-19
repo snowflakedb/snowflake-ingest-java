@@ -17,12 +17,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
@@ -46,6 +49,11 @@ class StreamingIngestStage {
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
+
+  // Stage credential refresh interval, currently the token will expire in 1hr for GCS and 2hr for
+  // AWS/Azure, so set it a bit smaller than 1hr
+  private static final Duration refreshDuration = Duration.ofMinutes(58);
+  private static Instant prevRefresh = Instant.EPOCH;
 
   private static final Logging logger = new Logging(StreamingIngestStage.class);
 
@@ -84,6 +92,7 @@ class StreamingIngestStage {
   private final String role;
   private final String clientName;
   private String clientPrefix;
+  private Long deploymentId;
 
   private final int maxUploadRetries;
 
@@ -180,6 +189,12 @@ class StreamingIngestStage {
     InputStream inStream = new ByteArrayInputStream(data);
 
     try {
+      // Proactively refresh the credential if it's going to expire, to avoid the token expiration
+      // error from JDBC which confuses customer
+      if (Instant.now().isAfter(prevRefresh.plus(refreshDuration))) {
+        refreshSnowflakeMetadata();
+      }
+
       SnowflakeFileTransferAgent.uploadWithoutConnection(
           SnowflakeFileTransferConfig.Builder.newInstance()
               .setSnowflakeFileTransferMetadata(fileTransferMetadataCopy)
@@ -194,9 +209,6 @@ class StreamingIngestStage {
     } catch (Exception e) {
       if (retryCount == 0) {
         // for the first exception, we always perform a metadata refresh.
-        logger.logInfo(
-            "Stage metadata need to be refreshed due to upload error: {} on first retry attempt",
-            e.getMessage());
         this.refreshSnowflakeMetadata();
       }
       if (retryCount >= maxUploadRetries) {
@@ -248,9 +260,11 @@ class StreamingIngestStage {
     payload.put("role", this.role);
     Map<String, Object> response = this.makeClientConfigureCall(payload);
 
-    JsonNode responseNode = this.parseClientConfigureResponse(response);
+    JsonNode responseNode = this.parseClientConfigureResponse(response, this.deploymentId);
     // Do not change the prefix everytime we have to refresh credentials
     if (Utils.isNullOrEmpty(this.clientPrefix)) {
+      this.deploymentId =
+          responseNode.has("deployment_id") ? responseNode.get("deployment_id").longValue() : null;
       this.clientPrefix = createClientPrefix(responseNode);
     }
     Utils.assertStringNotNullOrEmpty("client prefix", this.clientPrefix);
@@ -281,6 +295,8 @@ class StreamingIngestStage {
                   SnowflakeFileTransferAgent.getFileTransferMetadatas(responseNode).get(0),
               Optional.of(System.currentTimeMillis()));
     }
+
+    prevRefresh = Instant.now();
     return this.fileTransferMetadataWithAge;
   }
 
@@ -314,7 +330,7 @@ class StreamingIngestStage {
     payload.put("file_name", fileName);
     Map<String, Object> response = this.makeClientConfigureCall(payload);
 
-    JsonNode responseNode = this.parseClientConfigureResponse(response);
+    JsonNode responseNode = this.parseClientConfigureResponse(response, this.deploymentId);
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
@@ -338,7 +354,8 @@ class StreamingIngestStage {
 
   private static final MapStatusGetter statusGetter = new MapStatusGetter();
 
-  private JsonNode parseClientConfigureResponse(Map<String, Object> response) {
+  private JsonNode parseClientConfigureResponse(
+      Map<String, Object> response, @Nullable Long expectedDeploymentId) {
     JsonNode responseNode = mapper.valueToTree(response);
 
     // Currently there are a few mismatches between the client/configure response and what
@@ -350,6 +367,17 @@ class StreamingIngestStage {
 
     // JDBC expects this field which maps to presignedFileUrlName.  We will set this later
     dataNode.putArray("src_locations").add("placeholder");
+    if (expectedDeploymentId != null) {
+      Long actualDeploymentId =
+          responseNode.has("deployment_id") ? responseNode.get("deployment_id").longValue() : null;
+      if (actualDeploymentId != null && !actualDeploymentId.equals(expectedDeploymentId)) {
+        throw new SFException(
+            ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH,
+            expectedDeploymentId,
+            actualDeploymentId,
+            clientName);
+      }
+    }
     return responseNode;
   }
 
