@@ -50,8 +50,8 @@ public class ParameterProvider {
   public static final int IO_TIME_CPU_RATIO_DEFAULT = 2;
   public static final int BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT = 24;
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
-  public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 128 * 1024 * 1024;
-  public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 512 * 1024 * 1024;
+  public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024;
+  public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 256 * 1024 * 1024;
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
