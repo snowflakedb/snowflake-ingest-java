@@ -23,6 +23,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.CRC32;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -64,7 +65,10 @@ class BlobBuilder {
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
-      String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
+      String filePath,
+      List<List<ChannelData<T>>> blobData,
+      Constants.BdecVersion bdecVersion,
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -77,6 +81,14 @@ class BlobBuilder {
     for (List<ChannelData<T>> channelsDataPerTable : blobData) {
       ChannelFlushContext firstChannelFlushContext =
           channelsDataPerTable.get(0).getChannelContext();
+
+      // Get encryption key from client
+      EncryptionKey encryptionKey =
+          encryptionKeysPerTable.get(
+              new FullyQualifiedTableName(
+                  firstChannelFlushContext.getDbName(),
+                  firstChannelFlushContext.getSchemaName(),
+                  firstChannelFlushContext.getTableName()));
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
@@ -96,8 +108,7 @@ class BlobBuilder {
         // TODO: address alignment for the header SNOW-557866
         long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
         byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(
-                paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+            Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
 
         // Compute the md5 of the chunk data
         String md5 = computeMD5(encryptedCompressedChunkData, paddedChunkLength);
@@ -117,7 +128,7 @@ class BlobBuilder {
                 .setUncompressedChunkLength((int) serializedChunk.chunkEstimatedUncompressedSize)
                 .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
-                .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
+                .setEncryptionKeyId(encryptionKey.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
                         serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))

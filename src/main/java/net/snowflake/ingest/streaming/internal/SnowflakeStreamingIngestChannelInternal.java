@@ -89,8 +89,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Long channelSequencer,
       Long rowSequencer,
       SnowflakeStreamingIngestClientInternal<T> client,
-      String encryptionKey,
-      Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneOffset defaultTimezone) {
     this(
@@ -102,8 +100,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         channelSequencer,
         rowSequencer,
         client,
-        encryptionKey,
-        encryptionKeyId,
         onErrorOption,
         defaultTimezone,
         client.getParameterProvider().getBlobFormatVersion(),
@@ -120,8 +116,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Long channelSequencer,
       Long rowSequencer,
       SnowflakeStreamingIngestClientInternal<T> client,
-      String encryptionKey,
-      Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
       Constants.BdecVersion bdecVersion,
@@ -140,8 +134,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
     this.memoryInfoProvider = MemoryInfoProviderFromRuntime.getInstance();
     this.channelFlushContext =
-        new ChannelFlushContext(
-            name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
+        new ChannelFlushContext(name, dbName, schemaName, tableName, channelSequencer);
     this.channelState = new ChannelRuntimeState(endOffsetToken, rowSequencer, true);
     this.rowBuffer =
         AbstractRowBuffer.createRowBuffer(
