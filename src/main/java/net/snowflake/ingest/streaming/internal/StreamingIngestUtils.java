@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
@@ -6,7 +10,6 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTIO
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.util.Map;
 import java.util.function.Function;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
@@ -77,7 +80,7 @@ public class StreamingIngestUtils {
   static <T extends StreamingIngestResponse> T executeWithRetries(
       Class<T> targetClass,
       String endpoint,
-      Map<Object, Object> payload,
+      IStreamingIngestRequest payload,
       String message,
       ServiceResponseHandler.ApiName apiName,
       CloseableHttpClient httpClient,
