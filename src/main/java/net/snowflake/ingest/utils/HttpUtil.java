@@ -79,7 +79,7 @@ public class HttpUtil {
   private static final ReentrantLock idleConnectionMonitorThreadLock = new ReentrantLock(true);
 
   private static final int DEFAULT_CONNECTION_TIMEOUT_MINUTES = 1;
-  private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 5;
+  private static final int DEFAULT_HTTP_CLIENT_SOCKET_TIMEOUT_MINUTES = 1;
 
   /**
    * After how many seconds of inactivity should be idle connections evicted from the connection
@@ -294,7 +294,8 @@ public class HttpUtil {
       if (exception instanceof NoHttpResponseException
           || exception instanceof javax.net.ssl.SSLException
           || exception instanceof java.net.SocketException
-          || exception instanceof java.net.UnknownHostException) {
+          || exception instanceof java.net.UnknownHostException
+          || exception instanceof java.net.SocketTimeoutException) {
         LOGGER.info(
             "Retrying request which caused {} with " + "URI:{}, retryCount:{} and maxRetryCount:{}",
             exception.getClass().getName(),

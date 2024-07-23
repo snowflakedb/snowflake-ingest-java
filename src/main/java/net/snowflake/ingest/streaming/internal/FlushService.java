@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
 import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
@@ -19,14 +18,12 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -35,12 +32,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -86,9 +81,6 @@ class FlushService<T> {
 
   private static final Logging logger = new Logging(FlushService.class);
 
-  // Increasing counter to generate a unique blob name per client
-  private final AtomicLong counter;
-
   // The client that owns this flush service
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
@@ -104,8 +96,8 @@ class FlushService<T> {
   // Reference to the channel cache
   private final ChannelCache<T> channelCache;
 
-  // Reference to the Streaming Ingest stage
-  private final StreamingIngestStage targetStage;
+  // Reference to the Streaming Ingest storage manager
+  private final IStorageManager<T, ?> storageManager;
 
   // Reference to register service
   private final RegisterService<T> registerService;
@@ -130,56 +122,22 @@ class FlushService<T> {
   private volatile int numProcessors = Runtime.getRuntime().availableProcessors();
 
   /**
-   * Constructor for TESTING that takes (usually mocked) StreamingIngestStage
+   * Default constructor
    *
-   * @param client
-   * @param cache
-   * @param isTestMode
+   * @param client the owning client
+   * @param cache the channel cache
+   * @param storageManager the storage manager
+   * @param isTestMode whether the service is running in test mode
    */
   FlushService(
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
-      StreamingIngestStage targetStage, // For testing
+      IStorageManager<T, ?> storageManager,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
-    this.targetStage = targetStage;
-    this.counter = new AtomicLong(0);
+    this.storageManager = storageManager;
     this.registerService = new RegisterService<>(client, isTestMode);
-    this.isNeedFlush = false;
-    this.lastFlushTime = System.currentTimeMillis();
-    this.isTestMode = isTestMode;
-    this.latencyTimerContextMap = new ConcurrentHashMap<>();
-    this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
-    createWorkers();
-  }
-
-  /**
-   * Default constructor
-   *
-   * @param client
-   * @param cache
-   * @param isTestMode
-   */
-  FlushService(
-      SnowflakeStreamingIngestClientInternal<T> client, ChannelCache<T> cache, boolean isTestMode) {
-    this.owningClient = client;
-    this.channelCache = cache;
-    try {
-      this.targetStage =
-          new StreamingIngestStage(
-              isTestMode,
-              client.getRole(),
-              client.getHttpClient(),
-              client.getRequestBuilder(),
-              client.getName(),
-              DEFAULT_MAX_UPLOAD_RETRIES);
-    } catch (SnowflakeSQLException | IOException err) {
-      throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
-    }
-
-    this.registerService = new RegisterService<>(client, isTestMode);
-    this.counter = new AtomicLong(0);
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
@@ -444,7 +402,7 @@ class FlushService<T> {
     while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
-      final String blobPath = getBlobPath(this.targetStage.getClientPrefix());
+      final String blobPath = this.storageManager.generateBlobPath();
 
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
@@ -526,9 +484,9 @@ class FlushService<T> {
 
       // Kick off a build job
       if (blobData.isEmpty()) {
-        // we decrement the counter so that we do not have gaps in the blob names created by this
-        // client. See method getBlobPath() below.
-        this.counter.decrementAndGet();
+        // we decrement the blob sequencer so that we do not have gaps in the blob names created by
+        // this client.
+        this.storageManager.decrementBlobSequencer();
       } else {
         long flushStartMs = System.currentTimeMillis();
         if (this.owningClient.flushLatency != null) {
@@ -540,7 +498,13 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData);
+                        // Get the fully qualified table name from the first channel in the blob.
+                        // This only matters when the client is in Iceberg mode. In Iceberg mode,
+                        // all channels in the blob belong to the same table.
+                        String fullyQualifiedTableName =
+                            blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName();
+                        BlobMetadata blobMetadata =
+                            buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -623,9 +587,12 @@ class FlushService<T> {
    * @param blobPath Path of the destination blob in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
+   * @param fullyQualifiedTableName the table name of the first channel in the blob, only matters in
+   *     Iceberg mode
    * @return BlobMetadata for FlushService.upload
    */
-  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData)
+  BlobMetadata buildAndUpload(
+      String blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
@@ -636,12 +603,18 @@ class FlushService<T> {
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
-    return upload(blobPath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
+    return upload(
+        this.storageManager.getStorage(fullyQualifiedTableName),
+        blobPath,
+        blob.blobBytes,
+        blob.chunksMetadataList,
+        blob.blobStats);
   }
 
   /**
    * Upload a blob to Streaming Ingest dedicated stage
    *
+   * @param storage the storage to upload the blob
    * @param blobPath full path of the blob
    * @param blob blob data
    * @param metadata a list of chunk metadata
@@ -649,13 +622,17 @@ class FlushService<T> {
    * @return BlobMetadata object used to create the register blob request
    */
   BlobMetadata upload(
-      String blobPath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
+      StreamingIngestStorage<T, ?> storage,
+      String blobPath,
+      byte[] blob,
+      List<ChunkMetadata> metadata,
+      BlobStats blobStats)
       throws NoSuchAlgorithmException {
     logger.logInfo("Start uploading blob={}, size={}", blobPath, blob.length);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-    this.targetStage.put(blobPath, blob);
+    storage.put(blobPath, blob);
 
     if (uploadContext != null) {
       blobStats.setUploadDurationMs(uploadContext);
@@ -720,45 +697,6 @@ class FlushService<T> {
   }
 
   /**
-   * Generate a blob path, which is: "YEAR/MONTH/DAY_OF_MONTH/HOUR_OF_DAY/MINUTE/<current utc
-   * timestamp + client unique prefix + thread id + counter>.BDEC"
-   *
-   * @return the generated blob file path
-   */
-  private String getBlobPath(String clientPrefix) {
-    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    return getBlobPath(calendar, clientPrefix);
-  }
-
-  /** For TESTING */
-  String getBlobPath(Calendar calendar, String clientPrefix) {
-    if (isTestMode && clientPrefix == null) {
-      clientPrefix = "testPrefix";
-    }
-
-    Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
-    int year = calendar.get(Calendar.YEAR);
-    int month = calendar.get(Calendar.MONTH) + 1; // Gregorian calendar starts from 0
-    int day = calendar.get(Calendar.DAY_OF_MONTH);
-    int hour = calendar.get(Calendar.HOUR_OF_DAY);
-    int minute = calendar.get(Calendar.MINUTE);
-    long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
-    long threadId = Thread.currentThread().getId();
-    // Create the blob short name, the clientPrefix contains the deployment id
-    String blobShortName =
-        Long.toString(time, 36)
-            + "_"
-            + clientPrefix
-            + "_"
-            + threadId
-            + "_"
-            + this.counter.getAndIncrement()
-            + "."
-            + BLOB_EXTENSION_TYPE;
-    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + blobShortName;
-  }
-
-  /**
    * Invalidate all the channels in the blob data
    *
    * @param blobData list of channels that belongs to the blob
@@ -779,11 +717,6 @@ class FlushService<T> {
                           channelData.getChannelContext().getChannelSequencer(),
                           invalidationCause);
                 }));
-  }
-
-  /** Get the server generated unique prefix for this client */
-  String getClientPrefix() {
-    return this.targetStage.getClientPrefix();
   }
 
   /**
