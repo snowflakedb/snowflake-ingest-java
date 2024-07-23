@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
@@ -259,7 +263,7 @@ public class SnowflakeStreamingIngestChannelTest {
 
     Assert.assertEquals(
         "STREAMINGINGEST_TEST.PUBLIC.T_STREAMINGINGEST", request.getFullyQualifiedTableName());
-    Assert.assertFalse(request.isOffsetTokenProvided());
+    Assert.assertNull(request.getOffsetToken());
   }
 
   @Test
@@ -276,7 +280,6 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertEquals(
         "STREAMINGINGEST_TEST.PUBLIC.T_STREAMINGINGEST", request.getFullyQualifiedTableName());
     Assert.assertEquals("TEST_TOKEN", request.getOffsetToken());
-    Assert.assertTrue(request.isOffsetTokenProvided());
   }
 
   @Test

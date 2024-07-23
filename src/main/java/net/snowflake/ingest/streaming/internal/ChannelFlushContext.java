@@ -1,8 +1,10 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
+
+import net.snowflake.ingest.utils.Utils;
 
 /**
  * Channel immutable identification and encryption attributes.
@@ -36,12 +38,12 @@ class ChannelFlushContext {
       String encryptionKey,
       Long encryptionKeyId) {
     this.name = name;
-    this.fullyQualifiedName = String.format("%s.%s.%s.%s", dbName, schemaName, tableName, name);
+    this.fullyQualifiedName =
+        Utils.getFullyQualifiedChannelName(dbName, schemaName, tableName, name);
     this.dbName = dbName;
     this.schemaName = schemaName;
     this.tableName = tableName;
-    this.fullyQualifiedTableName =
-        String.format("%s.%s.%s", this.getDbName(), this.getSchemaName(), this.getTableName());
+    this.fullyQualifiedTableName = Utils.getFullyQualifiedTableName(dbName, schemaName, tableName);
     this.channelSequencer = channelSequencer;
     this.encryptionKey = encryptionKey;
     this.encryptionKeyId = encryptionKeyId;
