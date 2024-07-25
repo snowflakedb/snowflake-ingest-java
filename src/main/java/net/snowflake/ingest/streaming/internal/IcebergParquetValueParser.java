@@ -138,7 +138,7 @@ class IcebergParquetValueParser {
     }
 
     if (value == null) {
-      if (!type.isRepetition(Repetition.REQUIRED)) {
+      if (type.isRepetition(Repetition.REQUIRED)) {
         throw new SFException(
             ErrorCode.INVALID_FORMAT_ROW, type.getName(), "Passed null to non nullable field");
       }
