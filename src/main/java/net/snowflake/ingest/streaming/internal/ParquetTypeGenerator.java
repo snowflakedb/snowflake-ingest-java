@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.IcebergDataTypeParser.deserializeIcebergType;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.iceberg.parquet.TypeToMessageType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -59,6 +62,9 @@ public class ParquetTypeGenerator {
                   AbstractRowBuffer.ColumnPhysicalType.SB8,
                   AbstractRowBuffer.ColumnPhysicalType.SB16));
 
+  /** Util class that contains the mapping between Iceberg data type and Parquet data type */
+  private static final TypeToMessageType typeToMessageType = new TypeToMessageType();
+
   /**
    * Generate the column parquet type and metadata from the column metadata received from server
    * side.
@@ -74,18 +80,6 @@ public class ParquetTypeGenerator {
     Map<String, String> metadata = new HashMap<>();
     String name = column.getInternalName();
 
-    AbstractRowBuffer.ColumnPhysicalType physicalType;
-    AbstractRowBuffer.ColumnLogicalType logicalType;
-    try {
-      physicalType = AbstractRowBuffer.ColumnPhysicalType.valueOf(column.getPhysicalType());
-      logicalType = AbstractRowBuffer.ColumnLogicalType.valueOf(column.getLogicalType());
-    } catch (IllegalArgumentException e) {
-      throw new SFException(
-          ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
-    }
-
-    metadata.put(Integer.toString(id), logicalType.getOrdinal() + "," + physicalType.getOrdinal());
-
     // Parquet Type.Repetition in general supports repeated values for the same row column, like a
     // list of values.
     // This generator uses only either 0 or 1 value for nullable data type (OPTIONAL: 0 or none
@@ -94,69 +88,115 @@ public class ParquetTypeGenerator {
     Type.Repetition repetition =
         column.getNullable() ? Type.Repetition.OPTIONAL : Type.Repetition.REQUIRED;
 
-    // Handle differently depends on the column logical and physical types
-    switch (logicalType) {
-      case FIXED:
-        parquetType = getFixedColumnParquetType(column, id, physicalType, repetition);
-        break;
-      case ARRAY:
-      case OBJECT:
-      case VARIANT:
-        // mark the column metadata as being an object json for the server side scanner
-        metadata.put(id + ":obj_enc", "1");
-        // parquetType is same as the next one
-      case ANY:
-      case CHAR:
-      case TEXT:
-      case BINARY:
+    if (column.getSourceIcebergDataType() != null) {
+      org.apache.iceberg.types.Type icebergDataType =
+          deserializeIcebergType(column.getSourceIcebergDataType());
+      if (icebergDataType.isPrimitiveType()) {
         parquetType =
-            Types.primitive(PrimitiveType.PrimitiveTypeName.BINARY, repetition)
-                .as(LogicalTypeAnnotation.stringType())
-                .id(id)
-                .named(name);
-        break;
-      case TIMESTAMP_LTZ:
-      case TIMESTAMP_NTZ:
-      case TIMESTAMP_TZ:
-        parquetType =
-            getTimeColumnParquetType(
-                column.getScale(),
-                physicalType,
-                logicalType,
-                TIMESTAMP_SUPPORTED_PHYSICAL_TYPES,
-                repetition,
-                id,
-                name);
-        break;
-      case DATE:
-        parquetType =
-            Types.primitive(PrimitiveType.PrimitiveTypeName.INT32, repetition)
-                .as(LogicalTypeAnnotation.dateType())
-                .id(id)
-                .named(name);
-        break;
-      case TIME:
-        parquetType =
-            getTimeColumnParquetType(
-                column.getScale(),
-                physicalType,
-                logicalType,
-                TIME_SUPPORTED_PHYSICAL_TYPES,
-                repetition,
-                id,
-                name);
-        break;
-      case BOOLEAN:
-        parquetType =
-            Types.primitive(PrimitiveType.PrimitiveTypeName.BOOLEAN, repetition).id(id).named(name);
-        break;
-      case REAL:
-        parquetType =
-            Types.primitive(PrimitiveType.PrimitiveTypeName.DOUBLE, repetition).id(id).named(name);
-        break;
-      default:
+            typeToMessageType.primitive(icebergDataType.asPrimitiveType(), repetition, id, name);
+      } else {
+        switch (icebergDataType.typeId()) {
+          case LIST:
+            parquetType =
+                typeToMessageType.list(icebergDataType.asListType(), repetition, id, name);
+            break;
+          case MAP:
+            parquetType = typeToMessageType.map(icebergDataType.asMapType(), repetition, id, name);
+            break;
+          case STRUCT:
+            parquetType =
+                typeToMessageType.struct(icebergDataType.asStructType(), repetition, id, name);
+            break;
+          default:
+            throw new SFException(
+                ErrorCode.INTERNAL_ERROR,
+                String.format(
+                    "Cannot convert Iceberg column to parquet type, name=%s, dataType=%s",
+                    name, icebergDataType));
+        }
+      }
+    } else {
+      AbstractRowBuffer.ColumnPhysicalType physicalType;
+      AbstractRowBuffer.ColumnLogicalType logicalType;
+      try {
+        physicalType = AbstractRowBuffer.ColumnPhysicalType.valueOf(column.getPhysicalType());
+        logicalType = AbstractRowBuffer.ColumnLogicalType.valueOf(column.getLogicalType());
+      } catch (IllegalArgumentException e) {
         throw new SFException(
             ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+      }
+
+      metadata.put(
+          Integer.toString(id), logicalType.getOrdinal() + "," + physicalType.getOrdinal());
+
+      // Handle differently depends on the column logical and physical types
+      switch (logicalType) {
+        case FIXED:
+          parquetType = getFixedColumnParquetType(column, id, physicalType, repetition);
+          break;
+        case ARRAY:
+        case OBJECT:
+        case VARIANT:
+          // mark the column metadata as being an object json for the server side scanner
+          metadata.put(id + ":obj_enc", "1");
+          // parquetType is same as the next one
+        case ANY:
+        case CHAR:
+        case TEXT:
+        case BINARY:
+          parquetType =
+              Types.primitive(PrimitiveType.PrimitiveTypeName.BINARY, repetition)
+                  .as(LogicalTypeAnnotation.stringType())
+                  .id(id)
+                  .named(name);
+          break;
+        case TIMESTAMP_LTZ:
+        case TIMESTAMP_NTZ:
+        case TIMESTAMP_TZ:
+          parquetType =
+              getTimeColumnParquetType(
+                  column.getScale(),
+                  physicalType,
+                  logicalType,
+                  TIMESTAMP_SUPPORTED_PHYSICAL_TYPES,
+                  repetition,
+                  id,
+                  name);
+          break;
+        case DATE:
+          parquetType =
+              Types.primitive(PrimitiveType.PrimitiveTypeName.INT32, repetition)
+                  .as(LogicalTypeAnnotation.dateType())
+                  .id(id)
+                  .named(name);
+          break;
+        case TIME:
+          parquetType =
+              getTimeColumnParquetType(
+                  column.getScale(),
+                  physicalType,
+                  logicalType,
+                  TIME_SUPPORTED_PHYSICAL_TYPES,
+                  repetition,
+                  id,
+                  name);
+          break;
+        case BOOLEAN:
+          parquetType =
+              Types.primitive(PrimitiveType.PrimitiveTypeName.BOOLEAN, repetition)
+                  .id(id)
+                  .named(name);
+          break;
+        case REAL:
+          parquetType =
+              Types.primitive(PrimitiveType.PrimitiveTypeName.DOUBLE, repetition)
+                  .id(id)
+                  .named(name);
+          break;
+        default:
+          throw new SFException(
+              ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+      }
     }
     res.setParquetType(parquetType);
     res.setMetadata(metadata);

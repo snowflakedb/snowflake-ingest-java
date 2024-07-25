@@ -1,9 +1,9 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
-import static net.snowflake.ingest.streaming.internal.ParquetValueParser.BIT_ENCODING_BYTE_LEN;
-import static net.snowflake.ingest.streaming.internal.ParquetValueParser.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN;
-import static net.snowflake.ingest.streaming.internal.ParquetValueParser.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
+import static net.snowflake.ingest.streaming.internal.ParquetBufferValue.BIT_ENCODING_BYTE_LEN;
+import static net.snowflake.ingest.streaming.internal.ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN;
+import static net.snowflake.ingest.streaming.internal.ParquetBufferValue.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -15,7 +15,7 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class ParquetValueParserTest {
+public class SnowflakeParquetValueParserTest {
 
   @Test
   public void parseValueFixedSB1ToInt32() {
@@ -29,8 +29,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             12, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -55,8 +55,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             1234, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -81,8 +81,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             123456789, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -107,8 +107,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             123456789987654321L,
             testCol,
             PrimitiveType.PrimitiveTypeName.INT64,
@@ -138,8 +138,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             new BigDecimal("91234567899876543219876543211234567891"),
             testCol,
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
@@ -152,7 +152,7 @@ public class ParquetValueParserTest {
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(byte[].class)
         .expectedParsedValue(
-            ParquetValueParser.getSb16Bytes(
+            SnowflakeParquetValueParser.getSb16Bytes(
                 new BigInteger("91234567899876543219876543211234567891")))
         .expectedSize(16.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(new BigInteger("91234567899876543219876543211234567891"))
@@ -171,8 +171,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             new BigDecimal("12345.54321"),
             testCol,
             PrimitiveType.PrimitiveTypeName.DOUBLE,
@@ -200,8 +200,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             12345.54321d, testCol, PrimitiveType.PrimitiveTypeName.DOUBLE, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -224,8 +224,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             true, testCol, PrimitiveType.PrimitiveTypeName.BOOLEAN, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -248,8 +248,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             "1234abcd".getBytes(),
             testCol,
             PrimitiveType.PrimitiveTypeName.BINARY,
@@ -290,8 +290,8 @@ public class ParquetValueParserTest {
         "{\"key1\":-879869596,\"key2\":\"value2\",\"key3\":null,"
             + "\"key4\":{\"key41\":0.032437,\"key42\":\"value42\",\"key43\":null}}";
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -331,8 +331,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -361,8 +361,8 @@ public class ParquetValueParserTest {
     input.put("c", "3");
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     String resultArray = "[{\"a\":\"1\",\"b\":\"2\",\"c\":\"3\"}]";
@@ -393,8 +393,8 @@ public class ParquetValueParserTest {
     String text = "This is a sample text! Length is bigger than 32 bytes :)";
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             text, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     String result = text;
@@ -428,7 +428,7 @@ public class ParquetValueParserTest {
         Assert.assertThrows(
             SFException.class,
             () ->
-                ParquetValueParser.parseColumnValueToParquet(
+                SnowflakeParquetValueParser.parseColumnValueToParquet(
                     "2013-04-28 20:57:00",
                     testCol,
                     PrimitiveType.PrimitiveTypeName.INT32,
@@ -451,8 +451,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             "2013-04-28T20:57:01.000",
             testCol,
             PrimitiveType.PrimitiveTypeName.INT64,
@@ -481,8 +481,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             "2022-09-18T22:05:07.123456789",
             testCol,
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
@@ -495,7 +495,7 @@ public class ParquetValueParserTest {
         .rowBufferStats(rowBufferStats)
         .expectedValueClass(byte[].class)
         .expectedParsedValue(
-            ParquetValueParser.getSb16Bytes(BigInteger.valueOf(1663538707123456789L)))
+            SnowflakeParquetValueParser.getSb16Bytes(BigInteger.valueOf(1663538707123456789L)))
         .expectedSize(16.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
         .expectedMinMax(BigInteger.valueOf(1663538707123456789L))
         .assertMatches();
@@ -512,8 +512,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -537,8 +537,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             "01:00:00", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -562,8 +562,8 @@ public class ParquetValueParserTest {
             .build();
 
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
-    ParquetValueParser.ParquetBufferValue pv =
-        ParquetValueParser.parseColumnValueToParquet(
+    ParquetBufferValue pv =
+        SnowflakeParquetValueParser.parseColumnValueToParquet(
             "01:00:00.123", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
@@ -591,7 +591,7 @@ public class ParquetValueParserTest {
         Assert.assertThrows(
             SFException.class,
             () ->
-                ParquetValueParser.parseColumnValueToParquet(
+                SnowflakeParquetValueParser.parseColumnValueToParquet(
                     "11:00:00.12345678",
                     testCol,
                     PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
@@ -604,7 +604,7 @@ public class ParquetValueParserTest {
 
   /** Builder that helps to assert parsing of values to parquet types */
   private static class ParquetValueParserAssertionBuilder {
-    private ParquetValueParser.ParquetBufferValue parquetBufferValue;
+    private ParquetBufferValue parquetBufferValue;
     private RowBufferStats rowBufferStats;
     private Class valueClass;
     private Object value;
@@ -617,8 +617,7 @@ public class ParquetValueParserTest {
       return builder;
     }
 
-    ParquetValueParserAssertionBuilder parquetBufferValue(
-        ParquetValueParser.ParquetBufferValue parquetBufferValue) {
+    ParquetValueParserAssertionBuilder parquetBufferValue(ParquetBufferValue parquetBufferValue) {
       this.parquetBufferValue = parquetBufferValue;
       return this;
     }

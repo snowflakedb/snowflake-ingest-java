@@ -803,6 +803,83 @@ class DataValidationUtil {
   }
 
   /**
+   * Validates and parses input to a specific Iceberg column number type including INT, LONG, FLOAT,
+   * and DOUBLE. Allowed Java types:
+   *
+   * <ul>
+   *   <li>Number
+   *   <li>String
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @param targetType The type to which the input should be parsed ("INT", "LONG", "FLOAT",
+   *     "DOUBLE")
+   * @return Parsed number as Number to be casted by the caller
+   */
+  static <T extends Number> T validateAndParseIcebergNumber(
+      String columnName, Object input, long insertRowIndex, Class<T> targetType) {
+    if (input instanceof Number) {
+      if (targetType.equals(Integer.class)) {
+        return targetType.cast(((Number) input).intValue());
+      } else if (targetType.equals(Long.class)) {
+        return targetType.cast(((Number) input).longValue());
+      } else if (targetType.equals(Float.class)) {
+        return targetType.cast(((Number) input).floatValue());
+      } else if (targetType.equals(Double.class)) {
+        return targetType.cast(((Number) input).doubleValue());
+      }
+    } else if (input instanceof String) {
+      String stringInput = ((String) input).trim().toLowerCase();
+      try {
+        if (targetType.equals(int.class)) {
+          return targetType.cast(Integer.parseInt(stringInput));
+        } else if (targetType.equals(long.class)) {
+          return targetType.cast(Long.parseLong(stringInput));
+        } else if (targetType.equals(float.class)) {
+          return targetType.cast(Float.parseFloat(stringInput));
+        } else if (targetType.equals(double.class)) {
+          return targetType.cast(Double.parseDouble(stringInput));
+        }
+      } catch (NumberFormatException e) {
+        if (targetType.equals(float.class)) {
+          switch (stringInput) {
+            case "nan":
+              return targetType.cast(Float.NaN);
+            case "inf":
+              return targetType.cast(Float.POSITIVE_INFINITY);
+            case "-inf":
+              return targetType.cast(Float.NEGATIVE_INFINITY);
+          }
+        }
+        if (targetType.equals(double.class)) {
+          switch (stringInput) {
+            case "nan":
+              return targetType.cast(Double.NaN);
+            case "inf":
+              return targetType.cast(Double.POSITIVE_INFINITY);
+            case "-inf":
+              return targetType.cast(Double.NEGATIVE_INFINITY);
+          }
+        }
+        throw valueFormatNotAllowedException(
+            columnName,
+            targetType.getSimpleName().toUpperCase(),
+            "Not a valid number",
+            insertRowIndex);
+      }
+    }
+
+    throw typeNotAllowedException(
+        columnName,
+        input.getClass(),
+        targetType.getSimpleName().toUpperCase(),
+        new String[] {"Number", "String"},
+        insertRowIndex);
+  }
+
+  /**
    * Validate and parse input to integer output, 1=true, 0=false. String values converted to boolean
    * according to https://docs.snowflake.com/en/sql-reference/functions/to_boolean.html#usage-notes
    * Allowed Java types:
@@ -833,6 +910,80 @@ class DataValidationUtil {
         insertRowIndex);
   }
 
+  /**
+   * Validate and cast Iceberg struct column to Map<String, Object>. Allowed Java type:
+   *
+   * <ul>
+   *   <li>Map<String, Object>
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Object cast to Map
+   */
+  static Map<String, Object> validateAndParseIcebergStruct(
+      String columnName, Object input, long insertRowIndex) {
+    if (!(input instanceof Map)) {
+      throw typeNotAllowedException(
+          columnName,
+          input.getClass(),
+          "STRUCT",
+          new String[] {"Map<String, Object>"},
+          insertRowIndex);
+    }
+    if (!((Map<?, ?>) input).keySet().stream().allMatch(key -> key instanceof String)) {
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          String.format(
+              "Flied name of a struct must be of type String, rowIndex:%d", insertRowIndex));
+    }
+
+    return (Map<String, Object>) input;
+  }
+
+  /**
+   * Validate and parse Iceberg list column to an Iterable. Allowed Java type:
+   *
+   * <ul>
+   *   <li>Iterable
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Object cast to Iterable
+   */
+  static Iterable<Object> validateAndParseIcebergList(
+      String columnName, Object input, long insertRowIndex) {
+    if (!(input instanceof Iterable)) {
+      throw typeNotAllowedException(
+          columnName, input.getClass(), "LIST", new String[] {"Iterable"}, insertRowIndex);
+    }
+    return (Iterable<Object>) input;
+  }
+
+  /**
+   * Validate and parse Iceberg map column to a map. Allowed Java type:
+   *
+   * <ul>
+   *   <li>Map<Object, Object>
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Object cast to Map
+   */
+  static Map<Object, Object> validateAndParseIcebergMap(
+      String columnName, Object input, long insertRowIndex) {
+    if (!(input instanceof Map)) {
+      throw typeNotAllowedException(
+          columnName, input.getClass(), "MAP", new String[] {"Map"}, insertRowIndex);
+    }
+    return (Map<Object, Object>) input;
+  }
+
   static void checkValueInRange(
       BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
     BigDecimal comparand =
@@ -845,6 +996,16 @@ class DataValidationUtil {
           String.format(
               "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d",
               precision - scale, precision - scale, insertRowIndex));
+    }
+  }
+
+  static void checkFixedLengthByteArray(byte[] bytes, int length, final long insertRowIndex) {
+    if (bytes.length != length) {
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          String.format(
+              "Binary length mismatch: expected=%d actual=%d, rowIndex:%d",
+              length, bytes.length, insertRowIndex));
     }
   }
 

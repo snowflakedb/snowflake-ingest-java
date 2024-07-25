@@ -27,7 +27,6 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
@@ -35,7 +34,7 @@ import org.apache.parquet.schema.Type;
  * converted to Parquet format for faster processing
  */
 public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
-  private static final String PARQUET_MESSAGE_TYPE_NAME = "bdec";
+  private static final String PARQUET_MESSAGE_TYPE_NAME = "schema";
 
   private final Map<String, ParquetColumn> fieldIndex;
 
@@ -94,7 +93,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int columnIndex = parquetTypes.size() - 1;
       fieldIndex.put(
           column.getInternalName(),
-          new ParquetColumn(column, columnIndex, typeInfo.getPrimitiveTypeName()));
+          new ParquetColumn(column, columnIndex, typeInfo.getParquetType()));
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
@@ -205,9 +204,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
       forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = parquetColumn.columnMetadata;
-      ParquetValueParser.ParquetBufferValue valueWithSize =
-          ParquetValueParser.parseColumnValueToParquet(
-              value, column, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex);
+      ParquetBufferValue valueWithSize =
+          (column.getSourceIcebergDataType() == null
+              ? SnowflakeParquetValueParser.parseColumnValueToParquet(
+                  value,
+                  column,
+                  parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
+                  forkedStats,
+                  defaultTimezone,
+                  insertRowsCurrIndex)
+              : IcebergParquetValueParser.parseColumnValueToParquet(
+                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex));
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
@@ -337,10 +344,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private static class ParquetColumn {
     final ColumnMetadata columnMetadata;
     final int index;
-    final PrimitiveType.PrimitiveTypeName type;
+    final Type type;
 
-    private ParquetColumn(
-        ColumnMetadata columnMetadata, int index, PrimitiveType.PrimitiveTypeName type) {
+    private ParquetColumn(ColumnMetadata columnMetadata, int index, Type type) {
       this.columnMetadata = columnMetadata;
       this.index = index;
       this.type = type;
