@@ -803,8 +803,7 @@ class DataValidationUtil {
   }
 
   /**
-   * Validates and parses input to a specific Iceberg column number type including INT, LONG, FLOAT,
-   * and DOUBLE. Allowed Java types:
+   * Validates and parses input Iceberg INT column. Allowed Java types:
    *
    * <ul>
    *   <li>Number
@@ -814,69 +813,49 @@ class DataValidationUtil {
    * @param columnName Column name, used in validation error messages
    * @param input Object to validate and parse
    * @param insertRowIndex Row index for error reporting
-   * @param targetType The type to which the input should be parsed ("INT", "LONG", "FLOAT",
-   *     "DOUBLE")
-   * @return Parsed number as Number to be casted by the caller
+   * @return Parsed integer
    */
-  static <T extends Number> T validateAndParseIcebergNumber(
-      String columnName, Object input, long insertRowIndex, Class<T> targetType) {
+  static int validateAndParseIcebergInt(String columnName, Object input, long insertRowIndex) {
     if (input instanceof Number) {
-      if (targetType.equals(Integer.class)) {
-        return targetType.cast(((Number) input).intValue());
-      } else if (targetType.equals(Long.class)) {
-        return targetType.cast(((Number) input).longValue());
-      } else if (targetType.equals(Float.class)) {
-        return targetType.cast(((Number) input).floatValue());
-      } else if (targetType.equals(Double.class)) {
-        return targetType.cast(((Number) input).doubleValue());
-      }
+      return ((Number) input).intValue();
     } else if (input instanceof String) {
-      String stringInput = ((String) input).trim().toLowerCase();
       try {
-        if (targetType.equals(int.class)) {
-          return targetType.cast(Integer.parseInt(stringInput));
-        } else if (targetType.equals(long.class)) {
-          return targetType.cast(Long.parseLong(stringInput));
-        } else if (targetType.equals(float.class)) {
-          return targetType.cast(Float.parseFloat(stringInput));
-        } else if (targetType.equals(double.class)) {
-          return targetType.cast(Double.parseDouble(stringInput));
-        }
+        return Integer.parseInt(((String) input).trim());
       } catch (NumberFormatException e) {
-        if (targetType.equals(float.class)) {
-          switch (stringInput) {
-            case "nan":
-              return targetType.cast(Float.NaN);
-            case "inf":
-              return targetType.cast(Float.POSITIVE_INFINITY);
-            case "-inf":
-              return targetType.cast(Float.NEGATIVE_INFINITY);
-          }
-        }
-        if (targetType.equals(double.class)) {
-          switch (stringInput) {
-            case "nan":
-              return targetType.cast(Double.NaN);
-            case "inf":
-              return targetType.cast(Double.POSITIVE_INFINITY);
-            case "-inf":
-              return targetType.cast(Double.NEGATIVE_INFINITY);
-          }
-        }
         throw valueFormatNotAllowedException(
-            columnName,
-            targetType.getSimpleName().toUpperCase(),
-            "Not a valid number",
-            insertRowIndex);
+            columnName, "INT", "Not a valid integer", insertRowIndex);
       }
     }
-
     throw typeNotAllowedException(
-        columnName,
-        input.getClass(),
-        targetType.getSimpleName().toUpperCase(),
-        new String[] {"Number", "String"},
-        insertRowIndex);
+        columnName, input.getClass(), "INT", new String[] {"Number", "String"}, insertRowIndex);
+  }
+
+  /**
+   * Validates and parses input Iceberg LONG column. Allowed Java types:
+   *
+   * <ul>
+   *   <li>Number
+   *   <li>String
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Parsed long
+   */
+  static long validateAndParseIcebergLong(String columnName, Object input, long insertRowIndex) {
+    if (input instanceof Number) {
+      return ((Number) input).longValue();
+    } else if (input instanceof String) {
+      try {
+        return Long.parseLong(((String) input).trim());
+      } catch (NumberFormatException e) {
+        throw valueFormatNotAllowedException(
+            columnName, "LONG", "Not a valid long", insertRowIndex);
+      }
+    }
+    throw typeNotAllowedException(
+        columnName, input.getClass(), "LONG", new String[] {"Number", "String"}, insertRowIndex);
   }
 
   /**

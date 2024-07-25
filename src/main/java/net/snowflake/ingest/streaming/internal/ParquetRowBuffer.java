@@ -86,8 +86,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     int id = 1;
     for (ColumnMetadata column : columns) {
       validateColumnCollation(column);
-      ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-          ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
+      ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
       parquetTypes.add(typeInfo.getParquetType());
       this.metadata.putAll(typeInfo.getMetadata());
       int columnIndex = parquetTypes.size() - 1;
@@ -214,7 +213,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                   defaultTimezone,
                   insertRowsCurrIndex)
               : IcebergParquetValueParser.parseColumnValueToParquet(
-                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex));
+                  value,
+                  parquetColumn.type,
+                  forkedStats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  false));
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }

@@ -19,8 +19,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -45,8 +44,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(false)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -71,8 +69,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -97,8 +94,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -123,8 +119,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -149,8 +144,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -176,8 +170,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -201,8 +194,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -226,8 +218,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -251,8 +242,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -276,8 +266,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -301,8 +290,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -326,8 +314,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -351,8 +338,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -376,8 +362,7 @@ public class ParquetTypeGeneratorTest {
             .nullable(true)
             .build();
 
-    ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-        ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
     createParquetTypeInfoAssertionBuilder()
         .typeInfo(typeInfo)
         .expectedFieldName("TESTCOL")
@@ -401,14 +386,14 @@ public class ParquetTypeGeneratorTest {
     private Type.Repetition repetition;
     private int typeLength;
     private String colMetadata;
-    private ParquetTypeGenerator.ParquetTypeInfo typeInfo;
+    private ParquetTypeInfo typeInfo;
 
     static ParquetTypeInfoAssertionBuilder newBuilder() {
       ParquetTypeInfoAssertionBuilder builder = new ParquetTypeInfoAssertionBuilder();
       return builder;
     }
 
-    ParquetTypeInfoAssertionBuilder typeInfo(ParquetTypeGenerator.ParquetTypeInfo typeInfo) {
+    ParquetTypeInfoAssertionBuilder typeInfo(ParquetTypeInfo typeInfo) {
       this.typeInfo = typeInfo;
       return this;
     }

@@ -22,35 +22,6 @@ import org.apache.parquet.schema.Types;
 /** Generates the Parquet types for the Snowflake's column types */
 public class ParquetTypeGenerator {
 
-  /**
-   * Util class that contains Parquet type and other metadata for that type needed by the Snowflake
-   * server side scanner
-   */
-  static class ParquetTypeInfo {
-    private Type parquetType;
-    private Map<String, String> metadata;
-
-    public Type getParquetType() {
-      return this.parquetType;
-    }
-
-    public Map<String, String> getMetadata() {
-      return this.metadata;
-    }
-
-    public void setParquetType(Type parquetType) {
-      this.parquetType = parquetType;
-    }
-
-    public void setMetadata(Map<String, String> metadata) {
-      this.metadata = metadata;
-    }
-
-    public PrimitiveType.PrimitiveTypeName getPrimitiveTypeName() {
-      return parquetType.asPrimitiveType().getPrimitiveTypeName();
-    }
-  }
-
   private static final Set<AbstractRowBuffer.ColumnPhysicalType> TIME_SUPPORTED_PHYSICAL_TYPES =
       new HashSet<>(
           Arrays.asList(

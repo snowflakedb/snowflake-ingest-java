@@ -24,11 +24,10 @@ class ParquetBufferValue {
    *   For more details see ColumnWriterV1#createDLWriter and {@link
    *   org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder#writeInt(int)}
    * </ul>
-   *
-   * <p>Since we don't have nested types, repetition level is always 0 and is not stored at all by
-   * Parquet.
    */
   public static final float DEFINITION_LEVEL_ENCODING_BYTE_LEN = 2.0f / 8;
+
+  public static final float REPETITION_LEVEL_ENCODING_BYTE_LEN = 2.0f / 8;
 
   // Parquet stores length in 4 bytes before the actual data bytes
   public static final int BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN = 4;
