@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -413,7 +413,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     // if a large number of rows are inserted
     if (this.rowBuffer.getSize()
         >= this.owningClient.getParameterProvider().getMaxChannelSizeInBytes()) {
-      this.owningClient.setNeedFlush();
+      this.owningClient.setNeedFlush(this.channelFlushContext.getFullyQualifiedTableName());
     }
 
     return response;
