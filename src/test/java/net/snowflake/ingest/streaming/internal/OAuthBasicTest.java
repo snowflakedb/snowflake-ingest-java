@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Properties;
@@ -114,7 +118,7 @@ public class OAuthBasicTest {
   @Test
   public void testSetRefreshToken() throws Exception {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("TEST_CLIENT");
+        new SnowflakeStreamingIngestClientInternal<>("TEST_CLIENT", false);
     MockOAuthClient mockOAuthClient = new MockOAuthClient();
 
     OAuthManager oAuthManager =

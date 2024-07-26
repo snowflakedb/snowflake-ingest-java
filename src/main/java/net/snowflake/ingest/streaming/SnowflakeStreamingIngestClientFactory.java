@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming;
@@ -31,6 +31,10 @@ public class SnowflakeStreamingIngestClientFactory {
     // Indicates whether it's under test mode
     private boolean isTestMode;
 
+    // Indicates whether it's streaming to Iceberg tables. Open channels on regular tables should
+    // fail in this mode.
+    private boolean isIcebergMode;
+
     private Builder(String name) {
       this.name = name;
     }
@@ -50,6 +54,11 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
+    Builder setIsIcebergMode(boolean isIcebergMode) {
+      this.isIcebergMode = isIcebergMode;
+      return this;
+    }
+
     public SnowflakeStreamingIngestClient build() {
       Utils.assertStringNotNullOrEmpty("client name", this.name);
       Utils.assertNotNull("connection properties", this.prop);
@@ -58,7 +67,12 @@ public class SnowflakeStreamingIngestClientFactory {
       SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides, this.isTestMode);
+          this.name,
+          accountURL,
+          prop,
+          this.parameterOverrides,
+          this.isIcebergMode,
+          this.isTestMode);
     }
   }
 }
