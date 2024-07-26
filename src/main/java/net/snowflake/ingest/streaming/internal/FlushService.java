@@ -178,11 +178,11 @@ class FlushService<T> {
           logFlushTask(isForce, tablesToFlush, flushStartTime);
           distributeFlushTasks(tablesToFlush);
           long prevFlushEndTime = System.currentTimeMillis();
+          this.lastFlushTime = prevFlushEndTime;
+          this.isNeedFlush = false;
           tablesToFlush.forEach(
               table -> {
-                this.lastFlushTime = prevFlushEndTime;
                 this.channelCache.setLastFlushTime(table, prevFlushEndTime);
-                this.isNeedFlush = false;
                 this.channelCache.setNeedFlush(table, false);
               });
         },

@@ -28,8 +28,8 @@ class ChannelCache<T> {
 
   /** Flush information for each table including last flush time and if flush is needed */
   static class FlushInfo {
-    long lastFlushTime;
-    boolean needFlush;
+    final long lastFlushTime;
+    final boolean needFlush;
 
     FlushInfo(long lastFlushTime, boolean needFlush) {
       this.lastFlushTime = lastFlushTime;
@@ -53,8 +53,7 @@ class ChannelCache<T> {
     // Update the last flush time for the table, add jitter to avoid all channels flush at the same
     // time when the blobs are not interleaved
     this.tableFlushInfo.putIfAbsent(
-        channel.getFullyQualifiedTableName(),
-        new FlushInfo(System.currentTimeMillis() + getRandomFlushJitter(), false));
+        channel.getFullyQualifiedTableName(), new FlushInfo(System.currentTimeMillis(), false));
 
     SnowflakeStreamingIngestChannelInternal<T> oldChannel =
         channels.put(channel.getName(), channel);
@@ -91,7 +90,14 @@ class ChannelCache<T> {
   void setLastFlushTime(String fullyQualifiedTableName, Long lastFlushTime) {
     this.tableFlushInfo.compute(
         fullyQualifiedTableName,
-        (k, v) -> new FlushInfo(lastFlushTime + getRandomFlushJitter(), v != null && v.needFlush));
+        (k, v) -> {
+          if (v == null) {
+            throw new SFException(
+                ErrorCode.INTERNAL_ERROR,
+                String.format("Last flush time for table %s not found", fullyQualifiedTableName));
+          }
+          return new FlushInfo(lastFlushTime, v.needFlush);
+        });
   }
 
   /**
@@ -100,7 +106,7 @@ class ChannelCache<T> {
    * @param fullyQualifiedTableName fully qualified table name
    * @return need flush flag
    */
-  Boolean getNeedFlush(String fullyQualifiedTableName) {
+  boolean getNeedFlush(String fullyQualifiedTableName) {
     FlushInfo tableFlushInfo = this.tableFlushInfo.get(fullyQualifiedTableName);
     if (tableFlushInfo == null) {
       throw new SFException(
@@ -116,13 +122,17 @@ class ChannelCache<T> {
    * @param fullyQualifiedTableName fully qualified table name
    * @param needFlush need flush flag
    */
-  void setNeedFlush(String fullyQualifiedTableName, Boolean needFlush) {
+  void setNeedFlush(String fullyQualifiedTableName, boolean needFlush) {
     this.tableFlushInfo.compute(
         fullyQualifiedTableName,
-        (k, v) ->
-            new FlushInfo(
-                v != null ? v.lastFlushTime : System.currentTimeMillis() + getRandomFlushJitter(),
-                needFlush));
+        (k, v) -> {
+          if (v == null) {
+            throw new SFException(
+                ErrorCode.INTERNAL_ERROR,
+                String.format("Need flush flag for table %s not found", fullyQualifiedTableName));
+          }
+          return new FlushInfo(v.lastFlushTime, needFlush);
+        });
   }
 
   /** Returns an immutable set view of the mappings contained in the channel cache. */
@@ -183,10 +193,5 @@ class ChannelCache<T> {
   /** Get the number of key-value pairs in the cache */
   int getSize() {
     return cache.size();
-  }
-
-  /** Generate a random flush jitter to avoid all channels flush at the same time */
-  private long getRandomFlushJitter() {
-    return (long) (Math.random() * 1000);
   }
 }
