@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Map;
@@ -377,16 +381,638 @@ public class ParquetTypeGeneratorTest {
         .assertMatches();
   }
 
+  @Test
+  public void buildFieldIcebergBoolean() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"boolean\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BOOLEAN)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergInt() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"int\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergLong() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"long\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergFloat() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"float\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FLOAT)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergDouble() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"double\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.DOUBLE)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergDecimal() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"decimal(9, 2)\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(2, 9))
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+
+    testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"decimal(10, 4)\"")
+            .nullable(true)
+            .build();
+
+    typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(4, 10))
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+
+    testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"decimal(19, 1)\"")
+            .nullable(true)
+            .build();
+
+    typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(9)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(1, 19))
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergDate() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"date\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.dateType())
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergTime() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"time\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
+        .expectedLogicalTypeAnnotation(
+            LogicalTypeAnnotation.timeType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergTimeStamp() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"timestamp\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
+        .expectedLogicalTypeAnnotation(
+            LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergTimeStampTZ() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"timestamptz\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT64)
+        .expectedLogicalTypeAnnotation(
+            LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergString() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"string\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.stringType())
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergFixed() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"fixed[16]\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(16)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergBinary() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType("\"binary\"")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder()
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergStruct() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType(
+                "{"
+                    + "  \"type\": \"struct\","
+                    + "  \"fields\":"
+                    + "  ["
+                    + "    {"
+                    + "      \"id\": 1,"
+                    + "      \"name\": \"id\","
+                    + "      \"required\": true,"
+                    + "      \"type\": \"string\""
+                    + "    },"
+                    + "    {"
+                    + "      \"id\": 2,"
+                    + "      \"name\": \"age\","
+                    + "      \"required\": false,"
+                    + "      \"type\": \"int\""
+                    + "    }"
+                    + "  ]"
+                    + "}")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .expectedFieldCount(2)
+        .assertMatches();
+
+    ParquetTypeInfo firstFieldTypeInfo = new ParquetTypeInfo();
+    firstFieldTypeInfo.setParquetType(typeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(firstFieldTypeInfo)
+        .expectedFieldName("id")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.stringType())
+        .expectedRepetition(Type.Repetition.REQUIRED)
+        .expectedColMetaData(null)
+        .assertMatches();
+
+    ParquetTypeInfo secondFieldTypeInfo = new ParquetTypeInfo();
+    secondFieldTypeInfo.setParquetType(typeInfo.getParquetType().asGroupType().getType(1));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(secondFieldTypeInfo)
+        .expectedFieldName("age")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergList() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType(
+                "{"
+                    + "  \"type\": \"list\","
+                    + "  \"element\": \"int\","
+                    + "  \"element-required\": true,"
+                    + "  \"element-id\": 1"
+                    + "}")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.listType())
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .expectedFieldCount(1)
+        .assertMatches();
+
+    ParquetTypeInfo elementTypeInfo = new ParquetTypeInfo();
+    elementTypeInfo.setParquetType(typeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(elementTypeInfo)
+        .expectedFieldName("list")
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.REPEATED)
+        .expectedColMetaData(null)
+        .expectedFieldCount(1)
+        .assertMatches();
+
+    ParquetTypeInfo elementFieldTypeInfo = new ParquetTypeInfo();
+    elementFieldTypeInfo.setParquetType(elementTypeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(elementFieldTypeInfo)
+        .expectedFieldName("element")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.REQUIRED)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergMap() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType(
+                "{"
+                    + "  \"type\": \"map\","
+                    + "  \"key\": \"string\","
+                    + "  \"value\": \"int\","
+                    + "  \"key-required\": true,"
+                    + "  \"value-required\": false,"
+                    + "  \"key-id\": 1,"
+                    + "  \"value-id\": 2"
+                    + "}")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.mapType())
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .expectedFieldCount(1)
+        .assertMatches();
+
+    ParquetTypeInfo mapTypeInfo = new ParquetTypeInfo();
+    mapTypeInfo.setParquetType(typeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(mapTypeInfo)
+        .expectedFieldName("key_value")
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.REPEATED)
+        .expectedColMetaData(null)
+        .expectedFieldCount(2)
+        .assertMatches();
+
+    ParquetTypeInfo keyTypeInfo = new ParquetTypeInfo();
+    keyTypeInfo.setParquetType(mapTypeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(keyTypeInfo)
+        .expectedFieldName("key")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.stringType())
+        .expectedRepetition(Type.Repetition.REQUIRED)
+        .expectedColMetaData(null)
+        .assertMatches();
+
+    ParquetTypeInfo valueTypeInfo = new ParquetTypeInfo();
+    valueTypeInfo.setParquetType(mapTypeInfo.getParquetType().asGroupType().getType(1));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(valueTypeInfo)
+        .expectedFieldName("value")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
+  @Test
+  public void buildFieldIcebergNestedStructuredDataType() {
+    ColumnMetadata testCol =
+        createColumnMetadataBuilder()
+            .logicalType("")
+            .sourceIcebergDataType(
+                "{"
+                    + "  \"type\": \"map\","
+                    + "  \"key\": \"string\","
+                    + "  \"value\": {"
+                    + "    \"type\": \"list\","
+                    + "    \"element\": {"
+                    + "      \"type\": \"struct\","
+                    + "      \"fields\":"
+                    + "      ["
+                    + "        {"
+                    + "          \"id\": 1,"
+                    + "          \"name\": \"id\","
+                    + "          \"required\": true,"
+                    + "          \"type\": \"string\""
+                    + "        },"
+                    + "        {"
+                    + "          \"id\": 2,"
+                    + "          \"name\": \"age\","
+                    + "          \"required\": false,"
+                    + "          \"type\": \"int\""
+                    + "        }"
+                    + "      ]"
+                    + "    },"
+                    + "    \"element-required\": true,"
+                    + "    \"element-id\": 1"
+                    + "  },"
+                    + "  \"key-required\": true,"
+                    + "  \"value-required\": false,"
+                    + "  \"key-id\": 1,"
+                    + "  \"value-id\": 2"
+                    + "}")
+            .nullable(true)
+            .build();
+
+    ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(testCol, 0);
+
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(typeInfo)
+        .expectedFieldName("TESTCOL")
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.mapType())
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .expectedFieldCount(1)
+        .assertMatches();
+
+    ParquetTypeInfo mapTypeInfo = new ParquetTypeInfo();
+    mapTypeInfo.setParquetType(typeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(mapTypeInfo)
+        .expectedFieldName("key_value")
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.REPEATED)
+        .expectedColMetaData(null)
+        .expectedFieldCount(2)
+        .assertMatches();
+
+    ParquetTypeInfo keyTypeInfo = new ParquetTypeInfo();
+    keyTypeInfo.setParquetType(mapTypeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(keyTypeInfo)
+        .expectedFieldName("key")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.stringType())
+        .expectedRepetition(Type.Repetition.REQUIRED)
+        .expectedColMetaData(null)
+        .assertMatches();
+
+    ParquetTypeInfo valueTypeInfo = new ParquetTypeInfo();
+    valueTypeInfo.setParquetType(mapTypeInfo.getParquetType().asGroupType().getType(1));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(valueTypeInfo)
+        .expectedFieldName("value")
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.listType())
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .expectedFieldCount(1)
+        .assertMatches();
+
+    ParquetTypeInfo elementTypeInfo = new ParquetTypeInfo();
+    elementTypeInfo.setParquetType(valueTypeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(elementTypeInfo)
+        .expectedFieldName("list")
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.REPEATED)
+        .expectedColMetaData(null)
+        .expectedFieldCount(1)
+        .assertMatches();
+
+    ParquetTypeInfo elementFieldTypeInfo = new ParquetTypeInfo();
+    elementFieldTypeInfo.setParquetType(elementTypeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(elementFieldTypeInfo)
+        .expectedFieldName("element")
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.REQUIRED)
+        .expectedColMetaData(null)
+        .expectedFieldCount(2)
+        .assertMatches();
+
+    ParquetTypeInfo firstFieldTypeInfo = new ParquetTypeInfo();
+    firstFieldTypeInfo.setParquetType(
+        elementFieldTypeInfo.getParquetType().asGroupType().getType(0));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(firstFieldTypeInfo)
+        .expectedFieldName("id")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.BINARY)
+        .expectedLogicalTypeAnnotation(LogicalTypeAnnotation.stringType())
+        .expectedRepetition(Type.Repetition.REQUIRED)
+        .expectedColMetaData(null)
+        .assertMatches();
+
+    ParquetTypeInfo secondFieldTypeInfo = new ParquetTypeInfo();
+    secondFieldTypeInfo.setParquetType(
+        elementFieldTypeInfo.getParquetType().asGroupType().getType(1));
+    createParquetTypeInfoAssertionBuilder(false)
+        .typeInfo(secondFieldTypeInfo)
+        .expectedFieldName("age")
+        .expectedTypeLength(0)
+        .expectedPrimitiveTypeName(PrimitiveType.PrimitiveTypeName.INT32)
+        .expectedLogicalTypeAnnotation(null)
+        .expectedRepetition(Type.Repetition.OPTIONAL)
+        .expectedColMetaData(null)
+        .assertMatches();
+  }
+
   /** Builder that helps to assert parquet type info */
   private static class ParquetTypeInfoAssertionBuilder {
     private String fieldName;
-    private int fieldId;
+    private Integer fieldId;
     private PrimitiveType.PrimitiveTypeName primitiveTypeName;
     private LogicalTypeAnnotation logicalTypeAnnotation;
     private Type.Repetition repetition;
-    private int typeLength;
+    private Integer typeLength;
     private String colMetadata;
     private ParquetTypeInfo typeInfo;
+    private Integer fieldCount;
 
     static ParquetTypeInfoAssertionBuilder newBuilder() {
       ParquetTypeInfoAssertionBuilder builder = new ParquetTypeInfoAssertionBuilder();
@@ -435,17 +1061,32 @@ public class ParquetTypeGeneratorTest {
       return this;
     }
 
+    ParquetTypeInfoAssertionBuilder expectedFieldCount(int fieldCount) {
+      this.fieldCount = fieldCount;
+      return this;
+    }
+
     void assertMatches() {
       Type type = typeInfo.getParquetType();
       Map<String, String> metadata = typeInfo.getMetadata();
       Assert.assertEquals(fieldName, type.getName());
-      Assert.assertEquals(typeLength, type.asPrimitiveType().getTypeLength());
-      Assert.assertEquals(fieldId, type.asPrimitiveType().getId().intValue());
-
-      Assert.assertEquals(primitiveTypeName, type.asPrimitiveType().getPrimitiveTypeName());
+      if (typeLength != null) {
+        Assert.assertEquals(typeLength.intValue(), type.asPrimitiveType().getTypeLength());
+      }
+      if (fieldId != null) {
+        Assert.assertEquals(fieldId.intValue(), type.asPrimitiveType().getId().intValue());
+      }
+      if (primitiveTypeName != null) {
+        Assert.assertEquals(primitiveTypeName, type.asPrimitiveType().getPrimitiveTypeName());
+      }
       Assert.assertEquals(logicalTypeAnnotation, type.getLogicalTypeAnnotation());
       Assert.assertEquals(repetition, type.getRepetition());
-      Assert.assertEquals(colMetadata, metadata.get(type.getId().toString()));
+      if (metadata != null) {
+        Assert.assertEquals(colMetadata, metadata.get(type.getId().toString()));
+      }
+      if (fieldCount != null) {
+        Assert.assertEquals(fieldCount.intValue(), type.asGroupType().getFieldCount());
+      }
     }
   }
 
@@ -454,6 +1095,13 @@ public class ParquetTypeGeneratorTest {
   }
 
   private static ParquetTypeInfoAssertionBuilder createParquetTypeInfoAssertionBuilder() {
-    return ParquetTypeInfoAssertionBuilder.newBuilder().expectedFieldId(COL_ORDINAL);
+    return createParquetTypeInfoAssertionBuilder(true);
+  }
+
+  private static ParquetTypeInfoAssertionBuilder createParquetTypeInfoAssertionBuilder(
+      boolean expectedFieldId) {
+    return expectedFieldId
+        ? ParquetTypeInfoAssertionBuilder.newBuilder().expectedFieldId(COL_ORDINAL)
+        : ParquetTypeInfoAssertionBuilder.newBuilder();
   }
 }
