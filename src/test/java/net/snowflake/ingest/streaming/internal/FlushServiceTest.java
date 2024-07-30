@@ -122,7 +122,7 @@ public class FlushServiceTest {
     }
 
     void setParameterOverride(Map<String, Object> parameterOverride) {
-      this.parameterProvider = new ParameterProvider(parameterOverride, null);
+      this.parameterProvider = new ParameterProvider(parameterOverride, null, isIcebergMode);
     }
 
     ChannelData<T> flushChannel(String name) {
@@ -455,10 +455,17 @@ public class FlushServiceTest {
   }
 
   @Test
-  public void testFlush() throws Exception {
+  public void testInterleaveFlush() throws Exception {
+    if (isIcebergMode) {
+      // Interleaved blob is not supported in iceberg mode
+      return;
+    }
     int numChannels = 4;
     Long maxLastFlushTime = Long.MAX_VALUE - 1000L; // -1000L to avoid jitter overflow
     TestContext<List<List<Object>>> testContext = testContextFactory.create();
+    testContext.setParameterOverride(
+        Collections.singletonMap(
+            ParameterProvider.MAX_CHUNKS_IN_BLOB, ParameterProvider.MAX_CHUNKS_IN_BLOB_DEFAULT));
     addChannel1(testContext);
     FlushService<?> flushService = testContext.flushService;
     ChannelCache<?> channelCache = testContext.channelCache;
@@ -523,7 +530,7 @@ public class FlushServiceTest {
     ChannelCache<?> channelCache = testContext.channelCache;
     Mockito.when(flushService.isTestMode()).thenReturn(false);
     testContext.setParameterOverride(
-        Collections.singletonMap(ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST, 1));
+        Collections.singletonMap(ParameterProvider.MAX_CHUNKS_IN_BLOB, 1));
 
     // Test need flush
     IntStream.range(0, numChannels)

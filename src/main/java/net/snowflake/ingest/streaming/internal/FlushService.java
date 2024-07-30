@@ -192,12 +192,12 @@ class FlushService<T> {
   /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
   private void logFlushTask(boolean isForce, Set<String> tablesToFlush, long flushStartTime) {
     boolean isNeedFlush =
-        this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1
+        this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1
             ? tablesToFlush.stream().anyMatch(channelCache::getNeedFlush)
             : this.isNeedFlush;
     long currentTime = System.currentTimeMillis();
     final String logInfo;
-    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1) {
       logInfo =
           String.format(
               "Tables=[%s]",
@@ -272,7 +272,7 @@ class FlushService<T> {
         this.owningClient.getParameterProvider().getCachedMaxClientLagInMs();
 
     final Set<String> tablesToFlush;
-    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1) {
       tablesToFlush =
           this.channelCache.keySet().stream()
               .filter(
@@ -694,7 +694,7 @@ class FlushService<T> {
    */
   void setNeedFlush(String fullyQualifiedTableName) {
     this.isNeedFlush = true;
-    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1) {
       this.channelCache.setNeedFlush(fullyQualifiedTableName, true);
     }
   }
