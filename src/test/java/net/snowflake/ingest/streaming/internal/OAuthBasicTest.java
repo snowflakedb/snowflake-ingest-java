@@ -117,6 +117,7 @@ public class OAuthBasicTest {
 
   @Test
   public void testSetRefreshToken() throws Exception {
+    // SNOW-1490151: Testing gaps
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         new SnowflakeStreamingIngestClientInternal<>("TEST_CLIENT", false);
     MockOAuthClient mockOAuthClient = new MockOAuthClient();

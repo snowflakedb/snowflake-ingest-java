@@ -87,8 +87,9 @@ class BlobBuilder {
           flusher.serialize(channelsDataPerTable, filePath);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
-        byte[] compressedChunkData;
-        int chunkLength;
+        final byte[] compressedChunkData;
+        final int chunkLength;
+        final int compressedChunkDataSize;
 
         if (encrypt) {
           Pair<byte[], Integer> paddedChunk =
@@ -105,14 +106,15 @@ class BlobBuilder {
           compressedChunkData =
               Cryptor.encrypt(
                   paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+          compressedChunkDataSize = compressedChunkData.length;
         } else {
           compressedChunkData = serializedChunk.chunkData.toByteArray();
           chunkLength = compressedChunkData.length;
+          compressedChunkDataSize = chunkLength;
         }
 
         // Compute the md5 of the chunk data
         String md5 = computeMD5(compressedChunkData, chunkLength);
-        int compressedChunkDataSize = compressedChunkData.length;
 
         // Create chunk metadata
         long startOffset = curDataSize;

@@ -40,6 +40,7 @@ public class InsertRowsBenchmarkTest {
 
   @Setup(Level.Trial)
   public void setUpBeforeAll() {
+    // SNOW-1490151: Testing gaps
     client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET", false);
     channel =
         new SnowflakeStreamingIngestChannelInternal<>(
