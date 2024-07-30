@@ -86,10 +86,9 @@ public class SnowflakeStreamingIngestClientTest {
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel3;
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel4;
 
-  // TODO: Add IcebergMode = True after Streaming to Iceberg is supported.
   @Parameterized.Parameters(name = "isIcebergMode: {0}")
   public static Object[] isIcebergMode() {
-    return new Object[] {false};
+    return new Object[] {false, true};
   }
 
   @Parameterized.Parameter public boolean isIcebergMode;

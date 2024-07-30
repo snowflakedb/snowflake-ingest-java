@@ -15,6 +15,8 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Utils;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Mode;
@@ -30,7 +32,14 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 @State(Scope.Thread)
+@RunWith(Parameterized.class)
 public class InsertRowsBenchmarkTest {
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public boolean isIcebergMode;
 
   private SnowflakeStreamingIngestChannelInternal<?> channel;
   private SnowflakeStreamingIngestClientInternal<?> client;
@@ -41,7 +50,9 @@ public class InsertRowsBenchmarkTest {
   @Setup(Level.Trial)
   public void setUpBeforeAll() {
     // SNOW-1490151: Testing gaps
-    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET", false);
+    client =
+        new SnowflakeStreamingIngestClientInternal<ParquetChunkData>(
+            "client_PARQUET", isIcebergMode);
     channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",

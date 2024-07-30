@@ -37,8 +37,9 @@ public class ParameterProvider {
   public static final String MAX_CHUNK_SIZE_IN_BYTES = "MAX_CHUNK_SIZE_IN_BYTES".toLowerCase();
   public static final String MAX_ALLOWED_ROW_SIZE_IN_BYTES =
       "MAX_ALLOWED_ROW_SIZE_IN_BYTES".toLowerCase();
-  public static final String MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST =
-      "MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST".toLowerCase();
+  public static final String MAX_CHUNKS_IN_BLOB = "MAX_CHUNKS_IN_BLOB".toLowerCase();
+  public static final String MAX_CHUNKS_IN_REGISTRATION_REQUEST =
+      "MAX_CHUNKS_IN_REGISTRATION_REQUEST".toLowerCase();
 
   public static final String MAX_CLIENT_LAG = "MAX_CLIENT_LAG".toLowerCase();
 
@@ -66,13 +67,14 @@ public class ParameterProvider {
   static final long MAX_CLIENT_LAG_MS_MAX = TimeUnit.MINUTES.toMillis(10);
 
   public static final long MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024; // 64 MB
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT = 100;
+  public static final int MAX_CHUNKS_IN_BLOB_DEFAULT = 100;
+  public static final int MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT = 100;
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
 
   /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
-  public static final int MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT = 1;
+  public static final int MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT = 1;
 
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
@@ -233,13 +235,18 @@ public class ParameterProvider {
         false);
 
     this.checkAndUpdate(
-        MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
-        isIcebergMode
-            ? MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_ICEBERG_MODE_DEFAULT
-            : MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT,
+        MAX_CHUNKS_IN_BLOB,
+        isIcebergMode ? MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT : MAX_CHUNKS_IN_BLOB_DEFAULT,
         parameterOverrides,
         props,
         isIcebergMode);
+
+    this.checkAndUpdate(
+        MAX_CHUNKS_IN_REGISTRATION_REQUEST,
+        MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT,
+        parameterOverrides,
+        props,
+        false);
 
     this.checkAndUpdate(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
@@ -443,15 +450,17 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
-  /**
-   * @return The max number of chunks that can be put into a single BDEC or blob registration
-   *     request.
-   */
-  public int getMaxChunksInBlobAndRegistrationRequest() {
+  /** @return The max number of chunks that can be put into a single BDEC. */
+  public int getMaxChunksInBlob() {
+    Object val = this.parameterMap.getOrDefault(MAX_CHUNKS_IN_BLOB, MAX_CHUNKS_IN_BLOB_DEFAULT);
+    return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
+  }
+
+  /** @return The max number of chunks that can be put into a single blob registration request. */
+  public int getMaxChunksInRegistrationRequest() {
     Object val =
         this.parameterMap.getOrDefault(
-            MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST,
-            MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT);
+            MAX_CHUNKS_IN_REGISTRATION_REQUEST, MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT);
     return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
   }
 
