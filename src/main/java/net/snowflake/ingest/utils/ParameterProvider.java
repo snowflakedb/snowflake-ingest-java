@@ -83,6 +83,9 @@ public class ParameterProvider {
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
 
+  /* Iceberg mode flag */
+  private final boolean isIcebergMode;
+
   // Cached buffer flush interval - avoid parsing each time for quick lookup
   private Long cachedBufferFlushIntervalMs = -1L;
 
@@ -97,6 +100,7 @@ public class ParameterProvider {
    */
   public ParameterProvider(
       Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
+    this.isIcebergMode = isIcebergMode;
     this.setParameterMap(parameterOverrides, props, isIcebergMode);
   }
 
@@ -111,26 +115,19 @@ public class ParameterProvider {
       Map<String, Object> parameterOverrides,
       Properties props,
       boolean enforceDefault) {
-    if (parameterOverrides != null && props != null) {
-      this.parameterMap.put(
-          key, parameterOverrides.getOrDefault(key, props.getOrDefault(key, defaultValue)));
-    } else if (parameterOverrides != null) {
-      this.parameterMap.put(key, parameterOverrides.getOrDefault(key, defaultValue));
-    } else if (props != null) {
-      this.parameterMap.put(key, props.getOrDefault(key, defaultValue));
-    } else {
-      this.parameterMap.put(key, defaultValue);
+    if (props != null && props.containsKey(key)) {
+      this.parameterMap.put(key, props.get(key));
+    }
+    if (parameterOverrides != null && parameterOverrides.containsKey(key)) {
+      this.parameterMap.put(key, parameterOverrides.get(key));
     }
 
-    if (enforceDefault) {
-      if (!this.parameterMap.getOrDefault(key, defaultValue).equals(defaultValue)) {
-        throw new SFException(
-            INVALID_CONFIG_PARAMETER,
-            String.format(
-                "The value %s for %s is not configurable, should be %s.",
-                this.parameterMap.get(key), key, defaultValue));
-      }
-      this.parameterMap.put(key, defaultValue);
+    if (enforceDefault && !this.parameterMap.getOrDefault(key, defaultValue).equals(defaultValue)) {
+      throw new SFException(
+          INVALID_CONFIG_PARAMETER,
+          String.format(
+              "The value %s for %s is not configurable, should be %s.",
+              this.parameterMap.get(key), key, defaultValue));
     }
   }
 
@@ -254,6 +251,14 @@ public class ParameterProvider {
         parameterOverrides,
         props,
         false);
+
+    if (getMaxChunksInBlob() > getMaxChunksInRegistrationRequest()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "max_chunks_in_blobs (%s) should be less than or equal to"
+                  + " make_chunks_in_registration_request (%s)",
+              getMaxChunksInBlob(), getMaxChunksInRegistrationRequest()));
+    }
   }
 
   /** @return Longest interval in milliseconds between buffer flushes */
@@ -267,7 +272,10 @@ public class ParameterProvider {
   }
 
   private long getMaxClientLagInMs() {
-    Object val = this.parameterMap.getOrDefault(MAX_CLIENT_LAG, MAX_CLIENT_LAG_DEFAULT);
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_CLIENT_LAG,
+            isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT);
     long computedLag;
     if (val instanceof String) {
       String maxLag = (String) val;
@@ -452,7 +460,10 @@ public class ParameterProvider {
 
   /** @return The max number of chunks that can be put into a single BDEC. */
   public int getMaxChunksInBlob() {
-    Object val = this.parameterMap.getOrDefault(MAX_CHUNKS_IN_BLOB, MAX_CHUNKS_IN_BLOB_DEFAULT);
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_CHUNKS_IN_BLOB,
+            isIcebergMode ? MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT : MAX_CHUNKS_IN_BLOB_DEFAULT);
     return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
   }
 

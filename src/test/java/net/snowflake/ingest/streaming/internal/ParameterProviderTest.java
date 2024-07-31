@@ -340,9 +340,23 @@ public class ParameterProviderTest {
   public void testMaxChunksInRegistrationRequest() {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put("max_chunks_in_registration_request", 1);
+    parameterMap.put("max_chunks_in_registration_request", 101);
     ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop, isIcebergMode);
-    Assert.assertEquals(1, parameterProvider.getMaxChunksInRegistrationRequest());
+    Assert.assertEquals(101, parameterProvider.getMaxChunksInRegistrationRequest());
+
+    IllegalArgumentException e =
+        Assert.assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              parameterMap.put("max_chunks_in_registration_request", 0);
+              new ParameterProvider(parameterMap, prop, isIcebergMode);
+            });
+    Assert.assertEquals(
+        e.getMessage(),
+        String.format(
+            "max_chunks_in_blobs (%s) should be less than or equal to"
+                + " make_chunks_in_registration_request (%s)",
+            parameterProvider.getMaxChunksInBlob(), 0));
   }
 
   @Test
