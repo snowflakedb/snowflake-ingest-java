@@ -1,14 +1,16 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.stream.Collectors;
+import net.snowflake.ingest.utils.Utils;
 
 /** Class to deserialize a request from a channel status request */
-class ChannelsStatusRequest {
+class ChannelsStatusRequest implements IStreamingIngestRequest {
 
   // Used to deserialize a channel request
   static class ChannelStatusRequestDTO {
@@ -85,5 +87,21 @@ class ChannelsStatusRequest {
   @JsonProperty("channels")
   List<ChannelStatusRequestDTO> getChannels() {
     return channels;
+  }
+
+  @Override
+  public String getStringForLogging() {
+    return String.format(
+        "ChannelsStatusRequest(role=%s, channels=[%s])",
+        role,
+        channels.stream()
+            .map(
+                r ->
+                    Utils.getFullyQualifiedChannelName(
+                        r.getDatabaseName(),
+                        r.getSchemaName(),
+                        r.getTableName(),
+                        r.getChannelName()))
+            .collect(Collectors.joining(", ")));
   }
 }

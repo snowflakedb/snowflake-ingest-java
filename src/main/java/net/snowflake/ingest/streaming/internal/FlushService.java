@@ -1,10 +1,9 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_EXTENSION_TYPE;
 import static net.snowflake.ingest.utils.Constants.DISABLE_BACKGROUND_FLUSH;
 import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.MAX_THREAD_COUNT;
@@ -19,13 +18,12 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TimeZone;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -34,11 +32,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -84,9 +81,6 @@ class FlushService<T> {
 
   private static final Logging logger = new Logging(FlushService.class);
 
-  // Increasing counter to generate a unique blob name per client
-  private final AtomicLong counter;
-
   // The client that owns this flush service
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
@@ -102,17 +96,20 @@ class FlushService<T> {
   // Reference to the channel cache
   private final ChannelCache<T> channelCache;
 
-  // Reference to the Streaming Ingest stage
-  private final StreamingIngestStage targetStage;
+  // Reference to the Streaming Ingest storage manager
+  private final IStorageManager<T, ?> storageManager;
 
   // Reference to register service
   private final RegisterService<T> registerService;
 
-  // Indicates whether we need to schedule a flush
-  @VisibleForTesting volatile boolean isNeedFlush;
-
-  // Latest flush time
+  /**
+   * Client level last flush time and need flush flag. This two variables are used when max chunk in
+   * blob is not 1. When max chunk in blob is 1, flush service ignores these variables and uses
+   * table level last flush time and need flush flag. See {@link ChannelCache.FlushInfo}.
+   */
   @VisibleForTesting volatile long lastFlushTime;
+
+  @VisibleForTesting volatile boolean isNeedFlush;
 
   // Indicates whether it's running as part of the test
   private final boolean isTestMode;
@@ -125,56 +122,22 @@ class FlushService<T> {
   private volatile int numProcessors = Runtime.getRuntime().availableProcessors();
 
   /**
-   * Constructor for TESTING that takes (usually mocked) StreamingIngestStage
+   * Default constructor
    *
-   * @param client
-   * @param cache
-   * @param isTestMode
+   * @param client the owning client
+   * @param cache the channel cache
+   * @param storageManager the storage manager
+   * @param isTestMode whether the service is running in test mode
    */
   FlushService(
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
-      StreamingIngestStage targetStage, // For testing
+      IStorageManager<T, ?> storageManager,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
-    this.targetStage = targetStage;
-    this.counter = new AtomicLong(0);
+    this.storageManager = storageManager;
     this.registerService = new RegisterService<>(client, isTestMode);
-    this.isNeedFlush = false;
-    this.lastFlushTime = System.currentTimeMillis();
-    this.isTestMode = isTestMode;
-    this.latencyTimerContextMap = new ConcurrentHashMap<>();
-    this.bdecVersion = this.owningClient.getParameterProvider().getBlobFormatVersion();
-    createWorkers();
-  }
-
-  /**
-   * Default constructor
-   *
-   * @param client
-   * @param cache
-   * @param isTestMode
-   */
-  FlushService(
-      SnowflakeStreamingIngestClientInternal<T> client, ChannelCache<T> cache, boolean isTestMode) {
-    this.owningClient = client;
-    this.channelCache = cache;
-    try {
-      this.targetStage =
-          new StreamingIngestStage(
-              isTestMode,
-              client.getRole(),
-              client.getHttpClient(),
-              client.getRequestBuilder(),
-              client.getName(),
-              DEFAULT_MAX_UPLOAD_RETRIES);
-    } catch (SnowflakeSQLException | IOException err) {
-      throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
-    }
-
-    this.registerService = new RegisterService<>(client, isTestMode);
-    this.counter = new AtomicLong(0);
     this.isNeedFlush = false;
     this.lastFlushTime = System.currentTimeMillis();
     this.isTestMode = isTestMode;
@@ -204,36 +167,65 @@ class FlushService<T> {
 
   /**
    * @param isForce if true will flush regardless of other conditions
-   * @param timeDiffMillis Time in milliseconds since the last flush
+   * @param tablesToFlush list of tables to flush
+   * @param flushStartTime the time when the flush started
    * @return
    */
-  private CompletableFuture<Void> distributeFlush(boolean isForce, long timeDiffMillis) {
+  private CompletableFuture<Void> distributeFlush(
+      boolean isForce, Set<String> tablesToFlush, Long flushStartTime) {
     return CompletableFuture.runAsync(
         () -> {
-          logFlushTask(isForce, timeDiffMillis);
-          distributeFlushTasks();
+          logFlushTask(isForce, tablesToFlush, flushStartTime);
+          distributeFlushTasks(tablesToFlush);
+          long prevFlushEndTime = System.currentTimeMillis();
+          this.lastFlushTime = prevFlushEndTime;
           this.isNeedFlush = false;
-          this.lastFlushTime = System.currentTimeMillis();
-          return;
+          tablesToFlush.forEach(
+              table -> {
+                this.channelCache.setLastFlushTime(table, prevFlushEndTime);
+                this.channelCache.setNeedFlush(table, false);
+              });
         },
         this.flushWorker);
   }
 
   /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
-  private void logFlushTask(boolean isForce, long timeDiffMillis) {
+  private void logFlushTask(boolean isForce, Set<String> tablesToFlush, long flushStartTime) {
+    boolean isNeedFlush =
+        this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1
+            ? tablesToFlush.stream().anyMatch(channelCache::getNeedFlush)
+            : this.isNeedFlush;
+    long currentTime = System.currentTimeMillis();
+    final String logInfo;
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+      logInfo =
+          String.format(
+              "Tables=[%s]",
+              tablesToFlush.stream()
+                  .map(
+                      table ->
+                          String.format(
+                              "(name=%s, isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s)",
+                              table,
+                              channelCache.getNeedFlush(table),
+                              flushStartTime - channelCache.getLastFlushTime(table),
+                              currentTime - channelCache.getLastFlushTime(table)))
+                  .collect(Collectors.joining(", ")));
+    } else {
+      logInfo =
+          String.format(
+              "isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s",
+              isNeedFlush, flushStartTime - this.lastFlushTime, currentTime - this.lastFlushTime);
+    }
+
     final String flushTaskLogFormat =
         String.format(
-            "Submit forced or ad-hoc flush task on client=%s, isForce=%s,"
-                + " isNeedFlush=%s, timeDiffMillis=%s, currentDiffMillis=%s",
-            this.owningClient.getName(),
-            isForce,
-            this.isNeedFlush,
-            timeDiffMillis,
-            System.currentTimeMillis() - this.lastFlushTime);
+            "Submit forced or ad-hoc flush task on client=%s, isForce=%s, %s",
+            this.owningClient.getName(), isForce, logInfo);
     if (logger.isTraceEnabled()) {
       logger.logTrace(flushTaskLogFormat);
     }
-    if (!logger.isTraceEnabled() && (this.isNeedFlush || isForce)) {
+    if (!logger.isTraceEnabled() && (isNeedFlush || isForce)) {
       logger.logDebug(flushTaskLogFormat);
     }
   }
@@ -249,27 +241,65 @@ class FlushService<T> {
   }
 
   /**
-   * Kick off a flush job and distribute the tasks if one of the following conditions is met:
-   * <li>Flush is forced by the users
-   * <li>One or more buffers have reached the flush size
-   * <li>Periodical background flush when a time interval has reached
+   * Kick off a flush job and distribute the tasks. The flush service behaves differently based on
+   * the max chunks in blob:
+   *
+   * <ul>
+   *   <li>The max chunks in blob is not 1 (interleaving is allowed), every channel will be flushed
+   *       together if one of the following conditions is met:
+   *       <ul>
+   *         <li>Flush is forced by the users
+   *         <li>One or more buffers have reached the flush size
+   *         <li>Periodical background flush when a time interval has reached
+   *       </ul>
+   *   <li>The max chunks in blob is 1 (interleaving is not allowed), a channel will be flushed if
+   *       one of the following conditions is met:
+   *       <ul>
+   *         <li>Flush is forced by the users
+   *         <li>One or more buffers with the same target table as the channel have reached the
+   *             flush size
+   *         <li>Periodical background flush of the target table when a time interval has reached
+   *       </ul>
+   * </ul>
    *
    * @param isForce
    * @return Completable future that will return when the blobs are registered successfully, or null
    *     if none of the conditions is met above
    */
   CompletableFuture<Void> flush(boolean isForce) {
-    long timeDiffMillis = System.currentTimeMillis() - this.lastFlushTime;
+    final long flushStartTime = System.currentTimeMillis();
+    final long flushingInterval =
+        this.owningClient.getParameterProvider().getCachedMaxClientLagInMs();
+
+    final Set<String> tablesToFlush;
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+      tablesToFlush =
+          this.channelCache.keySet().stream()
+              .filter(
+                  key ->
+                      isForce
+                          || flushStartTime - this.channelCache.getLastFlushTime(key)
+                              >= flushingInterval
+                          || this.channelCache.getNeedFlush(key))
+              .collect(Collectors.toSet());
+    } else {
+      if (isForce
+          || (!DISABLE_BACKGROUND_FLUSH
+              && !isTestMode()
+              && (this.isNeedFlush || flushStartTime - this.lastFlushTime >= flushingInterval))) {
+        tablesToFlush = this.channelCache.keySet();
+      } else {
+        tablesToFlush = null;
+      }
+    }
 
     if (isForce
         || (!DISABLE_BACKGROUND_FLUSH
             && !isTestMode()
-            && (this.isNeedFlush
-                || timeDiffMillis
-                    >= this.owningClient.getParameterProvider().getCachedMaxClientLagInMs()))) {
-
+            && tablesToFlush != null
+            && !tablesToFlush.isEmpty())) {
       return this.statsFuture()
-          .thenCompose((v) -> this.distributeFlush(isForce, timeDiffMillis))
+          .thenCompose((v) -> this.distributeFlush(isForce, tablesToFlush, flushStartTime))
           .thenCompose((v) -> this.registerFuture());
     }
     return this.statsFuture();
@@ -352,12 +382,17 @@ class FlushService<T> {
   /**
    * Distribute the flush tasks by iterating through all the channels in the channel cache and kick
    * off a build blob work when certain size has reached or we have reached the end
+   *
+   * @param tablesToFlush list of tables to flush
    */
-  void distributeFlushTasks() {
+  void distributeFlushTasks(Set<String> tablesToFlush) {
     Iterator<
             Map.Entry<
                 String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
-        itr = this.channelCache.iterator();
+        itr =
+            this.channelCache.entrySet().stream()
+                .filter(e -> tablesToFlush.contains(e.getKey()))
+                .iterator();
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
 
@@ -367,7 +402,7 @@ class FlushService<T> {
     while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
-      final String blobPath = getBlobPath(this.targetStage.getClientPrefix());
+      final String blobPath = this.storageManager.generateBlobPath();
 
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
@@ -449,9 +484,9 @@ class FlushService<T> {
 
       // Kick off a build job
       if (blobData.isEmpty()) {
-        // we decrement the counter so that we do not have gaps in the blob names created by this
-        // client. See method getBlobPath() below.
-        this.counter.decrementAndGet();
+        // we decrement the blob sequencer so that we do not have gaps in the blob names created by
+        // this client.
+        this.storageManager.decrementBlobSequencer();
       } else {
         long flushStartMs = System.currentTimeMillis();
         if (this.owningClient.flushLatency != null) {
@@ -463,7 +498,13 @@ class FlushService<T> {
                 CompletableFuture.supplyAsync(
                     () -> {
                       try {
-                        BlobMetadata blobMetadata = buildAndUpload(blobPath, blobData);
+                        // Get the fully qualified table name from the first channel in the blob.
+                        // This only matters when the client is in Iceberg mode. In Iceberg mode,
+                        // all channels in the blob belong to the same table.
+                        String fullyQualifiedTableName =
+                            blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName();
+                        BlobMetadata blobMetadata =
+                            buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -546,9 +587,12 @@ class FlushService<T> {
    * @param blobPath Path of the destination blob in cloud storage
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
+   * @param fullyQualifiedTableName the table name of the first channel in the blob, only matters in
+   *     Iceberg mode
    * @return BlobMetadata for FlushService.upload
    */
-  BlobMetadata buildAndUpload(String blobPath, List<List<ChannelData<T>>> blobData)
+  BlobMetadata buildAndUpload(
+      String blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
@@ -559,12 +603,18 @@ class FlushService<T> {
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
-    return upload(blobPath, blob.blobBytes, blob.chunksMetadataList, blob.blobStats);
+    return upload(
+        this.storageManager.getStorage(fullyQualifiedTableName),
+        blobPath,
+        blob.blobBytes,
+        blob.chunksMetadataList,
+        blob.blobStats);
   }
 
   /**
    * Upload a blob to Streaming Ingest dedicated stage
    *
+   * @param storage the storage to upload the blob
    * @param blobPath full path of the blob
    * @param blob blob data
    * @param metadata a list of chunk metadata
@@ -572,13 +622,17 @@ class FlushService<T> {
    * @return BlobMetadata object used to create the register blob request
    */
   BlobMetadata upload(
-      String blobPath, byte[] blob, List<ChunkMetadata> metadata, BlobStats blobStats)
+      StreamingIngestStorage<T, ?> storage,
+      String blobPath,
+      byte[] blob,
+      List<ChunkMetadata> metadata,
+      BlobStats blobStats)
       throws NoSuchAlgorithmException {
     logger.logInfo("Start uploading blob={}, size={}", blobPath, blob.length);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-    this.targetStage.put(blobPath, blob);
+    storage.put(blobPath, blob);
 
     if (uploadContext != null) {
       blobStats.setUploadDurationMs(uploadContext);
@@ -630,48 +684,16 @@ class FlushService<T> {
     }
   }
 
-  /** Set the flag to indicate that a flush is needed */
-  void setNeedFlush() {
-    this.isNeedFlush = true;
-  }
-
   /**
-   * Generate a blob path, which is: "YEAR/MONTH/DAY_OF_MONTH/HOUR_OF_DAY/MINUTE/<current utc
-   * timestamp + client unique prefix + thread id + counter>.BDEC"
+   * Set the flag to indicate that a flush is needed
    *
-   * @return the generated blob file path
+   * @param fullyQualifiedTableName the fully qualified table name
    */
-  private String getBlobPath(String clientPrefix) {
-    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    return getBlobPath(calendar, clientPrefix);
-  }
-
-  /** For TESTING */
-  String getBlobPath(Calendar calendar, String clientPrefix) {
-    if (isTestMode && clientPrefix == null) {
-      clientPrefix = "testPrefix";
+  void setNeedFlush(String fullyQualifiedTableName) {
+    this.isNeedFlush = true;
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+      this.channelCache.setNeedFlush(fullyQualifiedTableName, true);
     }
-
-    Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
-    int year = calendar.get(Calendar.YEAR);
-    int month = calendar.get(Calendar.MONTH) + 1; // Gregorian calendar starts from 0
-    int day = calendar.get(Calendar.DAY_OF_MONTH);
-    int hour = calendar.get(Calendar.HOUR_OF_DAY);
-    int minute = calendar.get(Calendar.MINUTE);
-    long time = TimeUnit.MILLISECONDS.toSeconds(calendar.getTimeInMillis());
-    long threadId = Thread.currentThread().getId();
-    // Create the blob short name, the clientPrefix contains the deployment id
-    String blobShortName =
-        Long.toString(time, 36)
-            + "_"
-            + clientPrefix
-            + "_"
-            + threadId
-            + "_"
-            + this.counter.getAndIncrement()
-            + "."
-            + BLOB_EXTENSION_TYPE;
-    return year + "/" + month + "/" + day + "/" + hour + "/" + minute + "/" + blobShortName;
   }
 
   /**
@@ -695,11 +717,6 @@ class FlushService<T> {
                           channelData.getChannelContext().getChannelSequencer(),
                           invalidationCause);
                 }));
-  }
-
-  /** Get the server generated unique prefix for this client */
-  String getClientPrefix() {
-    return this.targetStage.getClientPrefix();
   }
 
   /**

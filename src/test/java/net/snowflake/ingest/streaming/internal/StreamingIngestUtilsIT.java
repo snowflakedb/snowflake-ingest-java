@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
@@ -5,9 +9,6 @@ import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.execu
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
-import java.util.Map;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.IngestResponseException;
@@ -53,11 +54,11 @@ public class StreamingIngestUtilsIT {
                 "testJWTRetries"));
 
     // build payload
-    Map<Object, Object> payload = new HashMap<>();
-    if (!TestUtils.getRole().isEmpty() && !TestUtils.getRole().equals("DEFAULT_ROLE")) {
-      payload.put("role", TestUtils.getRole());
-    }
-    ObjectMapper mapper = new ObjectMapper();
+    ClientConfigureRequest request =
+        new ClientConfigureRequest(
+            !TestUtils.getRole().isEmpty() && !TestUtils.getRole().equals("DEFAULT_ROLE")
+                ? TestUtils.getRole()
+                : null);
 
     // request wih invalid token, should get 401 3 times
     PowerMockito.doReturn("invalid_token").when(spyManager).getToken();
@@ -66,7 +67,7 @@ public class StreamingIngestUtilsIT {
           executeWithRetries(
               ChannelsStatusResponse.class,
               CLIENT_CONFIGURE_ENDPOINT,
-              mapper.writeValueAsString(payload),
+              request,
               "client configure",
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
@@ -84,7 +85,7 @@ public class StreamingIngestUtilsIT {
           executeWithRetries(
               ChannelsStatusResponse.class,
               CLIENT_CONFIGURE_ENDPOINT,
-              mapper.writeValueAsString(payload),
+              request,
               "client configure",
               STREAMING_CLIENT_CONFIGURE,
               httpClient,
@@ -101,7 +102,7 @@ public class StreamingIngestUtilsIT {
         executeWithRetries(
             ChannelsStatusResponse.class,
             CLIENT_CONFIGURE_ENDPOINT,
-            mapper.writeValueAsString(payload),
+            request,
             "client configure",
             STREAMING_CLIENT_CONFIGURE,
             httpClient,

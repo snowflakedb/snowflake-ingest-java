@@ -8,6 +8,7 @@ import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.mockito.Mockito.atLeastOnce;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -187,7 +188,7 @@ public class StreamingIngestIT {
     // verify expected request sent to server
     String[] expectedPayloadParams = {"request_id", "blobs", "role", "blob_stats"};
     for (String expectedParam : expectedPayloadParams) {
-      Mockito.verify(requestBuilder)
+      Mockito.verify(requestBuilder, atLeastOnce())
           .generateStreamingIngestPostRequest(
               ArgumentMatchers.contains(expectedParam),
               ArgumentMatchers.refEq(REGISTER_BLOB_ENDPOINT),
@@ -275,7 +276,7 @@ public class StreamingIngestIT {
   @Test
   public void testParameterOverrides() throws Exception {
     Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "3 sec");
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "3 seconds");
     parameterMap.put(ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS, 50L);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 1);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
