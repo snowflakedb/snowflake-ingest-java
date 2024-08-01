@@ -190,6 +190,7 @@ class StreamingIngestStage {
       // Proactively refresh the credential if it's going to expire, to avoid the token expiration
       // error from JDBC which confuses customer
       if (Instant.now().isAfter(prevRefresh.plus(refreshDuration))) {
+        System.out.println("need to refresh now");
         refreshSnowflakeMetadata();
       }
 
