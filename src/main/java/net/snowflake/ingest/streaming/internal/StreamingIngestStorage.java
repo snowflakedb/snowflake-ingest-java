@@ -216,6 +216,7 @@ class StreamingIngestStorage<T, TLocation> {
           getStackTrace(e));
       this.putRemote(fullFilePath, data, retryCount);
     }
+    logger.logInfo("Successfully uploaded file to stage, client={}", clientName);
   }
 
   SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata()

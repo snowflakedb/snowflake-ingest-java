@@ -132,7 +132,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
     return this.encryptionKeyId;
   }
 
-  @JsonProperty("stage_location")
+  @JsonProperty("iceberg_location")
   void setStageLocation(FileLocationInfo stageLocation) {
     this.stageLocation = stageLocation;
   }

@@ -50,20 +50,22 @@ class FileLocationInfo {
     this.locationType = locationType;
   }
 
+  // remove s3:// or gs:// from location
   String getLocation() {
-    return location;
+    return location.replaceAll("s3://", "");
   }
 
   void setLocation(String location) {
-    this.location = location;
+    this.location = location.replaceAll("s3://", "");
   }
 
+  // only keeps the last part of the path
   String getPath() {
-    return path;
+    return path.replaceAll("s3://", "");
   }
 
   void setPath(String path) {
-    this.path = path;
+    this.path = path.replaceAll("s3://", "");
   }
 
   Map<String, String> getCredentials() {
