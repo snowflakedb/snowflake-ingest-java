@@ -13,7 +13,6 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -25,8 +24,10 @@ import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 /**
  * BDEC specific parquet writer.
@@ -264,7 +265,7 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public void write(List<Object> values) {
-      List<ColumnDescriptor> cols = schema.getColumns();
+      List<Type> cols = schema.getFields();
       if (values.size() != cols.size()) {
         throw new ParquetEncodingException(
             "Invalid input data in channel '"
@@ -278,51 +279,70 @@ public class BdecParquetWriter implements AutoCloseable {
                 + ") : "
                 + values);
       }
-
       recordConsumer.startMessage();
+      write(values, schema);
+      recordConsumer.endMessage();
+    }
+
+    private void write(List<Object> values, GroupType type) {
+      List<Type> cols = type.getFields();
       for (int i = 0; i < cols.size(); ++i) {
         Object val = values.get(i);
-        // val.length() == 0 indicates a NULL value.
         if (val != null) {
-          String fieldName = cols.get(i).getPath()[0];
+          String fieldName = cols.get(i).getName();
           recordConsumer.startField(fieldName, i);
-          PrimitiveType.PrimitiveTypeName typeName =
-              cols.get(i).getPrimitiveType().getPrimitiveTypeName();
-          switch (typeName) {
-            case BOOLEAN:
-              recordConsumer.addBoolean((boolean) val);
-              break;
-            case FLOAT:
-              recordConsumer.addFloat((float) val);
-              break;
-            case DOUBLE:
-              recordConsumer.addDouble((double) val);
-              break;
-            case INT32:
-              recordConsumer.addInteger((int) val);
-              break;
-            case INT64:
-              recordConsumer.addLong((long) val);
-              break;
-            case BINARY:
-              Binary binVal =
-                  val instanceof String
-                      ? Binary.fromString((String) val)
-                      : Binary.fromConstantByteArray((byte[]) val);
-              recordConsumer.addBinary(binVal);
-              break;
-            case FIXED_LEN_BYTE_ARRAY:
-              Binary binary = Binary.fromConstantByteArray((byte[]) val);
-              recordConsumer.addBinary(binary);
-              break;
-            default:
-              throw new ParquetEncodingException(
-                  "Unsupported column type: " + cols.get(i).getPrimitiveType());
+          if (cols.get(i).isPrimitive()) {
+            PrimitiveType.PrimitiveTypeName typeName =
+                cols.get(i).asPrimitiveType().getPrimitiveTypeName();
+            switch (typeName) {
+              case BOOLEAN:
+                recordConsumer.addBoolean((boolean) val);
+                break;
+              case FLOAT:
+                recordConsumer.addFloat((float) val);
+                break;
+              case DOUBLE:
+                recordConsumer.addDouble((double) val);
+                break;
+              case INT32:
+                recordConsumer.addInteger((int) val);
+                break;
+              case INT64:
+                recordConsumer.addLong((long) val);
+                break;
+              case BINARY:
+                Binary binVal =
+                    val instanceof String
+                        ? Binary.fromString((String) val)
+                        : Binary.fromConstantByteArray((byte[]) val);
+                recordConsumer.addBinary(binVal);
+                break;
+              case FIXED_LEN_BYTE_ARRAY:
+                Binary binary = Binary.fromConstantByteArray((byte[]) val);
+                recordConsumer.addBinary(binary);
+                break;
+              default:
+                throw new ParquetEncodingException(
+                    "Unsupported column type: " + cols.get(i).asPrimitiveType());
+            }
+          } else {
+            if (cols.get(i).isRepetition(Type.Repetition.REPEATED)) {
+              for (Object o : values) {
+                recordConsumer.startGroup();
+                if (o != null) {
+                  write((List<Object>) o, cols.get(i).asGroupType());
+                }
+                recordConsumer.endGroup();
+              }
+            } else {
+              recordConsumer.startGroup();
+              write((List<Object>) val, cols.get(i).asGroupType());
+              recordConsumer.endGroup();
+            }
           }
           recordConsumer.endField(fieldName, i);
         }
       }
-      recordConsumer.endMessage();
     }
   }
 }

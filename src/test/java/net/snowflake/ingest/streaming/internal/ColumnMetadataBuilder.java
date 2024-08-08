@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -16,6 +16,7 @@ public class ColumnMetadataBuilder {
   private Integer length;
   private boolean nullable;
   private String collation;
+  private String sourceIcebergDataType;
 
   private Integer ordinal;
 
@@ -145,6 +146,17 @@ public class ColumnMetadataBuilder {
   }
 
   /**
+   * Set column source Iceberg data type
+   *
+   * @param sourceIcebergDataType source Iceberg data type string
+   * @return columnMetadataBuilder object
+   */
+  public ColumnMetadataBuilder sourceIcebergDataType(String sourceIcebergDataType) {
+    this.sourceIcebergDataType = sourceIcebergDataType;
+    return this;
+  }
+
+  /**
    * Set column ordinal
    *
    * @param ordinal ordinal
@@ -172,6 +184,7 @@ public class ColumnMetadataBuilder {
     colMetadata.setScale(scale);
     colMetadata.setPrecision(precision);
     colMetadata.setCollation(collation);
+    colMetadata.setSourceIcebergDataType(sourceIcebergDataType);
     colMetadata.setOrdinal(ordinal);
     return colMetadata;
   }

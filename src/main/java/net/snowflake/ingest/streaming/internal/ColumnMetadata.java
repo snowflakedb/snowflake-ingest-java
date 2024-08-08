@@ -21,6 +21,7 @@ class ColumnMetadata {
   private Integer length;
   private boolean nullable;
   private String collation;
+  private String sourceIcebergDataType;
 
   /**
    * The column ordinal is an internal id of the column used by server scanner for the column
@@ -128,6 +129,15 @@ class ColumnMetadata {
     return ordinal;
   }
 
+  @JsonProperty("source_iceberg_data_type")
+  void setSourceIcebergDataType(String sourceIcebergDataType) {
+    this.sourceIcebergDataType = sourceIcebergDataType;
+  }
+
+  public String getSourceIcebergDataType() {
+    return sourceIcebergDataType;
+  }
+
   String getInternalName() {
     return internalName;
   }
@@ -144,6 +154,7 @@ class ColumnMetadata {
     map.put("byte_length", this.byteLength);
     map.put("length", this.length);
     map.put("nullable", this.nullable);
+    map.put("source_iceberg_datatype", this.sourceIcebergDataType);
     return map.toString();
   }
 }
