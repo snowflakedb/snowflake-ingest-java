@@ -110,7 +110,11 @@ public class FlushServiceTest {
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
-      storageManager = Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
+      storageManager =
+          Mockito.spy(
+              isIcebergMode
+                  ? new ExternalVolumeManager<>(true, "role", "client", null)
+                  : new InternalStageManager<>(true, "role", "client", null));
       Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       Mockito.when(client.getParameterProvider())
@@ -421,6 +425,10 @@ public class FlushServiceTest {
 
   @Test
   public void testGetFilePath() {
+    if (isIcebergMode) {
+      // TODO: SNOW-1502887 Blob path generation for iceberg table
+      return;
+    }
     TestContext<?> testContext = testContextFactory.create();
     IStorageManager storageManager = testContext.storageManager;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));

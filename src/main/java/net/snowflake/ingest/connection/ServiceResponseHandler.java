@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
@@ -42,7 +42,8 @@ public final class ServiceResponseHandler {
     STREAMING_DROP_CHANNEL("POST"),
     STREAMING_CHANNEL_STATUS("POST"),
     STREAMING_REGISTER_BLOB("POST"),
-    STREAMING_CLIENT_CONFIGURE("POST");
+    STREAMING_CLIENT_CONFIGURE("POST"),
+    STREAMING_CHANNEL_CONFIGURE("POST");
     private final String httpMethod;
 
     private ApiName(String httpMethod) {

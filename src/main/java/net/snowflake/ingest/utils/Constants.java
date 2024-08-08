@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.utils;
@@ -52,6 +52,7 @@ public class Constants {
   public static final String BLOB_EXTENSION_TYPE = "bdec";
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
+  public static final String CHANNEL_CONFIGURE_ENDPOINT = "/v1/streaming/channels/configure/";
   public static final int COMMIT_MAX_RETRY_COUNT = 60;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
