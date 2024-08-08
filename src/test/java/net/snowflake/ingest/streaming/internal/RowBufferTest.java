@@ -3,6 +3,7 @@ package net.snowflake.ingest.streaming.internal;
 import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
+import static org.junit.Assert.fail;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -14,6 +15,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -144,7 +147,7 @@ public class RowBufferTest {
     collatedColumn.setCollation("en-ci");
     try {
       this.rowBufferOnErrorAbort.setupSchema(Collections.singletonList(collatedColumn));
-      Assert.fail("Collated columns are not supported");
+      fail("Collated columns are not supported");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNSUPPORTED_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
@@ -164,7 +167,7 @@ public class RowBufferTest {
     testCol.setPrecision(4);
     try {
       this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(testCol));
-      Assert.fail("Expected error");
+      fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
@@ -176,7 +179,7 @@ public class RowBufferTest {
     testCol.setLogicalType("FIXED");
     try {
       this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(testCol));
-      Assert.fail("Expected error");
+      fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
@@ -188,7 +191,7 @@ public class RowBufferTest {
     testCol.setLogicalType("TIMESTAMP_NTZ");
     try {
       this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(testCol));
-      Assert.fail("Expected error");
+      fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
@@ -200,7 +203,7 @@ public class RowBufferTest {
     testCol.setLogicalType("TIMESTAMP_TZ");
     try {
       this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(testCol));
-      Assert.fail("Expected error");
+      fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
@@ -212,7 +215,7 @@ public class RowBufferTest {
     testCol.setLogicalType("TIME");
     try {
       this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(testCol));
-      Assert.fail("Expected error");
+      fail("Expected error");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
     }
@@ -244,7 +247,7 @@ public class RowBufferTest {
 
     try {
       this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(colInvalidLogical));
-      Assert.fail("Setup should fail if invalid column metadata is provided");
+      fail("Setup should fail if invalid column metadata is provided");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode(), e.getVendorCode());
       // Do nothing
@@ -264,7 +267,7 @@ public class RowBufferTest {
 
     try {
       this.rowBufferOnErrorContinue.setupSchema(Collections.singletonList(colInvalidPhysical));
-      Assert.fail("Setup should fail if invalid column metadata is provided");
+      fail("Setup should fail if invalid column metadata is provided");
     } catch (SFException e) {
       Assert.assertEquals(e.getVendorCode(), ErrorCode.UNKNOWN_DATA_TYPE.getMessageCode());
     }
@@ -630,7 +633,7 @@ public class RowBufferTest {
 
     try {
       AbstractRowBuffer.buildEpInfoFromStats(1, colStats);
-      Assert.fail("should fail when row count is smaller than null count.");
+      fail("should fail when row count is smaller than null count.");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
     }
@@ -1724,5 +1727,79 @@ public class RowBufferTest {
     // only validRows and none of the mixedRows are in the buffer
     Assert.assertEquals(1, snapshotAbortParquet.size());
     Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
+  }
+
+  @Test
+  public void testParquetChunkMetadataCreationIsThreadSafe() throws InterruptedException {
+    final String testFileA = "testFileA";
+    final String testFileB = "testFileB";
+
+    final ParquetRowBuffer bufferUnderTest =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+
+    final ColumnMetadata colChar = new ColumnMetadata();
+    colChar.setOrdinal(1);
+    colChar.setName("COLCHAR");
+    colChar.setPhysicalType("LOB");
+    colChar.setNullable(true);
+    colChar.setLogicalType("TEXT");
+    colChar.setByteLength(14);
+    colChar.setLength(11);
+    colChar.setScale(0);
+
+    bufferUnderTest.setupSchema(Collections.singletonList(colChar));
+
+    loadData(bufferUnderTest, Collections.singletonMap("colChar", "a"));
+
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<ChannelData<ParquetChunkData>> firstFlushResult = new AtomicReference<>();
+    final Thread t =
+        getThreadThatWaitsForLockReleaseAndFlushes(
+            bufferUnderTest, testFileA, latch, firstFlushResult);
+    t.start();
+
+    final ChannelData<ParquetChunkData> secondFlushResult = bufferUnderTest.flush(testFileB);
+    Assert.assertEquals(testFileB, getPrimaryFileId(secondFlushResult));
+
+    latch.countDown();
+    t.join();
+
+    Assert.assertNotNull(firstFlushResult.get());
+    Assert.assertEquals(testFileA, getPrimaryFileId(firstFlushResult.get()));
+    Assert.assertEquals(testFileB, getPrimaryFileId(secondFlushResult));
+  }
+
+  private static Thread getThreadThatWaitsForLockReleaseAndFlushes(
+      final ParquetRowBuffer bufferUnderTest,
+      final String filenameToFlush,
+      final CountDownLatch latch,
+      final AtomicReference<ChannelData<ParquetChunkData>> flushResult) {
+    return new Thread(
+        () -> {
+          try {
+            latch.await();
+          } catch (InterruptedException e) {
+            fail("Thread was unexpectedly interrupted");
+          }
+
+          final ChannelData<ParquetChunkData> flush =
+              loadData(bufferUnderTest, Collections.singletonMap("colChar", "b"))
+                  .flush(filenameToFlush);
+          flushResult.set(flush);
+        });
+  }
+
+  private static ParquetRowBuffer loadData(
+      final ParquetRowBuffer bufferToLoad, final Map<String, Object> data) {
+    final List<Map<String, Object>> validRows = new ArrayList<>();
+    validRows.add(data);
+
+    final InsertValidationResponse nResponse = bufferToLoad.insertRows(validRows, "1", "1");
+    Assert.assertFalse(nResponse.hasErrors());
+    return bufferToLoad;
+  }
+
+  private static String getPrimaryFileId(final ChannelData<ParquetChunkData> chunkData) {
+    return chunkData.getVectors().metadata.get(Constants.PRIMARY_FILE_ID_KEY);
   }
 }
