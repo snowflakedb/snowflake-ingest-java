@@ -740,8 +740,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /** Set the flag to indicate that a flush is needed */
-  void setNeedFlush() {
-    this.flushService.setNeedFlush();
+  void setNeedFlush(String fullyQualifiedTableName) {
+    this.flushService.setNeedFlush(fullyQualifiedTableName);
   }
 
   /** Remove the channel in the channel cache if the channel sequencer matches */

@@ -110,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.1.3-SNAPSHOT";
+  public static final String DEFAULT_VERSION = "2.2.1-SNAPSHOT";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
