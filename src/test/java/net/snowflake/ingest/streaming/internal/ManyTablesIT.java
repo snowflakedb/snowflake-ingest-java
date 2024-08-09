@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.ROLE;
@@ -37,7 +41,8 @@ public class ManyTablesIT {
   @Before
   public void setUp() throws Exception {
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
-    props.put(ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST, 2);
+    props.put(ParameterProvider.MAX_CHUNKS_IN_BLOB, 2);
+    props.put(ParameterProvider.MAX_CHUNKS_IN_REGISTRATION_REQUEST, 2);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }

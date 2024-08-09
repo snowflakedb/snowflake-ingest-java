@@ -13,8 +13,19 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+@RunWith(Parameterized.class)
 public class ChannelCacheTest {
+
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public static boolean isIcebergMode;
+
   ChannelCache<StubChunkData> cache;
   SnowflakeStreamingIngestClientInternal<StubChunkData> client;
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel1;
@@ -28,7 +39,7 @@ public class ChannelCacheTest {
   @Before
   public void setup() {
     cache = new ChannelCache<>();
-    client = new SnowflakeStreamingIngestClientInternal<>("client");
+    client = new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
