@@ -4,12 +4,14 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_CONFIGURE;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_DROP_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
+import static net.snowflake.ingest.utils.Constants.CHANNEL_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
@@ -70,6 +72,32 @@ class SnowflakeServiceClient {
           request.getStringForLogging(),
           response.getMessage());
       throw new SFException(ErrorCode.CLIENT_CONFIGURE_FAILURE, response.getMessage());
+    }
+    return response;
+  }
+
+  /**
+   * Configures a channel's storage info given a {@link ChannelConfigureRequest}.
+   *
+   * @param request the channel configuration request
+   * @return the response from the configuration request
+   */
+  ChannelConfigureResponse channelConfigure(ChannelConfigureRequest request)
+      throws IngestResponseException, IOException {
+    ChannelConfigureResponse response =
+        executeApiRequestWithRetries(
+            ChannelConfigureResponse.class,
+            request,
+            CHANNEL_CONFIGURE_ENDPOINT,
+            "channel configure",
+            STREAMING_CHANNEL_CONFIGURE);
+
+    if (response.getStatusCode() != RESPONSE_SUCCESS) {
+      logger.logDebug(
+          "Channel configure request failed, request={}, response={}",
+          request.getStringForLogging(),
+          response.getMessage());
+      throw new SFException(ErrorCode.CHANNEL_CONFIGURE_FAILURE, response.getMessage());
     }
     return response;
   }
