@@ -54,11 +54,6 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
-    Builder setIsIcebergMode(boolean isIcebergMode) {
-      this.isIcebergMode = isIcebergMode;
-      return this;
-    }
-
     public SnowflakeStreamingIngestClient build() {
       Utils.assertStringNotNullOrEmpty("client name", this.name);
       Utils.assertNotNull("connection properties", this.prop);
