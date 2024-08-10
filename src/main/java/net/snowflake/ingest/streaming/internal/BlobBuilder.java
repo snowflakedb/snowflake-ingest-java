@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -61,10 +61,14 @@ class BlobBuilder {
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
+   * @param encrypt If the output chunk is encrypted or not
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
-      String filePath, List<List<ChannelData<T>>> blobData, Constants.BdecVersion bdecVersion)
+      String filePath,
+      List<List<ChannelData<T>>> blobData,
+      Constants.BdecVersion bdecVersion,
+      boolean encrypt)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -83,25 +87,34 @@ class BlobBuilder {
           flusher.serialize(channelsDataPerTable, filePath);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
-        ByteArrayOutputStream chunkData = serializedChunk.chunkData;
-        Pair<byte[], Integer> paddedChunk =
-            padChunk(chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
-        byte[] paddedChunkData = paddedChunk.getFirst();
-        int paddedChunkLength = paddedChunk.getSecond();
+        final byte[] compressedChunkData;
+        final int chunkLength;
+        final int compressedChunkDataSize;
 
-        // Encrypt the compressed chunk data, the encryption key is derived using the key from
-        // server with the full blob path.
-        // We need to maintain IV as a block counter for the whole file, even interleaved,
-        // to align with decryption on the Snowflake query path.
-        // TODO: address alignment for the header SNOW-557866
-        long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
-        byte[] encryptedCompressedChunkData =
-            Cryptor.encrypt(
-                paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+        if (encrypt) {
+          Pair<byte[], Integer> paddedChunk =
+              padChunk(serializedChunk.chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
+          byte[] paddedChunkData = paddedChunk.getFirst();
+          chunkLength = paddedChunk.getSecond();
+
+          // Encrypt the compressed chunk data, the encryption key is derived using the key from
+          // server with the full blob path.
+          // We need to maintain IV as a block counter for the whole file, even interleaved,
+          // to align with decryption on the Snowflake query path.
+          // TODO: address alignment for the header SNOW-557866
+          long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
+          compressedChunkData =
+              Cryptor.encrypt(
+                  paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+          compressedChunkDataSize = compressedChunkData.length;
+        } else {
+          compressedChunkData = serializedChunk.chunkData.toByteArray();
+          chunkLength = compressedChunkData.length;
+          compressedChunkDataSize = chunkLength;
+        }
 
         // Compute the md5 of the chunk data
-        String md5 = computeMD5(encryptedCompressedChunkData, paddedChunkLength);
-        int encryptedCompressedChunkDataSize = encryptedCompressedChunkData.length;
+        String md5 = computeMD5(compressedChunkData, chunkLength);
 
         // Create chunk metadata
         long startOffset = curDataSize;
@@ -111,9 +124,9 @@ class BlobBuilder {
                 // The start offset will be updated later in BlobBuilder#build to include the blob
                 // header
                 .setChunkStartOffset(startOffset)
-                // The paddedChunkLength is used because it is the actual data size used for
+                // The chunkLength is used because it is the actual data size used for
                 // decompression and md5 calculation on server side.
-                .setChunkLength(paddedChunkLength)
+                .setChunkLength(chunkLength)
                 .setUncompressedChunkLength((int) serializedChunk.chunkEstimatedUncompressedSize)
                 .setChannelList(serializedChunk.channelsMetadataList)
                 .setChunkMD5(md5)
@@ -127,21 +140,22 @@ class BlobBuilder {
 
         // Add chunk metadata and data to the list
         chunksMetadataList.add(chunkMetadata);
-        chunksDataList.add(encryptedCompressedChunkData);
-        curDataSize += encryptedCompressedChunkDataSize;
-        crc.update(encryptedCompressedChunkData, 0, encryptedCompressedChunkDataSize);
+        chunksDataList.add(compressedChunkData);
+        curDataSize += compressedChunkDataSize;
+        crc.update(compressedChunkData, 0, compressedChunkDataSize);
 
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
-                + " estimatedUncompressedSize={}, paddedChunkLength={}, encryptedCompressedSize={},"
-                + " bdecVersion={}",
+                + " estimatedUncompressedSize={}, chunkLength={}, compressedSize={},"
+                + " encryption={}, bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
             startOffset,
             serializedChunk.chunkEstimatedUncompressedSize,
-            paddedChunkLength,
-            encryptedCompressedChunkDataSize,
+            chunkLength,
+            compressedChunkDataSize,
+            encrypt,
             bdecVersion);
       }
     }

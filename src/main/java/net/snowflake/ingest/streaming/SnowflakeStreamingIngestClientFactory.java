@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming;
@@ -58,7 +58,7 @@ public class SnowflakeStreamingIngestClientFactory {
       SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides, this.isTestMode);
+          this.name, accountURL, prop, this.parameterOverrides, false, this.isTestMode);
     }
   }
 }
