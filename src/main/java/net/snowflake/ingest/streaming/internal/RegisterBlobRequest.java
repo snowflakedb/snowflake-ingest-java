@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,10 +20,15 @@ class RegisterBlobRequest implements IStreamingIngestRequest {
   @JsonProperty("blobs")
   private List<BlobMetadata> blobs;
 
-  RegisterBlobRequest(String requestId, String role, List<BlobMetadata> blobs) {
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonProperty("is_iceberg")
+  private boolean isIceberg;
+
+  RegisterBlobRequest(String requestId, String role, List<BlobMetadata> blobs, boolean isIceberg) {
     this.requestId = requestId;
     this.role = role;
     this.blobs = blobs;
+    this.isIceberg = isIceberg;
   }
 
   String getRequestId() {
@@ -35,6 +41,10 @@ class RegisterBlobRequest implements IStreamingIngestRequest {
 
   List<BlobMetadata> getBlobs() {
     return blobs;
+  }
+
+  boolean getIsIceberg() {
+    return isIceberg;
   }
 
   @Override

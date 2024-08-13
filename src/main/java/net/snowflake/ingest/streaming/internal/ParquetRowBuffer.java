@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -27,7 +27,6 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
@@ -87,14 +86,13 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     int id = 1;
     for (ColumnMetadata column : columns) {
       validateColumnCollation(column);
-      ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-          ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
+      ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
       parquetTypes.add(typeInfo.getParquetType());
       this.metadata.putAll(typeInfo.getMetadata());
       int columnIndex = parquetTypes.size() - 1;
       fieldIndex.put(
           column.getInternalName(),
-          new ParquetColumn(column, columnIndex, typeInfo.getPrimitiveTypeName()));
+          new ParquetColumn(column, columnIndex, typeInfo.getParquetType()));
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
@@ -205,15 +203,18 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
       forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = parquetColumn.columnMetadata;
-      ParquetValueParser.ParquetBufferValue valueWithSize =
-          ParquetValueParser.parseColumnValueToParquet(
-              value,
-              column,
-              parquetColumn.type,
-              forkedStats,
-              defaultTimezone,
-              insertRowsCurrIndex,
-              clientBufferParameters.isEnableNewJsonParsingLogic());
+      ParquetBufferValue valueWithSize =
+          (column.getSourceIcebergDataType() == null
+              ? SnowflakeParquetValueParser.parseColumnValueToParquet(
+                  value,
+                  column,
+                  parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
+                  forkedStats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  clientBufferParameters.isEnableNewJsonParsingLogic())
+              : IcebergParquetValueParser.parseColumnValueToParquet(
+                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex));
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
@@ -343,10 +344,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private static class ParquetColumn {
     final ColumnMetadata columnMetadata;
     final int index;
-    final PrimitiveType.PrimitiveTypeName type;
+    final Type type;
 
-    private ParquetColumn(
-        ColumnMetadata columnMetadata, int index, PrimitiveType.PrimitiveTypeName type) {
+    private ParquetColumn(ColumnMetadata columnMetadata, int index, Type type) {
       this.columnMetadata = columnMetadata;
       this.index = index;
       this.type = type;
