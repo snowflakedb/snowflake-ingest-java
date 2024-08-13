@@ -345,6 +345,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getTableName(),
               request.getChannelName(),
               Constants.WriteMode.CLOUD_STORAGE,
+              this.isIcebergMode,
               request.getOffsetToken());
       OpenChannelResponse response = snowflakeServiceClient.openChannel(openChannelRequest);
 
@@ -570,7 +571,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           new RegisterBlobRequest(
               this.storageManager.getClientPrefix() + "_" + counter.getAndIncrement(),
               this.role,
-              blobs);
+              blobs,
+              this.isIcebergMode);
       response = snowflakeServiceClient.registerBlob(request, executionCount);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());

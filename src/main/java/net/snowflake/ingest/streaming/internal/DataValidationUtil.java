@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -803,6 +803,62 @@ class DataValidationUtil {
   }
 
   /**
+   * Validates and parses input Iceberg INT column. Allowed Java types:
+   *
+   * <ul>
+   *   <li>Number
+   *   <li>String
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Parsed integer
+   */
+  static int validateAndParseIcebergInt(String columnName, Object input, long insertRowIndex) {
+    if (input instanceof Number) {
+      return ((Number) input).intValue();
+    } else if (input instanceof String) {
+      try {
+        return Integer.parseInt(((String) input).trim());
+      } catch (NumberFormatException e) {
+        throw valueFormatNotAllowedException(
+            columnName, "INT", "Not a valid integer", insertRowIndex);
+      }
+    }
+    throw typeNotAllowedException(
+        columnName, input.getClass(), "INT", new String[] {"Number", "String"}, insertRowIndex);
+  }
+
+  /**
+   * Validates and parses input Iceberg LONG column. Allowed Java types:
+   *
+   * <ul>
+   *   <li>Number
+   *   <li>String
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Parsed long
+   */
+  static long validateAndParseIcebergLong(String columnName, Object input, long insertRowIndex) {
+    if (input instanceof Number) {
+      return ((Number) input).longValue();
+    } else if (input instanceof String) {
+      try {
+        return Long.parseLong(((String) input).trim());
+      } catch (NumberFormatException e) {
+        throw valueFormatNotAllowedException(
+            columnName, "LONG", "Not a valid long", insertRowIndex);
+      }
+    }
+    throw typeNotAllowedException(
+        columnName, input.getClass(), "LONG", new String[] {"Number", "String"}, insertRowIndex);
+  }
+
+  /**
    * Validate and parse input to integer output, 1=true, 0=false. String values converted to boolean
    * according to https://docs.snowflake.com/en/sql-reference/functions/to_boolean.html#usage-notes
    * Allowed Java types:
@@ -845,6 +901,16 @@ class DataValidationUtil {
           String.format(
               "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d",
               precision - scale, precision - scale, insertRowIndex));
+    }
+  }
+
+  static void checkFixedLengthByteArray(byte[] bytes, int length, final long insertRowIndex) {
+    if (bytes.length != length) {
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          String.format(
+              "Binary length mismatch: expected=%d, actual=%d, rowIndex:%d",
+              length, bytes.length, insertRowIndex));
     }
   }
 
