@@ -22,8 +22,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -509,7 +507,11 @@ class FlushService<T> {
                         String fullyQualifiedTableName =
                             blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName();
                         BlobMetadata blobMetadata =
-                            buildAndUpload(blobPath, blobData, fullyQualifiedTableName, encryptionKeysPerTable);
+                            buildAndUpload(
+                                blobPath,
+                                blobData,
+                                fullyQualifiedTableName,
+                                encryptionKeysPerTable);
                         blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
                         return blobMetadata;
                       } catch (Throwable e) {
@@ -592,7 +594,10 @@ class FlushService<T> {
    * @return BlobMetadata for FlushService.upload
    */
   BlobMetadata buildAndUpload(
-      String blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName, Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
+      String blobPath,
+      List<List<ChannelData<T>>> blobData,
+      String fullyQualifiedTableName,
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
@@ -604,7 +609,7 @@ class FlushService<T> {
             blobPath,
             blobData,
             bdecVersion,
-            encryptionKeysPerTable
+            encryptionKeysPerTable,
             this.owningClient.getInternalParameterProvider().getEnableChunkEncryption());
 
     blob.blobStats.setBuildDurationMs(buildContext);

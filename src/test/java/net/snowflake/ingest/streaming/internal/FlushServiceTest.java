@@ -156,7 +156,8 @@ public class FlushServiceTest {
       return flushService.buildAndUpload(
           "file_name",
           blobData,
-          blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName(), encryptionKeysPerTable);
+          blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName(),
+          encryptionKeysPerTable);
     }
 
     abstract SnowflakeStreamingIngestChannelInternal<T> createChannel(
@@ -470,7 +471,7 @@ public class FlushServiceTest {
     IntStream.range(0, numChannels)
         .forEach(
             i -> {
-              addChannel(testContext, i, 1L);
+              addChannel(testContext, i);
               channelCache.setLastFlushTime(getFullyQualifiedTableName(i), maxLastFlushTime);
             });
 
@@ -524,7 +525,7 @@ public class FlushServiceTest {
     IntStream.range(0, numChannels)
         .forEach(
             i -> {
-              addChannel(testContext, i, 1L);
+              addChannel(testContext, i);
               channelCache.setLastFlushTime(getFullyQualifiedTableName(i), maxLastFlushTime);
               if (i % 2 == 0) {
                 flushService.setNeedFlush(getFullyQualifiedTableName(i));
@@ -655,7 +656,7 @@ public class FlushServiceTest {
     // Force = true flushes
     flushService.flush(true).get();
     Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   @Test
@@ -690,7 +691,7 @@ public class FlushServiceTest {
     // Force = true flushes
     flushService.flush(true).get();
     Mockito.verify(flushService, Mockito.times(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
   }
 
   @Test
@@ -732,7 +733,7 @@ public class FlushServiceTest {
     ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
         ArgumentCaptor.forClass(List.class);
     Mockito.verify(flushService, Mockito.times(expectedBlobs))
-        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any());
+        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any(), Mockito.any());
 
     // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =

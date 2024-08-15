@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
@@ -32,16 +34,23 @@ public class BlobBuilderTest {
 
   @Test
   public void testSerializationErrors() throws Exception {
+    Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable = new ConcurrentHashMap<>();
+    encryptionKeysPerTable.put(
+        new FullyQualifiedTableName("DB", "SCHEMA", "TABLE"),
+        new EncryptionKey("DB", "SCHEMA", "TABLE", "KEY", 1234L));
+
     // Construction succeeds if both data and metadata contain 1 row
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1, false)),
         Constants.BdecVersion.THREE,
+        encryptionKeysPerTable,
         encrypt);
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1, true)),
         Constants.BdecVersion.THREE,
+        encryptionKeysPerTable,
         encrypt);
 
     // Construction fails if metadata contains 0 rows and data 1 row
@@ -50,6 +59,7 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0, false)),
           Constants.BdecVersion.THREE,
+          encryptionKeysPerTable,
           encrypt);
       Assert.fail("Should not pass enableParquetInternalBuffering=false");
     } catch (SFException e) {
@@ -69,6 +79,7 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0, true)),
           Constants.BdecVersion.THREE,
+          encryptionKeysPerTable,
           encrypt);
       Assert.fail("Should not pass enableParquetInternalBuffering=true");
     } catch (SFException e) {
@@ -124,8 +135,7 @@ public class BlobBuilderTest {
     channelData.setMinMaxInsertTimeInMs(new Pair<>(2L, 3L));
 
     channelData.getColumnEps().putIfAbsent(columnName, new RowBufferStats(columnName, null, 1));
-    channelData.setChannelContext(
-        new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
+    channelData.setChannelContext(new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L));
     return Collections.singletonList(channelData);
   }
 

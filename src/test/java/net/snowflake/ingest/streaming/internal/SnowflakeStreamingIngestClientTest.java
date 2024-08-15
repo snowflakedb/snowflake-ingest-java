@@ -1326,6 +1326,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -1594,6 +1595,7 @@ public class SnowflakeStreamingIngestClientTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
