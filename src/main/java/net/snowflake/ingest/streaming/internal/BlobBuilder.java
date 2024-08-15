@@ -84,7 +84,6 @@ class BlobBuilder {
       ChannelFlushContext firstChannelFlushContext =
           channelsDataPerTable.get(0).getChannelContext();
 
-      // Get encryption key from client
       EncryptionKey encryptionKey =
           encryptionKeysPerTable.get(
               new FullyQualifiedTableName(
