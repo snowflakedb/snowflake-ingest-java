@@ -213,7 +213,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                   defaultTimezone,
                   insertRowsCurrIndex)
               : IcebergParquetValueParser.parseColumnValueToParquet(
-                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex));
+                  value,
+                  parquetColumn.type,
+                  forkedStats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  false));
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }

@@ -62,8 +62,30 @@ public class ParquetTypeGenerator {
     if (column.getSourceIcebergDataType() != null) {
       org.apache.iceberg.types.Type icebergDataType =
           deserializeIcebergType(column.getSourceIcebergDataType());
-      parquetType =
-          typeToMessageType.primitive(icebergDataType.asPrimitiveType(), repetition, id, name);
+      if (icebergDataType.isPrimitiveType()) {
+        parquetType =
+            typeToMessageType.primitive(icebergDataType.asPrimitiveType(), repetition, id, name);
+      } else {
+        switch (icebergDataType.typeId()) {
+          case LIST:
+            parquetType =
+                typeToMessageType.list(icebergDataType.asListType(), repetition, id, name);
+            break;
+          case MAP:
+            parquetType = typeToMessageType.map(icebergDataType.asMapType(), repetition, id, name);
+            break;
+          case STRUCT:
+            parquetType =
+                typeToMessageType.struct(icebergDataType.asStructType(), repetition, id, name);
+            break;
+          default:
+            throw new SFException(
+                ErrorCode.INTERNAL_ERROR,
+                String.format(
+                    "Cannot convert Iceberg column to parquet type, name=%s, dataType=%s",
+                    name, icebergDataType));
+        }
+      }
     } else {
       AbstractRowBuffer.ColumnPhysicalType physicalType;
       AbstractRowBuffer.ColumnLogicalType logicalType;

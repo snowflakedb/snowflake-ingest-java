@@ -325,6 +325,20 @@ public class BdecParquetWriter implements AutoCloseable {
                 throw new ParquetEncodingException(
                     "Unsupported column type: " + cols.get(i).asPrimitiveType());
             }
+          } else {
+            if (cols.get(i).isRepetition(Type.Repetition.REPEATED)) {
+              for (Object o : values) {
+                recordConsumer.startGroup();
+                if (o != null) {
+                  writeValues((List<Object>) o, cols.get(i).asGroupType());
+                }
+                recordConsumer.endGroup();
+              }
+            } else {
+              recordConsumer.startGroup();
+              writeValues((List<Object>) val, cols.get(i).asGroupType());
+              recordConsumer.endGroup();
+            }
           }
           recordConsumer.endField(fieldName, i);
         }

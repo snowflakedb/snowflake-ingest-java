@@ -11,15 +11,23 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.DateLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.ListLogicalTypeAnnotation;
+import org.apache.parquet.schema.LogicalTypeAnnotation.MapLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.StringLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimeLogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimestampLogicalTypeAnnotation;
@@ -39,6 +47,8 @@ class IcebergParquetValueParser {
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Row index corresponding the row to parse (w.r.t input rows in
    *     insertRows API, and not buffered row)
+   * @param isdDescendantsOfRepeatingGroup true if the column is a descendant of a repeating group,
+   *     used for size estimation
    * @return parsed value and byte size of Parquet internal representation
    */
   static ParquetBufferValue parseColumnValueToParquet(
@@ -46,67 +56,84 @@ class IcebergParquetValueParser {
       Type type,
       RowBufferStats stats,
       ZoneId defaultTimezone,
-      long insertRowsCurrIndex) {
+      long insertRowsCurrIndex,
+      boolean isdDescendantsOfRepeatingGroup) {
     Utils.assertNotNull("Parquet column stats", stats);
     float estimatedParquetSize = 0F;
     if (value != null) {
-      estimatedParquetSize += ParquetBufferValue.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
-      PrimitiveType primitiveType = type.asPrimitiveType();
-      switch (primitiveType.getPrimitiveTypeName()) {
-        case BOOLEAN:
-          int intValue =
-              DataValidationUtil.validateAndParseBoolean(
-                  type.getName(), value, insertRowsCurrIndex);
-          value = intValue > 0;
-          stats.addIntValue(BigInteger.valueOf(intValue));
-          estimatedParquetSize += ParquetBufferValue.BIT_ENCODING_BYTE_LEN;
-          break;
-        case INT32:
-          int intVal = getInt32Value(value, primitiveType, insertRowsCurrIndex);
-          value = intVal;
-          stats.addIntValue(BigInteger.valueOf(intVal));
-          estimatedParquetSize += 4;
-          break;
-        case INT64:
-          long longVal = getInt64Value(value, primitiveType, defaultTimezone, insertRowsCurrIndex);
-          value = longVal;
-          stats.addIntValue(BigInteger.valueOf(longVal));
-          estimatedParquetSize += 8;
-          break;
-        case FLOAT:
-          float floatVal =
-              (float)
-                  DataValidationUtil.validateAndParseReal(
-                      type.getName(), value, insertRowsCurrIndex);
-          value = floatVal;
-          stats.addRealValue((double) floatVal);
-          estimatedParquetSize += 4;
-          break;
-        case DOUBLE:
-          double doubleVal =
-              DataValidationUtil.validateAndParseReal(type.getName(), value, insertRowsCurrIndex);
-          value = doubleVal;
-          stats.addRealValue(doubleVal);
-          estimatedParquetSize += 8;
-          break;
-        case BINARY:
-          byte[] byteVal = getBinaryValue(value, primitiveType, stats, insertRowsCurrIndex);
-          value = byteVal;
-          estimatedParquetSize +=
-              ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + byteVal.length;
-          break;
-        case FIXED_LEN_BYTE_ARRAY:
-          byte[] fixedLenByteArrayVal =
-              getFixedLenByteArrayValue(value, primitiveType, stats, insertRowsCurrIndex);
-          value = fixedLenByteArrayVal;
-          estimatedParquetSize +=
-              ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + fixedLenByteArrayVal.length;
-          break;
-        default:
-          throw new SFException(
-              ErrorCode.UNKNOWN_DATA_TYPE,
-              type.getLogicalTypeAnnotation(),
-              primitiveType.getPrimitiveTypeName());
+      if (type.isPrimitive()) {
+        estimatedParquetSize += ParquetBufferValue.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
+        estimatedParquetSize +=
+            isdDescendantsOfRepeatingGroup
+                ? ParquetBufferValue.REPETITION_LEVEL_ENCODING_BYTE_LEN
+                : 0;
+        PrimitiveType primitiveType = type.asPrimitiveType();
+        switch (primitiveType.getPrimitiveTypeName()) {
+          case BOOLEAN:
+            int intValue =
+                DataValidationUtil.validateAndParseBoolean(
+                    type.getName(), value, insertRowsCurrIndex);
+            value = intValue > 0;
+            stats.addIntValue(BigInteger.valueOf(intValue));
+            estimatedParquetSize += ParquetBufferValue.BIT_ENCODING_BYTE_LEN;
+            break;
+          case INT32:
+            int intVal = getInt32Value(value, primitiveType, insertRowsCurrIndex);
+            value = intVal;
+            stats.addIntValue(BigInteger.valueOf(intVal));
+            estimatedParquetSize += 4;
+            break;
+          case INT64:
+            long longVal =
+                getInt64Value(value, primitiveType, defaultTimezone, insertRowsCurrIndex);
+            value = longVal;
+            stats.addIntValue(BigInteger.valueOf(longVal));
+            estimatedParquetSize += 8;
+            break;
+          case FLOAT:
+            float floatVal =
+                (float)
+                    DataValidationUtil.validateAndParseReal(
+                        type.getName(), value, insertRowsCurrIndex);
+            value = floatVal;
+            stats.addRealValue((double) floatVal);
+            estimatedParquetSize += 4;
+            break;
+          case DOUBLE:
+            double doubleVal =
+                DataValidationUtil.validateAndParseReal(type.getName(), value, insertRowsCurrIndex);
+            value = doubleVal;
+            stats.addRealValue(doubleVal);
+            estimatedParquetSize += 8;
+            break;
+          case BINARY:
+            byte[] byteVal = getBinaryValue(value, primitiveType, stats, insertRowsCurrIndex);
+            value = byteVal;
+            estimatedParquetSize +=
+                ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + byteVal.length;
+            break;
+          case FIXED_LEN_BYTE_ARRAY:
+            byte[] fixedLenByteArrayVal =
+                getFixedLenByteArrayValue(value, primitiveType, stats, insertRowsCurrIndex);
+            value = fixedLenByteArrayVal;
+            estimatedParquetSize +=
+                ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
+                    + fixedLenByteArrayVal.length;
+            break;
+          default:
+            throw new SFException(
+                ErrorCode.UNKNOWN_DATA_TYPE,
+                type.getLogicalTypeAnnotation(),
+                primitiveType.getPrimitiveTypeName());
+        }
+      } else {
+        return getGroupValue(
+            value,
+            type.asGroupType(),
+            stats,
+            defaultTimezone,
+            insertRowsCurrIndex,
+            isdDescendantsOfRepeatingGroup);
       }
     }
 
@@ -264,6 +291,149 @@ class IcebergParquetValueParser {
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
+  }
+
+  /**
+   * Parses a group value based on Parquet group logical type.
+   *
+   * @param value value to parse
+   * @param type Parquet column type
+   * @param stats column stats to update
+   * @param defaultTimezone default timezone to use for timestamp parsing
+   * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
+   * @param isdDescendantsOfRepeatingGroup true if the column is a descendant of a repeating group,
+   * @return list of parsed values
+   */
+  private static ParquetBufferValue getGroupValue(
+      Object value,
+      GroupType type,
+      RowBufferStats stats,
+      ZoneId defaultTimezone,
+      final long insertRowsCurrIndex,
+      boolean isdDescendantsOfRepeatingGroup) {
+    LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+    if (logicalTypeAnnotation == null) {
+      return getStructValue(
+          value, type, stats, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
+    }
+    if (logicalTypeAnnotation instanceof ListLogicalTypeAnnotation) {
+      return get3LevelListValue(
+          value, type, stats, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
+    }
+    if (logicalTypeAnnotation instanceof MapLogicalTypeAnnotation) {
+      return get3LevelMapValue(
+          value, type, stats, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
+    }
+    throw new SFException(
+        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getClass().getSimpleName());
+  }
+
+  /**
+   * Parses a struct value based on Parquet group logical type. The parsed value is a list of
+   * values, where each element represents a field in the group. For example, an input {@code
+   * {"field1": 1, "field2": 2}} will be parsed as {@code [1, 2]}.
+   */
+  private static ParquetBufferValue getStructValue(
+      Object value,
+      GroupType type,
+      RowBufferStats stats,
+      ZoneId defaultTimezone,
+      final long insertRowsCurrIndex,
+      boolean isdDescendantsOfRepeatingGroup) {
+    Map<String, Object> structVal =
+        DataValidationUtil.validateAndParseIcebergStruct(
+            type.getName(), value, insertRowsCurrIndex);
+    List<Object> listVal = new ArrayList<>(type.getFieldCount());
+    float estimatedParquetSize = 0f;
+    for (int i = 0; i < type.getFieldCount(); i++) {
+      ParquetBufferValue parsedValue =
+          parseColumnValueToParquet(
+              structVal.getOrDefault(type.getFieldName(i), null),
+              type.getType(i),
+              stats,
+              defaultTimezone,
+              insertRowsCurrIndex,
+              isdDescendantsOfRepeatingGroup);
+      listVal.add(parsedValue.getValue());
+      estimatedParquetSize += parsedValue.getSize();
+    }
+    return new ParquetBufferValue(listVal, estimatedParquetSize);
+  }
+
+  /**
+   * Parses an iterable value based on Parquet 3-level list logical type. Please check <a
+   * href="https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#lists">Parquet
+   * Logical Types#Lists</a> for more details. The parsed value is a list of lists, where each inner
+   * list represents a list of elements in the group. For example, an input {@code [1, 2, 3, 4]}
+   * will be parsed as {@code [[1], [2], [3], [4]]}.
+   */
+  private static ParquetBufferValue get3LevelListValue(
+      Object value,
+      GroupType type,
+      RowBufferStats stats,
+      ZoneId defaultTimezone,
+      final long insertRowsCurrIndex,
+      boolean isdDescendantsOfRepeatingGroup) {
+    Iterable<Object> iterableVal =
+        DataValidationUtil.validateAndParseIcebergList(type.getName(), value, insertRowsCurrIndex);
+    List<Object> listVal = new ArrayList<>();
+    final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
+    iterableVal.forEach(
+        element -> {
+          ParquetBufferValue parsedValue =
+              parseColumnValueToParquet(
+                  element,
+                  type.getType(0).asGroupType().getType(0),
+                  stats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  isdDescendantsOfRepeatingGroup);
+          listVal.add(Collections.singletonList(parsedValue.getValue()));
+          estimatedParquetSize.updateAndGet(sz -> sz + parsedValue.getSize());
+        });
+    return new ParquetBufferValue(listVal, estimatedParquetSize.get());
+  }
+
+  /**
+   * Parses a map value based on Parquet 3-level map logical type. Please check <a
+   * href="https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#maps">Parquet
+   * Logical Types#Maps</a> for more details. The parsed value is a list of lists, where each inner
+   * list represents a key-value pair in the group. For example, an input {@code {"a": 1, "b": 2}}
+   * will be parsed as {@code [["a", 1], ["b", 2]]}.
+   */
+  private static ParquetBufferValue get3LevelMapValue(
+      Object value,
+      GroupType type,
+      RowBufferStats stats,
+      ZoneId defaultTimezone,
+      final long insertRowsCurrIndex,
+      boolean isdDescendantsOfRepeatingGroup) {
+    Map<Object, Object> mapVal =
+        DataValidationUtil.validateAndParseIcebergMap(type.getName(), value, insertRowsCurrIndex);
+    List<Object> listVal = new ArrayList<>();
+    final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
+    mapVal.forEach(
+        (k, v) -> {
+          ParquetBufferValue parsedKey =
+              parseColumnValueToParquet(
+                  k,
+                  type.getType(0).asGroupType().getType(0),
+                  stats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  true);
+          ParquetBufferValue parsedValue =
+              parseColumnValueToParquet(
+                  v,
+                  type.getType(0).asGroupType().getType(1),
+                  stats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  isdDescendantsOfRepeatingGroup);
+          listVal.add(Arrays.asList(parsedKey.getValue(), parsedValue.getValue()));
+          estimatedParquetSize.updateAndGet(sz -> sz + parsedKey.getSize() + parsedValue.getSize());
+        });
+    return new ParquetBufferValue(listVal, estimatedParquetSize.get());
   }
 
   /**
