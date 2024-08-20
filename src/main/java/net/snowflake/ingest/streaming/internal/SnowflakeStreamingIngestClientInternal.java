@@ -383,7 +383,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           response.getDBName(),
           response.getSchemaName(),
           response.getTableName(),
-          response.getIcebergLocation());
+          response.getExternalVolumeLocation());
 
       return channel;
     } catch (IOException | IngestResponseException e) {

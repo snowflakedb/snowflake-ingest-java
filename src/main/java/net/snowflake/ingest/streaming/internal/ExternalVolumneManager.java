@@ -119,7 +119,10 @@ class ExternalVolumeManager<T> implements IStorageManager<T, ExternalVolumeLocat
               new ExternalVolumeLocation(dbName, schemaName, tableName),
               DEFAULT_MAX_UPLOAD_RETRIES));
     } catch (SnowflakeSQLException | IOException err) {
-      throw new SFException(err, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE);
+      throw new SFException(
+          err,
+          ErrorCode.UNABLE_TO_CONNECT_TO_STAGE,
+          String.format("fullyQualifiedTableName=%s", fullyQualifiedTableName));
     }
   }
 
@@ -142,11 +145,11 @@ class ExternalVolumeManager<T> implements IStorageManager<T, ExternalVolumeLocat
       ChannelConfigureResponse response = this.snowflakeServiceClient.channelConfigure(request);
       return response.getStageLocation();
     } catch (IngestResponseException | IOException e) {
-      throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
+      throw new SFException(e, ErrorCode.CHANNEL_CONFIGURE_FAILURE, e.getMessage());
     }
   }
 
-  // TODO: SNOW-1502887 Blob path generation for iceberg table
+  // TODO: SNOW-1502887 Blob path generation for external volume
   @Override
   public String generateBlobPath() {
     return "snow_dummy_file_name.parquet";

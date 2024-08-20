@@ -21,7 +21,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private List<ColumnMetadata> tableColumns;
   private String encryptionKey;
   private Long encryptionKeyId;
-  private FileLocationInfo icebergLocation;
+  private FileLocationInfo externalVolumeLocation;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -133,11 +133,11 @@ class OpenChannelResponse extends StreamingIngestResponse {
   }
 
   @JsonProperty("iceberg_location")
-  void setIcebergLocation(FileLocationInfo icebergLocation) {
-    this.icebergLocation = icebergLocation;
+  void setExternalVolumeLocation(FileLocationInfo externalVolumeLocation) {
+    this.externalVolumeLocation = externalVolumeLocation;
   }
 
-  FileLocationInfo getIcebergLocation() {
-    return this.icebergLocation;
+  FileLocationInfo getExternalVolumeLocation() {
+    return this.externalVolumeLocation;
   }
 }
