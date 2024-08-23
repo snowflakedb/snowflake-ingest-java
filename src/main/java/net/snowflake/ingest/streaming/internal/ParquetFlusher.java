@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -17,6 +17,8 @@ import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.hadoop.BdecParquetReader;
 import org.apache.parquet.hadoop.BdecParquetWriter;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -125,6 +127,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
     if (mergedChannelWriter != null) {
       mergedChannelWriter.close();
+      updateStatistics(columnEpStatsMapCombined, mergedChannelWriter);
       this.verifyRowCounts(
           "serializeFromParquetWriteBuffers",
           mergedChannelWriter,
@@ -222,6 +225,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             bdecParquetCompression);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
+    updateStatistics(columnEpStatsMapCombined, parquetWriter);
 
     this.verifyRowCounts(
         "serializeFromJavaObjects", parquetWriter, rowCount, channelsDataPerTable, rows.size());
@@ -233,6 +237,27 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         chunkEstimatedUncompressedSize,
         mergedData,
         chunkMinMaxInsertTimeInMs);
+  }
+
+  private void updateStatistics(
+      Map<String, RowBufferStats> columnEpStatsMapCombined, BdecParquetWriter parquetWriter) {
+    for (BlockMetaData blockMetaData : parquetWriter.getBlocks()) {
+      for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
+        String columnPath = columnChunkMetaData.getPath().toDotString();
+        RowBufferStats stats = columnEpStatsMapCombined.get(columnPath);
+        if (stats == null) {
+          throw new SFException(
+              ErrorCode.INTERNAL_ERROR,
+              String.format("Column %s not found in columnEpStatsMapCombined", columnPath));
+        }
+        if (stats.getStatistics() == null) {
+          stats.setPrimitiveType(columnChunkMetaData.getPrimitiveType());
+          stats.setStatistics(columnChunkMetaData.getStatistics());
+        } else {
+          stats.getStatistics().mergeStatistics(columnChunkMetaData.getStatistics());
+        }
+      }
+    }
   }
 
   /**

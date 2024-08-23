@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.schema.PrimitiveType;
 
 /** Keeps track of the active EP stats, used to generate a file EP info */
 class RowBufferStats {
@@ -28,6 +30,10 @@ class RowBufferStats {
   private final String collationDefinitionString;
   /** Display name is required for the registration endpoint */
   private final String columnDisplayName;
+
+  private Statistics<?> statistics;
+
+  private PrimitiveType primitiveType;
 
   /** Creates empty stats */
   RowBufferStats(String columnDisplayName, String collationDefinitionString, int ordinal) {
@@ -105,7 +111,27 @@ class RowBufferStats {
     combined.currentNullCount = left.currentNullCount + right.currentNullCount;
     combined.currentMaxLength = Math.max(left.currentMaxLength, right.currentMaxLength);
 
+    combined.setStatistics(left.statistics);
+    if (right.statistics != null) {
+      combined.statistics.mergeStatistics(right.statistics);
+    }
     return combined;
+  }
+
+  void setPrimitiveType(PrimitiveType primitiveType) {
+    this.primitiveType = primitiveType;
+  }
+
+  PrimitiveType getPrimitiveType() {
+    return primitiveType;
+  }
+
+  void setStatistics(Statistics<?> statistics) {
+    this.statistics = statistics;
+  }
+
+  Statistics<?> getStatistics() {
+    return statistics;
   }
 
   void addStrValue(String value) {

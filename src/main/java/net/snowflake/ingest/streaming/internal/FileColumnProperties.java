@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncateBytesAsHex;
@@ -5,6 +9,14 @@ import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncate
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigInteger;
 import java.util.Objects;
+import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.column.statistics.BooleanStatistics;
+import org.apache.parquet.column.statistics.DoubleStatistics;
+import org.apache.parquet.column.statistics.FloatStatistics;
+import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.column.statistics.LongStatistics;
+import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 /** Audit register endpoint/FileColumnPropertyDTO property list. */
 class FileColumnProperties {
@@ -82,6 +94,39 @@ class FileColumnProperties {
 
     this.setNullCount(stats.getCurrentNullCount());
     this.setDistinctValues(stats.getDistinctValues());
+  }
+
+  FileColumnProperties(
+      int columnOrdinal, String collation, Statistics<?> statistics, RowBufferStats stats) {
+    this.setColumnOrdinal(columnOrdinal);
+    this.setCollation(collation);
+    this.setMaxLength(stats.getCurrentMaxLength());
+    this.setNullCount(statistics.getNumNulls());
+    this.setDistinctValues(stats.getDistinctValues());
+    this.setMaxStrNonCollated(null);
+    this.setMinStrNonCollated(null);
+
+    if (statistics instanceof BooleanStatistics) {
+      this.setMinIntValue(
+          ((BooleanStatistics) statistics).genericGetMin() ? BigInteger.ONE : BigInteger.ZERO);
+      this.setMaxIntValue(
+          ((BooleanStatistics) statistics).genericGetMax() ? BigInteger.ONE : BigInteger.ZERO);
+    } else if (statistics instanceof IntStatistics || statistics instanceof LongStatistics) {
+      this.setMinIntValue(BigInteger.valueOf(((Number) statistics.genericGetMin()).longValue()));
+      this.setMaxIntValue(BigInteger.valueOf(((Number) statistics.genericGetMax()).longValue()));
+    } else if (statistics instanceof FloatStatistics || statistics instanceof DoubleStatistics) {
+      this.setMinRealValue((Double) statistics.genericGetMin());
+      this.setMaxRealValue((Double) statistics.genericGetMax());
+    } else if (statistics instanceof BinaryStatistics) {
+      if (statistics.type().getLogicalTypeAnnotation()
+          instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
+        this.setMinIntValue(new BigInteger(statistics.getMinBytes()));
+        this.setMaxIntValue(new BigInteger(statistics.getMaxBytes()));
+      } else {
+        this.setMinStrValue(truncateBytesAsHex(statistics.getMinBytes(), false));
+        this.setMaxStrValue(truncateBytesAsHex(statistics.getMaxBytes(), true));
+      }
+    }
   }
 
   @JsonProperty("columnId")

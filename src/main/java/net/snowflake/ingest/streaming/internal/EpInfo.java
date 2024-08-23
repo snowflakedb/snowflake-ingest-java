@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
@@ -42,6 +46,22 @@ class EpInfo {
             String.format(
                 "Unexpected NDV on col=%s, value=%d", colName, colEp.getDistinctValues()));
       }
+    }
+  }
+
+  void asssertEquals(EpInfo other) {
+    for (Map.Entry<String, FileColumnProperties> entry : columnEps.entrySet()) {
+      String colName = entry.getKey();
+      FileColumnProperties colEp = entry.getValue();
+      FileColumnProperties otherColEp = other.getColumnEps().get(colName);
+      if (otherColEp == null) {
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR,
+            String.format("Column %s not found in other EP info", colName));
+      }
+      System.out.println("colEp: " + colEp);
+      System.out.println("otherColEp: " + otherColEp);
+      assert colEp.toString().equals(otherColEp.toString());
     }
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -655,6 +655,20 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       FileColumnProperties dto = new FileColumnProperties(stat);
       String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
+    }
+    epInfo.verifyEpInfo();
+    return epInfo;
+  }
+
+  static EpInfo buildEPInfoFromStatistics(long rowCount, Map<String, RowBufferStats> colStats) {
+    EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
+    for (Map.Entry<String, RowBufferStats> columnStat : colStats.entrySet()) {
+      RowBufferStats stat = columnStat.getValue();
+      FileColumnProperties dto =
+          new FileColumnProperties(
+              stat.getOrdinal(), stat.getCollationDefinitionString(), stat.getStatistics(), stat);
+      String columnName = columnStat.getValue().getColumnDisplayName();
+      epInfo.getColumnEps().put(columnName, dto);
     }
     epInfo.verifyEpInfo();
     return epInfo;

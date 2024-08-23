@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package org.apache.parquet.hadoop;
@@ -110,6 +110,10 @@ public class BdecParquetWriter implements AutoCloseable {
       blockRowCounts.add(metadata.getRowCount());
     }
     return blockRowCounts;
+  }
+
+  public List<BlockMetaData> getBlocks() {
+    return writer.getFooter().getBlocks();
   }
 
   public void writeRow(List<Object> row) {

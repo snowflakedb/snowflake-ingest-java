@@ -118,6 +118,13 @@ class BlobBuilder {
 
         // Create chunk metadata
         long startOffset = curDataSize;
+        //        EpInfo epInfo =
+        //            AbstractRowBuffer.buildEpInfoFromStats(
+        //                serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined);
+        //        EpInfo epInfoFromStats =
+        //            AbstractRowBuffer.buildEPInfoFromStatistics(
+        //                serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined);
+        //        epInfo.asssertEquals(epInfoFromStats);
         ChunkMetadata chunkMetadata =
             ChunkMetadata.builder()
                 .setOwningTableFromChannelContext(firstChannelFlushContext)
@@ -132,7 +139,7 @@ class BlobBuilder {
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
                 .setEpInfo(
-                    AbstractRowBuffer.buildEpInfoFromStats(
+                    AbstractRowBuffer.buildEPInfoFromStatistics(
                         serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
