@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import java.io.ByteArrayOutputStream;
@@ -13,9 +17,18 @@ import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
 
+@RunWith(Parameterized.class)
 public class BlobBuilderTest {
+  @Parameterized.Parameters(name = "encrypt: {0}")
+  public static Object[] encrypt() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public boolean encrypt;
 
   @Test
   public void testSerializationErrors() throws Exception {
@@ -23,18 +36,21 @@ public class BlobBuilderTest {
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1, false)),
-        Constants.BdecVersion.THREE);
+        Constants.BdecVersion.THREE,
+        encrypt);
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1, true)),
-        Constants.BdecVersion.THREE);
+        Constants.BdecVersion.THREE,
+        encrypt);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0, false)),
-          Constants.BdecVersion.THREE);
+          Constants.BdecVersion.THREE,
+          encrypt);
       Assert.fail("Should not pass enableParquetInternalBuffering=false");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
@@ -52,7 +68,8 @@ public class BlobBuilderTest {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0, true)),
-          Constants.BdecVersion.THREE);
+          Constants.BdecVersion.THREE,
+          encrypt);
       Assert.fail("Should not pass enableParquetInternalBuffering=true");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());

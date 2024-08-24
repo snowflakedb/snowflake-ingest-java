@@ -192,12 +192,12 @@ class FlushService<T> {
   /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
   private void logFlushTask(boolean isForce, Set<String> tablesToFlush, long flushStartTime) {
     boolean isNeedFlush =
-        this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1
+        this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1
             ? tablesToFlush.stream().anyMatch(channelCache::getNeedFlush)
             : this.isNeedFlush;
     long currentTime = System.currentTimeMillis();
     final String logInfo;
-    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1) {
       logInfo =
           String.format(
               "Tables=[%s]",
@@ -272,7 +272,7 @@ class FlushService<T> {
         this.owningClient.getParameterProvider().getCachedMaxClientLagInMs();
 
     final Set<String> tablesToFlush;
-    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1) {
       tablesToFlush =
           this.channelCache.keySet().stream()
               .filter(
@@ -412,15 +412,13 @@ class FlushService<T> {
           channelsDataPerTable.addAll(leftoverChannelsDataPerTable);
           leftoverChannelsDataPerTable.clear();
         } else if (blobData.size()
-            >= this.owningClient
-                .getParameterProvider()
-                .getMaxChunksInBlobAndRegistrationRequest()) {
+            >= this.owningClient.getParameterProvider().getMaxChunksInBlob()) {
           // Create a new blob if the current one already contains max allowed number of chunks
           logger.logInfo(
               "Max allowed number of chunks in the current blob reached. chunkCount={}"
                   + " maxChunkCount={} currentBlobPath={}",
               blobData.size(),
-              this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest(),
+              this.owningClient.getParameterProvider().getMaxChunksInBlob(),
               blobPath);
           break;
         } else {
@@ -599,7 +597,12 @@ class FlushService<T> {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
-    BlobBuilder.Blob blob = BlobBuilder.constructBlobAndMetadata(blobPath, blobData, bdecVersion);
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            blobPath,
+            blobData,
+            bdecVersion,
+            this.owningClient.getInternalParameterProvider().getEnableChunkEncryption());
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
@@ -691,7 +694,7 @@ class FlushService<T> {
    */
   void setNeedFlush(String fullyQualifiedTableName) {
     this.isNeedFlush = true;
-    if (this.owningClient.getParameterProvider().getMaxChunksInBlobAndRegistrationRequest() == 1) {
+    if (this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1) {
       this.channelCache.setNeedFlush(fullyQualifiedTableName, true);
     }
   }
