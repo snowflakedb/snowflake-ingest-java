@@ -378,6 +378,33 @@ public abstract class AbstractDataTypeTest {
     migrateTable(tableName); // migration should always succeed
   }
 
+  void assertVariantLiterally(
+      String dataType, String writeValue, String expectedValue, String expectedType)
+      throws Exception {
+
+    String tableName = createTable(dataType);
+    String offsetToken = UUID.randomUUID().toString();
+
+    // Ingest using streaming ingest
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    channel.insertRow(createStreamingIngestRow(writeValue), offsetToken);
+    TestUtils.waitForOffset(channel, offsetToken);
+
+    final String query =
+        String.format(
+            "select %s as v1, typeof(v1) as v1_type, parse_json('%s') as v2, typeof(v2) as v2_type"
+                + " from %s",
+            VALUE_COLUMN_NAME, writeValue, tableName);
+    try (ResultSet resultSet = conn.createStatement().executeQuery(query)) {
+      resultSet.next();
+      Assert.assertEquals(expectedValue, resultSet.getString("V1"));
+      Assert.assertEquals(expectedValue, resultSet.getString("V2"));
+      Assert.assertEquals(expectedType, resultSet.getString("V1_TYPE"));
+      Assert.assertEquals(expectedType, resultSet.getString("V2_TYPE"));
+    }
+    ;
+  }
+
   protected void migrateTable(String tableName) throws SQLException {
     conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
   }
