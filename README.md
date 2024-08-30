@@ -22,15 +22,10 @@ The Snowflake Ingest Service SDK depends on the following libraries:
 These dependencies will be fetched automatically by build systems like Maven or Gradle. If you don't build your project
 using a build system, please make sure these dependencies are on the classpath.
 
-# Prerequisites
-
-**If your project depends on the Snowflake JDBC driver, as well, please make sure the JDBC driver version is 3.13.30 to 3.14.5.
-
 ## Java 8+
 
 The Snowflake Ingest Service SDK can only be used with Java 8 or higher.
-Backwards compatibility with Java 7 and prior is not planned at this
-time.
+Backwards compatibility with Java 7 and prior is not planned at this time.
 
 ## A 2048-bit RSA key pair
 
