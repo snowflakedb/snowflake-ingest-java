@@ -234,7 +234,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.snowflakeServiceClient = new SnowflakeServiceClient(this.httpClient, this.requestBuilder);
 
     this.storageManager =
-        new InternalStageManager<T>(isTestMode, this.role, this.name, this.snowflakeServiceClient);
+        isIcebergMode
+            ? new ExternalVolumeManager<>(
+                isTestMode, this.role, this.name, this.snowflakeServiceClient)
+            : new InternalStageManager<>(
+                isTestMode, this.role, this.name, this.snowflakeServiceClient);
 
     try {
       this.flushService =
@@ -375,6 +379,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);
+      this.storageManager.addStorage(
+          response.getDBName(),
+          response.getSchemaName(),
+          response.getTableName(),
+          response.getExternalVolumeLocation());
 
       return channel;
     } catch (IOException | IngestResponseException e) {
