@@ -6,16 +6,19 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_1
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.isAllowedSemiStructuredType;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseArray;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseArrayNew;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBigDecimal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBinary;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseDate;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseObject;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseObjectNew;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseReal;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseString;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTime;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseTimestamp;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariant;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariantNew;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -41,7 +44,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TimeZone;
@@ -49,6 +51,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -490,56 +493,121 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseVariant() throws Exception {
-    assertEquals("1", validateAndParseVariant("COL", 1, 0));
-    assertEquals("1", validateAndParseVariant("COL", "1", 0));
-    assertEquals("1", validateAndParseVariant("COL", "                          1   ", 0));
-    String stringVariant = "{\"key\":1}";
-    assertEquals(stringVariant, validateAndParseVariant("COL", stringVariant, 0));
-    assertEquals(stringVariant, validateAndParseVariant("COL", "  " + stringVariant + " \t\n", 0));
+    assertJson("variant", "1", 1);
+    assertJson("variant", "1", "1");
+    assertJson("variant", "1", " 1 \n");
+    assertJson("variant", "{\"key\":1}", "{\"key\":1}");
+    assertJson("variant", "{\"key\":1}", " { \"key\": 1 } ");
+
+    // Variants should preserve input format of numbers
+    assertJson(
+        "variant", "{\"key\":1111111.1111111}", "   {\"key\": 1111111.1111111}    \t\n", false);
+    assertJson(
+        "variant",
+        "{\"key\":11.111111111111e8}",
+        "   {\"key\": 11.111111111111e8   }    \t\n",
+        false);
+    assertJson(
+        "variant",
+        "{\"key\":11.111111111111e-8}",
+        "   {\"key\": 11.111111111111e-8   }    \t\n",
+        false);
+    assertJson(
+        "variant",
+        "{\"key\":11.111111111111E8}",
+        "   {\"key\": 11.111111111111E8   }    \t\n",
+        false);
+    assertJson(
+        "variant",
+        "{\"key\":11.111111111111E-8}",
+        "   {\"key\": 11.111111111111E-8   }    \t\n",
+        false);
+    assertJson(
+        "variant",
+        "{\"key\":11111111111111e8}",
+        "   {\"key\": 11111111111111e8   }    \t\n",
+        false);
+    assertJson(
+        "variant",
+        "{\"key\":11111111111111e-8}",
+        "   {\"key\": 11111111111111e-8   }    \t\n",
+        false);
+    assertJson(
+        "variant",
+        "{\"key\":11111111111111E8}",
+        "   {\"key\": 11111111111111E8   }    \t\n",
+        false);
+    assertJson(
+        "variant",
+        "{\"key\":11111111111111E-8}",
+        "   {\"key\": 11111111111111E-8   }    \t\n",
+        false);
 
     // Test custom serializers
-    assertEquals(
-        "[-128,0,127]",
-        validateAndParseVariant("COL", new byte[] {Byte.MIN_VALUE, 0, Byte.MAX_VALUE}, 0));
-    assertEquals(
+    assertJson("variant", "[-128,0,127]", new byte[] {Byte.MIN_VALUE, 0, Byte.MAX_VALUE});
+    assertJson(
+        "variant",
         "\"2022-09-28T03:04:12.123456789-07:00\"",
-        validateAndParseVariant(
-            "COL",
-            ZonedDateTime.of(2022, 9, 28, 3, 4, 12, 123456789, ZoneId.of("America/Los_Angeles")),
-            0));
+        ZonedDateTime.of(2022, 9, 28, 3, 4, 12, 123456789, ZoneId.of("America/Los_Angeles")));
 
     // Test valid JSON tokens
-    assertEquals("null", validateAndParseVariant("COL", null, 0));
-    assertEquals("null", validateAndParseVariant("COL", "null", 0));
-    assertEquals("true", validateAndParseVariant("COL", true, 0));
-    assertEquals("true", validateAndParseVariant("COL", "true", 0));
-    assertEquals("false", validateAndParseVariant("COL", false, 0));
-    assertEquals("false", validateAndParseVariant("COL", "false", 0));
-    assertEquals("{}", validateAndParseVariant("COL", "{}", 0));
-    assertEquals("[]", validateAndParseVariant("COL", "[]", 0));
-    assertEquals("[\"foo\",1,null]", validateAndParseVariant("COL", "[\"foo\",1,null]", 0));
-    assertEquals("\"\"", validateAndParseVariant("COL", "\"\"", 0));
+
+    assertJson("variant", "null", null);
+    assertJson("variant", "null", "null");
+    assertJson("variant", "true", true);
+    assertJson("variant", "true", "true");
+    assertJson("variant", "false", false);
+    assertJson("variant", "false", "false");
+
+    assertJson("variant", "[]", "[]");
+    assertJson("variant", "{}", "{}");
+    assertJson("variant", "[\"foo\",1,null]", "[\"foo\",1,null]");
+    assertJson("variant", "\"\"", "\"\"");
 
     // Test missing values are null instead of empty string
     assertNull(validateAndParseVariant("COL", "", 0));
+    assertNull(validateAndParseVariantNew("COL", "", 0));
     assertNull(validateAndParseVariant("COL", "  ", 0));
+    assertNull(validateAndParseVariantNew("COL", "  ", 0));
 
     // Test that invalid UTF-8 strings cannot be ingested
     expectError(
         ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "\"foo\uD800bar\"", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseVariantNew("COL", "\"foo\uD800bar\"", 0));
 
     // Test forbidden values
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "{null}", 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariantNew("COL", "{null}", 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "}{", 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariantNew("COL", "}{", 0));
+
     expectError(
         ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", readTree("{}"), 0));
     expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariantNew("COL", readTree("{}"), 0));
+
+    expectError(
         ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", new Object(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariantNew("COL", new Object(), 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "foo", 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariantNew("COL", "foo", 0));
+
     expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", new Date(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariantNew("COL", new Date(), 0));
+
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseVariant("COL", Collections.singletonList(new Object()), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseVariantNew("COL", Collections.singletonList(new Object()), 0));
+
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () ->
@@ -549,63 +617,101 @@ public class DataValidationUtilTest {
                 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
+        () ->
+            validateAndParseVariantNew(
+                "COL",
+                Collections.singletonList(Collections.singletonMap("foo", new Object())),
+                0));
+
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseVariant("COL", Collections.singletonMap(new Object(), "foo"), 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseVariantNew("COL", Collections.singletonMap(new Object(), "foo"), 0));
+
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseVariant("COL", Collections.singletonMap("foo", new Object()), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseVariantNew("COL", Collections.singletonMap("foo", new Object()), 0));
+  }
+
+  private void assertJson(String colType, String expectedValue, Object value) {
+    assertJson(colType, expectedValue, value, true);
+  }
+
+  private void assertJson(
+      String colType, String expectedValue, Object value, boolean alsoTestOldApproach) {
+    if (colType.equalsIgnoreCase("variant")) {
+      assertEquals(expectedValue, validateAndParseVariantNew("COL", value, 0));
+      if (alsoTestOldApproach) {
+        assertEquals(expectedValue, validateAndParseVariant("COL", value, 0));
+      }
+    } else if (colType.equalsIgnoreCase("array")) {
+      assertEquals(expectedValue, validateAndParseArrayNew("COL", value, 0));
+      if (alsoTestOldApproach) {
+        assertEquals(expectedValue, validateAndParseArray("COL", value, 0));
+      }
+    } else if (colType.equalsIgnoreCase("object")) {
+      assertEquals(expectedValue, validateAndParseObjectNew("COL", value, 0));
+      if (alsoTestOldApproach) {
+        assertEquals(expectedValue, validateAndParseObject("COL", value, 0));
+      }
+    } else {
+      Assert.fail("Unexpected colType " + colType);
+    }
   }
 
   @Test
   public void testValidateAndParseArray() throws Exception {
-    assertEquals("[1]", validateAndParseArray("COL", 1, 0));
-    assertEquals("[1]", validateAndParseArray("COL", "1", 0));
-    assertEquals("[1]", validateAndParseArray("COL", "                          1   ", 0));
-    assertEquals("[1,2,3]", validateAndParseArray("COL", "[1, 2, 3]", 0));
-    assertEquals("[1,2,3]", validateAndParseArray("COL", "  [1, 2, 3] \t\n", 0));
-    int[] intArray = new int[] {1, 2, 3};
-    assertEquals("[1,2,3]", validateAndParseArray("COL", intArray, 0));
-
-    String[] stringArray = new String[] {"a", "b", "c"};
-    assertEquals("[\"a\",\"b\",\"c\"]", validateAndParseArray("COL", stringArray, 0));
-
-    Object[] objectArray = new Object[] {1, 2, 3};
-    assertEquals("[1,2,3]", validateAndParseArray("COL", objectArray, 0));
-
-    Object[] ObjectArrayWithNull = new Object[] {1, null, 3};
-    assertEquals("[1,null,3]", validateAndParseArray("COL", ObjectArrayWithNull, 0));
-
-    Object[][] nestedArray = new Object[][] {{1, 2, 3}, null, {4, 5, 6}};
-    assertEquals("[[1,2,3],null,[4,5,6]]", validateAndParseArray("COL", nestedArray, 0));
-
-    List<Integer> intList = Arrays.asList(1, 2, 3);
-    assertEquals("[1,2,3]", validateAndParseArray("COL", intList, 0));
-
-    List<Object> objectList = Arrays.asList(1, 2, 3);
-    assertEquals("[1,2,3]", validateAndParseArray("COL", objectList, 0));
-
-    List<Object> nestedList = Arrays.asList(Arrays.asList(1, 2, 3), 2, 3);
-    assertEquals("[[1,2,3],2,3]", validateAndParseArray("COL", nestedList, 0));
+    assertJson("array", "[1]", 1);
+    assertJson("array", "[1]", "1");
+    assertJson("array", "[\"1\"]", "\"1\"");
+    assertJson("array", "[1.1e10]", " 1.1e10 ", false);
+    assertJson("array", "[1,2,3]", "  [1, 2, 3] \t\n");
+    assertJson("array", "[1,2,3]", new int[] {1, 2, 3});
+    assertJson("array", "[\"a\",\"b\",\"c\"]", new String[] {"a", "b", "c"});
+    assertJson("array", "[1,2,3]", new Object[] {1, 2, 3});
+    assertJson("array", "[1,null,3]", new Object[] {1, null, 3});
+    assertJson("array", "[[1,2,3],null,[4,5,6]]", new Object[][] {{1, 2, 3}, null, {4, 5, 6}});
+    assertJson("array", "[1,2,3]", Arrays.asList(1, 2, 3));
+    assertJson("array", "[[1,2,3],2,3]", Arrays.asList(Arrays.asList(1, 2, 3), 2, 3));
 
     // Test null values
-    assertEquals("[null]", validateAndParseArray("COL", "", 0));
-    assertEquals("[null]", validateAndParseArray("COL", " ", 0));
-    assertEquals("[null]", validateAndParseArray("COL", "null", 0));
-    assertEquals("[null]", validateAndParseArray("COL", null, 0));
+    assertJson("array", "[null]", "");
+    assertJson("array", "[null]", " ");
+    assertJson("array", "[null]", "null");
+    assertJson("array", "[null]", null);
 
     // Test that invalid UTF-8 strings cannot be ingested
     expectError(
         ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseArray("COL", "\"foo\uD800bar\"", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseArrayNew("COL", "\"foo\uD800bar\"", 0));
 
     // Test forbidden values
     expectError(
         ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArray("COL", readTree("[]"), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArrayNew("COL", readTree("[]"), 0));
     expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArray("COL", new Object(), 0));
     expectError(
-        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseArray("COL", "foo", 0)); // invalid JSO)N
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArrayNew("COL", new Object(), 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseArray("COL", "foo", 0)); // invalid JSON
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseArrayNew("COL", "foo", 0)); // invalid JSON
     expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArray("COL", new Date(), 0));
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseArrayNew("COL", new Date(), 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseArray("COL", Collections.singletonList(new Object()), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseArrayNew("COL", Collections.singletonList(new Object()), 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () ->
@@ -615,58 +721,94 @@ public class DataValidationUtilTest {
                 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
+        () ->
+            validateAndParseArrayNew(
+                "COL",
+                Collections.singletonList(Collections.singletonMap("foo", new Object())),
+                0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseArray("COL", Collections.singletonMap(new Object(), "foo"), 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseArrayNew("COL", Collections.singletonMap(new Object(), "foo"), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseArray("COL", Collections.singletonMap("foo", new Object()), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseArrayNew("COL", Collections.singletonMap("foo", new Object()), 0));
   }
 
   @Test
   public void testValidateAndParseObject() throws Exception {
-    String stringObject = "{\"key\":1}";
-    assertEquals(stringObject, validateAndParseObject("COL", stringObject, 0));
-    assertEquals(stringObject, validateAndParseObject("COL", "  " + stringObject + " \t\n", 0));
+    assertJson("object", "{}", " { } ");
+    assertJson("object", "{\"key\":1}", "{\"key\":1}");
+    assertJson("object", "{\"key\":1}", " { \"key\" : 1 } ");
+    assertJson("object", "{\"key\":111.111}", " { \"key\" : 111.111 } ");
+    assertJson("object", "{\"key\":111.111e6}", " { \"key\" : 111.111e6 } ", false);
+    assertJson("object", "{\"key\":111.111E6}", " { \"key\" : 111.111E6 } ", false);
+    assertJson("object", "{\"key\":111.111e-6}", " { \"key\" : 111.111e-6 } ", false);
+    assertJson("object", "{\"key\":111.111E-6}", " { \"key\" : 111.111E-6 } ", false);
 
-    String badObject = "foo";
-    try {
-      validateAndParseObject("COL", badObject, 0);
-      Assert.fail("Expected INVALID_ROW error");
-    } catch (SFException err) {
-      assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), err.getVendorCode());
-    }
-
-    char[] data = new char[20000000];
-    Arrays.fill(data, 'a');
-    String stringVal = new String(data);
-    Map<String, String> mapVal = new HashMap<>();
-    mapVal.put("key", stringVal);
-    String tooLargeObject = objectMapper.writeValueAsString(mapVal);
-    try {
-      validateAndParseObject("COL", tooLargeObject, 0);
-      Assert.fail("Expected INVALID_ROW error");
-    } catch (SFException err) {
-      assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), err.getVendorCode());
-    }
+    final String tooLargeObject =
+        objectMapper.writeValueAsString(
+            Collections.singletonMap("key", StringUtils.repeat('a', 20000000)));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", tooLargeObject, 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", tooLargeObject, 0));
 
     // Test that invalid UTF-8 strings cannot be ingested
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseObject("COL", "{\"foo\": \"foo\uD800bar\"}", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseObjectNew("COL", "{\"foo\": \"foo\uD800bar\"}", 0));
 
     // Test forbidden values
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", "", 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", "", 0));
+
     expectError(
         ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObject("COL", readTree("{}"), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObjectNew("COL", readTree("{}"), 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", "[]", 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", "[]", 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", "1", 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", "1", 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", 1, 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", 1, 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", 1.5, 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", 1.5, 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", false, 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", false, 0));
+
     expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObject("COL", new Object(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObjectNew("COL", new Object(), 0));
+
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", "foo", 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObjectNew("COL", "foo", 0));
+
     expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObject("COL", new Date(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseObjectNew("COL", new Date(), 0));
+
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseObject("COL", Collections.singletonList(new Object()), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseObjectNew("COL", Collections.singletonList(new Object()), 0));
+
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () ->
@@ -676,10 +818,32 @@ public class DataValidationUtilTest {
                 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
+        () ->
+            validateAndParseObjectNew(
+                "COL",
+                Collections.singletonList(Collections.singletonMap("foo", new Object())),
+                0));
+
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseObject("COL", Collections.singletonMap(new Object(), "foo"), 0));
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseObjectNew("COL", Collections.singletonMap(new Object(), "foo"), 0));
+
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseObject("COL", Collections.singletonMap(new Object(), "foo"), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseObjectNew("COL", Collections.singletonMap(new Object(), "foo"), 0));
+
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseObject("COL", Collections.singletonMap("foo", new Object()), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseObjectNew("COL", Collections.singletonMap("foo", new Object()), 0));
   }
 
   @Test

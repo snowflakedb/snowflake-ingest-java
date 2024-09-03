@@ -46,6 +46,9 @@ public class ParameterProvider {
   public static final String BDEC_PARQUET_COMPRESSION_ALGORITHM =
       "BDEC_PARQUET_COMPRESSION_ALGORITHM".toLowerCase();
 
+  public static final String ENABLE_NEW_JSON_PARSING_LOGIC =
+      "ENABLE_NEW_JSON_PARSING_LOGIC".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -79,6 +82,8 @@ public class ParameterProvider {
   /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
   It reduces memory consumption compared to using Java Objects for buffering.*/
   public static final boolean ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT = false;
+
+  public static final boolean ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT = true;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
@@ -248,6 +253,13 @@ public class ParameterProvider {
     this.checkAndUpdate(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
         BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
+        parameterOverrides,
+        props,
+        false);
+
+    this.checkAndUpdate(
+        ENABLE_NEW_JSON_PARSING_LOGIC,
+        ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
         parameterOverrides,
         props,
         false);
@@ -484,6 +496,14 @@ public class ParameterProvider {
       return (Constants.BdecParquetCompression) val;
     }
     return Constants.BdecParquetCompression.fromName((String) val);
+  }
+
+  /** @return Whether new JSON parsing logic, which preserves */
+  public boolean isEnableNewJsonParsingLogic() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            ENABLE_NEW_JSON_PARSING_LOGIC, ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
   @Override

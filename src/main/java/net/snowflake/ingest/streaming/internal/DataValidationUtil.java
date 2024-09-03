@@ -6,11 +6,17 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.unicodeCharactersCount;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -39,6 +45,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.io.output.StringBuilderWriter;
 
 /** Utility class for parsing and validating inputs based on Snowflake types */
 class DataValidationUtil {
@@ -69,6 +76,8 @@ class DataValidationUtil {
   static final int MAX_SEMI_STRUCTURED_LENGTH = BYTES_16_MB - 64;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  private static final JsonFactory factory = new JsonFactory();
 
   // The version of Jackson we are using does not support serialization of date objects from the
   // java.time package. Here we define a module with custom java.time serializers. Additionally, we
@@ -140,6 +149,61 @@ class DataValidationUtil {
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
    *
    * @param input Object to validate
+   * @return Minified JSON string
+   */
+  private static String validateAndParseSemiStructured(
+      String columnName, Object input, String snowflakeType, final long insertRowIndex) {
+    if (input instanceof String) {
+      final String stringInput = (String) input;
+      verifyValidUtf8(stringInput, columnName, snowflakeType, insertRowIndex);
+      final StringBuilderWriter resultWriter = new StringBuilderWriter(stringInput.length());
+      try (final JsonParser parser = factory.createParser(stringInput);
+          final JsonGenerator generator = factory.createGenerator(resultWriter)) {
+        while (parser.nextToken() != null) {
+          final JsonToken token = parser.currentToken();
+          if (token.isNumeric()) {
+            // If the current token is a number, we cannot just copy the current event because it
+            // would write token the token from double (or big decimal), whose scientific notation
+            // may have been altered during deserialization. We want to preserve the scientific
+            // notation from the user input, so we write the current numer as text.
+            generator.writeNumber(parser.getText());
+          } else {
+            generator.copyCurrentEvent(parser);
+          }
+        }
+      } catch (JsonParseException e) {
+        throw valueFormatNotAllowedException(
+            columnName, snowflakeType, "Not a valid JSON", insertRowIndex);
+      } catch (IOException e) {
+        throw new SFException(e, ErrorCode.IO_ERROR, "Cannot create JSON Parser or JSON generator");
+      }
+      // We return the minified string from the result writer
+      return resultWriter.toString();
+    } else if (isAllowedSemiStructuredType(input)) {
+      JsonNode node = objectMapper.valueToTree(input);
+      return node.toString();
+    }
+
+    throw typeNotAllowedException(
+        columnName,
+        input.getClass(),
+        snowflakeType,
+        new String[] {
+          "String",
+          "Primitive data types and their arrays",
+          "java.time.*",
+          "List<T>",
+          "Map<String, T>",
+          "T[]"
+        },
+        insertRowIndex);
+  }
+
+  /**
+   * Validates and parses input as JSON. All types in the object tree must be valid variant types,
+   * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
+   *
+   * @param input Object to validate
    * @param insertRowIndex
    * @return JSON string representing the input
    */
@@ -163,6 +227,34 @@ class DataValidationUtil {
           insertRowIndex);
     }
     return output;
+  }
+
+  /**
+   * Validates and parses input as JSON. All types in the object tree must be valid variant types,
+   * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
+   *
+   * @param input Object to validate
+   * @param insertRowIndex
+   * @return JSON string representing the input
+   */
+  static String validateAndParseVariantNew(String columnName, Object input, long insertRowIndex) {
+    final String result =
+        validateAndParseSemiStructured(columnName, input, "VARIANT", insertRowIndex);
+
+    // Empty json strings are ingested as nulls
+    if (result.isEmpty()) {
+      return null;
+    }
+    int stringLength = result.getBytes(StandardCharsets.UTF_8).length;
+    if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
+      throw valueFormatNotAllowedException(
+          columnName,
+          "VARIANT",
+          String.format(
+              "Variant too long: length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH),
+          insertRowIndex);
+    }
+    return result;
   }
 
   /**
@@ -300,6 +392,41 @@ class DataValidationUtil {
   }
 
   /**
+   * Validates and parses JSON array. Non-array types are converted into single-element arrays. All
+   * types in the array tree must be valid variant types, see {@link
+   * DataValidationUtil#isAllowedSemiStructuredType}.
+   *
+   * @param input Object to validate
+   * @param insertRowIndex
+   * @return JSON array representing the input
+   */
+  static String validateAndParseArrayNew(String columnName, Object input, long insertRowIndex) {
+    String result = validateAndParseSemiStructured(columnName, input, "ARRAY", insertRowIndex);
+    if (result.isEmpty()) {
+      // Empty input is ingested as an array of null
+      result =
+          JsonToken.START_ARRAY.asString()
+              + JsonToken.VALUE_NULL.asString()
+              + JsonToken.END_ARRAY.asString();
+    } else if (!result.startsWith(JsonToken.START_ARRAY.asString())) {
+      // Non-array values are ingested as single-element arrays, mimicking the Worksheets behavior
+      result = JsonToken.START_ARRAY.asString() + result + JsonToken.END_ARRAY.asString();
+    }
+
+    // Throw an exception if the size is too large
+    int stringLength = result.getBytes(StandardCharsets.UTF_8).length;
+    if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
+      throw valueFormatNotAllowedException(
+          columnName,
+          "ARRAY",
+          String.format(
+              "Array too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH),
+          insertRowIndex);
+    }
+    return result;
+  }
+
+  /**
    * Validates and parses JSON object. Input is rejected if the value does not represent JSON object
    * (e.g. String '{}' or Map<String, T>). All types in the object tree must be valid variant types,
    * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
@@ -327,6 +454,34 @@ class DataValidationUtil {
           insertRowIndex);
     }
     return output;
+  }
+
+  /**
+   * Validates and parses JSON object. Input is rejected if the value does not represent JSON object
+   * (e.g. String '{}' or Map<String, T>). All types in the object tree must be valid variant types,
+   * see {@link DataValidationUtil#isAllowedSemiStructuredType}.
+   *
+   * @param input Object to validate
+   * @param insertRowIndex
+   * @return JSON object representing the input
+   */
+  static String validateAndParseObjectNew(String columnName, Object input, long insertRowIndex) {
+    final String result =
+        validateAndParseSemiStructured(columnName, input, "OBJECT", insertRowIndex);
+    if (!result.startsWith(JsonToken.START_OBJECT.asString())) {
+      throw valueFormatNotAllowedException(columnName, "OBJECT", "Not an object", insertRowIndex);
+    }
+    // Throw an exception if the size is too large
+    int stringLength = result.getBytes(StandardCharsets.UTF_8).length;
+    if (stringLength > MAX_SEMI_STRUCTURED_LENGTH) {
+      throw valueFormatNotAllowedException(
+          columnName,
+          "OBJECT",
+          String.format(
+              "Object too large. length=%d maxLength=%d", stringLength, MAX_SEMI_STRUCTURED_LENGTH),
+          insertRowIndex);
+    }
+    return result;
   }
 
   /**

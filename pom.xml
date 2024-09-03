@@ -426,6 +426,10 @@
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
     </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+    </dependency>
 
     <!-- https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-core -->
     <dependency>
