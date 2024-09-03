@@ -368,6 +368,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               .setRowSequencer(response.getRowSequencer())
               .setChannelSequencer(response.getClientSequencer())
               .setOwningClient(this)
+              .setEncryptionKey(response.getEncryptionKey())
+              .setEncryptionKeyId(response.getEncryptionKeyId())
               .setOnErrorOption(request.getOnErrorOption())
               .setDefaultTimezone(request.getDefaultTimezone())
               .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())

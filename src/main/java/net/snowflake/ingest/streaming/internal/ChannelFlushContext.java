@@ -23,8 +23,20 @@ class ChannelFlushContext {
   // connection to a channel at server side will be seen as a connection from a new client
   private final Long channelSequencer;
 
+  // Data encryption key
+  private final String encryptionKey;
+
+  // Data encryption key id
+  private final Long encryptionKeyId;
+
   ChannelFlushContext(
-      String name, String dbName, String schemaName, String tableName, Long channelSequencer) {
+          String name,
+          String dbName,
+          String schemaName,
+          String tableName,
+          Long channelSequencer,
+          String encryptionKey,
+          Long encryptionKeyId) {
     this.name = name;
     this.fullyQualifiedName =
         Utils.getFullyQualifiedChannelName(dbName, schemaName, tableName, name);
@@ -33,6 +45,8 @@ class ChannelFlushContext {
     this.tableName = tableName;
     this.fullyQualifiedTableName = Utils.getFullyQualifiedTableName(dbName, schemaName, tableName);
     this.channelSequencer = channelSequencer;
+    this.encryptionKey = encryptionKey;
+    this.encryptionKeyId = encryptionKeyId;
   }
 
   @Override
@@ -58,6 +72,11 @@ class ChannelFlushContext {
         + '\''
         + ", channelSequencer="
         + getChannelSequencer()
+        + ", encryptionKey='"
+        + getEncryptionKey()
+        + '\''
+        + ", encryptionKeyId="
+        + getEncryptionKeyId()
         + '}';
   }
 
@@ -87,5 +106,13 @@ class ChannelFlushContext {
 
   Long getChannelSequencer() {
     return channelSequencer;
+  }
+
+  String getEncryptionKey() {
+    return encryptionKey;
+  }
+
+  Long getEncryptionKeyId() {
+    return encryptionKeyId;
   }
 }

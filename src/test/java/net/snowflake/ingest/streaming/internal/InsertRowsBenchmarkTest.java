@@ -63,6 +63,8 @@ public class InsertRowsBenchmarkTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     // Setup column fields and vectors

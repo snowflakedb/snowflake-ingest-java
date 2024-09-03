@@ -112,8 +112,13 @@ class BlobBuilder {
           // to align with decryption on the Snowflake query path.
           // TODO: address alignment for the header SNOW-557866
           long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
-          compressedChunkData =
-              Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
+
+          if (encryptionKey != null)
+            compressedChunkData =
+                    Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
+          else
+            compressedChunkData = Cryptor.encrypt(paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+
           compressedChunkDataSize = compressedChunkData.length;
         } else {
           compressedChunkData = serializedChunk.chunkData.toByteArray();

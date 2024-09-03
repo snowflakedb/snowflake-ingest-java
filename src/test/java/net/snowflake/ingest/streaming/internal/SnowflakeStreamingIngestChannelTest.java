@@ -127,6 +127,7 @@ public class SnowflakeStreamingIngestChannelTest {
     String schemaName = "SCHEMA";
     String tableName = "TABLE";
     String offsetToken = "0";
+    String encryptionKey = "key";
     Long channelSequencer = 0L;
     long rowSequencer = 0L;
 
@@ -142,6 +143,8 @@ public class SnowflakeStreamingIngestChannelTest {
             .setRowSequencer(rowSequencer)
             .setChannelSequencer(channelSequencer)
             .setOwningClient(client)
+            .setEncryptionKey(encryptionKey)
+            .setEncryptionKeyId(1234L)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
             .setDefaultTimezone(UTC)
             .build();
@@ -175,6 +178,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 
@@ -223,6 +228,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 
@@ -564,6 +571,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 
@@ -649,6 +658,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     channel.setupSchema(schema);
@@ -671,6 +682,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.ABORT,
             UTC);
     channel.setupSchema(schema);
@@ -694,6 +707,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.SKIP_BATCH,
             UTC);
     channel.setupSchema(schema);
@@ -725,6 +740,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 
@@ -769,6 +786,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -803,6 +822,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -835,6 +856,8 @@ public class SnowflakeStreamingIngestChannelTest {
             1L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -870,6 +893,8 @@ public class SnowflakeStreamingIngestChannelTest {
             1L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -901,6 +926,8 @@ public class SnowflakeStreamingIngestChannelTest {
             0L,
             0L,
             client,
+            "key",
+            1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 

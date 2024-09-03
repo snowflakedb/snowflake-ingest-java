@@ -126,6 +126,8 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -140,6 +142,8 @@ public class SnowflakeStreamingIngestClientTest {
             2L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -154,6 +158,8 @@ public class SnowflakeStreamingIngestClientTest {
             3L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -168,6 +174,8 @@ public class SnowflakeStreamingIngestClientTest {
             3L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -226,10 +234,7 @@ public class SnowflakeStreamingIngestClientTest {
     Assert.assertTrue(client.getParameterProvider().hasEnabledSnowpipeStreamingMetrics());
   }
 
-  @Test
-  public void testClientFactoryMissingName() throws Exception {
-    Properties prop = new Properties();
-    prop.put(ACCOUNT_URL, TestUtils.getHost());
+  @Test public void testClientFactoryMissingName() throws Exception { Properties prop = new Properties(); prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
     prop.put(ROLE, "role");
 
@@ -384,6 +389,8 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -488,6 +495,8 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -539,6 +548,8 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
@@ -1246,6 +1257,8 @@ public class SnowflakeStreamingIngestClientTest {
             channel1Sequencer,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
@@ -1258,6 +1271,8 @@ public class SnowflakeStreamingIngestClientTest {
             channel2Sequencer,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     client.getChannelCache().addChannel(channel1);
@@ -1455,6 +1470,8 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
     client.getChannelCache().addChannel(channel);
@@ -1542,6 +1559,8 @@ public class SnowflakeStreamingIngestClientTest {
             0L,
             0L,
             client,
+                "key",
+                1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,

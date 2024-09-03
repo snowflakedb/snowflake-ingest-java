@@ -135,7 +135,8 @@ public class BlobBuilderTest {
     channelData.setMinMaxInsertTimeInMs(new Pair<>(2L, 3L));
 
     channelData.getColumnEps().putIfAbsent(columnName, new RowBufferStats(columnName, null, 1));
-    channelData.setChannelContext(new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L));
+    channelData.setChannelContext(
+            new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
     return Collections.singletonList(channelData);
   }
 

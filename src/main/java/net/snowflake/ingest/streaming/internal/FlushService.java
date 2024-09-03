@@ -17,12 +17,7 @@ import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -454,9 +449,8 @@ class FlushService<T> {
               logger.logInfo(
                   "Creation of another blob is needed because of blob/chunk size limit or"
                       + " different encryption ids or different schema, client={}, table={},"
-                      + " blobSize={}, chunkSize={}, nextChannelSize={},"
-                      + " schema1={}, schema2={}",
-                  this.owningClient.getName(),
+                      + " blobSize={}, chunkSize={}, nextChannelSize={}, encryptionId1={},"
+                      + " encryptionId2={}, schema1={}, schema2={}",                  this.owningClient.getName(),
                   channelData.getChannelContext().getTableName(),
                   totalBufferSizeInBytes,
                   totalBufferSizePerTableInBytes,
@@ -580,6 +574,9 @@ class FlushService<T> {
     return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
         || totalBufferSizePerTableInBytes + current.getBufferSize()
             > this.owningClient.getParameterProvider().getMaxChunkSizeInBytes()
+        || !Objects.equals(
+            current.getChannelContext().getEncryptionKeyId(),
+            prev.getChannelContext().getEncryptionKeyId())
         || !current.getColumnEps().keySet().equals(prev.getColumnEps().keySet());
   }
 
