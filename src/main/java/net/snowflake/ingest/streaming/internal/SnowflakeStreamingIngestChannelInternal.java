@@ -140,7 +140,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
     this.memoryInfoProvider = MemoryInfoProviderFromRuntime.getInstance();
     this.channelFlushContext =
-    new ChannelFlushContext(
+        new ChannelFlushContext(
             name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
     this.channelState = new ChannelRuntimeState(endOffsetToken, rowSequencer, true);
     this.rowBuffer =

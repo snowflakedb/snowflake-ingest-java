@@ -136,7 +136,7 @@ public class BlobBuilderTest {
 
     channelData.getColumnEps().putIfAbsent(columnName, new RowBufferStats(columnName, null, 1));
     channelData.setChannelContext(
-            new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
+        new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
     return Collections.singletonList(channelData);
   }
 

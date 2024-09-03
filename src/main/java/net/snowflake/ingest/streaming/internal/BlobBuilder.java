@@ -115,9 +115,11 @@ class BlobBuilder {
 
           if (encryptionKey != null)
             compressedChunkData =
-                    Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
+                Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
           else
-            compressedChunkData = Cryptor.encrypt(paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+            compressedChunkData =
+                Cryptor.encrypt(
+                    paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
 
           compressedChunkDataSize = compressedChunkData.length;
         } else {

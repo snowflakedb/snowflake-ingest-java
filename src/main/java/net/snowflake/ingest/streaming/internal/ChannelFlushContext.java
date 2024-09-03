@@ -30,13 +30,13 @@ class ChannelFlushContext {
   private final Long encryptionKeyId;
 
   ChannelFlushContext(
-          String name,
-          String dbName,
-          String schemaName,
-          String tableName,
-          Long channelSequencer,
-          String encryptionKey,
-          Long encryptionKeyId) {
+      String name,
+      String dbName,
+      String schemaName,
+      String tableName,
+      Long channelSequencer,
+      String encryptionKey,
+      Long encryptionKeyId) {
     this.name = name;
     this.fullyQualifiedName =
         Utils.getFullyQualifiedChannelName(dbName, schemaName, tableName, name);
