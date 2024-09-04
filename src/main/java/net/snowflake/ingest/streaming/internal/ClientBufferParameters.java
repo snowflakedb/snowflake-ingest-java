@@ -16,8 +16,6 @@ public class ClientBufferParameters {
 
   private long maxAllowedRowSizeInBytes;
 
-  private final boolean enableNewJsonParsingLogic;
-
   private Constants.BdecParquetCompression bdecParquetCompression;
 
   /**
@@ -32,13 +30,11 @@ public class ClientBufferParameters {
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression,
-      boolean enableNewJsonParsingLogic) {
+      Constants.BdecParquetCompression bdecParquetCompression) {
     this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
-    this.enableNewJsonParsingLogic = enableNewJsonParsingLogic;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
@@ -59,11 +55,6 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().getBdecParquetCompressionAlgorithm()
             : ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT;
-
-    this.enableNewJsonParsingLogic =
-        clientInternal != null
-            ? clientInternal.getParameterProvider().isEnableNewJsonParsingLogic()
-            : ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
   }
 
   /**
@@ -77,14 +68,12 @@ public class ClientBufferParameters {
       boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression,
-      boolean enableNewJsonParsingLogic) {
+      Constants.BdecParquetCompression bdecParquetCompression) {
     return new ClientBufferParameters(
         enableParquetInternalBuffering,
         maxChunkSizeInBytes,
         maxAllowedRowSizeInBytes,
-        bdecParquetCompression,
-        enableNewJsonParsingLogic);
+        bdecParquetCompression);
   }
 
   public boolean getEnableParquetInternalBuffering() {
@@ -101,9 +90,5 @@ public class ClientBufferParameters {
 
   public Constants.BdecParquetCompression getBdecParquetCompression() {
     return bdecParquetCompression;
-  }
-
-  public boolean isEnableNewJsonParsingLogic() {
-    return enableNewJsonParsingLogic;
   }
 }

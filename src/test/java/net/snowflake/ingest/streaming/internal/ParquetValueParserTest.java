@@ -10,7 +10,6 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
@@ -32,13 +31,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            12,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.INT32,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            12, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -64,13 +57,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            1234,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.INT32,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            1234, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -96,13 +83,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            123456789,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.INT32,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            123456789, testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -133,8 +114,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.INT64,
             rowBufferStats,
             UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -165,8 +145,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
             rowBufferStats,
             UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -199,8 +178,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.DOUBLE,
             rowBufferStats,
             UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -224,13 +202,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            12345.54321d,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.DOUBLE,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            12345.54321d, testCol, PrimitiveType.PrimitiveTypeName.DOUBLE, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -254,13 +226,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            true,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.BOOLEAN,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            true, testCol, PrimitiveType.PrimitiveTypeName.BOOLEAN, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -289,8 +255,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.BINARY,
             rowBufferStats,
             UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -305,17 +270,15 @@ public class ParquetValueParserTest {
 
   @Test
   public void parseValueVariantToBinary() {
-    testJsonWithLogicalType("VARIANT", true);
-    testJsonWithLogicalType("VARIANT", false);
+    testJsonWithLogicalType("VARIANT");
   }
 
   @Test
   public void parseValueObjectToBinary() {
-    testJsonWithLogicalType("OBJECT", true);
-    testJsonWithLogicalType("OBJECT", false);
+    testJsonWithLogicalType("OBJECT");
   }
 
-  private void testJsonWithLogicalType(String logicalType, boolean enableNewJsonParsingLogic) {
+  private void testJsonWithLogicalType(String logicalType) {
     ColumnMetadata testCol =
         ColumnMetadataBuilder.newBuilder()
             .logicalType(logicalType)
@@ -329,13 +292,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            var,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.BINARY,
-            rowBufferStats,
-            UTC,
-            0,
-            enableNewJsonParsingLogic);
+            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -352,23 +309,20 @@ public class ParquetValueParserTest {
 
   @Test
   public void parseValueNullVariantToBinary() {
-    testNullJsonWithLogicalType(null, true);
-    testNullJsonWithLogicalType(null, false);
+    testNullJsonWithLogicalType(null);
   }
 
   @Test
   public void parseValueEmptyStringVariantToBinary() {
-    testNullJsonWithLogicalType("", true);
-    testNullJsonWithLogicalType("", false);
+    testNullJsonWithLogicalType("");
   }
 
   @Test
   public void parseValueEmptySpaceStringVariantToBinary() {
-    testNullJsonWithLogicalType("     ", true);
-    testNullJsonWithLogicalType("     ", false);
+    testNullJsonWithLogicalType("     ");
   }
 
-  private void testNullJsonWithLogicalType(String var, boolean enableNewJsonParsingLogic) {
+  private void testNullJsonWithLogicalType(String var) {
     ColumnMetadata testCol =
         ColumnMetadataBuilder.newBuilder()
             .logicalType("VARIANT")
@@ -379,13 +333,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            var,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.BINARY,
-            rowBufferStats,
-            UTC,
-            0,
-            enableNewJsonParsingLogic);
+            var, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -400,11 +348,6 @@ public class ParquetValueParserTest {
 
   @Test
   public void parseValueArrayToBinary() {
-    parseValueArrayToBinaryInternal(false);
-    parseValueArrayToBinaryInternal(true);
-  }
-
-  public void parseValueArrayToBinaryInternal(boolean enableNewJsonParsingLogic) {
     ColumnMetadata testCol =
         ColumnMetadataBuilder.newBuilder()
             .logicalType("ARRAY")
@@ -420,13 +363,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            input,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.BINARY,
-            rowBufferStats,
-            UTC,
-            0,
-            enableNewJsonParsingLogic);
+            input, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     String resultArray = "[{\"a\":\"1\",\"b\":\"2\",\"c\":\"3\"}]";
 
@@ -458,13 +395,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            text,
-            testCol,
-            PrimitiveType.PrimitiveTypeName.BINARY,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            text, testCol, PrimitiveType.PrimitiveTypeName.BINARY, rowBufferStats, UTC, 0);
 
     String result = text;
 
@@ -503,8 +434,7 @@ public class ParquetValueParserTest {
                     PrimitiveType.PrimitiveTypeName.INT32,
                     rowBufferStats,
                     UTC,
-                    0,
-                    ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT));
+                    0));
     Assert.assertEquals(
         "Unknown data type for logical: TIMESTAMP_NTZ, physical: SB4.", exception.getMessage());
   }
@@ -528,8 +458,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.INT64,
             rowBufferStats,
             UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -559,8 +488,7 @@ public class ParquetValueParserTest {
             PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
             rowBufferStats,
             UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -586,13 +514,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "2021-01-01",
-            testCol,
-            PrimitiveType.PrimitiveTypeName.INT32,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -617,13 +539,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "01:00:00",
-            testCol,
-            PrimitiveType.PrimitiveTypeName.INT32,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            "01:00:00", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -648,13 +564,7 @@ public class ParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetValueParser.ParquetBufferValue pv =
         ParquetValueParser.parseColumnValueToParquet(
-            "01:00:00.123",
-            testCol,
-            PrimitiveType.PrimitiveTypeName.INT64,
-            rowBufferStats,
-            UTC,
-            0,
-            ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            "01:00:00.123", testCol, PrimitiveType.PrimitiveTypeName.INT64, rowBufferStats, UTC, 0);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
@@ -687,8 +597,7 @@ public class ParquetValueParserTest {
                     PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
                     rowBufferStats,
                     UTC,
-                    0,
-                    ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT));
+                    0));
     Assert.assertEquals(
         "Unknown data type for logical: TIME, physical: SB16.", exception.getMessage());
   }
