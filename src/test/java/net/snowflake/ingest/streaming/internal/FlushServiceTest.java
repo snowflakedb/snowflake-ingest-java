@@ -119,20 +119,23 @@ public class FlushServiceTest {
           .thenAnswer((Answer<ParameterProvider>) (i) -> parameterProvider);
 
       encryptionKeysPerTable = new ConcurrentHashMap<>();
-      encryptionKeysPerTable.put(
-          new FullyQualifiedTableName("db1", "schema1", "table1"),
-          new EncryptionKey("db1", "schema1", "table1", "key1", 1234L));
-      encryptionKeysPerTable.put(
-          new FullyQualifiedTableName("db2", "schema1", "table2"),
-          new EncryptionKey("db2", "schema1", "table2", "key1", 1234L));
-
-      for (int i = 0; i <= 9999; i++) {
+      if (isIcebergMode) {
         encryptionKeysPerTable.put(
-            new FullyQualifiedTableName("db1", "PUBLIC", String.format("table%d", i)),
-            new EncryptionKey("db1", "PUBLIC", String.format("table%d", i), "key1", 1234L));
+            new FullyQualifiedTableName("db1", "schema1", "table1"),
+            new EncryptionKey("db1", "schema1", "table1", "key1", 1234L));
+        encryptionKeysPerTable.put(
+            new FullyQualifiedTableName("db2", "schema1", "table2"),
+            new EncryptionKey("db2", "schema1", "table2", "key1", 1234L));
+
+        for (int i = 0; i <= 9999; i++) {
+          encryptionKeysPerTable.put(
+              new FullyQualifiedTableName("db1", "PUBLIC", String.format("table%d", i)),
+              new EncryptionKey("db1", "PUBLIC", String.format("table%d", i), "key1", 1234L));
+        }
+
+        Mockito.when(client.getEncryptionKeysPerTable()).thenReturn(encryptionKeysPerTable);
       }
 
-      Mockito.when(client.getEncryptionKeysPerTable()).thenReturn(encryptionKeysPerTable);
       channelCache = new ChannelCache<>();
       Mockito.when(client.getChannelCache()).thenReturn(channelCache);
       registerService = Mockito.spy(new RegisterService(client, client.isTestMode()));
@@ -629,13 +632,13 @@ public class FlushServiceTest {
 
     channel1.insertRows(rows1, "offset1");
     channel2.insertRows(rows1, "offset2");
-    channel4.insertRows(rows1, "offset3");
+    channel4.insertRows(rows1, "offset4");
 
     FlushService<?> flushService = testContext.flushService;
 
     // Force = true flushes
     flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(1))
+    Mockito.verify(flushService, Mockito.atLeast(2))
         .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
   }
 
@@ -770,6 +773,49 @@ public class FlushServiceTest {
         blobDataCaptor.getAllValues();
 
     Assert.assertEquals(numberOfRows, getRows(allUploadedBlobs).size());
+  }
+
+  @Test
+  public void testBlobSplitDueToNumberOfChunksWithLeftoverChannels() throws Exception {
+    final TestContext<List<List<Object>>> testContext = testContextFactory.create();
+
+    for (int i = 0; i < 99; i++) { // 19 simple chunks
+      SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel =
+          addChannel(testContext, i, 1);
+      channel.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+      channel.insertRow(Collections.singletonMap("C1", i), "");
+    }
+
+    // 20th chunk would contain multiple channels, but there are some with different encryption key
+    // ID, so they spill to a new blob
+    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel1 =
+        addChannel(testContext, 99, 1);
+    channel1.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+    channel1.insertRow(Collections.singletonMap("C1", 0), "");
+
+    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel2 =
+        addChannel(testContext, 99, 2);
+    channel2.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+    channel2.insertRow(Collections.singletonMap("C1", 0), "");
+
+    SnowflakeStreamingIngestChannelInternal<List<List<Object>>> channel3 =
+        addChannel(testContext, 99, 2);
+    channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
+    channel3.insertRow(Collections.singletonMap("C1", 0), "");
+
+    FlushService<List<List<Object>>> flushService = testContext.flushService;
+    flushService.flush(true).get();
+
+    ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
+        ArgumentCaptor.forClass(List.class);
+    Mockito.verify(flushService, Mockito.atLeast(2))
+        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any(), Mockito.any());
+
+    // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
+    List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
+        blobDataCaptor.getAllValues();
+
+    Assert.assertEquals(102, getRows(allUploadedBlobs).size());
   }
 
   private List<List<Object>> getRows(List<List<List<ChannelData<List<List<Object>>>>>> blobs) {

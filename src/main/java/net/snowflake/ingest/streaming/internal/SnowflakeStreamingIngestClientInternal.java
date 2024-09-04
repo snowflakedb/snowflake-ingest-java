@@ -382,17 +382,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       this.channelCache.addChannel(channel);
 
       // Add encryption key to the client map for the table
-      if (response.getEncryptionKey() != null) {
-        this.encryptionKeysPerTable.put(
-            new FullyQualifiedTableName(
-                request.getDBName(), request.getSchemaName(), request.getTableName()),
-            new EncryptionKey(
-                response.getDBName(),
-                response.getSchemaName(),
-                response.getTableName(),
-                response.getEncryptionKey(),
-                response.getEncryptionKeyId()));
-      }
+      this.encryptionKeysPerTable.put(
+          new FullyQualifiedTableName(
+              request.getDBName(), request.getSchemaName(), request.getTableName()),
+          new EncryptionKey(
+              response.getDBName(),
+              response.getSchemaName(),
+              response.getTableName(),
+              response.getEncryptionKey(),
+              response.getEncryptionKeyId()));
 
       return channel;
     } catch (IOException | IngestResponseException e) {
@@ -592,11 +590,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         executionCount);
 
     // Update encryption keys for the table given the response
-    for (EncryptionKey key : response.getEncryptionKeys()) {
-      this.encryptionKeysPerTable.put(
-          new FullyQualifiedTableName(
-              key.getDatabaseName(), key.getSchemaName(), key.getTableName()),
-          key);
+    if (response.getEncryptionKeys() == null) {
+      this.encryptionKeysPerTable.clear();
+    } else {
+      for (EncryptionKey key : response.getEncryptionKeys()) {
+        this.encryptionKeysPerTable.put(
+            new FullyQualifiedTableName(
+                key.getDatabaseName(), key.getSchemaName(), key.getTableName()),
+            key);
+      }
     }
 
     // We will retry any blob chunks that were rejected because internal Snowflake queues are full

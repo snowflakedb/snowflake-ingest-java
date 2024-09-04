@@ -113,13 +113,17 @@ class BlobBuilder {
           // TODO: address alignment for the header SNOW-557866
           long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
 
-          if (encryptionKey != null)
-            compressedChunkData =
-                Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
-          else
-            compressedChunkData =
-                Cryptor.encrypt(
-                    paddedChunkData, firstChannelFlushContext.getEncryptionKey(), filePath, iv);
+          if (encryptionKey == null)
+            encryptionKey =
+                new EncryptionKey(
+                    firstChannelFlushContext.getDbName(),
+                    firstChannelFlushContext.getSchemaName(),
+                    firstChannelFlushContext.getTableName(),
+                    firstChannelFlushContext.getEncryptionKey(),
+                    firstChannelFlushContext.getEncryptionKeyId());
+
+          compressedChunkData =
+              Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
 
           compressedChunkDataSize = compressedChunkData.length;
         } else {

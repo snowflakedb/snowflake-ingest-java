@@ -17,7 +17,13 @@ import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -456,6 +462,8 @@ class FlushService<T> {
                   totalBufferSizeInBytes,
                   totalBufferSizePerTableInBytes,
                   channelData.getBufferSize(),
+                  channelData.getChannelContext().getEncryptionKeyId(),
+                  channelsDataPerTable.get(idx - 1).getChannelContext().getEncryptionKeyId(),
                   channelData.getColumnEps().keySet(),
                   channelsDataPerTable.get(idx - 1).getColumnEps().keySet());
               break;
