@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 import static org.junit.Assert.fail;
@@ -129,7 +130,8 @@ public class RowBufferTest {
             enableParquetMemoryOptimization,
             MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
             MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
-            Constants.BdecParquetCompression.GZIP),
+            Constants.BdecParquetCompression.GZIP,
+            ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT),
         null,
         null);
   }

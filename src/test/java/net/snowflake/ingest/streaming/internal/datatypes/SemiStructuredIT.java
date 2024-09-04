@@ -222,6 +222,30 @@ public class SemiStructuredIT extends AbstractDataTypeTest {
     assertVariant("ARRAY", Collections.singletonMap("1", "2"), "[{\"1\": \"2\"}]", "ARRAY");
   }
 
+  @Test
+  public void testNumberScientificNotation() throws Exception {
+    assertVariantLiterally("VARIANT", " 12.34\t\n", "12.34", "DECIMAL");
+
+    assertVariantLiterally("VARIANT", " 1.234e1\t\n", "1.234000000000000e+01", "DOUBLE");
+    assertVariantLiterally("VARIANT", " 1.234E1\t\n", "1.234000000000000e+01", "DOUBLE");
+    assertVariantLiterally("VARIANT", " 123.4e-1\t\n", "1.234000000000000e+01", "DOUBLE");
+    assertVariantLiterally("VARIANT", " 123.4E-1\t\n", "1.234000000000000e+01", "DOUBLE");
+
+    assertVariantLiterally("VARIANT", " 1234e1\t\n", "1.234000000000000e+04", "DOUBLE");
+    assertVariantLiterally("VARIANT", " 1234E1\t\n", "1.234000000000000e+04", "DOUBLE");
+    assertVariantLiterally("VARIANT", " 1234e-1\t\n", "1.234000000000000e+02", "DOUBLE");
+    assertVariantLiterally("VARIANT", " 1234E-1\t\n", "1.234000000000000e+02", "DOUBLE");
+
+    assertVariantLiterally(
+        "OBJECT",
+        " {\"key\": 1.234E1\t\n}",
+        "{\n" + "  \"key\": 1.234000000000000e+01\n" + "}",
+        "OBJECT");
+
+    assertVariantLiterally(
+        "ARRAY", " [1.234E1\t\n]\n", "[\n" + "  1.234000000000000e+01\n" + "]", "ARRAY");
+  }
+
   private String createLargeVariantObject(int size) throws JsonProcessingException {
     char[] stringContent = new char[size - 17]; // {"a":"11","b":""}
     Arrays.fill(stringContent, 'c');
