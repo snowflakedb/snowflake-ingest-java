@@ -4,16 +4,14 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.IcebergDataTypeParser.deserializeIcebergType;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.IcebergDataTypeParser;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.iceberg.parquet.TypeToMessageType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -33,9 +31,6 @@ public class ParquetTypeGenerator {
                   AbstractRowBuffer.ColumnPhysicalType.SB8,
                   AbstractRowBuffer.ColumnPhysicalType.SB16));
 
-  /** Util class that contains the mapping between Iceberg data type and Parquet data type */
-  private static final TypeToMessageType typeToMessageType = new TypeToMessageType();
-
   /**
    * Generate the column parquet type and metadata from the column metadata received from server
    * side.
@@ -46,7 +41,6 @@ public class ParquetTypeGenerator {
    */
   static ParquetTypeInfo generateColumnParquetTypeInfo(ColumnMetadata column, int id) {
     id = column.getOrdinal() == null ? id : column.getOrdinal();
-    ParquetTypeInfo res = new ParquetTypeInfo();
     Type parquetType;
     Map<String, String> metadata = new HashMap<>();
     String name = column.getInternalName();
@@ -60,10 +54,9 @@ public class ParquetTypeGenerator {
         column.getNullable() ? Type.Repetition.OPTIONAL : Type.Repetition.REQUIRED;
 
     if (column.getSourceIcebergDataType() != null) {
-      org.apache.iceberg.types.Type icebergDataType =
-          deserializeIcebergType(column.getSourceIcebergDataType());
       parquetType =
-          typeToMessageType.primitive(icebergDataType.asPrimitiveType(), repetition, id, name);
+          IcebergDataTypeParser.parseIcebergDataTypeStringToParquetType(
+              column.getSourceIcebergDataType(), repetition, id, name);
     } else {
       AbstractRowBuffer.ColumnPhysicalType physicalType;
       AbstractRowBuffer.ColumnLogicalType logicalType;
@@ -147,9 +140,7 @@ public class ParquetTypeGenerator {
               ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
       }
     }
-    res.setParquetType(parquetType);
-    res.setMetadata(metadata);
-    return res;
+    return new ParquetTypeInfo(parquetType, metadata);
   }
 
   /**

@@ -186,6 +186,7 @@ public class SnowflakeServiceClientTest {
             "test_table",
             "test_channel",
             Constants.WriteMode.CLOUD_STORAGE,
+            false,
             "test_offset_token");
     OpenChannelResponse openChannelResponse =
         snowflakeServiceClient.openChannel(openChannelRequest);

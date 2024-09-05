@@ -21,6 +21,12 @@ class ColumnMetadata {
   private Integer length;
   private boolean nullable;
   private String collation;
+
+  /**
+   * The Json serialization of Iceberg data type of the column, see <a
+   * href="https://iceberg.apache.org/spec/#appendix-c-json-serialization">JSON serialization</a>
+   * for more details.
+   */
   private String sourceIcebergDataType;
 
   /**

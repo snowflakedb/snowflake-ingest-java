@@ -85,6 +85,8 @@ public class ParameterProvider {
 
   public static final boolean ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT = true;
 
+  public static final boolean IS_ICEBERG_MODE_DEFAULT = false;
+
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
 

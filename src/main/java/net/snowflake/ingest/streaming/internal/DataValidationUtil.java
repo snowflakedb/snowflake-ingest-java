@@ -972,7 +972,17 @@ class DataValidationUtil {
    */
   static int validateAndParseIcebergInt(String columnName, Object input, long insertRowIndex) {
     if (input instanceof Number) {
-      return ((Number) input).intValue();
+      double value = ((Number) input).doubleValue();
+      long longValue = Math.round(value);
+      if (longValue > Integer.MAX_VALUE || longValue < Integer.MIN_VALUE || Double.isNaN(value)) {
+        throw new SFException(
+            ErrorCode.INVALID_VALUE_ROW,
+            String.format(
+                "Number out of representable inclusive range of integers between %d and %d,"
+                    + " rowIndex:%d",
+                Integer.MIN_VALUE, Integer.MAX_VALUE, insertRowIndex));
+      }
+      return (int) longValue;
     } else if (input instanceof String) {
       try {
         return Integer.parseInt(((String) input).trim());
@@ -1000,7 +1010,17 @@ class DataValidationUtil {
    */
   static long validateAndParseIcebergLong(String columnName, Object input, long insertRowIndex) {
     if (input instanceof Number) {
-      return ((Number) input).longValue();
+      double value = ((Number) input).doubleValue();
+      double roundedDouble = (value > 0) ? Math.floor(value + 0.5) : Math.ceil(value - 0.5);
+      if (roundedDouble > Long.MAX_VALUE || roundedDouble < Long.MIN_VALUE || Double.isNaN(value)) {
+        throw new SFException(
+            ErrorCode.INVALID_VALUE_ROW,
+            String.format(
+                "Number out of representable inclusive range of longs between %d and %d,"
+                    + " rowIndex:%d",
+                Long.MIN_VALUE, Long.MAX_VALUE, insertRowIndex));
+      }
+      return (long) roundedDouble;
     } else if (input instanceof String) {
       try {
         return Long.parseLong(((String) input).trim());

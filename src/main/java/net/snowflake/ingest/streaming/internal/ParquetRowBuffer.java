@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -204,16 +205,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = parquetColumn.columnMetadata;
       ParquetBufferValue valueWithSize =
-          (column.getSourceIcebergDataType() == null
-              ? SnowflakeParquetValueParser.parseColumnValueToParquet(
+          (clientBufferParameters.getIsIcebergMode()
+              ? IcebergParquetValueParser.parseColumnValueToParquet(
+                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex)
+              : SnowflakeParquetValueParser.parseColumnValueToParquet(
                   value,
                   column,
                   parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
                   forkedStats,
                   defaultTimezone,
-                  insertRowsCurrIndex)
-              : IcebergParquetValueParser.parseColumnValueToParquet(
-                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex));
+                  insertRowsCurrIndex,
+                  clientBufferParameters.isEnableNewJsonParsingLogic()));
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
@@ -304,6 +306,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     if (logicalType == ColumnLogicalType.BINARY && value != null) {
       value = value instanceof String ? ((String) value).getBytes(StandardCharsets.UTF_8) : value;
     }
+    /* Mismatch between Iceberg string & FDN String */
+    if (Objects.equals(columnMetadata.getSourceIcebergDataType(), "\"string\"")) {
+      value = value instanceof byte[] ? new String((byte[]) value, StandardCharsets.UTF_8) : value;
+    }
     return value;
   }
 
@@ -338,17 +344,5 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         clientBufferParameters.getEnableParquetInternalBuffering(),
         clientBufferParameters.getMaxChunkSizeInBytes(),
         clientBufferParameters.getBdecParquetCompression());
-  }
-
-  private static class ParquetColumn {
-    final ColumnMetadata columnMetadata;
-    final int index;
-    final Type type;
-
-    private ParquetColumn(ColumnMetadata columnMetadata, int index, Type type) {
-      this.columnMetadata = columnMetadata;
-      this.index = index;
-      this.type = type;
-    }
   }
 }

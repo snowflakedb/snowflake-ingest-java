@@ -13,6 +13,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -265,7 +266,7 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public void write(List<Object> values) {
-      List<Type> cols = schema.getFields();
+      List<ColumnDescriptor> cols = schema.getColumns();
       if (values.size() != cols.size()) {
         throw new ParquetEncodingException(
             "Invalid input data in channel '"
@@ -325,6 +326,8 @@ public class BdecParquetWriter implements AutoCloseable {
                 throw new ParquetEncodingException(
                     "Unsupported column type: " + cols.get(i).asPrimitiveType());
             }
+          } else {
+            throw new ParquetEncodingException("Unsupported column type: " + cols.get(i));
           }
           recordConsumer.endField(fieldName, i);
         }

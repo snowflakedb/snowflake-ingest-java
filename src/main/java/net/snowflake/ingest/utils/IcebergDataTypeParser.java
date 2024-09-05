@@ -4,14 +4,15 @@
 
 package net.snowflake.ingest.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import javax.annotation.Nonnull;
+import org.apache.iceberg.parquet.TypeToMessageType;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.JsonUtil;
@@ -46,6 +47,31 @@ public class IcebergDataTypeParser {
   /** Object mapper for this class */
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
+  /** Util class that contains the mapping between Iceberg data type and Parquet data type */
+  private static final TypeToMessageType typeToMessageType = new TypeToMessageType();
+
+  /**
+   * Get Iceberg data type information by deserialization.
+   *
+   * @param icebergDataType string representation of Iceberg data type
+   * @param repetition repetition of the Parquet data type
+   * @param id column id
+   * @param name column name
+   * @return Iceberg data type
+   */
+  public static org.apache.parquet.schema.Type parseIcebergDataTypeStringToParquetType(
+      String icebergDataType,
+      org.apache.parquet.schema.Type.Repetition repetition,
+      int id,
+      String name) {
+    Type icebergType = deserializeIcebergType(icebergDataType);
+    if (!icebergType.isPrimitiveType()) {
+      throw new IllegalArgumentException(
+          String.format("Snowflake supports only primitive Iceberg types, got '%s'", icebergType));
+    }
+    return typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
+  }
+
   /**
    * Get Iceberg data type information by deserialization.
    *
@@ -56,8 +82,9 @@ public class IcebergDataTypeParser {
     try {
       JsonNode json = MAPPER.readTree(icebergDataType);
       return getTypeFromJson(json);
-    } catch (IOException e) {
-      throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to deserialize Iceberg data type", e);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(
+          String.format("Failed to deserialize Iceberg data type: %s", icebergDataType));
     }
   }
 
@@ -71,6 +98,10 @@ public class IcebergDataTypeParser {
     if (jsonNode.isTextual()) {
       return Types.fromPrimitiveString(jsonNode.asText());
     } else if (jsonNode.isObject()) {
+      if (!jsonNode.has(TYPE)) {
+        throw new IllegalArgumentException(
+            String.format("Missing key '%s' in schema: %s", TYPE, jsonNode));
+      }
       String type = jsonNode.get(TYPE).asText();
       if (STRUCT.equals(type)) {
         return structFromJson(jsonNode);
@@ -79,9 +110,11 @@ public class IcebergDataTypeParser {
       } else if (MAP.equals(type)) {
         return mapFromJson(jsonNode);
       }
+      throw new IllegalArgumentException(
+          String.format("Cannot parse Iceberg type: %s, schema: %s", type, jsonNode));
     }
 
-    throw new SFException(ErrorCode.INTERNAL_ERROR, "Cannot parse Iceberg type from: " + jsonNode);
+    throw new IllegalArgumentException("Cannot parse Iceberg type from schema: " + jsonNode);
   }
 
   /**
@@ -91,7 +124,12 @@ public class IcebergDataTypeParser {
    * @return struct type
    */
   public static @Nonnull Types.StructType structFromJson(@Nonnull JsonNode json) {
+    if (!json.has(FIELDS)) {
+      throw new IllegalArgumentException(
+          String.format("Missing key '%s' in schema: %s", FIELDS, json));
+    }
     JsonNode fieldArray = json.get(FIELDS);
+    Preconditions.checkArgument(fieldArray != null, "Field array cannot be null");
     Preconditions.checkArgument(
         fieldArray.isArray(), "Cannot parse struct fields from non-array: %s", fieldArray);
 

@@ -335,6 +335,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         request.getFullyQualifiedTableName(),
         getName());
 
+    OpenChannelResponse response = null;
     try {
       OpenChannelRequestInternal openChannelRequest =
           new OpenChannelRequestInternal(
@@ -347,49 +348,56 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               Constants.WriteMode.CLOUD_STORAGE,
               this.isIcebergMode,
               request.getOffsetToken());
-      OpenChannelResponse response = snowflakeServiceClient.openChannel(openChannelRequest);
-
-      logger.logInfo(
-          "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
-              + " rowSequencer={}, client={}",
-          request.getChannelName(),
-          request.getFullyQualifiedTableName(),
-          response.getClientSequencer(),
-          response.getRowSequencer(),
-          getName());
-
-      // Channel is now registered, add it to the in-memory channel pool
-      SnowflakeStreamingIngestChannelInternal<T> channel =
-          SnowflakeStreamingIngestChannelFactory.<T>builder(response.getChannelName())
-              .setDBName(response.getDBName())
-              .setSchemaName(response.getSchemaName())
-              .setTableName(response.getTableName())
-              .setOffsetToken(response.getOffsetToken())
-              .setRowSequencer(response.getRowSequencer())
-              .setChannelSequencer(response.getClientSequencer())
-              .setOwningClient(this)
-              .setEncryptionKey(response.getEncryptionKey())
-              .setEncryptionKeyId(response.getEncryptionKeyId())
-              .setOnErrorOption(request.getOnErrorOption())
-              .setDefaultTimezone(request.getDefaultTimezone())
-              .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
-              .build();
-
-      // Setup the row buffer schema
-      channel.setupSchema(response.getTableColumns());
-
-      // Add channel to the channel cache
-      this.channelCache.addChannel(channel);
-      this.storageManager.addStorage(
-          response.getDBName(),
-          response.getSchemaName(),
-          response.getTableName(),
-          response.getExternalVolumeLocation());
-
-      return channel;
+      response = snowflakeServiceClient.openChannel(openChannelRequest);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
+
+    if (isIcebergMode
+        && response.getTableColumns().stream()
+            .anyMatch(c -> c.getSourceIcebergDataType() == null)) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR, "Iceberg table columns must have sourceIcebergDataType set.");
+    }
+
+    logger.logInfo(
+        "Open channel request succeeded, channel={}, table={}, clientSequencer={},"
+            + " rowSequencer={}, client={}",
+        request.getChannelName(),
+        request.getFullyQualifiedTableName(),
+        response.getClientSequencer(),
+        response.getRowSequencer(),
+        getName());
+
+    // Channel is now registered, add it to the in-memory channel pool
+    SnowflakeStreamingIngestChannelInternal<T> channel =
+        SnowflakeStreamingIngestChannelFactory.<T>builder(response.getChannelName())
+            .setDBName(response.getDBName())
+            .setSchemaName(response.getSchemaName())
+            .setTableName(response.getTableName())
+            .setOffsetToken(response.getOffsetToken())
+            .setRowSequencer(response.getRowSequencer())
+            .setChannelSequencer(response.getClientSequencer())
+            .setOwningClient(this)
+            .setEncryptionKey(response.getEncryptionKey())
+            .setEncryptionKeyId(response.getEncryptionKeyId())
+            .setOnErrorOption(request.getOnErrorOption())
+            .setDefaultTimezone(request.getDefaultTimezone())
+            .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
+            .build();
+
+    // Setup the row buffer schema
+    channel.setupSchema(response.getTableColumns());
+
+    // Add channel to the channel cache
+    this.channelCache.addChannel(channel);
+    this.storageManager.addStorage(
+        response.getDBName(),
+        response.getSchemaName(),
+        response.getTableName(),
+        response.getExternalVolumeLocation());
+
+    return channel;
   }
 
   @Override
@@ -917,6 +925,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     if (requestBuilder != null) {
       requestBuilder.setRefreshToken(refreshToken);
     }
+  }
+
+  /** Return whether the client is streaming to Iceberg tables */
+  boolean isIcebergMode() {
+    return isIcebergMode;
   }
 
   /**
