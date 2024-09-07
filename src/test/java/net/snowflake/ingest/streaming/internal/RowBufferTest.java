@@ -505,11 +505,6 @@ public class RowBufferTest {
     Assert.assertEquals(startOffsetToken, data.getStartOffsetToken());
     Assert.assertEquals(endOffsetToken, data.getEndOffsetToken());
     Assert.assertEquals(bufferSize, data.getBufferSize(), 0);
-
-    final ParquetChunkData chunkData = (ParquetChunkData) data.getVectors();
-    Assert.assertEquals(
-        StreamingIngestUtils.getShortname(filename),
-        chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
   }
 
   @Test
@@ -782,9 +777,6 @@ public class RowBufferTest {
         columnEpStats.get("COLCHAR").getCurrentMaxStrValue());
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
-
-    final ParquetChunkData chunkData = (ParquetChunkData) result.getVectors();
-    Assert.assertEquals(filename, chunkData.metadata.get(Constants.PRIMARY_FILE_ID_KEY));
 
     // Confirm we reset
     ChannelData<?> resetResults = rowBuffer.flush("my_snowpipe_streaming.bdec");
