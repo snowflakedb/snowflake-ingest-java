@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.CHANNEL_CONFIGURE_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.GENERATE_PRESIGNED_URLS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
@@ -66,12 +66,15 @@ public class SnowflakeServiceClientTest {
                       clientConfigresponseMap.put("stage_location", getStageLocationMap());
                       clientConfigresponseMap.put("deployment_id", 123L);
                       return buildStreamingIngestResponse(clientConfigresponseMap);
-                    case CHANNEL_CONFIGURE_ENDPOINT:
-                      Map<String, Object> channelConfigResponseMap = new HashMap<>();
-                      channelConfigResponseMap.put("status_code", 0L);
-                      channelConfigResponseMap.put("message", "OK");
-                      channelConfigResponseMap.put("stage_location", getStageLocationMap());
-                      return buildStreamingIngestResponse(channelConfigResponseMap);
+                    case GENERATE_PRESIGNED_URLS_ENDPOINT:
+                      Map<String, Object> generateUrlsResponseMap = new HashMap<>();
+                      generateUrlsResponseMap.put("status_code", 0L);
+                      generateUrlsResponseMap.put("message", "OK");
+                      generateUrlsResponseMap.put("iceberg_serialization_policy", "OPTIMIZED");
+                      generateUrlsResponseMap.put("encoded_figs_id", "figs_id");
+                      generateUrlsResponseMap.put("iceberg_location", getStageLocationMap());
+                      generateUrlsResponseMap.put("presigned_urls", "[\"http://abc.com?token=t\"]");
+                      return buildStreamingIngestResponse(generateUrlsResponseMap);
                     case OPEN_CHANNEL_ENDPOINT:
                       List<Map<String, Object>> tableColumnsLists = new ArrayList<>();
                       Map<String, Object> tableColumnMap = new HashMap<>();
@@ -166,13 +169,13 @@ public class SnowflakeServiceClientTest {
   }
 
   @Test
-  public void testChannelConfigure() throws IngestResponseException, IOException {
-    ChannelConfigureRequest channelConfigureRequest =
-        new ChannelConfigureRequest("test_channel", "test_db", "test_schema", "test_table");
-    ChannelConfigureResponse channelConfigureResponse =
-        snowflakeServiceClient.channelConfigure(channelConfigureRequest);
-    assert channelConfigureResponse.getStatusCode() == 0L;
-    assert channelConfigureResponse.getMessage().equals("OK");
+  public void testPresignedUrls() throws IngestResponseException, IOException {
+    GeneratePresignedUrlsRequest request =
+        new GeneratePresignedUrlsRequest(new TableRef("test_db", "test_schema", "test_table"), 10);
+    GeneratePresignedUrlsResponse response =
+        snowflakeServiceClient.generatePresignedUrls(request);
+    assert response.getStatusCode() == 0L;
+    assert response.getMessage().equals("OK");
   }
 
   @Test
@@ -186,6 +189,7 @@ public class SnowflakeServiceClientTest {
             "test_table",
             "test_channel",
             Constants.WriteMode.CLOUD_STORAGE,
+            false,
             "test_offset_token");
     OpenChannelResponse openChannelResponse =
         snowflakeServiceClient.openChannel(openChannelRequest);

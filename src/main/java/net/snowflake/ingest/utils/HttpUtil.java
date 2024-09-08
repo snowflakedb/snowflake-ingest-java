@@ -16,7 +16,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
+
+import net.snowflake.client.core.HttpClientSettingsKey;
+import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.core.SFSessionProperty;
+import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.internal.apache.http.HttpHost;
 import net.snowflake.client.jdbc.internal.apache.http.HttpRequest;
 import net.snowflake.client.jdbc.internal.apache.http.HttpResponse;

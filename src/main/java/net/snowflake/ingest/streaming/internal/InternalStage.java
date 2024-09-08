@@ -35,7 +35,7 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Storage */
-class StreamingIngestStorage<T, TLocation> {
+class InternalStage<T> implements IStorage {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   /**
@@ -57,40 +57,10 @@ class StreamingIngestStorage<T, TLocation> {
   private static final Duration refreshDuration = Duration.ofMinutes(58);
   private static Instant prevRefresh = Instant.EPOCH;
 
-  private static final Logging logger = new Logging(StreamingIngestStorage.class);
-
-  /**
-   * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
-   * was refreshed
-   */
-  static class SnowflakeFileTransferMetadataWithAge {
-    SnowflakeFileTransferMetadataV1 fileTransferMetadata;
-    private final boolean isLocalFS;
-    private final String localLocation;
-
-    /* Do not always know the age of the metadata, so we use the empty
-    state to record unknown age.
-     */
-    Optional<Long> timestamp;
-
-    SnowflakeFileTransferMetadataWithAge(
-        SnowflakeFileTransferMetadataV1 fileTransferMetadata, Optional<Long> timestamp) {
-      this.isLocalFS = false;
-      this.fileTransferMetadata = fileTransferMetadata;
-      this.timestamp = timestamp;
-      this.localLocation = null;
-    }
-
-    SnowflakeFileTransferMetadataWithAge(String localLocation, Optional<Long> timestamp) {
-      this.isLocalFS = true;
-      this.localLocation = localLocation;
-      this.timestamp = timestamp;
-    }
-  }
+  private static final Logging logger = new Logging(InternalStage.class);
 
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final IStorageManager<T, TLocation> owningManager;
-  private final TLocation location;
+  private final InternalStageManager<T> owningManager;
   private final String clientName;
 
   private final int maxUploadRetries;
@@ -104,23 +74,21 @@ class StreamingIngestStorage<T, TLocation> {
    * @param owningManager the storage manager owning this storage
    * @param clientName The client name
    * @param fileLocationInfo The file location information from open channel response
-   * @param location A reference to the target location
    * @param maxUploadRetries The maximum number of retries to attempt
    */
-  StreamingIngestStorage(
-      IStorageManager<T, TLocation> owningManager,
+  InternalStage(
+      InternalStageManager<T> owningManager,
       String clientName,
       FileLocationInfo fileLocationInfo,
-      TLocation location,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this(
         owningManager,
         clientName,
         (SnowflakeFileTransferMetadataWithAge) null,
-        location,
         maxUploadRetries);
-    createFileTransferMetadataWithAge(fileLocationInfo);
+    Utils.assertStringNotNullOrEmpty("client prefix", this.owningManager.getClientPrefix());
+    this.fileTransferMetadataWithAge = createFileTransferMetadataWithAge(fileLocationInfo);
   }
 
   /**
@@ -129,33 +97,19 @@ class StreamingIngestStorage<T, TLocation> {
    * @param owningManager the storage manager owning this storage
    * @param clientName the client name
    * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
-   * @param location A reference to the target location
    * @param maxUploadRetries the maximum number of retries to attempt
    */
-  StreamingIngestStorage(
-      IStorageManager<T, TLocation> owningManager,
+  InternalStage(
+      InternalStageManager<T> owningManager,
       String clientName,
       SnowflakeFileTransferMetadataWithAge testMetadata,
-      TLocation location,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this.owningManager = owningManager;
     this.clientName = clientName;
     this.maxUploadRetries = maxUploadRetries;
     this.proxyProperties = generateProxyPropertiesForJDBC();
-    this.location = location;
     this.fileTransferMetadataWithAge = testMetadata;
-  }
-
-  /**
-   * Upload file to internal stage with previously cached credentials. Will refetch and cache
-   * credentials if they've expired.
-   *
-   * @param fullFilePath Full file name to be uploaded
-   * @param data Data string to be uploaded
-   */
-  void putRemote(String fullFilePath, byte[] data) throws SnowflakeSQLException, IOException {
-    this.putRemote(fullFilePath, data, 0);
   }
 
   private void putRemote(String fullFilePath, byte[] data, int retryCount)
@@ -194,7 +148,7 @@ class StreamingIngestStorage<T, TLocation> {
       // Proactively refresh the credential if it's going to expire, to avoid the token expiration
       // error from JDBC which confuses customer
       if (Instant.now().isAfter(prevRefresh.plus(refreshDuration))) {
-        refreshSnowflakeMetadata();
+        refreshSnowflakeMetadata(false);
       }
 
       SnowflakeFileTransferAgent.uploadWithoutConnection(
@@ -211,7 +165,7 @@ class StreamingIngestStorage<T, TLocation> {
     } catch (Exception e) {
       if (retryCount == 0) {
         // for the first exception, we always perform a metadata refresh.
-        this.refreshSnowflakeMetadata();
+        this.refreshSnowflakeMetadata(false);
       }
       if (retryCount >= maxUploadRetries) {
         logger.logError(
@@ -233,12 +187,6 @@ class StreamingIngestStorage<T, TLocation> {
     }
   }
 
-  SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata()
-      throws SnowflakeSQLException, IOException {
-    logger.logInfo("Refresh Snowflake metadata, client={}", clientName);
-    return refreshSnowflakeMetadata(false);
-  }
-
   /**
    * Gets new stage credentials and other metadata from Snowflake. Synchronized to prevent multiple
    * calls to putRemote from trying to refresh at the same time
@@ -250,6 +198,8 @@ class StreamingIngestStorage<T, TLocation> {
    */
   synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force)
       throws SnowflakeSQLException, IOException {
+    logger.logInfo("Refresh Snowflake metadata, client={}", clientName);
+
     if (!force
         && fileTransferMetadataWithAge != null
         && fileTransferMetadataWithAge.timestamp.isPresent()
@@ -259,23 +209,25 @@ class StreamingIngestStorage<T, TLocation> {
     }
 
     FileLocationInfo location =
-        this.owningManager.getRefreshedLocation(this.location, Optional.empty());
-    return createFileTransferMetadataWithAge(location);
+        this.owningManager.getRefreshedLocation(Optional.empty());
+    SnowflakeFileTransferMetadataWithAge metadata = createFileTransferMetadataWithAge(location);
+    this.fileTransferMetadataWithAge = metadata;
+    return metadata;
   }
 
-  private SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
+  static SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
       FileLocationInfo fileLocationInfo)
       throws JsonProcessingException,
           net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException,
           SnowflakeSQLException {
-    Utils.assertStringNotNullOrEmpty("client prefix", this.owningManager.getClientPrefix());
+    final SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
 
     if (fileLocationInfo
         .getLocationType()
         .replaceAll(
             "^[\"]|[\"]$", "") // Replace the first and last character if they're double quotes
         .equals(StageInfo.StageType.LOCAL_FS.name())) {
-      this.fileTransferMetadataWithAge =
+      fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
               fileLocationInfo
                   .getLocation()
@@ -284,7 +236,7 @@ class StreamingIngestStorage<T, TLocation> {
                       ""), // Replace the first and last character if they're double quotes
               Optional.of(System.currentTimeMillis()));
     } else {
-      this.fileTransferMetadataWithAge =
+      fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
               (SnowflakeFileTransferMetadataV1)
                   SnowflakeFileTransferAgent.getFileTransferMetadatas(
@@ -293,8 +245,15 @@ class StreamingIngestStorage<T, TLocation> {
               Optional.of(System.currentTimeMillis()));
     }
 
+    String presignedUrl = fileLocationInfo.getPresignedUrl();
+    if (presignedUrl != null) {
+      fileTransferMetadataWithAge.fileTransferMetadata.setPresignedUrl(presignedUrl);
+      String[] parts = presignedUrl.split("/");
+      fileTransferMetadataWithAge.fileTransferMetadata.setPresignedUrlFileName(parts[parts.length - 1]);
+    }
+
     prevRefresh = Instant.now();
-    return this.fileTransferMetadataWithAge;
+    return fileTransferMetadataWithAge;
   }
 
   /**
@@ -307,7 +266,7 @@ class StreamingIngestStorage<T, TLocation> {
       throws SnowflakeSQLException, IOException {
 
     FileLocationInfo location =
-        this.owningManager.getRefreshedLocation(this.location, Optional.of(fileName));
+        this.owningManager.getRefreshedLocation(Optional.of(fileName));
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
@@ -318,7 +277,7 @@ class StreamingIngestStorage<T, TLocation> {
     return metadata;
   }
 
-  private net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode
+  static net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode
       parseFileLocationInfo(FileLocationInfo fileLocationInfo)
           throws JsonProcessingException,
               net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException {
@@ -347,12 +306,12 @@ class StreamingIngestStorage<T, TLocation> {
    * @param filePath
    * @param blob
    */
-  void put(String filePath, byte[] blob) {
+  public void put(String filePath, byte[] blob) {
     if (this.isLocalFS()) {
-      putLocal(filePath, blob);
+      putLocal(this.fileTransferMetadataWithAge.localLocation, filePath, blob);
     } else {
       try {
-        putRemote(filePath, blob);
+        putRemote(filePath, blob, 0);
       } catch (SnowflakeSQLException | IOException e) {
         throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
       }
@@ -370,14 +329,13 @@ class StreamingIngestStorage<T, TLocation> {
    * @param data
    */
   @VisibleForTesting
-  void putLocal(String fullFilePath, byte[] data) {
+  static void putLocal(String stageLocation, String fullFilePath, byte[] data) {
     if (fullFilePath == null || fullFilePath.isEmpty() || fullFilePath.endsWith("/")) {
       throw new SFException(ErrorCode.BLOB_UPLOAD_FAILURE);
     }
 
     InputStream input = new ByteArrayInputStream(data);
     try {
-      String stageLocation = this.fileTransferMetadataWithAge.localLocation;
       File destFile = Paths.get(stageLocation, fullFilePath).toFile();
       FileUtils.copyInputStreamToFile(input, destFile);
     } catch (Exception ex) {

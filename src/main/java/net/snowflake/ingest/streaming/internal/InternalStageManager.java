@@ -19,14 +19,10 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
-class InternalStageLocation {
-  public InternalStageLocation() {}
-}
-
 /** Class to manage single Snowflake internal stage */
-class InternalStageManager<T> implements IStorageManager<T, InternalStageLocation> {
+class InternalStageManager<T> implements IStorageManager {
   /** Target stage for the client */
-  private final StreamingIngestStorage<T, InternalStageLocation> targetStage;
+  private final InternalStage<T> targetStage;
 
   /** Increasing counter to generate a unique blob name per client */
   private final AtomicLong counter;
@@ -74,21 +70,19 @@ class InternalStageManager<T> implements IStorageManager<T, InternalStageLocatio
         this.clientPrefix = response.getClientPrefix();
         this.deploymentId = response.getDeploymentId();
         this.targetStage =
-            new StreamingIngestStorage<T, InternalStageLocation>(
+            new InternalStage<T>(
                 this,
                 clientName,
                 response.getStageLocation(),
-                new InternalStageLocation(),
                 DEFAULT_MAX_UPLOAD_RETRIES);
       } else {
         this.clientPrefix = null;
         this.deploymentId = null;
         this.targetStage =
-            new StreamingIngestStorage<T, InternalStageLocation>(
+            new InternalStage<T>(
                 this,
                 "testClient",
-                (StreamingIngestStorage.SnowflakeFileTransferMetadataWithAge) null,
-                new InternalStageLocation(),
+                (SnowflakeFileTransferMetadataWithAge) null,
                 DEFAULT_MAX_UPLOAD_RETRIES);
       }
     } catch (IngestResponseException | IOException e) {
@@ -107,28 +101,24 @@ class InternalStageManager<T> implements IStorageManager<T, InternalStageLocatio
    */
   @Override
   @SuppressWarnings("unused")
-  public StreamingIngestStorage<T, InternalStageLocation> getStorage(
-      String fullyQualifiedTableName) {
+  public InternalStage<T> getStorage(String fullyQualifiedTableName) {
     // There's always only one stage for the client in non-iceberg mode
     return targetStage;
   }
 
-  /** Add storage to the manager. Do nothing as there's only one stage in non-Iceberg mode. */
+  /** Informs the storage manager about a new table that's being ingested into by the client.
+   * Do nothing as there's no per-table state yet for FDN tables (that use internal stages). */
   @Override
-  public void addStorage(
-      String dbName, String schemaName, String tableName, FileLocationInfo fileLocationInfo) {}
+  public void registerTable(TableRef tableRef) {}
 
   /**
    * Gets the latest file location info (with a renewed short-lived access token) for the specified
    * location
    *
-   * @param location A reference to the target location
    * @param fileName optional filename for single-file signed URL fetch from server
    * @return the new location information
    */
-  @Override
-  public FileLocationInfo getRefreshedLocation(
-      InternalStageLocation location, Optional<String> fileName) {
+   FileLocationInfo getRefreshedLocation(Optional<String> fileName) {
     try {
       ClientConfigureRequest request = new ClientConfigureRequest(this.role);
       fileName.ifPresent(request::setFileName);
@@ -157,14 +147,12 @@ class InternalStageManager<T> implements IStorageManager<T, InternalStageLocatio
    * @return the generated blob file path
    */
   @Override
-  public String generateBlobPath() {
+  public BlobPath generateBlobPath(String fullyQualifiedTableName) {
+    // the table name argument is not going to be used in internal stages since we don't have per table paths.
+    // For external volumes (in iceberg), the blob path has a per-table element in it, thus the other implementation
+    // of IStorageManager does end up using this argument.
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    return getBlobPath(calendar, this.clientPrefix);
-  }
-
-  @Override
-  public void decrementBlobSequencer() {
-    this.counter.decrementAndGet();
+    return new BlobPath(getBlobPath(calendar, this.clientPrefix));
   }
 
   /** For TESTING */

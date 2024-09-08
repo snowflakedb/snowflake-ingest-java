@@ -41,43 +41,40 @@ public class SnowflakeStreamingIngestExample {
 
     // Create a streaming ingest client
     try (SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build()) {
+        SnowflakeStreamingIngestClientFactory.builder("client1").setIsIceberg(true).setProperties(props).build()) {
 
       // Create an open channel request on table MY_TABLE, note that the corresponding
       // db/schema/table needs to be present
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
-          OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE")
-              .setSchemaName("MY_SCHEMA")
-              .setTableName("MY_TABLE")
+          OpenChannelRequest.builder("channel1")
+              .setDBName("TESTDB")
+              .setSchemaName("TESTSCHEMA")
+              .setTableName("TBL1")
               .setOnErrorOption(
-                  OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
+                  OpenChannelRequest.OnErrorOption.ABORT) // Another ON_ERROR option is ABORT
               .build();
 
       // Open a streaming ingest channel from the given client
       SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
       // Insert rows into the channel (Using insertRows API)
-      final int totalRowsInTable = 1000;
-      for (int val = 0; val < totalRowsInTable; val++) {
         Map<String, Object> row = new HashMap<>();
-
         // c1 corresponds to the column name in table
-        row.put("c1", val);
+        row.put("c1", 5);
+        row.put("c2", "yuiop");
 
         // Insert the row with the current offset_token
-        InsertValidationResponse response = channel1.insertRow(row, String.valueOf(val));
+        InsertValidationResponse response = channel1.insertRow(row, "0");
         if (response.hasErrors()) {
           // Simply throw if there is an exception, or you can do whatever you want with the
           // erroneous row
           throw response.getInsertErrors().get(0).getException();
         }
-      }
 
       // If needed, you can check the offset_token registered in Snowflake to make sure everything
       // is committed
-      final int expectedOffsetTokenInSnowflake = totalRowsInTable - 1; // 0 based offset_token
+      final int expectedOffsetTokenInSnowflake = 0; // 0 based offset_token
       final int maxRetries = 10;
       int retryCount = 0;
 
@@ -85,7 +82,7 @@ public class SnowflakeStreamingIngestExample {
         String offsetTokenFromSnowflake = channel1.getLatestCommittedOffsetToken();
         if (offsetTokenFromSnowflake != null
             && offsetTokenFromSnowflake.equals(String.valueOf(expectedOffsetTokenInSnowflake))) {
-          System.out.println("SUCCESSFULLY inserted " + totalRowsInTable + " rows");
+          System.out.println("SUCCESSFULLY inserted 1 rows");
           break;
         }
         retryCount++;

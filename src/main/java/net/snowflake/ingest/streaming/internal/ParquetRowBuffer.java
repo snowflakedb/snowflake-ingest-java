@@ -264,11 +264,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   @Override
   Optional<ParquetChunkData> getSnapshot(final String filePath) {
-    // We insert the filename in the file itself as metadata so that streams can work on replicated
-    // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
-    // http://go/streams-on-replicated-mixed-tables
-    metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
-
     List<List<Object>> oldData = new ArrayList<>();
     if (!clientBufferParameters.getEnableParquetInternalBuffering()) {
       data.forEach(r -> oldData.add(new ArrayList<>(r)));

@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 /** Response to the OpenChannelRequest */
@@ -21,7 +22,6 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private List<ColumnMetadata> tableColumns;
   private String encryptionKey;
   private Long encryptionKeyId;
-  private FileLocationInfo externalVolumeLocation;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -130,14 +130,5 @@ class OpenChannelResponse extends StreamingIngestResponse {
 
   Long getEncryptionKeyId() {
     return this.encryptionKeyId;
-  }
-
-  @JsonProperty("iceberg_location")
-  void setExternalVolumeLocation(FileLocationInfo externalVolumeLocation) {
-    this.externalVolumeLocation = externalVolumeLocation;
-  }
-
-  FileLocationInfo getExternalVolumeLocation() {
-    return this.externalVolumeLocation;
   }
 }

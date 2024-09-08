@@ -4,18 +4,18 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_CONFIGURE;
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.GENERATE_PRESIGNED_URLS;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_DROP_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_OPEN_CHANNEL;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_REGISTER_BLOB;
 import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.executeWithRetries;
-import static net.snowflake.ingest.utils.Constants.CHANNEL_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.GENERATE_PRESIGNED_URLS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
@@ -82,22 +82,22 @@ class SnowflakeServiceClient {
    * @param request the channel configuration request
    * @return the response from the configuration request
    */
-  ChannelConfigureResponse channelConfigure(ChannelConfigureRequest request)
+  GeneratePresignedUrlsResponse generatePresignedUrls(GeneratePresignedUrlsRequest request)
       throws IngestResponseException, IOException {
-    ChannelConfigureResponse response =
+    GeneratePresignedUrlsResponse response =
         executeApiRequestWithRetries(
-            ChannelConfigureResponse.class,
+                GeneratePresignedUrlsResponse.class,
             request,
-            CHANNEL_CONFIGURE_ENDPOINT,
+                GENERATE_PRESIGNED_URLS_ENDPOINT,
             "channel configure",
-            STREAMING_CHANNEL_CONFIGURE);
+                GENERATE_PRESIGNED_URLS);
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       logger.logDebug(
-          "Channel configure request failed, request={}, response={}",
+          "GetPresignedUrls request failed, request={}, response={}",
           request.getStringForLogging(),
           response.getMessage());
-      throw new SFException(ErrorCode.CHANNEL_CONFIGURE_FAILURE, response.getMessage());
+      throw new SFException(ErrorCode.GENERATE_PRESIGNED_URLS_FAILURE, response.getMessage());
     }
     return response;
   }
