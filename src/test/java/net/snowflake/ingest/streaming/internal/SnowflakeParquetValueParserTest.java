@@ -12,6 +12,7 @@ import static net.snowflake.ingest.streaming.internal.ParquetBufferValue.DEFINIT
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import net.snowflake.ingest.utils.ParameterProvider;
@@ -536,7 +537,7 @@ public class SnowflakeParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("COL1");
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
-            "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, UTC, ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+            "2021-01-01", testCol, PrimitiveType.PrimitiveTypeName.INT32, rowBufferStats, ZoneId.of("America/Los_Angeles"),0,  ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
 
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
