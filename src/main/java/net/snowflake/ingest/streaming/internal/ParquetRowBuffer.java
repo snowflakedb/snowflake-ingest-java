@@ -261,7 +261,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   @Override
-  Optional<ParquetChunkData> getSnapshot(final String filePath) {
+  Optional<ParquetChunkData> getSnapshot() {
     List<List<Object>> oldData = new ArrayList<>();
     if (!clientBufferParameters.getEnableParquetInternalBuffering()) {
       data.forEach(r -> oldData.add(new ArrayList<>(r)));

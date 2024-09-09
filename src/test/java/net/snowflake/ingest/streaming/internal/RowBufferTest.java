@@ -499,7 +499,7 @@ public class RowBufferTest {
     float bufferSize = rowBuffer.getSize();
 
     final String filename = "2022/7/13/16/56/testFlushHelper_streaming.bdec";
-    ChannelData<?> data = rowBuffer.flush(filename);
+    ChannelData<?> data = rowBuffer.flush();
     Assert.assertEquals(2, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(startOffsetToken, data.getStartOffsetToken());
@@ -734,7 +734,7 @@ public class RowBufferTest {
     final String filename = "testStatsE2EHelper_streaming.bdec";
     InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null, null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData<?> result = rowBuffer.flush(filename);
+    ChannelData<?> result = rowBuffer.flush();
     Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
 
     Assert.assertEquals(
@@ -779,7 +779,7 @@ public class RowBufferTest {
     Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
 
     // Confirm we reset
-    ChannelData<?> resetResults = rowBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> resetResults = rowBuffer.flush();
     Assert.assertNull(resetResults);
   }
 
@@ -838,7 +838,7 @@ public class RowBufferTest {
     InsertValidationResponse response =
         innerBuffer.insertRows(Arrays.asList(row1, row2, row3), null, null);
     Assert.assertFalse(response.hasErrors());
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -907,7 +907,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLDATE", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -973,7 +973,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB8", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1204,7 +1204,7 @@ public class RowBufferTest {
       }
     }
 
-    ChannelData<?> channelData = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> channelData = innerBuffer.flush();
     RowBufferStats statsCol1 = channelData.getColumnEps().get("COLVARCHAR1");
     RowBufferStats statsCol2 = channelData.getColumnEps().get("COLVARCHAR2");
     RowBufferStats statsCol3 = channelData.getColumnEps().get("COLBOOLEAN1");
@@ -1264,7 +1264,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLBOOLEAN", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
@@ -1319,7 +1319,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLBINARY", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
@@ -1371,7 +1371,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.getVectorValueAt("COLREAL", 2));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
     Assert.assertEquals(
@@ -1454,7 +1454,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
-    ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> data = innerBuffer.flush();
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals(0, innerBuffer.bufferedRowCount);
   }
@@ -1528,7 +1528,7 @@ public class RowBufferTest {
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
     Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
 
-    ChannelData<?> data = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> data = innerBuffer.flush();
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals(0, innerBuffer.bufferedRowCount);
   }
@@ -1579,7 +1579,7 @@ public class RowBufferTest {
     Assert.assertEquals("3", innerBuffer.getVectorValueAt("COLVARIANT", 4));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(5, result.getRowCount());
     Assert.assertEquals(2, result.getColumnEps().get("COLVARIANT").getCurrentNullCount());
   }
@@ -1613,7 +1613,7 @@ public class RowBufferTest {
     Assert.assertEquals("{\"key\":1}", innerBuffer.getVectorValueAt("COLOBJECT", 0));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(1, result.getRowCount());
   }
 
@@ -1663,7 +1663,7 @@ public class RowBufferTest {
     Assert.assertEquals("[1,2,3]", innerBuffer.getVectorValueAt("COLARRAY", 4));
 
     // Check stats generation
-    ChannelData<?> result = innerBuffer.flush("my_snowpipe_streaming.bdec");
+    ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(5, result.getRowCount());
   }
 
@@ -1710,14 +1710,14 @@ public class RowBufferTest {
         SFException.class, () -> innerBufferOnErrorAbort.insertRows(mixedRows, "1", "3"));
 
     List<List<Object>> snapshotContinueParquet =
-        ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot("fake/filePath").get()).rows;
+        ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot().get()).rows;
     // validRows and only the good row from mixedRows are in the buffer
     Assert.assertEquals(2, snapshotContinueParquet.size());
     Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
     Assert.assertEquals(Arrays.asList("b"), snapshotContinueParquet.get(1));
 
     List<List<Object>> snapshotAbortParquet =
-        ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot("fake/filePath").get()).rows;
+        ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot().get()).rows;
     // only validRows and none of the mixedRows are in the buffer
     Assert.assertEquals(1, snapshotAbortParquet.size());
     Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));
@@ -1725,9 +1725,6 @@ public class RowBufferTest {
 
   @Test
   public void testParquetChunkMetadataCreationIsThreadSafe() throws InterruptedException {
-    final String testFileA = "testFileA";
-    final String testFileB = "testFileB";
-
     final ParquetRowBuffer bufferUnderTest =
         (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
 
@@ -1749,23 +1746,20 @@ public class RowBufferTest {
     final AtomicReference<ChannelData<ParquetChunkData>> firstFlushResult = new AtomicReference<>();
     final Thread t =
         getThreadThatWaitsForLockReleaseAndFlushes(
-            bufferUnderTest, testFileA, latch, firstFlushResult);
+            bufferUnderTest, latch, firstFlushResult);
     t.start();
 
-    final ChannelData<ParquetChunkData> secondFlushResult = bufferUnderTest.flush(testFileB);
-    Assert.assertEquals(testFileB, getPrimaryFileId(secondFlushResult));
+    final ChannelData<ParquetChunkData> secondFlushResult = bufferUnderTest.flush();
+    // TODO: need to verify other fields
 
     latch.countDown();
     t.join();
 
     Assert.assertNotNull(firstFlushResult.get());
-    Assert.assertEquals(testFileA, getPrimaryFileId(firstFlushResult.get()));
-    Assert.assertEquals(testFileB, getPrimaryFileId(secondFlushResult));
   }
 
   private static Thread getThreadThatWaitsForLockReleaseAndFlushes(
       final ParquetRowBuffer bufferUnderTest,
-      final String filenameToFlush,
       final CountDownLatch latch,
       final AtomicReference<ChannelData<ParquetChunkData>> flushResult) {
     return new Thread(
@@ -1775,10 +1769,10 @@ public class RowBufferTest {
           } catch (InterruptedException e) {
             fail("Thread was unexpectedly interrupted");
           }
-
+          
           final ChannelData<ParquetChunkData> flush =
               loadData(bufferUnderTest, Collections.singletonMap("colChar", "b"))
-                  .flush(filenameToFlush);
+                  .flush();
           flushResult.set(flush);
         });
   }
