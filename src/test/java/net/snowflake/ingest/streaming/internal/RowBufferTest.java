@@ -1745,8 +1745,7 @@ public class RowBufferTest {
     final CountDownLatch latch = new CountDownLatch(1);
     final AtomicReference<ChannelData<ParquetChunkData>> firstFlushResult = new AtomicReference<>();
     final Thread t =
-        getThreadThatWaitsForLockReleaseAndFlushes(
-            bufferUnderTest, latch, firstFlushResult);
+        getThreadThatWaitsForLockReleaseAndFlushes(bufferUnderTest, latch, firstFlushResult);
     t.start();
 
     final ChannelData<ParquetChunkData> secondFlushResult = bufferUnderTest.flush();
@@ -1769,10 +1768,9 @@ public class RowBufferTest {
           } catch (InterruptedException e) {
             fail("Thread was unexpectedly interrupted");
           }
-          
+
           final ChannelData<ParquetChunkData> flush =
-              loadData(bufferUnderTest, Collections.singletonMap("colChar", "b"))
-                  .flush();
+              loadData(bufferUnderTest, Collections.singletonMap("colChar", "b")).flush();
           flushResult.set(flush);
         });
   }

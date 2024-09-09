@@ -614,9 +614,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.statsMap.replaceAll((key, value) -> value.forkEmpty());
   }
 
-  /**
-   * Get buffered data snapshot for later flushing.
-   */
+  /** Get buffered data snapshot for later flushing. */
   abstract Optional<T> getSnapshot();
 
   @VisibleForTesting
