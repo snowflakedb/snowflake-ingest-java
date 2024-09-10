@@ -6,6 +6,7 @@ import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +25,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.parquet.hadoop.BdecParquetReader;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -1728,6 +1730,55 @@ public class RowBufferTest {
     final ParquetRowBuffer bufferUnderTest =
         (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
 
+    final int columnOrdinal = 1;
+    final ColumnMetadata colChar1 = new ColumnMetadata();
+    colChar1.setOrdinal(columnOrdinal);
+    colChar1.setName("COLCHAR");
+    colChar1.setPhysicalType("LOB");
+    colChar1.setNullable(true);
+    colChar1.setLogicalType("TEXT");
+    colChar1.setByteLength(14);
+    colChar1.setLength(11);
+    colChar1.setScale(0);
+
+    final ColumnMetadata colChar2 = new ColumnMetadata();
+    colChar2.setOrdinal(columnOrdinal);
+    colChar2.setName("COLCHAR");
+    colChar2.setPhysicalType("SB1");
+    colChar2.setNullable(true);
+    colChar2.setLogicalType("TEXT");
+    colChar2.setByteLength(14);
+    colChar2.setLength(11);
+    colChar2.setScale(0);
+
+    bufferUnderTest.setupSchema(Collections.singletonList(colChar1));
+
+    loadData(bufferUnderTest, Collections.singletonMap("colChar", "a"));
+
+    final CountDownLatch latch = new CountDownLatch(1);
+    final AtomicReference<ChannelData<ParquetChunkData>> firstFlushResult = new AtomicReference<>();
+    final Thread t =
+        getThreadThatWaitsForLockReleaseAndFlushes(bufferUnderTest, latch, firstFlushResult);
+    t.start();
+
+    final ChannelData<ParquetChunkData> secondFlushResult = bufferUnderTest.flush();
+    bufferUnderTest.setupSchema(Collections.singletonList(colChar2));
+
+    latch.countDown();
+    t.join();
+
+    // The logical and physical types should be different
+    Assert.assertNotEquals(
+        getColumnType(firstFlushResult.get(), columnOrdinal),
+        getColumnType(secondFlushResult, columnOrdinal));
+  }
+
+  @Test
+  public void testParquetFileNameMetadata() throws IOException {
+    String filePath = "testParquetFileNameMetadata.bdec";
+    final ParquetRowBuffer bufferUnderTest =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+
     final ColumnMetadata colChar = new ColumnMetadata();
     colChar.setOrdinal(1);
     colChar.setName("COLCHAR");
@@ -1739,22 +1790,16 @@ public class RowBufferTest {
     colChar.setScale(0);
 
     bufferUnderTest.setupSchema(Collections.singletonList(colChar));
-
     loadData(bufferUnderTest, Collections.singletonMap("colChar", "a"));
+    ChannelData<ParquetChunkData> data = bufferUnderTest.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
 
-    final CountDownLatch latch = new CountDownLatch(1);
-    final AtomicReference<ChannelData<ParquetChunkData>> firstFlushResult = new AtomicReference<>();
-    final Thread t =
-        getThreadThatWaitsForLockReleaseAndFlushes(bufferUnderTest, latch, firstFlushResult);
-    t.start();
+    ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(Collections.singletonList(data), filePath);
 
-    final ChannelData<ParquetChunkData> secondFlushResult = bufferUnderTest.flush();
-    // TODO: need to verify other fields
-
-    latch.countDown();
-    t.join();
-
-    Assert.assertNotNull(firstFlushResult.get());
+    BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
+    Assert.assertEquals(filePath, reader.getKeyValueMetadata().get(Constants.PRIMARY_FILE_ID_KEY));
   }
 
   private static Thread getThreadThatWaitsForLockReleaseAndFlushes(
@@ -1785,7 +1830,7 @@ public class RowBufferTest {
     return bufferToLoad;
   }
 
-  private static String getPrimaryFileId(final ChannelData<ParquetChunkData> chunkData) {
-    return chunkData.getVectors().metadata.get(Constants.PRIMARY_FILE_ID_KEY);
+  private static String getColumnType(final ChannelData<ParquetChunkData> chunkData, int columnId) {
+    return chunkData.getVectors().metadata.get(Integer.toString(columnId));
   }
 }
