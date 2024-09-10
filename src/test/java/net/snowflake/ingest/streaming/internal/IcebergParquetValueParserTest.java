@@ -26,8 +26,7 @@ public class IcebergParquetValueParserTest {
 
     RowBufferStats rowBufferStats = new RowBufferStats("BOOLEAN_COL");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            true, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(true, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -44,8 +43,7 @@ public class IcebergParquetValueParserTest {
 
     RowBufferStats rowBufferStats = new RowBufferStats("INT_COL");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            Integer.MAX_VALUE, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(Integer.MAX_VALUE, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -66,7 +64,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("DECIMAL_COL");
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            new BigDecimal("12345.6789"), type, rowBufferStats, UTC, 0, false);
+            new BigDecimal("12345.6789"), type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -86,8 +84,7 @@ public class IcebergParquetValueParserTest {
 
     RowBufferStats rowBufferStats = new RowBufferStats("DATE_COL");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            "2024-01-01", type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet("2024-01-01", type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -104,8 +101,7 @@ public class IcebergParquetValueParserTest {
 
     RowBufferStats rowBufferStats = new RowBufferStats("LONG_COL");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            Long.MAX_VALUE, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(Long.MAX_VALUE, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -126,7 +122,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("DECIMAL_COL");
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            new BigDecimal("123456789.123456789"), type, rowBufferStats, UTC, 0, false);
+            new BigDecimal("123456789.123456789"), type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -146,8 +142,7 @@ public class IcebergParquetValueParserTest {
 
     RowBufferStats rowBufferStats = new RowBufferStats("TIME_COL");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            "12:34:56.789", type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet("12:34:56.789", type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -168,7 +163,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("TIMESTAMP_COL");
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            "2024-01-01T12:34:56.789+08:00", type, rowBufferStats, UTC, 0, false);
+            "2024-01-01T12:34:56.789+08:00", type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -189,7 +184,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("TIMESTAMP_TZ_COL");
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            "2024-01-01T12:34:56.789+08:00", type, rowBufferStats, UTC, 0, false);
+            "2024-01-01T12:34:56.789+08:00", type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -206,8 +201,7 @@ public class IcebergParquetValueParserTest {
 
     RowBufferStats rowBufferStats = new RowBufferStats("FLOAT_COL");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            Float.MAX_VALUE, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(Float.MAX_VALUE, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -224,8 +218,7 @@ public class IcebergParquetValueParserTest {
 
     RowBufferStats rowBufferStats = new RowBufferStats("DOUBLE_COL");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            Double.MAX_VALUE, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(Double.MAX_VALUE, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -243,8 +236,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("BINARY_COL");
     byte[] value = "snowflake_to_the_moon".getBytes();
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(value, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -266,8 +258,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("BINARY_COL");
     String value = "snowflake_to_the_moon";
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(value, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -291,8 +282,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("FIXED_COL");
     byte[] value = "snow".getBytes();
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(value, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -315,8 +305,7 @@ public class IcebergParquetValueParserTest {
     RowBufferStats rowBufferStats = new RowBufferStats("FIXED_COL");
     BigDecimal value = new BigDecimal("1234567890.0123456789");
     ParquetBufferValue pv =
-        IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStats, UTC, 0, false);
+        IcebergParquetValueParser.parseColumnValueToParquet(value, type, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)

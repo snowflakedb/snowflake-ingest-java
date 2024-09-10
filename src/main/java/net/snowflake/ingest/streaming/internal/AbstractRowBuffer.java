@@ -662,27 +662,35 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     if (blocksMetadata.isEmpty()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "No blocks metadata found");
     }
-    EpInfo epInfo = new EpInfo(blocksMetadata.get(0).getRowCount(), new HashMap<>());
+    EpInfo epInfo =
+        new EpInfo(
+            blocksMetadata.stream().mapToLong(BlockMetaData::getRowCount).sum(), new HashMap<>());
 
     Map<String, Statistics<?>> mergedStatistics = new HashMap<>();
     for (BlockMetaData blockMetaData : blocksMetadata) {
       for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
-        String columnName = columnChunkMetaData.getPath().toDotString();
-        if (mergedStatistics.get(columnName) == null) {
-          mergedStatistics.put(columnName, columnChunkMetaData.getStatistics());
+        String subColumnName = columnChunkMetaData.getPath().toDotString();
+        if (mergedStatistics.get(subColumnName) == null) {
+          mergedStatistics.put(subColumnName, columnChunkMetaData.getStatistics());
         } else {
-          mergedStatistics.get(columnName).mergeStatistics(columnChunkMetaData.getStatistics());
+          mergedStatistics.get(subColumnName).mergeStatistics(columnChunkMetaData.getStatistics());
         }
       }
     }
 
+    String prevColumnName = "";
+    int columnOrdinal = 0;
     for (ColumnChunkMetaData columnChunkMetaData : blocksMetadata.get(0).getColumns()) {
-      String columnName = columnChunkMetaData.getPath().toDotString();
+      if (!prevColumnName.equals(columnChunkMetaData.getPath().toArray()[0])) {
+        columnOrdinal++;
+      }
+      String subColumnName = columnChunkMetaData.getPath().toDotString();
       FileColumnProperties dto =
           new FileColumnProperties(
+              columnOrdinal,
               columnChunkMetaData.getPrimitiveType().getId().intValue(),
-              mergedStatistics.get(columnName));
-      epInfo.getColumnEps().put(columnName, dto);
+              mergedStatistics.get(subColumnName));
+      epInfo.getColumnEps().put(subColumnName, dto);
     }
 
     epInfo.verifyEpInfo();

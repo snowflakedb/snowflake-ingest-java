@@ -98,8 +98,8 @@ class FileColumnProperties {
     this.setDistinctValues(stats.getDistinctValues());
   }
 
-  FileColumnProperties(int fieldId, Statistics<?> statistics) {
-    this.setColumnOrdinal(fieldId);
+  FileColumnProperties(int columnOrdinal, int fieldId, Statistics<?> statistics) {
+    this.setColumnOrdinal(columnOrdinal);
     this.setFieldId(fieldId);
     this.setNullCount(statistics.getNumNulls());
     this.setDistinctValues(EP_NDV_UNKNOWN);

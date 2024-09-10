@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.DateLogicalTypeAnnotation;
@@ -41,7 +40,6 @@ class IcebergParquetValueParser {
    *
    * @param value column value provided by user in a row
    * @param type Parquet column type
-   * @param stats column stats to update
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Row index corresponding the row to parse (w.r.t input rows in
    *     insertRows API, and not buffered row)
@@ -52,11 +50,9 @@ class IcebergParquetValueParser {
   static ParquetBufferValue parseColumnValueToParquet(
       Object value,
       Type type,
-      RowBufferStats stats,
       ZoneId defaultTimezone,
       long insertRowsCurrIndex,
       boolean isdDescendantsOfRepeatingGroup) {
-    Utils.assertNotNull("Parquet column stats", stats);
     float estimatedParquetSize = 0F;
     if (value != null) {
       if (type.isPrimitive()) {
@@ -72,20 +68,14 @@ class IcebergParquetValueParser {
                 DataValidationUtil.validateAndParseBoolean(
                     type.getName(), value, insertRowsCurrIndex);
             value = intValue > 0;
-            stats.addIntValue(BigInteger.valueOf(intValue));
             estimatedParquetSize += ParquetBufferValue.BIT_ENCODING_BYTE_LEN;
             break;
           case INT32:
-            int intVal = getInt32Value(value, primitiveType, insertRowsCurrIndex);
-            value = intVal;
-            stats.addIntValue(BigInteger.valueOf(intVal));
+            value = getInt32Value(value, primitiveType, insertRowsCurrIndex);
             estimatedParquetSize += 4;
             break;
           case INT64:
-            long longVal =
-                getInt64Value(value, primitiveType, defaultTimezone, insertRowsCurrIndex);
-            value = longVal;
-            stats.addIntValue(BigInteger.valueOf(longVal));
+            value = getInt64Value(value, primitiveType, defaultTimezone, insertRowsCurrIndex);
             estimatedParquetSize += 8;
             break;
           case FLOAT:
@@ -94,25 +84,22 @@ class IcebergParquetValueParser {
                     DataValidationUtil.validateAndParseReal(
                         type.getName(), value, insertRowsCurrIndex);
             value = floatVal;
-            stats.addRealValue((double) floatVal);
             estimatedParquetSize += 4;
             break;
           case DOUBLE:
-            double doubleVal =
+            value =
                 DataValidationUtil.validateAndParseReal(type.getName(), value, insertRowsCurrIndex);
-            value = doubleVal;
-            stats.addRealValue(doubleVal);
             estimatedParquetSize += 8;
             break;
           case BINARY:
-            byte[] byteVal = getBinaryValue(value, primitiveType, stats, insertRowsCurrIndex);
+            byte[] byteVal = getBinaryValue(value, primitiveType, insertRowsCurrIndex);
             value = byteVal;
             estimatedParquetSize +=
                 ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + byteVal.length;
             break;
           case FIXED_LEN_BYTE_ARRAY:
             byte[] fixedLenByteArrayVal =
-                getFixedLenByteArrayValue(value, primitiveType, stats, insertRowsCurrIndex);
+                getFixedLenByteArrayValue(value, primitiveType, insertRowsCurrIndex);
             value = fixedLenByteArrayVal;
             estimatedParquetSize +=
                 ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
@@ -128,7 +115,6 @@ class IcebergParquetValueParser {
         return getGroupValue(
             value,
             type.asGroupType(),
-            stats,
             defaultTimezone,
             insertRowsCurrIndex,
             isdDescendantsOfRepeatingGroup);
@@ -140,7 +126,6 @@ class IcebergParquetValueParser {
         throw new SFException(
             ErrorCode.INVALID_FORMAT_ROW, type.getName(), "Passed null to non nullable field");
       }
-      stats.incCurrentNullCount();
     }
 
     return new ParquetBufferValue(value, estimatedParquetSize);
@@ -221,12 +206,11 @@ class IcebergParquetValueParser {
    *
    * @param value value to parse
    * @param type Parquet column type
-   * @param stats column stats to update
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return string representation
    */
   private static byte[] getBinaryValue(
-      Object value, PrimitiveType type, RowBufferStats stats, final long insertRowsCurrIndex) {
+      Object value, PrimitiveType type, final long insertRowsCurrIndex) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
       byte[] bytes =
@@ -235,7 +219,6 @@ class IcebergParquetValueParser {
               value,
               Optional.of(Constants.BINARY_COLUMN_MAX_SIZE),
               insertRowsCurrIndex);
-      stats.addBinaryValue(bytes);
       return bytes;
     }
     if (logicalTypeAnnotation instanceof StringLogicalTypeAnnotation) {
@@ -245,7 +228,6 @@ class IcebergParquetValueParser {
               value,
               Optional.of(Constants.VARCHAR_COLUMN_MAX_SIZE),
               insertRowsCurrIndex);
-      stats.addStrValue(string);
       return string.getBytes(StandardCharsets.UTF_8);
     }
     throw new SFException(
@@ -257,12 +239,11 @@ class IcebergParquetValueParser {
    *
    * @param value value to parse
    * @param type Parquet column type
-   * @param stats column stats to update
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return string representation
    */
   private static byte[] getFixedLenByteArrayValue(
-      Object value, PrimitiveType type, RowBufferStats stats, final long insertRowsCurrIndex) {
+      Object value, PrimitiveType type, final long insertRowsCurrIndex) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     int length = type.getTypeLength();
     byte[] bytes = null;
@@ -270,11 +251,9 @@ class IcebergParquetValueParser {
       bytes =
           DataValidationUtil.validateAndParseBinary(
               type.getName(), value, Optional.of(length), insertRowsCurrIndex);
-      stats.addBinaryValue(bytes);
     }
     if (logicalTypeAnnotation instanceof DecimalLogicalTypeAnnotation) {
       BigInteger bigIntegerVal = getDecimalValue(value, type, insertRowsCurrIndex).unscaledValue();
-      stats.addIntValue(bigIntegerVal);
       bytes = bigIntegerVal.toByteArray();
       if (bytes.length < length) {
         byte[] newBytes = new byte[length];
@@ -329,7 +308,6 @@ class IcebergParquetValueParser {
    *
    * @param value value to parse
    * @param type Parquet column type
-   * @param stats column stats to update
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @param isdDescendantsOfRepeatingGroup true if the column is a descendant of a repeating group,
@@ -338,22 +316,21 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue getGroupValue(
       Object value,
       GroupType type,
-      RowBufferStats stats,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       boolean isdDescendantsOfRepeatingGroup) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
       return getStructValue(
-          value, type, stats, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
+          value, type, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
       return get3LevelListValue(
-          value, type, stats, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
+          value, type, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation) {
       return get3LevelMapValue(
-          value, type, stats, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
+          value, type, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getClass().getSimpleName());
@@ -367,7 +344,6 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue getStructValue(
       Object value,
       GroupType type,
-      RowBufferStats stats,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       boolean isdDescendantsOfRepeatingGroup) {
@@ -381,7 +357,6 @@ class IcebergParquetValueParser {
           parseColumnValueToParquet(
               structVal.getOrDefault(type.getFieldName(i), null),
               type.getType(i),
-              stats,
               defaultTimezone,
               insertRowsCurrIndex,
               isdDescendantsOfRepeatingGroup);
@@ -401,7 +376,6 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue get3LevelListValue(
       Object value,
       GroupType type,
-      RowBufferStats stats,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       boolean isdDescendantsOfRepeatingGroup) {
@@ -415,7 +389,6 @@ class IcebergParquetValueParser {
               parseColumnValueToParquet(
                   element,
                   type.getType(0).asGroupType().getType(0),
-                  stats,
                   defaultTimezone,
                   insertRowsCurrIndex,
                   isdDescendantsOfRepeatingGroup);
@@ -435,7 +408,6 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue get3LevelMapValue(
       Object value,
       GroupType type,
-      RowBufferStats stats,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       boolean isdDescendantsOfRepeatingGroup) {
@@ -449,7 +421,6 @@ class IcebergParquetValueParser {
               parseColumnValueToParquet(
                   k,
                   type.getType(0).asGroupType().getType(0),
-                  stats,
                   defaultTimezone,
                   insertRowsCurrIndex,
                   true);
@@ -457,7 +428,6 @@ class IcebergParquetValueParser {
               parseColumnValueToParquet(
                   v,
                   type.getType(0).asGroupType().getType(1),
-                  stats,
                   defaultTimezone,
                   insertRowsCurrIndex,
                   isdDescendantsOfRepeatingGroup);

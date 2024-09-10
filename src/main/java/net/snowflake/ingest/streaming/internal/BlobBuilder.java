@@ -62,15 +62,21 @@ class BlobBuilder {
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
    * @param encrypt If the output chunk is encrypted or not
+   * @param isIceberg If the streaming client is for Iceberg table or not
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
-      boolean encrypt)
-      throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
-          InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
+      boolean encrypt,
+      boolean isIceberg)
+      throws IOException,
+          NoSuchPaddingException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          InvalidKeyException,
+          IllegalBlockSizeException,
           BadPaddingException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
@@ -132,7 +138,11 @@ class BlobBuilder {
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
                 .setEpInfo(
-                    AbstractRowBuffer.buildEPInfoFromBlocksMetadata(serializedChunk.blocksMetadata))
+                    isIceberg
+                        ? AbstractRowBuffer.buildEPInfoFromBlocksMetadata(
+                            serializedChunk.blocksMetadata)
+                        : AbstractRowBuffer.buildEpInfoFromStats(
+                            serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
                 .build();

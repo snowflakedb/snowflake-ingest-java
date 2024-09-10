@@ -37,7 +37,8 @@ public class BlobBuilderTest {
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
-        encrypt);
+        encrypt,
+        !encrypt);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
@@ -45,7 +46,8 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
-          encrypt);
+          encrypt,
+          !encrypt);
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
