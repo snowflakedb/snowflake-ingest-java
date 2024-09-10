@@ -261,6 +261,7 @@ class FileColumnProperties {
   public String toString() {
     final StringBuilder sb = new StringBuilder("{");
     sb.append("\"columnOrdinal\": ").append(columnOrdinal);
+    sb.append(", \"fieldId\": ").append(fieldId);
     if (minIntValue != null) {
       sb.append(", \"minIntValue\": ").append(minIntValue);
       sb.append(", \"maxIntValue\": ").append(maxIntValue);
