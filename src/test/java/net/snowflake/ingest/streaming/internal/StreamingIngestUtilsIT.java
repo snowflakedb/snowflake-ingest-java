@@ -27,7 +27,10 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({JWTManager.class})
-@PowerMockIgnore({"javax.net.ssl.*"}) /* Avoid ssl related exception from power mockito*/
+@PowerMockIgnore({
+  "javax.net.ssl.*",
+  "javax.security.*"
+}) /* Avoid ssl related exception from power mockito*/
 public class StreamingIngestUtilsIT {
   @Test
   public void testJWTRetries() throws Exception {

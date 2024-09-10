@@ -37,10 +37,9 @@ interface RowBuffer<T> {
    * Flush the data in the row buffer by taking the ownership of the old vectors and pass all the
    * required info back to the flush service to build the blob
    *
-   * @param filePath the name of the file the data will be written in
    * @return A ChannelData object that contains the info needed by the flush service to build a blob
    */
-  ChannelData<T> flush(final String filePath);
+  ChannelData<T> flush();
 
   /**
    * Close the row buffer and release resources. Note that the caller needs to handle
