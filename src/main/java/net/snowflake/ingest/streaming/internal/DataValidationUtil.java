@@ -1055,6 +1055,80 @@ class DataValidationUtil {
         insertRowIndex);
   }
 
+  /**
+   * Validate and cast Iceberg struct column to Map<String, Object>. Allowed Java type:
+   *
+   * <ul>
+   *   <li>Map<String, Object>
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Object cast to Map
+   */
+  static Map<String, Object> validateAndParseIcebergStruct(
+      String columnName, Object input, long insertRowIndex) {
+    if (!(input instanceof Map)) {
+      throw typeNotAllowedException(
+          columnName,
+          input.getClass(),
+          "STRUCT",
+          new String[] {"Map<String, Object>"},
+          insertRowIndex);
+    }
+    if (!((Map<?, ?>) input).keySet().stream().allMatch(key -> key instanceof String)) {
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          String.format(
+              "Flied name of a struct must be of type String, rowIndex:%d", insertRowIndex));
+    }
+
+    return (Map<String, Object>) input;
+  }
+
+  /**
+   * Validate and parse Iceberg list column to an Iterable. Allowed Java type:
+   *
+   * <ul>
+   *   <li>Iterable
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Object cast to Iterable
+   */
+  static Iterable<Object> validateAndParseIcebergList(
+      String columnName, Object input, long insertRowIndex) {
+    if (!(input instanceof Iterable)) {
+      throw typeNotAllowedException(
+          columnName, input.getClass(), "LIST", new String[] {"Iterable"}, insertRowIndex);
+    }
+    return (Iterable<Object>) input;
+  }
+
+  /**
+   * Validate and parse Iceberg map column to a map. Allowed Java type:
+   *
+   * <ul>
+   *   <li>Map<Object, Object>
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Object cast to Map
+   */
+  static Map<Object, Object> validateAndParseIcebergMap(
+      String columnName, Object input, long insertRowIndex) {
+    if (!(input instanceof Map)) {
+      throw typeNotAllowedException(
+          columnName, input.getClass(), "MAP", new String[] {"Map"}, insertRowIndex);
+    }
+    return (Map<Object, Object>) input;
+  }
+
   static void checkValueInRange(
       BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
     BigDecimal comparand =

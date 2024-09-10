@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -200,4 +200,14 @@ class ChunkMetadata {
   Long getLastInsertTimeInMs() {
     return this.lastInsertTimeInMs;
   }
+
+  //  @JsonProperty("major_vers")
+  //  Integer getMajorVersion() {
+  //    return PARQUET_MAJOR_VERSION;
+  //  }
+  //
+  //  @JsonProperty("minor_vers")
+  //  Integer getMinorVersion() {
+  //    return PARQUET_MINOR_VERSION;
+  //  }
 }

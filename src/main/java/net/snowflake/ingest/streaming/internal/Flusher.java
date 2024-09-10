@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.utils.Pair;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
 
 /**
  * Interface to convert {@link ChannelData} buffered in {@link RowBuffer} to the underlying format
@@ -39,6 +40,9 @@ public interface Flusher<T> {
     final float chunkEstimatedUncompressedSize;
     final ByteArrayOutputStream chunkData;
     final Pair<Long, Long> chunkMinMaxInsertTimeInMs;
+    final List<BlockMetaData> blocksMetadata;
+    final Map<String, Integer> ndvStats;
+    final Map<String, Integer> maxLengthStats;
 
     public SerializationResult(
         List<ChannelMetadata> channelsMetadataList,
@@ -46,13 +50,19 @@ public interface Flusher<T> {
         long rowCount,
         float chunkEstimatedUncompressedSize,
         ByteArrayOutputStream chunkData,
-        Pair<Long, Long> chunkMinMaxInsertTimeInMs) {
+        Pair<Long, Long> chunkMinMaxInsertTimeInMs,
+        List<BlockMetaData> blocksMetadata,
+        Map<String, Integer> ndvStats,
+        Map<String, Integer> maxLengthStats) {
       this.channelsMetadataList = channelsMetadataList;
       this.columnEpStatsMapCombined = columnEpStatsMapCombined;
       this.rowCount = rowCount;
       this.chunkEstimatedUncompressedSize = chunkEstimatedUncompressedSize;
       this.chunkData = chunkData;
       this.chunkMinMaxInsertTimeInMs = chunkMinMaxInsertTimeInMs;
+      this.blocksMetadata = blocksMetadata;
+      this.ndvStats = ndvStats;
+      this.maxLengthStats = maxLengthStats;
     }
   }
 }

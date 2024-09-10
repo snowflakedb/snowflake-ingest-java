@@ -9,6 +9,8 @@ class ParquetBufferValue {
   // Parquet uses BitPacking to encode boolean, hence 1 bit per value
   public static final float BIT_ENCODING_BYTE_LEN = 1.0f / 8;
 
+  public static final float REPETITION_LEVEL_ENCODING_BYTE_LEN = 2.0f / 8;
+
   /**
    * On average parquet needs 2 bytes / 8 values for the RLE+bitpack encoded definition level.
    *
