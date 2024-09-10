@@ -132,8 +132,7 @@ class BlobBuilder {
                 .setChunkMD5(md5)
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
                 .setEpInfo(
-                    AbstractRowBuffer.buildEpInfoFromStats(
-                        serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
+                    AbstractRowBuffer.buildEPInfoFromBlocksMetadata(serializedChunk.blocksMetadata))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
                 .build();

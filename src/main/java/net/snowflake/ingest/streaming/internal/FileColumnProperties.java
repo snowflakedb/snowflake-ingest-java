@@ -1,14 +1,28 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncateBytesAsHex;
+import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigInteger;
 import java.util.Objects;
+import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.column.statistics.BooleanStatistics;
+import org.apache.parquet.column.statistics.DoubleStatistics;
+import org.apache.parquet.column.statistics.FloatStatistics;
+import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.column.statistics.LongStatistics;
+import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 /** Audit register endpoint/FileColumnPropertyDTO property list. */
 class FileColumnProperties {
   private int columnOrdinal;
+  private int fieldId;
   private String minStrValue;
 
   private String maxStrValue;
@@ -84,6 +98,38 @@ class FileColumnProperties {
     this.setDistinctValues(stats.getDistinctValues());
   }
 
+  FileColumnProperties(int fieldId, Statistics<?> statistics) {
+    this.setColumnOrdinal(fieldId);
+    this.setFieldId(fieldId);
+    this.setNullCount(statistics.getNumNulls());
+    this.setDistinctValues(EP_NDV_UNKNOWN);
+    this.setCollation(null);
+    this.setMaxStrNonCollated(null);
+    this.setMinStrNonCollated(null);
+
+    if (statistics instanceof BooleanStatistics) {
+      this.setMinIntValue(
+          ((BooleanStatistics) statistics).genericGetMin() ? BigInteger.ONE : BigInteger.ZERO);
+      this.setMaxIntValue(
+          ((BooleanStatistics) statistics).genericGetMax() ? BigInteger.ONE : BigInteger.ZERO);
+    } else if (statistics instanceof IntStatistics || statistics instanceof LongStatistics) {
+      this.setMinIntValue(BigInteger.valueOf(((Number) statistics.genericGetMin()).longValue()));
+      this.setMaxIntValue(BigInteger.valueOf(((Number) statistics.genericGetMax()).longValue()));
+    } else if (statistics instanceof FloatStatistics || statistics instanceof DoubleStatistics) {
+      this.setMinRealValue((Double) statistics.genericGetMin());
+      this.setMaxRealValue((Double) statistics.genericGetMax());
+    } else if (statistics instanceof BinaryStatistics) {
+      if (statistics.type().getLogicalTypeAnnotation()
+          instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
+        this.setMinIntValue(new BigInteger(statistics.getMinBytes()));
+        this.setMaxIntValue(new BigInteger(statistics.getMaxBytes()));
+      } else {
+        this.setMinStrValue(truncateBytesAsHex(statistics.getMinBytes(), false));
+        this.setMaxStrValue(truncateBytesAsHex(statistics.getMaxBytes(), true));
+      }
+    }
+  }
+
   @JsonProperty("columnId")
   public int getColumnOrdinal() {
     return columnOrdinal;
@@ -91,6 +137,15 @@ class FileColumnProperties {
 
   public void setColumnOrdinal(int columnOrdinal) {
     this.columnOrdinal = columnOrdinal;
+  }
+
+  @JsonProperty("fieldId")
+  public int getFieldId() {
+    return fieldId;
+  }
+
+  public void setFieldId(int fieldId) {
+    this.fieldId = fieldId;
   }
 
   // Annotation required in order to have package private fields serialized

@@ -171,7 +171,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       ParquetBufferValue valueWithSize =
           (clientBufferParameters.getIsIcebergMode()
               ? IcebergParquetValueParser.parseColumnValueToParquet(
-                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex)
+                  value,
+                  parquetColumn.type,
+                  forkedStats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  false)
               : SnowflakeParquetValueParser.parseColumnValueToParquet(
                   value,
                   column,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -25,6 +25,9 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 
 /**
  * The abstract implementation of the buffer in the Streaming Ingest channel that holds the
@@ -651,6 +654,37 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
     }
+    epInfo.verifyEpInfo();
+    return epInfo;
+  }
+
+  static EpInfo buildEPInfoFromBlocksMetadata(List<BlockMetaData> blocksMetadata) {
+    if (blocksMetadata.isEmpty()) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "No blocks metadata found");
+    }
+    EpInfo epInfo = new EpInfo(blocksMetadata.get(0).getRowCount(), new HashMap<>());
+
+    Map<String, Statistics<?>> mergedStatistics = new HashMap<>();
+    for (BlockMetaData blockMetaData : blocksMetadata) {
+      for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
+        String columnName = columnChunkMetaData.getPath().toDotString();
+        if (mergedStatistics.get(columnName) == null) {
+          mergedStatistics.put(columnName, columnChunkMetaData.getStatistics());
+        } else {
+          mergedStatistics.get(columnName).mergeStatistics(columnChunkMetaData.getStatistics());
+        }
+      }
+    }
+
+    for (ColumnChunkMetaData columnChunkMetaData : blocksMetadata.get(0).getColumns()) {
+      String columnName = columnChunkMetaData.getPath().toDotString();
+      FileColumnProperties dto =
+          new FileColumnProperties(
+              columnChunkMetaData.getPrimitiveType().getId().intValue(),
+              mergedStatistics.get(columnName));
+      epInfo.getColumnEps().put(columnName, dto);
+    }
+
     epInfo.verifyEpInfo();
     return epInfo;
   }
