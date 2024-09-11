@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -1789,10 +1791,13 @@ public class RowBufferTest {
 
     ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
     Flusher.SerializationResult result =
-        flusher.serialize(Collections.singletonList(data), filePath);
+        flusher.serialize(Collections.singletonList(data), filePath, 13);
 
     BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
-    Assert.assertEquals(filePath, reader.getKeyValueMetadata().get(Constants.PRIMARY_FILE_ID_KEY));
+    Assert.assertEquals(
+            "testParquetFileNameMetadata13.bdec",
+        reader.getKeyValueMetadata().get(Constants.PRIMARY_FILE_ID_KEY));
+    Assert.assertEquals(RequestBuilder.DEFAULT_VERSION, reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
   }
 
   private static Thread getThreadThatWaitsForLockReleaseAndFlushes(

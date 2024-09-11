@@ -41,13 +41,13 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
   @Override
   public SerializationResult serialize(
-      List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
+          List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath, long chunkStartOffset)
       throws IOException {
-    return serializeFromJavaObjects(channelsDataPerTable, filePath);
+    return serializeFromJavaObjects(channelsDataPerTable, filePath, chunkStartOffset);
   }
 
   private SerializationResult serializeFromJavaObjects(
-      List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
+      List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath, long chunkStartOffset)
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
@@ -116,7 +116,14 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
     // http://go/streams-on-replicated-mixed-tables
-    metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
+    // Using chunk offset as suffix ensures that for interleaved tables, the file
+    // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
+    // to be bundled together.
+    String shortName = StreamingIngestUtils.getShortname(filePath);
+    final String[] parts = shortName.split("\\.");
+    metadata.put(
+        Constants.PRIMARY_FILE_ID_KEY,
+        String.format("%s%s.%s", parts[0], chunkStartOffset, parts[1]));
     parquetWriter =
         new BdecParquetWriter(
             mergedData,
