@@ -430,7 +430,7 @@ class FlushService<T> {
               .forEach(
                   channel -> {
                     if (channel.isValid()) {
-                      ChannelData<T> data = channel.getData(blobPath);
+                      ChannelData<T> data = channel.getData();
                       if (data != null) {
                         channelsDataPerTable.add(data);
                       }

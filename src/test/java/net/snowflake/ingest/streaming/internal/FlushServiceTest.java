@@ -152,7 +152,7 @@ public class FlushServiceTest {
 
     ChannelData<T> flushChannel(String name) {
       SnowflakeStreamingIngestChannelInternal<T> channel = channels.get(name);
-      ChannelData<T> channelData = channel.getRowBuffer().flush(name + "_snowpipe_streaming.bdec");
+      ChannelData<T> channelData = channel.getRowBuffer().flush();
       channelData.setChannelContext(channel.getChannelContext());
       this.channelData.add(channelData);
       return channelData;
