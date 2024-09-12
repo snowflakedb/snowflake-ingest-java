@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_CHECKSUM_SIZE_IN_BYTES;
@@ -50,12 +54,23 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+@RunWith(Parameterized.class)
 public class FlushServiceTest {
+
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public static boolean isIcebergMode;
+
   public FlushServiceTest() {
     this.testContextFactory = ParquetTestContext.createFactory();
   }
@@ -89,10 +104,17 @@ public class FlushServiceTest {
 
     TestContext() {
       storage = Mockito.mock(StreamingIngestStorage.class);
-      parameterProvider = new ParameterProvider();
+      parameterProvider = new ParameterProvider(isIcebergMode);
+      InternalParameterProvider internalParameterProvider =
+          new InternalParameterProvider(isIcebergMode);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
-      storageManager = Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
+      Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
+      storageManager =
+          Mockito.spy(
+              isIcebergMode
+                  ? new ExternalVolumeManager<>(true, "role", "client", null)
+                  : new InternalStageManager<>(true, "role", "client", null));
       Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       Mockito.when(client.getParameterProvider())
@@ -104,12 +126,12 @@ public class FlushServiceTest {
     }
 
     void setParameterOverride(Map<String, Object> parameterOverride) {
-      this.parameterProvider = new ParameterProvider(parameterOverride, null);
+      this.parameterProvider = new ParameterProvider(parameterOverride, null, isIcebergMode);
     }
 
     ChannelData<T> flushChannel(String name) {
       SnowflakeStreamingIngestChannelInternal<T> channel = channels.get(name);
-      ChannelData<T> channelData = channel.getRowBuffer().flush(name + "_snowpipe_streaming.bdec");
+      ChannelData<T> channelData = channel.getRowBuffer().flush();
       channelData.setChannelContext(channel.getChannelContext());
       this.channelData.add(channelData);
       return channelData;
@@ -403,6 +425,10 @@ public class FlushServiceTest {
 
   @Test
   public void testGetFilePath() {
+    if (isIcebergMode) {
+      // TODO: SNOW-1502887 Blob path generation for iceberg table
+      return;
+    }
     TestContext<?> testContext = testContextFactory.create();
     IStorageManager storageManager = testContext.storageManager;
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
@@ -437,10 +463,17 @@ public class FlushServiceTest {
   }
 
   @Test
-  public void testFlush() throws Exception {
+  public void testInterleaveFlush() throws Exception {
+    if (isIcebergMode) {
+      // Interleaved blob is not supported in iceberg mode
+      return;
+    }
     int numChannels = 4;
     Long maxLastFlushTime = Long.MAX_VALUE - 1000L; // -1000L to avoid jitter overflow
     TestContext<List<List<Object>>> testContext = testContextFactory.create();
+    testContext.setParameterOverride(
+        Collections.singletonMap(
+            ParameterProvider.MAX_CHUNKS_IN_BLOB, ParameterProvider.MAX_CHUNKS_IN_BLOB_DEFAULT));
     addChannel1(testContext);
     FlushService<?> flushService = testContext.flushService;
     ChannelCache<?> channelCache = testContext.channelCache;
@@ -505,7 +538,7 @@ public class FlushServiceTest {
     ChannelCache<?> channelCache = testContext.channelCache;
     Mockito.when(flushService.isTestMode()).thenReturn(false);
     testContext.setParameterOverride(
-        Collections.singletonMap(ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST, 1));
+        Collections.singletonMap(ParameterProvider.MAX_CHUNKS_IN_BLOB, 1));
 
     // Test need flush
     IntStream.range(0, numChannels)
@@ -700,7 +733,9 @@ public class FlushServiceTest {
             Math.ceil(
                 (double) numberOfRows
                     / channelsPerTable
-                    / ParameterProvider.MAX_CHUNKS_IN_BLOB_AND_REGISTRATION_REQUEST_DEFAULT);
+                    / (isIcebergMode
+                        ? ParameterProvider.MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT
+                        : ParameterProvider.MAX_CHUNKS_IN_BLOB_DEFAULT));
 
     final TestContext<List<List<Object>>> testContext = testContextFactory.create();
 
@@ -978,7 +1013,7 @@ public class FlushServiceTest {
     // Create a new Client in order to not interfere with other tests
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
         Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
-    ParameterProvider parameterProvider = new ParameterProvider();
+    ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);

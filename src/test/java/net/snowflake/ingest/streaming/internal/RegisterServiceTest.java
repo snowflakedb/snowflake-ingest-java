@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
@@ -14,8 +18,17 @@ import net.snowflake.ingest.utils.Pair;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+@RunWith(Parameterized.class)
 public class RegisterServiceTest {
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public boolean isIcebergMode;
 
   @Test
   public void testRegisterService() throws ExecutionException, InterruptedException {
@@ -45,7 +58,7 @@ public class RegisterServiceTest {
   @Test
   public void testRegisterServiceTimeoutException() throws Exception {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
@@ -73,7 +86,7 @@ public class RegisterServiceTest {
   @Test
   public void testRegisterServiceTimeoutException_testRetries() throws Exception {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
@@ -107,7 +120,7 @@ public class RegisterServiceTest {
   @Test
   public void testRegisterServiceNonTimeoutException() {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
     CompletableFuture<BlobMetadata> future = new CompletableFuture<>();

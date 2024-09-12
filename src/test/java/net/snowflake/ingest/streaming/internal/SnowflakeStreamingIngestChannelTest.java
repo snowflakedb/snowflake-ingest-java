@@ -48,8 +48,11 @@ import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
 
+@RunWith(Parameterized.class)
 public class SnowflakeStreamingIngestChannelTest {
 
   /**
@@ -71,6 +74,13 @@ public class SnowflakeStreamingIngestChannelTest {
     }
   }
 
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public boolean isIcebergMode;
+
   @Test
   public void testChannelFactoryNullFields() {
     String name = "CHANNEL";
@@ -80,7 +90,7 @@ public class SnowflakeStreamingIngestChannelTest {
     long channelSequencer = 0L;
     long rowSequencer = 0L;
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
 
     Object[] fields =
         new Object[] {
@@ -122,7 +132,7 @@ public class SnowflakeStreamingIngestChannelTest {
     long rowSequencer = 0L;
 
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
 
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
         SnowflakeStreamingIngestChannelFactory.<StubChunkData>builder(name)
@@ -157,7 +167,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testChannelValid() {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -207,7 +217,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testChannelClose() {
     SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -351,6 +361,7 @@ public class SnowflakeStreamingIngestChannelTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -421,6 +432,7 @@ public class SnowflakeStreamingIngestChannelTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -443,6 +455,10 @@ public class SnowflakeStreamingIngestChannelTest {
 
   @Test
   public void testOpenChannelSuccessResponse() throws Exception {
+    // TODO: SNOW-1490151 Iceberg testing gaps
+    if (isIcebergMode) {
+      return;
+    }
     String name = "CHANNEL";
     String dbName = "STREAMINGINGEST_TEST";
     String schemaName = "PUBLIC";
@@ -503,6 +519,7 @@ public class SnowflakeStreamingIngestChannelTest {
             new SnowflakeURL("snowflake.dev.local:8082"),
             null,
             httpClient,
+            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -541,7 +558,9 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testInsertRow() {
     SnowflakeStreamingIngestClientInternal<?> client;
-    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("client_PARQUET");
+    client =
+        new SnowflakeStreamingIngestClientInternal<ParquetChunkData>(
+            "client_PARQUET", isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -573,7 +592,7 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData<?> data = channel.getData("my_snowpipe_streaming.bdec");
+    ChannelData<?> data = channel.getData();
     Assert.assertNull(data);
 
     long insertStartTimeInMs = System.currentTimeMillis();
@@ -586,7 +605,7 @@ public class SnowflakeStreamingIngestChannelTest {
     long insertEndTimeInMs = System.currentTimeMillis();
 
     // Get data again to verify the row is inserted
-    data = channel.getData("my_snowpipe_streaming.bdec");
+    data = channel.getData();
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(1, ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());
@@ -625,7 +644,8 @@ public class SnowflakeStreamingIngestChannelTest {
     schema.forEach(x -> row.put(x.getName(), byteArrayOneMb));
 
     SnowflakeStreamingIngestClientInternal<?> client;
-    client = new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("test_client");
+    client =
+        new SnowflakeStreamingIngestClientInternal<ParquetChunkData>("test_client", isIcebergMode);
 
     // Test channel with on error CONTINUE
     SnowflakeStreamingIngestChannelInternal<?> channel =
@@ -709,7 +729,7 @@ public class SnowflakeStreamingIngestChannelTest {
     memoryInfoProvider.maxMemory = maxMemory;
 
     SnowflakeStreamingIngestClientInternal<?> client =
-        new SnowflakeStreamingIngestClientInternal<>("client");
+        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -725,7 +745,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC);
 
-    ParameterProvider parameterProvider = new ParameterProvider();
+    ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
     memoryInfoProvider.freeMemory =
         maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100;
 
@@ -755,7 +775,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testFlush() throws Exception {
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -791,7 +811,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testClose() throws Exception {
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     SnowflakeStreamingIngestChannel channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -825,7 +845,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testDropOnClose() throws Exception {
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -862,7 +882,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testDropOnCloseInvalidChannel() throws Exception {
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     SnowflakeStreamingIngestChannelInternal channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
@@ -895,7 +915,7 @@ public class SnowflakeStreamingIngestChannelTest {
   public void testGetLatestCommittedOffsetToken() {
     String offsetToken = "10";
     SnowflakeStreamingIngestClientInternal<?> client =
-        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client"));
+        Mockito.spy(new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode));
     SnowflakeStreamingIngestChannel channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",

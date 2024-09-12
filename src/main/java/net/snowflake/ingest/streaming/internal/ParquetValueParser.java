@@ -85,7 +85,8 @@ class ParquetValueParser {
       PrimitiveType.PrimitiveTypeName typeName,
       RowBufferStats stats,
       ZoneId defaultTimezone,
-      long insertRowsCurrIndex) {
+      long insertRowsCurrIndex,
+      boolean enableNewJsonParsingLogic) {
     Utils.assertNotNull("Parquet column stats", stats);
     float estimatedParquetSize = 0F;
     estimatedParquetSize += DEFINITION_LEVEL_ENCODING_BYTE_LEN;
@@ -147,7 +148,9 @@ class ParquetValueParser {
                 getBinaryValueForLogicalBinary(value, stats, columnMetadata, insertRowsCurrIndex);
             length = ((byte[]) value).length;
           } else {
-            String str = getBinaryValue(value, stats, columnMetadata, insertRowsCurrIndex);
+            String str =
+                getBinaryValue(
+                    value, stats, columnMetadata, insertRowsCurrIndex, enableNewJsonParsingLogic);
             value = str;
             if (str != null) {
               length = str.getBytes().length;
@@ -365,7 +368,8 @@ class ParquetValueParser {
       Object value,
       RowBufferStats stats,
       ColumnMetadata columnMetadata,
-      final long insertRowsCurrIndex) {
+      final long insertRowsCurrIndex,
+      boolean enableNewJsonParsingLogic) {
     AbstractRowBuffer.ColumnLogicalType logicalType =
         AbstractRowBuffer.ColumnLogicalType.valueOf(columnMetadata.getLogicalType());
     String str;
@@ -373,18 +377,27 @@ class ParquetValueParser {
       switch (logicalType) {
         case OBJECT:
           str =
-              DataValidationUtil.validateAndParseObject(
-                  columnMetadata.getName(), value, insertRowsCurrIndex);
+              enableNewJsonParsingLogic
+                  ? DataValidationUtil.validateAndParseObjectNew(
+                      columnMetadata.getName(), value, insertRowsCurrIndex)
+                  : DataValidationUtil.validateAndParseObject(
+                      columnMetadata.getName(), value, insertRowsCurrIndex);
           break;
         case VARIANT:
           str =
-              DataValidationUtil.validateAndParseVariant(
-                  columnMetadata.getName(), value, insertRowsCurrIndex);
+              enableNewJsonParsingLogic
+                  ? DataValidationUtil.validateAndParseVariantNew(
+                      columnMetadata.getName(), value, insertRowsCurrIndex)
+                  : DataValidationUtil.validateAndParseVariant(
+                      columnMetadata.getName(), value, insertRowsCurrIndex);
           break;
         case ARRAY:
           str =
-              DataValidationUtil.validateAndParseArray(
-                  columnMetadata.getName(), value, insertRowsCurrIndex);
+              enableNewJsonParsingLogic
+                  ? DataValidationUtil.validateAndParseArrayNew(
+                      columnMetadata.getName(), value, insertRowsCurrIndex)
+                  : DataValidationUtil.validateAndParseArray(
+                      columnMetadata.getName(), value, insertRowsCurrIndex);
           break;
         default:
           throw new SFException(

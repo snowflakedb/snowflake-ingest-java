@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -21,6 +21,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private List<ColumnMetadata> tableColumns;
   private String encryptionKey;
   private Long encryptionKeyId;
+  private FileLocationInfo externalVolumeLocation;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -129,5 +130,14 @@ class OpenChannelResponse extends StreamingIngestResponse {
 
   Long getEncryptionKeyId() {
     return this.encryptionKeyId;
+  }
+
+  @JsonProperty("iceberg_location")
+  void setExternalVolumeLocation(FileLocationInfo externalVolumeLocation) {
+    this.externalVolumeLocation = externalVolumeLocation;
+  }
+
+  FileLocationInfo getExternalVolumeLocation() {
+    return this.externalVolumeLocation;
   }
 }
