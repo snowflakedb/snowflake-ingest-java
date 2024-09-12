@@ -206,13 +206,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       ColumnMetadata column = parquetColumn.columnMetadata;
       ParquetValueParser.ParquetBufferValue valueWithSize =
           ParquetValueParser.parseColumnValueToParquet(
-              value,
-              column,
-              parquetColumn.type,
-              forkedStats,
-              defaultTimezone,
-              insertRowsCurrIndex,
-              clientBufferParameters.isEnableNewJsonParsingLogic());
+              value, column, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex);
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }

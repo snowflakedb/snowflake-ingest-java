@@ -403,22 +403,4 @@ public class ParameterProviderTest {
           e.getMessage());
     }
   }
-
-  @Test
-  public void EnableNewJsonParsingLogicAsBool() {
-    Properties prop = new Properties();
-    Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC, false);
-    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop, isIcebergMode);
-    Assert.assertFalse(parameterProvider.isEnableNewJsonParsingLogic());
-  }
-
-  @Test
-  public void EnableNewJsonParsingLogicAsString() {
-    Properties prop = new Properties();
-    Map<String, Object> parameterMap = getStartingParameterMap();
-    parameterMap.put(ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC, "false");
-    ParameterProvider parameterProvider = new ParameterProvider(parameterMap, prop, isIcebergMode);
-    Assert.assertFalse(parameterProvider.isEnableNewJsonParsingLogic());
-  }
 }
