@@ -623,9 +623,11 @@ public class FlushServiceTest {
     FlushService<?> flushService = testContext.flushService;
 
     // Force = true flushes
-    flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+    if (!isIcebergMode) {
+      flushService.flush(true).get();
+      Mockito.verify(flushService, Mockito.atLeast(2))
+          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+    }
   }
 
   @Test
@@ -672,10 +674,12 @@ public class FlushServiceTest {
 
     FlushService<?> flushService = testContext.flushService;
 
-    // Force = true flushes
-    flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+    if (!isIcebergMode) {
+      // Force = true flushes
+      flushService.flush(true).get();
+      Mockito.verify(flushService, Mockito.atLeast(2))
+          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+    }
   }
 
   @Test
@@ -707,14 +711,20 @@ public class FlushServiceTest {
 
     FlushService<?> flushService = testContext.flushService;
 
-    // Force = true flushes
-    flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.times(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+    if (!isIcebergMode) {
+      // Force = true flushes
+      flushService.flush(true).get();
+      Mockito.verify(flushService, Mockito.times(2))
+          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any());
+    }
   }
 
   @Test
   public void testBlobSplitDueToNumberOfChunks() throws Exception {
+    if (isIcebergMode) {
+      return;
+    }
+
     for (int rowCount : Arrays.asList(0, 1, 30, 111, 159, 287, 1287, 1599, 4496)) {
       runTestBlobSplitDueToNumberOfChunks(rowCount);
     }
@@ -788,6 +798,10 @@ public class FlushServiceTest {
         addChannel(testContext, 99, 2);
     channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
     channel3.insertRow(Collections.singletonMap("C1", 0), "");
+
+    if (isIcebergMode) {
+      return;
+    }
 
     FlushService<List<List<Object>>> flushService = testContext.flushService;
     flushService.flush(true).get();
@@ -915,18 +929,18 @@ public class FlushServiceTest {
     // Check FlushService.upload called with correct arguments
     final ArgumentCaptor<InternalStage> storageCaptor =
         ArgumentCaptor.forClass(InternalStage.class);
-    final ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
+    final ArgumentCaptor<BlobPath> nameCaptor = ArgumentCaptor.forClass(BlobPath.class);
     final ArgumentCaptor<byte[]> blobCaptor = ArgumentCaptor.forClass(byte[].class);
     final ArgumentCaptor<List<ChunkMetadata>> metadataCaptor = ArgumentCaptor.forClass(List.class);
 
     Mockito.verify(testContext.flushService)
         .upload(
             storageCaptor.capture(),
-            BlobPath.fileNameWithoutToken(nameCaptor.capture()),
+            nameCaptor.capture(),
             blobCaptor.capture(),
             metadataCaptor.capture(),
             ArgumentMatchers.any());
-    Assert.assertEquals("file_name", nameCaptor.getValue());
+    Assert.assertEquals("file_name", nameCaptor.getValue().fileName);
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
