@@ -31,15 +31,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class RowBufferTest {
-
-  private final boolean enableParquetMemoryOptimization;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
   private AbstractRowBuffer<?> rowBufferOnErrorSkipBatch;
-
-  public RowBufferTest() {
-    this.enableParquetMemoryOptimization = false;
-  }
 
   @Before
   public void setupRowBuffer() {

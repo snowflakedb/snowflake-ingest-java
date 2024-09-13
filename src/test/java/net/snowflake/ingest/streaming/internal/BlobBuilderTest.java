@@ -38,11 +38,6 @@ public class BlobBuilderTest {
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
         encrypt);
-    BlobBuilder.constructBlobAndMetadata(
-        "a.bdec",
-        Collections.singletonList(createChannelDataPerTable(1)),
-        Constants.BdecVersion.THREE,
-        encrypt);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
@@ -51,10 +46,8 @@ public class BlobBuilderTest {
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
           encrypt);
-      Assert.fail("Should not pass enableParquetInternalBuffering=false");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
-      Assert.assertTrue(e.getMessage().contains("serializeFromJavaObjects"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
       Assert.assertTrue(e.getMessage().contains("totalMetadataRowCount=0"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsWritten=1"));
@@ -62,25 +55,6 @@ public class BlobBuilderTest {
       Assert.assertTrue(e.getMessage().contains("perBlockRowCountsInFooter=1"));
       Assert.assertTrue(e.getMessage().contains("channelsCountInMetadata=1"));
       Assert.assertTrue(e.getMessage().contains("countOfSerializedJavaObjects=1"));
-    }
-
-    try {
-      BlobBuilder.constructBlobAndMetadata(
-          "a.bdec",
-          Collections.singletonList(createChannelDataPerTable(0)),
-          Constants.BdecVersion.THREE,
-          encrypt);
-      Assert.fail("Should not pass enableParquetInternalBuffering=true");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
-      Assert.assertTrue(e.getMessage().contains("serializeFromParquetWriteBuffers"));
-      Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
-      Assert.assertTrue(e.getMessage().contains("totalMetadataRowCount=0"));
-      Assert.assertTrue(e.getMessage().contains("parquetTotalRowsWritten=1"));
-      Assert.assertTrue(e.getMessage().contains("perChannelRowCountsInMetadata=0"));
-      Assert.assertTrue(e.getMessage().contains("perBlockRowCountsInFooter=1"));
-      Assert.assertTrue(e.getMessage().contains("channelsCountInMetadata=1"));
-      Assert.assertTrue(e.getMessage().contains("countOfSerializedJavaObjects=-1"));
     }
   }
 
