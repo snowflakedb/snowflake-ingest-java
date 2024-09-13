@@ -4,9 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
-
 import java.util.Optional;
+import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 
 /**
  * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata

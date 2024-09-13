@@ -4,13 +4,13 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import javax.annotation.Nonnull;
 import net.snowflake.ingest.utils.Utils;
 
-import javax.annotation.Nonnull;
-
 /**
- * Class to carry around the table pointer across the SDK codebase. This is being retrofitted into places that
- * used to work with a fullyQualifiedTableName string. Can be used as a key in maps (has equals/hashcode implemented)
+ * Class to carry around the table pointer across the SDK codebase. This is being retrofitted into
+ * places that used to work with a fullyQualifiedTableName string. Can be used as a key in maps (has
+ * equals/hashcode implemented)
  */
 class TableRef {
   final String dbName;
@@ -44,7 +44,9 @@ class TableRef {
     }
 
     final TableRef other = (TableRef) obj;
-    return this.dbName.equals(other.dbName) && this.schemaName.equals(other.schemaName) && this.tableName.equals(other.tableName);
+    return this.dbName.equals(other.dbName)
+        && this.schemaName.equals(other.schemaName)
+        && this.tableName.equals(other.tableName);
   }
 
   @Override

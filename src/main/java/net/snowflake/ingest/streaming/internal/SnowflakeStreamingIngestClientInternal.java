@@ -380,10 +380,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       // Add channel to the channel cache
       this.channelCache.addChannel(channel);
       this.storageManager.registerTable(
-          new TableRef(
-              response.getDBName(),
-              response.getSchemaName(),
-              response.getTableName()),
+          new TableRef(response.getDBName(), response.getSchemaName(), response.getTableName()),
           response.getExternalVolumeLocation());
 
       return channel;

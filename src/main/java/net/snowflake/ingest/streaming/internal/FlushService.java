@@ -12,7 +12,6 @@ import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
 import com.google.common.annotations.VisibleForTesting;
-
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -38,7 +37,6 @@ import java.util.stream.Collectors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-
 import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -84,16 +82,13 @@ class FlushService<T> {
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
   // Thread to schedule the flush job
-  @VisibleForTesting
-  ScheduledExecutorService flushWorker;
+  @VisibleForTesting ScheduledExecutorService flushWorker;
 
   // Thread to register the blob
-  @VisibleForTesting
-  ExecutorService registerWorker;
+  @VisibleForTesting ExecutorService registerWorker;
 
   // Threads to build and upload the blob
-  @VisibleForTesting
-  ExecutorService buildUploadWorkers;
+  @VisibleForTesting ExecutorService buildUploadWorkers;
 
   // Reference to the channel cache
   private final ChannelCache<T> channelCache;
@@ -109,11 +104,9 @@ class FlushService<T> {
    * blob is not 1. When max chunk in blob is 1, flush service ignores these variables and uses
    * table level last flush time and need flush flag. See {@link ChannelCache.FlushInfo}.
    */
-  @VisibleForTesting
-  volatile long lastFlushTime;
+  @VisibleForTesting volatile long lastFlushTime;
 
-  @VisibleForTesting
-  volatile boolean isNeedFlush;
+  @VisibleForTesting volatile boolean isNeedFlush;
 
   // Indicates whether it's running as part of the test
   private final boolean isTestMode;
@@ -128,10 +121,10 @@ class FlushService<T> {
   /**
    * Default constructor
    *
-   * @param client         the owning client
-   * @param cache          the channel cache
+   * @param client the owning client
+   * @param cache the channel cache
    * @param storageManager the storage manager
-   * @param isTestMode     whether the service is running in test mode
+   * @param isTestMode whether the service is running in test mode
    */
   FlushService(
       SnowflakeStreamingIngestClientInternal<T> client,
@@ -170,8 +163,8 @@ class FlushService<T> {
   }
 
   /**
-   * @param isForce        if true will flush regardless of other conditions
-   * @param tablesToFlush  list of tables to flush
+   * @param isForce if true will flush regardless of other conditions
+   * @param tablesToFlush list of tables to flush
    * @param flushStartTime the time when the flush started
    * @return
    */
@@ -193,9 +186,7 @@ class FlushService<T> {
         this.flushWorker);
   }
 
-  /**
-   * If tracing is enabled, print always else, check if it needs flush or is forceful.
-   */
+  /** If tracing is enabled, print always else, check if it needs flush or is forceful. */
   private void logFlushTask(boolean isForce, Set<String> tablesToFlush, long flushStartTime) {
     boolean isNeedFlush =
         this.owningClient.getParameterProvider().getMaxChunksInBlob() == 1
@@ -270,7 +261,7 @@ class FlushService<T> {
    *
    * @param isForce
    * @return Completable future that will return when the blobs are registered successfully, or null
-   * if none of the conditions is met above
+   *     if none of the conditions is met above
    */
   CompletableFuture<Void> flush(boolean isForce) {
     final long flushStartTime = System.currentTimeMillis();
@@ -311,9 +302,7 @@ class FlushService<T> {
     return this.statsFuture();
   }
 
-  /**
-   * Create the workers for each specific job
-   */
+  /** Create the workers for each specific job */
   private void createWorkers() {
     // Create thread for checking and scheduling flush job
     ThreadFactory flushThreadFactory =
@@ -395,12 +384,12 @@ class FlushService<T> {
    */
   void distributeFlushTasks(Set<String> tablesToFlush) {
     Iterator<
-        Map.Entry<
-            String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
+            Map.Entry<
+                String, ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>>>>
         itr =
-        this.channelCache.entrySet().stream()
-            .filter(e -> tablesToFlush.contains(e.getKey()))
-            .iterator();
+            this.channelCache.entrySet().stream()
+                .filter(e -> tablesToFlush.contains(e.getKey()))
+                .iterator();
     List<Pair<BlobData<T>, CompletableFuture<BlobMetadata>>> blobs = new ArrayList<>();
     List<ChannelData<T>> leftoverChannelsDataPerTable = new ArrayList<>();
 
@@ -422,7 +411,8 @@ class FlushService<T> {
             >= this.owningClient.getParameterProvider().getMaxChunksInBlob()) {
           // Create a new blob if the current one already contains max allowed number of chunks
           logger.logInfo(
-              "Max allowed number of chunks in the current blob reached. chunkCount={}  maxChunkCount={}",
+              "Max allowed number of chunks in the current blob reached. chunkCount={} "
+                  + " maxChunkCount={}",
               blobData.size(),
               this.owningClient.getParameterProvider().getMaxChunksInBlob());
           break;
@@ -501,54 +491,57 @@ class FlushService<T> {
 
       long flushStartMs = System.currentTimeMillis();
       if (this.owningClient.flushLatency != null) {
-        latencyTimerContextMap.putIfAbsent(blobPath.fileName, this.owningClient.flushLatency.time());
+        latencyTimerContextMap.putIfAbsent(
+            blobPath.fileName, this.owningClient.flushLatency.time());
       }
 
-      Supplier<BlobMetadata> supplier = () -> {
-        try {
-          BlobMetadata blobMetadata =
-              buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
-          blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
-          return blobMetadata;
-        } catch (Throwable e) {
-          Throwable ex = e.getCause() == null ? e : e.getCause();
-          String errorMessage =
-              String.format(
-                  "Building blob failed, client=%s, blob=%s, exception=%s,"
-                      + " detail=%s, trace=%s, all channels in the blob will be"
-                      + " invalidated",
-                  this.owningClient.getName(),
-                  blobPath.fileName,
-                  ex,
-                  ex.getMessage(),
-                  getStackTrace(ex));
-          logger.logError(errorMessage);
-          if (this.owningClient.getTelemetryService() != null) {
-            this.owningClient
-                .getTelemetryService()
-                .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
-          }
+      Supplier<BlobMetadata> supplier =
+          () -> {
+            try {
+              BlobMetadata blobMetadata =
+                  buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
+              blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
+              return blobMetadata;
+            } catch (Throwable e) {
+              Throwable ex = e.getCause() == null ? e : e.getCause();
+              String errorMessage =
+                  String.format(
+                      "Building blob failed, client=%s, blob=%s, exception=%s,"
+                          + " detail=%s, trace=%s, all channels in the blob will be"
+                          + " invalidated",
+                      this.owningClient.getName(),
+                      blobPath.fileName,
+                      ex,
+                      ex.getMessage(),
+                      getStackTrace(ex));
+              logger.logError(errorMessage);
+              if (this.owningClient.getTelemetryService() != null) {
+                this.owningClient
+                    .getTelemetryService()
+                    .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+              }
 
-          if (e instanceof IOException) {
-            invalidateAllChannelsInBlob(blobData, errorMessage);
-            return null;
-          } else if (e instanceof NoSuchAlgorithmException) {
-            throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
-          } else if (e instanceof InvalidAlgorithmParameterException
-              | e instanceof NoSuchPaddingException
-              | e instanceof IllegalBlockSizeException
-              | e instanceof BadPaddingException
-              | e instanceof InvalidKeyException) {
-            throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
-          } else {
-            throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
-          }
-        }
-      };
+              if (e instanceof IOException) {
+                invalidateAllChannelsInBlob(blobData, errorMessage);
+                return null;
+              } else if (e instanceof NoSuchAlgorithmException) {
+                throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
+              } else if (e instanceof InvalidAlgorithmParameterException
+                  | e instanceof NoSuchPaddingException
+                  | e instanceof IllegalBlockSizeException
+                  | e instanceof BadPaddingException
+                  | e instanceof InvalidKeyException) {
+                throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+              } else {
+                throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
+              }
+            }
+          };
 
-      blobs.add(new Pair<>(
-          new BlobData<>(blobPath.fileName, blobData),
-          CompletableFuture.supplyAsync(supplier, this.buildUploadWorkers)));
+      blobs.add(
+          new Pair<>(
+              new BlobData<>(blobPath.fileName, blobData),
+              CompletableFuture.supplyAsync(supplier, this.buildUploadWorkers)));
 
       logger.logInfo(
           "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
@@ -590,18 +583,18 @@ class FlushService<T> {
   /**
    * Builds and uploads blob to cloud storage.
    *
-   * @param blobPath                Path of the destination blob in cloud storage
-   * @param blobData                All the data for one blob. Assumes that all ChannelData in the inner List
-   *                                belongs to the same table. Will error if this is not the case
+   * @param blobPath Path of the destination blob in cloud storage
+   * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
+   *     belongs to the same table. Will error if this is not the case
    * @param fullyQualifiedTableName the table name of the first channel in the blob, only matters in
-   *                                Iceberg mode
+   *     Iceberg mode
    * @return BlobMetadata for FlushService.upload
    */
   BlobMetadata buildAndUpload(
       BlobPath blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-      NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
-      InvalidKeyException {
+          NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
+          InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
     // Construct the blob along with the metadata of the blob
@@ -625,10 +618,10 @@ class FlushService<T> {
   /**
    * Upload a blob to Streaming Ingest dedicated stage
    *
-   * @param storage   the storage to upload the blob
-   * @param blobPath  full path of the blob
-   * @param blob      blob data
-   * @param metadata  a list of chunk metadata
+   * @param storage the storage to upload the blob
+   * @param blobPath full path of the blob
+   * @param blob blob data
+   * @param metadata a list of chunk metadata
    * @param blobStats an object to track latencies and other stats of the blob
    * @return BlobMetadata object used to create the register blob request
    */
@@ -747,9 +740,7 @@ class FlushService<T> {
     return throttleOnQueuedTasks;
   }
 
-  /**
-   * Get whether we're running under test mode
-   */
+  /** Get whether we're running under test mode */
   boolean isTestMode() {
     return this.isTestMode;
   }

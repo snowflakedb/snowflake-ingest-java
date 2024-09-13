@@ -12,7 +12,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -23,7 +22,6 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
-
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
@@ -36,9 +34,7 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
-/**
- * Handles uploading files to the Snowflake Streaming Ingest Storage
- */
+/** Handles uploading files to the Snowflake Streaming Ingest Storage */
 class InternalStage<T> implements IStorage {
   private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -75,8 +71,8 @@ class InternalStage<T> implements IStorage {
   /**
    * Default constructor
    *
-   * @param owningManager    the storage manager owning this storage
-   * @param clientName       The client name
+   * @param owningManager the storage manager owning this storage
+   * @param clientName The client name
    * @param fileLocationInfo The file location information from open channel response
    * @param maxUploadRetries The maximum number of retries to attempt
    */
@@ -86,11 +82,7 @@ class InternalStage<T> implements IStorage {
       FileLocationInfo fileLocationInfo,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
-    this(
-        owningManager,
-        clientName,
-        (SnowflakeFileTransferMetadataWithAge) null,
-        maxUploadRetries);
+    this(owningManager, clientName, (SnowflakeFileTransferMetadataWithAge) null, maxUploadRetries);
     Utils.assertStringNotNullOrEmpty("client prefix", this.owningManager.getClientPrefix());
     this.fileTransferMetadataWithAge = createFileTransferMetadataWithAge(fileLocationInfo);
   }
@@ -98,9 +90,9 @@ class InternalStage<T> implements IStorage {
   /**
    * Constructor for TESTING that takes SnowflakeFileTransferMetadataWithAge as input
    *
-   * @param owningManager    the storage manager owning this storage
-   * @param clientName       the client name
-   * @param testMetadata     SnowflakeFileTransferMetadataWithAge to test with
+   * @param owningManager the storage manager owning this storage
+   * @param clientName the client name
+   * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
    * @param maxUploadRetries the maximum number of retries to attempt
    */
   InternalStage(
@@ -212,8 +204,7 @@ class InternalStage<T> implements IStorage {
       return fileTransferMetadataWithAge;
     }
 
-    FileLocationInfo location =
-        this.owningManager.getRefreshedLocation(Optional.empty());
+    FileLocationInfo location = this.owningManager.getRefreshedLocation(Optional.empty());
     SnowflakeFileTransferMetadataWithAge metadata = createFileTransferMetadataWithAge(location);
     this.fileTransferMetadataWithAge = metadata;
     return metadata;
@@ -222,8 +213,8 @@ class InternalStage<T> implements IStorage {
   static SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
       FileLocationInfo fileLocationInfo)
       throws JsonProcessingException,
-      net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException,
-      SnowflakeSQLException {
+          net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException,
+          SnowflakeSQLException {
     final SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
 
     if (fileLocationInfo
@@ -274,8 +265,7 @@ class InternalStage<T> implements IStorage {
   SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
       throws SnowflakeSQLException, IOException {
 
-    FileLocationInfo location =
-        this.owningManager.getRefreshedLocation(Optional.of(fileName));
+    FileLocationInfo location = this.owningManager.getRefreshedLocation(Optional.of(fileName));
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
@@ -287,9 +277,9 @@ class InternalStage<T> implements IStorage {
   }
 
   static net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode
-  parseFileLocationInfo(FileLocationInfo fileLocationInfo)
-      throws JsonProcessingException,
-      net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException {
+      parseFileLocationInfo(FileLocationInfo fileLocationInfo)
+          throws JsonProcessingException,
+              net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException {
     JsonNode fileLocationInfoNode = mapper.valueToTree(fileLocationInfo);
 
     // Currently there are a few mismatches between the client/configure response and what
@@ -309,9 +299,7 @@ class InternalStage<T> implements IStorage {
     return parseConfigureResponseMapper.readTree(responseString);
   }
 
-  /**
-   * Upload file to internal stage
-   */
+  /** Upload file to internal stage */
   public void put(BlobPath blobPath, byte[] blob) {
     String filePath = blobPath.fileName;
     if (this.isLocalFS()) {

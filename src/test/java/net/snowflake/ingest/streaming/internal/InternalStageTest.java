@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.core.SFSessionProperty;
@@ -300,13 +299,9 @@ public class InternalStageTest {
 
     InternalStage<?> stage =
         new InternalStage<>(
-            storageManager,
-            "clientName",
-            (SnowflakeFileTransferMetadataWithAge) null,
-            1);
+            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
 
-    SnowflakeFileTransferMetadataWithAge metadataWithAge =
-        stage.refreshSnowflakeMetadata(true);
+    SnowflakeFileTransferMetadataWithAge metadataWithAge = stage.refreshSnowflakeMetadata(true);
 
     final ArgumentCaptor<String> endpointCaptor = ArgumentCaptor.forClass(String.class);
     final ArgumentCaptor<String> stringCaptor = ArgumentCaptor.forClass(String.class);
@@ -396,10 +391,7 @@ public class InternalStageTest {
 
     InternalStage<?> stage =
         new InternalStage(
-            storageManager,
-            "clientName",
-            (SnowflakeFileTransferMetadataWithAge) null,
-            1);
+            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
 
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
 
@@ -441,10 +433,7 @@ public class InternalStageTest {
 
     InternalStage<?> stage =
         new InternalStage<>(
-            storageManager,
-            "clientName",
-            (SnowflakeFileTransferMetadataWithAge) null,
-            1);
+            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
 
     ThreadFactory buildUploadThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();

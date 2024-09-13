@@ -5,7 +5,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 /**
- * Class to manage blob path strings that might have an embedded security token if its a presigned url
+ * Class to manage blob path strings that might have an embedded security token if its a presigned
+ * url
  */
 public class BlobPath {
   public final String blobPath;
