@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,9 +20,7 @@ public class ParquetChunkData {
    * @param rows buffered row data as a list
    * @param metadata chunk metadata
    */
-  public ParquetChunkData(
-      List<List<Object>> rows,
-      Map<String, String> metadata) {
+  public ParquetChunkData(List<List<Object>> rows, Map<String, String> metadata) {
     this.rows = rows;
     // create a defensive copy of the parameter map because the argument map passed here
     // may currently be shared across multiple threads.

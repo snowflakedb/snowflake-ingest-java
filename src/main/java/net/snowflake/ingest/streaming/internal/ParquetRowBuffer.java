@@ -4,8 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +22,6 @@ import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -126,7 +123,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   void writeRow(List<Object> row) {
-      data.add(row);
+    data.add(row);
   }
 
   @Override
@@ -231,7 +228,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   @Override
   Optional<ParquetChunkData> getSnapshot() {
     List<List<Object>> oldData = new ArrayList<>();
-      data.forEach(r -> oldData.add(new ArrayList<>(r)));
+    data.forEach(r -> oldData.add(new ArrayList<>(r)));
     return bufferedRowCount <= 0
         ? Optional.empty()
         : Optional.of(new ParquetChunkData(oldData, metadata));

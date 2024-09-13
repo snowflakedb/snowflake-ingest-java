@@ -62,16 +62,12 @@ public class BlobBuilderTest {
    * Creates a channel data configurable number of rows in metadata and 1 physical row (using both
    * with and without internal buffering optimization)
    */
-  private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(
-      int metadataRowCount) throws IOException {
+  private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(int metadataRowCount)
+      throws IOException {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
-    Mockito.doReturn(
-            new ParquetFlusher(
-                schema,
-                100L,
-                Constants.BdecParquetCompression.GZIP))
+    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP))
         .when(channelData)
         .createFlusher();
 
@@ -88,8 +84,7 @@ public class BlobBuilderTest {
     bdecParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
         new ParquetChunkData(
-            Collections.singletonList(Collections.singletonList("A")),
-            new HashMap<>()));
+            Collections.singletonList(Collections.singletonList("A")), new HashMap<>()));
     channelData.setColumnEps(new HashMap<>());
     channelData.setRowCount(metadataRowCount);
     channelData.setMinMaxInsertTimeInMs(new Pair<>(2L, 3L));

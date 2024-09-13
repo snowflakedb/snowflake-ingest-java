@@ -29,9 +29,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
 
-  /**
-   * Construct parquet flusher from its schema.
-   */
+  /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
       MessageType schema,
       long maxChunkSizeInBytes,
@@ -43,7 +41,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
   @Override
   public SerializationResult serialize(
-          List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
+      List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
       throws IOException {
     return serializeFromJavaObjects(channelsDataPerTable, filePath);
   }
