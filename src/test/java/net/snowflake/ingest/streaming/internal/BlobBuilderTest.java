@@ -35,12 +35,12 @@ public class BlobBuilderTest {
     // Construction succeeds if both data and metadata contain 1 row
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
-        Collections.singletonList(createChannelDataPerTable(1, false)),
+        Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
         encrypt);
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
-        Collections.singletonList(createChannelDataPerTable(1, true)),
+        Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
         encrypt);
 
@@ -48,7 +48,7 @@ public class BlobBuilderTest {
     try {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
-          Collections.singletonList(createChannelDataPerTable(0, false)),
+          Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
           encrypt);
       Assert.fail("Should not pass enableParquetInternalBuffering=false");
@@ -67,7 +67,7 @@ public class BlobBuilderTest {
     try {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
-          Collections.singletonList(createChannelDataPerTable(0, true)),
+          Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
           encrypt);
       Assert.fail("Should not pass enableParquetInternalBuffering=true");
@@ -89,14 +89,13 @@ public class BlobBuilderTest {
    * with and without internal buffering optimization)
    */
   private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(
-      int metadataRowCount, boolean enableParquetInternalBuffering) throws IOException {
+      int metadataRowCount) throws IOException {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
     Mockito.doReturn(
             new ParquetFlusher(
                 schema,
-                enableParquetInternalBuffering,
                 100L,
                 Constants.BdecParquetCompression.GZIP))
         .when(channelData)
@@ -116,8 +115,6 @@ public class BlobBuilderTest {
     channelData.setVectors(
         new ParquetChunkData(
             Collections.singletonList(Collections.singletonList("A")),
-            bdecParquetWriter,
-            stream,
             new HashMap<>()));
     channelData.setColumnEps(new HashMap<>());
     channelData.setRowCount(metadataRowCount);
