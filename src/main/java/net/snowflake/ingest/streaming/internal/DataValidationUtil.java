@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -718,7 +719,13 @@ class DataValidationUtil {
         || input instanceof Long) {
       return BigDecimal.valueOf(((Number) input).longValue());
     } else if (input instanceof Float || input instanceof Double) {
-      return BigDecimal.valueOf(((Number) input).doubleValue());
+      try {
+        return BigDecimal.valueOf(((Number) input).doubleValue());
+      } catch (NumberFormatException e) {
+        /* NaN and infinity are not allowed */
+        throw valueFormatNotAllowedException(
+            columnName, "NUMBER", "Not a valid number", insertRowIndex);
+      }
     } else if (input instanceof String) {
       try {
         final String stringInput = ((String) input).trim();
@@ -971,28 +978,20 @@ class DataValidationUtil {
    * @return Parsed integer
    */
   static int validateAndParseIcebergInt(String columnName, Object input, long insertRowIndex) {
-    if (input instanceof Number) {
-      double value = ((Number) input).doubleValue();
-      long longValue = Math.round(value);
-      if (longValue > Integer.MAX_VALUE || longValue < Integer.MIN_VALUE || Double.isNaN(value)) {
-        throw new SFException(
-            ErrorCode.INVALID_VALUE_ROW,
-            String.format(
-                "Number out of representable inclusive range of integers between %d and %d,"
-                    + " rowIndex:%d",
-                Integer.MIN_VALUE, Integer.MAX_VALUE, insertRowIndex));
-      }
-      return (int) longValue;
-    } else if (input instanceof String) {
-      try {
-        return Integer.parseInt(((String) input).trim());
-      } catch (NumberFormatException e) {
-        throw valueFormatNotAllowedException(
-            columnName, "INT", "Not a valid integer", insertRowIndex);
-      }
+    BigDecimal roundedValue =
+        validateAndParseBigDecimal(columnName, input, insertRowIndex)
+            .setScale(0, RoundingMode.HALF_UP);
+    try {
+      return roundedValue.intValueExact();
+    } catch (ArithmeticException e) {
+      /* overflow */
+      throw new SFException(
+          ErrorCode.INVALID_VALUE_ROW,
+          String.format(
+              "Number out of representable inclusive range of integers between %d and %d,"
+                  + " rowIndex:%d",
+              Integer.MIN_VALUE, Integer.MAX_VALUE, insertRowIndex));
     }
-    throw typeNotAllowedException(
-        columnName, input.getClass(), "INT", new String[] {"Number", "String"}, insertRowIndex);
   }
 
   /**
@@ -1009,28 +1008,20 @@ class DataValidationUtil {
    * @return Parsed long
    */
   static long validateAndParseIcebergLong(String columnName, Object input, long insertRowIndex) {
-    if (input instanceof Number) {
-      double value = ((Number) input).doubleValue();
-      double roundedDouble = (value > 0) ? Math.floor(value + 0.5) : Math.ceil(value - 0.5);
-      if (roundedDouble > Long.MAX_VALUE || roundedDouble < Long.MIN_VALUE || Double.isNaN(value)) {
-        throw new SFException(
-            ErrorCode.INVALID_VALUE_ROW,
-            String.format(
-                "Number out of representable inclusive range of longs between %d and %d,"
-                    + " rowIndex:%d",
-                Long.MIN_VALUE, Long.MAX_VALUE, insertRowIndex));
-      }
-      return (long) roundedDouble;
-    } else if (input instanceof String) {
-      try {
-        return Long.parseLong(((String) input).trim());
-      } catch (NumberFormatException e) {
-        throw valueFormatNotAllowedException(
-            columnName, "LONG", "Not a valid long", insertRowIndex);
-      }
+    BigDecimal roundedValue =
+        validateAndParseBigDecimal(columnName, input, insertRowIndex)
+            .setScale(0, RoundingMode.HALF_UP);
+    try {
+      return roundedValue.longValueExact();
+    } catch (ArithmeticException e) {
+      /* overflow */
+      throw new SFException(
+          ErrorCode.INVALID_VALUE_ROW,
+          String.format(
+              "Number out of representable inclusive range of integers between %d and %d,"
+                  + " rowIndex:%d",
+              Long.MIN_VALUE, Long.MAX_VALUE, insertRowIndex));
     }
-    throw typeNotAllowedException(
-        columnName, input.getClass(), "LONG", new String[] {"Number", "String"}, insertRowIndex);
   }
 
   /**
@@ -1110,6 +1101,16 @@ class DataValidationUtil {
         || "t".equals(normalizedInput)
         || "true".equals(normalizedInput)
         || "on".equals(normalizedInput);
+  }
+
+  private static BigDecimal convertNumberToBigDecimal(Number value, final long insertRowIndex) {
+    if (value instanceof Double && (((Double) value).isNaN() || ((Double) value).isInfinite())) {
+      throw new SFException(
+          ErrorCode.INVALID_VALUE_ROW,
+          String.format(
+              "Infinite or NaN values are not allowed," + " rowIndex:%d", insertRowIndex));
+    }
+    return new BigDecimal(value.toString());
   }
 
   /**
