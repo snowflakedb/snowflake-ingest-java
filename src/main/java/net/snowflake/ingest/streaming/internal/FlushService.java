@@ -411,7 +411,7 @@ class FlushService<T> {
             >= this.owningClient.getParameterProvider().getMaxChunksInBlob()) {
           // Create a new blob if the current one already contains max allowed number of chunks
           logger.logInfo(
-              "Max allowed number of chunks in the current blob reached. chunkCount={} "
+              "Max allowed number of chunks in the current blob reached. chunkCount={}"
                   + " maxChunkCount={}",
               blobData.size(),
               this.owningClient.getParameterProvider().getMaxChunksInBlob());
