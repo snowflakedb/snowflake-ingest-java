@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -1795,9 +1794,11 @@ public class RowBufferTest {
 
     BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
     Assert.assertEquals(
-            "testParquetFileNameMetadata13.bdec",
+        "testParquetFileNameMetadata13.bdec",
         reader.getKeyValueMetadata().get(Constants.PRIMARY_FILE_ID_KEY));
-    Assert.assertEquals(RequestBuilder.DEFAULT_VERSION, reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
+    Assert.assertEquals(
+        RequestBuilder.DEFAULT_VERSION,
+        reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
   }
 
   private static Thread getThreadThatWaitsForLockReleaseAndFlushes(
