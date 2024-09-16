@@ -31,15 +31,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class RowBufferTest {
-
-  private final boolean enableParquetMemoryOptimization;
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
   private AbstractRowBuffer<?> rowBufferOnErrorSkipBatch;
-
-  public RowBufferTest() {
-    this.enableParquetMemoryOptimization = false;
-  }
 
   @Before
   public void setupRowBuffer() {
@@ -129,7 +123,6 @@ public class RowBufferTest {
         rs -> {},
         initialState,
         ClientBufferParameters.test_createClientBufferParameters(
-            enableParquetMemoryOptimization,
             MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
             MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
             Constants.BdecParquetCompression.GZIP,

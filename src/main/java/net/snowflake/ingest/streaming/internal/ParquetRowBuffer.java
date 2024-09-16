@@ -4,8 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +22,6 @@ import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -43,11 +40,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   /* Unflushed rows as Java objects. Needed for the Parquet w/o memory optimization. */
   private final List<List<Object>> data;
-
-  /* BDEC Parquet writer. It is used to buffer unflushed data in Parquet internal buffers instead of using Java objects */
-  private BdecParquetWriter bdecParquetWriter;
-
-  private ByteArrayOutputStream fileOutput;
   private final List<List<Object>> tempData;
 
   private MessageType schema;
@@ -111,31 +103,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       id++;
     }
     schema = new MessageType(PARQUET_MESSAGE_TYPE_NAME, parquetTypes);
-    createFileWriter();
     tempData.clear();
     data.clear();
-  }
-
-  /** Create BDEC file writer if Parquet memory optimization is enabled. */
-  private void createFileWriter() {
-    fileOutput = new ByteArrayOutputStream();
-    try {
-      if (clientBufferParameters.getEnableParquetInternalBuffering()) {
-        bdecParquetWriter =
-            new BdecParquetWriter(
-                fileOutput,
-                schema,
-                metadata,
-                channelFullyQualifiedName,
-                clientBufferParameters.getMaxChunkSizeInBytes(),
-                clientBufferParameters.getBdecParquetCompression());
-      } else {
-        this.bdecParquetWriter = null;
-      }
-      data.clear();
-    } catch (IOException e) {
-      throw new SFException(ErrorCode.INTERNAL_ERROR, "cannot create parquet writer", e);
-    }
   }
 
   @Override
@@ -154,11 +123,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   }
 
   void writeRow(List<Object> row) {
-    if (clientBufferParameters.getEnableParquetInternalBuffering()) {
-      bdecParquetWriter.writeRow(row);
-    } else {
-      data.add(row);
-    }
+    data.add(row);
   }
 
   @Override
@@ -263,12 +228,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   @Override
   Optional<ParquetChunkData> getSnapshot() {
     List<List<Object>> oldData = new ArrayList<>();
-    if (!clientBufferParameters.getEnableParquetInternalBuffering()) {
-      data.forEach(r -> oldData.add(new ArrayList<>(r)));
-    }
+    data.forEach(r -> oldData.add(new ArrayList<>(r)));
     return bufferedRowCount <= 0
         ? Optional.empty()
-        : Optional.of(new ParquetChunkData(oldData, bdecParquetWriter, fileOutput, metadata));
+        : Optional.of(new ParquetChunkData(oldData, metadata));
   }
 
   /** Used only for testing. */
@@ -309,27 +272,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   @Override
   void reset() {
     super.reset();
-    createFileWriter();
     data.clear();
   }
 
   /** Close the row buffer by releasing its internal resources. */
   @Override
-  void closeInternal() {
-    if (bdecParquetWriter != null) {
-      try {
-        bdecParquetWriter.close();
-      } catch (IOException e) {
-        throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to close parquet writer", e);
-      }
-    }
-  }
+  void closeInternal() {}
 
   @Override
   public Flusher<ParquetChunkData> createFlusher() {
     return new ParquetFlusher(
         schema,
-        clientBufferParameters.getEnableParquetInternalBuffering(),
         clientBufferParameters.getMaxChunkSizeInBytes(),
         clientBufferParameters.getBdecParquetCompression());
   }
