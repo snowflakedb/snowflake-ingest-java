@@ -109,7 +109,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   private final FlushService<T> flushService;
 
   // Reference to storage manager
-  private final IStorageManager<T, ?> storageManager;
+  private final IStorageManager storageManager;
 
   // Indicates whether the client has closed
   private volatile boolean isClosed;
@@ -235,9 +235,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     this.storageManager =
         isIcebergMode
-            ? new ExternalVolumeManager<>(
+            ? new ExternalVolumeManager(
                 isTestMode, this.role, this.name, this.snowflakeServiceClient)
-            : new InternalStageManager<>(
+            : new InternalStageManager<T>(
                 isTestMode, this.role, this.name, this.snowflakeServiceClient);
 
     try {
@@ -391,10 +391,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     // Add channel to the channel cache
     this.channelCache.addChannel(channel);
-    this.storageManager.addStorage(
-        response.getDBName(),
-        response.getSchemaName(),
-        response.getTableName(),
+    this.storageManager.registerTable(
+        new TableRef(response.getDBName(), response.getSchemaName(), response.getTableName()),
         response.getExternalVolumeLocation());
 
     return channel;

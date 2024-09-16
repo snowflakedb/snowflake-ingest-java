@@ -32,6 +32,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -55,10 +56,6 @@ import net.snowflake.ingest.utils.Utils;
  * @param <T> type of column data ({@link ParquetChunkData})
  */
 class FlushService<T> {
-
-  // The max number of upload retry attempts to the stage
-  private static final int DEFAULT_MAX_UPLOAD_RETRIES = 5;
-
   // Static class to save the list of channels that are used to build a blob, which is mainly used
   // to invalidate all the channels when there is a failure
   static class BlobData<T> {
@@ -97,7 +94,7 @@ class FlushService<T> {
   private final ChannelCache<T> channelCache;
 
   // Reference to the Streaming Ingest storage manager
-  private final IStorageManager<T, ?> storageManager;
+  private final IStorageManager storageManager;
 
   // Reference to register service
   private final RegisterService<T> registerService;
@@ -132,7 +129,7 @@ class FlushService<T> {
   FlushService(
       SnowflakeStreamingIngestClientInternal<T> client,
       ChannelCache<T> cache,
-      IStorageManager<T, ?> storageManager,
+      IStorageManager storageManager,
       boolean isTestMode) {
     this.owningClient = client;
     this.channelCache = cache;
@@ -402,7 +399,6 @@ class FlushService<T> {
     while (itr.hasNext() || !leftoverChannelsDataPerTable.isEmpty()) {
       List<List<ChannelData<T>>> blobData = new ArrayList<>();
       float totalBufferSizeInBytes = 0F;
-      final String blobPath = this.storageManager.generateBlobPath();
 
       // Distribute work at table level, split the blob if reaching the blob size limit or the
       // channel has different encryption key ids
@@ -416,10 +412,9 @@ class FlushService<T> {
           // Create a new blob if the current one already contains max allowed number of chunks
           logger.logInfo(
               "Max allowed number of chunks in the current blob reached. chunkCount={}"
-                  + " maxChunkCount={} currentBlobPath={}",
+                  + " maxChunkCount={}",
               blobData.size(),
-              this.owningClient.getParameterProvider().getMaxChunksInBlob(),
-              blobPath);
+              this.owningClient.getParameterProvider().getMaxChunksInBlob());
           break;
         } else {
           ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<T>> table =
@@ -430,7 +425,7 @@ class FlushService<T> {
               .forEach(
                   channel -> {
                     if (channel.isValid()) {
-                      ChannelData<T> data = channel.getData(blobPath);
+                      ChannelData<T> data = channel.getData();
                       if (data != null) {
                         channelsDataPerTable.add(data);
                       }
@@ -480,73 +475,79 @@ class FlushService<T> {
         }
       }
 
-      // Kick off a build job
       if (blobData.isEmpty()) {
-        // we decrement the blob sequencer so that we do not have gaps in the blob names created by
-        // this client.
-        this.storageManager.decrementBlobSequencer();
-      } else {
-        long flushStartMs = System.currentTimeMillis();
-        if (this.owningClient.flushLatency != null) {
-          latencyTimerContextMap.putIfAbsent(blobPath, this.owningClient.flushLatency.time());
-        }
-        blobs.add(
-            new Pair<>(
-                new BlobData<>(blobPath, blobData),
-                CompletableFuture.supplyAsync(
-                    () -> {
-                      try {
-                        // Get the fully qualified table name from the first channel in the blob.
-                        // This only matters when the client is in Iceberg mode. In Iceberg mode,
-                        // all channels in the blob belong to the same table.
-                        String fullyQualifiedTableName =
-                            blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName();
-                        BlobMetadata blobMetadata =
-                            buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
-                        blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
-                        return blobMetadata;
-                      } catch (Throwable e) {
-                        Throwable ex = e.getCause() == null ? e : e.getCause();
-                        String errorMessage =
-                            String.format(
-                                "Building blob failed, client=%s, blob=%s, exception=%s,"
-                                    + " detail=%s, trace=%s, all channels in the blob will be"
-                                    + " invalidated",
-                                this.owningClient.getName(),
-                                blobPath,
-                                ex,
-                                ex.getMessage(),
-                                getStackTrace(ex));
-                        logger.logError(errorMessage);
-                        if (this.owningClient.getTelemetryService() != null) {
-                          this.owningClient
-                              .getTelemetryService()
-                              .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
-                        }
-
-                        if (e instanceof IOException) {
-                          invalidateAllChannelsInBlob(blobData, errorMessage);
-                          return null;
-                        } else if (e instanceof NoSuchAlgorithmException) {
-                          throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
-                        } else if (e instanceof InvalidAlgorithmParameterException
-                            | e instanceof NoSuchPaddingException
-                            | e instanceof IllegalBlockSizeException
-                            | e instanceof BadPaddingException
-                            | e instanceof InvalidKeyException) {
-                          throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
-                        } else {
-                          throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
-                        }
-                      }
-                    },
-                    this.buildUploadWorkers)));
-        logger.logInfo(
-            "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
-            this.owningClient.getName(),
-            blobPath,
-            this.buildUploadWorkers.toString());
+        continue;
       }
+
+      // Kick off a build job
+
+      // Get the fully qualified table name from the first channel in the blob.
+      // This only matters when the client is in Iceberg mode. In Iceberg mode,
+      // all channels in the blob belong to the same table.
+      String fullyQualifiedTableName =
+          blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName();
+
+      final BlobPath blobPath = this.storageManager.generateBlobPath(fullyQualifiedTableName);
+
+      long flushStartMs = System.currentTimeMillis();
+      if (this.owningClient.flushLatency != null) {
+        latencyTimerContextMap.putIfAbsent(
+            blobPath.fileName, this.owningClient.flushLatency.time());
+      }
+
+      Supplier<BlobMetadata> supplier =
+          () -> {
+            try {
+              BlobMetadata blobMetadata =
+                  buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
+              blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
+              return blobMetadata;
+            } catch (Throwable e) {
+              Throwable ex = e.getCause() == null ? e : e.getCause();
+              String errorMessage =
+                  String.format(
+                      "Building blob failed, client=%s, blob=%s, exception=%s,"
+                          + " detail=%s, trace=%s, all channels in the blob will be"
+                          + " invalidated",
+                      this.owningClient.getName(),
+                      blobPath.fileName,
+                      ex,
+                      ex.getMessage(),
+                      getStackTrace(ex));
+              logger.logError(errorMessage);
+              if (this.owningClient.getTelemetryService() != null) {
+                this.owningClient
+                    .getTelemetryService()
+                    .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
+              }
+
+              if (e instanceof IOException) {
+                invalidateAllChannelsInBlob(blobData, errorMessage);
+                return null;
+              } else if (e instanceof NoSuchAlgorithmException) {
+                throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
+              } else if (e instanceof InvalidAlgorithmParameterException
+                  | e instanceof NoSuchPaddingException
+                  | e instanceof IllegalBlockSizeException
+                  | e instanceof BadPaddingException
+                  | e instanceof InvalidKeyException) {
+                throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
+              } else {
+                throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
+              }
+            }
+          };
+
+      blobs.add(
+          new Pair<>(
+              new BlobData<>(blobPath.fileName, blobData),
+              CompletableFuture.supplyAsync(supplier, this.buildUploadWorkers)));
+
+      logger.logInfo(
+          "buildAndUpload task added for client={}, blob={}, buildUploadWorkers stats={}",
+          this.owningClient.getName(),
+          blobPath,
+          this.buildUploadWorkers.toString());
     }
 
     // Add the flush task futures to the register service
@@ -590,7 +591,7 @@ class FlushService<T> {
    * @return BlobMetadata for FlushService.upload
    */
   BlobMetadata buildAndUpload(
-      String blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName)
+      BlobPath blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
@@ -599,7 +600,7 @@ class FlushService<T> {
     // Construct the blob along with the metadata of the blob
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
-            blobPath,
+            blobPath.fileName,
             blobData,
             bdecVersion,
             this.owningClient.getInternalParameterProvider().getEnableChunkEncryption());
@@ -625,13 +626,13 @@ class FlushService<T> {
    * @return BlobMetadata object used to create the register blob request
    */
   BlobMetadata upload(
-      StreamingIngestStorage<T, ?> storage,
-      String blobPath,
+      IStorage storage,
+      BlobPath blobPath,
       byte[] blob,
       List<ChunkMetadata> metadata,
       BlobStats blobStats)
       throws NoSuchAlgorithmException {
-    logger.logInfo("Start uploading blob={}, size={}", blobPath, blob.length);
+    logger.logInfo("Start uploading blob={}, size={}", blobPath.fileName, blob.length);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
@@ -647,14 +648,14 @@ class FlushService<T> {
 
     logger.logInfo(
         "Finish uploading blob={}, size={}, timeInMillis={}",
-        blobPath,
+        blobPath.fileName,
         blob.length,
         System.currentTimeMillis() - startTime);
 
     // at this point we know for sure if the BDEC file has data for more than one chunk, i.e.
     // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
-        blobPath,
+        blobPath.fileName,
         BlobBuilder.computeMD5(blob),
         bdecVersion,
         metadata,

@@ -61,6 +61,7 @@ ADDITIONAL_LICENSES_MAP = {
     "org.bouncycastle:bcpkix-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcutil-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcprov-jdk18on": BOUNCY_CASTLE_LICENSE,
+    "com.thoughtworks.paranamer:paranamer": BSD_2_CLAUSE_LICENSE,
     "org.roaringbitmap:RoaringBitmap": APACHE_LICENSE,
     "org.roaringbitmap:shims": APACHE_LICENSE,
 }

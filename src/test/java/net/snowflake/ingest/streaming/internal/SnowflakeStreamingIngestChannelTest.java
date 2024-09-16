@@ -592,7 +592,7 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData<?> data = channel.getData("my_snowpipe_streaming.bdec");
+    ChannelData<?> data = channel.getData();
     Assert.assertNull(data);
 
     long insertStartTimeInMs = System.currentTimeMillis();
@@ -605,7 +605,7 @@ public class SnowflakeStreamingIngestChannelTest {
     long insertEndTimeInMs = System.currentTimeMillis();
 
     // Get data again to verify the row is inserted
-    data = channel.getData("my_snowpipe_streaming.bdec");
+    data = channel.getData();
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(1, ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());

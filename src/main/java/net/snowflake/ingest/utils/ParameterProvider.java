@@ -30,8 +30,6 @@ public class ParameterProvider {
   public static final String BLOB_UPLOAD_MAX_RETRY_COUNT =
       "BLOB_UPLOAD_MAX_RETRY_COUNT".toLowerCase();
   public static final String MAX_MEMORY_LIMIT_IN_BYTES = "MAX_MEMORY_LIMIT_IN_BYTES".toLowerCase();
-  public static final String ENABLE_PARQUET_INTERNAL_BUFFERING =
-      "ENABLE_PARQUET_INTERNAL_BUFFERING".toLowerCase();
   // This should not be needed once we have the ability to track size at table/chunk level
   public static final String MAX_CHANNEL_SIZE_IN_BYTES = "MAX_CHANNEL_SIZE_IN_BYTES".toLowerCase();
   public static final String MAX_CHUNK_SIZE_IN_BYTES = "MAX_CHUNK_SIZE_IN_BYTES".toLowerCase();
@@ -78,10 +76,6 @@ public class ParameterProvider {
 
   /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
   public static final int MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT = 1;
-
-  /* Parameter that enables using internal Parquet buffers for buffering of rows before serializing.
-  It reduces memory consumption compared to using Java Objects for buffering.*/
-  public static final boolean ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT = false;
 
   public static final boolean ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT = true;
 
@@ -210,13 +204,6 @@ public class ParameterProvider {
     this.checkAndUpdate(
         MAX_MEMORY_LIMIT_IN_BYTES,
         MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT,
-        parameterOverrides,
-        props,
-        false);
-
-    this.checkAndUpdate(
-        ENABLE_PARQUET_INTERNAL_BUFFERING,
-        ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT,
         parameterOverrides,
         props,
         false);
@@ -440,14 +427,6 @@ public class ParameterProvider {
         this.parameterMap.getOrDefault(
             MAX_MEMORY_LIMIT_IN_BYTES, MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT);
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
-  }
-
-  /** @return Return whether memory optimization for Parquet is enabled. */
-  public boolean getEnableParquetInternalBuffering() {
-    Object val =
-        this.parameterMap.getOrDefault(
-            ENABLE_PARQUET_INTERNAL_BUFFERING, ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT);
-    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
   /** @return The max channel size in bytes */

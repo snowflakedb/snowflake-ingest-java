@@ -10,8 +10,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 /** Channel's buffer relevant parameters that are set at the owning client level. */
 public class ClientBufferParameters {
 
-  private boolean enableParquetInternalBuffering;
-
   private long maxChunkSizeInBytes;
 
   private long maxAllowedRowSizeInBytes;
@@ -25,20 +23,16 @@ public class ClientBufferParameters {
   /**
    * Private constructor used for test methods
    *
-   * @param enableParquetInternalBuffering flag whether buffering in internal Parquet buffers is
-   *     enabled
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
    * @param isIcebergMode
    */
   private ClientBufferParameters(
-      boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       boolean isIcebergMode) {
-    this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
@@ -48,10 +42,6 @@ public class ClientBufferParameters {
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
   public ClientBufferParameters(SnowflakeStreamingIngestClientInternal clientInternal) {
-    this.enableParquetInternalBuffering =
-        clientInternal != null
-            ? clientInternal.getParameterProvider().getEnableParquetInternalBuffering()
-            : ParameterProvider.ENABLE_PARQUET_INTERNAL_BUFFERING_DEFAULT;
     this.maxChunkSizeInBytes =
         clientInternal != null
             ? clientInternal.getParameterProvider().getMaxChunkSizeInBytes()
@@ -75,31 +65,23 @@ public class ClientBufferParameters {
   }
 
   /**
-   * @param enableParquetInternalBuffering flag whether buffering in internal Parquet buffers is
-   *     enabled
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
    * @param isIcebergMode
    * @return ClientBufferParameters object
    */
   public static ClientBufferParameters test_createClientBufferParameters(
-      boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       boolean isIcebergMode) {
     return new ClientBufferParameters(
-        enableParquetInternalBuffering,
         maxChunkSizeInBytes,
         maxAllowedRowSizeInBytes,
         bdecParquetCompression,
         enableNewJsonParsingLogic,
         isIcebergMode);
-  }
-
-  public boolean getEnableParquetInternalBuffering() {
-    return enableParquetInternalBuffering;
   }
 
   public long getMaxChunkSizeInBytes() {

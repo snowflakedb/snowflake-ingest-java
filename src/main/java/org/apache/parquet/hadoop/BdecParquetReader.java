@@ -34,6 +34,7 @@ import org.apache.parquet.schema.MessageType;
  */
 public class BdecParquetReader implements AutoCloseable {
   private final InternalParquetRecordReader<List<Object>> reader;
+  private final ParquetFileReader fileReader;
 
   /**
    * @param data buffer where the data that has to be read resides.
@@ -41,7 +42,7 @@ public class BdecParquetReader implements AutoCloseable {
    */
   public BdecParquetReader(byte[] data) throws IOException {
     ParquetReadOptions options = ParquetReadOptions.builder().build();
-    ParquetFileReader fileReader = ParquetFileReader.open(new BdecInputFile(data), options);
+    fileReader = ParquetFileReader.open(new BdecInputFile(data), options);
     reader = new InternalParquetRecordReader<>(new BdecReadSupport(), options.getRecordFilter());
     reader.initialize(fileReader, options);
   }
@@ -58,6 +59,11 @@ public class BdecParquetReader implements AutoCloseable {
     } catch (InterruptedException e) {
       throw new IOException(e);
     }
+  }
+
+  /** Get the key value metadata in the file */
+  public Map<String, String> getKeyValueMetadata() {
+    return fileReader.getFileMetaData().getKeyValueMetaData();
   }
 
   /**
