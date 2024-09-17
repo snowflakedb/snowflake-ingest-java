@@ -124,12 +124,16 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     // Using chunk offset as suffix ensures that for interleaved tables, the file
     // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
     // to be bundled together.
-    String shortName = StreamingIngestUtils.getShortname(filePath);
-    final String[] parts = shortName.split("\\.");
-    Preconditions.checkState(parts.length == 2, "Invalid file name format");
-    metadata.put(
-        Constants.PRIMARY_FILE_ID_KEY,
-        String.format("%s%s.%s", parts[0], chunkStartOffset, parts[1]));
+    if (chunkStartOffset == 0) {
+      metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
+    } else {
+      String shortName = StreamingIngestUtils.getShortname(filePath);
+      final String[] parts = shortName.split("\\.");
+      Preconditions.checkState(parts.length == 2, "Invalid file name format");
+      metadata.put(
+          Constants.PRIMARY_FILE_ID_KEY,
+          String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]));
+    }
     parquetWriter =
         new BdecParquetWriter(
             mergedData,

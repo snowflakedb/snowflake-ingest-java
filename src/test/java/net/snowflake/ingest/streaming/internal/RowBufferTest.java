@@ -1794,7 +1794,7 @@ public class RowBufferTest {
 
     BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
     Assert.assertEquals(
-        "testParquetFileNameMetadata13.bdec",
+        "testParquetFileNameMetadata_13.bdec",
         reader.getKeyValueMetadata().get(Constants.PRIMARY_FILE_ID_KEY));
     Assert.assertEquals(
         RequestBuilder.DEFAULT_VERSION,
