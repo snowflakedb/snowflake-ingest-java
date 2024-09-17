@@ -106,6 +106,10 @@ class ParquetValueParserAssertionBuilder {
   }
 
   void assertValueEquals(Object expectedValue, Object actualValue) {
+    if (expectedValue == null) {
+      Assert.assertNull(actualValue);
+      return;
+    }
     if (expectedValue instanceof List) {
       Assert.assertTrue(actualValue instanceof List);
       List<?> expectedList = (List<?>) expectedValue;

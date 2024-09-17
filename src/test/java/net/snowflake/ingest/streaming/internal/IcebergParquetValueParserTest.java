@@ -15,11 +15,16 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class IcebergParquetValueParserTest {
@@ -296,14 +301,14 @@ public class IcebergParquetValueParserTest {
 
   @Test
   public void parseList() throws JsonProcessingException {
-    Type type =
+    Type list =
         Types.optionalList()
             .element(Types.optional(PrimitiveTypeName.INT32).named("element"))
             .named("LIST_COL");
-
+    IcebergParquetValueParser.parseColumnValueToParquet(null, list, UTC, 0, false);
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            Arrays.asList(1, 2, 3, 4, 5), type, UTC, 0, false);
+            Arrays.asList(1, 2, 3, 4, 5), list, UTC, 0, false);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .expectedValueClass(ArrayList.class)
@@ -314,16 +319,47 @@ public class IcebergParquetValueParserTest {
             (4.0f + REPETITION_LEVEL_ENCODING_BYTE_LEN + DEFINITION_LEVEL_ENCODING_BYTE_LEN) * 5)
         .expectedMinMax(BigInteger.valueOf(1))
         .assertMatches();
+
+    /* Test required list */
+    Type requiredList =
+        Types.requiredList()
+            .element(Types.optional(PrimitiveTypeName.INT32).named("element"))
+            .named("LIST_COL");
+    Assert.assertThrows(
+        SFException.class,
+        () ->
+            IcebergParquetValueParser.parseColumnValueToParquet(null, requiredList, UTC, 0, false));
+    pv =
+        IcebergParquetValueParser.parseColumnValueToParquet(
+            new ArrayList<>(), requiredList, UTC, 0, false);
+    ParquetValueParserAssertionBuilder.newBuilder()
+        .parquetBufferValue(pv)
+        .expectedValueClass(ArrayList.class)
+        .expectedParsedValue(convertToArrayList(objectMapper.readValue("[]", ArrayList.class)))
+        .expectedSize(0)
+        .expectedMinMax(BigInteger.valueOf(1))
+        .assertMatches();
+
+    /* Test required list with required elements */
+    Type requiredElements =
+        Types.requiredList()
+            .element(Types.required(PrimitiveTypeName.INT32).named("element"))
+            .named("LIST_COL");
+    Assert.assertThrows(
+        SFException.class,
+        () ->
+            IcebergParquetValueParser.parseColumnValueToParquet(
+                Collections.singletonList(null), requiredElements, UTC, 0, false));
   }
 
   @Test
   public void parseMap() throws JsonProcessingException {
-    Type type =
+    Type map =
         Types.optionalMap()
-            .key(Types.optional(PrimitiveTypeName.INT32).named("key"))
+            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
             .value(Types.optional(PrimitiveTypeName.INT32).named("value"))
             .named("MAP_COL");
-
+    IcebergParquetValueParser.parseColumnValueToParquet(null, map, UTC, 0, false);
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<Integer, Integer>() {
@@ -332,7 +368,7 @@ public class IcebergParquetValueParserTest {
                 put(2, 2);
               }
             },
-            type,
+            map,
             UTC,
             0,
             false);
@@ -346,28 +382,84 @@ public class IcebergParquetValueParserTest {
                 + (4.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN) * 2)
         .expectedMinMax(BigInteger.valueOf(1))
         .assertMatches();
+
+    /* Test required map */
+    Type requiredMap =
+        Types.requiredMap()
+            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
+            .value(Types.optional(PrimitiveTypeName.INT32).named("value"))
+            .named("MAP_COL");
+    Assert.assertThrows(
+        SFException.class,
+        () ->
+            IcebergParquetValueParser.parseColumnValueToParquet(null, requiredMap, UTC, 0, false));
+    pv =
+        IcebergParquetValueParser.parseColumnValueToParquet(
+            new java.util.HashMap<Integer, Integer>(), requiredMap, UTC, 0, false);
+    ParquetValueParserAssertionBuilder.newBuilder()
+        .parquetBufferValue(pv)
+        .expectedValueClass(ArrayList.class)
+        .expectedParsedValue(convertToArrayList(objectMapper.readValue("[]", ArrayList.class)))
+        .expectedSize(0)
+        .expectedMinMax(BigInteger.valueOf(1))
+        .assertMatches();
+
+    /* Test required map with required values */
+    Type requiredValues =
+        Types.requiredMap()
+            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
+            .value(Types.required(PrimitiveTypeName.INT32).named("value"))
+            .named("MAP_COL");
+    Assert.assertThrows(
+        SFException.class,
+        () ->
+            IcebergParquetValueParser.parseColumnValueToParquet(
+                new java.util.HashMap<Integer, Integer>() {
+                  {
+                    put(1, null);
+                  }
+                },
+                requiredValues,
+                UTC,
+                0,
+                false));
   }
 
   @Test
   public void parseStruct() throws JsonProcessingException {
-    Type type =
+    Type struct =
         Types.optionalGroup()
             .addField(Types.optional(PrimitiveTypeName.INT32).named("a"))
             .addField(
-                Types.optional(PrimitiveTypeName.BINARY)
+                Types.required(PrimitiveTypeName.BINARY)
                     .as(LogicalTypeAnnotation.stringType())
                     .named("b"))
             .named("STRUCT_COL");
 
+    IcebergParquetValueParser.parseColumnValueToParquet(null, struct, UTC, 0, false);
+    Assert.assertThrows(
+        SFException.class,
+        () ->
+            IcebergParquetValueParser.parseColumnValueToParquet(
+                new java.util.HashMap<String, Object>() {
+                  {
+                    put("a", 1);
+                  }
+                },
+                struct,
+                UTC,
+                0,
+                false));
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<String, Object>() {
               {
-                put("a", 1);
+                // a is null
                 put("b", "2");
+                put("c", 1); // Ignored
               }
             },
-            type,
+            struct,
             UTC,
             0,
             false);
@@ -375,23 +467,113 @@ public class IcebergParquetValueParserTest {
         .parquetBufferValue(pv)
         .expectedValueClass(ArrayList.class)
         .expectedParsedValue(
-            convertToArrayList(objectMapper.readValue("[1, \"2\"]", ArrayList.class)))
-        .expectedSize(
-            4.0f
-                + DEFINITION_LEVEL_ENCODING_BYTE_LEN
-                + 1
-                + BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
-                + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
+            convertToArrayList(objectMapper.readValue("[null, \"2\"]", ArrayList.class)))
+        .expectedSize(1 + BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
+        .expectedMinMax(BigInteger.valueOf(1))
+        .assertMatches();
+
+    /* Test required struct */
+    Type requiredStruct =
+        Types.requiredGroup()
+            .addField(Types.optional(PrimitiveTypeName.INT32).named("a"))
+            .addField(
+                Types.optional(PrimitiveTypeName.BINARY)
+                    .as(LogicalTypeAnnotation.stringType())
+                    .named("b"))
+            .named("STRUCT_COL");
+    Assert.assertThrows(
+        SFException.class,
+        () ->
+            IcebergParquetValueParser.parseColumnValueToParquet(
+                null, requiredStruct, UTC, 0, false));
+    pv =
+        IcebergParquetValueParser.parseColumnValueToParquet(
+            new java.util.HashMap<String, Object>(), requiredStruct, UTC, 0, false);
+    ParquetValueParserAssertionBuilder.newBuilder()
+        .parquetBufferValue(pv)
+        .expectedValueClass(ArrayList.class)
+        .expectedParsedValue(
+            convertToArrayList(objectMapper.readValue("[null, null]", ArrayList.class)))
+        .expectedSize(0)
         .expectedMinMax(BigInteger.valueOf(1))
         .assertMatches();
   }
 
-  static ArrayList<Object> convertToArrayList(ArrayList<?> list) {
+  @Test
+  public void parseNestedTypes() {
+    for (int depth = 1; depth <= 100; depth *= 10) {
+      Type type = generateNestedType(depth);
+      Pair<Object, Object> res = generateNestedValueAndReference(depth);
+      Object value = res.getFirst();
+      List<?> reference = (List<?>) res.getSecond();
+      ParquetBufferValue pv =
+          IcebergParquetValueParser.parseColumnValueToParquet(value, type, UTC, 0, false);
+      ParquetValueParserAssertionBuilder.newBuilder()
+          .parquetBufferValue(pv)
+          .expectedValueClass(ArrayList.class)
+          .expectedParsedValue(convertToArrayList(reference))
+          .expectedSize(
+              (4.0f + REPETITION_LEVEL_ENCODING_BYTE_LEN + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
+                  * (depth / 3 + 1))
+          .assertMatches();
+    }
+  }
+
+  private static Type generateNestedType(int depth) {
+    if (depth == 0) {
+      return Types.optional(PrimitiveTypeName.INT32).named("a");
+    }
+    switch (depth % 3) {
+      case 1:
+        return Types.optionalList().element(generateNestedType(depth - 1)).named("a");
+      case 2:
+        return Types.optionalGroup().addField(generateNestedType(depth - 1)).named("a");
+      case 0:
+        return Types.optionalMap()
+            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
+            .value(generateNestedType(depth - 1))
+            .named("a");
+    }
+    return null;
+  }
+
+  private static Pair<Object, Object> generateNestedValueAndReference(int depth) {
+    if (depth == 0) {
+      return new Pair<>(1, 1);
+    }
+    Pair<Object, Object> res = generateNestedValueAndReference(depth - 1);
+    Assert.assertNotNull(res);
+    switch (depth % 3) {
+      case 1:
+        return new Pair<>(
+            Collections.singletonList(res.getFirst()),
+            Collections.singletonList(Collections.singletonList(res.getSecond())));
+      case 2:
+        return new Pair<>(
+            new java.util.HashMap<String, Object>() {
+              {
+                put("a", res.getFirst());
+              }
+            },
+            Collections.singletonList(res.getSecond()));
+      case 0:
+        return new Pair<>(
+            new java.util.HashMap<Integer, Object>() {
+              {
+                put(1, res.getFirst());
+              }
+            },
+            Collections.singletonList(Arrays.asList(1, res.getSecond())));
+    }
+    return null;
+  }
+
+  private static ArrayList<Object> convertToArrayList(List<?> list) {
     ArrayList<Object> arrayList = new ArrayList<>();
     for (Object element : list) {
-      if (element instanceof ArrayList) {
+      if (element instanceof List) {
         // Recursively convert nested lists
-        arrayList.add(convertToArrayList((ArrayList<?>) element));
+        arrayList.add(convertToArrayList((List<?>) element));
       } else if (element instanceof String) {
         // Convert string to byte array
         arrayList.add(((String) element).getBytes());
