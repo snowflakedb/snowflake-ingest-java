@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncateBytesAsHex;
 import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigInteger;
 import java.util.Objects;
@@ -140,11 +141,12 @@ class FileColumnProperties {
   }
 
   @JsonProperty("fieldId")
-  public int getFieldId() {
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  int getFieldId() {
     return fieldId;
   }
 
-  public void setFieldId(int fieldId) {
+  void setFieldId(int fieldId) {
     this.fieldId = fieldId;
   }
 

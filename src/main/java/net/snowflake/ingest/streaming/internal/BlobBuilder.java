@@ -71,12 +71,8 @@ class BlobBuilder {
       Constants.BdecVersion bdecVersion,
       boolean encrypt,
       boolean isIceberg)
-      throws IOException,
-          NoSuchPaddingException,
-          NoSuchAlgorithmException,
-          InvalidAlgorithmParameterException,
-          InvalidKeyException,
-          IllegalBlockSizeException,
+      throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();

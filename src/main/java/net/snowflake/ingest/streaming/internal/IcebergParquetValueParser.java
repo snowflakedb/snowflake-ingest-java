@@ -79,11 +79,11 @@ class IcebergParquetValueParser {
             estimatedParquetSize += 8;
             break;
           case FLOAT:
-            float floatVal =
+            value =
                 (float)
                     DataValidationUtil.validateAndParseReal(
                         type.getName(), value, insertRowsCurrIndex);
-            value = floatVal;
+            ;
             estimatedParquetSize += 4;
             break;
           case DOUBLE:
@@ -325,8 +325,7 @@ class IcebergParquetValueParser {
           value, type, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
-      return get3LevelListValue(
-          value, type, defaultTimezone, insertRowsCurrIndex, isdDescendantsOfRepeatingGroup);
+      return get3LevelListValue(value, type, defaultTimezone, insertRowsCurrIndex);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation) {
       return get3LevelMapValue(
@@ -374,11 +373,7 @@ class IcebergParquetValueParser {
    * will be parsed as {@code [[1], [2], [3], [4]]}.
    */
   private static ParquetBufferValue get3LevelListValue(
-      Object value,
-      GroupType type,
-      ZoneId defaultTimezone,
-      final long insertRowsCurrIndex,
-      boolean isdDescendantsOfRepeatingGroup) {
+      Object value, GroupType type, ZoneId defaultTimezone, final long insertRowsCurrIndex) {
     Iterable<Object> iterableVal =
         DataValidationUtil.validateAndParseIcebergList(type.getName(), value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
@@ -391,7 +386,7 @@ class IcebergParquetValueParser {
                   type.getType(0).asGroupType().getType(0),
                   defaultTimezone,
                   insertRowsCurrIndex,
-                  isdDescendantsOfRepeatingGroup);
+                  true);
           listVal.add(Collections.singletonList(parsedValue.getValue()));
           estimatedParquetSize.updateAndGet(sz -> sz + parsedValue.getSize());
         });

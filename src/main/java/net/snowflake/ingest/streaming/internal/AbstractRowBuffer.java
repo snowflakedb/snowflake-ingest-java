@@ -683,6 +683,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     for (ColumnChunkMetaData columnChunkMetaData : blocksMetadata.get(0).getColumns()) {
       if (!prevColumnName.equals(columnChunkMetaData.getPath().toArray()[0])) {
         columnOrdinal++;
+        prevColumnName = columnChunkMetaData.getPath().toArray()[0];
       }
       String subColumnName = columnChunkMetaData.getPath().toDotString();
       FileColumnProperties dto =
