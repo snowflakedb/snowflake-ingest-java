@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import com.google.common.annotations.VisibleForTesting;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -118,22 +120,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
-    // We insert the filename in the file itself as metadata so that streams can work on replicated
-    // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
-    // http://go/streams-on-replicated-mixed-tables
-    // Using chunk offset as suffix ensures that for interleaved tables, the file
-    // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
-    // to be bundled together.
-    if (chunkStartOffset == 0) {
-      metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
-    } else {
-      String shortName = StreamingIngestUtils.getShortname(filePath);
-      final String[] parts = shortName.split("\\.");
-      Preconditions.checkState(parts.length == 2, "Invalid file name format");
-      metadata.put(
-          Constants.PRIMARY_FILE_ID_KEY,
-          String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]));
-    }
+    addFileIdToMetadata(filePath, chunkStartOffset, metadata);
     parquetWriter =
         new BdecParquetWriter(
             mergedData,
@@ -154,6 +141,25 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         chunkEstimatedUncompressedSize,
         mergedData,
         chunkMinMaxInsertTimeInMs);
+  }
+
+  private static void addFileIdToMetadata(String filePath, long chunkStartOffset, Map<String, String> metadata) {
+    // We insert the filename in the file itself as metadata so that streams can work on replicated
+    // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
+    // http://go/streams-on-replicated-mixed-tables
+    // Using chunk offset as suffix ensures that for interleaved tables, the file
+    // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
+    // to be bundled together.
+    if (chunkStartOffset == 0) {
+      metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
+    } else {
+      String shortName = StreamingIngestUtils.getShortname(filePath);
+      final String[] parts = shortName.split("\\.");
+      Preconditions.checkState(parts.length == 2, "Invalid file name format");
+      metadata.put(
+          Constants.PRIMARY_FILE_ID_KEY,
+          String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]));
+    }
   }
 
   /**
