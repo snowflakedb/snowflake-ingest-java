@@ -10,8 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import com.google.common.annotations.VisibleForTesting;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -143,7 +141,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         chunkMinMaxInsertTimeInMs);
   }
 
-  private static void addFileIdToMetadata(String filePath, long chunkStartOffset, Map<String, String> metadata) {
+  private static void addFileIdToMetadata(
+      String filePath, long chunkStartOffset, Map<String, String> metadata) {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
     // http://go/streams-on-replicated-mixed-tables
