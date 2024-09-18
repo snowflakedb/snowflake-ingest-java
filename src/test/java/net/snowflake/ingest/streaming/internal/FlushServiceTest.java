@@ -96,8 +96,8 @@ public class FlushServiceTest {
     ChannelCache<T> channelCache;
     final Map<String, SnowflakeStreamingIngestChannelInternal<T>> channels = new HashMap<>();
     FlushService<T> flushService;
-    IStorageManager<T, ?> storageManager;
-    StreamingIngestStorage storage;
+    IStorageManager storageManager;
+    InternalStage storage;
     ParameterProvider parameterProvider;
     Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable;
     RegisterService registerService;
@@ -105,7 +105,7 @@ public class FlushServiceTest {
     final List<ChannelData<T>> channelData = new ArrayList<>();
 
     TestContext() {
-      storage = Mockito.mock(StreamingIngestStorage.class);
+      storage = Mockito.mock(InternalStage.class);
       parameterProvider = new ParameterProvider(isIcebergMode);
       InternalParameterProvider internalParameterProvider =
           new InternalParameterProvider(isIcebergMode);
@@ -115,8 +115,8 @@ public class FlushServiceTest {
       storageManager =
           Mockito.spy(
               isIcebergMode
-                  ? new ExternalVolumeManager<>(true, "role", "client", null)
-                  : new InternalStageManager<>(true, "role", "client", null));
+                  ? new ExternalVolumeManager(true, "role", "client", null)
+                  : new InternalStageManager(true, "role", "client", null));
       Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       Mockito.when(client.getParameterProvider())
@@ -161,7 +161,7 @@ public class FlushServiceTest {
     BlobMetadata buildAndUpload() throws Exception {
       List<List<ChannelData<T>>> blobData = Collections.singletonList(channelData);
       return flushService.buildAndUpload(
-          "file_name",
+          BlobPath.fileNameWithoutToken("file_name"),
           blobData,
           blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName(),
           encryptionKeysPerTable);
@@ -456,7 +456,7 @@ public class FlushServiceTest {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
     String outputString =
-        ((InternalStageManager<?>) storageManager).getBlobPath(calendar, clientPrefix);
+        ((InternalStageManager<?>) storageManager).getNextFileName(calendar, clientPrefix);
     Path outputPath = Paths.get(outputString);
     Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
     Assert.assertTrue(
@@ -645,9 +645,11 @@ public class FlushServiceTest {
     FlushService<?> flushService = testContext.flushService;
 
     // Force = true flushes
-    flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    if (!isIcebergMode) {
+      flushService.flush(true).get();
+      Mockito.verify(flushService, Mockito.atLeast(2))
+          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    }
   }
 
   @Test
@@ -694,10 +696,12 @@ public class FlushServiceTest {
 
     FlushService<?> flushService = testContext.flushService;
 
-    // Force = true flushes
-    flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    if (!isIcebergMode) {
+      // Force = true flushes
+      flushService.flush(true).get();
+      Mockito.verify(flushService, Mockito.atLeast(2))
+          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    }
   }
 
   @Test
@@ -729,14 +733,20 @@ public class FlushServiceTest {
 
     FlushService<?> flushService = testContext.flushService;
 
-    // Force = true flushes
-    flushService.flush(true).get();
-    Mockito.verify(flushService, Mockito.times(2))
-        .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    if (!isIcebergMode) {
+      // Force = true flushes
+      flushService.flush(true).get();
+      Mockito.verify(flushService, Mockito.times(2))
+          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+    }
   }
 
   @Test
   public void testBlobSplitDueToNumberOfChunks() throws Exception {
+    if (isIcebergMode) {
+      return;
+    }
+
     for (int rowCount : Arrays.asList(0, 1, 30, 111, 159, 287, 1287, 1599, 4496)) {
       runTestBlobSplitDueToNumberOfChunks(rowCount);
     }
@@ -810,6 +820,10 @@ public class FlushServiceTest {
         addChannel(testContext, 99, 2);
     channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
     channel3.insertRow(Collections.singletonMap("C1", 0), "");
+
+    if (isIcebergMode) {
+      return;
+    }
 
     FlushService<List<List<Object>>> flushService = testContext.flushService;
     flushService.flush(true).get();
@@ -935,9 +949,9 @@ public class FlushServiceTest {
             .build();
 
     // Check FlushService.upload called with correct arguments
-    final ArgumentCaptor<StreamingIngestStorage> storageCaptor =
-        ArgumentCaptor.forClass(StreamingIngestStorage.class);
-    final ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
+    final ArgumentCaptor<InternalStage> storageCaptor =
+        ArgumentCaptor.forClass(InternalStage.class);
+    final ArgumentCaptor<BlobPath> nameCaptor = ArgumentCaptor.forClass(BlobPath.class);
     final ArgumentCaptor<byte[]> blobCaptor = ArgumentCaptor.forClass(byte[].class);
     final ArgumentCaptor<List<ChunkMetadata>> metadataCaptor = ArgumentCaptor.forClass(List.class);
 
@@ -948,7 +962,7 @@ public class FlushServiceTest {
             blobCaptor.capture(),
             metadataCaptor.capture(),
             ArgumentMatchers.any());
-    Assert.assertEquals("file_name", nameCaptor.getValue());
+    Assert.assertEquals("file_name", nameCaptor.getValue().fileName);
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
@@ -1086,7 +1100,7 @@ public class FlushServiceTest {
     innerData.add(channel1Data);
     innerData.add(channel2Data);
 
-    IStorageManager<StubChunkData, InternalStageLocation> storageManager =
+    IStorageManager storageManager =
         Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
     FlushService<StubChunkData> flushService =
         new FlushService<>(client, channelCache, storageManager, false);

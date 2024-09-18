@@ -15,7 +15,6 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.parquet.hadoop.BdecParquetReader;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
@@ -26,22 +25,16 @@ import org.apache.parquet.schema.MessageType;
 public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private static final Logging logger = new Logging(ParquetFlusher.class);
   private final MessageType schema;
-  private final boolean enableParquetInternalBuffering;
   private final long maxChunkSizeInBytes;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
 
-  /**
-   * Construct parquet flusher from its schema and set flag that indicates whether Parquet memory
-   * optimization is enabled, i.e. rows will be buffered in internal Parquet buffer.
-   */
+  /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
       MessageType schema,
-      boolean enableParquetInternalBuffering,
       long maxChunkSizeInBytes,
       Constants.BdecParquetCompression bdecParquetCompression) {
     this.schema = schema;
-    this.enableParquetInternalBuffering = enableParquetInternalBuffering;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
   }
@@ -50,95 +43,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   public SerializationResult serialize(
       List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
       throws IOException {
-    if (enableParquetInternalBuffering) {
-      return serializeFromParquetWriteBuffers(channelsDataPerTable, filePath);
-    }
     return serializeFromJavaObjects(channelsDataPerTable, filePath);
-  }
-
-  private SerializationResult serializeFromParquetWriteBuffers(
-      List<ChannelData<ParquetChunkData>> channelsDataPerTable, String filePath)
-      throws IOException {
-    List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
-    long rowCount = 0L;
-    float chunkEstimatedUncompressedSize = 0f;
-    String firstChannelFullyQualifiedTableName = null;
-    Map<String, RowBufferStats> columnEpStatsMapCombined = null;
-    BdecParquetWriter mergedChannelWriter = null;
-    ByteArrayOutputStream mergedChunkData = new ByteArrayOutputStream();
-    Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
-
-    for (ChannelData<ParquetChunkData> data : channelsDataPerTable) {
-      // Create channel metadata
-      ChannelMetadata channelMetadata =
-          ChannelMetadata.builder()
-              .setOwningChannelFromContext(data.getChannelContext())
-              .setRowSequencer(data.getRowSequencer())
-              .setOffsetToken(data.getEndOffsetToken())
-              .setStartOffsetToken(data.getStartOffsetToken())
-              .build();
-      // Add channel metadata to the metadata list
-      channelsMetadataList.add(channelMetadata);
-
-      logger.logDebug(
-          "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={}",
-          data.getChannelContext().getFullyQualifiedName(),
-          data.getRowCount(),
-          data.getBufferSize(),
-          filePath);
-
-      if (mergedChannelWriter == null) {
-        columnEpStatsMapCombined = data.getColumnEps();
-        mergedChannelWriter = data.getVectors().parquetWriter;
-        mergedChunkData = data.getVectors().output;
-        firstChannelFullyQualifiedTableName = data.getChannelContext().getFullyQualifiedTableName();
-        chunkMinMaxInsertTimeInMs = data.getMinMaxInsertTimeInMs();
-      } else {
-        // This method assumes that channelsDataPerTable is grouped by table. We double check
-        // here and throw an error if the assumption is violated
-        if (!data.getChannelContext()
-            .getFullyQualifiedTableName()
-            .equals(firstChannelFullyQualifiedTableName)) {
-          throw new SFException(ErrorCode.INVALID_DATA_IN_CHUNK);
-        }
-
-        columnEpStatsMapCombined =
-            ChannelData.getCombinedColumnStatsMap(columnEpStatsMapCombined, data.getColumnEps());
-        data.getVectors().parquetWriter.close();
-        BdecParquetReader.readFileIntoWriter(
-            data.getVectors().output.toByteArray(), mergedChannelWriter);
-        chunkMinMaxInsertTimeInMs =
-            ChannelData.getCombinedMinMaxInsertTimeInMs(
-                chunkMinMaxInsertTimeInMs, data.getMinMaxInsertTimeInMs());
-      }
-
-      rowCount += data.getRowCount();
-      chunkEstimatedUncompressedSize += data.getBufferSize();
-
-      logger.logDebug(
-          "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
-          data.getChannelContext().getFullyQualifiedName(),
-          data.getRowCount(),
-          data.getBufferSize(),
-          filePath);
-    }
-
-    if (mergedChannelWriter != null) {
-      mergedChannelWriter.close();
-      this.verifyRowCounts(
-          "serializeFromParquetWriteBuffers",
-          mergedChannelWriter,
-          rowCount,
-          channelsDataPerTable,
-          -1);
-    }
-    return new SerializationResult(
-        channelsMetadataList,
-        columnEpStatsMapCombined,
-        rowCount,
-        chunkEstimatedUncompressedSize,
-        mergedChunkData,
-        chunkMinMaxInsertTimeInMs);
   }
 
   private SerializationResult serializeFromJavaObjects(
@@ -167,13 +72,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       channelsMetadataList.add(channelMetadata);
 
       logger.logDebug(
-          "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={},"
-              + " enableParquetMemoryOptimization={}",
+          "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
-          filePath,
-          enableParquetInternalBuffering);
+          filePath);
 
       if (rows == null) {
         columnEpStatsMapCombined = data.getColumnEps();
@@ -181,7 +84,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         firstChannelFullyQualifiedTableName = data.getChannelContext().getFullyQualifiedTableName();
         chunkMinMaxInsertTimeInMs = data.getMinMaxInsertTimeInMs();
       } else {
-        // This method assumes that channelsDataPerTable is grouped by table. We double check
+        // This method assumes that channelsDataPerTable is grouped by table. We double-check
         // here and throw an error if the assumption is violated
         if (!data.getChannelContext()
             .getFullyQualifiedTableName()
@@ -202,13 +105,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       chunkEstimatedUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
-          "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
-              + " enableParquetMemoryOptimization={}",
+          "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
-          filePath,
-          enableParquetInternalBuffering);
+          filePath);
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
@@ -227,8 +128,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 
-    this.verifyRowCounts(
-        "serializeFromJavaObjects", parquetWriter, rowCount, channelsDataPerTable, rows.size());
+    this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
 
     return new SerializationResult(
         channelsMetadataList,
@@ -243,7 +143,6 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
    * Validates that rows count in metadata matches the row count in Parquet footer and the row count
    * written by the parquet writer
    *
-   * @param serializationType Serialization type, used for logging purposes only
    * @param writer Parquet writer writing the data
    * @param channelsDataPerTable Channel data
    * @param totalMetadataRowCount Row count calculated during metadata collection
@@ -251,7 +150,6 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
    *     Used only for logging purposes if there is a mismatch.
    */
   private void verifyRowCounts(
-      String serializationType,
       BdecParquetWriter writer,
       long totalMetadataRowCount,
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
@@ -285,7 +183,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR,
           String.format(
-              "[%s]The number of rows in Parquet does not match the number of rows in metadata. "
+              "The number of rows in Parquet does not match the number of rows in metadata. "
                   + "parquetTotalRowsInFooter=%d "
                   + "totalMetadataRowCount=%d "
                   + "parquetTotalRowsWritten=%d "
@@ -294,7 +192,6 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
                   + "channelsCountInMetadata=%d "
                   + "countOfSerializedJavaObjects=%d "
                   + "channelNames=%s",
-              serializationType,
               parquetTotalRowsInFooter,
               totalMetadataRowCount,
               parquetTotalRowsWritten,

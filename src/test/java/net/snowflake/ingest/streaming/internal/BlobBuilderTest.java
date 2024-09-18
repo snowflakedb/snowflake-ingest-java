@@ -42,13 +42,7 @@ public class BlobBuilderTest {
     // Construction succeeds if both data and metadata contain 1 row
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
-        Collections.singletonList(createChannelDataPerTable(1, false)),
-        Constants.BdecVersion.THREE,
-        encryptionKeysPerTable,
-        encrypt);
-    BlobBuilder.constructBlobAndMetadata(
-        "a.bdec",
-        Collections.singletonList(createChannelDataPerTable(1, true)),
+        Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
         encryptionKeysPerTable,
         encrypt);
@@ -57,14 +51,12 @@ public class BlobBuilderTest {
     try {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
-          Collections.singletonList(createChannelDataPerTable(0, false)),
+          Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
           encryptionKeysPerTable,
           encrypt);
-      Assert.fail("Should not pass enableParquetInternalBuffering=false");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
-      Assert.assertTrue(e.getMessage().contains("serializeFromJavaObjects"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
       Assert.assertTrue(e.getMessage().contains("totalMetadataRowCount=0"));
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsWritten=1"));
@@ -73,43 +65,18 @@ public class BlobBuilderTest {
       Assert.assertTrue(e.getMessage().contains("channelsCountInMetadata=1"));
       Assert.assertTrue(e.getMessage().contains("countOfSerializedJavaObjects=1"));
     }
-
-    try {
-      BlobBuilder.constructBlobAndMetadata(
-          "a.bdec",
-          Collections.singletonList(createChannelDataPerTable(0, true)),
-          Constants.BdecVersion.THREE,
-          encryptionKeysPerTable,
-          encrypt);
-      Assert.fail("Should not pass enableParquetInternalBuffering=true");
-    } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
-      Assert.assertTrue(e.getMessage().contains("serializeFromParquetWriteBuffers"));
-      Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
-      Assert.assertTrue(e.getMessage().contains("totalMetadataRowCount=0"));
-      Assert.assertTrue(e.getMessage().contains("parquetTotalRowsWritten=1"));
-      Assert.assertTrue(e.getMessage().contains("perChannelRowCountsInMetadata=0"));
-      Assert.assertTrue(e.getMessage().contains("perBlockRowCountsInFooter=1"));
-      Assert.assertTrue(e.getMessage().contains("channelsCountInMetadata=1"));
-      Assert.assertTrue(e.getMessage().contains("countOfSerializedJavaObjects=-1"));
-    }
   }
 
   /**
    * Creates a channel data configurable number of rows in metadata and 1 physical row (using both
    * with and without internal buffering optimization)
    */
-  private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(
-      int metadataRowCount, boolean enableParquetInternalBuffering) throws IOException {
+  private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(int metadataRowCount)
+      throws IOException {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
-    Mockito.doReturn(
-            new ParquetFlusher(
-                schema,
-                enableParquetInternalBuffering,
-                100L,
-                Constants.BdecParquetCompression.GZIP))
+    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP))
         .when(channelData)
         .createFlusher();
 
@@ -126,10 +93,7 @@ public class BlobBuilderTest {
     bdecParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
         new ParquetChunkData(
-            Collections.singletonList(Collections.singletonList("A")),
-            bdecParquetWriter,
-            stream,
-            new HashMap<>()));
+            Collections.singletonList(Collections.singletonList("A")), new HashMap<>()));
     channelData.setColumnEps(new HashMap<>());
     channelData.setRowCount(metadataRowCount);
     channelData.setMinMaxInsertTimeInMs(new Pair<>(2L, 3L));

@@ -1588,14 +1588,6 @@ public class SnowflakeStreamingIngestClientTest {
     CloseableHttpResponse httpResponse = Mockito.mock(CloseableHttpResponse.class);
     StatusLine statusLine = Mockito.mock(StatusLine.class);
     HttpEntity httpEntity = Mockito.mock(HttpEntity.class);
-    IStorageManager<String, ?> storageManager =
-        Mockito.spy(
-            isIcebergMode
-                ? new ExternalVolumeManager<>(true, "role", "client", null)
-                : new InternalStageManager<>(true, "role", "client", null));
-    Mockito.doNothing()
-        .when(storageManager)
-        .addStorage(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
     when(statusLine.getStatusCode()).thenReturn(200);
     when(httpResponse.getStatusLine()).thenReturn(statusLine);
     when(httpResponse.getEntity()).thenReturn(httpEntity);
@@ -1629,7 +1621,6 @@ public class SnowflakeStreamingIngestClientTest {
             true,
             requestBuilder,
             null);
-    client.setStorageManager(storageManager);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("channel")
