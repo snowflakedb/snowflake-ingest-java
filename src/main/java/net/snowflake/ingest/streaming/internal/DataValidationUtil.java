@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -718,7 +719,13 @@ class DataValidationUtil {
         || input instanceof Long) {
       return BigDecimal.valueOf(((Number) input).longValue());
     } else if (input instanceof Float || input instanceof Double) {
-      return BigDecimal.valueOf(((Number) input).doubleValue());
+      try {
+        return BigDecimal.valueOf(((Number) input).doubleValue());
+      } catch (NumberFormatException e) {
+        /* NaN and infinity are not allowed */
+        throw valueFormatNotAllowedException(
+            columnName, "NUMBER", "Not a valid number", insertRowIndex);
+      }
     } else if (input instanceof String) {
       try {
         final String stringInput = ((String) input).trim();
@@ -958,6 +965,66 @@ class DataValidationUtil {
   }
 
   /**
+   * Validates and parses input Iceberg INT column. Allowed Java types:
+   *
+   * <ul>
+   *   <li>Number
+   *   <li>String
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Parsed integer
+   */
+  static int validateAndParseIcebergInt(String columnName, Object input, long insertRowIndex) {
+    BigDecimal roundedValue =
+        validateAndParseBigDecimal(columnName, input, insertRowIndex)
+            .setScale(0, RoundingMode.HALF_UP);
+    try {
+      return roundedValue.intValueExact();
+    } catch (ArithmeticException e) {
+      /* overflow */
+      throw new SFException(
+          ErrorCode.INVALID_VALUE_ROW,
+          String.format(
+              "Number out of representable inclusive range of integers between %d and %d,"
+                  + " rowIndex:%d",
+              Integer.MIN_VALUE, Integer.MAX_VALUE, insertRowIndex));
+    }
+  }
+
+  /**
+   * Validates and parses input Iceberg LONG column. Allowed Java types:
+   *
+   * <ul>
+   *   <li>Number
+   *   <li>String
+   * </ul>
+   *
+   * @param columnName Column name, used in validation error messages
+   * @param input Object to validate and parse
+   * @param insertRowIndex Row index for error reporting
+   * @return Parsed long
+   */
+  static long validateAndParseIcebergLong(String columnName, Object input, long insertRowIndex) {
+    BigDecimal roundedValue =
+        validateAndParseBigDecimal(columnName, input, insertRowIndex)
+            .setScale(0, RoundingMode.HALF_UP);
+    try {
+      return roundedValue.longValueExact();
+    } catch (ArithmeticException e) {
+      /* overflow */
+      throw new SFException(
+          ErrorCode.INVALID_VALUE_ROW,
+          String.format(
+              "Number out of representable inclusive range of integers between %d and %d,"
+                  + " rowIndex:%d",
+              Long.MIN_VALUE, Long.MAX_VALUE, insertRowIndex));
+    }
+  }
+
+  /**
    * Validate and parse input to integer output, 1=true, 0=false. String values converted to boolean
    * according to https://docs.snowflake.com/en/sql-reference/functions/to_boolean.html#usage-notes
    * Allowed Java types:
@@ -1000,6 +1067,16 @@ class DataValidationUtil {
           String.format(
               "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d",
               precision - scale, precision - scale, insertRowIndex));
+    }
+  }
+
+  static void checkFixedLengthByteArray(byte[] bytes, int length, final long insertRowIndex) {
+    if (bytes.length != length) {
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          String.format(
+              "Binary length mismatch: expected=%d, actual=%d, rowIndex:%d",
+              length, bytes.length, insertRowIndex));
     }
   }
 

@@ -96,7 +96,7 @@ public class BlobBuilderTest {
   }
 
   private static MessageType createSchema(String columnName) {
-    ParquetTypeGenerator.ParquetTypeInfo c1 =
+    ParquetTypeInfo c1 =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(createTestTextColumn(columnName), 1);
     return new MessageType("bdec", Collections.singletonList(c1.getParquetType()));
   }

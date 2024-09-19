@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -26,12 +27,23 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.parquet.hadoop.BdecParquetReader;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+@RunWith(Parameterized.class)
 public class RowBufferTest {
+  @Parameterized.Parameters(name = "isIcebergMode: {0}")
+  public static Object[] isIcebergMode() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public static boolean isIcebergMode;
+
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
   private AbstractRowBuffer<?> rowBufferOnErrorSkipBatch;
@@ -105,6 +117,16 @@ public class RowBufferTest {
     colChar.setLength(11);
     colChar.setScale(0);
 
+    if (isIcebergMode) {
+      colTinyIntCase.setSourceIcebergDataType("\"decimal(2,0)\"");
+      colTinyInt.setSourceIcebergDataType("\"decimal(1,0)\"");
+      colSmallInt.setSourceIcebergDataType("\"decimal(2,0)\"");
+      colInt.setSourceIcebergDataType("\"int\"");
+      colBigInt.setSourceIcebergDataType("\"long\"");
+      colDecimal.setSourceIcebergDataType("\"decimal(38,2)\"");
+      colChar.setSourceIcebergDataType("\"string\"");
+    }
+
     List<ColumnMetadata> columns =
         Arrays.asList(
             colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
@@ -127,7 +149,8 @@ public class RowBufferTest {
             MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
             MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
             Constants.BdecParquetCompression.GZIP,
-            ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT),
+            ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
+            isIcebergMode),
         null,
         null);
   }
@@ -273,9 +296,12 @@ public class RowBufferTest {
 
   @Test
   public void testStringLength() {
-    testStringLengthHelper(this.rowBufferOnErrorContinue);
-    testStringLengthHelper(this.rowBufferOnErrorAbort);
-    testStringLengthHelper(this.rowBufferOnErrorSkipBatch);
+    /* Iceberg cannot specify max length of string */
+    if (!isIcebergMode) {
+      testStringLengthHelper(this.rowBufferOnErrorContinue);
+      testStringLengthHelper(this.rowBufferOnErrorAbort);
+      testStringLengthHelper(this.rowBufferOnErrorSkipBatch);
+    }
   }
 
   @Test
@@ -293,7 +319,7 @@ public class RowBufferTest {
     rows.add(row);
 
     row = new HashMap<>();
-    row.put("colChar", "1111111111111111111111"); // too big
+    row.put("colChar", StringUtils.repeat('1', 16777217)); // too big
     rows.add(row);
 
     row = new HashMap<>();
@@ -301,7 +327,7 @@ public class RowBufferTest {
     rows.add(row);
 
     row = new HashMap<>();
-    row.put("colChar", "1111111111111111111111"); // too big
+    row.put("colChar", StringUtils.repeat('1', 16777217)); // too big
     rows.add(row);
 
     InsertValidationResponse response = rowBuffer.insertRows(rows, null, null);
@@ -333,8 +359,8 @@ public class RowBufferTest {
             .equalsIgnoreCase(
                 "The given row cannot be converted to the internal format due to invalid value:"
                     + " Value cannot be ingested into Snowflake column COLCHAR of type STRING,"
-                    + " rowIndex:1, reason: String too long: length=22 characters maxLength=11"
-                    + " characters"));
+                    + " rowIndex:1, reason: String too long: length=16777217 bytes"
+                    + " maxLength=16777216 bytes"));
     Assert.assertTrue(
         response
             .getInsertErrors()
@@ -344,8 +370,8 @@ public class RowBufferTest {
             .equalsIgnoreCase(
                 "The given row cannot be converted to the internal format due to invalid value:"
                     + " Value cannot be ingested into Snowflake column COLCHAR of type STRING,"
-                    + " rowIndex:3, reason: String too long: length=22 characters maxLength=11"
-                    + " characters"));
+                    + " rowIndex:3, reason: String too long: length=16777217 bytes"
+                    + " maxLength=16777216 bytes"));
   }
 
   private void testStringLengthHelper(AbstractRowBuffer<?> rowBuffer) {
@@ -813,6 +839,12 @@ public class RowBufferTest {
     colTimestampLtzSB16Scale6.setLogicalType("TIMESTAMP_LTZ");
     colTimestampLtzSB16Scale6.setScale(6);
 
+    if (isIcebergMode) {
+      colTimestampLtzSB8.setSourceIcebergDataType("\"timestamptz\"");
+      colTimestampLtzSB16.setSourceIcebergDataType("\"timestamptz\"");
+      colTimestampLtzSB16Scale6.setSourceIcebergDataType("\"timestamptz\"");
+    }
+
     innerBuffer.setupSchema(
         Arrays.asList(colTimestampLtzSB8, colTimestampLtzSB16, colTimestampLtzSB16Scale6));
 
@@ -838,18 +870,23 @@ public class RowBufferTest {
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
-        BigInteger.valueOf(1621899220),
+        BigInteger.valueOf(1621899220 * (isIcebergMode ? 1000000L : 1)),
         result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMinIntValue());
     Assert.assertEquals(
-        BigInteger.valueOf(1621899221),
+        BigInteger.valueOf(1621899221 * (isIcebergMode ? 1000000L : 1)),
         result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMaxIntValue());
 
-    Assert.assertEquals(
-        new BigInteger("1621899220123456789"),
-        result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMinIntValue());
-    Assert.assertEquals(
-        new BigInteger("1621899220223456789"),
-        result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMaxIntValue());
+    /* Iceberg only supports microsecond precision for TIMESTAMP_LTZ */
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          new BigInteger("1621899220123456789"),
+          result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMinIntValue());
+      Assert.assertEquals(
+          new BigInteger("1621899220223456789"),
+          result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMaxIntValue());
+      Assert.assertEquals(
+          1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentNullCount());
+    }
 
     Assert.assertEquals(
         new BigInteger("1621899220123456"),
@@ -859,7 +896,6 @@ public class RowBufferTest {
         result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentMaxIntValue());
 
     Assert.assertEquals(1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentNullCount());
-    Assert.assertEquals(1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentNullCount());
     Assert.assertEquals(
         1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentNullCount());
   }
@@ -940,6 +976,11 @@ public class RowBufferTest {
     colTimeSB8.setLogicalType("TIME");
     colTimeSB8.setScale(3);
 
+    if (isIcebergMode) {
+      colTimeSB4.setSourceIcebergDataType("\"time\"");
+      colTimeSB8.setSourceIcebergDataType("\"time\"");
+    }
+
     innerBuffer.setupSchema(Arrays.asList(colTimeSB4, colTimeSB8));
 
     Map<String, Object> row1 = new HashMap<>();
@@ -959,34 +1000,65 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
-    Assert.assertEquals(10 * 60 * 60, innerBuffer.getVectorValueAt("COLTIMESB4", 0));
-    Assert.assertEquals(11 * 60 * 60 + 15 * 60, innerBuffer.getVectorValueAt("COLTIMESB4", 1));
-    Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB4", 2));
+    if (isIcebergMode) {
+      Assert.assertEquals(10 * 60 * 60 * 1000000L, innerBuffer.getVectorValueAt("COLTIMESB4", 0));
+      Assert.assertEquals(
+          (11 * 60 * 60 + 15 * 60) * 1000000L, innerBuffer.getVectorValueAt("COLTIMESB4", 1));
+      Assert.assertEquals(
+          (10 * 60 * 60 * 1000L + 123) * 1000L, innerBuffer.getVectorValueAt("COLTIMESB8", 0));
+      Assert.assertEquals(
+          (11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456) * 1000L,
+          innerBuffer.getVectorValueAt("COLTIMESB8", 1));
+    } else {
+      Assert.assertEquals(10 * 60 * 60, innerBuffer.getVectorValueAt("COLTIMESB4", 0));
+      Assert.assertEquals(11 * 60 * 60 + 15 * 60, innerBuffer.getVectorValueAt("COLTIMESB4", 1));
+      Assert.assertEquals(
+          10 * 60 * 60 * 1000L + 123, innerBuffer.getVectorValueAt("COLTIMESB8", 0));
+      Assert.assertEquals(
+          11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456,
+          innerBuffer.getVectorValueAt("COLTIMESB8", 1));
+    }
 
-    Assert.assertEquals(10 * 60 * 60 * 1000L + 123, innerBuffer.getVectorValueAt("COLTIMESB8", 0));
-    Assert.assertEquals(
-        11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456, innerBuffer.getVectorValueAt("COLTIMESB8", 1));
+    Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB4", 2));
     Assert.assertNull(innerBuffer.getVectorValueAt("COLTIMESB8", 2));
 
     // Check stats generation
     ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(10 * 60 * 60),
-        result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(11 * 60 * 60 + 15 * 60),
-        result.getColumnEps().get("COLTIMESB4").getCurrentMaxIntValue());
-    Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB4").getCurrentNullCount());
+    if (isIcebergMode) {
+      Assert.assertEquals(
+          BigInteger.valueOf(10 * 60 * 60 * 1000000L),
+          result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf((11 * 60 * 60 + 15 * 60) * 1000000L),
+          result.getColumnEps().get("COLTIMESB4").getCurrentMaxIntValue());
+      Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB4").getCurrentNullCount());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(10 * 60 * 60 * 1000L + 123),
-        result.getColumnEps().get("COLTIMESB8").getCurrentMinIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456),
-        result.getColumnEps().get("COLTIMESB8").getCurrentMaxIntValue());
-    Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB8").getCurrentNullCount());
+      Assert.assertEquals(
+          BigInteger.valueOf((10 * 60 * 60 * 1000L + 123) * 1000L),
+          result.getColumnEps().get("COLTIMESB8").getCurrentMinIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf((11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456) * 1000L),
+          result.getColumnEps().get("COLTIMESB8").getCurrentMaxIntValue());
+      Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB8").getCurrentNullCount());
+    } else {
+      Assert.assertEquals(
+          BigInteger.valueOf(10 * 60 * 60),
+          result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(11 * 60 * 60 + 15 * 60),
+          result.getColumnEps().get("COLTIMESB4").getCurrentMaxIntValue());
+      Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB4").getCurrentNullCount());
+
+      Assert.assertEquals(
+          BigInteger.valueOf(10 * 60 * 60 * 1000L + 123),
+          result.getColumnEps().get("COLTIMESB8").getCurrentMinIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456),
+          result.getColumnEps().get("COLTIMESB8").getCurrentMaxIntValue());
+      Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB8").getCurrentNullCount());
+    }
   }
 
   @Test
@@ -1005,6 +1077,7 @@ public class RowBufferTest {
     colBinary.setLogicalType("BINARY");
     colBinary.setLength(8 * 1024 * 1024);
     colBinary.setByteLength(8 * 1024 * 1024);
+    colBinary.setSourceIcebergDataType("\"binary\"");
 
     byte[] arr = new byte[8 * 1024 * 1024];
     innerBuffer.setupSchema(Collections.singletonList(colBinary));
@@ -1289,6 +1362,9 @@ public class RowBufferTest {
     colBinary.setLength(32);
     colBinary.setByteLength(256);
     colBinary.setScale(0);
+    if (isIcebergMode) {
+      colBinary.setSourceIcebergDataType("\"binary\"");
+    }
 
     innerBuffer.setupSchema(Collections.singletonList(colBinary));
 
@@ -1531,9 +1607,11 @@ public class RowBufferTest {
 
   @Test
   public void testE2EVariant() {
-    testE2EVariantHelper(OpenChannelRequest.OnErrorOption.ABORT);
-    testE2EVariantHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
-    testE2EVariantHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
+    if (!isIcebergMode) {
+      testE2EVariantHelper(OpenChannelRequest.OnErrorOption.ABORT);
+      testE2EVariantHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+      testE2EVariantHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
+    }
   }
 
   private void testE2EVariantHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1582,9 +1660,11 @@ public class RowBufferTest {
 
   @Test
   public void testE2EObject() {
-    testE2EObjectHelper(OpenChannelRequest.OnErrorOption.ABORT);
-    testE2EObjectHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
-    testE2EObjectHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
+    if (!isIcebergMode) {
+      testE2EObjectHelper(OpenChannelRequest.OnErrorOption.ABORT);
+      testE2EObjectHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+      testE2EObjectHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
+    }
   }
 
   private void testE2EObjectHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1615,9 +1695,11 @@ public class RowBufferTest {
 
   @Test
   public void testE2EArray() {
-    testE2EArrayHelper(OpenChannelRequest.OnErrorOption.ABORT);
-    testE2EArrayHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
-    testE2EArrayHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
+    if (!isIcebergMode) {
+      testE2EArrayHelper(OpenChannelRequest.OnErrorOption.ABORT);
+      testE2EArrayHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
+      testE2EArrayHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
+    }
   }
 
   private void testE2EArrayHelper(OpenChannelRequest.OnErrorOption onErrorOption) {
@@ -1697,7 +1779,8 @@ public class RowBufferTest {
     // insert one valid and one invalid row
     List<Map<String, Object>> mixedRows = new ArrayList<>();
     mixedRows.add(Collections.singletonMap("colChar", "b"));
-    mixedRows.add(Collections.singletonMap("colChar", "1111111111111111111111")); // too big
+    mixedRows.add(
+        Collections.singletonMap("colChar", StringUtils.repeat('1', 16777217))); // too big
 
     response = innerBufferOnErrorContinue.insertRows(mixedRows, "1", "3");
     Assert.assertTrue(response.hasErrors());
@@ -1707,6 +1790,23 @@ public class RowBufferTest {
 
     List<List<Object>> snapshotContinueParquet =
         ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot().get()).rows;
+    if (isIcebergMode) {
+      // Convert every object to string for iceberg mode
+      snapshotContinueParquet =
+          snapshotContinueParquet.stream()
+              .map(
+                  row ->
+                      row.stream()
+                          .map(
+                              obj -> {
+                                if (obj instanceof byte[]) {
+                                  return new String((byte[]) obj, StandardCharsets.UTF_8);
+                                }
+                                return obj;
+                              })
+                          .collect(Collectors.toList()))
+              .collect(Collectors.toList());
+    }
     // validRows and only the good row from mixedRows are in the buffer
     Assert.assertEquals(2, snapshotContinueParquet.size());
     Assert.assertEquals(Arrays.asList("a"), snapshotContinueParquet.get(0));
@@ -1714,6 +1814,23 @@ public class RowBufferTest {
 
     List<List<Object>> snapshotAbortParquet =
         ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot().get()).rows;
+    if (isIcebergMode) {
+      // Convert every object to string for iceberg mode
+      snapshotAbortParquet =
+          snapshotAbortParquet.stream()
+              .map(
+                  row ->
+                      row.stream()
+                          .map(
+                              obj -> {
+                                if (obj instanceof byte[]) {
+                                  return new String((byte[]) obj, StandardCharsets.UTF_8);
+                                }
+                                return obj;
+                              })
+                          .collect(Collectors.toList()))
+              .collect(Collectors.toList());
+    }
     // only validRows and none of the mixedRows are in the buffer
     Assert.assertEquals(1, snapshotAbortParquet.size());
     Assert.assertEquals(Arrays.asList("a"), snapshotAbortParquet.get(0));

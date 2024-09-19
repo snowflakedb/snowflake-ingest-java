@@ -632,6 +632,9 @@ public class SnowflakeStreamingIngestChannelTest {
                   col.setLogicalType("BINARY");
                   col.setLength(8388608);
                   col.setByteLength(8388608);
+                  if (isIcebergMode) {
+                    col.setSourceIcebergDataType("\"binary\"");
+                  }
                   return col;
                 })
             .collect(Collectors.toList());

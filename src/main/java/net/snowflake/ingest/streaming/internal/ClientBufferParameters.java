@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2023-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -18,21 +18,26 @@ public class ClientBufferParameters {
 
   private Constants.BdecParquetCompression bdecParquetCompression;
 
+  private boolean isIcebergMode;
+
   /**
    * Private constructor used for test methods
    *
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
+   * @param isIcebergMode
    */
   private ClientBufferParameters(
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
       Constants.BdecParquetCompression bdecParquetCompression,
-      boolean enableNewJsonParsingLogic) {
+      boolean enableNewJsonParsingLogic,
+      boolean isIcebergMode) {
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
     this.enableNewJsonParsingLogic = enableNewJsonParsingLogic;
+    this.isIcebergMode = isIcebergMode;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
@@ -49,28 +54,34 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().getBdecParquetCompressionAlgorithm()
             : ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT;
-
     this.enableNewJsonParsingLogic =
         clientInternal != null
             ? clientInternal.getParameterProvider().isEnableNewJsonParsingLogic()
             : ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
+    this.isIcebergMode =
+        clientInternal != null
+            ? clientInternal.isIcebergMode()
+            : ParameterProvider.IS_ICEBERG_MODE_DEFAULT;
   }
 
   /**
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
+   * @param isIcebergMode
    * @return ClientBufferParameters object
    */
   public static ClientBufferParameters test_createClientBufferParameters(
       long maxChunkSizeInBytes,
       long maxAllowedRowSizeInBytes,
       Constants.BdecParquetCompression bdecParquetCompression,
-      boolean enableNewJsonParsingLogic) {
+      boolean enableNewJsonParsingLogic,
+      boolean isIcebergMode) {
     return new ClientBufferParameters(
         maxChunkSizeInBytes,
         maxAllowedRowSizeInBytes,
         bdecParquetCompression,
-        enableNewJsonParsingLogic);
+        enableNewJsonParsingLogic,
+        isIcebergMode);
   }
 
   public long getMaxChunkSizeInBytes() {
@@ -87,5 +98,9 @@ public class ClientBufferParameters {
 
   public boolean isEnableNewJsonParsingLogic() {
     return enableNewJsonParsingLogic;
+  }
+
+  public boolean getIsIcebergMode() {
+    return isIcebergMode;
   }
 }
