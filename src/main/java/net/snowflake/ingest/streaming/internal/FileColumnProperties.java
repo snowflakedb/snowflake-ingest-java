@@ -99,7 +99,7 @@ class FileColumnProperties {
   }
 
   FileColumnProperties(
-      int columnOrdinal, int fieldId, Statistics<?> statistics, int ndv, int maxLength) {
+      int columnOrdinal, int fieldId, Statistics<?> statistics, long ndv, long maxLength) {
     this.setColumnOrdinal(columnOrdinal);
     this.setFieldId(fieldId);
     this.setNullCount(statistics.getNumNulls());

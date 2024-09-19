@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
+
 import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -694,8 +696,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
               columnOrdinal,
               columnChunkMetaData.getPrimitiveType().getId().intValue(),
               mergedStatistics.get(subColumnName),
-              ndvStats.getOrDefault(subColumnName, 0),
-              maxLengthStats.getOrDefault(subColumnName, 0));
+              ndvStats == null ? EP_NDV_UNKNOWN : ndvStats.getOrDefault(subColumnName, 0),
+              maxLengthStats == null ? 0 : maxLengthStats.getOrDefault(subColumnName, 0));
       epInfo.getColumnEps().put(subColumnName, dto);
     }
 
