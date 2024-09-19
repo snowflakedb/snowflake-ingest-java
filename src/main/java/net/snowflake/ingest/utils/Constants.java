@@ -70,6 +70,9 @@ public class Constants {
   public static final String DROP_CHANNEL_ENDPOINT = "/v1/streaming/channels/drop/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
+  public static final int PARQUET_MAJOR_VERSION = 1;
+  public static final int PARQUET_MINOR_VERSION = 0;
+
   public enum WriteMode {
     CLOUD_STORAGE,
     REST_API,

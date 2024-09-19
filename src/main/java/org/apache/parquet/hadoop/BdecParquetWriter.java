@@ -7,6 +7,8 @@ package org.apache.parquet.hadoop;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import net.snowflake.ingest.utils.Constants;
@@ -38,6 +40,7 @@ import org.apache.parquet.schema.Type;
 public class BdecParquetWriter implements AutoCloseable {
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
+  private final BdecWriteSupport writeSupport;
   private long rowsWritten = 0;
 
   /**
@@ -47,6 +50,7 @@ public class BdecParquetWriter implements AutoCloseable {
    * @param schema row schema
    * @param extraMetaData extra metadata
    * @param channelName name of the channel that is using the writer
+   * @param enableNdvAndMaxLengthStats whether to record NDV and MaxLength
    * @throws IOException
    */
   public BdecParquetWriter(
@@ -55,13 +59,14 @@ public class BdecParquetWriter implements AutoCloseable {
       Map<String, String> extraMetaData,
       String channelName,
       long maxChunkSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression)
+      Constants.BdecParquetCompression bdecParquetCompression,
+      boolean enableNdvAndMaxLengthStats)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
-    WriteSupport<List<Object>> writeSupport =
-        new BdecWriteSupport(schema, extraMetaData, channelName);
+    writeSupport =
+        new BdecWriteSupport(schema, extraMetaData, channelName, enableNdvAndMaxLengthStats);
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
 
     ParquetFileWriter fileWriter =
@@ -115,6 +120,19 @@ public class BdecParquetWriter implements AutoCloseable {
 
   public List<BlockMetaData> getBlocksMetadata() {
     return writer.getFooter().getBlocks();
+  }
+
+  public Map<String, Integer> getMaxLengthStats() {
+    return writeSupport.maxLengthStats;
+  }
+
+  public Map<String, Integer> getNdvStats() {
+    if (!writeSupport.enableNdvAndMaxLengthStats) {
+      return null;
+    }
+    Map<String, Integer> ndvStats = new HashMap<>();
+    writeSupport.ndvStatsSet.forEach((k, v) -> ndvStats.put(k, v.size()));
+    return ndvStats;
   }
 
   public void writeRow(List<Object> row) {
@@ -249,16 +267,28 @@ public class BdecParquetWriter implements AutoCloseable {
     RecordConsumer recordConsumer;
     Map<String, String> extraMetadata;
     private final String channelName;
+    boolean enableNdvAndMaxLengthStats;
+    Map<String, HashSet<Object>> ndvStatsSet;
+    Map<String, Integer> maxLengthStats;
 
     // TODO SNOW-672156: support specifying encodings and compression
-    BdecWriteSupport(MessageType schema, Map<String, String> extraMetadata, String channelName) {
+    BdecWriteSupport(
+        MessageType schema,
+        Map<String, String> extraMetadata,
+        String channelName,
+        boolean enableNdvAndMaxLengthStats) {
       this.schema = schema;
       this.extraMetadata = extraMetadata;
       this.channelName = channelName;
+      this.enableNdvAndMaxLengthStats = enableNdvAndMaxLengthStats;
     }
 
     @Override
     public WriteContext init(Configuration config) {
+      if (enableNdvAndMaxLengthStats) {
+        ndvStatsSet = new HashMap<>();
+        maxLengthStats = new HashMap<>();
+      }
       return new WriteContext(schema, extraMetadata);
     }
 
@@ -284,20 +314,24 @@ public class BdecParquetWriter implements AutoCloseable {
                 + values);
       }
       recordConsumer.startMessage();
-      writeValues(values, schema);
+      writeValues(values, schema, "");
       recordConsumer.endMessage();
     }
 
-    private void writeValues(List<Object> values, GroupType type) {
+    private void writeValues(List<Object> values, GroupType type, String path) {
       List<Type> cols = type.getFields();
       for (int i = 0; i < cols.size(); ++i) {
         Object val = values.get(i);
         if (val != null) {
           String fieldName = cols.get(i).getName();
+          String currentPath = !path.isEmpty() ? path + "." + fieldName : fieldName;
           recordConsumer.startField(fieldName, i);
           if (cols.get(i).isPrimitive()) {
             PrimitiveType.PrimitiveTypeName typeName =
                 cols.get(i).asPrimitiveType().getPrimitiveTypeName();
+            if (enableNdvAndMaxLengthStats) {
+              ndvStatsSet.computeIfAbsent(currentPath, k -> new HashSet<>()).add(val);
+            }
             switch (typeName) {
               case BOOLEAN:
                 recordConsumer.addBoolean((boolean) val);
@@ -320,6 +354,9 @@ public class BdecParquetWriter implements AutoCloseable {
                         ? Binary.fromString((String) val)
                         : Binary.fromConstantByteArray((byte[]) val);
                 recordConsumer.addBinary(binVal);
+                if (enableNdvAndMaxLengthStats) {
+                  maxLengthStats.merge(currentPath, binVal.length(), Math::max);
+                }
                 break;
               case FIXED_LEN_BYTE_ARRAY:
                 Binary binary = Binary.fromConstantByteArray((byte[]) val);
@@ -334,13 +371,13 @@ public class BdecParquetWriter implements AutoCloseable {
               for (Object o : values) {
                 recordConsumer.startGroup();
                 if (o != null) {
-                  writeValues((List<Object>) o, cols.get(i).asGroupType());
+                  writeValues((List<Object>) o, cols.get(i).asGroupType(), currentPath);
                 }
                 recordConsumer.endGroup();
               }
             } else {
               recordConsumer.startGroup();
-              writeValues((List<Object>) val, cols.get(i).asGroupType());
+              writeValues((List<Object>) val, cols.get(i).asGroupType(), currentPath);
               recordConsumer.endGroup();
             }
           }

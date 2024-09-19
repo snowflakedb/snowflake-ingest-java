@@ -658,7 +658,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     return epInfo;
   }
 
-  static EpInfo buildEPInfoFromBlocksMetadata(List<BlockMetaData> blocksMetadata) {
+  static EpInfo buildEPInfoFromParquetWriterResults(
+      List<BlockMetaData> blocksMetadata,
+      Map<String, Integer> ndvStats,
+      Map<String, Integer> maxLengthStats) {
     if (blocksMetadata.isEmpty()) {
       throw new SFException(ErrorCode.INTERNAL_ERROR, "No blocks metadata found");
     }
@@ -690,7 +693,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           new FileColumnProperties(
               columnOrdinal,
               columnChunkMetaData.getPrimitiveType().getId().intValue(),
-              mergedStatistics.get(subColumnName));
+              mergedStatistics.get(subColumnName),
+              ndvStats.getOrDefault(subColumnName, 0),
+              maxLengthStats.getOrDefault(subColumnName, 0));
       epInfo.getColumnEps().put(subColumnName, dto);
     }
 

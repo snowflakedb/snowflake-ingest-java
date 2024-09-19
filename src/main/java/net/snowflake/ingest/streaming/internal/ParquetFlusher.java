@@ -26,6 +26,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private static final Logging logger = new Logging(ParquetFlusher.class);
   private final MessageType schema;
   private final long maxChunkSizeInBytes;
+  private final boolean enableNdvAndMaxLengthStats;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
 
@@ -33,10 +34,12 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   public ParquetFlusher(
       MessageType schema,
       long maxChunkSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      boolean enableNdvAndMaxLengthStats) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.enableNdvAndMaxLengthStats = enableNdvAndMaxLengthStats;
   }
 
   @Override
@@ -124,7 +127,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             metadata,
             firstChannelFullyQualifiedTableName,
             maxChunkSizeInBytes,
-            bdecParquetCompression);
+            bdecParquetCompression,
+            this.enableNdvAndMaxLengthStats);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 
@@ -137,7 +141,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         chunkEstimatedUncompressedSize,
         mergedData,
         chunkMinMaxInsertTimeInMs,
-        parquetWriter.getBlocksMetadata());
+        parquetWriter.getBlocksMetadata(),
+        parquetWriter.getNdvStats(),
+        parquetWriter.getMaxLengthStats());
   }
 
   /**

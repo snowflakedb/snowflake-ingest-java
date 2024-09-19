@@ -69,7 +69,7 @@ public class BlobBuilderTest {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
-    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP))
+    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP, false))
         .when(channelData)
         .createFlusher();
 
@@ -82,7 +82,8 @@ public class BlobBuilderTest {
             new HashMap<>(),
             "CHANNEL",
             1000,
-            Constants.BdecParquetCompression.GZIP);
+            Constants.BdecParquetCompression.GZIP,
+            false);
     bdecParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
         new ParquetChunkData(

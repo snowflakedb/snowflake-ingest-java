@@ -5,7 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncateBytesAsHex;
-import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -99,11 +98,12 @@ class FileColumnProperties {
     this.setDistinctValues(stats.getDistinctValues());
   }
 
-  FileColumnProperties(int columnOrdinal, int fieldId, Statistics<?> statistics) {
+  FileColumnProperties(
+      int columnOrdinal, int fieldId, Statistics<?> statistics, int ndv, int maxLength) {
     this.setColumnOrdinal(columnOrdinal);
     this.setFieldId(fieldId);
     this.setNullCount(statistics.getNumNulls());
-    this.setDistinctValues(EP_NDV_UNKNOWN);
+    this.setDistinctValues(ndv);
     this.setCollation(null);
     this.setMaxStrNonCollated(null);
     this.setMinStrNonCollated(null);
@@ -127,6 +127,7 @@ class FileColumnProperties {
       } else {
         this.setMinStrValue(truncateBytesAsHex(statistics.getMinBytes(), false));
         this.setMaxStrValue(truncateBytesAsHex(statistics.getMaxBytes(), true));
+        this.setMaxLength(maxLength);
       }
     }
   }

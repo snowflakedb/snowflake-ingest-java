@@ -135,8 +135,10 @@ class BlobBuilder {
                 .setEncryptionKeyId(firstChannelFlushContext.getEncryptionKeyId())
                 .setEpInfo(
                     isIceberg
-                        ? AbstractRowBuffer.buildEPInfoFromBlocksMetadata(
-                            serializedChunk.blocksMetadata)
+                        ? AbstractRowBuffer.buildEPInfoFromParquetWriterResults(
+                            serializedChunk.blocksMetadata,
+                            serializedChunk.ndvStats,
+                            serializedChunk.maxLengthStats)
                         : AbstractRowBuffer.buildEpInfoFromStats(
                             serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())

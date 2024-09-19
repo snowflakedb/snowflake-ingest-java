@@ -38,6 +38,8 @@ public interface Flusher<T> {
     final ByteArrayOutputStream chunkData;
     final Pair<Long, Long> chunkMinMaxInsertTimeInMs;
     final List<BlockMetaData> blocksMetadata;
+    final Map<String, Integer> ndvStats;
+    final Map<String, Integer> maxLengthStats;
 
     public SerializationResult(
         List<ChannelMetadata> channelsMetadataList,
@@ -46,7 +48,9 @@ public interface Flusher<T> {
         float chunkEstimatedUncompressedSize,
         ByteArrayOutputStream chunkData,
         Pair<Long, Long> chunkMinMaxInsertTimeInMs,
-        List<BlockMetaData> blocksMetadata) {
+        List<BlockMetaData> blocksMetadata,
+        Map<String, Integer> ndvStats,
+        Map<String, Integer> maxLengthStats) {
       this.channelsMetadataList = channelsMetadataList;
       this.columnEpStatsMapCombined = columnEpStatsMapCombined;
       this.rowCount = rowCount;
@@ -54,6 +58,8 @@ public interface Flusher<T> {
       this.chunkData = chunkData;
       this.chunkMinMaxInsertTimeInMs = chunkMinMaxInsertTimeInMs;
       this.blocksMetadata = blocksMetadata;
+      this.ndvStats = ndvStats;
+      this.maxLengthStats = maxLengthStats;
     }
   }
 }
