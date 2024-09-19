@@ -1201,6 +1201,7 @@ public class DataValidationUtilTest {
     assertEquals(1, validateAndParseIcebergInt("COL", 1, 0));
     assertEquals(1, validateAndParseIcebergInt("COL", 1L, 0));
     assertEquals(1, validateAndParseIcebergInt("COL", 1.499f, 0));
+    assertEquals(0, validateAndParseIcebergLong("COL", -.0f, 0));
     assertEquals(1, validateAndParseIcebergInt("COL", 1.0d, 0));
     assertEquals(1, validateAndParseIcebergInt("COL", "1", 0));
     assertEquals(1, validateAndParseIcebergInt("COL", " 1 \t\n", 0));
@@ -1242,6 +1243,7 @@ public class DataValidationUtilTest {
     assertEquals(1L, validateAndParseIcebergLong("COL", 1, 0));
     assertEquals(1L, validateAndParseIcebergLong("COL", 1L, 0));
     assertEquals(1L, validateAndParseIcebergLong("COL", 1.499f, 0));
+    assertEquals(0, validateAndParseIcebergLong("COL", -.0f, 0));
     assertEquals(1L, validateAndParseIcebergLong("COL", 1.0d, 0));
     assertEquals(1L, validateAndParseIcebergLong("COL", "1", 0));
     assertEquals(1L, validateAndParseIcebergLong("COL", " 1 \t\n", 0));

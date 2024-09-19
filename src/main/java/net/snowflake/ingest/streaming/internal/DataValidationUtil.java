@@ -1103,16 +1103,6 @@ class DataValidationUtil {
         || "on".equals(normalizedInput);
   }
 
-  private static BigDecimal convertNumberToBigDecimal(Number value, final long insertRowIndex) {
-    if (value instanceof Double && (((Double) value).isNaN() || ((Double) value).isInfinite())) {
-      throw new SFException(
-          ErrorCode.INVALID_VALUE_ROW,
-          String.format(
-              "Infinite or NaN values are not allowed," + " rowIndex:%d", insertRowIndex));
-    }
-    return new BigDecimal(value.toString());
-  }
-
   /**
    * Create exception that a Java type cannot be ingested into a specific Snowflake column type
    *
