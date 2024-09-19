@@ -18,9 +18,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.MessageType;
@@ -74,6 +76,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     fieldIndex.clear();
     metadata.clear();
     metadata.put("sfVer", "1,1");
+    metadata.put(Constants.SDK_VERSION_KEY, RequestBuilder.DEFAULT_VERSION);
     List<Type> parquetTypes = new ArrayList<>();
     int id = 1;
     for (ColumnMetadata column : columns) {

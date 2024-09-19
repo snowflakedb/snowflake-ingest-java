@@ -140,7 +140,7 @@ public class FlushServiceTest {
     BlobMetadata buildAndUpload() throws Exception {
       List<List<ChannelData<T>>> blobData = Collections.singletonList(channelData);
       return flushService.buildAndUpload(
-          BlobPath.fileNameWithoutToken("file_name"),
+          BlobPath.fileNameWithoutToken("file_name.bdec"),
           blobData,
           blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName());
     }
@@ -940,7 +940,7 @@ public class FlushServiceTest {
             blobCaptor.capture(),
             metadataCaptor.capture(),
             ArgumentMatchers.any());
-    Assert.assertEquals("file_name", nameCaptor.getValue().fileName);
+    Assert.assertEquals("file_name.bdec", nameCaptor.getValue().fileName);
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
