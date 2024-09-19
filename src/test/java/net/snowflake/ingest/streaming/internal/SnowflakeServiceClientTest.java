@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-
 import java.io.IOException;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.Constants;
