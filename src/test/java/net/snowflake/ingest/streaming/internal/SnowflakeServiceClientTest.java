@@ -4,15 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.CHANNEL_CONFIGURE_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 
 import java.io.IOException;
-
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.Before;
@@ -30,7 +23,7 @@ public class SnowflakeServiceClientTest {
   public void testClientConfigure() throws IngestResponseException, IOException {
     ClientConfigureRequest clientConfigureRequest = new ClientConfigureRequest("test_role");
     ClientConfigureResponse clientConfigureResponse =
-            snowflakeServiceClient.clientConfigure(clientConfigureRequest);
+        snowflakeServiceClient.clientConfigure(clientConfigureRequest);
     assert clientConfigureResponse.getStatusCode() == 0L;
     assert clientConfigureResponse.getMessage().equals("OK");
     assert clientConfigureResponse.getPrefix().equals("test_prefix");
@@ -50,18 +43,18 @@ public class SnowflakeServiceClientTest {
   @Test
   public void testOpenChannel() throws IngestResponseException, IOException {
     OpenChannelRequestInternal openChannelRequest =
-            new OpenChannelRequestInternal(
-                    "request_id",
-                    "test_role",
-                    "test_db",
-                    "test_schema",
-                    "test_table",
-                    "test_channel",
-                    Constants.WriteMode.CLOUD_STORAGE,
-                    false,
-                    "test_offset_token");
+        new OpenChannelRequestInternal(
+            "request_id",
+            "test_role",
+            "test_db",
+            "test_schema",
+            "test_table",
+            "test_channel",
+            Constants.WriteMode.CLOUD_STORAGE,
+            false,
+            "test_offset_token");
     OpenChannelResponse openChannelResponse =
-            snowflakeServiceClient.openChannel(openChannelRequest);
+        snowflakeServiceClient.openChannel(openChannelRequest);
     assert openChannelResponse.getStatusCode() == 0L;
     assert openChannelResponse.getMessage().equals("OK");
     assert openChannelResponse.getDBName().equals("test_db");
@@ -79,10 +72,10 @@ public class SnowflakeServiceClientTest {
   @Test
   public void testDropChannel() throws IngestResponseException, IOException {
     DropChannelRequestInternal dropChannelRequest =
-            new DropChannelRequestInternal(
-                    "request_id", "test_role", "test_db", "test_schema", "test_table", "test_channel", 0L);
+        new DropChannelRequestInternal(
+            "request_id", "test_role", "test_db", "test_schema", "test_table", "test_channel", 0L);
     DropChannelResponse dropChannelResponse =
-            snowflakeServiceClient.dropChannel(dropChannelRequest);
+        snowflakeServiceClient.dropChannel(dropChannelRequest);
     assert dropChannelResponse.getStatusCode() == 0L;
     assert dropChannelResponse.getMessage().equals("OK");
     assert dropChannelResponse.getDBName().equals("test_db");
