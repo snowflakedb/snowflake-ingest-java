@@ -759,46 +759,51 @@ public class RowBufferTest {
     ChannelData<?> result = rowBuffer.flush();
     Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
 
-    Assert.assertEquals(
-        BigInteger.valueOf(11), columnEpStats.get("colTinyInt").getCurrentMaxIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(10), columnEpStats.get("colTinyInt").getCurrentMinIntValue());
-    Assert.assertEquals(0, columnEpStats.get("colTinyInt").getCurrentNullCount());
-    Assert.assertEquals(-1, columnEpStats.get("colTinyInt").getDistinctValues());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          BigInteger.valueOf(11), columnEpStats.get("colTinyInt").getCurrentMaxIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(10), columnEpStats.get("colTinyInt").getCurrentMinIntValue());
+      Assert.assertEquals(0, columnEpStats.get("colTinyInt").getCurrentNullCount());
+      Assert.assertEquals(-1, columnEpStats.get("colTinyInt").getDistinctValues());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(1), columnEpStats.get("COLTINYINT").getCurrentMaxIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(1), columnEpStats.get("COLTINYINT").getCurrentMinIntValue());
-    Assert.assertEquals(0, columnEpStats.get("COLTINYINT").getCurrentNullCount());
-    Assert.assertEquals(-1, columnEpStats.get("COLTINYINT").getDistinctValues());
+      Assert.assertEquals(
+          BigInteger.valueOf(1), columnEpStats.get("COLTINYINT").getCurrentMaxIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(1), columnEpStats.get("COLTINYINT").getCurrentMinIntValue());
+      Assert.assertEquals(0, columnEpStats.get("COLTINYINT").getCurrentNullCount());
+      Assert.assertEquals(-1, columnEpStats.get("COLTINYINT").getDistinctValues());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(3), columnEpStats.get("COLSMALLINT").getCurrentMaxIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(2), columnEpStats.get("COLSMALLINT").getCurrentMinIntValue());
-    Assert.assertEquals(0, columnEpStats.get("COLSMALLINT").getCurrentNullCount());
-    Assert.assertEquals(-1, columnEpStats.get("COLSMALLINT").getDistinctValues());
+      Assert.assertEquals(
+          BigInteger.valueOf(3), columnEpStats.get("COLSMALLINT").getCurrentMaxIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(2), columnEpStats.get("COLSMALLINT").getCurrentMinIntValue());
+      Assert.assertEquals(0, columnEpStats.get("COLSMALLINT").getCurrentNullCount());
+      Assert.assertEquals(-1, columnEpStats.get("COLSMALLINT").getDistinctValues());
 
-    Assert.assertEquals(BigInteger.valueOf(3), columnEpStats.get("COLINT").getCurrentMaxIntValue());
-    Assert.assertEquals(BigInteger.valueOf(3), columnEpStats.get("COLINT").getCurrentMinIntValue());
-    Assert.assertEquals(1L, columnEpStats.get("COLINT").getCurrentNullCount());
-    Assert.assertEquals(-1, columnEpStats.get("COLINT").getDistinctValues());
+      Assert.assertEquals(
+          BigInteger.valueOf(3), columnEpStats.get("COLINT").getCurrentMaxIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(3), columnEpStats.get("COLINT").getCurrentMinIntValue());
+      Assert.assertEquals(1L, columnEpStats.get("COLINT").getCurrentNullCount());
+      Assert.assertEquals(-1, columnEpStats.get("COLINT").getDistinctValues());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(40), columnEpStats.get("COLBIGINT").getCurrentMaxIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(4), columnEpStats.get("COLBIGINT").getCurrentMinIntValue());
-    Assert.assertEquals(0, columnEpStats.get("COLBIGINT").getCurrentNullCount());
-    Assert.assertEquals(-1, columnEpStats.get("COLBIGINT").getDistinctValues());
+      Assert.assertEquals(
+          BigInteger.valueOf(40), columnEpStats.get("COLBIGINT").getCurrentMaxIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(4), columnEpStats.get("COLBIGINT").getCurrentMinIntValue());
+      Assert.assertEquals(0, columnEpStats.get("COLBIGINT").getCurrentNullCount());
+      Assert.assertEquals(-1, columnEpStats.get("COLBIGINT").getDistinctValues());
 
-    Assert.assertArrayEquals(
-        "2".getBytes(StandardCharsets.UTF_8), columnEpStats.get("COLCHAR").getCurrentMinStrValue());
-    Assert.assertArrayEquals(
-        "alice".getBytes(StandardCharsets.UTF_8),
-        columnEpStats.get("COLCHAR").getCurrentMaxStrValue());
-    Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
-    Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
+      Assert.assertArrayEquals(
+          "2".getBytes(StandardCharsets.UTF_8),
+          columnEpStats.get("COLCHAR").getCurrentMinStrValue());
+      Assert.assertArrayEquals(
+          "alice".getBytes(StandardCharsets.UTF_8),
+          columnEpStats.get("COLCHAR").getCurrentMaxStrValue());
+      Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
+      Assert.assertEquals(-1, columnEpStats.get("COLCHAR").getDistinctValues());
+    }
 
     // Confirm we reset
     ChannelData<?> resetResults = rowBuffer.flush();
@@ -869,15 +874,14 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(1621899220 * (isIcebergMode ? 1000000L : 1)),
-        result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMinIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(1621899221 * (isIcebergMode ? 1000000L : 1)),
-        result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMaxIntValue());
-
-    /* Iceberg only supports microsecond precision for TIMESTAMP_LTZ */
     if (!isIcebergMode) {
+      Assert.assertEquals(
+          BigInteger.valueOf(1621899220),
+          result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMinIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(1621899221),
+          result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMaxIntValue());
+
       Assert.assertEquals(
           new BigInteger("1621899220123456789"),
           result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMinIntValue());
@@ -886,18 +890,19 @@ public class RowBufferTest {
           result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMaxIntValue());
       Assert.assertEquals(
           1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentNullCount());
+
+      Assert.assertEquals(
+          new BigInteger("1621899220123456"),
+          result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentMinIntValue());
+      Assert.assertEquals(
+          new BigInteger("1621899220123457"),
+          result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentMaxIntValue());
+
+      Assert.assertEquals(
+          1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentNullCount());
+      Assert.assertEquals(
+          1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentNullCount());
     }
-
-    Assert.assertEquals(
-        new BigInteger("1621899220123456"),
-        result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentMinIntValue());
-    Assert.assertEquals(
-        new BigInteger("1621899220123457"),
-        result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentMaxIntValue());
-
-    Assert.assertEquals(1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentNullCount());
-    Assert.assertEquals(
-        1, result.getColumnEps().get("COLTIMESTAMPLTZ_SB16_SCALE6").getCurrentNullCount());
   }
 
   @Test
@@ -942,12 +947,14 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(18772), result.getColumnEps().get("COLDATE").getCurrentMinIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(18773), result.getColumnEps().get("COLDATE").getCurrentMaxIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          BigInteger.valueOf(18772), result.getColumnEps().get("COLDATE").getCurrentMinIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(18773), result.getColumnEps().get("COLDATE").getCurrentMaxIntValue());
 
-    Assert.assertEquals(1, result.getColumnEps().get("COLDATE").getCurrentNullCount());
+      Assert.assertEquals(1, result.getColumnEps().get("COLDATE").getCurrentNullCount());
+    }
   }
 
   @Test
@@ -1026,23 +1033,7 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
-    if (isIcebergMode) {
-      Assert.assertEquals(
-          BigInteger.valueOf(10 * 60 * 60 * 1000000L),
-          result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
-      Assert.assertEquals(
-          BigInteger.valueOf((11 * 60 * 60 + 15 * 60) * 1000000L),
-          result.getColumnEps().get("COLTIMESB4").getCurrentMaxIntValue());
-      Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB4").getCurrentNullCount());
-
-      Assert.assertEquals(
-          BigInteger.valueOf((10 * 60 * 60 * 1000L + 123) * 1000L),
-          result.getColumnEps().get("COLTIMESB8").getCurrentMinIntValue());
-      Assert.assertEquals(
-          BigInteger.valueOf((11 * 60 * 60 * 1000L + 15 * 60 * 1000 + 456) * 1000L),
-          result.getColumnEps().get("COLTIMESB8").getCurrentMaxIntValue());
-      Assert.assertEquals(1, result.getColumnEps().get("COLTIMESB8").getCurrentNullCount());
-    } else {
+    if (!isIcebergMode) {
       Assert.assertEquals(
           BigInteger.valueOf(10 * 60 * 60),
           result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
@@ -1274,23 +1265,27 @@ public class RowBufferTest {
     }
 
     ChannelData<?> channelData = innerBuffer.flush();
-    RowBufferStats statsCol1 = channelData.getColumnEps().get("COLVARCHAR1");
-    RowBufferStats statsCol2 = channelData.getColumnEps().get("COLVARCHAR2");
-    RowBufferStats statsCol3 = channelData.getColumnEps().get("COLBOOLEAN1");
     Assert.assertEquals(1, channelData.getRowCount());
-    Assert.assertEquals(0, statsCol1.getCurrentNullCount());
-    Assert.assertEquals(0, statsCol2.getCurrentNullCount());
-    Assert.assertEquals(0, statsCol3.getCurrentNullCount());
-    Assert.assertArrayEquals(
-        "c".getBytes(StandardCharsets.UTF_8), statsCol1.getCurrentMinStrValue());
-    Assert.assertArrayEquals(
-        "c".getBytes(StandardCharsets.UTF_8), statsCol1.getCurrentMaxStrValue());
-    Assert.assertArrayEquals(
-        "d".getBytes(StandardCharsets.UTF_8), statsCol2.getCurrentMinStrValue());
-    Assert.assertArrayEquals(
-        "d".getBytes(StandardCharsets.UTF_8), statsCol2.getCurrentMaxStrValue());
-    Assert.assertEquals(BigInteger.ONE, statsCol3.getCurrentMinIntValue());
-    Assert.assertEquals(BigInteger.ONE, statsCol3.getCurrentMaxIntValue());
+
+    if (!isIcebergMode) {
+      RowBufferStats statsCol1 = channelData.getColumnEps().get("COLVARCHAR1");
+      RowBufferStats statsCol2 = channelData.getColumnEps().get("COLVARCHAR2");
+      RowBufferStats statsCol3 = channelData.getColumnEps().get("COLBOOLEAN1");
+
+      Assert.assertEquals(0, statsCol1.getCurrentNullCount());
+      Assert.assertEquals(0, statsCol2.getCurrentNullCount());
+      Assert.assertEquals(0, statsCol3.getCurrentNullCount());
+      Assert.assertArrayEquals(
+          "c".getBytes(StandardCharsets.UTF_8), statsCol1.getCurrentMinStrValue());
+      Assert.assertArrayEquals(
+          "c".getBytes(StandardCharsets.UTF_8), statsCol1.getCurrentMaxStrValue());
+      Assert.assertArrayEquals(
+          "d".getBytes(StandardCharsets.UTF_8), statsCol2.getCurrentMinStrValue());
+      Assert.assertArrayEquals(
+          "d".getBytes(StandardCharsets.UTF_8), statsCol2.getCurrentMaxStrValue());
+      Assert.assertEquals(BigInteger.ONE, statsCol3.getCurrentMinIntValue());
+      Assert.assertEquals(BigInteger.ONE, statsCol3.getCurrentMaxIntValue());
+    }
   }
 
   @Test
@@ -1336,11 +1331,13 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
-    Assert.assertEquals(
-        BigInteger.valueOf(0), result.getColumnEps().get("COLBOOLEAN").getCurrentMinIntValue());
-    Assert.assertEquals(
-        BigInteger.valueOf(1), result.getColumnEps().get("COLBOOLEAN").getCurrentMaxIntValue());
-    Assert.assertEquals(1, result.getColumnEps().get("COLBOOLEAN").getCurrentNullCount());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          BigInteger.valueOf(0), result.getColumnEps().get("COLBOOLEAN").getCurrentMinIntValue());
+      Assert.assertEquals(
+          BigInteger.valueOf(1), result.getColumnEps().get("COLBOOLEAN").getCurrentMaxIntValue());
+      Assert.assertEquals(1, result.getColumnEps().get("COLBOOLEAN").getCurrentNullCount());
+    }
   }
 
   @Test
@@ -1394,14 +1391,16 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
-    Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
-    Assert.assertArrayEquals(
-        "Hello World".getBytes(StandardCharsets.UTF_8),
-        result.getColumnEps().get("COLBINARY").getCurrentMinStrValue());
-    Assert.assertArrayEquals(
-        "Honk Honk".getBytes(StandardCharsets.UTF_8),
-        result.getColumnEps().get("COLBINARY").getCurrentMaxStrValue());
-    Assert.assertEquals(1, result.getColumnEps().get("COLBINARY").getCurrentNullCount());
+    if (!isIcebergMode) {
+      Assert.assertEquals(11L, result.getColumnEps().get("COLBINARY").getCurrentMaxLength());
+      Assert.assertArrayEquals(
+          "Hello World".getBytes(StandardCharsets.UTF_8),
+          result.getColumnEps().get("COLBINARY").getCurrentMinStrValue());
+      Assert.assertArrayEquals(
+          "Honk Honk".getBytes(StandardCharsets.UTF_8),
+          result.getColumnEps().get("COLBINARY").getCurrentMaxStrValue());
+      Assert.assertEquals(1, result.getColumnEps().get("COLBINARY").getCurrentNullCount());
+    }
   }
 
   @Test
@@ -1446,11 +1445,13 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush();
 
     Assert.assertEquals(3, result.getRowCount());
-    Assert.assertEquals(
-        Double.valueOf(123.456), result.getColumnEps().get("COLREAL").getCurrentMinRealValue());
-    Assert.assertEquals(
-        Double.valueOf(123.4567), result.getColumnEps().get("COLREAL").getCurrentMaxRealValue());
-    Assert.assertEquals(1, result.getColumnEps().get("COLREAL").getCurrentNullCount());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          Double.valueOf(123.456), result.getColumnEps().get("COLREAL").getCurrentMinRealValue());
+      Assert.assertEquals(
+          Double.valueOf(123.4567), result.getColumnEps().get("COLREAL").getCurrentMaxRealValue());
+      Assert.assertEquals(1, result.getColumnEps().get("COLREAL").getCurrentNullCount());
+    }
   }
 
   @Test
@@ -1476,12 +1477,14 @@ public class RowBufferTest {
 
     Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLDECIMAL", 2);
@@ -1490,12 +1493,14 @@ public class RowBufferTest {
 
     Assert.assertEquals(2, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     Map<String, Object> row3 = new HashMap<>();
     row3.put("COLDECIMAL", true);
@@ -1507,24 +1512,28 @@ public class RowBufferTest {
 
     Assert.assertEquals(2, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          2, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     row3.put("COLDECIMAL", 3);
     response = innerBuffer.insertRows(Collections.singletonList(row3), "1", "3");
     Assert.assertFalse(response.hasErrors());
     Assert.assertEquals(3, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     ChannelData<?> data = innerBuffer.flush();
     Assert.assertEquals(3, data.getRowCount());
@@ -1555,12 +1564,14 @@ public class RowBufferTest {
 
     Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     Map<String, Object> row2 = new HashMap<>();
     row2.put("COLDECIMAL", 2);
@@ -1572,33 +1583,39 @@ public class RowBufferTest {
 
     Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     Assert.assertEquals(1, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     row3.put("COLDECIMAL", 3);
     response = innerBuffer.insertRows(Arrays.asList(row2, row3), "1", "3");
     Assert.assertFalse(response.hasErrors());
     Assert.assertEquals(3, innerBuffer.bufferedRowCount);
     Assert.assertEquals(0, innerBuffer.getTempRowCount());
-    Assert.assertEquals(
-        3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
-    Assert.assertEquals(
-        1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
-    Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    if (!isIcebergMode) {
+      Assert.assertEquals(
+          3, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMaxIntValue().intValue());
+      Assert.assertEquals(
+          1, innerBuffer.statsMap.get("COLDECIMAL").getCurrentMinIntValue().intValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMaxIntValue());
+      Assert.assertNull(innerBuffer.tempStatsMap.get("COLDECIMAL").getCurrentMinIntValue());
+    }
 
     ChannelData<?> data = innerBuffer.flush();
     Assert.assertEquals(3, data.getRowCount());

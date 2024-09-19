@@ -866,17 +866,21 @@ public class FlushServiceTest {
     Map<String, RowBufferStats> eps1 = new HashMap<>();
     Map<String, RowBufferStats> eps2 = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats("COL1");
-    RowBufferStats stats2 = new RowBufferStats("COL1");
+    RowBufferStats stats1col1 = new RowBufferStats("testBuildAndUpload1");
+    RowBufferStats stats1col2 = new RowBufferStats("testBuildAndUpload2");
+    RowBufferStats stats2col1 = new RowBufferStats("testBuildAndUpload1");
+    RowBufferStats stats2col2 = new RowBufferStats("testBuildAndUpload2");
 
-    eps1.put("one", stats1);
-    eps2.put("one", stats2);
+    eps1.put("testBuildAndUpload1", stats1col1);
+    eps1.put("testBuildAndUpload2", stats1col2);
+    eps2.put("testBuildAndUpload1", stats2col1);
+    eps2.put("testBuildAndUpload2", stats2col2);
 
-    stats1.addIntValue(new BigInteger("10"));
-    stats1.addIntValue(new BigInteger("15"));
-    stats2.addIntValue(new BigInteger("11"));
-    stats2.addIntValue(new BigInteger("13"));
-    stats2.addIntValue(new BigInteger("17"));
+    stats1col1.addIntValue(new BigInteger("11"));
+    stats1col1.addIntValue(new BigInteger("22"));
+    stats1col2.addStrValue("bob");
+    stats2col1.addIntValue(null);
+    stats2col2.addStrValue("toby");
 
     channel1Data.setColumnEps(eps1);
     channel2Data.setColumnEps(eps2);

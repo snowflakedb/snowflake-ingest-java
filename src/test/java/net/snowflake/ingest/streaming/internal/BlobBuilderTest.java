@@ -37,7 +37,8 @@ public class BlobBuilderTest {
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
-        encrypt);
+        encrypt,
+        !encrypt);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
@@ -45,7 +46,8 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
-          encrypt);
+          encrypt,
+          !encrypt);
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
@@ -67,7 +69,7 @@ public class BlobBuilderTest {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
-    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP))
+    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP, false))
         .when(channelData)
         .createFlusher();
 
@@ -80,7 +82,8 @@ public class BlobBuilderTest {
             new HashMap<>(),
             "CHANNEL",
             1000,
-            Constants.BdecParquetCompression.GZIP);
+            Constants.BdecParquetCompression.GZIP,
+            false);
     bdecParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
         new ParquetChunkData(
