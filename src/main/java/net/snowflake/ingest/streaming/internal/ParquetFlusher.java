@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -27,6 +27,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private static final Logging logger = new Logging(ParquetFlusher.class);
   private final MessageType schema;
   private final long maxChunkSizeInBytes;
+  private final boolean enableNdvAndMaxLengthStats;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
 
@@ -34,10 +35,12 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   public ParquetFlusher(
       MessageType schema,
       long maxChunkSizeInBytes,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      boolean enableNdvAndMaxLengthStats) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.enableNdvAndMaxLengthStats = enableNdvAndMaxLengthStats;
   }
 
   @Override
@@ -126,7 +129,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             metadata,
             firstChannelFullyQualifiedTableName,
             maxChunkSizeInBytes,
-            bdecParquetCompression);
+            bdecParquetCompression,
+            enableNdvAndMaxLengthStats);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 
@@ -138,7 +142,10 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         rowCount,
         chunkEstimatedUncompressedSize,
         mergedData,
-        chunkMinMaxInsertTimeInMs);
+        chunkMinMaxInsertTimeInMs,
+        parquetWriter.getBlocksMetadata(),
+        parquetWriter.getNdvStats(),
+        parquetWriter.getMaxLengthStats());
   }
 
   private static void addFileIdToMetadata(

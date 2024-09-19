@@ -1,8 +1,10 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
+
+import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
@@ -16,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import javax.annotation.Nullable;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
@@ -25,6 +28,9 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 
 /**
  * The abstract implementation of the buffer in the Streaming Ingest channel that holds the
@@ -651,6 +657,52 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
     }
+    epInfo.verifyEpInfo();
+    return epInfo;
+  }
+
+  static EpInfo buildEPInfoFromParquetWriterResults(
+      List<BlockMetaData> blocksMetadata,
+      @Nullable Map<String, Integer> ndvStats,
+      @Nullable Map<String, Integer> maxLengthStats) {
+    if (blocksMetadata.isEmpty()) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "No blocks metadata found");
+    }
+    EpInfo epInfo =
+        new EpInfo(
+            blocksMetadata.stream().mapToLong(BlockMetaData::getRowCount).sum(), new HashMap<>());
+
+    Map<String, Statistics<?>> mergedStatistics = new HashMap<>();
+    for (BlockMetaData blockMetaData : blocksMetadata) {
+      for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
+        String subColumnName = columnChunkMetaData.getPath().toDotString();
+        if (mergedStatistics.get(subColumnName) == null) {
+          mergedStatistics.put(subColumnName, columnChunkMetaData.getStatistics());
+        } else {
+          mergedStatistics.get(subColumnName).mergeStatistics(columnChunkMetaData.getStatistics());
+        }
+      }
+    }
+
+    String prevColumnName = "";
+    int columnOrdinal = 0;
+    for (ColumnChunkMetaData columnChunkMetaData : blocksMetadata.get(0).getColumns()) {
+      String currentColumnName = columnChunkMetaData.getPath().toArray()[0];
+      if (!prevColumnName.equals(currentColumnName)) {
+        columnOrdinal++;
+        prevColumnName = currentColumnName;
+      }
+      String subColumnName = columnChunkMetaData.getPath().toDotString();
+      FileColumnProperties dto =
+          new FileColumnProperties(
+              columnOrdinal,
+              columnChunkMetaData.getPrimitiveType().getId().intValue(),
+              mergedStatistics.get(subColumnName),
+              ndvStats != null ? ndvStats.getOrDefault(subColumnName, 0) : EP_NDV_UNKNOWN,
+              maxLengthStats != null ? maxLengthStats.getOrDefault(subColumnName, 0) : 0);
+      epInfo.getColumnEps().put(subColumnName, dto);
+    }
+
     epInfo.verifyEpInfo();
     return epInfo;
   }

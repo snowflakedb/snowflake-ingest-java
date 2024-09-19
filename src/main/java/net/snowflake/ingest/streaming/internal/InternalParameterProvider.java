@@ -17,4 +17,8 @@ class InternalParameterProvider {
     // mode does not need client-side encryption.
     return !isIcebergMode;
   }
+
+  boolean getIsIcebergMode() {
+    return isIcebergMode;
+  }
 }
