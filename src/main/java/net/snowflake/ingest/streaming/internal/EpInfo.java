@@ -1,7 +1,5 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -33,14 +31,6 @@ class EpInfo {
             String.format(
                 "Null count bigger than total row count on col=%s, nullCount=%s, rowCount=%s",
                 colName, colEp.getNullCount(), rowCount));
-      }
-
-      // Make sure the NDV should always be -1
-      if (colEp.getDistinctValues() != EP_NDV_UNKNOWN) {
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR,
-            String.format(
-                "Unexpected NDV on col=%s, value=%d", colName, colEp.getDistinctValues()));
       }
     }
   }

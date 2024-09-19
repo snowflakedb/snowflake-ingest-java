@@ -8,6 +8,7 @@ import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncate
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Objects;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -117,8 +118,8 @@ class FileColumnProperties {
       this.setMinIntValue(BigInteger.valueOf(((Number) statistics.genericGetMin()).longValue()));
       this.setMaxIntValue(BigInteger.valueOf(((Number) statistics.genericGetMax()).longValue()));
     } else if (statistics instanceof FloatStatistics || statistics instanceof DoubleStatistics) {
-      this.setMinRealValue((Double) statistics.genericGetMin());
-      this.setMaxRealValue((Double) statistics.genericGetMax());
+      this.setMinRealValue(new BigDecimal(statistics.genericGetMin().toString()).doubleValue());
+      this.setMaxRealValue(new BigDecimal(statistics.genericGetMax().toString()).doubleValue());
     } else if (statistics instanceof BinaryStatistics) {
       if (statistics.type().getLogicalTypeAnnotation()
           instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
