@@ -4,8 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Utils;
 
 /** Metadata for a chunk that sends to Snowflake as part of the register blob request */
@@ -22,6 +24,8 @@ class ChunkMetadata {
   private final Long encryptionKeyId;
   private final Long firstInsertTimeInMs;
   private final Long lastInsertTimeInMs;
+  private Integer parquetMajorVersion;
+  private Integer parquetMinorVersion;
 
   static Builder builder() {
     return new Builder();
@@ -43,6 +47,7 @@ class ChunkMetadata {
     private Long encryptionKeyId;
     private Long firstInsertTimeInMs;
     private Long lastInsertTimeInMs;
+    private boolean isIceberg;
 
     Builder setOwningTableFromChannelContext(ChannelFlushContext channelFlushContext) {
       this.dbName = channelFlushContext.getDbName();
@@ -100,6 +105,11 @@ class ChunkMetadata {
       return this;
     }
 
+    Builder setIsIceberg(boolean isIceberg) {
+      this.isIceberg = isIceberg;
+      return this;
+    }
+
     ChunkMetadata build() {
       return new ChunkMetadata(this);
     }
@@ -130,6 +140,11 @@ class ChunkMetadata {
     this.encryptionKeyId = builder.encryptionKeyId;
     this.firstInsertTimeInMs = builder.firstInsertTimeInMs;
     this.lastInsertTimeInMs = builder.lastInsertTimeInMs;
+
+    if (builder.isIceberg) {
+      this.parquetMajorVersion = Constants.PARQUET_MAJOR_VERSION;
+      this.parquetMinorVersion = Constants.PARQUET_MINOR_VERSION;
+    }
   }
 
   /**
@@ -199,5 +214,17 @@ class ChunkMetadata {
   @JsonProperty("last_insert_time_in_ms")
   Long getLastInsertTimeInMs() {
     return this.lastInsertTimeInMs;
+  }
+
+  @JsonProperty("major_vers")
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  Integer getMajorVersion() {
+    return this.parquetMajorVersion;
+  }
+
+  @JsonProperty("minor_vers")
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  Integer getMinorVersion() {
+    return this.parquetMinorVersion;
   }
 }

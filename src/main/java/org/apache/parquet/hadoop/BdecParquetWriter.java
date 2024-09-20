@@ -107,6 +107,12 @@ public class BdecParquetWriter implements AutoCloseable {
 
   /** @return List of row counts per block stored in the parquet footer */
   public List<Long> getRowCountsFromFooter() {
+    if (writer.getFooter().getBlocks().size() > 1) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          "Expecting only one row group in the parquet file, but found "
+              + writer.getFooter().getBlocks().size());
+    }
     final List<Long> blockRowCounts = new ArrayList<>();
     for (BlockMetaData metadata : writer.getFooter().getBlocks()) {
       blockRowCounts.add(metadata.getRowCount());

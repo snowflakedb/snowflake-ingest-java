@@ -603,7 +603,8 @@ class FlushService<T> {
             blobPath.fileName,
             blobData,
             bdecVersion,
-            this.owningClient.getInternalParameterProvider().getEnableChunkEncryption());
+            this.owningClient.getInternalParameterProvider().getEnableChunkEncryption(),
+            this.owningClient.getInternalParameterProvider().getIsIcebergMode());
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
