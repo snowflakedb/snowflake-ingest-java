@@ -160,7 +160,7 @@ class ColumnMetadata {
     map.put("byte_length", this.byteLength);
     map.put("length", this.length);
     map.put("nullable", this.nullable);
-    map.put("source_iceberg_datatype", this.sourceIcebergDataType);
+    map.put("source_iceberg_data_type", this.sourceIcebergDataType);
     return map.toString();
   }
 }

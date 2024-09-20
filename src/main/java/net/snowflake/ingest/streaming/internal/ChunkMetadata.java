@@ -219,13 +219,13 @@ class ChunkMetadata {
   // Snowflake service had a bug that did not allow the client to add new json fields in some
   // contracts; thus these new fields have a NON_DEFAULT attribute.
   @JsonProperty("major_vers")
-  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   Integer getMajorVersion() {
     return this.parquetMajorVersion;
   }
 
   @JsonProperty("minor_vers")
-  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   Integer getMinorVersion() {
     return this.parquetMinorVersion;
   }

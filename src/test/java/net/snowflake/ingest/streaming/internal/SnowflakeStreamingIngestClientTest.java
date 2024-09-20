@@ -807,7 +807,10 @@ public class SnowflakeStreamingIngestClientTest {
     client.getChannelCache().addChannel(channel3);
     client.getChannelCache().addChannel(channel4);
     client.registerBlobs(blobs);
-    Mockito.verify(requestBuilder, Mockito.times(MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1))
+    Mockito.verify(
+            requestBuilder,
+            // isIcebergMode results in a clientconfigure call from ExtVol ctor, thus the extra +1
+            Mockito.times(MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1 + (isIcebergMode ? 1 : 0)))
         .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
     Assert.assertFalse(channel1.isValid());
     Assert.assertFalse(channel2.isValid());
