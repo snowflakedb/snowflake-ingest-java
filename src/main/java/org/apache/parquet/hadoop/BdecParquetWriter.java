@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -39,6 +40,10 @@ import org.apache.parquet.schema.Type;
 public class BdecParquetWriter implements AutoCloseable {
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
+
+  // Optional cap on the max number of row groups to allow per file, if this is exceeded we'll end
+  // up throwing
+  private final Optional<Integer> maxRowGroups;
   private long rowsWritten = 0;
 
   /**
@@ -48,6 +53,8 @@ public class BdecParquetWriter implements AutoCloseable {
    * @param schema row schema
    * @param extraMetaData extra metadata
    * @param channelName name of the channel that is using the writer
+   * @param maxRowGroups Optional cap on the max number of row groups to allow per file, if this is
+   *     exceeded we'll end up throwing
    * @throws IOException
    */
   public BdecParquetWriter(
@@ -56,9 +63,11 @@ public class BdecParquetWriter implements AutoCloseable {
       Map<String, String> extraMetaData,
       String channelName,
       long maxChunkSizeInBytes,
+      Optional<Integer> maxRowGroups,
       Constants.BdecParquetCompression bdecParquetCompression)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
+    this.maxRowGroups = maxRowGroups;
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
@@ -107,12 +116,14 @@ public class BdecParquetWriter implements AutoCloseable {
 
   /** @return List of row counts per block stored in the parquet footer */
   public List<Long> getRowCountsFromFooter() {
-    if (writer.getFooter().getBlocks().size() > 1) {
+    if (maxRowGroups.isPresent() && writer.getFooter().getBlocks().size() > maxRowGroups.get()) {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR,
-          "Expecting only one row group in the parquet file, but found "
-              + writer.getFooter().getBlocks().size());
+          String.format(
+              "Expecting only %d row group in the parquet file, but found %d",
+              maxRowGroups.get(), writer.getFooter().getBlocks().size()));
     }
+
     final List<Long> blockRowCounts = new ArrayList<>();
     for (BlockMetaData metadata : writer.getFooter().getBlocks()) {
       blockRowCounts.add(metadata.getRowCount());

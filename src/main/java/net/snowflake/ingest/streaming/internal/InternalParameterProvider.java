@@ -6,6 +6,8 @@ package net.snowflake.ingest.streaming.internal;
 
 /** A class to provide non-configurable constants depends on Iceberg or non-Iceberg mode */
 class InternalParameterProvider {
+  public static final Integer MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT = 1;
+
   private final boolean isIcebergMode;
 
   InternalParameterProvider(boolean isIcebergMode) {

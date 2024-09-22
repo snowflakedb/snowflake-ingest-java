@@ -293,6 +293,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     return new ParquetFlusher(
         schema,
         clientBufferParameters.getMaxChunkSizeInBytes(),
+        clientBufferParameters.getMaxRowGroups(),
         clientBufferParameters.getBdecParquetCompression());
   }
 }

@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -150,6 +151,7 @@ public class RowBufferTest {
             MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
             Constants.BdecParquetCompression.GZIP,
             ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
+            isIcebergMode ? Optional.of(1) : Optional.empty(),
             isIcebergMode),
         null,
         null);

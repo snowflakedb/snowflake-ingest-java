@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
@@ -67,7 +68,12 @@ public class BlobBuilderTest {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
-    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP))
+    Mockito.doReturn(
+            new ParquetFlusher(
+                schema,
+                100L,
+                isIceberg ? Optional.of(1) : Optional.empty(),
+                Constants.BdecParquetCompression.GZIP))
         .when(channelData)
         .createFlusher();
 
@@ -80,6 +86,7 @@ public class BlobBuilderTest {
             new HashMap<>(),
             "CHANNEL",
             1000,
+            isIceberg ? Optional.of(1) : Optional.empty(),
             Constants.BdecParquetCompression.GZIP);
     bdecParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
