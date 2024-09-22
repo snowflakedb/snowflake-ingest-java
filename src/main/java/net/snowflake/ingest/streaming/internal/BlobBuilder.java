@@ -61,16 +61,13 @@ class BlobBuilder {
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
-   * @param encrypt If the output chunk is encrypted or not
-   * @param isIceberg If the streaming client is for Iceberg table or not
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
-      boolean encrypt,
-      boolean isIceberg)
+      InternalParameterProvider internalParameterProvider)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -93,7 +90,7 @@ class BlobBuilder {
         final int chunkLength;
         final int compressedChunkDataSize;
 
-        if (encrypt) {
+        if (internalParameterProvider.getEnableChunkEncryption()) {
           Pair<byte[], Integer> paddedChunk =
               padChunk(serializedChunk.chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
           byte[] paddedChunkData = paddedChunk.getFirst();
@@ -137,10 +134,10 @@ class BlobBuilder {
                     AbstractRowBuffer.buildEpInfoFromStats(
                         serializedChunk.rowCount,
                         serializedChunk.columnEpStatsMapCombined,
-                        !isIceberg))
+                        internalParameterProvider.setDefaultValuesInEp()))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
-                .setIsIceberg(isIceberg)
+                .setMajorMinorVersionInEp(internalParameterProvider.setMajorMinorVersionInEp())
                 .build();
 
         // Add chunk metadata and data to the list
@@ -152,7 +149,7 @@ class BlobBuilder {
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
                 + " estimatedUncompressedSize={}, chunkLength={}, compressedSize={},"
-                + " encryption={}, bdecVersion={}",
+                + " encrypt={}, bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
@@ -160,7 +157,7 @@ class BlobBuilder {
             serializedChunk.chunkEstimatedUncompressedSize,
             chunkLength,
             compressedChunkDataSize,
-            encrypt,
+            internalParameterProvider.getEnableChunkEncryption(),
             bdecVersion);
       }
     }

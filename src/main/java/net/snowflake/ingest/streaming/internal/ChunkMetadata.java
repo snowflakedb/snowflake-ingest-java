@@ -47,7 +47,7 @@ class ChunkMetadata {
     private Long encryptionKeyId;
     private Long firstInsertTimeInMs;
     private Long lastInsertTimeInMs;
-    private boolean isIceberg;
+    private boolean setMajorMinorVersionInEp;
 
     Builder setOwningTableFromChannelContext(ChannelFlushContext channelFlushContext) {
       this.dbName = channelFlushContext.getDbName();
@@ -105,8 +105,8 @@ class ChunkMetadata {
       return this;
     }
 
-    Builder setIsIceberg(boolean isIceberg) {
-      this.isIceberg = isIceberg;
+    Builder setMajorMinorVersionInEp(boolean setMajorMinorVersionInEp) {
+      this.setMajorMinorVersionInEp = setMajorMinorVersionInEp;
       return this;
     }
 
@@ -141,7 +141,7 @@ class ChunkMetadata {
     this.firstInsertTimeInMs = builder.firstInsertTimeInMs;
     this.lastInsertTimeInMs = builder.lastInsertTimeInMs;
 
-    if (builder.isIceberg) {
+    if (builder.setMajorMinorVersionInEp) {
       this.parquetMajorVersion = Constants.PARQUET_MAJOR_VERSION;
       this.parquetMinorVersion = Constants.PARQUET_MINOR_VERSION;
     }
@@ -216,6 +216,8 @@ class ChunkMetadata {
     return this.lastInsertTimeInMs;
   }
 
+  // Snowflake service had a bug that did not allow the client to add new json fields in some
+  // contracts; thus these new fields have a NON_DEFAULT attribute.
   @JsonProperty("major_vers")
   @JsonInclude(JsonInclude.Include.NON_DEFAULT)
   Integer getMajorVersion() {

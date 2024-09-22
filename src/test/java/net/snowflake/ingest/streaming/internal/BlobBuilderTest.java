@@ -23,12 +23,12 @@ import org.mockito.Mockito;
 
 @RunWith(Parameterized.class)
 public class BlobBuilderTest {
-  @Parameterized.Parameters(name = "encrypt: {0}")
-  public static Object[] encrypt() {
+  @Parameterized.Parameters(name = "isIceberg: {0}")
+  public static Object[] isIceberg() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean encrypt;
+  @Parameterized.Parameter public boolean isIceberg;
 
   @Test
   public void testSerializationErrors() throws Exception {
@@ -37,8 +37,7 @@ public class BlobBuilderTest {
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
-        encrypt,
-        !encrypt);
+        new InternalParameterProvider(isIceberg));
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
@@ -46,8 +45,7 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
-          encrypt,
-          !encrypt);
+          new InternalParameterProvider(isIceberg));
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));

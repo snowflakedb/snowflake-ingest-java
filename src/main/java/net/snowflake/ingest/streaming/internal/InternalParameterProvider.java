@@ -18,7 +18,15 @@ class InternalParameterProvider {
     return !isIcebergMode;
   }
 
-  boolean getIsIcebergMode() {
+  boolean setDefaultValuesInEp() {
+    // When in Iceberg mode, we need to populate nulls (instead of zeroes) in the minIntValue /
+    // maxIntValue / minRealValue / maxRealValue fields of the EP Metadata.
+    return !isIcebergMode;
+  }
+
+  boolean setMajorMinorVersionInEp() {
+    // When in Iceberg mode, we need to explicitly populate the major and minor version of parquet
+    // in the EP metadata.
     return isIcebergMode;
   }
 }
