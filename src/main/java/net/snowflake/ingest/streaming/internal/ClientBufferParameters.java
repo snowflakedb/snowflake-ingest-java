@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.util.Optional;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 
@@ -17,6 +18,8 @@ public class ClientBufferParameters {
   private final boolean enableNewJsonParsingLogic;
 
   private Constants.BdecParquetCompression bdecParquetCompression;
+
+  private final Optional<Integer> maxRowGroups;
 
   private boolean isIcebergMode;
 
@@ -32,11 +35,13 @@ public class ClientBufferParameters {
       long maxAllowedRowSizeInBytes,
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
+      Optional<Integer> maxRowGroups,
       boolean isIcebergMode) {
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
     this.enableNewJsonParsingLogic = enableNewJsonParsingLogic;
+    this.maxRowGroups = maxRowGroups;
     this.isIcebergMode = isIcebergMode;
   }
 
@@ -62,6 +67,10 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.isIcebergMode()
             : ParameterProvider.IS_ICEBERG_MODE_DEFAULT;
+    this.maxRowGroups =
+        isIcebergMode
+            ? Optional.of(InternalParameterProvider.MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT)
+            : Optional.empty();
   }
 
   /**
@@ -75,12 +84,14 @@ public class ClientBufferParameters {
       long maxAllowedRowSizeInBytes,
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
+      Optional<Integer> maxRowGroups,
       boolean isIcebergMode) {
     return new ClientBufferParameters(
         maxChunkSizeInBytes,
         maxAllowedRowSizeInBytes,
         bdecParquetCompression,
         enableNewJsonParsingLogic,
+        maxRowGroups,
         isIcebergMode);
   }
 
@@ -102,5 +113,9 @@ public class ClientBufferParameters {
 
   public boolean getIsIcebergMode() {
     return isIcebergMode;
+  }
+
+  public Optional<Integer> getMaxRowGroups() {
+    return maxRowGroups;
   }
 }
