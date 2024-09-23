@@ -25,7 +25,9 @@ import java.nio.file.Paths;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -102,7 +104,7 @@ public class TestUtils {
    *
    * @throws IOException if can't read profile
    */
-  private static void init() throws Exception {
+  private static void init() throws NoSuchAlgorithmException, InvalidKeySpecException, IOException {
     String testProfilePath = getTestProfilePath();
     Path path = Paths.get(testProfilePath);
 
