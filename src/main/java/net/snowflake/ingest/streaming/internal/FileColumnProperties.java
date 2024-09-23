@@ -44,24 +44,24 @@ class FileColumnProperties {
   // Default value to use for min/max real when all data in the given column is NULL
   public static final Double DEFAULT_MIN_MAX_REAL_VAL_FOR_EP = 0d;
 
-  FileColumnProperties(RowBufferStats stats) {
+  FileColumnProperties(RowBufferStats stats, boolean setDefaultValues) {
     this.setColumnOrdinal(stats.getOrdinal());
     this.setCollation(stats.getCollationDefinitionString());
     this.setMaxIntValue(
         stats.getCurrentMaxIntValue() == null
-            ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+            ? (setDefaultValues ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP : null)
             : stats.getCurrentMaxIntValue());
     this.setMinIntValue(
         stats.getCurrentMinIntValue() == null
-            ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+            ? (setDefaultValues ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP : null)
             : stats.getCurrentMinIntValue());
     this.setMinRealValue(
         stats.getCurrentMinRealValue() == null
-            ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+            ? (setDefaultValues ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP : null)
             : stats.getCurrentMinRealValue());
     this.setMaxRealValue(
         stats.getCurrentMaxRealValue() == null
-            ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+            ? (setDefaultValues ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP : null)
             : stats.getCurrentMaxRealValue());
     this.setMaxLength(stats.getCurrentMaxLength());
 

@@ -899,7 +899,7 @@ public class FlushServiceTest {
 
     EpInfo expectedChunkEpInfo =
         AbstractRowBuffer.buildEpInfoFromStats(
-            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2));
+            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2), !isIcebergMode);
 
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
@@ -1110,7 +1110,7 @@ public class FlushServiceTest {
 
     stats1.addIntValue(new BigInteger("10"));
     stats1.addIntValue(new BigInteger("15"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1);
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1, !isIcebergMode);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()

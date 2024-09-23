@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -27,6 +28,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private static final Logging logger = new Logging(ParquetFlusher.class);
   private final MessageType schema;
   private final long maxChunkSizeInBytes;
+  private final Optional<Integer> maxRowGroups;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
 
@@ -34,9 +36,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   public ParquetFlusher(
       MessageType schema,
       long maxChunkSizeInBytes,
+      Optional<Integer> maxRowGroups,
       Constants.BdecParquetCompression bdecParquetCompression) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
+    this.maxRowGroups = maxRowGroups;
     this.bdecParquetCompression = bdecParquetCompression;
   }
 
@@ -126,6 +130,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             metadata,
             firstChannelFullyQualifiedTableName,
             maxChunkSizeInBytes,
+            maxRowGroups,
             bdecParquetCompression);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();

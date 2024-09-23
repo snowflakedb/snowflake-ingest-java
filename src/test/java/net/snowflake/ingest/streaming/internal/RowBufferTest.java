@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -150,6 +151,7 @@ public class RowBufferTest {
             MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
             Constants.BdecParquetCompression.GZIP,
             ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
+            isIcebergMode ? Optional.of(1) : Optional.empty(),
             isIcebergMode),
         null,
         null);
@@ -575,7 +577,7 @@ public class RowBufferTest {
     colStats.put("intColumn", stats1);
     colStats.put("strColumn", stats2);
 
-    EpInfo result = AbstractRowBuffer.buildEpInfoFromStats(2, colStats);
+    EpInfo result = AbstractRowBuffer.buildEpInfoFromStats(2, colStats, !isIcebergMode);
     Map<String, FileColumnProperties> columnResults = result.getColumnEps();
     Assert.assertEquals(2, columnResults.keySet().size());
 
@@ -610,25 +612,29 @@ public class RowBufferTest {
     colStats.put(intColName, stats1);
     colStats.put(realColName, stats2);
 
-    EpInfo result = AbstractRowBuffer.buildEpInfoFromStats(2, colStats);
+    EpInfo result = AbstractRowBuffer.buildEpInfoFromStats(2, colStats, !isIcebergMode);
     Map<String, FileColumnProperties> columnResults = result.getColumnEps();
     Assert.assertEquals(2, columnResults.keySet().size());
 
     FileColumnProperties intColumnResult = columnResults.get(intColName);
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
     Assert.assertEquals(
-        FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMinIntValue());
+        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP,
+        intColumnResult.getMinIntValue());
     Assert.assertEquals(
-        FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMaxIntValue());
+        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP,
+        intColumnResult.getMaxIntValue());
     Assert.assertEquals(1, intColumnResult.getNullCount());
     Assert.assertEquals(0, intColumnResult.getMaxLength());
 
     FileColumnProperties realColumnResult = columnResults.get(realColName);
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
     Assert.assertEquals(
-        FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMinRealValue());
+        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP,
+        realColumnResult.getMinRealValue());
     Assert.assertEquals(
-        FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMaxRealValue());
+        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP,
+        realColumnResult.getMaxRealValue());
     Assert.assertEquals(1, realColumnResult.getNullCount());
     Assert.assertEquals(0, realColumnResult.getMaxLength());
   }
@@ -651,7 +657,7 @@ public class RowBufferTest {
     colStats.put("strColumn", stats2);
 
     try {
-      AbstractRowBuffer.buildEpInfoFromStats(1, colStats);
+      AbstractRowBuffer.buildEpInfoFromStats(1, colStats, !isIcebergMode);
       fail("should fail when row count is smaller than null count.");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
