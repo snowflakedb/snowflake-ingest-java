@@ -10,6 +10,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Utils;
@@ -50,9 +52,19 @@ public class InsertRowsBenchmarkTest {
   @Setup(Level.Trial)
   public void setUpBeforeAll() {
     // SNOW-1490151: Testing gaps
+    CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
+    RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
     client =
-        new SnowflakeStreamingIngestClientInternal<ParquetChunkData>(
-            "client_PARQUET", isIcebergMode);
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client_PARQUET",
+            null,
+            null,
+            httpClient,
+            isIcebergMode,
+            true,
+            requestBuilder,
+            new HashMap<>());
+
     channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",

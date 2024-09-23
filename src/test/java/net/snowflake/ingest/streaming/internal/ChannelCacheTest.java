@@ -6,9 +6,12 @@ package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import org.junit.Assert;
 import org.junit.Before;
@@ -39,7 +42,12 @@ public class ChannelCacheTest {
   @Before
   public void setup() {
     cache = new ChannelCache<>();
-    client = new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
+    CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
+    RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
+    client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client", null, null, httpClient, isIcebergMode, true, requestBuilder, new HashMap<>());
+
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
