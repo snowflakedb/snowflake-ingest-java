@@ -65,11 +65,24 @@ public class IcebergDataTypeParser {
       int id,
       String name) {
     Type icebergType = deserializeIcebergType(icebergDataType);
-    if (!icebergType.isPrimitiveType()) {
-      throw new IllegalArgumentException(
-          String.format("Snowflake supports only primitive Iceberg types, got '%s'", icebergType));
+    if (icebergType.isPrimitiveType()) {
+      return typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
+    } else {
+      switch (icebergType.typeId()) {
+        case LIST:
+          return typeToMessageType.list(icebergType.asListType(), repetition, id, name);
+        case MAP:
+          return typeToMessageType.map(icebergType.asMapType(), repetition, id, name);
+        case STRUCT:
+          return typeToMessageType.struct(icebergType.asStructType(), repetition, id, name);
+        default:
+          throw new SFException(
+              ErrorCode.INTERNAL_ERROR,
+              String.format(
+                  "Cannot convert Iceberg column to parquet type, name=%s, dataType=%s",
+                  name, icebergDataType));
+      }
     }
-    return typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
   }
 
   /**

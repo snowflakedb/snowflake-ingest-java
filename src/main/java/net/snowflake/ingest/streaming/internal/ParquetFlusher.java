@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -143,7 +143,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         rowCount,
         chunkEstimatedUncompressedSize,
         mergedData,
-        chunkMinMaxInsertTimeInMs);
+        chunkMinMaxInsertTimeInMs,
+        parquetWriter.getBlocksMetadata());
   }
 
   private static void addFileIdToMetadata(

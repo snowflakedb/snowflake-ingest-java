@@ -25,6 +25,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
@@ -91,20 +92,46 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
-      this.statsMap.put(
-          column.getInternalName(),
-          new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal()));
-
-      if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
-          || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
-        this.tempStatsMap.put(
+      if (!clientBufferParameters.getIsIcebergMode()) {
+        this.statsMap.put(
             column.getInternalName(),
-            new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal()));
+            new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal(), 0));
+
+        if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
+            || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
+          this.tempStatsMap.put(
+              column.getInternalName(),
+              new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal(), 0));
+        }
       }
 
       id++;
     }
     schema = new MessageType(PARQUET_MESSAGE_TYPE_NAME, parquetTypes);
+    if (clientBufferParameters.getIsIcebergMode()) {
+      int ordinal = 0;
+      String prevParentColumnName = "";
+      for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
+        String parentColumnName = columnDescriptor.getPath()[0];
+        if (!parentColumnName.equals(prevParentColumnName)) {
+          ordinal++;
+          prevParentColumnName = parentColumnName;
+        }
+        String subColumnName = String.join(".", columnDescriptor.getPath());
+        int fieldId =
+            parentColumnName.equals(subColumnName)
+                ? 0
+                : columnDescriptor.getPrimitiveType().getId().intValue();
+        RowBufferStats stats = new RowBufferStats(subColumnName, null, ordinal, fieldId);
+        this.statsMap.put(subColumnName, stats);
+
+        if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
+            || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
+          this.tempStatsMap.put(
+              subColumnName, new RowBufferStats(subColumnName, null, ordinal, fieldId));
+        }
+      }
+    }
     tempData.clear();
     data.clear();
   }
@@ -161,6 +188,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
+    statsMap.forEach((columnName, stats) -> forkedStatsMap.put(columnName, stats.forkEmpty()));
 
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
@@ -168,18 +196,16 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       String columnName = LiteralQuoteUtils.unquoteColumnName(key);
       ParquetColumn parquetColumn = fieldIndex.get(columnName);
       int colIndex = parquetColumn.index;
-      RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
-      forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = parquetColumn.columnMetadata;
       ParquetBufferValue valueWithSize =
           (clientBufferParameters.getIsIcebergMode()
               ? IcebergParquetValueParser.parseColumnValueToParquet(
-                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex)
+                  value, parquetColumn.type, forkedStatsMap, defaultTimezone, insertRowsCurrIndex)
               : SnowflakeParquetValueParser.parseColumnValueToParquet(
                   value,
                   column,
                   parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
-                  forkedStats,
+                  forkedStatsMap.get(columnName),
                   defaultTimezone,
                   insertRowsCurrIndex,
                   clientBufferParameters.isEnableNewJsonParsingLogic()));
