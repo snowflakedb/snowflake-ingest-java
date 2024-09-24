@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -16,6 +16,7 @@ import net.snowflake.ingest.utils.SFException;
 class RowBufferStats {
 
   private final int ordinal;
+  private final int fieldId;
   private byte[] currentMinStrValue;
   private byte[] currentMaxStrValue;
   private BigInteger currentMinIntValue;
@@ -30,15 +31,17 @@ class RowBufferStats {
   private final String columnDisplayName;
 
   /** Creates empty stats */
-  RowBufferStats(String columnDisplayName, String collationDefinitionString, int ordinal) {
+  RowBufferStats(
+      String columnDisplayName, String collationDefinitionString, int ordinal, int fieldId) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
     this.ordinal = ordinal;
+    this.fieldId = fieldId;
     reset();
   }
 
   RowBufferStats(String columnDisplayName) {
-    this(columnDisplayName, null, -1);
+    this(columnDisplayName, null, -1, 0);
   }
 
   void reset() {
@@ -55,7 +58,10 @@ class RowBufferStats {
   /** Create new statistics for the same column, with all calculated values set to empty */
   RowBufferStats forkEmpty() {
     return new RowBufferStats(
-        this.getColumnDisplayName(), this.getCollationDefinitionString(), this.getOrdinal());
+        this.getColumnDisplayName(),
+        this.getCollationDefinitionString(),
+        this.getOrdinal(),
+        this.getFieldId());
   }
 
   // TODO performance test this vs in place update
@@ -70,7 +76,10 @@ class RowBufferStats {
     }
     RowBufferStats combined =
         new RowBufferStats(
-            left.columnDisplayName, left.getCollationDefinitionString(), left.getOrdinal());
+            left.columnDisplayName,
+            left.getCollationDefinitionString(),
+            left.getOrdinal(),
+            left.getFieldId());
 
     if (left.currentMinIntValue != null) {
       combined.addIntValue(left.currentMinIntValue);
@@ -215,6 +224,10 @@ class RowBufferStats {
 
   public int getOrdinal() {
     return ordinal;
+  }
+
+  int getFieldId() {
+    return fieldId;
   }
 
   /**
