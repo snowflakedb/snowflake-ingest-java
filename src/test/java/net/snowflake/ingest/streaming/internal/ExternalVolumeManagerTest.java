@@ -46,6 +46,7 @@ public class ExternalVolumeManagerTest {
   @Test
   public void testRegister() {
     Exception ex = null;
+
     try {
       this.manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo);
     } catch (Exception e) {
@@ -60,7 +61,7 @@ public class ExternalVolumeManagerTest {
     int numThreads = 50;
     ExecutorService executorService =
         new ThreadPoolExecutor(
-            50, 50, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+            numThreads, numThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
     List<Callable<ExternalVolume>> tasks = new ArrayList<>();
     final CyclicBarrier startBarrier = new CyclicBarrier(numThreads);
     final CyclicBarrier endBarrier = new CyclicBarrier(numThreads);

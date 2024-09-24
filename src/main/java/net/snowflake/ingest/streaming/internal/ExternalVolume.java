@@ -68,8 +68,8 @@ class ExternalVolume implements IStorage {
   private final ConcurrentLinkedQueue<PresignedUrlInfo> presignedUrlInfos;
 
   // sometimes-stale counter of how many URLs are remaining, to avoid calling presignedUrls.size()
-  // and increasing
-  // lock contention / volatile reads on the internal data structures inside ConcurrentLinkedQueue
+  // and increasing lock contention / volatile reads on the internal data structures inside
+  // ConcurrentLinkedQueue
   private final AtomicInteger numUrlsInQueue;
 
   private final FileLocationInfo locationInfo;
@@ -136,8 +136,7 @@ class ExternalVolume implements IStorage {
   private void putRemote(String blobPath, byte[] blob)
       throws SnowflakeSQLException, URISyntaxException, IOException {
     // TODO: Add a backlog item for somehow doing multipart upload with presigned URLs (each part
-    // has its own URL)
-    //  for large files
+    // has its own URL) for large files
 
     // already verified that client side encryption is disabled, in the ctor's call to generateUrls
     final Properties proxyProperties = HttpUtil.generateProxyPropertiesForJDBC();
@@ -187,30 +186,25 @@ class ExternalVolume implements IStorage {
     }
 
     CloseableHttpClient httpClient = net.snowflake.client.core.HttpUtil.getHttpClient(key);
-    CloseableHttpResponse response;
-    try {
-      response =
-          RestRequest.execute(
-              httpClient,
-              httpRequest,
-              0, // retry timeout
-              0, // auth timeout
-              (int)
-                  net.snowflake.client.core.HttpUtil.getSocketTimeout()
-                      .toMillis(), // socket timeout in ms
-              1, // max retries
-              0, // no socket timeout injection
-              null, // no canceling signaler, TODO: wire up thread interrupt with setting this
-              // AtomicBoolean to avoid retries/sleeps
-              false, // no cookie
-              false, // no url retry query parameters
-              false, // no request_guid
-              true, // retry on HTTP 403
-              true, // no retry
-              new ExecTimeTelemetryData());
-    } catch (Throwable e) {
-      throw e;
-    }
+    CloseableHttpResponse response =
+        RestRequest.execute(
+            httpClient,
+            httpRequest,
+            0, // retry timeout
+            0, // auth timeout
+            (int)
+                net.snowflake.client.core.HttpUtil.getSocketTimeout()
+                    .toMillis(), // socket timeout in ms
+            1, // max retries
+            0, // no socket timeout injection
+            null, // no canceling signaler, TODO: wire up thread interrupt with setting this
+            // AtomicBoolean to avoid retries/sleeps
+            false, // no cookie
+            false, // no url retry query parameters
+            false, // no request_guid
+            true, // retry on HTTP 403
+            true, // no retry
+            new ExecTimeTelemetryData());
 
     int statusCode = response.getStatusLine().getStatusCode();
     if (!HttpStatusCodes.isSuccess(statusCode)) {
@@ -293,18 +287,16 @@ class ExternalVolume implements IStorage {
     }
     if (generate) {
       // TODO: do this generation on a background thread to allow the current thread to make
-      // progress ?
-      // Will wait for perf runs to know this is an issue that needs addressal.
+      // progress ?  Will wait for perf runs to know this is an issue that needs addressal.
       generateUrls(LOW_WATERMARK_FOR_EARLY_REFRESH);
     }
     return info;
   }
 
   // NOTE : We are intentionally NOT re-enqueuing unused URLs here as that can cause correctness
-  // issues by
-  // accidentally enqueuing a URL that was actually used to write data out. Its okay to allow an
-  // unused URL to go waste
-  // as we'll just go out and generate new URLs. Do NOT add an enqueueUrl() method for this reason.
+  // issues by accidentally enqueuing a URL that was actually used to write data out. Its okay to
+  // allow an unused URL to go waste as we'll just go out and generate new URLs.
+  // Do NOT add an enqueueUrl() method for this reason.
 
   private void generateUrls(int minCountToSkipGeneration) {
     int numAcquireAttempts = 0;
@@ -321,11 +313,15 @@ class ExternalVolume implements IStorage {
       } catch (InterruptedException e) {
         // if the thread was interrupted there's nothing we can do about it, definitely shouldn't
         // continue processing.
+
+        // reset the interrupted flag on the thread in case someone in the callstack wants to
+        // gracefully continue processing.
+        boolean interrupted = Thread.interrupted();
         String message =
             String.format(
-                "Semaphore acquisition in ExternalVolume.generateUrls was interrupted, "
-                    + "likely because the process is shutting down. TableRef=%s",
-                tableRef);
+                "Semaphore acquisition in ExternalVolume.generateUrls was interrupted, likely"
+                    + " because the process is shutting down. TableRef=%s Thread.interrupted=%s",
+                tableRef, interrupted);
         logger.logError(message);
         throw new SFException(ErrorCode.INTERNAL_ERROR, message);
       }

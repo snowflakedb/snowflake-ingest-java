@@ -26,6 +26,8 @@ class ChunkMetadata {
   private final Long lastInsertTimeInMs;
   private Integer parquetMajorVersion;
   private Integer parquetMinorVersion;
+  private final Long createdOn = 0L;
+  private final Long extendedMetadataSize = -1L;
 
   static Builder builder() {
     return new Builder();
@@ -217,7 +219,8 @@ class ChunkMetadata {
   }
 
   // Snowflake service had a bug that did not allow the client to add new json fields in some
-  // contracts; thus these new fields have a NON_DEFAULT attribute.
+  // contracts; thus these new fields have a NON_NULL attribute. NON_DEFAULT will ignore an explicit
+  // zero value, thus NON_NULL is a better fit.
   @JsonProperty("major_vers")
   @JsonInclude(JsonInclude.Include.NON_NULL)
   Integer getMajorVersion() {
@@ -228,5 +231,17 @@ class ChunkMetadata {
   @JsonInclude(JsonInclude.Include.NON_NULL)
   Integer getMinorVersion() {
     return this.parquetMinorVersion;
+  }
+
+  @JsonProperty("created")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Long getCreatedOn() {
+    return this.createdOn;
+  }
+
+  @JsonProperty("ext_metadata_size")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Long getExtendedMetadataSize() {
+    return this.extendedMetadataSize;
   }
 }

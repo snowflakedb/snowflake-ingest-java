@@ -107,8 +107,8 @@ public class MockSnowflakeServiceClient {
                       LOGGER.debug(
                           request.toString()
                               + IOUtils.toString(
-                              ((HttpPost) request).getEntity().getContent(),
-                              StandardCharsets.UTF_8));
+                                  ((HttpPost) request).getEntity().getContent(),
+                                  StandardCharsets.UTF_8));
                     }
 
                     String path = request.getURI().getPath();
@@ -144,7 +144,8 @@ public class MockSnowflakeServiceClient {
                                 new GeneratePresignedUrlsResponse.PresignedUrlInfo(
                                     "f3", "http://f3.com?token=t3")));
                         return buildStreamingIngestResponse(
-                            HttpStatus.SC_OK, generateUrlsResponseMap);                      case OPEN_CHANNEL_ENDPOINT:
+                            HttpStatus.SC_OK, generateUrlsResponseMap);
+                      case OPEN_CHANNEL_ENDPOINT:
                         List<Map<String, Object>> tableColumnsLists = new ArrayList<>();
                         Map<String, Object> tableColumnMap = new HashMap<>();
                         tableColumnMap.put("byteLength", 123L);
