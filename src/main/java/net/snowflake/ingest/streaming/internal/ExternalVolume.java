@@ -4,6 +4,6 @@ package net.snowflake.ingest.streaming.internal;
 class ExternalVolume implements IStorage {
   @Override
   public void put(BlobPath blobPath, byte[] blob) {
-    throw new RuntimeException("not implemented");
+    return;
   }
 }

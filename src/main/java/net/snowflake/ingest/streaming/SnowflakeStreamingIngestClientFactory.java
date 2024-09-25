@@ -54,7 +54,7 @@ public class SnowflakeStreamingIngestClientFactory {
     }
 
     // do not make public until the feature is ready
-    Builder setIsIceberg(boolean isIceberg) {
+    public Builder setIsIceberg(boolean isIceberg) {
       this.isIceberg = isIceberg;
       return this;
     }
