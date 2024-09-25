@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.streaming.internal.BlobPath.fileNameWithoutToken;
+
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -124,7 +126,7 @@ class ExternalVolumeManager implements IStorageManager {
 
   @Override
   public BlobPath generateBlobPath(String fullyQualifiedTableName) {
-    throw new RuntimeException("not implemented");
+    return fileNameWithoutToken("test.bdec");
   }
 
   /**

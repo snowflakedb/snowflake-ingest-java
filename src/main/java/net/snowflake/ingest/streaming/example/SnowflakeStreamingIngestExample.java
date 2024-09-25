@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.example;
@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -41,16 +42,19 @@ public class SnowflakeStreamingIngestExample {
 
     // Create a streaming ingest client
     try (SnowflakeStreamingIngestClient client =
-        SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT").setProperties(props).build()) {
+        SnowflakeStreamingIngestClientFactory.builder("MY_CLIENT")
+            .setIsIceberg(true)
+            .setProperties(props)
+            .build()) {
 
       // Create an open channel request on table MY_TABLE, note that the corresponding
       // db/schema/table needs to be present
       // Example: create or replace table MY_TABLE(c1 number);
       OpenChannelRequest request1 =
           OpenChannelRequest.builder("MY_CHANNEL")
-              .setDBName("MY_DATABASE")
-              .setSchemaName("MY_SCHEMA")
-              .setTableName("MY_TABLE")
+              .setDBName("ICEBERG")
+              .setSchemaName("PLAIN")
+              .setTableName("ICEBERG_TABLE")
               .setOnErrorOption(
                   OpenChannelRequest.OnErrorOption.CONTINUE) // Another ON_ERROR option is ABORT
               .build();
@@ -59,12 +63,31 @@ public class SnowflakeStreamingIngestExample {
       SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
 
       // Insert rows into the channel (Using insertRows API)
-      final int totalRowsInTable = 1000;
+      final int totalRowsInTable = 1;
       for (int val = 0; val < totalRowsInTable; val++) {
         Map<String, Object> row = new HashMap<>();
 
         // c1 corresponds to the column name in table
-        row.put("c1", val);
+        row.put("int_col", 1);
+        row.put("list_col", Arrays.asList(3, 5, 7));
+        row.put("long_col", 1L);
+        row.put(
+            "map_col",
+            new HashMap<String, Object>() {
+              {
+                put("key1", 1);
+                put("key2", 2);
+              }
+            });
+        row.put("float_col", 1.0f);
+        row.put(
+            "obj_col",
+            new HashMap<String, Object>() {
+              {
+                put("a", "value1");
+                put("b", 3);
+              }
+            });
 
         // Insert the row with the current offset_token
         InsertValidationResponse response = channel1.insertRow(row, String.valueOf(val));
@@ -97,3 +120,20 @@ public class SnowflakeStreamingIngestExample {
     }
   }
 }
+/*
+CREATE OR REPLACE ICEBERG TABLE iceberg_table (
+    int_col int,
+    list_col array(int),
+    long_col long,
+    map_col map(string, int),
+    float_col float,
+    obj_col object(a string, b int)
+  )
+  CATALOG = 'SNOWFLAKE'
+  EXTERNAL_VOLUME = 'streaming_ingest'
+  BASE_LOCATION = 'stuctured_data_type_0924';
+
+
+insert into iceberg_table
+select 1, [1, 2, 3]::ARRAY(NUMBER), 1, {'key': 1, 'key2': 2}::map(string, int), 0.5, {'a': '1', 'b': 2}::object(a string, b int);
+ */
