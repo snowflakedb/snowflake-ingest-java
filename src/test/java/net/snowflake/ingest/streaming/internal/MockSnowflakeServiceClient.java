@@ -1,9 +1,9 @@
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.CHANNEL_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.GENERATE_PRESIGNED_URLS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 
@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,13 +130,21 @@ public class MockSnowflakeServiceClient {
                         clientConfigresponseMap.put("deployment_id", 123L);
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, clientConfigresponseMap);
-                      case CHANNEL_CONFIGURE_ENDPOINT:
-                        Map<String, Object> channelConfigResponseMap = new HashMap<>();
-                        channelConfigResponseMap.put("status_code", 0L);
-                        channelConfigResponseMap.put("message", "OK");
-                        channelConfigResponseMap.put("stage_location", getStageLocationMap());
+                      case GENERATE_PRESIGNED_URLS_ENDPOINT:
+                        Map<String, Object> generateUrlsResponseMap = new HashMap<>();
+                        generateUrlsResponseMap.put("status_code", 0L);
+                        generateUrlsResponseMap.put("message", "OK");
+                        generateUrlsResponseMap.put(
+                            "presigned_url_infos",
+                            Arrays.asList(
+                                new GeneratePresignedUrlsResponse.PresignedUrlInfo(
+                                    "f1", "http://f1.com?token=t1"),
+                                new GeneratePresignedUrlsResponse.PresignedUrlInfo(
+                                    "f2", "http://f2.com?token=t2"),
+                                new GeneratePresignedUrlsResponse.PresignedUrlInfo(
+                                    "f3", "http://f3.com?token=t3")));
                         return buildStreamingIngestResponse(
-                            HttpStatus.SC_OK, channelConfigResponseMap);
+                            HttpStatus.SC_OK, generateUrlsResponseMap);
                       case OPEN_CHANNEL_ENDPOINT:
                         List<Map<String, Object>> tableColumnsLists = new ArrayList<>();
                         Map<String, Object> tableColumnMap = new HashMap<>();

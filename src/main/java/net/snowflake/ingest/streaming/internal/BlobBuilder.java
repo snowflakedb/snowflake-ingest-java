@@ -117,7 +117,7 @@ class BlobBuilder {
 
         // Create chunk metadata
         long startOffset = curDataSize;
-        ChunkMetadata chunkMetadata =
+        ChunkMetadata.Builder chunkMetadataBuilder =
             ChunkMetadata.builder()
                 .setOwningTableFromChannelContext(firstChannelFlushContext)
                 // The start offset will be updated later in BlobBuilder#build to include the blob
@@ -136,9 +136,17 @@ class BlobBuilder {
                         serializedChunk.columnEpStatsMapCombined,
                         internalParameterProvider.setDefaultValuesInEp()))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
-                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
-                .setMajorMinorVersionInEp(internalParameterProvider.setMajorMinorVersionInEp())
-                .build();
+                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond());
+
+        if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
+          chunkMetadataBuilder
+              .setMajorVersion(Constants.PARQUET_MAJOR_VERSION)
+              .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
+              .setCreatedOn(0L)
+              .setExtendedMetadataSize(-1L);
+        }
+
+        ChunkMetadata chunkMetadata = chunkMetadataBuilder.build();
 
         // Add chunk metadata and data to the list
         chunksMetadataList.add(chunkMetadata);

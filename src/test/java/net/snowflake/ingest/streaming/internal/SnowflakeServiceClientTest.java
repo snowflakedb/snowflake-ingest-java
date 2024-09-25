@@ -30,13 +30,13 @@ public class SnowflakeServiceClientTest {
   }
 
   @Test
-  public void testChannelConfigure() throws IngestResponseException, IOException {
-    ChannelConfigureRequest channelConfigureRequest =
-        new ChannelConfigureRequest("test_channel", "test_db", "test_schema", "test_table");
-    ChannelConfigureResponse channelConfigureResponse =
-        snowflakeServiceClient.channelConfigure(channelConfigureRequest);
-    assert channelConfigureResponse.getStatusCode() == 0L;
-    assert channelConfigureResponse.getMessage().equals("OK");
+  public void testGeneratePresignedUrls() throws IngestResponseException, IOException {
+    GeneratePresignedUrlsRequest request =
+        new GeneratePresignedUrlsRequest(
+            new TableRef("test_db", "test_schema", "test_table"), "role", 10, 600, 1031L, true);
+    GeneratePresignedUrlsResponse response = snowflakeServiceClient.generatePresignedUrls(request);
+    assert response.getStatusCode() == 0L;
+    assert response.getMessage().equals("OK");
   }
 
   @Test
