@@ -411,4 +411,22 @@ public class Utils {
       String dbName, String schemaName, String tableName, String channelName) {
     return String.format("%s.%s.%s.%s", dbName, schemaName, tableName, channelName);
   }
+
+  /*
+   * Get concat dot path, ignore null or empty string
+   *
+   * @param path the path
+   */
+  public static String concatDotPath(String... path) {
+    StringBuilder sb = new StringBuilder();
+    for (String p : path) {
+      if (!isNullOrEmpty(p)) {
+        if (sb.length() > 0) {
+          sb.append(".");
+        }
+        sb.append(p);
+      }
+    }
+    return sb.toString();
+  }
 }

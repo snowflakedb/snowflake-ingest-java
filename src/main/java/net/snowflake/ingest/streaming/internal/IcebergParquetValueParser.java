@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.checkFixedLengthByteArray;
+import static net.snowflake.ingest.utils.Utils.concatDotPath;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -17,7 +18,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -35,6 +38,9 @@ import org.apache.parquet.schema.Type.Repetition;
 
 /** Parses a user Iceberg column value into Parquet internal representation for buffering. */
 class IcebergParquetValueParser {
+
+  static final String THREE_LEVEL_MAP_GROUP_NAME = "key_value";
+  static final String THREE_LEVEL_LIST_GROUP_NAME = "list";
 
   /**
    * Parses a user column value into Parquet internal representation for buffering.
@@ -65,20 +71,23 @@ class IcebergParquetValueParser {
       ZoneId defaultTimezone,
       long insertRowsCurrIndex,
       String path,
-      boolean isdDescendantsOfRepeatingGroup) {
-    path = (path == null || path.isEmpty()) ? type.getName() : path + "." + type.getName();
+      boolean isDescendantsOfRepeatingGroup) {
+    path = concatDotPath(path, type.getName());
     float estimatedParquetSize = 0F;
+
+    if (type.isPrimitive()) {
+      if (!statsMap.containsKey(path)) {
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR, String.format("Stats not found for column: %s", path));
+      }
+    }
+
     if (value != null) {
       if (type.isPrimitive()) {
-        if (!statsMap.containsKey(path)) {
-          throw new SFException(
-              ErrorCode.INTERNAL_ERROR,
-              String.format("Stats not found for column: %s", type.getName()));
-        }
         RowBufferStats stats = statsMap.get(path);
         estimatedParquetSize += ParquetBufferValue.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
         estimatedParquetSize +=
-            isdDescendantsOfRepeatingGroup
+            isDescendantsOfRepeatingGroup
                 ? ParquetBufferValue.REPETITION_LEVEL_ENCODING_BYTE_LEN
                 : 0;
         PrimitiveType primitiveType = type.asPrimitiveType();
@@ -148,7 +157,7 @@ class IcebergParquetValueParser {
             defaultTimezone,
             insertRowsCurrIndex,
             path,
-            isdDescendantsOfRepeatingGroup);
+            isDescendantsOfRepeatingGroup);
       }
     }
 
@@ -158,11 +167,6 @@ class IcebergParquetValueParser {
             ErrorCode.INVALID_FORMAT_ROW, type.getName(), "Passed null to non nullable field");
       }
       if (type.isPrimitive()) {
-        if (!statsMap.containsKey(path)) {
-          throw new SFException(
-              ErrorCode.INTERNAL_ERROR,
-              String.format("Stats not found for column: %s", type.getName()));
-        }
         statsMap.get(path).incCurrentNullCount();
       }
     }
@@ -357,7 +361,7 @@ class IcebergParquetValueParser {
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @param path dot path of the column
-   * @param isdDescendantsOfRepeatingGroup true if the column is a descendant of a repeating group,
+   * @param isDescendantsOfRepeatingGroup true if the column is a descendant of a repeating group,
    * @return list of parsed values
    */
   private static ParquetBufferValue getGroupValue(
@@ -367,7 +371,7 @@ class IcebergParquetValueParser {
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path,
-      boolean isdDescendantsOfRepeatingGroup) {
+      boolean isDescendantsOfRepeatingGroup) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
       return getStructValue(
@@ -377,7 +381,7 @@ class IcebergParquetValueParser {
           defaultTimezone,
           insertRowsCurrIndex,
           path,
-          isdDescendantsOfRepeatingGroup);
+          isDescendantsOfRepeatingGroup);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
       return get3LevelListValue(value, type, statsMap, defaultTimezone, insertRowsCurrIndex, path);
@@ -390,7 +394,7 @@ class IcebergParquetValueParser {
           defaultTimezone,
           insertRowsCurrIndex,
           path,
-          isdDescendantsOfRepeatingGroup);
+          isDescendantsOfRepeatingGroup);
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getClass().getSimpleName());
@@ -408,10 +412,11 @@ class IcebergParquetValueParser {
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path,
-      boolean isdDescendantsOfRepeatingGroup) {
-    Map<String, Object> structVal =
+      boolean isDescendantsOfRepeatingGroup) {
+    Map<String, ?> structVal =
         DataValidationUtil.validateAndParseIcebergStruct(
             type.getName(), value, insertRowsCurrIndex);
+    Set<String> extraFields = structVal.keySet();
     List<Object> listVal = new ArrayList<>(type.getFieldCount());
     float estimatedParquetSize = 0f;
     for (int i = 0; i < type.getFieldCount(); i++) {
@@ -423,9 +428,20 @@ class IcebergParquetValueParser {
               defaultTimezone,
               insertRowsCurrIndex,
               path,
-              isdDescendantsOfRepeatingGroup);
+              isDescendantsOfRepeatingGroup);
+      extraFields.remove(type.getFieldName(i));
       listVal.add(parsedValue.getValue());
       estimatedParquetSize += parsedValue.getSize();
+    }
+    if (!extraFields.isEmpty()) {
+      extraFields =
+          extraFields.stream().map(f -> concatDotPath(path, f)).collect(Collectors.toSet());
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          "Extra fields: " + extraFields,
+          String.format(
+              "Fields not present in the struct shouldn't be specified, rowIndex:%d",
+              insertRowsCurrIndex));
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
   }
@@ -444,7 +460,7 @@ class IcebergParquetValueParser {
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path) {
-    Iterable<Object> iterableVal =
+    Iterable<?> iterableVal =
         DataValidationUtil.validateAndParseIcebergList(type.getName(), value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
@@ -457,7 +473,7 @@ class IcebergParquetValueParser {
                   statsMap,
                   defaultTimezone,
                   insertRowsCurrIndex,
-                  path,
+                  concatDotPath(path, THREE_LEVEL_LIST_GROUP_NAME),
                   true);
           listVal.add(Collections.singletonList(parsedValue.getValue()));
           estimatedParquetSize.updateAndGet(sz -> sz + parsedValue.getSize());
@@ -479,8 +495,8 @@ class IcebergParquetValueParser {
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path,
-      boolean isdDescendantsOfRepeatingGroup) {
-    Map<Object, Object> mapVal =
+      boolean isDescendantsOfRepeatingGroup) {
+    Map<?, ?> mapVal =
         DataValidationUtil.validateAndParseIcebergMap(type.getName(), value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
@@ -493,7 +509,7 @@ class IcebergParquetValueParser {
                   statsMap,
                   defaultTimezone,
                   insertRowsCurrIndex,
-                  path,
+                  concatDotPath(path, THREE_LEVEL_MAP_GROUP_NAME),
                   true);
           ParquetBufferValue parsedValue =
               parseColumnValueToParquet(
@@ -502,8 +518,8 @@ class IcebergParquetValueParser {
                   statsMap,
                   defaultTimezone,
                   insertRowsCurrIndex,
-                  path,
-                  isdDescendantsOfRepeatingGroup);
+                  concatDotPath(path, THREE_LEVEL_MAP_GROUP_NAME),
+                  isDescendantsOfRepeatingGroup);
           listVal.add(Arrays.asList(parsedKey.getValue(), parsedValue.getValue()));
           estimatedParquetSize.updateAndGet(sz -> sz + parsedKey.getSize() + parsedValue.getSize());
         });

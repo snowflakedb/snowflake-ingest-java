@@ -143,8 +143,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         rowCount,
         chunkEstimatedUncompressedSize,
         mergedData,
-        chunkMinMaxInsertTimeInMs,
-        parquetWriter.getBlocksMetadata());
+        chunkMinMaxInsertTimeInMs);
   }
 
   private static void addFileIdToMetadata(
