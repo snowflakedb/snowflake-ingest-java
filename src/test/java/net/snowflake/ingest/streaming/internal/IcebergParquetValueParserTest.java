@@ -433,11 +433,11 @@ public class IcebergParquetValueParserTest {
         Types.optionalList()
             .element(Types.optional(PrimitiveTypeName.INT32).named("element"))
             .named("LIST_COL");
-    RowBufferStats rowBufferStats = new RowBufferStats("LIST_COL.element");
+    RowBufferStats rowBufferStats = new RowBufferStats("LIST_COL.list.element");
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("LIST_COL.element", rowBufferStats);
+            put("LIST_COL.list.element", rowBufferStats);
           }
         };
 
@@ -500,13 +500,13 @@ public class IcebergParquetValueParserTest {
             .key(Types.required(PrimitiveTypeName.INT32).named("key"))
             .value(Types.optional(PrimitiveTypeName.INT32).named("value"))
             .named("MAP_COL");
-    RowBufferStats rowBufferKeyStats = new RowBufferStats("MAP_COL.key");
-    RowBufferStats rowBufferValueStats = new RowBufferStats("MAP_COL.value");
+    RowBufferStats rowBufferKeyStats = new RowBufferStats("MAP_COL.key_value.key");
+    RowBufferStats rowBufferValueStats = new RowBufferStats("MAP_COL.key_value.value");
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("MAP_COL.key", rowBufferKeyStats);
-            put("MAP_COL.value", rowBufferValueStats);
+            put("MAP_COL.key_value.key", rowBufferKeyStats);
+            put("MAP_COL.key_value.value", rowBufferValueStats);
           }
         };
     IcebergParquetValueParser.parseColumnValueToParquet(null, map, rowBufferStatsMap, UTC, 0);
@@ -615,13 +615,25 @@ public class IcebergParquetValueParserTest {
                 rowBufferStatsMap,
                 UTC,
                 0));
+    Assert.assertThrows(
+        SFException.class,
+        () ->
+            IcebergParquetValueParser.parseColumnValueToParquet(
+                new java.util.HashMap<String, Object>() {
+                  {
+                    put("c", 1);
+                  }
+                },
+                struct,
+                rowBufferStatsMap,
+                UTC,
+                0));
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<String, Object>() {
               {
                 // a is null
                 put("b", "2");
-                put("c", 1); // Ignored
               }
             },
             struct,
@@ -697,18 +709,19 @@ public class IcebergParquetValueParserTest {
         return Types.optionalList()
             .element(
                 generateNestedTypeAndStats(
-                    depth - 1, "element", rowBufferStatsMap, path + ".element"))
+                    depth - 1, "element", rowBufferStatsMap, path + ".list.element"))
             .named(name);
       case 2:
         return Types.optionalGroup()
             .addField(generateNestedTypeAndStats(depth - 1, "a", rowBufferStatsMap, path + ".a"))
             .named(name);
       case 0:
-        rowBufferStatsMap.put(path + ".key", new RowBufferStats(path + ".key"));
+        rowBufferStatsMap.put(path + ".key_value.key", new RowBufferStats(path + ".key_value.key"));
         return Types.optionalMap()
             .key(Types.required(PrimitiveTypeName.INT32).named("key"))
             .value(
-                generateNestedTypeAndStats(depth - 1, "value", rowBufferStatsMap, path + ".value"))
+                generateNestedTypeAndStats(
+                    depth - 1, "value", rowBufferStatsMap, path + ".key_value.value"))
             .named(name);
     }
     return null;

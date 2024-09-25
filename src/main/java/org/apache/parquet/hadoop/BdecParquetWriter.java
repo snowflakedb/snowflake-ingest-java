@@ -14,7 +14,6 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -129,10 +128,6 @@ public class BdecParquetWriter implements AutoCloseable {
       blockRowCounts.add(metadata.getRowCount());
     }
     return blockRowCounts;
-  }
-
-  public List<BlockMetaData> getBlocksMetadata() {
-    return writer.getFooter().getBlocks();
   }
 
   public void writeRow(List<Object> row) {
@@ -287,7 +282,7 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public void write(List<Object> values) {
-      List<ColumnDescriptor> cols = schema.getColumns();
+      List<Type> cols = schema.getFields();
       if (values.size() != cols.size()) {
         throw new ParquetEncodingException(
             "Invalid input data in channel '"

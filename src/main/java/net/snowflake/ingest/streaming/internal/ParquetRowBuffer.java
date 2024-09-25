@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Utils.concatDotPath;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -93,15 +95,18 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         addNonNullableFieldName(column.getInternalName());
       }
       if (!clientBufferParameters.getIsIcebergMode()) {
+        /* Streaming to FDN table doesn't support sub-columns, set up the stats here. */
         this.statsMap.put(
             column.getInternalName(),
-            new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal(), 0));
+            new RowBufferStats(
+                column.getName(), column.getCollation(), column.getOrdinal(), 0 /* fieldId */));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
               column.getInternalName(),
-              new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal(), 0));
+              new RowBufferStats(
+                  column.getName(), column.getCollation(), column.getOrdinal(), 0 /* fieldId */));
         }
       }
 
@@ -109,26 +114,28 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     }
     schema = new MessageType(PARQUET_MESSAGE_TYPE_NAME, parquetTypes);
     if (clientBufferParameters.getIsIcebergMode()) {
-      int ordinal = 0;
-      String prevParentColumnName = "";
-      for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
-        String parentColumnName = columnDescriptor.getPath()[0];
-        if (!parentColumnName.equals(prevParentColumnName)) {
-          ordinal++;
-          prevParentColumnName = parentColumnName;
-        }
-        String subColumnName = String.join(".", columnDescriptor.getPath());
+      /* Iceberg mode requires stats for sub-columns, set them up here. */
+      for (ColumnDescriptor subColumnDescriptor : schema.getColumns()) {
+        String subColumnName = concatDotPath(subColumnDescriptor.getPath());
+
+        /* set fieldId to 0 for non-structured columns */
         int fieldId =
-            parentColumnName.equals(subColumnName)
+            subColumnDescriptor.getPath().length == 1
                 ? 0
-                : columnDescriptor.getPrimitiveType().getId().intValue();
-        RowBufferStats stats = new RowBufferStats(subColumnName, null, ordinal, fieldId);
-        this.statsMap.put(subColumnName, stats);
+                : subColumnDescriptor.getPrimitiveType().getId().intValue();
+        int ordinal = schema.getType(subColumnDescriptor.getPath()[0]).getId().intValue();
+
+        this.statsMap.put(
+            subColumnName,
+            new RowBufferStats(
+                subColumnName, null /* collationDefinitionString */, ordinal, fieldId));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
-              subColumnName, new RowBufferStats(subColumnName, null, ordinal, fieldId));
+              subColumnName,
+              new RowBufferStats(
+                  subColumnName, null /* collationDefinitionString */, ordinal, fieldId));
         }
       }
     }

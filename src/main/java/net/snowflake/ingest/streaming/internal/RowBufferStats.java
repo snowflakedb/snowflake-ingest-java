@@ -15,8 +15,16 @@ import net.snowflake.ingest.utils.SFException;
 /** Keeps track of the active EP stats, used to generate a file EP info */
 class RowBufferStats {
 
+  /* Ordinal of a column, one-based. */
   private final int ordinal;
+
+  /*
+   * Field id of a column.
+   * For FDN columns, it's always 0.
+   * For Iceberg columns, set to nonzero Iceberg field id if it's a sub-column, otherwise zero.
+   */
   private final int fieldId;
+
   private byte[] currentMinStrValue;
   private byte[] currentMaxStrValue;
   private BigInteger currentMinIntValue;
