@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.checkFixedLengthByteArray;
 import static net.snowflake.ingest.utils.Utils.concatDotPath;
+import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -72,7 +73,7 @@ class IcebergParquetValueParser {
       long insertRowsCurrIndex,
       String path,
       boolean isDescendantsOfRepeatingGroup) {
-    path = concatDotPath(path, type.getName());
+    path = isNullOrEmpty(path) ? type.getName() : concatDotPath(path, type.getName());
     float estimatedParquetSize = 0F;
 
     if (type.isPrimitive()) {

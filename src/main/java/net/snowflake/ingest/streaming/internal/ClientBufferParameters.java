@@ -10,6 +10,8 @@ import net.snowflake.ingest.utils.ParameterProvider;
 
 /** Channel's buffer relevant parameters that are set at the owning client level. */
 public class ClientBufferParameters {
+  private static final String BDEC_PARQUET_MESSAGE_TYPE_NAME = "bdec";
+  private static final String PARQUET_MESSAGE_TYPE_NAME = "schema";
 
   private long maxChunkSizeInBytes;
 
@@ -117,5 +119,9 @@ public class ClientBufferParameters {
 
   public Optional<Integer> getMaxRowGroups() {
     return maxRowGroups;
+  }
+
+  public String getParquetMessageTypeName() {
+    return isIcebergMode ? PARQUET_MESSAGE_TYPE_NAME : BDEC_PARQUET_MESSAGE_TYPE_NAME;
   }
 }

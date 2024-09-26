@@ -282,7 +282,8 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public void write(List<Object> values) {
-      List<Type> cols = schema.getFields();
+      List<Type> cols =
+          schema.getFields(); /* getFields() returns top level columns in the schema */
       if (values.size() != cols.size()) {
         throw new ParquetEncodingException(
             "Invalid input data in channel '"
@@ -301,7 +302,7 @@ public class BdecParquetWriter implements AutoCloseable {
       recordConsumer.endMessage();
     }
 
-    private void writeValues(List<Object> values, GroupType type) {
+    private void writeValues(List<?> values, GroupType type) {
       List<Type> cols = type.getFields();
       for (int i = 0; i < cols.size(); ++i) {
         Object val = values.get(i);
@@ -344,16 +345,28 @@ public class BdecParquetWriter implements AutoCloseable {
             }
           } else {
             if (cols.get(i).isRepetition(Type.Repetition.REPEATED)) {
+              /* List and Map */
               for (Object o : values) {
                 recordConsumer.startGroup();
                 if (o != null) {
-                  writeValues((List<Object>) o, cols.get(i).asGroupType());
+                  if (o instanceof List) {
+                    writeValues((List<?>) o, cols.get(i).asGroupType());
+                  } else {
+                    throw new ParquetEncodingException(
+                        String.format("Field %s should be a 3 level list or map", fieldName));
+                  }
                 }
                 recordConsumer.endGroup();
               }
             } else {
+              /* Struct */
               recordConsumer.startGroup();
-              writeValues((List<Object>) val, cols.get(i).asGroupType());
+              if (val instanceof List) {
+                writeValues((List<?>) val, cols.get(i).asGroupType());
+              } else {
+                throw new ParquetEncodingException(
+                    String.format("Field %s should be a 2 level struct", fieldName));
+              }
               recordConsumer.endGroup();
             }
           }
