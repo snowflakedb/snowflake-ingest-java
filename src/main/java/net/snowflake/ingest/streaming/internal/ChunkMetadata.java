@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import net.snowflake.ingest.utils.Utils;
@@ -22,6 +23,10 @@ class ChunkMetadata {
   private final Long encryptionKeyId;
   private final Long firstInsertTimeInMs;
   private final Long lastInsertTimeInMs;
+  private Integer majorVersion;
+  private Integer minorVersion;
+  private Long createdOn;
+  private Long extendedMetadataSize;
 
   static Builder builder() {
     return new Builder();
@@ -43,6 +48,10 @@ class ChunkMetadata {
     private Long encryptionKeyId;
     private Long firstInsertTimeInMs;
     private Long lastInsertTimeInMs;
+    private Integer majorVersion;
+    private Integer minorVersion;
+    private Long createdOn;
+    private Long extendedMetadataSize;
 
     Builder setOwningTableFromChannelContext(ChannelFlushContext channelFlushContext) {
       this.dbName = channelFlushContext.getDbName();
@@ -100,6 +109,26 @@ class ChunkMetadata {
       return this;
     }
 
+    Builder setMajorVersion(Integer majorVersion) {
+      this.majorVersion = majorVersion;
+      return this;
+    }
+
+    Builder setMinorVersion(Integer minorVersion) {
+      this.minorVersion = minorVersion;
+      return this;
+    }
+
+    Builder setCreatedOn(Long createdOn) {
+      this.createdOn = createdOn;
+      return this;
+    }
+
+    Builder setExtendedMetadataSize(Long extendedMetadataSize) {
+      this.extendedMetadataSize = extendedMetadataSize;
+      return this;
+    }
+
     ChunkMetadata build() {
       return new ChunkMetadata(this);
     }
@@ -130,6 +159,13 @@ class ChunkMetadata {
     this.encryptionKeyId = builder.encryptionKeyId;
     this.firstInsertTimeInMs = builder.firstInsertTimeInMs;
     this.lastInsertTimeInMs = builder.lastInsertTimeInMs;
+
+    // iceberg-specific fields, no need for conditional since both sides are nullable and the
+    // caller of ChunkMetadata.Builder only sets these fields when we're in iceberg mode
+    this.majorVersion = builder.majorVersion;
+    this.minorVersion = builder.minorVersion;
+    this.createdOn = builder.createdOn;
+    this.extendedMetadataSize = builder.extendedMetadataSize;
   }
 
   /**
@@ -199,5 +235,32 @@ class ChunkMetadata {
   @JsonProperty("last_insert_time_in_ms")
   Long getLastInsertTimeInMs() {
     return this.lastInsertTimeInMs;
+  }
+
+  // Snowflake service had a bug that did not allow the client to add new json fields in some
+  // contracts; thus these new fields have a NON_NULL attribute. NON_DEFAULT will ignore an explicit
+  // zero value, thus NON_NULL is a better fit.
+  @JsonProperty("major_vers")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Integer getMajorVersion() {
+    return this.majorVersion;
+  }
+
+  @JsonProperty("minor_vers")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Integer getMinorVersion() {
+    return this.minorVersion;
+  }
+
+  @JsonProperty("created")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Long getCreatedOn() {
+    return this.createdOn;
+  }
+
+  @JsonProperty("ext_metadata_size")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Long getExtendedMetadataSize() {
+    return this.extendedMetadataSize;
   }
 }

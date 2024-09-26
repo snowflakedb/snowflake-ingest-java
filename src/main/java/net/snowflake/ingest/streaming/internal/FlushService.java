@@ -606,14 +606,11 @@ class FlushService<T> {
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
+    InternalParameterProvider paramProvider = this.owningClient.getInternalParameterProvider();
     // Construct the blob along with the metadata of the blob
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
-            blobPath.fileName,
-            blobData,
-            bdecVersion,
-            encryptionKeysPerTable,
-            this.owningClient.getInternalParameterProvider().getEnableChunkEncryption());
+            blobPath.fileName, blobData, bdecVersion, paramProvider, encryptionKeysPerTable);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

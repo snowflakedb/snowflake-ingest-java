@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -25,7 +26,6 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
@@ -81,14 +81,13 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     int id = 1;
     for (ColumnMetadata column : columns) {
       validateColumnCollation(column);
-      ParquetTypeGenerator.ParquetTypeInfo typeInfo =
-          ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
+      ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
       parquetTypes.add(typeInfo.getParquetType());
       this.metadata.putAll(typeInfo.getMetadata());
       int columnIndex = parquetTypes.size() - 1;
       fieldIndex.put(
           column.getInternalName(),
-          new ParquetColumn(column, columnIndex, typeInfo.getPrimitiveTypeName()));
+          new ParquetColumn(column, columnIndex, typeInfo.getParquetType()));
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
@@ -172,15 +171,18 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
       forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = parquetColumn.columnMetadata;
-      ParquetValueParser.ParquetBufferValue valueWithSize =
-          ParquetValueParser.parseColumnValueToParquet(
-              value,
-              column,
-              parquetColumn.type,
-              forkedStats,
-              defaultTimezone,
-              insertRowsCurrIndex,
-              clientBufferParameters.isEnableNewJsonParsingLogic());
+      ParquetBufferValue valueWithSize =
+          (clientBufferParameters.getIsIcebergMode()
+              ? IcebergParquetValueParser.parseColumnValueToParquet(
+                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex)
+              : SnowflakeParquetValueParser.parseColumnValueToParquet(
+                  value,
+                  column,
+                  parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
+                  forkedStats,
+                  defaultTimezone,
+                  insertRowsCurrIndex,
+                  clientBufferParameters.isEnableNewJsonParsingLogic()));
       indexedRow[colIndex] = valueWithSize.getValue();
       size += valueWithSize.getSize();
     }
@@ -264,6 +266,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     if (logicalType == ColumnLogicalType.BINARY && value != null) {
       value = value instanceof String ? ((String) value).getBytes(StandardCharsets.UTF_8) : value;
     }
+    /* Mismatch between Iceberg string & FDN String */
+    if (Objects.equals(columnMetadata.getSourceIcebergDataType(), "\"string\"")) {
+      value = value instanceof byte[] ? new String((byte[]) value, StandardCharsets.UTF_8) : value;
+    }
     return value;
   }
 
@@ -287,19 +293,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     return new ParquetFlusher(
         schema,
         clientBufferParameters.getMaxChunkSizeInBytes(),
+        clientBufferParameters.getMaxRowGroups(),
         clientBufferParameters.getBdecParquetCompression());
-  }
-
-  private static class ParquetColumn {
-    final ColumnMetadata columnMetadata;
-    final int index;
-    final PrimitiveType.PrimitiveTypeName type;
-
-    private ParquetColumn(
-        ColumnMetadata columnMetadata, int index, PrimitiveType.PrimitiveTypeName type) {
-      this.columnMetadata = columnMetadata;
-      this.index = index;
-      this.type = type;
-    }
   }
 }

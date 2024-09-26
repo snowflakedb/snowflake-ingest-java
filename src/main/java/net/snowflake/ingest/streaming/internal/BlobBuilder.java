@@ -62,15 +62,14 @@ class BlobBuilder {
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
-   * @param encrypt If the output chunk is encrypted or not
    * @return {@link Blob} data
    */
   static <T> Blob constructBlobAndMetadata(
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
-      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable,
-      boolean encrypt)
+      InternalParameterProvider internalParameterProvider,
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
@@ -100,7 +99,7 @@ class BlobBuilder {
         final int chunkLength;
         final int compressedChunkDataSize;
 
-        if (encrypt) {
+        if (internalParameterProvider.getEnableChunkEncryption()) {
           Pair<byte[], Integer> paddedChunk =
               padChunk(serializedChunk.chunkData, Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES);
           byte[] paddedChunkData = paddedChunk.getFirst();
@@ -137,7 +136,7 @@ class BlobBuilder {
 
         // Create chunk metadata
         long startOffset = curDataSize;
-        ChunkMetadata chunkMetadata =
+        ChunkMetadata.Builder chunkMetadataBuilder =
             ChunkMetadata.builder()
                 .setOwningTableFromChannelContext(firstChannelFlushContext)
                 // The start offset will be updated later in BlobBuilder#build to include the blob
@@ -152,10 +151,21 @@ class BlobBuilder {
                 .setEncryptionKeyId(encryptionKey.getEncryptionKeyId())
                 .setEpInfo(
                     AbstractRowBuffer.buildEpInfoFromStats(
-                        serializedChunk.rowCount, serializedChunk.columnEpStatsMapCombined))
+                        serializedChunk.rowCount,
+                        serializedChunk.columnEpStatsMapCombined,
+                        internalParameterProvider.setDefaultValuesInEp()))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
-                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
-                .build();
+                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond());
+
+        if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
+          chunkMetadataBuilder
+              .setMajorVersion(Constants.PARQUET_MAJOR_VERSION)
+              .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
+              .setCreatedOn(0L)
+              .setExtendedMetadataSize(-1L);
+        }
+
+        ChunkMetadata chunkMetadata = chunkMetadataBuilder.build();
 
         // Add chunk metadata and data to the list
         chunksMetadataList.add(chunkMetadata);
@@ -166,7 +176,7 @@ class BlobBuilder {
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
                 + " estimatedUncompressedSize={}, chunkLength={}, compressedSize={},"
-                + " encryption={}, bdecVersion={}",
+                + " encrypt={}, bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
@@ -174,7 +184,7 @@ class BlobBuilder {
             serializedChunk.chunkEstimatedUncompressedSize,
             chunkLength,
             compressedChunkDataSize,
-            encrypt,
+            internalParameterProvider.getEnableChunkEncryption(),
             bdecVersion);
       }
     }

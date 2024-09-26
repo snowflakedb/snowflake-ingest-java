@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -25,12 +26,12 @@ import org.mockito.Mockito;
 
 @RunWith(Parameterized.class)
 public class BlobBuilderTest {
-  @Parameterized.Parameters(name = "encrypt: {0}")
-  public static Object[] encrypt() {
+  @Parameterized.Parameters(name = "isIceberg: {0}")
+  public static Object[] isIceberg() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean encrypt;
+  @Parameterized.Parameter public boolean isIceberg;
 
   @Test
   public void testSerializationErrors() throws Exception {
@@ -44,8 +45,8 @@ public class BlobBuilderTest {
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
-        encryptionKeysPerTable,
-        encrypt);
+        new InternalParameterProvider(isIceberg),
+        encryptionKeysPerTable);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
@@ -53,8 +54,8 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
-          encryptionKeysPerTable,
-          encrypt);
+          new InternalParameterProvider(isIceberg),
+          encryptionKeysPerTable);
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
@@ -76,7 +77,12 @@ public class BlobBuilderTest {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
-    Mockito.doReturn(new ParquetFlusher(schema, 100L, Constants.BdecParquetCompression.GZIP))
+    Mockito.doReturn(
+            new ParquetFlusher(
+                schema,
+                100L,
+                isIceberg ? Optional.of(1) : Optional.empty(),
+                Constants.BdecParquetCompression.GZIP))
         .when(channelData)
         .createFlusher();
 
@@ -89,6 +95,7 @@ public class BlobBuilderTest {
             new HashMap<>(),
             "CHANNEL",
             1000,
+            isIceberg ? Optional.of(1) : Optional.empty(),
             Constants.BdecParquetCompression.GZIP);
     bdecParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
@@ -105,7 +112,7 @@ public class BlobBuilderTest {
   }
 
   private static MessageType createSchema(String columnName) {
-    ParquetTypeGenerator.ParquetTypeInfo c1 =
+    ParquetTypeInfo c1 =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(createTestTextColumn(columnName), 1);
     return new MessageType("bdec", Collections.singletonList(c1.getParquetType()));
   }

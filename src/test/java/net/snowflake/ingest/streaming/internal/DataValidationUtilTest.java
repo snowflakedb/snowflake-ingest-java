@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
@@ -11,6 +15,8 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validat
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBinary;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseDate;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseIcebergInt;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseIcebergLong;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseObject;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseObjectNew;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseReal;
@@ -1188,6 +1194,91 @@ public class DataValidationUtilTest {
         ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseBoolean("COL", new int[] {}, 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBoolean("COL", "foobar", 0));
     expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseBoolean("COL", "", 0));
+  }
+
+  @Test
+  public void testValidateAndParseIcebergInt() {
+    assertEquals(1, validateAndParseIcebergInt("COL", 1, 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", 1L, 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", 1.499f, 0));
+    assertEquals(0, validateAndParseIcebergLong("COL", -.0f, 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", 1.0d, 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", "1", 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", " 1 \t\n", 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", "0.5", 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", "1.0e0", 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", "1.0e+0", 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", "1.0e-0", 0));
+    assertEquals(10, validateAndParseIcebergInt("COL", "1.0e1", 0));
+    assertEquals(10, validateAndParseIcebergInt("COL", "1.0e+1", 0));
+    assertEquals(0, validateAndParseIcebergInt("COL", "1.0e-1", 0));
+    assertEquals(1, validateAndParseIcebergInt("COL", new BigDecimal("1.4"), 0));
+    assertEquals(Integer.MAX_VALUE, validateAndParseIcebergInt("COL", "2147483647.499", 0));
+    assertEquals(Integer.MIN_VALUE, validateAndParseIcebergInt("COL", "-2147483648.499", 0));
+
+    // Test forbidden values
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergInt("COL", 'c', 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergInt("COL", new Object(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergInt("COL", new int[] {}, 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseIcebergInt("COL", "foo", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseIcebergInt("COL", "2147483647.5", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseIcebergInt("COL", new BigDecimal("-2147483648.5"), 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseIcebergInt("COL", Double.NaN, 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseIcebergInt("COL", Double.POSITIVE_INFINITY, 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseIcebergInt("COL", Float.NEGATIVE_INFINITY, 0));
+  }
+
+  @Test
+  public void testValidateAndParseIcebergLong() {
+    assertEquals(1L, validateAndParseIcebergLong("COL", 1, 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", 1L, 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", 1.499f, 0));
+    assertEquals(0, validateAndParseIcebergLong("COL", -.0f, 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", 1.0d, 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", "1", 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", " 1 \t\n", 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", "0.5", 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", "1.0e0", 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", "1.0e+0", 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", "1.0e-0", 0));
+    assertEquals(10L, validateAndParseIcebergLong("COL", "1.0e1", 0));
+    assertEquals(10L, validateAndParseIcebergLong("COL", "1.0e+1", 0));
+    assertEquals(0L, validateAndParseIcebergLong("COL", "1.0e-1", 0));
+    assertEquals(1L, validateAndParseIcebergLong("COL", new BigDecimal("1.4"), 0));
+    assertEquals(Long.MAX_VALUE, validateAndParseIcebergLong("COL", "9223372036854775807.499", 0));
+    assertEquals(Long.MIN_VALUE, validateAndParseIcebergLong("COL", "-9223372036854775808.499", 0));
+
+    // Test forbidden values
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergLong("COL", 'c', 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergLong("COL", new Object(), 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergLong("COL", new int[] {}, 0));
+    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseIcebergLong("COL", "foo", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseIcebergLong("COL", "9223372036854775807.5", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseIcebergLong("COL", new BigDecimal("-9223372036854775808.5"), 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseIcebergLong("COL", Float.NaN, 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseIcebergLong("COL", Float.POSITIVE_INFINITY, 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseIcebergLong("COL", Double.NEGATIVE_INFINITY, 0));
   }
 
   /**

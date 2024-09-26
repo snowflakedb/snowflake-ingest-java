@@ -53,7 +53,8 @@ public class Constants {
   public static final String BLOB_EXTENSION_TYPE = "bdec";
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
-  public static final String CHANNEL_CONFIGURE_ENDPOINT = "/v1/streaming/channels/configure/";
+  public static final String GENERATE_PRESIGNED_URLS_ENDPOINT =
+      "/v1/streaming/presignedurls/generate/";
   public static final int COMMIT_MAX_RETRY_COUNT = 60;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
@@ -62,12 +63,17 @@ public class Constants {
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
   public static final long EP_NDV_UNKNOWN = -1L;
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;
+  public static final int BINARY_COLUMN_MAX_SIZE = 8 * 1024 * 1024;
+  public static final int VARCHAR_COLUMN_MAX_SIZE = 16 * 1024 * 1024;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
   public static final String OPEN_CHANNEL_ENDPOINT = "/v1/streaming/channels/open/";
   public static final String DROP_CHANNEL_ENDPOINT = "/v1/streaming/channels/drop/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
+
+  public static final int PARQUET_MAJOR_VERSION = 1;
+  public static final int PARQUET_MINOR_VERSION = 0;
 
   public enum WriteMode {
     CLOUD_STORAGE,

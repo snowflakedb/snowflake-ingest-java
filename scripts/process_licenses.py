@@ -61,6 +61,9 @@ ADDITIONAL_LICENSES_MAP = {
     "org.bouncycastle:bcpkix-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcutil-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcprov-jdk18on": BOUNCY_CASTLE_LICENSE,
+    "com.thoughtworks.paranamer:paranamer": BSD_2_CLAUSE_LICENSE,
+    "org.roaringbitmap:RoaringBitmap": APACHE_LICENSE,
+    "org.roaringbitmap:shims": APACHE_LICENSE,
 }
 
 
@@ -115,7 +118,7 @@ def main():
             for zip_info in current_jar_as_zip.infolist():
                 if zip_info.is_dir():
                     continue
-                if zip_info.filename in ("META-INF/LICENSE.txt", "META-INF/LICENSE", "META-INF/LICENSE.md"):
+                if zip_info.filename in ("META-INF/LICENSE.txt", "META-INF/LICENSE", "META-INF/LICENSE.md", "LICENSE"):
                     license_found = True
                     dependency_with_license_count += 1
                     # Extract license to the target directory

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package org.apache.parquet.hadoop;
@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -25,8 +26,10 @@ import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 /**
  * BDEC specific parquet writer.
@@ -37,6 +40,10 @@ import org.apache.parquet.schema.PrimitiveType;
 public class BdecParquetWriter implements AutoCloseable {
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
+
+  // Optional cap on the max number of row groups to allow per file, if this is exceeded we'll end
+  // up throwing
+  private final Optional<Integer> maxRowGroups;
   private long rowsWritten = 0;
 
   /**
@@ -46,6 +53,8 @@ public class BdecParquetWriter implements AutoCloseable {
    * @param schema row schema
    * @param extraMetaData extra metadata
    * @param channelName name of the channel that is using the writer
+   * @param maxRowGroups Optional cap on the max number of row groups to allow per file, if this is
+   *     exceeded we'll end up throwing
    * @throws IOException
    */
   public BdecParquetWriter(
@@ -54,9 +63,11 @@ public class BdecParquetWriter implements AutoCloseable {
       Map<String, String> extraMetaData,
       String channelName,
       long maxChunkSizeInBytes,
+      Optional<Integer> maxRowGroups,
       Constants.BdecParquetCompression bdecParquetCompression)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
+    this.maxRowGroups = maxRowGroups;
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
@@ -105,6 +116,14 @@ public class BdecParquetWriter implements AutoCloseable {
 
   /** @return List of row counts per block stored in the parquet footer */
   public List<Long> getRowCountsFromFooter() {
+    if (maxRowGroups.isPresent() && writer.getFooter().getBlocks().size() > maxRowGroups.get()) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "Expecting only %d row group in the parquet file, but found %d",
+              maxRowGroups.get(), writer.getFooter().getBlocks().size()));
+    }
+
     final List<Long> blockRowCounts = new ArrayList<>();
     for (BlockMetaData metadata : writer.getFooter().getBlocks()) {
       blockRowCounts.add(metadata.getRowCount());
@@ -278,51 +297,58 @@ public class BdecParquetWriter implements AutoCloseable {
                 + ") : "
                 + values);
       }
-
       recordConsumer.startMessage();
+      writeValues(values, schema);
+      recordConsumer.endMessage();
+    }
+
+    private void writeValues(List<Object> values, GroupType type) {
+      List<Type> cols = type.getFields();
       for (int i = 0; i < cols.size(); ++i) {
         Object val = values.get(i);
-        // val.length() == 0 indicates a NULL value.
         if (val != null) {
-          String fieldName = cols.get(i).getPath()[0];
+          String fieldName = cols.get(i).getName();
           recordConsumer.startField(fieldName, i);
-          PrimitiveType.PrimitiveTypeName typeName =
-              cols.get(i).getPrimitiveType().getPrimitiveTypeName();
-          switch (typeName) {
-            case BOOLEAN:
-              recordConsumer.addBoolean((boolean) val);
-              break;
-            case FLOAT:
-              recordConsumer.addFloat((float) val);
-              break;
-            case DOUBLE:
-              recordConsumer.addDouble((double) val);
-              break;
-            case INT32:
-              recordConsumer.addInteger((int) val);
-              break;
-            case INT64:
-              recordConsumer.addLong((long) val);
-              break;
-            case BINARY:
-              Binary binVal =
-                  val instanceof String
-                      ? Binary.fromString((String) val)
-                      : Binary.fromConstantByteArray((byte[]) val);
-              recordConsumer.addBinary(binVal);
-              break;
-            case FIXED_LEN_BYTE_ARRAY:
-              Binary binary = Binary.fromConstantByteArray((byte[]) val);
-              recordConsumer.addBinary(binary);
-              break;
-            default:
-              throw new ParquetEncodingException(
-                  "Unsupported column type: " + cols.get(i).getPrimitiveType());
+          if (cols.get(i).isPrimitive()) {
+            PrimitiveType.PrimitiveTypeName typeName =
+                cols.get(i).asPrimitiveType().getPrimitiveTypeName();
+            switch (typeName) {
+              case BOOLEAN:
+                recordConsumer.addBoolean((boolean) val);
+                break;
+              case FLOAT:
+                recordConsumer.addFloat((float) val);
+                break;
+              case DOUBLE:
+                recordConsumer.addDouble((double) val);
+                break;
+              case INT32:
+                recordConsumer.addInteger((int) val);
+                break;
+              case INT64:
+                recordConsumer.addLong((long) val);
+                break;
+              case BINARY:
+                Binary binVal =
+                    val instanceof String
+                        ? Binary.fromString((String) val)
+                        : Binary.fromConstantByteArray((byte[]) val);
+                recordConsumer.addBinary(binVal);
+                break;
+              case FIXED_LEN_BYTE_ARRAY:
+                Binary binary = Binary.fromConstantByteArray((byte[]) val);
+                recordConsumer.addBinary(binary);
+                break;
+              default:
+                throw new ParquetEncodingException(
+                    "Unsupported column type: " + cols.get(i).asPrimitiveType());
+            }
+          } else {
+            throw new ParquetEncodingException("Unsupported column type: " + cols.get(i));
           }
           recordConsumer.endField(fieldName, i);
         }
       }
-      recordConsumer.endMessage();
     }
   }
 }

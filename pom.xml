@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+  -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
@@ -48,6 +51,7 @@
     <fasterxml.version>2.17.2</fasterxml.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.3.6</hadoop.version>
+    <iceberg.version>1.5.2</iceberg.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.5</jacoco.version>
     <license.processing.dependencyJarsDir>${project.build.directory}/dependency-jars</license.processing.dependencyJarsDir>
@@ -63,7 +67,7 @@
     <parquet.version>1.14.1</parquet.version>
     <powermock.version>2.0.9</powermock.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <protobuf.version>4.27.2</protobuf.version>
+    <protobuf.version>4.27.5</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.5</snappy.version>
@@ -261,6 +265,21 @@
             <artifactId>slf4j-reload4j</artifactId>
           </exclusion>
         </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.iceberg</groupId>
+        <artifactId>iceberg-api</artifactId>
+        <version>${iceberg.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.iceberg</groupId>
+        <artifactId>iceberg-core</artifactId>
+        <version>${iceberg.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.iceberg</groupId>
+        <artifactId>iceberg-parquet</artifactId>
+        <version>${iceberg.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.parquet</groupId>
@@ -505,6 +524,34 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-core</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>io.airlift</groupId>
+          <artifactId>aircompressor</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.iceberg</groupId>
+      <artifactId>iceberg-parquet</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>io.airlift</groupId>
+          <artifactId>aircompressor</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.parquet</groupId>
+          <artifactId>parquet-avro</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.apache.parquet/parquet-hadoop -->
     <dependency>
@@ -901,9 +948,10 @@
                             |Apache-2.0
                             |Apache License, Version 2.0
                             |Apache 2.0
-                            |Apache License V2.0</licenseMerge>
+              |Apache License V2.0
+              |Apache 2</licenseMerge>
             <licenseMerge>BSD 2-Clause License
-                            |The BSD License</licenseMerge>
+              |The BSD License |BSD</licenseMerge>
             <licenseMerge>The MIT License|MIT License</licenseMerge>
             <licenseMerge>3-Clause BSD License|BSD-3-Clause</licenseMerge>
           </licenseMerges>
@@ -1146,6 +1194,10 @@
                   <pattern>io.airlift.compress</pattern>
                   <shadedPattern>${shadeBase}.io.airlift.compress</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>org.roaringbitmap</pattern>
+                  <shadedPattern>${shadeBase}.org.roaringbitmap</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
@@ -1164,7 +1216,11 @@
                     <exclude>META-INF/*.SF</exclude>
                     <exclude>META-INF/*.DSA</exclude>
                     <exclude>META-INF/*.RSA</exclude>
+                    <exclude>LICENSE</exclude>
+                    <exclude>NOTICE</exclude>
+                    <exclude>iceberg-build.properties</exclude>
                     <exclude>google/protobuf/**/*.proto</exclude>
+                    <exclude>THIRD-PARTY.txt</exclude>
                   </excludes>
                 </filter>
                 <filter>

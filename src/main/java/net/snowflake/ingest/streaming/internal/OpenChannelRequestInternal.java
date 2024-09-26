@@ -33,6 +33,10 @@ class OpenChannelRequestInternal implements IStreamingIngestRequest {
   private String writeMode;
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonProperty("is_iceberg")
+  private boolean isIceberg;
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("offset_token")
   private String offsetToken;
 
@@ -44,6 +48,7 @@ class OpenChannelRequestInternal implements IStreamingIngestRequest {
       String table,
       String channel,
       Constants.WriteMode writeMode,
+      boolean isIceberg,
       String offsetToken) {
     this.requestId = requestId;
     this.role = role;
@@ -52,6 +57,7 @@ class OpenChannelRequestInternal implements IStreamingIngestRequest {
     this.table = table;
     this.channel = channel;
     this.writeMode = writeMode.name();
+    this.isIceberg = isIceberg;
     this.offsetToken = offsetToken;
   }
 
@@ -83,6 +89,10 @@ class OpenChannelRequestInternal implements IStreamingIngestRequest {
     return writeMode;
   }
 
+  boolean getIsIceberg() {
+    return isIceberg;
+  }
+
   String getOffsetToken() {
     return offsetToken;
   }
@@ -91,7 +101,7 @@ class OpenChannelRequestInternal implements IStreamingIngestRequest {
   public String getStringForLogging() {
     return String.format(
         "OpenChannelRequestInternal(requestId=%s, role=%s, db=%s, schema=%s, table=%s, channel=%s,"
-            + " writeMode=%s)",
-        requestId, role, database, schema, table, channel, writeMode);
+            + " writeMode=%s, isIceberg=%s)",
+        requestId, role, database, schema, table, channel, writeMode, isIceberg);
   }
 }

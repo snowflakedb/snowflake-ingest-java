@@ -9,13 +9,18 @@ import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.Pair;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,6 +34,22 @@ public class RegisterServiceTest {
   }
 
   @Parameterized.Parameter public boolean isIcebergMode;
+
+  private SnowflakeStreamingIngestClientInternal<StubChunkData> client;
+
+  @Before
+  public void setup() {
+    CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
+    RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
+    client =
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client", null, null, httpClient, isIcebergMode, true, requestBuilder, new HashMap<>());
+  }
+
+  @After
+  public void teardown() throws Exception {
+    client.close();
+  }
 
   @Test
   public void testRegisterService() throws ExecutionException, InterruptedException {
@@ -57,8 +78,6 @@ public class RegisterServiceTest {
    */
   @Test
   public void testRegisterServiceTimeoutException() throws Exception {
-    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
@@ -85,8 +104,6 @@ public class RegisterServiceTest {
   @Ignore
   @Test
   public void testRegisterServiceTimeoutException_testRetries() throws Exception {
-    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture1 =
@@ -119,8 +136,6 @@ public class RegisterServiceTest {
 
   @Test
   public void testRegisterServiceNonTimeoutException() {
-    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
-        new SnowflakeStreamingIngestClientInternal<>("client", isIcebergMode);
     RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
     CompletableFuture<BlobMetadata> future = new CompletableFuture<>();

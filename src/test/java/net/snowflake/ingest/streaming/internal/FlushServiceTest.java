@@ -98,6 +98,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     IStorageManager storageManager;
     InternalStage storage;
+    ExternalVolume extVolume;
     ParameterProvider parameterProvider;
     Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable;
     RegisterService registerService;
@@ -106,6 +107,7 @@ public class FlushServiceTest {
 
     TestContext() {
       storage = Mockito.mock(InternalStage.class);
+      extVolume = Mockito.mock(ExternalVolume.class);
       parameterProvider = new ParameterProvider(isIcebergMode);
       InternalParameterProvider internalParameterProvider =
           new InternalParameterProvider(isIcebergMode);
@@ -115,9 +117,12 @@ public class FlushServiceTest {
       storageManager =
           Mockito.spy(
               isIcebergMode
-                  ? new ExternalVolumeManager(true, "role", "client", null)
+                  ? new ExternalVolumeManager(
+                      true, "role", "client", MockSnowflakeServiceClient.create())
                   : new InternalStageManager(true, "role", "client", null));
-      Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
+      Mockito.doReturn(isIcebergMode ? extVolume : storage)
+          .when(storageManager)
+          .getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       Mockito.when(client.getParameterProvider())
           .thenAnswer((Answer<ParameterProvider>) (i) -> parameterProvider);
@@ -447,6 +452,7 @@ public class FlushServiceTest {
 
   @Test
   public void testGetFilePath() {
+    // SNOW-1490151 Iceberg testing gaps
     if (isIcebergMode) {
       // TODO: SNOW-1502887 Blob path generation for iceberg table
       return;
@@ -645,6 +651,7 @@ public class FlushServiceTest {
     FlushService<?> flushService = testContext.flushService;
 
     // Force = true flushes
+    // SNOW-1490151 Iceberg testing gaps
     if (!isIcebergMode) {
       flushService.flush(true).get();
       Mockito.verify(flushService, Mockito.atLeast(2))
@@ -696,6 +703,7 @@ public class FlushServiceTest {
 
     FlushService<?> flushService = testContext.flushService;
 
+    // SNOW-1490151 Iceberg testing gaps
     if (!isIcebergMode) {
       // Force = true flushes
       flushService.flush(true).get();
@@ -733,6 +741,7 @@ public class FlushServiceTest {
 
     FlushService<?> flushService = testContext.flushService;
 
+    // SNOW-1490151 Iceberg testing gaps
     if (!isIcebergMode) {
       // Force = true flushes
       flushService.flush(true).get();
@@ -743,6 +752,7 @@ public class FlushServiceTest {
 
   @Test
   public void testBlobSplitDueToNumberOfChunks() throws Exception {
+    // SNOW-1490151 Iceberg testing gaps
     if (isIcebergMode) {
       return;
     }
@@ -821,6 +831,7 @@ public class FlushServiceTest {
     channel3.setupSchema(Collections.singletonList(createLargeTestTextColumn("C1")));
     channel3.insertRow(Collections.singletonMap("C1", 0), "");
 
+    // SNOW-1490151 Iceberg testing gaps
     if (isIcebergMode) {
       return;
     }
@@ -921,7 +932,7 @@ public class FlushServiceTest {
 
     EpInfo expectedChunkEpInfo =
         AbstractRowBuffer.buildEpInfoFromStats(
-            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2));
+            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2), !isIcebergMode);
 
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
@@ -1132,7 +1143,7 @@ public class FlushServiceTest {
 
     stats1.addIntValue(new BigInteger("10"));
     stats1.addIntValue(new BigInteger("15"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1);
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1, !isIcebergMode);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
