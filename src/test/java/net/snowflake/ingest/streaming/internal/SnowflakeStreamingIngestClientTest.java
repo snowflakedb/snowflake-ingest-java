@@ -66,7 +66,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
-import org.mockito.stubbing.Answer;
 
 @RunWith(Parameterized.class)
 public class SnowflakeStreamingIngestClientTest {
@@ -1119,9 +1118,8 @@ public class SnowflakeStreamingIngestClientTest {
             + "  } ]\n"
             + "}";
 
-
     apiOverride.addSerializedJsonOverride(
-            REGISTER_BLOB_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
+        REGISTER_BLOB_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
 
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
@@ -1315,5 +1313,4 @@ public class SnowflakeStreamingIngestClientTest {
         .generateStreamingIngestPostRequest(
             objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
   }
-
 }

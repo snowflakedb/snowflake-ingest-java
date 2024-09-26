@@ -54,7 +54,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 @RunWith(Parameterized.class)
@@ -923,31 +922,30 @@ public class SnowflakeStreamingIngestChannelTest {
     }
 
     String response =
-            "{\n"
-                    + "  \"status_code\" : 0,\n"
-                    + "  \"message\" : \"Success\",\n"
-                    + "  \"encryption_key\" : \"key\",\n"
-                    + "  \"encryption_key_id\" : 1,\n"
-                    + "  \"database\" : \"db\",\n"
-                    + "  \"schema\" : \"schema\",\n"
-                    + "  \"table\" : \"table\",\n"
-                    + "  \"channel\" : \"channel\",\n"
-                    + "  \"row_sequencer\" : 0,\n"
-                    + "  \"table_columns\" : [],\n"
-                    + "  \"client_sequencer\" : 0\n"
-                    + "}";
-
+        "{\n"
+            + "  \"status_code\" : 0,\n"
+            + "  \"message\" : \"Success\",\n"
+            + "  \"encryption_key\" : \"key\",\n"
+            + "  \"encryption_key_id\" : 1,\n"
+            + "  \"database\" : \"db\",\n"
+            + "  \"schema\" : \"schema\",\n"
+            + "  \"table\" : \"table\",\n"
+            + "  \"channel\" : \"channel\",\n"
+            + "  \"row_sequencer\" : 0,\n"
+            + "  \"table_columns\" : [],\n"
+            + "  \"client_sequencer\" : 0\n"
+            + "}";
 
     apiOverride.addSerializedJsonOverride(
-            OPEN_CHANNEL_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
+        OPEN_CHANNEL_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
 
     OpenChannelRequest request =
-            OpenChannelRequest.builder("channel")
-                    .setDBName("db")
-                    .setSchemaName("schema")
-                    .setTableName("table")
-                    .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
-                    .build();
+        OpenChannelRequest.builder("channel")
+            .setDBName("db")
+            .setSchemaName("schema")
+            .setTableName("table")
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
     client.openChannel(request);
 
     FullyQualifiedTableName fqn = new FullyQualifiedTableName("db", "schema", "table");
