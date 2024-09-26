@@ -14,7 +14,7 @@ import java.util.Objects;
 /** Audit register endpoint/FileColumnPropertyDTO property list. */
 class FileColumnProperties {
   private int columnOrdinal;
-  private int fieldId;
+  private Integer fieldId;
   private String minStrValue;
 
   private String maxStrValue;
@@ -101,12 +101,12 @@ class FileColumnProperties {
   }
 
   @JsonProperty("fieldId")
-  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-  public int getFieldId() {
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public Integer getFieldId() {
     return fieldId;
   }
 
-  public void setFieldId(int fieldId) {
+  public void setFieldId(Integer fieldId) {
     this.fieldId = fieldId;
   }
 

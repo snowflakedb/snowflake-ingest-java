@@ -99,14 +99,17 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         this.statsMap.put(
             column.getInternalName(),
             new RowBufferStats(
-                column.getName(), column.getCollation(), column.getOrdinal(), 0 /* fieldId */));
+                column.getName(), column.getCollation(), column.getOrdinal(), null /* fieldId */));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
               column.getInternalName(),
               new RowBufferStats(
-                  column.getName(), column.getCollation(), column.getOrdinal(), 0 /* fieldId */));
+                  column.getName(),
+                  column.getCollation(),
+                  column.getOrdinal(),
+                  null /* fieldId */));
         }
       }
 

@@ -20,10 +20,10 @@ class RowBufferStats {
 
   /*
    * Field id of a column.
-   * For FDN columns, it's always 0.
+   * For FDN columns, it's always null.
    * For Iceberg columns, set to nonzero Iceberg field id if it's a sub-column, otherwise zero.
    */
-  private final int fieldId;
+  private final Integer fieldId;
 
   private byte[] currentMinStrValue;
   private byte[] currentMaxStrValue;
@@ -40,7 +40,7 @@ class RowBufferStats {
 
   /** Creates empty stats */
   RowBufferStats(
-      String columnDisplayName, String collationDefinitionString, int ordinal, int fieldId) {
+      String columnDisplayName, String collationDefinitionString, int ordinal, Integer fieldId) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
     this.ordinal = ordinal;
@@ -49,7 +49,7 @@ class RowBufferStats {
   }
 
   RowBufferStats(String columnDisplayName) {
-    this(columnDisplayName, null, -1, 0);
+    this(columnDisplayName, null, -1, null);
   }
 
   void reset() {
@@ -234,7 +234,7 @@ class RowBufferStats {
     return ordinal;
   }
 
-  int getFieldId() {
+  Integer getFieldId() {
     return fieldId;
   }
 

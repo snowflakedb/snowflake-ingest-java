@@ -94,50 +94,47 @@ class IcebergParquetValueParser {
         switch (primitiveType.getPrimitiveTypeName()) {
           case BOOLEAN:
             int intValue =
-                DataValidationUtil.validateAndParseBoolean(
-                    type.getName(), value, insertRowsCurrIndex);
+                DataValidationUtil.validateAndParseBoolean(path, value, insertRowsCurrIndex);
             value = intValue > 0;
             stats.addIntValue(BigInteger.valueOf(intValue));
             estimatedParquetSize += ParquetBufferValue.BIT_ENCODING_BYTE_LEN;
             break;
           case INT32:
-            int intVal = getInt32Value(value, primitiveType, insertRowsCurrIndex);
+            int intVal = getInt32Value(value, primitiveType, path, insertRowsCurrIndex);
             value = intVal;
             stats.addIntValue(BigInteger.valueOf(intVal));
             estimatedParquetSize += 4;
             break;
           case INT64:
             long longVal =
-                getInt64Value(value, primitiveType, defaultTimezone, insertRowsCurrIndex);
+                getInt64Value(value, primitiveType, defaultTimezone, path, insertRowsCurrIndex);
             value = longVal;
             stats.addIntValue(BigInteger.valueOf(longVal));
             estimatedParquetSize += 8;
             break;
           case FLOAT:
             float floatVal =
-                (float)
-                    DataValidationUtil.validateAndParseReal(
-                        type.getName(), value, insertRowsCurrIndex);
+                (float) DataValidationUtil.validateAndParseReal(path, value, insertRowsCurrIndex);
             value = floatVal;
             stats.addRealValue((double) floatVal);
             estimatedParquetSize += 4;
             break;
           case DOUBLE:
             double doubleVal =
-                DataValidationUtil.validateAndParseReal(type.getName(), value, insertRowsCurrIndex);
+                DataValidationUtil.validateAndParseReal(path, value, insertRowsCurrIndex);
             value = doubleVal;
             stats.addRealValue(doubleVal);
             estimatedParquetSize += 8;
             break;
           case BINARY:
-            byte[] byteVal = getBinaryValue(value, primitiveType, stats, insertRowsCurrIndex);
+            byte[] byteVal = getBinaryValue(value, primitiveType, stats, path, insertRowsCurrIndex);
             value = byteVal;
             estimatedParquetSize +=
                 ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + byteVal.length;
             break;
           case FIXED_LEN_BYTE_ARRAY:
             byte[] fixedLenByteArrayVal =
-                getFixedLenByteArrayValue(value, primitiveType, stats, insertRowsCurrIndex);
+                getFixedLenByteArrayValue(value, primitiveType, stats, path, insertRowsCurrIndex);
             value = fixedLenByteArrayVal;
             estimatedParquetSize +=
                 ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
@@ -164,7 +161,7 @@ class IcebergParquetValueParser {
     if (value == null) {
       if (type.isRepetition(Repetition.REQUIRED)) {
         throw new SFException(
-            ErrorCode.INVALID_FORMAT_ROW, type.getName(), "Passed null to non nullable field");
+            ErrorCode.INVALID_FORMAT_ROW, path, "Passed null to non nullable field");
       }
       if (type.isPrimitive()) {
         statsMap.get(path).incCurrentNullCount();
@@ -179,21 +176,21 @@ class IcebergParquetValueParser {
    *
    * @param value column value provided by user in a row
    * @param type Parquet column type
+   * @param path column path, used for logging
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return parsed int32 value
    */
   private static int getInt32Value(
-      Object value, PrimitiveType type, final long insertRowsCurrIndex) {
+      Object value, PrimitiveType type, String path, final long insertRowsCurrIndex) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
-      return DataValidationUtil.validateAndParseIcebergInt(
-          type.getName(), value, insertRowsCurrIndex);
+      return DataValidationUtil.validateAndParseIcebergInt(path, value, insertRowsCurrIndex);
     }
     if (logicalTypeAnnotation instanceof DecimalLogicalTypeAnnotation) {
-      return getDecimalValue(value, type, insertRowsCurrIndex).unscaledValue().intValue();
+      return getDecimalValue(value, type, path, insertRowsCurrIndex).unscaledValue().intValue();
     }
     if (logicalTypeAnnotation instanceof DateLogicalTypeAnnotation) {
-      return DataValidationUtil.validateAndParseDate(type.getName(), value, insertRowsCurrIndex);
+      return DataValidationUtil.validateAndParseDate(path, value, insertRowsCurrIndex);
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
@@ -204,22 +201,26 @@ class IcebergParquetValueParser {
    *
    * @param value column value provided by user in a row
    * @param type Parquet column type
+   * @param path column path, used for logging
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return parsed int64 value
    */
   private static long getInt64Value(
-      Object value, PrimitiveType type, ZoneId defaultTimezone, final long insertRowsCurrIndex) {
+      Object value,
+      PrimitiveType type,
+      ZoneId defaultTimezone,
+      String path,
+      final long insertRowsCurrIndex) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
-      return DataValidationUtil.validateAndParseIcebergLong(
-          type.getName(), value, insertRowsCurrIndex);
+      return DataValidationUtil.validateAndParseIcebergLong(path, value, insertRowsCurrIndex);
     }
     if (logicalTypeAnnotation instanceof DecimalLogicalTypeAnnotation) {
-      return getDecimalValue(value, type, insertRowsCurrIndex).unscaledValue().longValue();
+      return getDecimalValue(value, type, path, insertRowsCurrIndex).unscaledValue().longValue();
     }
     if (logicalTypeAnnotation instanceof TimeLogicalTypeAnnotation) {
       return DataValidationUtil.validateAndParseTime(
-              type.getName(),
+              path,
               value,
               timeUnitToScale(((TimeLogicalTypeAnnotation) logicalTypeAnnotation).getUnit()),
               insertRowsCurrIndex)
@@ -250,29 +251,28 @@ class IcebergParquetValueParser {
    * @param value value to parse
    * @param type Parquet column type
    * @param stats column stats to update
+   * @param path column path, used for logging
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return string representation
    */
   private static byte[] getBinaryValue(
-      Object value, PrimitiveType type, RowBufferStats stats, final long insertRowsCurrIndex) {
+      Object value,
+      PrimitiveType type,
+      RowBufferStats stats,
+      String path,
+      final long insertRowsCurrIndex) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
       byte[] bytes =
           DataValidationUtil.validateAndParseBinary(
-              type.getName(),
-              value,
-              Optional.of(Constants.BINARY_COLUMN_MAX_SIZE),
-              insertRowsCurrIndex);
+              path, value, Optional.of(Constants.BINARY_COLUMN_MAX_SIZE), insertRowsCurrIndex);
       stats.addBinaryValue(bytes);
       return bytes;
     }
     if (logicalTypeAnnotation instanceof StringLogicalTypeAnnotation) {
       String string =
           DataValidationUtil.validateAndParseString(
-              type.getName(),
-              value,
-              Optional.of(Constants.VARCHAR_COLUMN_MAX_SIZE),
-              insertRowsCurrIndex);
+              path, value, Optional.of(Constants.VARCHAR_COLUMN_MAX_SIZE), insertRowsCurrIndex);
       stats.addStrValue(string);
       return string.getBytes(StandardCharsets.UTF_8);
     }
@@ -286,22 +286,28 @@ class IcebergParquetValueParser {
    * @param value value to parse
    * @param type Parquet column type
    * @param stats column stats to update
+   * @param path column path, used for logging
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return string representation
    */
   private static byte[] getFixedLenByteArrayValue(
-      Object value, PrimitiveType type, RowBufferStats stats, final long insertRowsCurrIndex) {
+      Object value,
+      PrimitiveType type,
+      RowBufferStats stats,
+      String path,
+      final long insertRowsCurrIndex) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     int length = type.getTypeLength();
     byte[] bytes = null;
     if (logicalTypeAnnotation == null) {
       bytes =
           DataValidationUtil.validateAndParseBinary(
-              type.getName(), value, Optional.of(length), insertRowsCurrIndex);
+              path, value, Optional.of(length), insertRowsCurrIndex);
       stats.addBinaryValue(bytes);
     }
     if (logicalTypeAnnotation instanceof DecimalLogicalTypeAnnotation) {
-      BigInteger bigIntegerVal = getDecimalValue(value, type, insertRowsCurrIndex).unscaledValue();
+      BigInteger bigIntegerVal =
+          getDecimalValue(value, type, path, insertRowsCurrIndex).unscaledValue();
       stats.addIntValue(bigIntegerVal);
       bytes = bigIntegerVal.toByteArray();
       if (bytes.length < length) {
@@ -324,15 +330,16 @@ class IcebergParquetValueParser {
    *
    * @param value value to parse
    * @param type Parquet column type
+   * @param path column path, used for logging
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @return BigDecimal representation
    */
   private static BigDecimal getDecimalValue(
-      Object value, PrimitiveType type, final long insertRowsCurrIndex) {
+      Object value, PrimitiveType type, String path, final long insertRowsCurrIndex) {
     int scale = ((DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation()).getScale();
     int precision = ((DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation()).getPrecision();
     BigDecimal bigDecimalValue =
-        DataValidationUtil.validateAndParseBigDecimal(type.getName(), value, insertRowsCurrIndex);
+        DataValidationUtil.validateAndParseBigDecimal(path, value, insertRowsCurrIndex);
     bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
     DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, insertRowsCurrIndex);
     return bigDecimalValue;
@@ -414,8 +421,7 @@ class IcebergParquetValueParser {
       String path,
       boolean isDescendantsOfRepeatingGroup) {
     Map<String, ?> structVal =
-        DataValidationUtil.validateAndParseIcebergStruct(
-            type.getName(), value, insertRowsCurrIndex);
+        DataValidationUtil.validateAndParseIcebergStruct(path, value, insertRowsCurrIndex);
     Set<String> extraFields = structVal.keySet();
     List<Object> listVal = new ArrayList<>(type.getFieldCount());
     float estimatedParquetSize = 0f;
@@ -461,7 +467,7 @@ class IcebergParquetValueParser {
       final long insertRowsCurrIndex,
       String path) {
     Iterable<?> iterableVal =
-        DataValidationUtil.validateAndParseIcebergList(type.getName(), value, insertRowsCurrIndex);
+        DataValidationUtil.validateAndParseIcebergList(path, value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
     iterableVal.forEach(
@@ -497,7 +503,7 @@ class IcebergParquetValueParser {
       String path,
       boolean isDescendantsOfRepeatingGroup) {
     Map<?, ?> mapVal =
-        DataValidationUtil.validateAndParseIcebergMap(type.getName(), value, insertRowsCurrIndex);
+        DataValidationUtil.validateAndParseIcebergMap(path, value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
     mapVal.forEach(
