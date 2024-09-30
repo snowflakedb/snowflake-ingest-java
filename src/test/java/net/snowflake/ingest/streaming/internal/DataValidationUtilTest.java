@@ -16,7 +16,10 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validat
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseBoolean;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseDate;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseIcebergInt;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseIcebergList;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseIcebergLong;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseIcebergMap;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseIcebergStruct;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseObject;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseObjectNew;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseReal;
@@ -50,6 +53,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TimeZone;
@@ -1279,6 +1283,32 @@ public class DataValidationUtilTest {
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseIcebergLong("COL", Double.NEGATIVE_INFINITY, 0));
+  }
+
+  @Test
+  public void testValidateAndParseIcebergStruct() throws JsonProcessingException {
+    Map<String, ?> validStruct =
+        objectMapper.readValue("{\"a\": 1, \"b\":[1, 2, 3], \"c\":{\"d\":3}}", Map.class);
+    assertEquals(validStruct, validateAndParseIcebergStruct("COL", validStruct, 0));
+    expectError(
+        ErrorCode.INVALID_FORMAT_ROW,
+        () -> validateAndParseIcebergStruct("COL", Collections.singletonMap(1, new Object()), 0));
+  }
+
+  @Test
+  public void testValidateAndParseIcebergList() throws JsonProcessingException {
+    List<?> validList = objectMapper.readValue("[1, [2, 3, 4], 5]", List.class);
+    assertEquals(validList, validateAndParseIcebergList("COL", validList, 0));
+
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergList("COL", 1, 0));
+  }
+
+  @Test
+  public void testValidateAndParseIcebergMap() {
+    Map<?, ?> validMap = Collections.singletonMap(1, 1);
+    assertEquals(validMap, validateAndParseIcebergMap("COL", validMap, 0));
+
+    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseIcebergMap("COL", 1, 0));
   }
 
   /**

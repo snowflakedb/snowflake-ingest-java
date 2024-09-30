@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import org.junit.Assert;
@@ -15,18 +19,19 @@ public class FileColumnPropertiesTest {
   @Test
   public void testFileColumnPropertiesConstructor() {
     // Test simple construction
-    RowBufferStats stats = new RowBufferStats("COL", null, 1);
+    RowBufferStats stats = new RowBufferStats("COL", null, 1, isIceberg ? 1 : null);
     stats.addStrValue("bcd");
     stats.addStrValue("abcde");
     FileColumnProperties props = new FileColumnProperties(stats, isIceberg);
     Assert.assertEquals(1, props.getColumnOrdinal());
+    Assert.assertEquals(isIceberg ? 1 : null, props.getFieldId());
     Assert.assertEquals("6162636465", props.getMinStrValue());
     Assert.assertNull(props.getMinStrNonCollated());
     Assert.assertEquals("626364", props.getMaxStrValue());
     Assert.assertNull(props.getMaxStrNonCollated());
 
     // Test that truncation is performed
-    stats = new RowBufferStats("COL", null, 1);
+    stats = new RowBufferStats("COL", null, 1, isIceberg ? 0 : null);
     stats.addStrValue("aßßßßßßßßßßßßßßßß");
     Assert.assertEquals(33, stats.getCurrentMinStrValue().length);
     props = new FileColumnProperties(stats, isIceberg);

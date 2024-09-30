@@ -1,7 +1,12 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncateBytesAsHex;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigInteger;
 import java.util.Objects;
@@ -9,6 +14,7 @@ import java.util.Objects;
 /** Audit register endpoint/FileColumnPropertyDTO property list. */
 class FileColumnProperties {
   private int columnOrdinal;
+  private Integer fieldId;
   private String minStrValue;
 
   private String maxStrValue;
@@ -46,6 +52,7 @@ class FileColumnProperties {
 
   FileColumnProperties(RowBufferStats stats, boolean setDefaultValues) {
     this.setColumnOrdinal(stats.getOrdinal());
+    this.setFieldId(stats.getFieldId());
     this.setCollation(stats.getCollationDefinitionString());
     this.setMaxIntValue(
         stats.getCurrentMaxIntValue() == null
@@ -91,6 +98,16 @@ class FileColumnProperties {
 
   public void setColumnOrdinal(int columnOrdinal) {
     this.columnOrdinal = columnOrdinal;
+  }
+
+  @JsonProperty("fieldId")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public Integer getFieldId() {
+    return fieldId;
+  }
+
+  public void setFieldId(Integer fieldId) {
+    this.fieldId = fieldId;
   }
 
   // Annotation required in order to have package private fields serialized
@@ -206,6 +223,7 @@ class FileColumnProperties {
   public String toString() {
     final StringBuilder sb = new StringBuilder("{");
     sb.append("\"columnOrdinal\": ").append(columnOrdinal);
+    sb.append(", \"fieldId\": ").append(fieldId);
     if (minIntValue != null) {
       sb.append(", \"minIntValue\": ").append(minIntValue);
       sb.append(", \"maxIntValue\": ").append(maxIntValue);

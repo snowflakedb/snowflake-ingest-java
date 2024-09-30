@@ -10,11 +10,12 @@ class ParquetBufferValue {
   public static final float BIT_ENCODING_BYTE_LEN = 1.0f / 8;
 
   /**
-   * On average parquet needs 2 bytes / 8 values for the RLE+bitpack encoded definition level.
+   * On average parquet needs 2 bytes / 8 values for the RLE+bitpack encoded definition and
+   * repetition level.
    *
    * <ul>
-   *   There are two cases how definition level (0 for null values, 1 for non-null values) is
-   *   encoded:
+   *   There are two cases how definition and repetition level (0 for null values, 1 for non-null
+   *   values) is encoded:
    *   <li>If there are at least 8 repeated values in a row, they are run-length encoded (length +
    *       value itself). E.g. 11111111 -> 8 1
    *   <li>If there are less than 8 repeated values, they are written in group as part of a
@@ -30,6 +31,8 @@ class ParquetBufferValue {
    * </ul>
    */
   public static final float DEFINITION_LEVEL_ENCODING_BYTE_LEN = 2.0f / 8;
+
+  public static final float REPETITION_LEVEL_ENCODING_BYTE_LEN = 2.0f / 8;
 
   // Parquet stores length in 4 bytes before the actual data bytes
   public static final int BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN = 4;
