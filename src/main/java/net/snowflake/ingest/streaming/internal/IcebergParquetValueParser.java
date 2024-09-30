@@ -16,6 +16,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -423,7 +424,7 @@ class IcebergParquetValueParser {
       boolean isDescendantsOfRepeatingGroup) {
     Map<String, ?> structVal =
         DataValidationUtil.validateAndParseIcebergStruct(path, value, insertRowsCurrIndex);
-    Set<String> extraFields = structVal.keySet();
+    Set<String> extraFields = new HashSet<>(structVal.keySet());
     List<Object> listVal = new ArrayList<>(type.getFieldCount());
     float estimatedParquetSize = 0f;
     for (int i = 0; i < type.getFieldCount(); i++) {
