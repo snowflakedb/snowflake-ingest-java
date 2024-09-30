@@ -9,8 +9,18 @@ import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+@RunWith(Parameterized.class)
 public class SnowflakeServiceClientTest {
+  @Parameterized.Parameters(name = "isIceberg: {0}")
+  public static Object[] isIceberg() {
+    return new Object[] {false, true};
+  }
+
+  @Parameterized.Parameter public boolean isIceberg;
+
   private SnowflakeServiceClient snowflakeServiceClient;
 
   @Before
@@ -50,7 +60,7 @@ public class SnowflakeServiceClientTest {
             "test_table",
             "test_channel",
             Constants.WriteMode.CLOUD_STORAGE,
-            false,
+            isIceberg,
             "test_offset_token");
     OpenChannelResponse openChannelResponse =
         snowflakeServiceClient.openChannel(openChannelRequest);
@@ -72,7 +82,14 @@ public class SnowflakeServiceClientTest {
   public void testDropChannel() throws IngestResponseException, IOException {
     DropChannelRequestInternal dropChannelRequest =
         new DropChannelRequestInternal(
-            "request_id", "test_role", "test_db", "test_schema", "test_table", "test_channel", 0L);
+            "request_id",
+            "test_role",
+            "test_db",
+            "test_schema",
+            "test_table",
+            "test_channel",
+            isIceberg,
+            0L);
     DropChannelResponse dropChannelResponse =
         snowflakeServiceClient.dropChannel(dropChannelRequest);
     assert dropChannelResponse.getStatusCode() == 0L;
