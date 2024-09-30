@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -396,14 +395,7 @@ class IcebergParquetValueParser {
       return get3LevelListValue(value, type, statsMap, defaultTimezone, insertRowsCurrIndex, path);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation) {
-      return get3LevelMapValue(
-          value,
-          type,
-          statsMap,
-          defaultTimezone,
-          insertRowsCurrIndex,
-          path,
-          isDescendantsOfRepeatingGroup);
+      return get3LevelMapValue(value, type, statsMap, defaultTimezone, insertRowsCurrIndex, path);
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getClass().getSimpleName());
@@ -442,11 +434,11 @@ class IcebergParquetValueParser {
       estimatedParquetSize += parsedValue.getSize();
     }
     if (!extraFields.isEmpty()) {
-      extraFields =
-          extraFields.stream().map(f -> concatDotPath(path, f)).collect(Collectors.toSet());
+      String extraFieldsStr =
+          extraFields.stream().map(f -> concatDotPath(path, f)).collect(Collectors.joining(", "));
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
-          "Extra fields: " + extraFields,
+          "Extra fields: " + extraFieldsStr,
           String.format(
               "Fields not present in the struct shouldn't be specified, rowIndex:%d",
               insertRowsCurrIndex));
@@ -471,22 +463,22 @@ class IcebergParquetValueParser {
     Iterable<?> iterableVal =
         DataValidationUtil.validateAndParseIcebergList(path, value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
-    final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
-    iterableVal.forEach(
-        element -> {
-          ParquetBufferValue parsedValue =
-              parseColumnValueToParquet(
-                  element,
-                  type.getType(0).asGroupType().getType(0),
-                  statsMap,
-                  defaultTimezone,
-                  insertRowsCurrIndex,
-                  concatDotPath(path, THREE_LEVEL_LIST_GROUP_NAME),
-                  true);
-          listVal.add(Collections.singletonList(parsedValue.getValue()));
-          estimatedParquetSize.updateAndGet(sz -> sz + parsedValue.getSize());
-        });
-    return new ParquetBufferValue(listVal, estimatedParquetSize.get());
+    float estimatedParquetSize = 0;
+    String listGroupPath = concatDotPath(path, THREE_LEVEL_LIST_GROUP_NAME);
+    for (Object val : iterableVal) {
+      ParquetBufferValue parsedValue =
+          parseColumnValueToParquet(
+              val,
+              type.getType(0).asGroupType().getType(0),
+              statsMap,
+              defaultTimezone,
+              insertRowsCurrIndex,
+              listGroupPath,
+              true);
+      listVal.add(Collections.singletonList(parsedValue.getValue()));
+      estimatedParquetSize += parsedValue.getSize();
+    }
+    return new ParquetBufferValue(listVal, estimatedParquetSize);
   }
 
   /**
@@ -502,35 +494,34 @@ class IcebergParquetValueParser {
       Map<String, RowBufferStats> statsMap,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
-      String path,
-      boolean isDescendantsOfRepeatingGroup) {
+      String path) {
     Map<?, ?> mapVal =
         DataValidationUtil.validateAndParseIcebergMap(path, value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
-    final AtomicReference<Float> estimatedParquetSize = new AtomicReference<>(0f);
-    mapVal.forEach(
-        (k, v) -> {
-          ParquetBufferValue parsedKey =
-              parseColumnValueToParquet(
-                  k,
-                  type.getType(0).asGroupType().getType(0),
-                  statsMap,
-                  defaultTimezone,
-                  insertRowsCurrIndex,
-                  concatDotPath(path, THREE_LEVEL_MAP_GROUP_NAME),
-                  true);
-          ParquetBufferValue parsedValue =
-              parseColumnValueToParquet(
-                  v,
-                  type.getType(0).asGroupType().getType(1),
-                  statsMap,
-                  defaultTimezone,
-                  insertRowsCurrIndex,
-                  concatDotPath(path, THREE_LEVEL_MAP_GROUP_NAME),
-                  isDescendantsOfRepeatingGroup);
-          listVal.add(Arrays.asList(parsedKey.getValue(), parsedValue.getValue()));
-          estimatedParquetSize.updateAndGet(sz -> sz + parsedKey.getSize() + parsedValue.getSize());
-        });
-    return new ParquetBufferValue(listVal, estimatedParquetSize.get());
+    float estimatedParquetSize = 0;
+    String mapGroupPath = concatDotPath(path, THREE_LEVEL_MAP_GROUP_NAME);
+    for (Map.Entry<?, ?> entry : mapVal.entrySet()) {
+      ParquetBufferValue parsedKey =
+          parseColumnValueToParquet(
+              entry.getKey(),
+              type.getType(0).asGroupType().getType(0),
+              statsMap,
+              defaultTimezone,
+              insertRowsCurrIndex,
+              mapGroupPath,
+              true);
+      ParquetBufferValue parsedValue =
+          parseColumnValueToParquet(
+              entry.getValue(),
+              type.getType(0).asGroupType().getType(1),
+              statsMap,
+              defaultTimezone,
+              insertRowsCurrIndex,
+              mapGroupPath,
+              true);
+      listVal.add(Arrays.asList(parsedKey.getValue(), parsedValue.getValue()));
+      estimatedParquetSize += parsedKey.getSize() + parsedValue.getSize();
+    }
+    return new ParquetBufferValue(listVal, estimatedParquetSize);
   }
 }

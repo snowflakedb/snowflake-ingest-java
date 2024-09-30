@@ -530,7 +530,8 @@ public class IcebergParquetValueParserTest {
             convertToArrayList(objectMapper.readValue("[[1, 1], [2, 2]]", ArrayList.class)))
         .expectedSize(
             (4.0f + REPETITION_LEVEL_ENCODING_BYTE_LEN + DEFINITION_LEVEL_ENCODING_BYTE_LEN) * 2
-                + (4.0f + DEFINITION_LEVEL_ENCODING_BYTE_LEN) * 2)
+                + (4.0f + REPETITION_LEVEL_ENCODING_BYTE_LEN + DEFINITION_LEVEL_ENCODING_BYTE_LEN)
+                    * 2)
         .expectedMin(BigInteger.valueOf(1))
         .expectedMax(BigInteger.valueOf(2))
         .assertMatches();
@@ -630,12 +631,13 @@ public class IcebergParquetValueParserTest {
                 0));
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            new java.util.HashMap<String, Object>() {
-              {
-                // a is null
-                put("b", "2");
-              }
-            },
+            Collections.unmodifiableMap(
+                new java.util.HashMap<String, Object>() {
+                  {
+                    // a is null
+                    put("b", "2");
+                  }
+                }),
             struct,
             rowBufferStatsMap,
             UTC,

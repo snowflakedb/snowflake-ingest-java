@@ -1082,7 +1082,8 @@ class DataValidationUtil {
         throw new SFException(
             ErrorCode.INVALID_FORMAT_ROW,
             String.format(
-                "Field name of a struct must be of type String, rowIndex:%d", insertRowIndex));
+                "Field name of struct %s must be of type String, rowIndex:%d",
+                columnName, insertRowIndex));
       }
     }
 
