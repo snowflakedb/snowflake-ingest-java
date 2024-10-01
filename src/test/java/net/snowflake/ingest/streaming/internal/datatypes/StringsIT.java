@@ -9,12 +9,18 @@ import java.sql.SQLException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 public class StringsIT extends AbstractDataTypeTest {
 
   private static final int MB_16 = 16 * 1024 * 1024;
+
+  @Before
+  public void before() throws Exception {
+    super.before(false);
+  }
 
   @Test
   public void testStrings() throws Exception {

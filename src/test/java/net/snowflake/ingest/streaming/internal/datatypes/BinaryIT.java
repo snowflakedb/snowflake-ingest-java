@@ -1,9 +1,14 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import org.bouncycastle.util.encoders.Hex;
+import org.junit.Before;
 import org.junit.Test;
 
 public class BinaryIT extends AbstractDataTypeTest {
+  @Before
+  public void before() throws Exception {
+        super.before(false);
+  }
 
   @Test
   public void testBinary() throws Exception {
@@ -33,7 +38,7 @@ public class BinaryIT extends AbstractDataTypeTest {
         "BINARY",
         Hex.decode("aaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
         new ByteArrayProvider());
-    testJdbcTypeCompatibility(
+   testJdbcTypeCompatibility(
         "BINARY",
         Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
         new ByteArrayProvider());

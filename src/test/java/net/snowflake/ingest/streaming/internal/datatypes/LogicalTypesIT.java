@@ -2,9 +2,15 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+
+import org.junit.Before;
 import org.junit.Test;
 
 public class LogicalTypesIT extends AbstractDataTypeTest {
+  @Before
+  public void before() throws Exception {
+    super.before(false);
+  }
 
   @Test
   public void testLogicalTypes() throws Exception {

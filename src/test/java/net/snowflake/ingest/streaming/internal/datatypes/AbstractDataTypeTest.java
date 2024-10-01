@@ -23,6 +23,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
@@ -69,8 +70,7 @@ public abstract class AbstractDataTypeTest {
 
   @Parameter public String compressionAlgorithm;
 
-  @Before
-  public void before() throws Exception {
+  public void before(boolean isIceberg) throws Exception {
     databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
     conn = TestUtils.getConnection(true);
     conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
@@ -84,7 +84,11 @@ public abstract class AbstractDataTypeTest {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
     props.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
-    client = SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(props).build();
+
+    // Override Iceberg mode client lag to 1 second for faster test execution
+    Map<String, Object> parameterMap = new HashMap<>();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 1000L);
+    client = SnowflakeStreamingIngestClientFactory.builder("client1").setIsIceberg(isIceberg).setParameterOverrides(parameterMap).setProperties(props).build();
   }
 
   @After
@@ -107,11 +111,23 @@ public abstract class AbstractDataTypeTest {
 
   protected String createTable(String dataType) throws SQLException {
     String tableName = getRandomIdentifier();
-    conn.createStatement()
-        .execute(
-            String.format(
-                "create or replace table %s (%s string, %s %s)",
-                tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
+      conn.createStatement()
+              .execute(
+                      String.format(
+                              "create or replace table %s (%s string, %s %s)",
+                              tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
+
+    return tableName;
+  }
+
+  protected String createIcebergTable(String dataType) throws SQLException {
+    String tableName = getRandomIdentifier();
+      conn.createStatement().execute(String.format(
+              "create or replace iceberg table %s (%s string, %s %s) " +
+                      "catalog = 'SNOWFLAKE' " +
+                      "external_volume = 'streaming_ingest' " +
+                      "base_location = 'all_type_col';", tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
+
     return tableName;
   }
 
@@ -196,7 +212,12 @@ public abstract class AbstractDataTypeTest {
    */
   <VALUE> void testIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
       throws Exception {
-    ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider);
+    ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider, false);
+  }
+
+  <VALUE> void testIcebergIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
+      throws Exception {
+    ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider, true);
   }
 
   /**
@@ -209,8 +230,17 @@ public abstract class AbstractDataTypeTest {
       JDBC_READ expectedValue,
       Provider<JDBC_READ> selectProvider)
       throws Exception {
-    ingestAndAssert(dataType, streamingIngestWriteValue, null, expectedValue, null, selectProvider);
+    ingestAndAssert(dataType, streamingIngestWriteValue, null, expectedValue, null, selectProvider, false);
   }
+
+    <STREAMING_INGEST_WRITE, JDBC_READ> void testIcebergIngestion(
+        String dataType,
+        STREAMING_INGEST_WRITE streamingIngestWriteValue,
+        JDBC_READ expectedValue,
+        Provider<JDBC_READ> selectProvider)
+        throws Exception {
+        ingestAndAssert(dataType, streamingIngestWriteValue, null, expectedValue, null, selectProvider, true);
+    }
 
   /**
    * Simplified version where streaming ingest write type, JDBC write type and JDBC read type are
@@ -218,7 +248,7 @@ public abstract class AbstractDataTypeTest {
    */
   <T> void testJdbcTypeCompatibility(String typeName, T value, Provider<T> provider)
       throws Exception {
-    ingestAndAssert(typeName, value, value, value, provider, provider);
+    ingestAndAssert(typeName, value, value, value, provider, provider, false);
   }
 
   /** Simplified version where write value for streaming ingest and JDBC are the same */
@@ -230,7 +260,7 @@ public abstract class AbstractDataTypeTest {
       Provider<READ> selectProvider)
       throws Exception {
     ingestAndAssert(
-        typeName, writeValue, writeValue, expectedValue, insertProvider, selectProvider);
+        typeName, writeValue, writeValue, expectedValue, insertProvider, selectProvider, false);
   }
 
   /**
@@ -246,6 +276,7 @@ public abstract class AbstractDataTypeTest {
    * @param <STREAMING_INGEST_WRITE> Type ingested by streaming ingest
    * @param <JDBC_WRITE> Type written by JDBC driver
    * @param <JDBC_READ> Type read by JDBC driver
+   * @param isIceberg whether the table is an iceberg table
    */
   <STREAMING_INGEST_WRITE, JDBC_WRITE, JDBC_READ> void ingestAndAssert(
       String dataType,
@@ -253,13 +284,14 @@ public abstract class AbstractDataTypeTest {
       JDBC_WRITE jdbcWriteValue,
       JDBC_READ expectedValue,
       Provider<JDBC_WRITE> insertProvider,
-      Provider<JDBC_READ> selectProvider)
+      Provider<JDBC_READ> selectProvider,
+      boolean isIceberg)
       throws Exception {
     if (jdbcWriteValue == null ^ insertProvider == null)
       throw new IllegalArgumentException(
           "jdbcWriteValue and provider must be both null or not null");
     boolean insertAlsoWithJdbc = jdbcWriteValue != null;
-    String tableName = createTable(dataType);
+    String tableName = isIceberg ? createIcebergTable(dataType) : createTable(dataType);
     String offsetToken = UUID.randomUUID().toString();
 
     // Insert using JDBC
@@ -310,7 +342,9 @@ public abstract class AbstractDataTypeTest {
     Assert.assertTrue(resultSet.next());
     int count = resultSet.getInt(1);
     Assert.assertEquals(insertAlsoWithJdbc ? 2 : 1, count);
-    migrateTable(tableName); // migration should always succeed
+    if (!isIceberg) {
+      migrateTable(tableName); // migration should always succeed
+    }
   }
 
   <STREAMING_INGEST_WRITE> void assertVariant(
