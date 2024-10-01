@@ -161,7 +161,8 @@ class BlobBuilder {
           chunkMetadataBuilder
               .setMajorVersion(Constants.PARQUET_MAJOR_VERSION)
               .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
-              .setCreatedOn(0L)
+              // set createdOn in seconds
+              .setCreatedOn(System.currentTimeMillis() / 1000)
               .setExtendedMetadataSize(-1L);
         }
 

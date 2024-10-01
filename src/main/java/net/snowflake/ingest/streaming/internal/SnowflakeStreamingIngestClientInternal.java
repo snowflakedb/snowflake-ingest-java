@@ -438,6 +438,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getSchemaName(),
               request.getTableName(),
               request.getChannelName(),
+              this.isIcebergMode,
               request instanceof DropChannelVersionRequest
                   ? ((DropChannelVersionRequest) request).getClientSequencer()
                   : null);

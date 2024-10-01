@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Utils.concatDotPath;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -25,6 +27,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
@@ -33,7 +36,6 @@ import org.apache.parquet.schema.Type;
  * converted to Parquet format for faster processing
  */
 public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
-  private static final String PARQUET_MESSAGE_TYPE_NAME = "bdec";
 
   private final Map<String, ParquetColumn> fieldIndex;
 
@@ -71,6 +73,11 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.tempData = new ArrayList<>();
   }
 
+  /**
+   * Set up the parquet schema.
+   *
+   * @param columns top level columns list of column metadata
+   */
   @Override
   public void setupSchema(List<ColumnMetadata> columns) {
     fieldIndex.clear();
@@ -79,7 +86,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     metadata.put(Constants.SDK_VERSION_KEY, RequestBuilder.DEFAULT_VERSION);
     List<Type> parquetTypes = new ArrayList<>();
     int id = 1;
+
     for (ColumnMetadata column : columns) {
+      /* Set up fields using top level column information */
       validateColumnCollation(column);
       ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
       parquetTypes.add(typeInfo.getParquetType());
@@ -91,20 +100,105 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
-      this.statsMap.put(
-          column.getInternalName(),
-          new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal()));
-
-      if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
-          || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
-        this.tempStatsMap.put(
+      if (!clientBufferParameters.getIsIcebergMode()) {
+        /* Streaming to FDN table doesn't support sub-columns, set up the stats here. */
+        this.statsMap.put(
             column.getInternalName(),
-            new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal()));
+            new RowBufferStats(
+                column.getName(), column.getCollation(), column.getOrdinal(), null /* fieldId */));
+
+        if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
+            || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
+          /*
+           * tempStatsMap is used to store stats for the current batch,
+           * create a separate stats in case current batch has invalid rows which ruins the original stats.
+           */
+          this.tempStatsMap.put(
+              column.getInternalName(),
+              new RowBufferStats(
+                  column.getName(),
+                  column.getCollation(),
+                  column.getOrdinal(),
+                  null /* fieldId */));
+        }
       }
 
       id++;
     }
-    schema = new MessageType(PARQUET_MESSAGE_TYPE_NAME, parquetTypes);
+    schema = new MessageType(clientBufferParameters.getParquetMessageTypeName(), parquetTypes);
+
+    /*
+     * Iceberg mode requires stats for all primitive columns and sub-columns, set them up here.
+     *
+     * There are two values that are used to identify a column in the stats map:
+     *   1. ordinal - The ordinal is the index of the top level column in the schema.
+     *   2. fieldId - The fieldId is the id of all sub-columns in the schema.
+     *                It's indexed by the level and order of the column in the schema.
+     *                Note that the fieldId is set to 0 for non-structured columns.
+     *
+     * For example, consider the following schema:
+     *   F1 INT,
+     *   F2 STRUCT(F21 STRUCT(F211 INT), F22 INT),
+     *   F3 INT,
+     *   F4 MAP(INT, MAP(INT, INT)),
+     *   F5 INT,
+     *   F6 ARRAY(INT),
+     *   F7 INT
+     *
+     * The ordinal and fieldId  will look like this:
+     *   F1:             ordinal=1, fieldId=1
+     *   F2:             ordinal=2, fieldId=2
+     *   F2.F21:         ordinal=2, fieldId=8
+     *   F2.F21.F211:    ordinal=2, fieldId=13
+     *   F2.F22:         ordinal=2, fieldId=9
+     *   F3:             ordinal=3, fieldId=3
+     *   F4:             ordinal=4, fieldId=4
+     *   F4.key:         ordinal=4, fieldId=10
+     *   F4.value:       ordinal=4, fieldId=11
+     *   F4.value.key:   ordinal=4, fieldId=14
+     *   F4.value.value: ordinal=4, fieldId=15
+     *   F5:             ordinal=5, fieldId=5
+     *   F6:             ordinal=6, fieldId=6
+     *   F6.element:     ordinal=6, fieldId=12
+     *   F7:             ordinal=7, fieldId=7
+     *
+     * The stats map will contain the following entries:
+     *   F1:             ordinal=1, fieldId=0
+     *   F2:             ordinal=2, fieldId=0
+     *   F2.F21.F211:    ordinal=2, fieldId=13
+     *   F2.F22:         ordinal=2, fieldId=9
+     *   F3:             ordinal=3, fieldId=0
+     *   F4.key:         ordinal=4, fieldId=10
+     *   F4.value.key:   ordinal=4, fieldId=14
+     *   F4.value.value: ordinal=4, fieldId=15
+     *   F5:             ordinal=5, fieldId=0
+     *   F6.element:     ordinal=6, fieldId=12
+     *   F7:             ordinal=7, fieldId=0
+     */
+    if (clientBufferParameters.getIsIcebergMode()) {
+      for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
+        String columnPath = concatDotPath(columnDescriptor.getPath());
+
+        /* set fieldId to 0 for non-structured columns */
+        int fieldId =
+            columnDescriptor.getPath().length == 1
+                ? 0
+                : columnDescriptor.getPrimitiveType().getId().intValue();
+        int ordinal = schema.getType(columnDescriptor.getPath()[0]).getId().intValue();
+
+        this.statsMap.put(
+            columnPath,
+            new RowBufferStats(columnPath, null /* collationDefinitionString */, ordinal, fieldId));
+
+        if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
+            || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
+          this.tempStatsMap.put(
+              columnPath,
+              new RowBufferStats(
+                  columnPath, null /* collationDefinitionString */, ordinal, fieldId));
+        }
+      }
+    }
     tempData.clear();
     data.clear();
   }
@@ -161,6 +255,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
+    statsMap.forEach((columnName, stats) -> forkedStatsMap.put(columnName, stats.forkEmpty()));
 
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
@@ -168,18 +263,16 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       String columnName = LiteralQuoteUtils.unquoteColumnName(key);
       ParquetColumn parquetColumn = fieldIndex.get(columnName);
       int colIndex = parquetColumn.index;
-      RowBufferStats forkedStats = statsMap.get(columnName).forkEmpty();
-      forkedStatsMap.put(columnName, forkedStats);
       ColumnMetadata column = parquetColumn.columnMetadata;
       ParquetBufferValue valueWithSize =
           (clientBufferParameters.getIsIcebergMode()
               ? IcebergParquetValueParser.parseColumnValueToParquet(
-                  value, parquetColumn.type, forkedStats, defaultTimezone, insertRowsCurrIndex)
+                  value, parquetColumn.type, forkedStatsMap, defaultTimezone, insertRowsCurrIndex)
               : SnowflakeParquetValueParser.parseColumnValueToParquet(
                   value,
                   column,
                   parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
-                  forkedStats,
+                  forkedStatsMap.get(columnName),
                   defaultTimezone,
                   insertRowsCurrIndex,
                   clientBufferParameters.isEnableNewJsonParsingLogic()));
