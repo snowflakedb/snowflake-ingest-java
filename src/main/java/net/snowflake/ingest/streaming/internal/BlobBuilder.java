@@ -83,7 +83,7 @@ class BlobBuilder {
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
-          flusher.serialize(channelsDataPerTable, filePath, curDataSize);
+          flusher.serialize(channelsDataPerTable, filePath);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         final byte[] compressedChunkData;
