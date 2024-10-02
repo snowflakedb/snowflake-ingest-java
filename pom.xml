@@ -241,6 +241,10 @@
             <artifactId>zookeeper</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
           </exclusion>
@@ -384,6 +388,14 @@
           <exclusion>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-yarn-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.slf4j</groupId>
@@ -1265,6 +1277,7 @@
                 </goals>
                 <phase>generate-resources</phase>
                 <configuration>
+                  <skip>true</skip>
                   <executable>python3</executable>
                   <arguments>
                     <argument>${project.basedir}/scripts/process_licenses.py</argument>
