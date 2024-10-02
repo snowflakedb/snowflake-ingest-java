@@ -1,15 +1,32 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
-import java.time.*;
+import java.sql.ResultSet;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.ZoneOffset;
+import java.util.Map;
+import java.util.UUID;
+import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
+@Ignore("This test can be enabled after server side Iceberg EP support is released")
 public class IcebergDataTypeTest extends AbstractDataTypeTest {
+
+  private final ObjectMapper objectMapper = new ObjectMapper();
+
   @Before
   public void before() throws Exception {
     super.before(true);
@@ -377,7 +394,48 @@ public class IcebergDataTypeTest extends AbstractDataTypeTest {
   }
 
   @Test
-  public void testStruct() throws Exception {
-    String tableName = createIcebergTable("object(a int, b string, c boolean)");
+  public void testStructuredDataType() throws Exception {
+    assertStructuredDataType(
+        "object(a int, b string, c boolean)", "{\"a\": 1, \"b\": \"test\", \"c\": true}");
+    assertStructuredDataType("map(string, int)", "{\"key1\": 1}");
+    assertStructuredDataType("array(int)", "[1, 2, 3]");
+    assertStructuredDataType("array(array(int))", "[[1, 2], [3, 4]]");
+    assertStructuredDataType("array(map(string, int))", "[{\"key1\": 1}, {\"key2\": 2}]");
+    assertStructuredDataType(
+        "array(object(a int, b string, c boolean))", "[{\"a\": 1, \"b\": \"test\", \"c\": true}]");
+    assertStructuredDataType(
+        "map(string, object(a int, b string, c boolean))",
+        "{\"key1\": {\"a\": 1, \"b\": \"test\", \"c\": true}}");
+    assertStructuredDataType("map(string, array(int))", "{\"key1\": [1, 2, 3]}");
+    assertStructuredDataType("map(string, map(string, int))", "{\"key1\": {\"key2\": 2}}");
+    assertStructuredDataType("map(string, array(array(int)))", "{\"key1\": [[1, 2], [3, 4]]}");
+    assertStructuredDataType(
+        "map(string, array(map(string, int)))", "{\"key1\": [{\"key2\": 2}, {\"key3\": 3}]}");
+    assertStructuredDataType(
+        "map(string, array(object(a int, b string, c boolean)))",
+        "{\"key1\": [{\"a\": 1, \"b\": \"test\", \"c\": true}]}");
+    assertStructuredDataType(
+        "object(a int, b array(int), c map(string, int))",
+        "{\"a\": 1, \"b\": [1, 2, 3], \"c\": {\"key1\": 1}}");
+  }
+
+  private void assertStructuredDataType(String dataType, String value) throws Exception {
+    String tableName = createIcebergTable(dataType);
+    String offsetToken = UUID.randomUUID().toString();
+
+    /* Ingest using streaming ingest */
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    channel.insertRow(
+        createStreamingIngestRow(objectMapper.readValue(value, Map.class)), offsetToken);
+    TestUtils.waitForOffset(channel, offsetToken);
+
+    /* Verify the data */
+    ResultSet res =
+        conn.createStatement().executeQuery(String.format("select * from %s", tableName));
+    res.next();
+    String tmp = res.getString(2);
+    JsonNode actualNode = objectMapper.readTree(tmp);
+    JsonNode expectedNode = objectMapper.readTree(value);
+    Assert.assertEquals(actualNode, expectedNode);
   }
 }

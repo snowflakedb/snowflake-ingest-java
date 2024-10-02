@@ -21,10 +21,8 @@ import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
-import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
-import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ParameterProvider;
-import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
+import net.snowflake.ingest.utils.*;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.runner.RunWith;
@@ -87,12 +85,12 @@ public abstract class AbstractDataTypeTest {
     // Override Iceberg mode client lag to 1 second for faster test execution
     Map<String, Object> parameterMap = new HashMap<>();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 1000L);
+
+    Properties prop = Utils.createProperties(props);
+    SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
     client =
-        SnowflakeStreamingIngestClientFactory.builder("client1")
-            .setIsIceberg(isIceberg)
-            .setParameterOverrides(parameterMap)
-            .setProperties(props)
-            .build();
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client1", accountURL, prop, parameterMap, isIceberg, false);
   }
 
   @After
