@@ -78,9 +78,6 @@ public abstract class AbstractDataTypeTest {
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
-    conn.createStatement()
-        .execute(String.format("alter session set TIMESTAMP_TYPE_MAPPING='TIMESTAMP_NTZ'"));
-
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");

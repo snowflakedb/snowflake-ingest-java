@@ -287,29 +287,32 @@ public class IcebergDataTypeTest extends AbstractDataTypeTest {
   @Test
   public void testTimestamp() throws Exception {
     testIcebergIngestion(
-        "timestamp", "2000-12-31T23:59:59", "2000-12-31 23:59:59.000000 Z", new StringProvider());
+        "timestamp_ntz(6)",
+        "2000-12-31T23:59:59",
+        "2000-12-31 23:59:59.000000 Z",
+        new StringProvider());
     testIcebergIngestion(
-        "timestamp",
+        "timestamp_ntz(6)",
         "2000-12-31T23:59:59.123456",
         "2000-12-31 23:59:59.123456 Z",
         new StringProvider());
     testIcebergIngestion(
-        "timestamp",
+        "timestamp_ntz(6)",
         "2000-12-31T23:59:59.123456789+08:00",
         "2000-12-31 23:59:59.123456 Z",
         new StringProvider());
     testIcebergIngestion(
-        "timestamp",
+        "timestamp_ntz(6)",
         LocalDate.parse("2000-12-31"),
         "2000-12-31 00:00:00.000000 Z",
         new StringProvider());
     testIcebergIngestion(
-        "timestamp",
+        "timestamp_ntz(6)",
         LocalDateTime.parse("2000-12-31T23:59:59.123456789"),
         "2000-12-31 23:59:59.123456 Z",
         new StringProvider());
     testIcebergIngestion(
-        "timestamp",
+        "timestamp_ntz(6)",
         OffsetDateTime.parse("2000-12-31T23:59:59.123456789Z"),
         "2000-12-31 23:59:59.123456 Z",
         new StringProvider());
@@ -336,12 +339,45 @@ public class IcebergDataTypeTest extends AbstractDataTypeTest {
 
   @Test
   public void testTimestampTZ() throws Exception {
+    conn.createStatement().execute("alter session set timezone = 'UTC';");
     testIcebergIngestion(
-        "timestamptz", "2000-12-31T23:59:59", "2000-12-31 23:59:59.000000 Z", new StringProvider());
-    testIcebergIngestion(
-        "timestamptz",
-        "2000-12-31T23:59:59.123456+08:00",
-        "2000-12-31 23:59:59.123456 +0800",
+        "timestamp_ltz(6)",
+        "2000-12-31T23:59:59.000000+08:00",
+        "2000-12-31 15:59:59.000000 Z",
         new StringProvider());
+    testIcebergIngestion(
+        "timestamp_ltz(6)",
+        "2000-12-31T23:59:59.123456789+00:00",
+        "2000-12-31 23:59:59.123456 Z",
+        new StringProvider());
+    testIcebergIngestion(
+        "timestamp_ltz(6)",
+        "2000-12-31T23:59:59.123456-08:00",
+        "2001-01-01 07:59:59.123456 Z",
+        new StringProvider());
+
+    SFException ex =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                testIcebergIngestion(
+                    "timestamp", "2000-12-31T23:59:59.123456789012+08:00", new StringProvider()));
+    Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), ex.getVendorCode());
+
+    ex =
+        Assert.assertThrows(
+            SFException.class,
+            () ->
+                testIcebergIngestion(
+                    "timestamp",
+                    new Object(),
+                    "2000-12-31 00:00:00.000000 Z",
+                    new StringProvider()));
+    Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), ex.getVendorCode());
+  }
+
+  @Test
+  public void testStruct() throws Exception {
+    String tableName = createIcebergTable("object(a int, b string, c boolean)");
   }
 }
