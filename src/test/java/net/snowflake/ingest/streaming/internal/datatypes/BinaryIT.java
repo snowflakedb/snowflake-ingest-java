@@ -7,7 +7,7 @@ import org.junit.Test;
 public class BinaryIT extends AbstractDataTypeTest {
   @Before
   public void before() throws Exception {
-        super.before(false);
+    super.before(false);
   }
 
   @Test
@@ -38,7 +38,7 @@ public class BinaryIT extends AbstractDataTypeTest {
         "BINARY",
         Hex.decode("aaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
         new ByteArrayProvider());
-   testJdbcTypeCompatibility(
+    testJdbcTypeCompatibility(
         "BINARY",
         Hex.decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
         new ByteArrayProvider());

@@ -27,7 +27,6 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -79,6 +78,9 @@ public abstract class AbstractDataTypeTest {
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
+    conn.createStatement()
+        .execute(String.format("alter session set TIMESTAMP_TYPE_MAPPING='TIMESTAMP_NTZ'"));
+
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
@@ -88,7 +90,12 @@ public abstract class AbstractDataTypeTest {
     // Override Iceberg mode client lag to 1 second for faster test execution
     Map<String, Object> parameterMap = new HashMap<>();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 1000L);
-    client = SnowflakeStreamingIngestClientFactory.builder("client1").setIsIceberg(isIceberg).setParameterOverrides(parameterMap).setProperties(props).build();
+    client =
+        SnowflakeStreamingIngestClientFactory.builder("client1")
+            .setIsIceberg(isIceberg)
+            .setParameterOverrides(parameterMap)
+            .setProperties(props)
+            .build();
   }
 
   @After
@@ -111,22 +118,25 @@ public abstract class AbstractDataTypeTest {
 
   protected String createTable(String dataType) throws SQLException {
     String tableName = getRandomIdentifier();
-      conn.createStatement()
-              .execute(
-                      String.format(
-                              "create or replace table %s (%s string, %s %s)",
-                              tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
+    conn.createStatement()
+        .execute(
+            String.format(
+                "create or replace table %s (%s string, %s %s)",
+                tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
 
     return tableName;
   }
 
   protected String createIcebergTable(String dataType) throws SQLException {
     String tableName = getRandomIdentifier();
-      conn.createStatement().execute(String.format(
-              "create or replace iceberg table %s (%s string, %s %s) " +
-                      "catalog = 'SNOWFLAKE' " +
-                      "external_volume = 'streaming_ingest' " +
-                      "base_location = 'all_type_col';", tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
+    conn.createStatement()
+        .execute(
+            String.format(
+                "create or replace iceberg table %s (%s string, %s %s) "
+                    + "catalog = 'SNOWFLAKE' "
+                    + "external_volume = 'streaming_ingest' "
+                    + "base_location = 'all_type_col';",
+                tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType));
 
     return tableName;
   }
@@ -215,8 +225,8 @@ public abstract class AbstractDataTypeTest {
     ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider, false);
   }
 
-  <VALUE> void testIcebergIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
-      throws Exception {
+  <VALUE> void testIcebergIngestion(
+      String dataType, VALUE expectedValue, Provider<VALUE> selectProvider) throws Exception {
     ingestAndAssert(dataType, expectedValue, null, expectedValue, null, selectProvider, true);
   }
 
@@ -230,17 +240,19 @@ public abstract class AbstractDataTypeTest {
       JDBC_READ expectedValue,
       Provider<JDBC_READ> selectProvider)
       throws Exception {
-    ingestAndAssert(dataType, streamingIngestWriteValue, null, expectedValue, null, selectProvider, false);
+    ingestAndAssert(
+        dataType, streamingIngestWriteValue, null, expectedValue, null, selectProvider, false);
   }
 
-    <STREAMING_INGEST_WRITE, JDBC_READ> void testIcebergIngestion(
-        String dataType,
-        STREAMING_INGEST_WRITE streamingIngestWriteValue,
-        JDBC_READ expectedValue,
-        Provider<JDBC_READ> selectProvider)
-        throws Exception {
-        ingestAndAssert(dataType, streamingIngestWriteValue, null, expectedValue, null, selectProvider, true);
-    }
+  <STREAMING_INGEST_WRITE, JDBC_READ> void testIcebergIngestion(
+      String dataType,
+      STREAMING_INGEST_WRITE streamingIngestWriteValue,
+      JDBC_READ expectedValue,
+      Provider<JDBC_READ> selectProvider)
+      throws Exception {
+    ingestAndAssert(
+        dataType, streamingIngestWriteValue, null, expectedValue, null, selectProvider, true);
+  }
 
   /**
    * Simplified version where streaming ingest write type, JDBC write type and JDBC read type are
@@ -319,13 +331,13 @@ public abstract class AbstractDataTypeTest {
     if (expectedValue == null) {
       selectQuery =
           String.format("select count(*) from %s where %s is NULL", tableName, VALUE_COLUMN_NAME);
-    } else if (dataType.startsWith("TIMESTAMP_")) {
+    } else if (dataType.toUpperCase().startsWith("TIMESTAMP")) {
       selectQuery =
           String.format(
               "select count(*) from %s where to_varchar(%s, 'YYYY-MM-DD HH24:MI:SS.FF TZHTZM') ="
                   + " ?;",
               tableName, VALUE_COLUMN_NAME);
-    } else if (dataType.startsWith("TIME")) {
+    } else if (dataType.toUpperCase().startsWith("TIME")) {
       selectQuery =
           String.format(
               "select count(*) from %s where to_varchar(%s, 'HH24:MI:SS.FF TZHTZM') = ?;",

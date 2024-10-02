@@ -1,7 +1,6 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.util.Arrays;
-
 import org.junit.Before;
 import org.junit.Test;
 

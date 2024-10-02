@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-
 import org.junit.Before;
 import org.junit.Test;
 

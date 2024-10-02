@@ -1150,7 +1150,7 @@ class DataValidationUtil {
   static void checkFixedLengthByteArray(byte[] bytes, int length, final long insertRowIndex) {
     if (bytes.length != length) {
       throw new SFException(
-          ErrorCode.INVALID_FORMAT_ROW,
+          ErrorCode.INVALID_VALUE_ROW,
           String.format(
               "Binary length mismatch: expected=%d, actual=%d, rowIndex:%d",
               length, bytes.length, insertRowIndex));
