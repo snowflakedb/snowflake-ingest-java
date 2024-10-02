@@ -1277,7 +1277,6 @@
                 </goals>
                 <phase>generate-resources</phase>
                 <configuration>
-                  <skip>true</skip>
                   <executable>python3</executable>
                   <arguments>
                     <argument>${project.basedir}/scripts/process_licenses.py</argument>
