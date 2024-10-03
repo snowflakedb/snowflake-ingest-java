@@ -83,7 +83,7 @@ class BlobBuilder {
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
-          flusher.serialize(channelsDataPerTable, filePath, curDataSize);
+          flusher.serialize(channelsDataPerTable, filePath);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         final byte[] compressedChunkData;
@@ -117,7 +117,7 @@ class BlobBuilder {
 
         // Create chunk metadata
         long startOffset = curDataSize;
-        ChunkMetadata chunkMetadata =
+        ChunkMetadata.Builder chunkMetadataBuilder =
             ChunkMetadata.builder()
                 .setOwningTableFromChannelContext(firstChannelFlushContext)
                 // The start offset will be updated later in BlobBuilder#build to include the blob
@@ -136,9 +136,18 @@ class BlobBuilder {
                         serializedChunk.columnEpStatsMapCombined,
                         internalParameterProvider.setDefaultValuesInEp()))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
-                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond())
-                .setMajorMinorVersionInEp(internalParameterProvider.setMajorMinorVersionInEp())
-                .build();
+                .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond());
+
+        if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
+          chunkMetadataBuilder
+              .setMajorVersion(Constants.PARQUET_MAJOR_VERSION)
+              .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
+              // set createdOn in seconds
+              .setCreatedOn(System.currentTimeMillis() / 1000)
+              .setExtendedMetadataSize(-1L);
+        }
+
+        ChunkMetadata chunkMetadata = chunkMetadataBuilder.build();
 
         // Add chunk metadata and data to the list
         chunksMetadataList.add(chunkMetadata);

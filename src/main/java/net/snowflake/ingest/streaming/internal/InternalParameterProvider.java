@@ -26,9 +26,9 @@ class InternalParameterProvider {
     return !isIcebergMode;
   }
 
-  boolean setMajorMinorVersionInEp() {
+  boolean setIcebergSpecificFieldsInEp() {
     // When in Iceberg mode, we need to explicitly populate the major and minor version of parquet
-    // in the EP metadata.
+    // in the EP metadata, createdOn, and extendedMetadataSize.
     return isIcebergMode;
   }
 }

@@ -14,7 +14,6 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
@@ -283,7 +282,8 @@ public class BdecParquetWriter implements AutoCloseable {
 
     @Override
     public void write(List<Object> values) {
-      List<ColumnDescriptor> cols = schema.getColumns();
+      List<Type> cols =
+          schema.getFields(); /* getFields() returns top level columns in the schema */
       if (values.size() != cols.size()) {
         throw new ParquetEncodingException(
             "Invalid input data in channel '"
@@ -302,7 +302,7 @@ public class BdecParquetWriter implements AutoCloseable {
       recordConsumer.endMessage();
     }
 
-    private void writeValues(List<Object> values, GroupType type) {
+    private void writeValues(List<?> values, GroupType type) {
       List<Type> cols = type.getFields();
       for (int i = 0; i < cols.size(); ++i) {
         Object val = values.get(i);
@@ -344,7 +344,31 @@ public class BdecParquetWriter implements AutoCloseable {
                     "Unsupported column type: " + cols.get(i).asPrimitiveType());
             }
           } else {
-            throw new ParquetEncodingException("Unsupported column type: " + cols.get(i));
+            if (cols.get(i).isRepetition(Type.Repetition.REPEATED)) {
+              /* List and Map */
+              for (Object o : values) {
+                recordConsumer.startGroup();
+                if (o != null) {
+                  if (o instanceof List) {
+                    writeValues((List<?>) o, cols.get(i).asGroupType());
+                  } else {
+                    throw new ParquetEncodingException(
+                        String.format("Field %s should be a 3 level list or map", fieldName));
+                  }
+                }
+                recordConsumer.endGroup();
+              }
+            } else {
+              /* Struct */
+              recordConsumer.startGroup();
+              if (val instanceof List) {
+                writeValues((List<?>) val, cols.get(i).asGroupType());
+              } else {
+                throw new ParquetEncodingException(
+                    String.format("Field %s should be a 2 level struct", fieldName));
+              }
+              recordConsumer.endGroup();
+            }
           }
           recordConsumer.endField(fieldName, i);
         }

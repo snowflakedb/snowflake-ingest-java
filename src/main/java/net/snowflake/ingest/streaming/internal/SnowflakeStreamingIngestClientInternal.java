@@ -393,9 +393,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     // Add channel to the channel cache
     this.channelCache.addChannel(channel);
+
     this.storageManager.registerTable(
         new TableRef(response.getDBName(), response.getSchemaName(), response.getTableName()),
-        response.getExternalVolumeLocation());
+        response.getIcebergLocationInfo());
 
     return channel;
   }
@@ -421,6 +422,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getSchemaName(),
               request.getTableName(),
               request.getChannelName(),
+              this.isIcebergMode,
               request instanceof DropChannelVersionRequest
                   ? ((DropChannelVersionRequest) request).getClientSequencer()
                   : null);
