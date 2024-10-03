@@ -9,7 +9,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>2.2.2</version>
+  <version>2.3.0</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -1218,12 +1218,16 @@
                     <exclude>assets/org/apache/commons/math3/exception/util/LocalizedFormats_fr.properties</exclude>
                     <exclude>about.html</exclude>
                     <exclude>mozilla/public-suffix-list.txt</exclude>
-
+                    <exclude>META-INF/ASL2.0</exclude>
+                    <exclude>META-INF/FastDoubleParser-LICENSE</exclude>
+                    <exclude>META-INF/FastDoubleParser-NOTICE</exclude>
+                    <exclude>META-INF/licenses*/**</exclude>
                     <exclude>META-INF/LICENSE*</exclude>
                     <exclude>META-INF/NOTICE*</exclude>
                     <exclude>META-INF/DEPENDENCIES</exclude>
                     <exclude>META-INF/maven/**</exclude>
                     <exclude>META-INF/services/com.fasterxml.*</exclude>
+                    <exclude>META-INF/thirdparty-LICENSE</exclude>
                     <exclude>META-INF/*.xml</exclude>
                     <exclude>META-INF/*.SF</exclude>
                     <exclude>META-INF/*.DSA</exclude>
