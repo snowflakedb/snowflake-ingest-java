@@ -201,6 +201,14 @@
             <artifactId>metrics-core</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-transport-native-epoll</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>javax.activation</groupId>
             <artifactId>activation</artifactId>
           </exclusion>
