@@ -50,7 +50,7 @@
     <commonstext.version>1.11.0</commonstext.version>
     <fasterxml.version>2.17.2</fasterxml.version>
     <guava.version>32.0.1-jre</guava.version>
-    <hadoop.version>3.3.6</hadoop.version>
+    <hadoop.version>3.4.0</hadoop.version>
     <iceberg.version>1.5.2</iceberg.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.5</jacoco.version>
@@ -61,7 +61,7 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <net.minidev.version>2.4.9</net.minidev.version>
-    <netty.version>4.1.94.Final</netty.version>
+    <netty.version>4.1.113.Final</netty.version>
     <nimbusds.version>9.37.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.14.1</parquet.version>
@@ -241,6 +241,10 @@
             <artifactId>zookeeper</artifactId>
           </exclusion>
           <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+          </exclusion>
+          <exclusion>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-server</artifactId>
           </exclusion>
@@ -384,6 +388,14 @@
           <exclusion>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-yarn-common</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
           </exclusion>
           <exclusion>
             <groupId>org.slf4j</groupId>
