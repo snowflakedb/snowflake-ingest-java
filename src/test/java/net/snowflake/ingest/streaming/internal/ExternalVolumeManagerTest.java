@@ -13,16 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Before;
@@ -70,11 +66,12 @@ public class ExternalVolumeManagerTest {
   public void testConcurrentRegisterTable() throws Exception {
     int numThreads = 50;
     int timeoutInSeconds = 30;
-    List<Future<ExternalVolume>> allResults = doConcurrentTest(
-        numThreads,
-        timeoutInSeconds,
-        () -> manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo),
-        () -> manager.getStorage("db.schema.table"));
+    List<Future<ExternalVolume>> allResults =
+        doConcurrentTest(
+            numThreads,
+            timeoutInSeconds,
+            () -> manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo),
+            () -> manager.getStorage("db.schema.table"));
     ExternalVolume extvol = manager.getStorage("db.schema.table");
     assertNotNull(extvol);
     for (int i = 0; i < numThreads; i++) {
@@ -119,24 +116,27 @@ public class ExternalVolumeManagerTest {
     int timeoutInSeconds = 60;
     manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo);
 
-    List<Future<BlobPath>> allResults = doConcurrentTest(
-        numThreads,
-        timeoutInSeconds,
-        () -> {
-          for (int i = 0; i < 1000; i++) {
-            manager.generateBlobPath("db.schema.table");
-          }
-        },
-        () -> manager.generateBlobPath("db.schema.table"));
+    List<Future<BlobPath>> allResults =
+        doConcurrentTest(
+            numThreads,
+            timeoutInSeconds,
+            () -> {
+              for (int i = 0; i < 1000; i++) {
+                manager.generateBlobPath("db.schema.table");
+              }
+            },
+            () -> manager.generateBlobPath("db.schema.table"));
     for (int i = 0; i < numThreads; i++) {
       BlobPath blobPath = allResults.get(0).get(timeoutInSeconds, TimeUnit.SECONDS);
       assertNotNull(blobPath);
       assertTrue(blobPath.hasToken);
-      assertTrue(blobPath.blobPath, blobPath.blobPath.contains( "http://f1.com?token=t"));
+      assertTrue(blobPath.blobPath, blobPath.blobPath.contains("http://f1.com?token=t"));
     }
   }
 
-  private <T> List<Future<T>> doConcurrentTest(int numThreads, int timeoutInSeconds, Runnable action, Supplier<T> getResult) throws Exception {
+  private <T> List<Future<T>> doConcurrentTest(
+      int numThreads, int timeoutInSeconds, Runnable action, Supplier<T> getResult)
+      throws Exception {
     assertNull(executorService);
 
     executorService =
@@ -159,6 +159,7 @@ public class ExternalVolumeManagerTest {
     allResults.get(0).get(timeoutInSeconds, TimeUnit.SECONDS);
     return allResults;
   }
+
   @Test
   public void testGetClientPrefix() {
     assertEquals(manager.getClientPrefix(), "test_prefix_123");
