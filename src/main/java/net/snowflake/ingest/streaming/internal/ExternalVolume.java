@@ -43,9 +43,8 @@ class ExternalVolume implements IStorage {
   private static final int DEFAULT_PRESIGNED_URL_TIMEOUT_IN_SECONDS = 900;
 
   // Allowing concurrent generate URL requests is a weak form of adapting to high throughput
-  // clients.
-  // The low watermark ideally should be adaptive too for such clients,will wait for perf runs to
-  // show its necessary.
+  // clients. The low watermark ideally should be adaptive too for such clients,will wait for perf
+  // runs to show its necessary.
   private static final int MAX_CONCURRENT_GENERATE_URLS_REQUESTS = 10;
   private static final int LOW_WATERMARK_FOR_EARLY_REFRESH = 5;
 
@@ -114,7 +113,9 @@ class ExternalVolume implements IStorage {
       throw new SFException(e, ErrorCode.INTERNAL_ERROR);
     }
 
-    generateUrls(LOW_WATERMARK_FOR_EARLY_REFRESH);
+    // the caller is just setting up this object and not expecting a URL to be returned (unlike in
+    // dequeueUrlInfo), thus waitUntilAcquired=false.
+    generateUrls(LOW_WATERMARK_FOR_EARLY_REFRESH, false /* waitUntilAcquired */);
   }
 
   // TODO : Add timing ; add logging ; add retries ; add http exception handling better than
@@ -273,24 +274,38 @@ class ExternalVolume implements IStorage {
   }
 
   PresignedUrlInfo dequeueUrlInfo() {
-    PresignedUrlInfo info = this.presignedUrlInfos.poll();
-    boolean generate = false;
-    if (info == null) {
-      generate = true;
-    } else {
-      // Since the queue had a non-null entry, there is no way numUrlsInQueue is <=0
-      int remainingUrlsInQueue = this.numUrlsInQueue.decrementAndGet();
-      if (remainingUrlsInQueue <= LOW_WATERMARK_FOR_EARLY_REFRESH) {
-        generate = true;
-        // assert remaininUrlsInQueue >= 0
+    // use a 60 second buffer in case the executor service is backed up / serialization takes time /
+    // upload runs slow / etc.
+    long validUntilAtleastTimestamp = System.currentTimeMillis() + 60 * 1000;
+
+    // TODO: Wire in a checkStop to get out of this infinite loop.
+    while (true) {
+      PresignedUrlInfo info = this.presignedUrlInfos.poll();
+      if (info == null) {
+        // if the queue is empty, trigger a url refresh AND wait for it to complete.
+        // loop around when done to try and ready from the queue again.
+        generateUrls(LOW_WATERMARK_FOR_EARLY_REFRESH, true /* waitUntilAcquired */);
+        continue;
       }
+
+      // we dequeued a url, do the appropriate bookkeeping.
+      int remainingUrlsInQueue = this.numUrlsInQueue.decrementAndGet();
+
+      if (info.validUntilTimestamp < validUntilAtleastTimestamp) {
+        // This url can expire by the time it gets used, loop around and dequeue another URL.
+        continue;
+      }
+
+      // if we're nearing url exhaustion, go fetch another batch. Don't wait for the response as we
+      // already have a valid URL to be used by the current caller of dequeueUrlInfo.
+      if (remainingUrlsInQueue <= LOW_WATERMARK_FOR_EARLY_REFRESH) {
+        // TODO: do this generation on a background thread to allow the current thread to make
+        // progress ?  Will wait for perf runs to know this is an issue that needs addressal.
+        generateUrls(LOW_WATERMARK_FOR_EARLY_REFRESH, false /* waitUntilAcquired */);
+      }
+
+      return info;
     }
-    if (generate) {
-      // TODO: do this generation on a background thread to allow the current thread to make
-      // progress ?  Will wait for perf runs to know this is an issue that needs addressal.
-      generateUrls(LOW_WATERMARK_FOR_EARLY_REFRESH);
-    }
-    return info;
   }
 
   // NOTE : We are intentionally NOT re-enqueuing unused URLs here as that can cause correctness
@@ -298,18 +313,27 @@ class ExternalVolume implements IStorage {
   // allow an unused URL to go waste as we'll just go out and generate new URLs.
   // Do NOT add an enqueueUrl() method for this reason.
 
-  private void generateUrls(int minCountToSkipGeneration) {
+  /**
+   * Fetches new presigned URLs from snowflake.
+   *
+   * @param minCountToSkipGeneration Skip the RPC if we already have this many URLs in the queue
+   * @param waitUntilAcquired when true, make the current thread block on having enough URLs in the
+   *     queue
+   */
+  private void generateUrls(int minCountToSkipGeneration, boolean waitUntilAcquired) {
     int numAcquireAttempts = 0;
     boolean acquired = false;
 
     while (!acquired && numAcquireAttempts++ < 300) {
       // Use an aggressive timeout value as its possible that the other requests finished and added
-      // enough
-      // URLs to the queue. If we use a higher timeout value, this calling thread's flush is going
-      // to
-      // unnecessarily be blocked when URLs have already been added to the queue.
+      // enough URLs to the queue. If we use a higher timeout value, this calling thread's flush is
+      // going to unnecessarily be blocked when URLs have already been added to the queue.
       try {
-        acquired = this.generateUrlsSemaphore.tryAcquire(1, TimeUnit.SECONDS);
+        // If waitUntilAcquired is false, the caller is not interested in waiting for the results
+        // The semaphore being already "full" implies there are many another requests in flight
+        // and we can just early exit to the caller.
+        int timeoutInSeconds = waitUntilAcquired ? 1 : 0;
+        acquired = this.generateUrlsSemaphore.tryAcquire(timeoutInSeconds, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         // if the thread was interrupted there's nothing we can do about it, definitely shouldn't
         // continue processing.
@@ -317,6 +341,7 @@ class ExternalVolume implements IStorage {
         // reset the interrupted flag on the thread in case someone in the callstack wants to
         // gracefully continue processing.
         boolean interrupted = Thread.interrupted();
+
         String message =
             String.format(
                 "Semaphore acquisition in ExternalVolume.generateUrls was interrupted, likely"
@@ -327,10 +352,8 @@ class ExternalVolume implements IStorage {
       }
 
       // In case Acquire took time because no permits were available, it implies we already had N
-      // other threads
-      // fetching more URLs. In that case we should be content with what's in the buffer instead of
-      // doing another RPC
-      // potentially unnecessarily.
+      // other threads fetching more URLs. In that case we should be content with what's in the
+      // buffer instead of doing another RPC potentially unnecessarily.
       if (this.numUrlsInQueue.get() >= minCountToSkipGeneration) {
         // release the semaphore before early-exiting to avoid a leak in semaphore permits.
         if (acquired) {
@@ -339,11 +362,21 @@ class ExternalVolume implements IStorage {
 
         return;
       }
+
+      // If we couldn't acquire the semaphore, and the caller was doing an optimistic generateUrls
+      // but does NOT want to wait around for a successful generatePresignedUrlsResponse, then
+      // early exit and allow the caller to move on.
+      if (!acquired && !waitUntilAcquired) {
+        logger.logDebug(
+            "Skipping generateUrls because semaphore acquisition failed AND waitUntilAcquired =="
+                + " false.");
+        return;
+      }
     }
 
     // if we're here without acquiring, that implies the numAcquireAttempts went over 300. We're at
-    // an impasse
-    // and so there's nothing more to be done except error out, as that gives the client a chance to
+    // an impasse and so there's nothing more to be done except error out, as that gives the client
+    // a chance to
     // restart.
     if (!acquired) {
       String message =
@@ -355,10 +388,19 @@ class ExternalVolume implements IStorage {
     // we have acquired a semaphore permit at this point, must release before returning
 
     try {
-      GeneratePresignedUrlsResponse response = doGenerateUrls();
+      long currentTimestamp = System.currentTimeMillis();
+      long validUntilTimestamp =
+          currentTimestamp + (DEFAULT_PRESIGNED_URL_TIMEOUT_IN_SECONDS * 1000);
+      GeneratePresignedUrlsResponse response =
+          doGenerateUrls(DEFAULT_PRESIGNED_URL_TIMEOUT_IN_SECONDS);
       List<PresignedUrlInfo> urlInfos = response.getPresignedUrlInfos();
       urlInfos =
           urlInfos.stream()
+              .map(
+                  info -> {
+                    info.validUntilTimestamp = validUntilTimestamp;
+                    return info;
+                  })
               .filter(
                   info -> {
                     if (info == null
@@ -377,9 +419,8 @@ class ExternalVolume implements IStorage {
               .collect(Collectors.toList());
 
       // these are both thread-safe operations individually, and there is no need to do them inside
-      // a lock.
-      // For an infinitesimal time the numUrlsInQueue will under represent the number of entries in
-      // the queue.
+      // a lock. For an infinitesimal time the numUrlsInQueue will under represent the number of
+      // entries in the queue.
       this.presignedUrlInfos.addAll(urlInfos);
       this.numUrlsInQueue.addAndGet(urlInfos.size());
     } finally {
@@ -387,16 +428,11 @@ class ExternalVolume implements IStorage {
     }
   }
 
-  private GeneratePresignedUrlsResponse doGenerateUrls() {
+  private GeneratePresignedUrlsResponse doGenerateUrls(int timeoutInSeconds) {
     try {
       return this.serviceClient.generatePresignedUrls(
           new GeneratePresignedUrlsRequest(
-              tableRef,
-              role,
-              DEFAULT_PRESIGNED_URL_COUNT,
-              DEFAULT_PRESIGNED_URL_TIMEOUT_IN_SECONDS,
-              deploymentId,
-              true));
+              tableRef, role, DEFAULT_PRESIGNED_URL_COUNT, timeoutInSeconds, deploymentId, true));
 
     } catch (IngestResponseException | IOException e) {
       throw new SFException(e, ErrorCode.GENERATE_PRESIGNED_URLS_FAILURE, e.getMessage());
