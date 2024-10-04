@@ -6,19 +6,21 @@ package net.snowflake.ingest.streaming.internal;
  * that this is slightly different than the internal column metadata used elsewhere in this SDK.
  */
 public class ColumnProperties {
-  private String type;
+  private final String type;
 
-  private String logicalType;
+  private final String logicalType;
 
-  private Integer precision;
+  private final Integer precision;
 
-  private Integer scale;
+  private final Integer scale;
 
-  private Integer byteLength;
+  private final Integer byteLength;
 
-  private Integer length;
+  private final Integer length;
 
-  private boolean nullable;
+  private final boolean nullable;
+
+  private final String icebergColumnSchema;
 
   ColumnProperties(ColumnMetadata columnMetadata) {
     this.type = columnMetadata.getType();
@@ -28,6 +30,7 @@ public class ColumnProperties {
     this.byteLength = columnMetadata.getByteLength();
     this.length = columnMetadata.getLength();
     this.nullable = columnMetadata.getNullable();
+    this.icebergColumnSchema = columnMetadata.getSourceIcebergDataType();
   }
 
   public String getType() {
@@ -56,5 +59,17 @@ public class ColumnProperties {
 
   public boolean isNullable() {
     return nullable;
+  }
+
+  /**
+   * Return the value of sourceIcebergDataType() as returned by the service. It is populated only
+   * when this object represents an iceberg table's column, null otherwise. The String returned from
+   * here is meant to conform to the json schema specified here:
+   * https://iceberg.apache.org/spec/#appendix-c-json-serialization
+   *
+   * <p>Make this a public API when the Builder.setIsIceberg API is made public.
+   */
+  String getIcebergSchema() {
+    return icebergColumnSchema;
   }
 }
