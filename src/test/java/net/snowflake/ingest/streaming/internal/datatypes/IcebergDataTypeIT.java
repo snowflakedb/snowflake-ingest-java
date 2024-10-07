@@ -10,20 +10,20 @@ import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.UUID;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.lang3.StringUtils;
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 @Ignore("This test can be enabled after server side Iceberg EP support is released")
-public class IcebergDataTypeTest extends AbstractDataTypeTest {
+public class IcebergDataTypeIT extends AbstractDataTypeTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -37,13 +37,25 @@ public class IcebergDataTypeTest extends AbstractDataTypeTest {
     testIcebergIngestion("boolean", true, new BooleanProvider());
     testIcebergIngestion("boolean", false, new BooleanProvider());
     testIcebergIngestion("boolean", 1, true, new BooleanProvider());
+    testIcebergIngestion("boolean", 0, false, new BooleanProvider());
+    testIcebergIngestion("boolean", "1", true, new BooleanProvider());
+    testIcebergIngestion("boolean", "0", false, new BooleanProvider());
+    testIcebergIngestion("boolean", "true", true, new BooleanProvider());
     testIcebergIngestion("boolean", "false", false, new BooleanProvider());
+    testIcebergIngestion("boolean", null, new BooleanProvider());
 
     SFException ex =
-        Assert.assertThrows(
+        Assertions.catchThrowableOfType(
             SFException.class,
             () -> testIcebergIngestion("boolean", new Object(), true, new BooleanProvider()));
-    Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), ex.getVendorCode());
+    Assertions.assertThat(ex)
+        .extracting(SFException::getVendorCode)
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+
+    ex = Assertions.catchThrowableOfType(
+            SFException.class,
+            () -> testIcebergIngestionNonNullable("boolean", null, new BooleanProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
   }
 
   @Test
@@ -55,17 +67,20 @@ public class IcebergDataTypeTest extends AbstractDataTypeTest {
     testIcebergIngestion("int", new BigDecimal("1000000.09"), 1000000, new IntProvider());
     testIcebergIngestion("int", Integer.MAX_VALUE, new IntProvider());
     testIcebergIngestion("int", Integer.MIN_VALUE, new IntProvider());
+    testIcebergIngestion("int", null, new IntProvider());
 
     SFException ex =
-        Assert.assertThrows(
-            SFException.class,
-            () -> testIcebergIngestion("int", Long.MAX_VALUE, new LongProvider()));
-    Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), ex.getVendorCode());
+            Assertions.catchThrowableOfType(
+                    SFException.class,
+                    () -> testIcebergIngestion("int", 1L + Integer.MAX_VALUE, new LongProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_VALUE_ROW.getMessageCode());
 
-    ex =
-        Assert.assertThrows(
-            SFException.class, () -> testIcebergIngestion("int", true, 0, new IntProvider()));
-    Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), ex.getVendorCode());
+    ex = Assertions.catchThrowableOfType(
+                    SFException.class, () -> testIcebergIngestion("int", true, 0, new IntProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+
+    ex = Assertions.catchThrowableOfType(SFException.class, () -> testIcebergIngestionNonNullable("int", null, new IntProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
   }
 
   @Test
@@ -77,23 +92,27 @@ public class IcebergDataTypeTest extends AbstractDataTypeTest {
     testIcebergIngestion("long", new BigDecimal("1000000.09"), 1000000L, new LongProvider());
     testIcebergIngestion("long", Long.MAX_VALUE, new LongProvider());
     testIcebergIngestion("long", Long.MIN_VALUE, new LongProvider());
+    testIcebergIngestion("long", null, new LongProvider());
 
     SFException ex =
-        Assert.assertThrows(
-            SFException.class,
-            () -> testIcebergIngestion("long", Double.MAX_VALUE, new DoubleProvider()));
-    Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), ex.getVendorCode());
+            Assertions.catchThrowableOfType(
+                    SFException.class,
+                    () -> testIcebergIngestion("long", Double.MAX_VALUE, new DoubleProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_VALUE_ROW.getMessageCode());
 
     ex =
-        Assert.assertThrows(
-            SFException.class,
-            () -> testIcebergIngestion("long", Double.NaN, new DoubleProvider()));
-    Assert.assertEquals(ErrorCode.INVALID_VALUE_ROW.getMessageCode(), ex.getVendorCode());
+            Assertions.catchThrowableOfType(
+                    SFException.class,
+                    () -> testIcebergIngestion("long", Double.NaN, new DoubleProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_VALUE_ROW.getMessageCode());
 
     ex =
-        Assert.assertThrows(
-            SFException.class, () -> testIcebergIngestion("long", false, 0L, new LongProvider()));
-    Assert.assertEquals(ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), ex.getVendorCode());
+            Assertions.catchThrowableOfType(
+                    SFException.class, () -> testIcebergIngestion("long", false, 0L, new LongProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+
+    ex = Assertions.catchThrowableOfType(SFException.class, () -> testIcebergIngestionNonNullable("long", null, new LongProvider()));
+    Assertions.assertThat(ex).extracting(SFException::getVendorCode).isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
   }
 
   @Test
@@ -420,13 +439,14 @@ public class IcebergDataTypeTest extends AbstractDataTypeTest {
   }
 
   private void assertStructuredDataType(String dataType, String value) throws Exception {
-    String tableName = createIcebergTable(dataType);
+    String tableName = createIcebergTable(dataType, true);
     String offsetToken = UUID.randomUUID().toString();
 
     /* Ingest using streaming ingest */
     SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    Object values = objectMapper.readValue(value, Object.class);
     channel.insertRow(
-        createStreamingIngestRow(objectMapper.readValue(value, Map.class)), offsetToken);
+        createStreamingIngestRow(objectMapper.readValue(value, Object.class)), offsetToken);
     TestUtils.waitForOffset(channel, offsetToken);
 
     /* Verify the data */
