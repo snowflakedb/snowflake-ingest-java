@@ -287,6 +287,12 @@
         <groupId>org.apache.iceberg</groupId>
         <artifactId>iceberg-core</artifactId>
         <version>${iceberg.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.apache.iceberg</groupId>
