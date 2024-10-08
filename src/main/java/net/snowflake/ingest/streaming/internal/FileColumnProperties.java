@@ -10,6 +10,9 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigInteger;
 import java.util.Objects;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 /** Audit register endpoint/FileColumnPropertyDTO property list. */
 class FileColumnProperties {
@@ -50,43 +53,113 @@ class FileColumnProperties {
   // Default value to use for min/max real when all data in the given column is NULL
   public static final Double DEFAULT_MIN_MAX_REAL_VAL_FOR_EP = 0d;
 
-  FileColumnProperties(RowBufferStats stats, boolean setDefaultValues) {
+  // Default value to use for min/max string when all data in the given Iceberg column is NULL
+  public static final String DEFAULT_MIN_MAX_STR_VAL_FOR_EP = "";
+
+  FileColumnProperties(RowBufferStats stats) {
     this.setColumnOrdinal(stats.getOrdinal());
     this.setFieldId(stats.getFieldId());
     this.setCollation(stats.getCollationDefinitionString());
-    this.setMaxIntValue(
-        stats.getCurrentMaxIntValue() == null
-            ? (setDefaultValues ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP : null)
-            : stats.getCurrentMaxIntValue());
-    this.setMinIntValue(
-        stats.getCurrentMinIntValue() == null
-            ? (setDefaultValues ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP : null)
-            : stats.getCurrentMinIntValue());
-    this.setMinRealValue(
-        stats.getCurrentMinRealValue() == null
-            ? (setDefaultValues ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP : null)
-            : stats.getCurrentMinRealValue());
-    this.setMaxRealValue(
-        stats.getCurrentMaxRealValue() == null
-            ? (setDefaultValues ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP : null)
-            : stats.getCurrentMaxRealValue());
-    this.setMaxLength(stats.getCurrentMaxLength());
 
+    if (stats.getIsIcebergColumn()) {
+      /* Only set corresponding min/max stats to default value for Iceberg columns if the all row values are null */
+      switch (stats.getPrimitiveType().getPrimitiveTypeName()) {
+        case BOOLEAN:
+        case INT32:
+        case INT64:
+          this.setMaxIntValue(
+              stats.getCurrentMaxIntValue() == null
+                  ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+                  : stats.getCurrentMaxIntValue());
+          this.setMinIntValue(
+              stats.getCurrentMinIntValue() == null
+                  ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+                  : stats.getCurrentMinIntValue());
+          break;
+        case FLOAT:
+        case DOUBLE:
+          this.setMaxRealValue(
+              stats.getCurrentMaxRealValue() == null
+                  ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+                  : stats.getCurrentMaxRealValue());
+          this.setMinRealValue(
+              stats.getCurrentMinRealValue() == null
+                  ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+                  : stats.getCurrentMinRealValue());
+          break;
+        case BINARY:
+          this.setMaxStrValue(
+              stats.getCurrentMaxStrValue() == null
+                  ? DEFAULT_MIN_MAX_STR_VAL_FOR_EP
+                  : truncateBytesAsHex(stats.getCurrentMaxStrValue(), false /* truncate down */));
+          this.setMinStrValue(
+              stats.getCurrentMinStrValue() == null
+                  ? DEFAULT_MIN_MAX_STR_VAL_FOR_EP
+                  : truncateBytesAsHex(stats.getCurrentMinStrValue(), false /* truncate down */));
+          break;
+        case FIXED_LEN_BYTE_ARRAY:
+          if (stats.getPrimitiveType().getLogicalTypeAnnotation()
+              instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
+            this.setMaxIntValue(
+                stats.getCurrentMaxIntValue() == null
+                    ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+                    : stats.getCurrentMaxIntValue());
+            this.setMinIntValue(
+                stats.getCurrentMinIntValue() == null
+                    ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+                    : stats.getCurrentMinIntValue());
+          } else {
+            this.setMaxStrValue(
+                stats.getCurrentMaxStrValue() == null
+                    ? DEFAULT_MIN_MAX_STR_VAL_FOR_EP
+                    : truncateBytesAsHex(stats.getCurrentMaxStrValue(), true /* truncate down */));
+            this.setMinStrValue(
+                stats.getCurrentMinStrValue() == null
+                    ? DEFAULT_MIN_MAX_STR_VAL_FOR_EP
+                    : truncateBytesAsHex(stats.getCurrentMinStrValue(), false /* truncate down */));
+          }
+          break;
+        default:
+          throw new SFException(
+              ErrorCode.INTERNAL_ERROR,
+              "Unsupported Iceberg column type: "
+                  + stats.getPrimitiveType().getPrimitiveTypeName());
+      }
+    } else {
+      /* Set every column to default value for FDN columns if the all row values are null */
+      this.setMaxIntValue(
+          stats.getCurrentMaxIntValue() == null
+              ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+              : stats.getCurrentMaxIntValue());
+      this.setMinIntValue(
+          stats.getCurrentMinIntValue() == null
+              ? DEFAULT_MIN_MAX_INT_VAL_FOR_EP
+              : stats.getCurrentMinIntValue());
+      this.setMaxRealValue(
+          stats.getCurrentMaxRealValue() == null
+              ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+              : stats.getCurrentMaxRealValue());
+      this.setMinRealValue(
+          stats.getCurrentMinRealValue() == null
+              ? DEFAULT_MIN_MAX_REAL_VAL_FOR_EP
+              : stats.getCurrentMinRealValue());
+
+      // current hex-encoded max value, truncated up to 32 bytes
+      if (stats.getCurrentMaxStrValue() != null) {
+        String truncatedAsHex =
+            truncateBytesAsHex(stats.getCurrentMaxStrValue(), true /* truncate down */);
+        this.setMaxStrValue(truncatedAsHex);
+      }
+      // current hex-encoded min value, truncated down to 32 bytes
+      if (stats.getCurrentMinStrValue() != null) {
+        String truncatedAsHex =
+            truncateBytesAsHex(stats.getCurrentMinStrValue(), false /* truncate down */);
+        this.setMinStrValue(truncatedAsHex);
+      }
+    }
+    this.setMaxLength(stats.getCurrentMaxLength());
     this.setMaxStrNonCollated(null);
     this.setMinStrNonCollated(null);
-
-    // current hex-encoded min value, truncated down to 32 bytes
-    if (stats.getCurrentMinStrValue() != null) {
-      String truncatedAsHex = truncateBytesAsHex(stats.getCurrentMinStrValue(), false);
-      this.setMinStrValue(truncatedAsHex);
-    }
-
-    // current hex-encoded max value, truncated up to 32 bytes
-    if (stats.getCurrentMaxStrValue() != null) {
-      String truncatedAsHex = truncateBytesAsHex(stats.getCurrentMaxStrValue(), true);
-      this.setMaxStrValue(truncatedAsHex);
-    }
-
     this.setNullCount(stats.getCurrentNullCount());
     this.setDistinctValues(stats.getDistinctValues());
   }

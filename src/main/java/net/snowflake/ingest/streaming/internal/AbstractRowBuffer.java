@@ -649,7 +649,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
     for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
       RowBufferStats stat = colStat.getValue();
-      FileColumnProperties dto = new FileColumnProperties(stat, setDefaultValues);
+      FileColumnProperties dto = new FileColumnProperties(stat);
       String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
     }
