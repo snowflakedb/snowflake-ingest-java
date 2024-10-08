@@ -641,15 +641,16 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    *
    * @param rowCount: count of rows in the given buffer
    * @param colStats: map of column name to RowBufferStats
-   * @param setDefaultValues: whether to set default values for null fields the EPs
+   * @param setAllDefaultValues: whether to set default values for all null fields the EPs
+   *     irrespective of the data type of this column
    * @return the EPs built from column stats
    */
   static EpInfo buildEpInfoFromStats(
-      long rowCount, Map<String, RowBufferStats> colStats, boolean setDefaultValues) {
+      long rowCount, Map<String, RowBufferStats> colStats, boolean setAllDefaultValues) {
     EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
     for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
       RowBufferStats stat = colStat.getValue();
-      FileColumnProperties dto = new FileColumnProperties(stat);
+      FileColumnProperties dto = new FileColumnProperties(stat, setAllDefaultValues);
       String colName = colStat.getValue().getColumnDisplayName();
       epInfo.getColumnEps().put(colName, dto);
     }

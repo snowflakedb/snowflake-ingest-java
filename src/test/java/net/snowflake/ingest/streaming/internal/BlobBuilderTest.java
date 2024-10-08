@@ -106,13 +106,14 @@ public class BlobBuilderTest {
             isIceberg
                 ? new RowBufferStats(
                     columnName,
+                    null,
                     1,
                     1,
                     Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
                         .as(LogicalTypeAnnotation.stringType())
                         .id(1)
                         .named("test"))
-                : new RowBufferStats(columnName, null, 1));
+                : new RowBufferStats(columnName, null, 1, null, null));
     channelData.setChannelContext(
         new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
     return Collections.singletonList(channelData);

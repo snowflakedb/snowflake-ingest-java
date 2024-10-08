@@ -501,7 +501,7 @@ public class SnowflakeStreamingIngestClientTest {
 
     Map<String, RowBufferStats> columnEps = new HashMap<>();
     columnEps.put("column", new RowBufferStats("COL1"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, isIcebergMode);
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode);
 
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
@@ -550,7 +550,7 @@ public class SnowflakeStreamingIngestClientTest {
   private Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> getRetryBlobMetadata() {
     Map<String, RowBufferStats> columnEps = new HashMap<>();
     columnEps.put("column", new RowBufferStats("COL1"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, isIcebergMode);
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode);
 
     ChannelMetadata channelMetadata1 =
         ChannelMetadata.builder()
