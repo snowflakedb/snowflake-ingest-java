@@ -134,7 +134,7 @@ class BlobBuilder {
                     AbstractRowBuffer.buildEpInfoFromStats(
                         serializedChunk.rowCount,
                         serializedChunk.columnEpStatsMapCombined,
-                        internalParameterProvider.setDefaultValuesInEp()))
+                        internalParameterProvider.setAllDefaultValuesInEp()))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond());
 

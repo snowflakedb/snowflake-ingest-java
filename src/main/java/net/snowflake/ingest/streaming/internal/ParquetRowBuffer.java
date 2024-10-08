@@ -89,20 +89,26 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       /* Set up fields using top level column information */
       validateColumnCollation(column);
       ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
-      parquetTypes.add(typeInfo.getParquetType());
+      Type parquetType = typeInfo.getParquetType();
+      parquetTypes.add(parquetType);
       this.metadata.putAll(typeInfo.getMetadata());
       int columnIndex = parquetTypes.size() - 1;
-      fieldIndex.put(
-          column.getInternalName(),
-          new ParquetColumn(column, columnIndex, typeInfo.getParquetType()));
+      fieldIndex.put(column.getInternalName(), new ParquetColumn(column, columnIndex, parquetType));
+
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
+
       if (!clientBufferParameters.getIsIcebergMode()) {
         /* Streaming to FDN table doesn't support sub-columns, set up the stats here. */
         this.statsMap.put(
             column.getInternalName(),
-            new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal()));
+            new RowBufferStats(
+                column.getName(),
+                column.getCollation(),
+                column.getOrdinal(),
+                null /* fieldId */,
+                parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
@@ -112,7 +118,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
            */
           this.tempStatsMap.put(
               column.getInternalName(),
-              new RowBufferStats(column.getName(), column.getCollation(), column.getOrdinal()));
+              new RowBufferStats(
+                  column.getName(),
+                  column.getCollation(),
+                  column.getOrdinal(),
+                  null /* fieldId */,
+                  parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
         }
       }
 
@@ -178,12 +189,20 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         int ordinal = schema.getType(columnDescriptor.getPath()[0]).getId().intValue();
 
         this.statsMap.put(
-            columnPath, new RowBufferStats(columnPath, ordinal, fieldId, primitiveType));
+            columnPath,
+            new RowBufferStats(
+                columnPath, null /* collationDefinitionString */, ordinal, fieldId, primitiveType));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
-              columnPath, new RowBufferStats(columnPath, ordinal, fieldId, primitiveType));
+              columnPath,
+              new RowBufferStats(
+                  columnPath,
+                  null /* collationDefinitionString */,
+                  ordinal,
+                  fieldId,
+                  primitiveType));
         }
       }
     }

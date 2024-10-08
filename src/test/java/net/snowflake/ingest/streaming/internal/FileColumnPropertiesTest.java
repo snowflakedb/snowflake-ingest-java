@@ -26,16 +26,17 @@ public class FileColumnPropertiesTest {
         isIceberg
             ? new RowBufferStats(
                 "COL",
+                null,
                 1,
                 1,
                 Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
                     .named("test"))
-            : new RowBufferStats("COL", null, 1);
+            : new RowBufferStats("COL", null, 1, null, null);
     stats.addStrValue("bcd");
     stats.addStrValue("abcde");
-    FileColumnProperties props = new FileColumnProperties(stats);
+    FileColumnProperties props = new FileColumnProperties(stats, !isIceberg);
     Assert.assertEquals(1, props.getColumnOrdinal());
     Assert.assertEquals(isIceberg ? 1 : null, props.getFieldId());
     Assert.assertEquals("6162636465", props.getMinStrValue());
@@ -48,16 +49,17 @@ public class FileColumnPropertiesTest {
         isIceberg
             ? new RowBufferStats(
                 "COL",
+                null,
                 1,
                 1,
                 Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
                     .named("test"))
-            : new RowBufferStats("COL", null, 1);
+            : new RowBufferStats("COL", null, 1, null, null);
     stats.addStrValue("aßßßßßßßßßßßßßßßß");
     Assert.assertEquals(33, stats.getCurrentMinStrValue().length);
-    props = new FileColumnProperties(stats);
+    props = new FileColumnProperties(stats, !isIceberg);
     Assert.assertEquals(1, props.getColumnOrdinal());
     Assert.assertNull(props.getMinStrNonCollated());
     Assert.assertNull(props.getMaxStrNonCollated());

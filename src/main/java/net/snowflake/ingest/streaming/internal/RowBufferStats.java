@@ -26,6 +26,12 @@ class RowBufferStats {
    */
   private final Integer fieldId;
 
+  private final String collationDefinitionString;
+  /** Display name is required for the registration endpoint */
+  private final String columnDisplayName;
+  /** Primitive type of the column, only used for Iceberg columns */
+  private final PrimitiveType primitiveType;
+
   private byte[] currentMinStrValue;
   private byte[] currentMaxStrValue;
   private BigInteger currentMinIntValue;
@@ -35,61 +41,23 @@ class RowBufferStats {
   private long currentNullCount;
   // for binary or string columns
   private long currentMaxLength;
-  private final String collationDefinitionString;
-  /** Display name is required for the registration endpoint */
-  private final String columnDisplayName;
-  /** Whether the column is an Iceberg column */
-  private final boolean isIcebergColumn;
-  /** Primitive type of the column, only used for Iceberg columns */
-  private final PrimitiveType primitiveType;
-
-  /** Creates empty Iceberg column stats */
-  RowBufferStats(
-      String columnDisplayName, int ordinal, Integer fieldId, PrimitiveType primitiveType) {
-    this(
-        columnDisplayName,
-        null /* collationDefinitionString */,
-        ordinal,
-        fieldId,
-        true /* isIcebergColumn */,
-        primitiveType);
-  }
-
-  /** Creates empty FDN column stats */
-  RowBufferStats(String columnDisplayName, String collationDefinitionString, int ordinal) {
-    this(
-        columnDisplayName,
-        collationDefinitionString,
-        ordinal,
-        null /* fieldId */,
-        false /* isIcebergColumn */,
-        null /* primitiveType */);
-  }
 
   RowBufferStats(
       String columnDisplayName,
       String collationDefinitionString,
       int ordinal,
       Integer fieldId,
-      boolean isIcebergColumn,
       PrimitiveType primitiveType) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
     this.ordinal = ordinal;
     this.fieldId = fieldId;
-    this.isIcebergColumn = isIcebergColumn;
     this.primitiveType = primitiveType;
-    if (isIcebergColumn && (primitiveType == null || fieldId == null)) {
-      throw new SFException(
-          ErrorCode.INTERNAL_ERROR,
-          "Iceberg column %s must have a primitive type and field id",
-          columnDisplayName);
-    }
     reset();
   }
 
   RowBufferStats(String columnDisplayName) {
-    this(columnDisplayName, null, -1, null, false, null);
+    this(columnDisplayName, null, -1, null, null);
   }
 
   void reset() {
@@ -110,7 +78,6 @@ class RowBufferStats {
         this.getCollationDefinitionString(),
         this.getOrdinal(),
         this.getFieldId(),
-        this.getIsIcebergColumn(),
         this.getPrimitiveType());
   }
 
@@ -130,7 +97,6 @@ class RowBufferStats {
             left.getCollationDefinitionString(),
             left.getOrdinal(),
             left.getFieldId(),
-            left.getIsIcebergColumn(),
             left.getPrimitiveType());
 
     if (left.currentMinIntValue != null) {
@@ -280,10 +246,6 @@ class RowBufferStats {
 
   Integer getFieldId() {
     return fieldId;
-  }
-
-  boolean getIsIcebergColumn() {
-    return isIcebergColumn;
   }
 
   PrimitiveType getPrimitiveType() {
