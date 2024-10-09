@@ -69,12 +69,8 @@ class BlobBuilder {
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
       InternalParameterProvider internalParameterProvider)
-      throws IOException,
-          NoSuchPaddingException,
-          NoSuchAlgorithmException,
-          InvalidAlgorithmParameterException,
-          InvalidKeyException,
-          IllegalBlockSizeException,
+      throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
           BadPaddingException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();

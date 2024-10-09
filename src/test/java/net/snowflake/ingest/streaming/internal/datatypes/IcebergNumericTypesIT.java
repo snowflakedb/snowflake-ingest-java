@@ -2,18 +2,35 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runners.Parameterized;
 
 @Ignore("This test can be enabled after server side Iceberg EP support is released")
 public class IcebergNumericTypesIT extends AbstractDataTypeTest {
+  @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
+  public static Object[][] parameters() {
+    return new Object[][] {
+      {"GZIP", Constants.IcebergSerializationPolicy.COMPATIBLE},
+      {"GZIP", Constants.IcebergSerializationPolicy.OPTIMIZED},
+      {"ZSTD", Constants.IcebergSerializationPolicy.COMPATIBLE},
+      {"ZSTD", Constants.IcebergSerializationPolicy.OPTIMIZED}
+    };
+  }
+
+  @Parameterized.Parameter public static String compressionAlgorithm;
+
+  @Parameterized.Parameter(1)
+  public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
+
   @Before
   public void before() throws Exception {
-    super.before(true);
+    super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
   }
 
   @Test

@@ -47,9 +47,7 @@ public class ClientBufferParameters {
     this.isIcebergMode = isIcebergMode;
   }
 
-  /**
-   * @param clientInternal reference to the client object where the relevant parameters are set
-   */
+  /** @param clientInternal reference to the client object where the relevant parameters are set */
   public ClientBufferParameters(SnowflakeStreamingIngestClientInternal clientInternal) {
     this.maxChunkSizeInBytes =
         clientInternal != null
