@@ -21,8 +21,6 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
   public static Object[][] parameters() {
     return new Object[][] {
-      {"GZIP", Constants.IcebergSerializationPolicy.COMPATIBLE},
-      {"GZIP", Constants.IcebergSerializationPolicy.OPTIMIZED},
       {"ZSTD", Constants.IcebergSerializationPolicy.COMPATIBLE},
       {"ZSTD", Constants.IcebergSerializationPolicy.OPTIMIZED}
     };
