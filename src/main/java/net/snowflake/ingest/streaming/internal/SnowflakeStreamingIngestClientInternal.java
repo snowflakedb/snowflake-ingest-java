@@ -359,7 +359,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         && response.getTableColumns().stream()
             .anyMatch(c -> c.getSourceIcebergDataType() == null)) {
       throw new SFException(
-          ErrorCode.INTERNAL_ERROR, "Iceberg table columns must have sourceIcebergDataType set.");
+          ErrorCode.INTERNAL_ERROR, "Iceberg table columns must have sourceIcebergDataType set");
     }
 
     logger.logInfo(

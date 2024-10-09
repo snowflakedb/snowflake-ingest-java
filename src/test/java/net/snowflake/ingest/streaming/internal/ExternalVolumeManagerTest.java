@@ -18,6 +18,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +28,7 @@ public class ExternalVolumeManagerTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private ExternalVolumeManager manager;
   private FileLocationInfo fileLocationInfo;
+  private ExecutorService executorService;
 
   @Before
   public void setup() throws JsonProcessingException {
@@ -41,7 +43,11 @@ public class ExternalVolumeManagerTest {
   }
 
   @After
-  public void teardown() {}
+  public void teardown() {
+    if (executorService != null) {
+      executorService.shutdownNow();
+    }
+  }
 
   @Test
   public void testRegister() {
@@ -59,29 +65,17 @@ public class ExternalVolumeManagerTest {
   @Test
   public void testConcurrentRegisterTable() throws Exception {
     int numThreads = 50;
-    ExecutorService executorService =
-        new ThreadPoolExecutor(
-            numThreads, numThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
-    List<Callable<ExternalVolume>> tasks = new ArrayList<>();
-    final CyclicBarrier startBarrier = new CyclicBarrier(numThreads);
-    final CyclicBarrier endBarrier = new CyclicBarrier(numThreads);
-    for (int i = 0; i < numThreads; i++) {
-      tasks.add(
-          () -> {
-            startBarrier.await(30, TimeUnit.SECONDS);
-            manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo);
-            endBarrier.await();
-            return manager.getStorage("db.schema.table");
-          });
-    }
-
-    List<Future<ExternalVolume>> allResults = executorService.invokeAll(tasks);
-    allResults.get(0).get(30, TimeUnit.SECONDS);
-
+    int timeoutInSeconds = 30;
+    List<Future<ExternalVolume>> allResults =
+        doConcurrentTest(
+            numThreads,
+            timeoutInSeconds,
+            () -> manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo),
+            () -> manager.getStorage("db.schema.table"));
     ExternalVolume extvol = manager.getStorage("db.schema.table");
     assertNotNull(extvol);
     for (int i = 0; i < numThreads; i++) {
-      assertSame("" + i, extvol, allResults.get(i).get(30, TimeUnit.SECONDS));
+      assertSame("" + i, extvol, allResults.get(i).get(timeoutInSeconds, TimeUnit.SECONDS));
     }
   }
 
@@ -114,6 +108,56 @@ public class ExternalVolumeManagerTest {
     assertTrue(blobPath.hasToken);
     assertEquals(blobPath.fileName, "f1");
     assertEquals(blobPath.blobPath, "http://f1.com?token=t1");
+  }
+
+  @Test
+  public void testConcurrentGenerateBlobPath() throws Exception {
+    int numThreads = 50;
+    int timeoutInSeconds = 60;
+    manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo);
+
+    List<Future<BlobPath>> allResults =
+        doConcurrentTest(
+            numThreads,
+            timeoutInSeconds,
+            () -> {
+              for (int i = 0; i < 1000; i++) {
+                manager.generateBlobPath("db.schema.table");
+              }
+            },
+            () -> manager.generateBlobPath("db.schema.table"));
+    for (int i = 0; i < numThreads; i++) {
+      BlobPath blobPath = allResults.get(0).get(timeoutInSeconds, TimeUnit.SECONDS);
+      assertNotNull(blobPath);
+      assertTrue(blobPath.hasToken);
+      assertTrue(blobPath.blobPath, blobPath.blobPath.contains("http://f1.com?token=t"));
+    }
+  }
+
+  private <T> List<Future<T>> doConcurrentTest(
+      int numThreads, int timeoutInSeconds, Runnable action, Supplier<T> getResult)
+      throws Exception {
+    assertNull(executorService);
+
+    executorService =
+        new ThreadPoolExecutor(
+            numThreads, numThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+    List<Callable<T>> tasks = new ArrayList<>();
+    final CyclicBarrier startBarrier = new CyclicBarrier(numThreads);
+    final CyclicBarrier endBarrier = new CyclicBarrier(numThreads);
+    for (int i = 0; i < numThreads; i++) {
+      tasks.add(
+          () -> {
+            startBarrier.await(timeoutInSeconds, TimeUnit.SECONDS);
+            action.run();
+            endBarrier.await();
+            return getResult.get();
+          });
+    }
+
+    List<Future<T>> allResults = executorService.invokeAll(tasks);
+    allResults.get(0).get(timeoutInSeconds, TimeUnit.SECONDS);
+    return allResults;
   }
 
   @Test

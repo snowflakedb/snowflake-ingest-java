@@ -58,7 +58,7 @@ public class TestUtils {
 
   private static final ObjectMapper mapper = new ObjectMapper();
 
-  private static ObjectNode profile = null;
+  private static boolean isInitialized = false;
 
   private static String user = "";
 
@@ -109,7 +109,7 @@ public class TestUtils {
     Path path = Paths.get(testProfilePath);
 
     if (Files.exists(path)) {
-      profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(path)));
+      ObjectNode profile = (ObjectNode) mapper.readTree(new String(Files.readAllBytes(path)));
 
       user = profile.get(USER).asText();
       account = profile.get(ACCOUNT).asText();
@@ -141,6 +141,8 @@ public class TestUtils {
       privateKey = keyPair.getPrivate();
       privateKeyPem = java.util.Base64.getEncoder().encodeToString(privateKey.getEncoded());
     }
+
+    isInitialized = true;
   }
 
   /** @return profile path that will be used for tests. */
@@ -153,21 +155,21 @@ public class TestUtils {
   }
 
   public static String getUser() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return user;
   }
 
   public static String getAccount() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return account;
   }
 
   public static String getAccountURL() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
 
@@ -175,7 +177,7 @@ public class TestUtils {
   }
 
   public static String getRole() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
 
@@ -183,42 +185,42 @@ public class TestUtils {
   }
 
   public static String getWarehouse() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return warehouse;
   }
 
   public static String getHost() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return host;
   }
 
   public static String getPrivateKey() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return privateKeyPem;
   }
 
   public static KeyPair getKeyPair() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return keyPair;
   }
 
   public static String getDatabase() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return database;
   }
 
   public static String getSchema() throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     return schema;
@@ -226,7 +228,7 @@ public class TestUtils {
 
   public static Properties getProperties(Constants.BdecVersion bdecVersion, boolean useDefaultRole)
       throws Exception {
-    if (profile == null) {
+    if (!isInitialized) {
       init();
     }
     Properties props = new Properties();
@@ -272,7 +274,10 @@ public class TestUtils {
       return streamingConn;
     }
 
-    if (profile == null) init();
+    if (!isInitialized) {
+      init();
+    }
+
     // check first to see if we have the Snowflake JDBC
     Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
 
@@ -321,7 +326,10 @@ public class TestUtils {
    * @throws Exception
    */
   public static SimpleIngestManager getManager(String pipe) throws Exception {
-    if (profile == null) init();
+    if (!isInitialized) {
+      init();
+    }
+
     return new SimpleIngestManager(
         account, user, database + "." + schema + "." + pipe, privateKey, scheme, host, port);
   }
@@ -337,7 +345,10 @@ public class TestUtils {
    */
   public static SimpleIngestManager getManager(String pipe, final String userAgentSuffix)
       throws Exception {
-    if (profile == null) init();
+    if (!isInitialized) {
+      init();
+    }
+
     return new SimpleIngestManager(
         account,
         user,
@@ -355,7 +366,10 @@ public class TestUtils {
    */
   public static SimpleIngestManager getManagerUsingBuilderPattern(
       String pipe, final String userAgentSuffix) throws Exception {
-    if (profile == null) init();
+    if (!isInitialized) {
+      init();
+    }
+
     return new SimpleIngestManager.Builder()
         .setAccount(account)
         .setUser(user)

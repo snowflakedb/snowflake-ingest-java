@@ -131,6 +131,7 @@ public class MockSnowflakeServiceClient {
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, clientConfigresponseMap);
                       case GENERATE_PRESIGNED_URLS_ENDPOINT:
+                        Thread.sleep(1);
                         Map<String, Object> generateUrlsResponseMap = new HashMap<>();
                         generateUrlsResponseMap.put("status_code", 0L);
                         generateUrlsResponseMap.put("message", "OK");
@@ -140,9 +141,9 @@ public class MockSnowflakeServiceClient {
                                 new GeneratePresignedUrlsResponse.PresignedUrlInfo(
                                     "f1", "http://f1.com?token=t1"),
                                 new GeneratePresignedUrlsResponse.PresignedUrlInfo(
-                                    "f2", "http://f2.com?token=t2"),
+                                    "f2", "http://f1.com?token=t2"),
                                 new GeneratePresignedUrlsResponse.PresignedUrlInfo(
-                                    "f3", "http://f3.com?token=t3")));
+                                    "f3", "http://f1.com?token=t3")));
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, generateUrlsResponseMap);
                       case OPEN_CHANNEL_ENDPOINT:
