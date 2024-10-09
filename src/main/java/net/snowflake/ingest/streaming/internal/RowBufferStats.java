@@ -60,6 +60,10 @@ class RowBufferStats {
     this(columnDisplayName, null, -1, null, null);
   }
 
+  RowBufferStats(String columnDisplayName, PrimitiveType primitiveType) {
+    this(columnDisplayName, null, -1, null, primitiveType);
+  }
+
   void reset() {
     this.currentMaxStrValue = null;
     this.currentMinStrValue = null;

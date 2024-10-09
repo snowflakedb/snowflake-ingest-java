@@ -27,6 +27,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.runner.RunWith;
@@ -62,7 +63,7 @@ public abstract class AbstractDataTypeTest {
 
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
-  private static final ObjectMapper objectMapper = new ObjectMapper();
+  protected static final ObjectMapper objectMapper = new ObjectMapper();
 
   @Parameters(name = "{index}: {0}")
   public static Object[] compressionAlgorithms() {
@@ -126,23 +127,18 @@ public abstract class AbstractDataTypeTest {
     return tableName;
   }
 
-  protected String createIcebergTable(String dataType, boolean nullable) throws SQLException {
+  protected String createIcebergTable(String dataType) throws SQLException {
     String tableName = getRandomIdentifier();
     String baseLocation =
         String.format("%s/%s/%s", databaseName, dataType.replace(" ", "_"), tableName);
     conn.createStatement()
         .execute(
             String.format(
-                "create or replace iceberg table %s (%s string, %s %s %s) "
+                "create or replace iceberg table %s (%s string, %s %s) "
                     + "catalog = 'SNOWFLAKE' "
                     + "external_volume = 'streaming_ingest' "
                     + "base_location = '%s';",
-                tableName,
-                SOURCE_COLUMN_NAME,
-                VALUE_COLUMN_NAME,
-                dataType,
-                nullable ? "" : "not null",
-                baseLocation));
+                tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType, baseLocation));
 
     return tableName;
   }
@@ -386,7 +382,7 @@ public abstract class AbstractDataTypeTest {
       throw new IllegalArgumentException(
           "jdbcWriteValue and provider must be both null or not null");
     boolean insertAlsoWithJdbc = jdbcWriteValue != null;
-    String tableName = isIceberg ? createIcebergTable(dataType, nullable) : createTable(dataType);
+    String tableName = isIceberg ? createIcebergTable(dataType) : createTable(dataType);
     String offsetToken = UUID.randomUUID().toString();
 
     // Insert using JDBC
@@ -555,5 +551,39 @@ public abstract class AbstractDataTypeTest {
 
     TestUtils.waitForOffset(channel, offsetToken);
     migrateTable(tableName); // migration should always succeed
+  }
+
+  protected void testIcebergIngestAndQuery(
+      String dataType,
+      Iterable<Object> values,
+      String queryTemplate,
+      Iterable<Object> expectedValues)
+      throws Exception {
+    String tableName = createIcebergTable(dataType);
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    String offsetToken = null;
+    for (Object value : values) {
+      offsetToken = UUID.randomUUID().toString();
+      channel.insertRow(createStreamingIngestRow(value), offsetToken);
+    }
+    TestUtils.waitForOffset(channel, offsetToken);
+
+    String verificationQuery =
+        queryTemplate.replace("{tableName}", tableName).replace("{columnName}", VALUE_COLUMN_NAME);
+    ResultSet resultSet = conn.createStatement().executeQuery(verificationQuery);
+
+    for (Object expectedValue : expectedValues) {
+      Assertions.assertThat(resultSet.next()).isTrue();
+      Object res = resultSet.getObject(1);
+      if (expectedValue instanceof BigDecimal) {
+        Assertions.assertThat(res)
+            .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+            .usingRecursiveComparison()
+            .isEqualTo(expectedValue);
+      } else {
+        Assertions.assertThat(res).isEqualTo(expectedValue);
+      }
+    }
+    Assertions.assertThat(resultSet.next()).isFalse();
   }
 }
