@@ -52,7 +52,7 @@ public class IcebergDateTimeIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("date", null, new StringProvider()));
+            () -> testIcebergIngestion("date not null", null, new StringProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -132,7 +132,7 @@ public class IcebergDateTimeIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("time", null, new StringProvider()));
+            () -> testIcebergIngestion("time not null", null, new StringProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -231,7 +231,7 @@ public class IcebergDateTimeIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("timestamp_ntz(6)", null, new StringProvider()));
+            () -> testIcebergIngestion("timestamp_ntz(6) not null", null, new StringProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -326,7 +326,7 @@ public class IcebergDateTimeIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("timestamp_ltz(6)", null, new StringProvider()));
+            () -> testIcebergIngestion("timestamp_ltz(6) not null", null, new StringProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());

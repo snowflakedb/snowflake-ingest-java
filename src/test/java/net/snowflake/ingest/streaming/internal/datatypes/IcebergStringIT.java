@@ -50,7 +50,7 @@ public class IcebergStringIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("string", null, new StringProvider()));
+            () -> testIcebergIngestion("string not null", null, new StringProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());

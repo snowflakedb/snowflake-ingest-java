@@ -38,7 +38,7 @@ public class IcebergLogicalTypesIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("boolean", null, new BooleanProvider()));
+            () -> testIcebergIngestion("boolean not null", null, new BooleanProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -101,7 +101,7 @@ public class IcebergLogicalTypesIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("binary", null, new ByteArrayProvider()));
+            () -> testIcebergIngestion("binary not null", null, new ByteArrayProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -201,7 +201,7 @@ public class IcebergLogicalTypesIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("fixed(3)", null, new ByteArrayProvider()));
+            () -> testIcebergIngestion("fixed(3) not null", null, new ByteArrayProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());

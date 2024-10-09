@@ -225,40 +225,13 @@ public abstract class AbstractDataTypeTest {
   <VALUE> void testIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
       throws Exception {
     ingestAndAssert(
-        dataType,
-        expectedValue,
-        null,
-        expectedValue,
-        null,
-        selectProvider,
-        false /* isIceberg */,
-        true /* nullable */);
+        dataType, expectedValue, null, expectedValue, null, selectProvider, false /* isIceberg */);
   }
 
   <VALUE> void testIcebergIngestion(
       String dataType, VALUE expectedValue, Provider<VALUE> selectProvider) throws Exception {
     ingestAndAssert(
-        dataType,
-        expectedValue,
-        null,
-        expectedValue,
-        null,
-        selectProvider,
-        true /* isIceberg */,
-        true /* nullable */);
-  }
-
-  <VALUE> void testIcebergIngestionNonNullable(
-      String dataType, VALUE expectedValue, Provider<VALUE> selectProvider) throws Exception {
-    ingestAndAssert(
-        dataType,
-        expectedValue,
-        null,
-        expectedValue,
-        null,
-        selectProvider,
-        true /* isIceberg */,
-        false /* nullable */);
+        dataType, expectedValue, null, expectedValue, null, selectProvider, true /* isIceberg */);
   }
 
   /**
@@ -278,8 +251,7 @@ public abstract class AbstractDataTypeTest {
         expectedValue,
         null,
         selectProvider,
-        false /* isIceberg */,
-        true /* nullable */);
+        false /* isIceberg */);
   }
 
   <STREAMING_INGEST_WRITE, JDBC_READ> void testIcebergIngestion(
@@ -295,25 +267,7 @@ public abstract class AbstractDataTypeTest {
         expectedValue,
         null,
         selectProvider,
-        true /* isIceberg */,
-        true /* nullable */);
-  }
-
-  <STREAMING_INGEST_WRITE, JDBC_READ> void testIcebergIngestionNonNullable(
-      String dataType,
-      STREAMING_INGEST_WRITE streamingIngestWriteValue,
-      JDBC_READ expectedValue,
-      Provider<JDBC_READ> selectProvider)
-      throws Exception {
-    ingestAndAssert(
-        dataType,
-        streamingIngestWriteValue,
-        null,
-        expectedValue,
-        null,
-        selectProvider,
-        true /* isIceberg */,
-        false /* nullable */);
+        true /* isIceberg */);
   }
 
   /**
@@ -322,15 +276,7 @@ public abstract class AbstractDataTypeTest {
    */
   <T> void testJdbcTypeCompatibility(String typeName, T value, Provider<T> provider)
       throws Exception {
-    ingestAndAssert(
-        typeName,
-        value,
-        value,
-        value,
-        provider,
-        provider,
-        false /* isIceberg */,
-        true /* nullable */);
+    ingestAndAssert(typeName, value, value, value, provider, provider, false /* isIceberg */);
   }
 
   /** Simplified version where write value for streaming ingest and JDBC are the same */
@@ -348,8 +294,7 @@ public abstract class AbstractDataTypeTest {
         expectedValue,
         insertProvider,
         selectProvider,
-        false /* isIceberg */,
-        true /* nullable */);
+        false /* isIceberg */);
   }
 
   /**
@@ -366,7 +311,6 @@ public abstract class AbstractDataTypeTest {
    * @param insertProvider JDBC parameter provider for INSERT
    * @param selectProvider JDBC parameter provider for SELECT ... WHERE
    * @param isIceberg whether the table is an iceberg table
-   * @param nullable whether the column is nullable, only used for iceberg tables
    */
   <STREAMING_INGEST_WRITE, JDBC_WRITE, JDBC_READ> void ingestAndAssert(
       String dataType,
@@ -375,8 +319,7 @@ public abstract class AbstractDataTypeTest {
       JDBC_READ expectedValue,
       Provider<JDBC_WRITE> insertProvider,
       Provider<JDBC_READ> selectProvider,
-      boolean isIceberg,
-      boolean nullable)
+      boolean isIceberg)
       throws Exception {
     if (jdbcWriteValue == null ^ insertProvider == null)
       throw new IllegalArgumentException(

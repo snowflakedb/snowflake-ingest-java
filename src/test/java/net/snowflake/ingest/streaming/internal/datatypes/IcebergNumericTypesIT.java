@@ -44,8 +44,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
 
     ex =
         Assertions.catchThrowableOfType(
-            SFException.class,
-            () -> testIcebergIngestionNonNullable("int", null, new IntProvider()));
+            SFException.class, () -> testIcebergIngestion("int not null", null, new IntProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -118,7 +117,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("long", null, new LongProvider()));
+            () -> testIcebergIngestion("long not null", null, new LongProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -174,7 +173,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("float", null, new LongProvider()));
+            () -> testIcebergIngestion("float not null", null, new LongProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -240,7 +239,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () -> testIcebergIngestionNonNullable("double", null, new LongProvider()));
+            () -> testIcebergIngestion("double not null", null, new LongProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
@@ -321,8 +320,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
     ex =
         Assertions.catchThrowableOfType(
             SFException.class,
-            () ->
-                testIcebergIngestionNonNullable("decimal(38, 10)", null, new BigDecimalProvider()));
+            () -> testIcebergIngestion("decimal(38, 10) not null", null, new BigDecimalProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
