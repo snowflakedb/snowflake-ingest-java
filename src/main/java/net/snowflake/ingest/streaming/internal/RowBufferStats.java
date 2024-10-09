@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.schema.PrimitiveType;
 
 /** Keeps track of the active EP stats, used to generate a file EP info */
 class RowBufferStats {
@@ -25,6 +26,12 @@ class RowBufferStats {
    */
   private final Integer fieldId;
 
+  private final String collationDefinitionString;
+  /** Display name is required for the registration endpoint */
+  private final String columnDisplayName;
+  /** Primitive type of the column, only used for Iceberg columns */
+  private final PrimitiveType primitiveType;
+
   private byte[] currentMinStrValue;
   private byte[] currentMaxStrValue;
   private BigInteger currentMinIntValue;
@@ -34,22 +41,27 @@ class RowBufferStats {
   private long currentNullCount;
   // for binary or string columns
   private long currentMaxLength;
-  private final String collationDefinitionString;
-  /** Display name is required for the registration endpoint */
-  private final String columnDisplayName;
 
-  /** Creates empty stats */
   RowBufferStats(
-      String columnDisplayName, String collationDefinitionString, int ordinal, Integer fieldId) {
+      String columnDisplayName,
+      String collationDefinitionString,
+      int ordinal,
+      Integer fieldId,
+      PrimitiveType primitiveType) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
     this.ordinal = ordinal;
     this.fieldId = fieldId;
+    this.primitiveType = primitiveType;
     reset();
   }
 
   RowBufferStats(String columnDisplayName) {
-    this(columnDisplayName, null, -1, null);
+    this(columnDisplayName, null, -1, null, null);
+  }
+
+  RowBufferStats(String columnDisplayName, PrimitiveType primitiveType) {
+    this(columnDisplayName, null, -1, null, primitiveType);
   }
 
   void reset() {
@@ -69,7 +81,8 @@ class RowBufferStats {
         this.getColumnDisplayName(),
         this.getCollationDefinitionString(),
         this.getOrdinal(),
-        this.getFieldId());
+        this.getFieldId(),
+        this.getPrimitiveType());
   }
 
   // TODO performance test this vs in place update
@@ -87,7 +100,8 @@ class RowBufferStats {
             left.columnDisplayName,
             left.getCollationDefinitionString(),
             left.getOrdinal(),
-            left.getFieldId());
+            left.getFieldId(),
+            left.getPrimitiveType());
 
     if (left.currentMinIntValue != null) {
       combined.addIntValue(left.currentMinIntValue);
@@ -236,6 +250,10 @@ class RowBufferStats {
 
   Integer getFieldId() {
     return fieldId;
+  }
+
+  PrimitiveType getPrimitiveType() {
+    return primitiveType;
   }
 
   /**

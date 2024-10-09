@@ -52,6 +52,8 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -877,8 +879,12 @@ public class FlushServiceTest {
     Map<String, RowBufferStats> eps1 = new HashMap<>();
     Map<String, RowBufferStats> eps2 = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats("COL1");
-    RowBufferStats stats2 = new RowBufferStats("COL1");
+    RowBufferStats stats1 =
+        new RowBufferStats(
+            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
+    RowBufferStats stats2 =
+        new RowBufferStats(
+            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
 
     eps1.put("one", stats1);
     eps2.put("one", stats2);
@@ -1115,7 +1121,9 @@ public class FlushServiceTest {
 
     Map<String, RowBufferStats> eps1 = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats("COL1");
+    RowBufferStats stats1 =
+        new RowBufferStats(
+            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
 
     eps1.put("one", stats1);
 

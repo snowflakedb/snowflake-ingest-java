@@ -29,6 +29,8 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.parquet.hadoop.BdecParquetReader;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -563,12 +565,18 @@ public class RowBufferTest {
   public void testBuildEpInfoFromStats() {
     Map<String, RowBufferStats> colStats = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats("intColumn");
+    RowBufferStats stats1 =
+        new RowBufferStats(
+            "intColumn",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("intColumn"));
     stats1.addIntValue(BigInteger.valueOf(2));
     stats1.addIntValue(BigInteger.valueOf(10));
     stats1.addIntValue(BigInteger.valueOf(1));
 
-    RowBufferStats stats2 = new RowBufferStats("strColumn");
+    RowBufferStats stats2 =
+        new RowBufferStats(
+            "strColumn",
+            Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("strColumn"));
     stats2.addStrValue("alice");
     stats2.addStrValue("bob");
     stats2.incCurrentNullCount();
@@ -603,8 +611,14 @@ public class RowBufferTest {
     final String realColName = "realCol";
     Map<String, RowBufferStats> colStats = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats(intColName);
-    RowBufferStats stats2 = new RowBufferStats(realColName);
+    RowBufferStats stats1 =
+        new RowBufferStats(
+            intColName,
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named(intColName));
+    RowBufferStats stats2 =
+        new RowBufferStats(
+            realColName,
+            Types.optional(PrimitiveType.PrimitiveTypeName.DOUBLE).id(2).named(realColName));
     stats1.incCurrentNullCount();
     stats2.incCurrentNullCount();
 
@@ -618,22 +632,18 @@ public class RowBufferTest {
     FileColumnProperties intColumnResult = columnResults.get(intColName);
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
     Assert.assertEquals(
-        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP,
-        intColumnResult.getMinIntValue());
+        FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMinIntValue());
     Assert.assertEquals(
-        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP,
-        intColumnResult.getMaxIntValue());
+        FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMaxIntValue());
     Assert.assertEquals(1, intColumnResult.getNullCount());
     Assert.assertEquals(0, intColumnResult.getMaxLength());
 
     FileColumnProperties realColumnResult = columnResults.get(realColName);
     Assert.assertEquals(-1, intColumnResult.getDistinctValues());
     Assert.assertEquals(
-        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP,
-        realColumnResult.getMinRealValue());
+        FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMinRealValue());
     Assert.assertEquals(
-        isIcebergMode ? null : FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP,
-        realColumnResult.getMaxRealValue());
+        FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMaxRealValue());
     Assert.assertEquals(1, realColumnResult.getNullCount());
     Assert.assertEquals(0, realColumnResult.getMaxLength());
   }
@@ -642,12 +652,18 @@ public class RowBufferTest {
   public void testInvalidEPInfo() {
     Map<String, RowBufferStats> colStats = new HashMap<>();
 
-    RowBufferStats stats1 = new RowBufferStats("intColumn");
+    RowBufferStats stats1 =
+        new RowBufferStats(
+            "intColumn",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("intColumn"));
     stats1.addIntValue(BigInteger.valueOf(2));
     stats1.addIntValue(BigInteger.valueOf(10));
     stats1.addIntValue(BigInteger.valueOf(1));
 
-    RowBufferStats stats2 = new RowBufferStats("strColumn");
+    RowBufferStats stats2 =
+        new RowBufferStats(
+            "strColumn",
+            Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("strColumn"));
     stats2.addStrValue("alice");
     stats2.incCurrentNullCount();
     stats2.incCurrentNullCount();

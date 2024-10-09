@@ -15,10 +15,16 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.internal.datatypes.AbstractDataTypeTest;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class ColumnNamesIT extends AbstractDataTypeTest {
   private static final int INGEST_VALUE = 1;
+
+  @Before
+  public void before() throws Exception {
+    super.before(false);
+  }
 
   @Test
   public void testColumnNamesSupport() throws Exception {

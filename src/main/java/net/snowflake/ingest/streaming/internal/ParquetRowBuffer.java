@@ -27,6 +27,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
@@ -88,21 +89,26 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       /* Set up fields using top level column information */
       validateColumnCollation(column);
       ParquetTypeInfo typeInfo = ParquetTypeGenerator.generateColumnParquetTypeInfo(column, id);
-      parquetTypes.add(typeInfo.getParquetType());
+      Type parquetType = typeInfo.getParquetType();
+      parquetTypes.add(parquetType);
       this.metadata.putAll(typeInfo.getMetadata());
       int columnIndex = parquetTypes.size() - 1;
-      fieldIndex.put(
-          column.getInternalName(),
-          new ParquetColumn(column, columnIndex, typeInfo.getParquetType()));
+      fieldIndex.put(column.getInternalName(), new ParquetColumn(column, columnIndex, parquetType));
+
       if (!column.getNullable()) {
         addNonNullableFieldName(column.getInternalName());
       }
+
       if (!clientBufferParameters.getIsIcebergMode()) {
         /* Streaming to FDN table doesn't support sub-columns, set up the stats here. */
         this.statsMap.put(
             column.getInternalName(),
             new RowBufferStats(
-                column.getName(), column.getCollation(), column.getOrdinal(), null /* fieldId */));
+                column.getName(),
+                column.getCollation(),
+                column.getOrdinal(),
+                null /* fieldId */,
+                parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
@@ -116,7 +122,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                   column.getName(),
                   column.getCollation(),
                   column.getOrdinal(),
-                  null /* fieldId */));
+                  null /* fieldId */,
+                  parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
         }
       }
 
@@ -175,24 +182,27 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     if (clientBufferParameters.getIsIcebergMode()) {
       for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
         String columnPath = concatDotPath(columnDescriptor.getPath());
+        PrimitiveType primitiveType = columnDescriptor.getPrimitiveType();
 
         /* set fieldId to 0 for non-structured columns */
-        int fieldId =
-            columnDescriptor.getPath().length == 1
-                ? 0
-                : columnDescriptor.getPrimitiveType().getId().intValue();
+        int fieldId = columnDescriptor.getPath().length == 1 ? 0 : primitiveType.getId().intValue();
         int ordinal = schema.getType(columnDescriptor.getPath()[0]).getId().intValue();
 
         this.statsMap.put(
             columnPath,
-            new RowBufferStats(columnPath, null /* collationDefinitionString */, ordinal, fieldId));
+            new RowBufferStats(
+                columnPath, null /* collationDefinitionString */, ordinal, fieldId, primitiveType));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
               columnPath,
               new RowBufferStats(
-                  columnPath, null /* collationDefinitionString */, ordinal, fieldId));
+                  columnPath,
+                  null /* collationDefinitionString */,
+                  ordinal,
+                  fieldId,
+                  primitiveType));
         }
       }
     }

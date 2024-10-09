@@ -61,6 +61,8 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -500,8 +502,11 @@ public class SnowflakeStreamingIngestClientTest {
             .build();
 
     Map<String, RowBufferStats> columnEps = new HashMap<>();
-    columnEps.put("column", new RowBufferStats("COL1"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, isIcebergMode);
+    columnEps.put(
+        "column",
+        new RowBufferStats(
+            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1")));
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode);
 
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
@@ -549,8 +554,11 @@ public class SnowflakeStreamingIngestClientTest {
 
   private Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> getRetryBlobMetadata() {
     Map<String, RowBufferStats> columnEps = new HashMap<>();
-    columnEps.put("column", new RowBufferStats("COL1"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, isIcebergMode);
+    columnEps.put(
+        "column",
+        new RowBufferStats(
+            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1")));
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode);
 
     ChannelMetadata channelMetadata1 =
         ChannelMetadata.builder()

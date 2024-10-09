@@ -15,7 +15,10 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.hadoop.BdecParquetWriter;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -98,7 +101,19 @@ public class BlobBuilderTest {
 
     channelData
         .getColumnEps()
-        .putIfAbsent(columnName, new RowBufferStats(columnName, null, 1, isIceberg ? 0 : null));
+        .putIfAbsent(
+            columnName,
+            isIceberg
+                ? new RowBufferStats(
+                    columnName,
+                    null,
+                    1,
+                    1,
+                    Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+                        .as(LogicalTypeAnnotation.stringType())
+                        .id(1)
+                        .named("test"))
+                : new RowBufferStats(columnName, null, 1, null, null));
     channelData.setChannelContext(
         new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
     return Collections.singletonList(channelData);

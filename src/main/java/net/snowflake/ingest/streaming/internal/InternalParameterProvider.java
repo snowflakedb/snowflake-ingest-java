@@ -20,9 +20,11 @@ class InternalParameterProvider {
     return !isIcebergMode;
   }
 
-  boolean setDefaultValuesInEp() {
-    // When in Iceberg mode, we need to populate nulls (instead of zeroes) in the minIntValue /
-    // maxIntValue / minRealValue / maxRealValue fields of the EP Metadata.
+  boolean setAllDefaultValuesInEp() {
+    // When in non-iceberg mode, we want to default the stats for all data types (int/real/string)
+    // to 0 / to "".
+    // However when in iceberg mode, we want to default only those stats that are
+    // relevant to the current datatype.
     return !isIcebergMode;
   }
 
