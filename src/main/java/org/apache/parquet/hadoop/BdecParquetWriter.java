@@ -15,7 +15,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
+import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -43,6 +43,10 @@ public class BdecParquetWriter implements AutoCloseable {
   // Optional cap on the max number of row groups to allow per file, if this is exceeded we'll end
   // up throwing
   private final Optional<Integer> maxRowGroups;
+
+  private final ParquetProperties.WriterVersion writerVersion;
+  private final boolean enableDictionaryEncoding;
+
   private long rowsWritten = 0;
 
   /**
@@ -63,10 +67,14 @@ public class BdecParquetWriter implements AutoCloseable {
       String channelName,
       long maxChunkSizeInBytes,
       Optional<Integer> maxRowGroups,
-      Constants.BdecParquetCompression bdecParquetCompression)
+      Constants.BdecParquetCompression bdecParquetCompression,
+      ParquetProperties.WriterVersion writerVersion,
+      boolean enableDictionaryEncoding)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
     this.maxRowGroups = maxRowGroups;
+    this.writerVersion = writerVersion;
+    this.enableDictionaryEncoding = enableDictionaryEncoding;
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
@@ -154,7 +162,7 @@ public class BdecParquetWriter implements AutoCloseable {
     }
   }
 
-  private static ParquetProperties createParquetProperties() {
+  private ParquetProperties createParquetProperties() {
     /**
      * There are two main limitations on the server side that we have to overcome by tweaking
      * Parquet limits:
@@ -182,11 +190,11 @@ public class BdecParquetWriter implements AutoCloseable {
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
-        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
-        .withValuesWriterFactory(new DefaultV1ValuesWriterFactory())
+        .withWriterVersion(writerVersion)
+        .withValuesWriterFactory(new DefaultValuesWriterFactory())
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
-        .withDictionaryEncoding(false)
+        .withDictionaryEncoding(enableDictionaryEncoding)
         .withPageRowCountLimit(Integer.MAX_VALUE)
         .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .build();

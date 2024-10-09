@@ -23,7 +23,7 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
 
   @Before
   public void before() throws Exception {
-    super.before(false);
+    super.before();
   }
 
   @Test

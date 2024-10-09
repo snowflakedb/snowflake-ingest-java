@@ -7,7 +7,7 @@ import org.junit.Test;
 public class BinaryIT extends AbstractDataTypeTest {
   @Before
   public void before() throws Exception {
-    super.before(false);
+    super.before();
   }
 
   @Test

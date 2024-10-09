@@ -52,6 +52,7 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
@@ -303,7 +304,10 @@ public class FlushServiceTest {
           onErrorOption,
           defaultTimezone,
           Constants.BdecVersion.THREE,
-          null);
+          null,
+          isIcebergMode
+              ? ParquetProperties.WriterVersion.PARQUET_2_0
+              : ParquetProperties.WriterVersion.PARQUET_1_0);
     }
 
     @Override

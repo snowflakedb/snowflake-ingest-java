@@ -30,6 +30,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.parquet.column.ParquetProperties;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
@@ -107,7 +108,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         onErrorOption,
         defaultTimezone,
         client.getParameterProvider().getBlobFormatVersion(),
-        null);
+        null /* offsetTokenVerificationFunction */,
+        null /* parquetWriterVersion */);
   }
 
   /** Default constructor */
@@ -125,7 +127,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
       Constants.BdecVersion bdecVersion,
-      OffsetTokenVerificationFunction offsetTokenVerificationFunction) {
+      OffsetTokenVerificationFunction offsetTokenVerificationFunction,
+      ParquetProperties.WriterVersion parquetWriterVersion) {
     this.isClosed = false;
     this.owningClient = client;
 
@@ -141,7 +144,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     this.memoryInfoProvider = MemoryInfoProviderFromRuntime.getInstance();
     this.channelFlushContext =
         new ChannelFlushContext(
-            name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
+            name,
+            dbName,
+            schemaName,
+            tableName,
+            channelSequencer,
+            encryptionKey,
+            encryptionKeyId,
+            parquetWriterVersion == null
+                ? ParquetProperties.DEFAULT_WRITER_VERSION
+                : parquetWriterVersion);
     this.channelState = new ChannelRuntimeState(endOffsetToken, rowSequencer, true);
     this.rowBuffer =
         AbstractRowBuffer.createRowBuffer(

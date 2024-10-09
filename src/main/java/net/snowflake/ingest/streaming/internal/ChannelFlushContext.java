@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import net.snowflake.ingest.utils.Utils;
+import org.apache.parquet.column.ParquetProperties;
 
 /**
  * Channel immutable identification and encryption attributes.
@@ -29,6 +30,8 @@ class ChannelFlushContext {
   // Data encryption key id
   private final Long encryptionKeyId;
 
+  private final ParquetProperties.WriterVersion parquetWriterVersion;
+
   ChannelFlushContext(
       String name,
       String dbName,
@@ -36,7 +39,8 @@ class ChannelFlushContext {
       String tableName,
       Long channelSequencer,
       String encryptionKey,
-      Long encryptionKeyId) {
+      Long encryptionKeyId,
+      ParquetProperties.WriterVersion parquetWriterVersion) {
     this.name = name;
     this.fullyQualifiedName =
         Utils.getFullyQualifiedChannelName(dbName, schemaName, tableName, name);
@@ -47,6 +51,7 @@ class ChannelFlushContext {
     this.channelSequencer = channelSequencer;
     this.encryptionKey = encryptionKey;
     this.encryptionKeyId = encryptionKeyId;
+    this.parquetWriterVersion = parquetWriterVersion;
   }
 
   @Override
@@ -114,5 +119,9 @@ class ChannelFlushContext {
 
   Long getEncryptionKeyId() {
     return encryptionKeyId;
+  }
+
+  ParquetProperties.WriterVersion getParquetWriterVersion() {
+    return parquetWriterVersion;
   }
 }

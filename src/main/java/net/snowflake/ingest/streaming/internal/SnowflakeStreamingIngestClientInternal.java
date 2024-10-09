@@ -386,6 +386,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
             .setOnErrorOption(request.getOnErrorOption())
             .setDefaultTimezone(request.getDefaultTimezone())
             .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
+            .setParquetWriterVersion(
+                response.getIcebergSerializationPolicy().getParquetWriterVersion())
             .build();
 
     // Setup the row buffer schema

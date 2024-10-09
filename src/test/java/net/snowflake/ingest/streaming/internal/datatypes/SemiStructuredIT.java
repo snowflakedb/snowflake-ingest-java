@@ -22,8 +22,9 @@ import org.junit.Test;
 public class SemiStructuredIT extends AbstractDataTypeTest {
   @Before
   public void before() throws Exception {
-    super.before(false);
+    super.before();
   }
+
   // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its
   // server-side representation. Validation leaves a small buffer for this difference.
   private static final int MAX_ALLOWED_LENGTH = 16 * 1024 * 1024 - 64;

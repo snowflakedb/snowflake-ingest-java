@@ -132,6 +132,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
     channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -148,6 +149,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
     channel3 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -164,6 +166,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
     channel4 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -180,6 +183,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
   }
 
@@ -377,6 +381,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
 
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
@@ -439,6 +444,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
 
     try {
@@ -492,6 +498,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
 
     ChannelMetadata channelMetadata =
@@ -1258,6 +1265,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
+            null,
             null);
 
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =

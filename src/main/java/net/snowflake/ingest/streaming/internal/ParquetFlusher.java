@@ -16,6 +16,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
@@ -30,17 +31,20 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final Optional<Integer> maxRowGroups;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
+  private final boolean enableDictionaryEncoding;
 
   /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
       MessageType schema,
       long maxChunkSizeInBytes,
       Optional<Integer> maxRowGroups,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      boolean enableDictionaryEncoding) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.enableDictionaryEncoding = enableDictionaryEncoding;
   }
 
   @Override
@@ -62,6 +66,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     BdecParquetWriter parquetWriter;
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
+    ParquetProperties.WriterVersion parquetWriterVersion = null;
 
     for (ChannelData<ParquetChunkData> data : channelsDataPerTable) {
       // Create channel metadata
@@ -103,6 +108,15 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
                 chunkMinMaxInsertTimeInMs, data.getMinMaxInsertTimeInMs());
       }
 
+      // Check if all the channels have the same parquet writer version
+      if (parquetWriterVersion == null) {
+        parquetWriterVersion = data.getChannelContext().getParquetWriterVersion();
+      } else if (!parquetWriterVersion.equals(data.getChannelContext().getParquetWriterVersion())) {
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR,
+            "Parquet writer version and storage serialization policy mismatch within a chunk");
+      }
+
       rows.addAll(data.getVectors().rows);
 
       rowCount += data.getRowCount();
@@ -129,7 +143,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             firstChannelFullyQualifiedTableName,
             maxChunkSizeInBytes,
             maxRowGroups,
-            bdecParquetCompression);
+            bdecParquetCompression,
+            parquetWriterVersion,
+            enableDictionaryEncoding);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 

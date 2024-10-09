@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import net.snowflake.ingest.utils.Constants;
 
 /** Response to the OpenChannelRequest */
 class OpenChannelResponse extends StreamingIngestResponse {
@@ -22,6 +23,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private String encryptionKey;
   private Long encryptionKeyId;
   private FileLocationInfo icebergLocationInfo;
+  private String icebergSerializationPolicy;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -139,5 +141,14 @@ class OpenChannelResponse extends StreamingIngestResponse {
 
   FileLocationInfo getIcebergLocationInfo() {
     return this.icebergLocationInfo;
+  }
+
+  @JsonProperty("iceberg_serialization_policy")
+  void setIcebergSerializationPolicy(String icebergSerializationPolicy) {
+    this.icebergSerializationPolicy = icebergSerializationPolicy;
+  }
+
+  Constants.IcebergSerializationPolicy getIcebergSerializationPolicy() {
+    return Constants.IcebergSerializationPolicy.fromName(this.icebergSerializationPolicy);
   }
 }
