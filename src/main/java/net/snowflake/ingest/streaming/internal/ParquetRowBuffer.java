@@ -394,6 +394,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         schema,
         clientBufferParameters.getMaxChunkSizeInBytes(),
         clientBufferParameters.getMaxRowGroups(),
-        clientBufferParameters.getBdecParquetCompression());
+        clientBufferParameters.getBdecParquetCompression(),
+        clientBufferParameters.isEnableDictionaryEncoding());
   }
 }

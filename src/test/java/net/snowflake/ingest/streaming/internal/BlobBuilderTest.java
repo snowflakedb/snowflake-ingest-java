@@ -14,6 +14,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
@@ -76,7 +77,8 @@ public class BlobBuilderTest {
                 schema,
                 100L,
                 isIceberg ? Optional.of(1) : Optional.empty(),
-                Constants.BdecParquetCompression.GZIP))
+                Constants.BdecParquetCompression.GZIP,
+                isIceberg))
         .when(channelData)
         .createFlusher();
 
@@ -90,7 +92,11 @@ public class BlobBuilderTest {
             "CHANNEL",
             1000,
             isIceberg ? Optional.of(1) : Optional.empty(),
-            Constants.BdecParquetCompression.GZIP);
+            Constants.BdecParquetCompression.GZIP,
+            isIceberg
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0,
+            isIceberg);
     bdecParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
         new ParquetChunkData(
@@ -115,7 +121,17 @@ public class BlobBuilderTest {
                         .named("test"))
                 : new RowBufferStats(columnName, null, 1, null, null));
     channelData.setChannelContext(
-        new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
+        new ChannelFlushContext(
+            "channel1",
+            "DB",
+            "SCHEMA",
+            "TABLE",
+            1L,
+            "enc",
+            1L,
+            isIceberg
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0));
     return Collections.singletonList(channelData);
   }
 

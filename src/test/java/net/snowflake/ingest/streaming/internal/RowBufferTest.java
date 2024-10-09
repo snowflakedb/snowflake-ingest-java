@@ -28,6 +28,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.BdecParquetReader;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
@@ -1924,7 +1925,18 @@ public class RowBufferTest {
     bufferUnderTest.setupSchema(Collections.singletonList(colChar));
     loadData(bufferUnderTest, Collections.singletonMap("colChar", "a"));
     ChannelData<ParquetChunkData> data = bufferUnderTest.flush();
-    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+    data.setChannelContext(
+        new ChannelFlushContext(
+            "name",
+            "db",
+            "schema",
+            "table",
+            1L,
+            "key",
+            0L,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0));
 
     ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
     Flusher.SerializationResult result =

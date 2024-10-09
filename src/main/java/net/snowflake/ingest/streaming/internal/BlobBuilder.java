@@ -32,6 +32,7 @@ import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.parquet.hadoop.ParquetFileWriter;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -68,8 +69,12 @@ class BlobBuilder {
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
       InternalParameterProvider internalParameterProvider)
-      throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
-          InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
+      throws IOException,
+          NoSuchPaddingException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          InvalidKeyException,
+          IllegalBlockSizeException,
           BadPaddingException {
     List<ChunkMetadata> chunksMetadataList = new ArrayList<>();
     List<byte[]> chunksDataList = new ArrayList<>();
@@ -140,7 +145,7 @@ class BlobBuilder {
 
         if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
           chunkMetadataBuilder
-              .setMajorVersion(Constants.PARQUET_MAJOR_VERSION)
+              .setMajorVersion(ParquetFileWriter.CURRENT_VERSION)
               .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
               // set createdOn in seconds
               .setCreatedOn(System.currentTimeMillis() / 1000)

@@ -132,7 +132,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
     channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel2",
@@ -148,7 +149,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
     channel3 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel3",
@@ -164,7 +166,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
     channel4 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel4",
@@ -180,7 +183,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
   }
 
   @Test
@@ -377,7 +381,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
 
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
@@ -439,7 +444,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
 
     try {
       client.getChannelsStatus(Collections.singletonList(channel));
@@ -492,7 +498,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
@@ -1258,7 +1265,8 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
             BDEC_VERSION,
-            null);
+            null,
+                null);
 
     ChannelsStatusRequest.ChannelStatusRequestDTO dto =
         new ChannelsStatusRequest.ChannelStatusRequestDTO(channel);
