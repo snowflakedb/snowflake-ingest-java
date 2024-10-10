@@ -31,6 +31,8 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 
@@ -68,6 +70,7 @@ class BlobBuilder {
       String filePath,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
+      ParameterProvider parameterProvider,
       InternalParameterProvider internalParameterProvider)
       throws IOException, NoSuchPaddingException, NoSuchAlgorithmException,
           InvalidAlgorithmParameterException, InvalidKeyException, IllegalBlockSizeException,
@@ -90,6 +93,7 @@ class BlobBuilder {
         final byte[] compressedChunkData;
         final int chunkLength;
         final int compressedChunkDataSize;
+        int extendedMetadataSize = -1;
 
         if (internalParameterProvider.getEnableChunkEncryption()) {
           Pair<byte[], Integer> paddedChunk =
@@ -111,6 +115,10 @@ class BlobBuilder {
           compressedChunkData = serializedChunk.chunkData.toByteArray();
           chunkLength = compressedChunkData.length;
           compressedChunkDataSize = chunkLength;
+
+          if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
+            extendedMetadataSize = Utils.getExtendedMetadataSize(compressedChunkData, chunkLength);
+          }
         }
 
         // Compute the md5 of the chunk data
@@ -135,7 +143,8 @@ class BlobBuilder {
                     AbstractRowBuffer.buildEpInfoFromStats(
                         serializedChunk.rowCount,
                         serializedChunk.columnEpStatsMapCombined,
-                        internalParameterProvider.setAllDefaultValuesInEp()))
+                        internalParameterProvider.setAllDefaultValuesInEp(),
+                        internalParameterProvider.isEnableDistinctValuesCount()))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond());
 
@@ -145,7 +154,7 @@ class BlobBuilder {
               .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
               // set createdOn in seconds
               .setCreatedOn(System.currentTimeMillis() / 1000)
-              .setExtendedMetadataSize(-1L);
+              .setExtendedMetadataSize((long) extendedMetadataSize);
         }
 
         ChunkMetadata chunkMetadata = chunkMetadataBuilder.build();

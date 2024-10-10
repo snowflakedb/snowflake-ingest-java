@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
+import net.snowflake.ingest.utils.ColumnPath;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
@@ -24,7 +25,7 @@ class ChannelData<T> {
   private T vectors;
   private float bufferSize;
   private int rowCount;
-  private Map<String, RowBufferStats> columnEps;
+  private Map<ColumnPath, RowBufferStats> columnEps;
   private Pair<Long, Long> minMaxInsertTimeInMs;
   private ChannelFlushContext channelFlushContext;
   private Supplier<Flusher<T>> flusherFactory;
@@ -79,11 +80,11 @@ class ChannelData<T> {
         Math.min(left.getFirst(), right.getFirst()), Math.max(left.getSecond(), right.getSecond()));
   }
 
-  public Map<String, RowBufferStats> getColumnEps() {
+  public Map<ColumnPath, RowBufferStats> getColumnEps() {
     return columnEps;
   }
 
-  public void setColumnEps(Map<String, RowBufferStats> columnEps) {
+  public void setColumnEps(Map<ColumnPath, RowBufferStats> columnEps) {
     this.columnEps = columnEps;
   }
 

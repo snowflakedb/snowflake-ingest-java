@@ -5,8 +5,6 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.checkFixedLengthByteArray;
-import static net.snowflake.ingest.utils.Utils.concatDotPath;
-import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -22,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.utils.ColumnPath;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -57,7 +56,7 @@ class IcebergParquetValueParser {
   static ParquetBufferValue parseColumnValueToParquet(
       Object value,
       Type type,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       ZoneId defaultTimezone,
       long insertRowsCurrIndex) {
     Utils.assertNotNull("Parquet column stats map", statsMap);
@@ -68,12 +67,12 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue parseColumnValueToParquet(
       Object value,
       Type type,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       ZoneId defaultTimezone,
       long insertRowsCurrIndex,
-      String path,
+      ColumnPath path,
       boolean isDescendantsOfRepeatingGroup) {
-    path = isNullOrEmpty(path) ? type.getName() : concatDotPath(path, type.getName());
+    path = path == null ? new ColumnPath(type.getName()) : path.concat(type.getName());
     float estimatedParquetSize = 0F;
 
     if (type.isPrimitive()) {
@@ -95,47 +94,54 @@ class IcebergParquetValueParser {
         switch (primitiveType.getPrimitiveTypeName()) {
           case BOOLEAN:
             int intValue =
-                DataValidationUtil.validateAndParseBoolean(path, value, insertRowsCurrIndex);
+                DataValidationUtil.validateAndParseBoolean(
+                    path.toString(), value, insertRowsCurrIndex);
             value = intValue > 0;
             stats.addIntValue(BigInteger.valueOf(intValue));
             estimatedParquetSize += ParquetBufferValue.BIT_ENCODING_BYTE_LEN;
             break;
           case INT32:
-            int intVal = getInt32Value(value, primitiveType, path, insertRowsCurrIndex);
+            int intVal = getInt32Value(value, primitiveType, path.toString(), insertRowsCurrIndex);
             value = intVal;
             stats.addIntValue(BigInteger.valueOf(intVal));
             estimatedParquetSize += 4;
             break;
           case INT64:
             long longVal =
-                getInt64Value(value, primitiveType, defaultTimezone, path, insertRowsCurrIndex);
+                getInt64Value(
+                    value, primitiveType, defaultTimezone, path.toString(), insertRowsCurrIndex);
             value = longVal;
             stats.addIntValue(BigInteger.valueOf(longVal));
             estimatedParquetSize += 8;
             break;
           case FLOAT:
             float floatVal =
-                (float) DataValidationUtil.validateAndParseReal(path, value, insertRowsCurrIndex);
+                (float)
+                    DataValidationUtil.validateAndParseReal(
+                        path.toString(), value, insertRowsCurrIndex);
             value = floatVal;
             stats.addRealValue((double) floatVal);
             estimatedParquetSize += 4;
             break;
           case DOUBLE:
             double doubleVal =
-                DataValidationUtil.validateAndParseReal(path, value, insertRowsCurrIndex);
+                DataValidationUtil.validateAndParseReal(
+                    path.toString(), value, insertRowsCurrIndex);
             value = doubleVal;
             stats.addRealValue(doubleVal);
             estimatedParquetSize += 8;
             break;
           case BINARY:
-            byte[] byteVal = getBinaryValue(value, primitiveType, stats, path, insertRowsCurrIndex);
+            byte[] byteVal =
+                getBinaryValue(value, primitiveType, stats, path.toString(), insertRowsCurrIndex);
             value = byteVal;
             estimatedParquetSize +=
                 ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN + byteVal.length;
             break;
           case FIXED_LEN_BYTE_ARRAY:
             byte[] fixedLenByteArrayVal =
-                getFixedLenByteArrayValue(value, primitiveType, stats, path, insertRowsCurrIndex);
+                getFixedLenByteArrayValue(
+                    value, primitiveType, stats, path.toString(), insertRowsCurrIndex);
             value = fixedLenByteArrayVal;
             estimatedParquetSize +=
                 ParquetBufferValue.BYTE_ARRAY_LENGTH_ENCODING_BYTE_LEN
@@ -165,7 +171,12 @@ class IcebergParquetValueParser {
             ErrorCode.INVALID_FORMAT_ROW, path, "Passed null to non nullable field");
       }
       if (type.isPrimitive()) {
-        statsMap.get(path).incCurrentNullCount();
+        /* Increment null count for all sub-columns of the current column */
+        for (Map.Entry<ColumnPath, RowBufferStats> entry : statsMap.entrySet()) {
+          if (entry.getKey().isDecedentOf(path)) {
+            entry.getValue().incCurrentNullCount();
+          }
+        }
       }
     }
 
@@ -375,10 +386,10 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue getGroupValue(
       Object value,
       GroupType type,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
-      String path,
+      ColumnPath path,
       boolean isDescendantsOfRepeatingGroup) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
@@ -409,13 +420,14 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue getStructValue(
       Object value,
       GroupType type,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
-      String path,
+      ColumnPath path,
       boolean isDescendantsOfRepeatingGroup) {
     Map<String, ?> structVal =
-        DataValidationUtil.validateAndParseIcebergStruct(path, value, insertRowsCurrIndex);
+        DataValidationUtil.validateAndParseIcebergStruct(
+            path.toString(), value, insertRowsCurrIndex);
     Set<String> extraFields = new HashSet<>(structVal.keySet());
     List<Object> listVal = new ArrayList<>(type.getFieldCount());
     float estimatedParquetSize = 0f;
@@ -435,7 +447,9 @@ class IcebergParquetValueParser {
     }
     if (!extraFields.isEmpty()) {
       String extraFieldsStr =
-          extraFields.stream().map(f -> concatDotPath(path, f)).collect(Collectors.joining(", "));
+          extraFields.stream()
+              .map(f -> path.concat(f).toString())
+              .collect(Collectors.joining(", "));
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           "Extra fields: " + extraFieldsStr,
@@ -456,15 +470,15 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue get3LevelListValue(
       Object value,
       GroupType type,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
-      String path) {
+      ColumnPath path) {
     Iterable<?> iterableVal =
-        DataValidationUtil.validateAndParseIcebergList(path, value, insertRowsCurrIndex);
+        DataValidationUtil.validateAndParseIcebergList(path.toString(), value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     float estimatedParquetSize = 0;
-    String listGroupPath = concatDotPath(path, THREE_LEVEL_LIST_GROUP_NAME);
+    ColumnPath listGroupPath = path.concat(THREE_LEVEL_LIST_GROUP_NAME);
     for (Object val : iterableVal) {
       ParquetBufferValue parsedValue =
           parseColumnValueToParquet(
@@ -491,15 +505,15 @@ class IcebergParquetValueParser {
   private static ParquetBufferValue get3LevelMapValue(
       Object value,
       GroupType type,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
-      String path) {
+      ColumnPath path) {
     Map<?, ?> mapVal =
-        DataValidationUtil.validateAndParseIcebergMap(path, value, insertRowsCurrIndex);
+        DataValidationUtil.validateAndParseIcebergMap(path.toString(), value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     float estimatedParquetSize = 0;
-    String mapGroupPath = concatDotPath(path, THREE_LEVEL_MAP_GROUP_NAME);
+    ColumnPath mapGroupPath = path.concat(THREE_LEVEL_MAP_GROUP_NAME);
     for (Map.Entry<?, ?> entry : mapVal.entrySet()) {
       ParquetBufferValue parsedKey =
           parseColumnValueToParquet(

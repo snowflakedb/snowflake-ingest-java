@@ -8,6 +8,7 @@ import static net.snowflake.ingest.utils.Constants.USER;
 
 import com.codahale.metrics.Timer;
 import io.netty.util.internal.PlatformDependent;
+import java.io.IOException;
 import java.io.StringReader;
 import java.lang.management.BufferPoolMXBean;
 import java.lang.management.ManagementFactory;
@@ -29,6 +30,8 @@ import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.core.SFSessionProperty;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
@@ -412,7 +415,7 @@ public class Utils {
     return String.format("%s.%s.%s.%s", dbName, schemaName, tableName, channelName);
   }
 
-  /*
+  /**
    * Get concat dot path, check if any path is empty or null
    *
    * @param path the path
@@ -429,5 +432,25 @@ public class Utils {
       sb.append(p);
     }
     return sb.toString();
+  }
+
+  /**
+   * Get the extended metadata size (footer size) from a parquet file
+   *
+   * @param bytes the serialized parquet file
+   * @param length the length of the byte array without padding
+   * @return the extended metadata size
+   */
+  public static int getExtendedMetadataSize(byte[] bytes, int length) throws IOException {
+    final int magicOffset = length - ParquetFileWriter.MAGIC.length;
+    final int footerSizeOffset = magicOffset - Integer.BYTES;
+    if (bytes.length < length
+        || footerSizeOffset < 0
+        || !ParquetFileWriter.MAGIC_STR.equals(
+            new String(bytes, magicOffset, ParquetFileWriter.MAGIC.length))) {
+      throw new IllegalArgumentException("Invalid parquet file");
+    }
+
+    return BytesUtils.readIntLittleEndian(bytes, footerSizeOffset);
   }
 }

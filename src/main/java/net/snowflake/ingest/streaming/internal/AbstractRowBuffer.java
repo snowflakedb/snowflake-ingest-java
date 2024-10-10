@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -20,6 +20,7 @@ import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.ColumnPath;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -286,10 +287,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   }
 
   // Map the column name to the stats
-  @VisibleForTesting Map<String, RowBufferStats> statsMap;
+  @VisibleForTesting Map<ColumnPath, RowBufferStats> statsMap;
 
   // Temp stats map to use until all the rows are validated
-  @VisibleForTesting Map<String, RowBufferStats> tempStatsMap;
+  @VisibleForTesting Map<ColumnPath, RowBufferStats> tempStatsMap;
 
   // Lock used to protect the buffers from concurrent read/write
   private final Lock flushLock;
@@ -508,7 +509,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       long oldRowSequencer = 0;
       String oldEndOffsetToken = null;
       String oldStartOffsetToken = null;
-      Map<String, RowBufferStats> oldColumnEps = null;
+      Map<ColumnPath, RowBufferStats> oldColumnEps = null;
       Pair<Long, Long> oldMinMaxInsertTimeInMs = null;
 
       logger.logDebug("Buffer flush about to take lock on channel={}", channelFullyQualifiedName);
@@ -574,7 +575,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   abstract float addRow(
       Map<String, Object> row,
       int bufferedRowIndex,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
       final long insertRowIndex);
 
@@ -594,7 +595,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   abstract float addTempRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
       long insertRowIndex);
 
@@ -641,14 +642,18 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    *
    * @param rowCount: count of rows in the given buffer
    * @param colStats: map of column name to RowBufferStats
-   * @param setAllDefaultValues: whether to set default values for all null fields the EPs
-   *     irrespective of the data type of this column
+   * @param setAllDefaultValues: whether to set default values for all null min/max field in the EPs
+   * @param enableDistinctValuesCount: whether to include valid NDV in the EPs irrespective of the
+   *     data type of this column
    * @return the EPs built from column stats
    */
   static EpInfo buildEpInfoFromStats(
-      long rowCount, Map<String, RowBufferStats> colStats, boolean setAllDefaultValues) {
-    EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
-    for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
+      long rowCount,
+      Map<ColumnPath, RowBufferStats> colStats,
+      boolean setAllDefaultValues,
+      boolean enableDistinctValuesCount) {
+    EpInfo epInfo = new EpInfo(rowCount, new HashMap<>(), enableDistinctValuesCount);
+    for (Map.Entry<ColumnPath, RowBufferStats> colStat : colStats.entrySet()) {
       RowBufferStats stat = colStat.getValue();
       FileColumnProperties dto = new FileColumnProperties(stat, setAllDefaultValues);
       String colName = colStat.getValue().getColumnDisplayName();

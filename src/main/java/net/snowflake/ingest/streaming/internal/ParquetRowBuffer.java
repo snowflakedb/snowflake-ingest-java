@@ -23,6 +23,7 @@ import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import net.snowflake.ingest.utils.ColumnPath;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -102,13 +103,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       if (!clientBufferParameters.getIsIcebergMode()) {
         /* Streaming to FDN table doesn't support sub-columns, set up the stats here. */
         this.statsMap.put(
-            column.getInternalName(),
+            new ColumnPath(column.getInternalName()),
             new RowBufferStats(
                 column.getName(),
                 column.getCollation(),
                 column.getOrdinal(),
                 null /* fieldId */,
-                parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
+                parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null,
+                clientBufferParameters.isEnableDistinctValuesCount(),
+                false /* enableValuesCount */));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
@@ -117,13 +120,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
            * create a separate stats in case current batch has invalid rows which ruins the original stats.
            */
           this.tempStatsMap.put(
-              column.getInternalName(),
+              new ColumnPath(column.getInternalName()),
               new RowBufferStats(
                   column.getName(),
                   column.getCollation(),
                   column.getOrdinal(),
                   null /* fieldId */,
-                  parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
+                  parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null,
+                  clientBufferParameters.isEnableDistinctValuesCount(),
+                  false /* enableValuesCount */));
         }
       }
 
@@ -181,28 +186,42 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
      */
     if (clientBufferParameters.getIsIcebergMode()) {
       for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
-        String columnPath = concatDotPath(columnDescriptor.getPath());
+        String[] path = columnDescriptor.getPath();
+        String columnDotPath = concatDotPath(path);
         PrimitiveType primitiveType = columnDescriptor.getPrimitiveType();
+        boolean isInRepeatedGroup =
+            path.length > 1
+                && schema
+                    .getType(Arrays.copyOf(path, path.length - 1))
+                    .isRepetition(Type.Repetition.REPEATED);
 
         /* set fieldId to 0 for non-structured columns */
-        int fieldId = columnDescriptor.getPath().length == 1 ? 0 : primitiveType.getId().intValue();
+        int fieldId = path.length == 1 ? 0 : primitiveType.getId().intValue();
         int ordinal = schema.getType(columnDescriptor.getPath()[0]).getId().intValue();
 
         this.statsMap.put(
-            columnPath,
+            new ColumnPath(path),
             new RowBufferStats(
-                columnPath, null /* collationDefinitionString */, ordinal, fieldId, primitiveType));
+                columnDotPath,
+                null /* collationDefinitionString */,
+                ordinal,
+                fieldId,
+                primitiveType,
+                clientBufferParameters.isEnableDistinctValuesCount(),
+                clientBufferParameters.isEnableValuesCount() && isInRepeatedGroup));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
-              columnPath,
+              new ColumnPath(path),
               new RowBufferStats(
-                  columnPath,
+                  columnDotPath,
                   null /* collationDefinitionString */,
                   ordinal,
                   fieldId,
-                  primitiveType));
+                  primitiveType,
+                  clientBufferParameters.isEnableDistinctValuesCount(),
+                  clientBufferParameters.isEnableValuesCount() && isInRepeatedGroup));
         }
       }
     }
@@ -219,7 +238,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   float addRow(
       Map<String, Object> row,
       int bufferedRowIndex,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
       final long insertRowIndex) {
     return addRow(row, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
@@ -233,7 +252,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   float addTempRow(
       Map<String, Object> row,
       int curRowIndex,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
       long insertRowIndex) {
     return addRow(row, tempData::add, statsMap, formattedInputColumnNames, insertRowIndex);
@@ -254,15 +273,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private float addRow(
       Map<String, Object> row,
       Consumer<List<Object>> out,
-      Map<String, RowBufferStats> statsMap,
+      Map<ColumnPath, RowBufferStats> statsMap,
       Set<String> inputColumnNames,
       long insertRowsCurrIndex) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
 
     // Create new empty stats just for the current row.
-    Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
-    statsMap.forEach((columnName, stats) -> forkedStatsMap.put(columnName, stats.forkEmpty()));
+    Map<ColumnPath, RowBufferStats> forkedStatsMap = new HashMap<>();
+    statsMap.forEach((columnPath, stats) -> forkedStatsMap.put(columnPath, stats.forkEmpty()));
 
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
@@ -279,7 +298,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                   value,
                   column,
                   parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
-                  forkedStatsMap.get(columnName),
+                  forkedStatsMap.get(new ColumnPath(columnName)),
                   defaultTimezone,
                   insertRowsCurrIndex,
                   clientBufferParameters.isEnableNewJsonParsingLogic()));
@@ -301,16 +320,19 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     // All input values passed validation, iterate over the columns again and combine their existing
     // statistics with the forked statistics for the current row.
-    for (Map.Entry<String, RowBufferStats> forkedColStats : forkedStatsMap.entrySet()) {
-      String columnName = forkedColStats.getKey();
+    for (Map.Entry<ColumnPath, RowBufferStats> forkedColStats : forkedStatsMap.entrySet()) {
+      ColumnPath path = forkedColStats.getKey();
       statsMap.put(
-          columnName,
-          RowBufferStats.getCombinedStats(statsMap.get(columnName), forkedColStats.getValue()));
+          path, RowBufferStats.getCombinedStats(statsMap.get(path), forkedColStats.getValue()));
     }
 
-    // Increment null count for column missing in the input map
+    // Increment null count for column and its sub-columns missing in the input map
     for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
-      statsMap.get(columnName).incCurrentNullCount();
+      for (Map.Entry<ColumnPath, RowBufferStats> entry : statsMap.entrySet()) {
+        if (entry.getKey().isDecedentOf(new ColumnPath(columnName))) {
+          entry.getValue().incCurrentNullCount();
+        }
+      }
     }
     return size;
   }
