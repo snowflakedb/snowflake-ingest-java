@@ -121,8 +121,10 @@ public class BlobBuilderTest {
                     Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
                         .as(LogicalTypeAnnotation.stringType())
                         .id(1)
-                        .named("test"))
-                : new RowBufferStats(columnName, null, 1, null, null));
+                        .named("test"),
+                    isIceberg,
+                    isIceberg)
+                : new RowBufferStats(columnName, null, 1, null, null, false, false));
     channelData.setChannelContext(
         new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
     return Collections.singletonList(channelData);

@@ -25,6 +25,7 @@ import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SubColumnFinder;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.schema.MessageType;
@@ -49,6 +50,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private final ParquetProperties.WriterVersion parquetWriterVersion;
 
   private MessageType schema;
+  private SubColumnFinder statsFinder;
 
   /** Construct a ParquetRowBuffer object. */
   ParquetRowBuffer(
@@ -113,7 +115,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                 column.getCollation(),
                 column.getOrdinal(),
                 null /* fieldId */,
-                parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
+                parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null,
+                clientBufferParameters.isEnableDistinctValuesCount(),
+                false /* enableValuesCount */));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
@@ -128,7 +132,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                   column.getCollation(),
                   column.getOrdinal(),
                   null /* fieldId */,
-                  parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null));
+                  parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null,
+                  clientBufferParameters.isEnableDistinctValuesCount(),
+                  false /* enableValuesCount */));
         }
       }
 
@@ -186,31 +192,46 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
      */
     if (clientBufferParameters.getIsIcebergMode()) {
       for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
-        String columnPath = concatDotPath(columnDescriptor.getPath());
+        String[] path = columnDescriptor.getPath();
+        String columnDotPath = concatDotPath(path);
         PrimitiveType primitiveType = columnDescriptor.getPrimitiveType();
+        boolean isInRepeatedGroup =
+            path.length > 1
+                && schema
+                    .getType(Arrays.copyOf(path, path.length - 1))
+                    .isRepetition(Type.Repetition.REPEATED);
 
         /* set fieldId to 0 for non-structured columns */
-        int fieldId = columnDescriptor.getPath().length == 1 ? 0 : primitiveType.getId().intValue();
+        int fieldId = path.length == 1 ? 0 : primitiveType.getId().intValue();
         int ordinal = schema.getType(columnDescriptor.getPath()[0]).getId().intValue();
 
         this.statsMap.put(
-            columnPath,
+            columnDotPath,
             new RowBufferStats(
-                columnPath, null /* collationDefinitionString */, ordinal, fieldId, primitiveType));
+                columnDotPath,
+                null /* collationDefinitionString */,
+                ordinal,
+                fieldId,
+                primitiveType,
+                clientBufferParameters.isEnableDistinctValuesCount(),
+                clientBufferParameters.isEnableValuesCount() && isInRepeatedGroup));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
-              columnPath,
+              columnDotPath,
               new RowBufferStats(
-                  columnPath,
+                  columnDotPath,
                   null /* collationDefinitionString */,
                   ordinal,
                   fieldId,
-                  primitiveType));
+                  primitiveType,
+                  clientBufferParameters.isEnableDistinctValuesCount(),
+                  clientBufferParameters.isEnableValuesCount() && isInRepeatedGroup));
         }
       }
     }
+    statsFinder = new SubColumnFinder(schema);
     tempData.clear();
     data.clear();
   }
@@ -267,7 +288,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
-    statsMap.forEach((columnName, stats) -> forkedStatsMap.put(columnName, stats.forkEmpty()));
+    statsMap.forEach((columnPath, stats) -> forkedStatsMap.put(columnPath, stats.forkEmpty()));
 
     for (Map.Entry<String, Object> entry : row.entrySet()) {
       String key = entry.getKey();
@@ -279,7 +300,12 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       ParquetBufferValue valueWithSize =
           (clientBufferParameters.getIsIcebergMode()
               ? IcebergParquetValueParser.parseColumnValueToParquet(
-                  value, parquetColumn.type, forkedStatsMap, defaultTimezone, insertRowsCurrIndex)
+                  value,
+                  parquetColumn.type,
+                  forkedStatsMap,
+                  statsFinder,
+                  defaultTimezone,
+                  insertRowsCurrIndex)
               : SnowflakeParquetValueParser.parseColumnValueToParquet(
                   value,
                   column,
@@ -313,9 +339,11 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
           RowBufferStats.getCombinedStats(statsMap.get(columnName), forkedColStats.getValue()));
     }
 
-    // Increment null count for column missing in the input map
+    // Increment null count for column and its sub-columns missing in the input map
     for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
-      statsMap.get(columnName).incCurrentNullCount();
+      statsFinder
+          .getSubColumns(columnName)
+          .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
     }
     return size;
   }

@@ -44,6 +44,9 @@ class FileColumnProperties {
 
   private long nullCount;
 
+  // for elements in repeated columns
+  private Long numberOfValues;
+
   // for binary or string columns
   private long maxLength;
 
@@ -110,6 +113,7 @@ class FileColumnProperties {
     this.setMinStrNonCollated(null);
     this.setNullCount(stats.getCurrentNullCount());
     this.setDistinctValues(stats.getDistinctValues());
+    this.setNumberOfValues(stats.getNumberOfValues());
   }
 
   private void setIntValues(RowBufferStats stats) {
@@ -282,6 +286,16 @@ class FileColumnProperties {
 
   void setMaxStrNonCollated(String maxStrNonCollated) {
     this.maxStrNonCollated = maxStrNonCollated;
+  }
+
+  @JsonProperty("numberOfValues")
+  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+  Long getNumberOfValues() {
+    return numberOfValues;
+  }
+
+  void setNumberOfValues(Long numberOfValues) {
+    this.numberOfValues = numberOfValues;
   }
 
   @Override

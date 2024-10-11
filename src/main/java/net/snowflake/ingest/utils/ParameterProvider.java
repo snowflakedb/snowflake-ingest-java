@@ -157,73 +157,85 @@ public class ParameterProvider {
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         INSERT_THROTTLE_INTERVAL_IN_MILLIS,
         INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE,
         INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         INSERT_THROTTLE_THRESHOLD_IN_BYTES,
         INSERT_THROTTLE_THRESHOLD_IN_BYTES_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         ENABLE_SNOWPIPE_STREAMING_METRICS,
         SNOWPIPE_STREAMING_METRICS_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
-        BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT, parameterOverrides, props, false);
+        BLOB_FORMAT_VERSION,
+        BLOB_FORMAT_VERSION_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
     getBlobFormatVersion(); // to verify parsing the configured value
 
     this.checkAndUpdate(
-        IO_TIME_CPU_RATIO, IO_TIME_CPU_RATIO_DEFAULT, parameterOverrides, props, false);
+        IO_TIME_CPU_RATIO,
+        IO_TIME_CPU_RATIO_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         BLOB_UPLOAD_MAX_RETRY_COUNT,
         BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         MAX_MEMORY_LIMIT_IN_BYTES,
         MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         MAX_CHANNEL_SIZE_IN_BYTES,
         MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
-        MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT, parameterOverrides, props, false);
+        MAX_CHUNK_SIZE_IN_BYTES,
+        MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         MAX_CLIENT_LAG,
         isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         MAX_CHUNKS_IN_BLOB,
@@ -237,21 +249,21 @@ public class ParameterProvider {
         MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
         BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         ENABLE_NEW_JSON_PARSING_LOGIC,
         ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
         parameterOverrides,
         props,
-        false);
+        false /* enforceDefault */);
 
     if (getMaxChunksInBlob() > getMaxChunksInRegistrationRequest()) {
       throw new IllegalArgumentException(
