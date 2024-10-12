@@ -156,6 +156,9 @@ public class RowBufferTest {
             isIcebergMode ? Optional.of(1) : Optional.empty(),
             isIcebergMode),
         null,
+        isIcebergMode
+            ? ParquetProperties.WriterVersion.PARQUET_2_0
+            : ParquetProperties.WriterVersion.PARQUET_1_0,
         null);
   }
 
@@ -1925,18 +1928,7 @@ public class RowBufferTest {
     bufferUnderTest.setupSchema(Collections.singletonList(colChar));
     loadData(bufferUnderTest, Collections.singletonMap("colChar", "a"));
     ChannelData<ParquetChunkData> data = bufferUnderTest.flush();
-    data.setChannelContext(
-        new ChannelFlushContext(
-            "name",
-            "db",
-            "schema",
-            "table",
-            1L,
-            "key",
-            0L,
-            isIcebergMode
-                ? ParquetProperties.WriterVersion.PARQUET_2_0
-                : ParquetProperties.WriterVersion.PARQUET_1_0));
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
 
     ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
     Flusher.SerializationResult result =

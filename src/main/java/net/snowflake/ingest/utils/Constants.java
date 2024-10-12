@@ -79,28 +79,11 @@ public class Constants {
    * otherwise v1.
    */
   public enum IcebergSerializationPolicy {
-    NON_ICEBERG,
     COMPATIBLE,
     OPTIMIZED;
 
-    public static IcebergSerializationPolicy fromName(String name) {
-      if (name == null) {
-        return NON_ICEBERG;
-      }
-      for (IcebergSerializationPolicy e : IcebergSerializationPolicy.values()) {
-        if (e.name().equalsIgnoreCase(name)) {
-          return e;
-        }
-      }
-      throw new IllegalArgumentException(
-          String.format(
-              "Unsupported ICEBERG_SERIALIZATION_POLICY = '%s', allowed values are %s",
-              name, Arrays.asList(IcebergSerializationPolicy.values())));
-    }
-
-    public ParquetProperties.WriterVersion getParquetWriterVersion() {
+    public ParquetProperties.WriterVersion toParquetWriterVersion() {
       switch (this) {
-        case NON_ICEBERG:
         case COMPATIBLE:
           return ParquetProperties.WriterVersion.PARQUET_1_0;
         case OPTIMIZED:

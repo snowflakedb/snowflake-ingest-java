@@ -303,7 +303,6 @@ public class FlushServiceTest {
           encryptionKeyId,
           onErrorOption,
           defaultTimezone,
-          Constants.BdecVersion.THREE,
           null,
           isIcebergMode
               ? ParquetProperties.WriterVersion.PARQUET_2_0
@@ -1065,7 +1064,11 @@ public class FlushServiceTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            ZoneOffset.UTC);
+            ZoneOffset.UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
 
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -1080,7 +1083,11 @@ public class FlushServiceTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            ZoneOffset.UTC);
+            ZoneOffset.UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
 
     channelCache.addChannel(channel1);
     channelCache.addChannel(channel2);

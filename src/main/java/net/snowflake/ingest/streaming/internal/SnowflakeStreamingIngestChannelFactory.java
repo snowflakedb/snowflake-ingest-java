@@ -131,7 +131,6 @@ class SnowflakeStreamingIngestChannelFactory {
           this.encryptionKeyId,
           this.onErrorOption,
           this.defaultTimezone,
-          this.owningClient.getParameterProvider().getBlobFormatVersion(),
           this.offsetTokenVerificationFunction,
           this.parquetWriterVersion);
     }

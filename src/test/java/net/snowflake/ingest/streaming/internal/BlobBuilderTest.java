@@ -78,6 +78,9 @@ public class BlobBuilderTest {
                 100L,
                 isIceberg ? Optional.of(1) : Optional.empty(),
                 Constants.BdecParquetCompression.GZIP,
+                isIceberg
+                    ? ParquetProperties.WriterVersion.PARQUET_2_0
+                    : ParquetProperties.WriterVersion.PARQUET_1_0,
                 isIceberg))
         .when(channelData)
         .createFlusher();
@@ -121,17 +124,7 @@ public class BlobBuilderTest {
                         .named("test"))
                 : new RowBufferStats(columnName, null, 1, null, null));
     channelData.setChannelContext(
-        new ChannelFlushContext(
-            "channel1",
-            "DB",
-            "SCHEMA",
-            "TABLE",
-            1L,
-            "enc",
-            1L,
-            isIceberg
-                ? ParquetProperties.WriterVersion.PARQUET_2_0
-                : ParquetProperties.WriterVersion.PARQUET_1_0));
+        new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
     return Collections.singletonList(channelData);
   }
 

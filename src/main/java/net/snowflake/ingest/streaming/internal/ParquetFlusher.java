@@ -31,6 +31,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final Optional<Integer> maxRowGroups;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
+  private final ParquetProperties.WriterVersion parquetWriterVersion;
   private final boolean enableDictionaryEncoding;
 
   /** Construct parquet flusher from its schema. */
@@ -39,11 +40,13 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       long maxChunkSizeInBytes,
       Optional<Integer> maxRowGroups,
       Constants.BdecParquetCompression bdecParquetCompression,
+      ParquetProperties.WriterVersion parquetWriterVersion,
       boolean enableDictionaryEncoding) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.parquetWriterVersion = parquetWriterVersion;
     this.enableDictionaryEncoding = enableDictionaryEncoding;
   }
 
@@ -66,7 +69,6 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     BdecParquetWriter parquetWriter;
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
-    ParquetProperties.WriterVersion parquetWriterVersion = null;
 
     for (ChannelData<ParquetChunkData> data : channelsDataPerTable) {
       // Create channel metadata
@@ -106,15 +108,6 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         chunkMinMaxInsertTimeInMs =
             ChannelData.getCombinedMinMaxInsertTimeInMs(
                 chunkMinMaxInsertTimeInMs, data.getMinMaxInsertTimeInMs());
-      }
-
-      // Check if all the channels have the same parquet writer version
-      if (parquetWriterVersion == null) {
-        parquetWriterVersion = data.getChannelContext().getParquetWriterVersion();
-      } else if (!parquetWriterVersion.equals(data.getChannelContext().getParquetWriterVersion())) {
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR,
-            "Parquet writer version and storage serialization policy mismatch within a chunk");
       }
 
       rows.addAll(data.getVectors().rows);

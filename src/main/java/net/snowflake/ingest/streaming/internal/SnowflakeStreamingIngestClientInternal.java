@@ -71,6 +71,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.parquet.column.ParquetProperties;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestClient. The client internally
@@ -355,11 +356,17 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
 
-    if (isIcebergMode
-        && response.getTableColumns().stream()
-            .anyMatch(c -> c.getSourceIcebergDataType() == null)) {
-      throw new SFException(
-          ErrorCode.INTERNAL_ERROR, "Iceberg table columns must have sourceIcebergDataType set");
+    if (isIcebergMode) {
+      if (response.getTableColumns().stream().anyMatch(c -> c.getSourceIcebergDataType() == null)) {
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR, "Iceberg table columns must have sourceIcebergDataType set");
+      }
+
+      if (response.getIcebergSerializationPolicy() == null) {
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR,
+            "Iceberg Table's open channel response does not have serialization policy set.");
+      }
     }
 
     logger.logInfo(
@@ -387,7 +394,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
             .setDefaultTimezone(request.getDefaultTimezone())
             .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
             .setParquetWriterVersion(
-                response.getIcebergSerializationPolicy().getParquetWriterVersion())
+                isIcebergMode
+                    ? Constants.IcebergSerializationPolicy.valueOf(
+                            response.getIcebergSerializationPolicy())
+                        .toParquetWriterVersion()
+                    : ParquetProperties.WriterVersion.PARQUET_1_0)
             .build();
 
     // Setup the row buffer schema
