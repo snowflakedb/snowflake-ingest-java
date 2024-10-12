@@ -10,7 +10,6 @@ import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_B
 
 import com.google.common.annotations.VisibleForTesting;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -19,13 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -69,49 +68,6 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   private final MemoryInfoProvider memoryInfoProvider;
   private volatile long freeMemoryInBytes = 0;
 
-  /**
-   * Constructor for TESTING ONLY which allows us to set the test mode
-   *
-   * @param name
-   * @param dbName
-   * @param schemaName
-   * @param tableName
-   * @param offsetToken
-   * @param channelSequencer
-   * @param rowSequencer
-   * @param client
-   */
-  SnowflakeStreamingIngestChannelInternal(
-      String name,
-      String dbName,
-      String schemaName,
-      String tableName,
-      String offsetToken,
-      Long channelSequencer,
-      Long rowSequencer,
-      SnowflakeStreamingIngestClientInternal<T> client,
-      String encryptionKey,
-      Long encryptionKeyId,
-      OpenChannelRequest.OnErrorOption onErrorOption,
-      ZoneOffset defaultTimezone) {
-    this(
-        name,
-        dbName,
-        schemaName,
-        tableName,
-        offsetToken,
-        channelSequencer,
-        rowSequencer,
-        client,
-        encryptionKey,
-        encryptionKeyId,
-        onErrorOption,
-        defaultTimezone,
-        client.getParameterProvider().getBlobFormatVersion(),
-        null /* offsetTokenVerificationFunction */,
-        null /* parquetWriterVersion */);
-  }
-
   /** Default constructor */
   SnowflakeStreamingIngestChannelInternal(
       String name,
@@ -121,12 +77,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       String endOffsetToken,
       Long channelSequencer,
       Long rowSequencer,
-      SnowflakeStreamingIngestClientInternal<T> client,
+      @Nonnull SnowflakeStreamingIngestClientInternal<T> client,
       String encryptionKey,
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,
       ZoneId defaultTimezone,
-      Constants.BdecVersion bdecVersion,
       OffsetTokenVerificationFunction offsetTokenVerificationFunction,
       ParquetProperties.WriterVersion parquetWriterVersion) {
     this.isClosed = false;
@@ -144,28 +99,20 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     this.memoryInfoProvider = MemoryInfoProviderFromRuntime.getInstance();
     this.channelFlushContext =
         new ChannelFlushContext(
-            name,
-            dbName,
-            schemaName,
-            tableName,
-            channelSequencer,
-            encryptionKey,
-            encryptionKeyId,
-            parquetWriterVersion == null
-                ? ParquetProperties.DEFAULT_WRITER_VERSION
-                : parquetWriterVersion);
+            name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
     this.channelState = new ChannelRuntimeState(endOffsetToken, rowSequencer, true);
     this.rowBuffer =
         AbstractRowBuffer.createRowBuffer(
             onErrorOption,
             defaultTimezone,
-            bdecVersion,
+            client.getParameterProvider().getBlobFormatVersion(),
             getFullyQualifiedName(),
             this::collectRowSize,
             channelState,
             new ClientBufferParameters(owningClient),
             offsetTokenVerificationFunction,
-            owningClient == null ? null : owningClient.getTelemetryService());
+            parquetWriterVersion,
+            owningClient.getTelemetryService());
     this.tableColumns = new HashMap<>();
     logger.logInfo(
         "Channel={} created for table={}",

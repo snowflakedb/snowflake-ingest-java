@@ -76,7 +76,7 @@ public abstract class AbstractDataTypeTest {
     setUp(
         false /* isIceberg */,
         compressionAlgorithm,
-        Constants.IcebergSerializationPolicy.NON_ICEBERG);
+        Constants.IcebergSerializationPolicy.COMPATIBLE);
   }
 
   public void beforeIceberg(

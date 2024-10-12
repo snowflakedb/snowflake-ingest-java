@@ -6,7 +6,6 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
-import net.snowflake.ingest.utils.Constants;
 
 /** Response to the OpenChannelRequest */
 class OpenChannelResponse extends StreamingIngestResponse {
@@ -148,7 +147,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
     this.icebergSerializationPolicy = icebergSerializationPolicy;
   }
 
-  Constants.IcebergSerializationPolicy getIcebergSerializationPolicy() {
-    return Constants.IcebergSerializationPolicy.fromName(this.icebergSerializationPolicy);
+  String getIcebergSerializationPolicy() {
+    return this.icebergSerializationPolicy;
   }
 }

@@ -25,6 +25,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.ParquetProperties;
 
 /**
  * The abstract implementation of the buffer in the Streaming Ingest channel that holds the
@@ -668,6 +669,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       ChannelRuntimeState channelRuntimeState,
       ClientBufferParameters clientBufferParameters,
       OffsetTokenVerificationFunction offsetTokenVerificationFunction,
+      ParquetProperties.WriterVersion parquetWriterVersion,
       TelemetryService telemetryService) {
     switch (bdecVersion) {
       case THREE:
@@ -681,6 +683,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 channelRuntimeState,
                 clientBufferParameters,
                 offsetTokenVerificationFunction,
+                parquetWriterVersion,
                 telemetryService);
       default:
         throw new SFException(

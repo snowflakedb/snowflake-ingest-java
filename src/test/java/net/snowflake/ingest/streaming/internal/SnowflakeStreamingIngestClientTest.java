@@ -61,6 +61,7 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.bouncycastle.asn1.nist.NISTObjectIdentifiers;
@@ -131,7 +132,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
     channel2 =
@@ -148,7 +148,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
     channel3 =
@@ -165,7 +164,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
     channel4 =
@@ -182,7 +180,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
   }
@@ -380,7 +377,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
 
@@ -443,7 +439,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
 
@@ -497,7 +492,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
 
@@ -1073,7 +1067,11 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
             channel2Name,
@@ -1087,7 +1085,11 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     client.getChannelCache().addChannel(channel1);
     client.getChannelCache().addChannel(channel2);
 
@@ -1193,7 +1195,11 @@ public class SnowflakeStreamingIngestClientTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     client.getChannelCache().addChannel(channel);
 
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -1264,7 +1270,6 @@ public class SnowflakeStreamingIngestClientTest {
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
             ZoneOffset.UTC,
-            BDEC_VERSION,
             null,
             null);
 

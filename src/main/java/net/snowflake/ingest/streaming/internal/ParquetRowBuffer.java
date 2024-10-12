@@ -26,6 +26,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -45,6 +46,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   private final List<List<Object>> data;
   private final List<List<Object>> tempData;
 
+  private final ParquetProperties.WriterVersion parquetWriterVersion;
+
   private MessageType schema;
 
   /** Construct a ParquetRowBuffer object. */
@@ -56,6 +59,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       ChannelRuntimeState channelRuntimeState,
       ClientBufferParameters clientBufferParameters,
       OffsetTokenVerificationFunction offsetTokenVerificationFunction,
+      ParquetProperties.WriterVersion parquetWriterVersion,
       TelemetryService telemetryService) {
     super(
         onErrorOption,
@@ -70,6 +74,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     this.metadata = new HashMap<>();
     this.data = new ArrayList<>();
     this.tempData = new ArrayList<>();
+    this.parquetWriterVersion = parquetWriterVersion;
   }
 
   /**
@@ -395,6 +400,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         clientBufferParameters.getMaxChunkSizeInBytes(),
         clientBufferParameters.getMaxRowGroups(),
         clientBufferParameters.getBdecParquetCompression(),
+        parquetWriterVersion,
         clientBufferParameters.isEnableDictionaryEncoding());
   }
 }
