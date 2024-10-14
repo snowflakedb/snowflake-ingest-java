@@ -22,6 +22,7 @@ class OpenChannelResponse extends StreamingIngestResponse {
   private String encryptionKey;
   private Long encryptionKeyId;
   private FileLocationInfo icebergLocationInfo;
+  private String icebergSerializationPolicy;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -139,5 +140,14 @@ class OpenChannelResponse extends StreamingIngestResponse {
 
   FileLocationInfo getIcebergLocationInfo() {
     return this.icebergLocationInfo;
+  }
+
+  @JsonProperty("iceberg_serialization_policy")
+  void setIcebergSerializationPolicy(String icebergSerializationPolicy) {
+    this.icebergSerializationPolicy = icebergSerializationPolicy;
+  }
+
+  String getIcebergSerializationPolicy() {
+    return this.icebergSerializationPolicy;
   }
 }

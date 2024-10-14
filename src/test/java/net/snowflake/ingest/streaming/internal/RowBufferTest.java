@@ -28,6 +28,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.BdecParquetReader;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
@@ -155,6 +156,9 @@ public class RowBufferTest {
             isIcebergMode ? Optional.of(1) : Optional.empty(),
             isIcebergMode),
         null,
+        isIcebergMode
+            ? ParquetProperties.WriterVersion.PARQUET_2_0
+            : ParquetProperties.WriterVersion.PARQUET_1_0,
         null);
   }
 

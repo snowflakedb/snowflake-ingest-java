@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
+import org.apache.parquet.column.ParquetProperties;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,7 +62,11 @@ public class ChannelCacheTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     channel2 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel2",
@@ -75,7 +80,11 @@ public class ChannelCacheTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     channel3 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel3",
@@ -89,7 +98,11 @@ public class ChannelCacheTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.addChannel(channel1);
     cache.addChannel(channel2);
     cache.addChannel(channel3);
@@ -115,7 +128,11 @@ public class ChannelCacheTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.addChannel(channel);
     Assert.assertEquals(1, cache.getSize());
     Assert.assertTrue(channel == cache.entrySet().iterator().next().getValue().get(channelName));
@@ -133,7 +150,11 @@ public class ChannelCacheTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.addChannel(channelDup);
     // The old channel should be invalid now
     Assert.assertTrue(!channel.isValid());
@@ -214,7 +235,11 @@ public class ChannelCacheTest {
             "key",
             1234L,
             OpenChannelRequest.OnErrorOption.CONTINUE,
-            UTC);
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            isIcebergMode
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.removeChannelIfSequencersMatch(channel3Dup);
     // Verify that remove the same channel with a different channel sequencer is a no op
     Assert.assertEquals(1, cache.getSize());

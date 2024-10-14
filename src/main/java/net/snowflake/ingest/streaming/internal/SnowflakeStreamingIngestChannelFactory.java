@@ -8,6 +8,7 @@ import java.time.ZoneId;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.parquet.column.ParquetProperties;
 
 /** Builds a Streaming Ingest channel for a specific Streaming Ingest client */
 class SnowflakeStreamingIngestChannelFactory {
@@ -30,6 +31,7 @@ class SnowflakeStreamingIngestChannelFactory {
     private OpenChannelRequest.OnErrorOption onErrorOption;
     private ZoneId defaultTimezone;
     private OffsetTokenVerificationFunction offsetTokenVerificationFunction;
+    private ParquetProperties.WriterVersion parquetWriterVersion;
 
     private SnowflakeStreamingIngestChannelBuilder(String name) {
       this.name = name;
@@ -98,6 +100,12 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
+    SnowflakeStreamingIngestChannelBuilder<T> setParquetWriterVersion(
+        ParquetProperties.WriterVersion parquetWriterVersion) {
+      this.parquetWriterVersion = parquetWriterVersion;
+      return this;
+    }
+
     SnowflakeStreamingIngestChannelInternal<T> build() {
       Utils.assertStringNotNullOrEmpty("channel name", this.name);
       Utils.assertStringNotNullOrEmpty("table name", this.tableName);
@@ -123,8 +131,8 @@ class SnowflakeStreamingIngestChannelFactory {
           this.encryptionKeyId,
           this.onErrorOption,
           this.defaultTimezone,
-          this.owningClient.getParameterProvider().getBlobFormatVersion(),
-          this.offsetTokenVerificationFunction);
+          this.offsetTokenVerificationFunction,
+          this.parquetWriterVersion);
     }
   }
 }

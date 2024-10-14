@@ -5,6 +5,7 @@
 package net.snowflake.ingest.utils;
 
 import java.util.Arrays;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /** Contains all the constants needed for Streaming Ingest */
@@ -71,8 +72,30 @@ public class Constants {
   public static final String DROP_CHANNEL_ENDPOINT = "/v1/streaming/channels/drop/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
-  public static final int PARQUET_MAJOR_VERSION = 1;
   public static final int PARQUET_MINOR_VERSION = 0;
+
+  /**
+   * Iceberg table serialization policy. Use v2 parquet writer for optimized serialization,
+   * otherwise v1.
+   */
+  public enum IcebergSerializationPolicy {
+    COMPATIBLE,
+    OPTIMIZED;
+
+    public ParquetProperties.WriterVersion toParquetWriterVersion() {
+      switch (this) {
+        case COMPATIBLE:
+          return ParquetProperties.WriterVersion.PARQUET_1_0;
+        case OPTIMIZED:
+          return ParquetProperties.WriterVersion.PARQUET_2_0;
+        default:
+          throw new IllegalArgumentException(
+              String.format(
+                  "Unsupported ICEBERG_SERIALIZATION_POLICY = '%s', allowed values are %s",
+                  this.name(), Arrays.asList(IcebergSerializationPolicy.values())));
+      }
+    }
+  }
 
   public enum WriteMode {
     CLOUD_STORAGE,

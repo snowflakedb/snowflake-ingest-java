@@ -124,4 +124,8 @@ public class ClientBufferParameters {
   public String getParquetMessageTypeName() {
     return isIcebergMode ? PARQUET_MESSAGE_TYPE_NAME : BDEC_PARQUET_MESSAGE_TYPE_NAME;
   }
+
+  public boolean isEnableDictionaryEncoding() {
+    return isIcebergMode;
+  }
 }

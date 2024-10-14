@@ -16,6 +16,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.BdecParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
@@ -30,17 +31,23 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final Optional<Integer> maxRowGroups;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
+  private final ParquetProperties.WriterVersion parquetWriterVersion;
+  private final boolean enableDictionaryEncoding;
 
   /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
       MessageType schema,
       long maxChunkSizeInBytes,
       Optional<Integer> maxRowGroups,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      ParquetProperties.WriterVersion parquetWriterVersion,
+      boolean enableDictionaryEncoding) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.parquetWriterVersion = parquetWriterVersion;
+    this.enableDictionaryEncoding = enableDictionaryEncoding;
   }
 
   @Override
@@ -129,7 +136,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             firstChannelFullyQualifiedTableName,
             maxChunkSizeInBytes,
             maxRowGroups,
-            bdecParquetCompression);
+            bdecParquetCompression,
+            parquetWriterVersion,
+            enableDictionaryEncoding);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 

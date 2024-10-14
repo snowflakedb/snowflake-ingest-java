@@ -66,18 +66,51 @@ public abstract class AbstractDataTypeTest {
   protected static final ObjectMapper objectMapper = new ObjectMapper();
 
   @Parameters(name = "{index}: {0}")
-  public static Object[] compressionAlgorithms() {
+  public static Object[] parameters() {
     return new Object[] {"GZIP", "ZSTD"};
   }
 
   @Parameter public String compressionAlgorithm;
 
-  public void before(boolean isIceberg) throws Exception {
+  public void before() throws Exception {
+    setUp(
+        false /* isIceberg */,
+        compressionAlgorithm,
+        Constants.IcebergSerializationPolicy.COMPATIBLE);
+  }
+
+  public void beforeIceberg(
+      String compressionAlgorithm, Constants.IcebergSerializationPolicy serializationPolicy)
+      throws Exception {
+    setUp(true /* isIceberg */, compressionAlgorithm, serializationPolicy);
+  }
+
+  protected void setUp(
+      boolean isIceberg,
+      String compressionAlgorithm,
+      Constants.IcebergSerializationPolicy serializationPolicy)
+      throws Exception {
     databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
     conn = TestUtils.getConnection(true);
     conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
     conn.createStatement().execute(String.format("use database %s;", databaseName));
     conn.createStatement().execute(String.format("use schema %s;", schemaName));
+
+    switch (serializationPolicy) {
+      case COMPATIBLE:
+        conn.createStatement()
+            .execute(
+                String.format(
+                    "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'COMPATIBLE';",
+                    schemaName));
+        break;
+      case OPTIMIZED:
+        conn.createStatement()
+            .execute(
+                String.format(
+                    "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'OPTIMIZED';", schemaName));
+        break;
+    }
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
