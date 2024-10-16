@@ -32,14 +32,8 @@ public class RowBufferStatsTest {
     Assert.assertNull(stats.getCurrentMinIntValue());
     Assert.assertNull(stats.getCurrentMaxIntValue());
     Assert.assertEquals(0, stats.getCurrentNullCount());
-
-    if (enableNDVAndNV) {
-      Assert.assertEquals(0, stats.getDistinctValues());
-      Assert.assertEquals(0, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 0 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 0 : -1, stats.getNumberOfValues());
   }
 
   @Test
@@ -49,25 +43,15 @@ public class RowBufferStatsTest {
     stats.addStrValue("bob");
     Assert.assertArrayEquals("bob".getBytes(StandardCharsets.UTF_8), stats.getCurrentMinStrValue());
     Assert.assertArrayEquals("bob".getBytes(StandardCharsets.UTF_8), stats.getCurrentMaxStrValue());
-    if (enableNDVAndNV) {
-      Assert.assertEquals(1, stats.getDistinctValues());
-      Assert.assertEquals(1, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 1 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 1 : -1, stats.getNumberOfValues());
 
     stats.addStrValue("charlie");
     Assert.assertArrayEquals("bob".getBytes(StandardCharsets.UTF_8), stats.getCurrentMinStrValue());
     Assert.assertArrayEquals(
         "charlie".getBytes(StandardCharsets.UTF_8), stats.getCurrentMaxStrValue());
-    if (enableNDVAndNV) {
-      Assert.assertEquals(2, stats.getDistinctValues());
-      Assert.assertEquals(2, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 2 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 2 : -1, stats.getNumberOfValues());
 
     stats.addStrValue("alice");
     Assert.assertArrayEquals(
@@ -75,13 +59,8 @@ public class RowBufferStatsTest {
     Assert.assertArrayEquals(
         "charlie".getBytes(StandardCharsets.UTF_8), stats.getCurrentMaxStrValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(3, stats.getDistinctValues());
-      Assert.assertEquals(3, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 3 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 3 : -1, stats.getNumberOfValues());
 
     Assert.assertNull(stats.getCurrentMinRealValue());
     Assert.assertNull(stats.getCurrentMaxRealValue());
@@ -99,37 +78,22 @@ public class RowBufferStatsTest {
     Assert.assertEquals(BigInteger.valueOf((5)), stats.getCurrentMinIntValue());
     Assert.assertEquals(BigInteger.valueOf((5)), stats.getCurrentMaxIntValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(1, stats.getDistinctValues());
-      Assert.assertEquals(1, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 1 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 1 : -1, stats.getNumberOfValues());
 
     stats.addIntValue(BigInteger.valueOf(6));
     Assert.assertEquals(BigInteger.valueOf((5)), stats.getCurrentMinIntValue());
     Assert.assertEquals(BigInteger.valueOf((6)), stats.getCurrentMaxIntValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(2, stats.getDistinctValues());
-      Assert.assertEquals(2, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 2 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 2 : -1, stats.getNumberOfValues());
 
     stats.addIntValue(BigInteger.valueOf(4));
     Assert.assertEquals(BigInteger.valueOf((4)), stats.getCurrentMinIntValue());
     Assert.assertEquals(BigInteger.valueOf((6)), stats.getCurrentMaxIntValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(3, stats.getDistinctValues());
-      Assert.assertEquals(3, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 3 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 3 : -1, stats.getNumberOfValues());
 
     Assert.assertNull(stats.getCurrentMinRealValue());
     Assert.assertNull(stats.getCurrentMaxRealValue());
@@ -147,37 +111,22 @@ public class RowBufferStatsTest {
     Assert.assertEquals(Double.valueOf(1), stats.getCurrentMinRealValue());
     Assert.assertEquals(Double.valueOf(1), stats.getCurrentMaxRealValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(1, stats.getDistinctValues());
-      Assert.assertEquals(1, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 1 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 1 : -1, stats.getNumberOfValues());
 
     stats.addRealValue(1.5);
     Assert.assertEquals(Double.valueOf(1), stats.getCurrentMinRealValue());
     Assert.assertEquals(Double.valueOf(1.5), stats.getCurrentMaxRealValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(2, stats.getDistinctValues());
-      Assert.assertEquals(2, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 2 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 2 : -1, stats.getNumberOfValues());
 
     stats.addRealValue(.8);
     Assert.assertEquals(Double.valueOf(.8), stats.getCurrentMinRealValue());
     Assert.assertEquals(Double.valueOf(1.5), stats.getCurrentMaxRealValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(3, stats.getDistinctValues());
-      Assert.assertEquals(3, stats.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, stats.getDistinctValues());
-      Assert.assertNull(stats.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 3 : -1, stats.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 3 : -1, stats.getNumberOfValues());
 
     Assert.assertNull(stats.getCurrentMinIntValue());
     Assert.assertNull(stats.getCurrentMaxIntValue());
@@ -230,14 +179,8 @@ public class RowBufferStatsTest {
     RowBufferStats result = RowBufferStats.getCombinedStats(one, two);
     Assert.assertEquals(BigInteger.valueOf(1), result.getCurrentMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(8), result.getCurrentMaxIntValue());
-
-    if (enableNDVAndNV) {
-      Assert.assertEquals(7, result.getDistinctValues());
-      Assert.assertEquals(8, result.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, result.getDistinctValues());
-      Assert.assertNull(result.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 7 : -1, result.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 8 : -1, result.getNumberOfValues());
 
     Assert.assertEquals(2, result.getCurrentNullCount());
     Assert.assertNull(result.getCurrentMinStrValue());
@@ -262,14 +205,8 @@ public class RowBufferStatsTest {
     result = RowBufferStats.getCombinedStats(one, two);
     Assert.assertEquals(Double.valueOf(1), result.getCurrentMinRealValue());
     Assert.assertEquals(Double.valueOf(8), result.getCurrentMaxRealValue());
-
-    if (enableNDVAndNV) {
-      Assert.assertEquals(7, result.getDistinctValues());
-      Assert.assertEquals(8, result.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, result.getDistinctValues());
-      Assert.assertNull(result.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 7 : -1, result.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 8 : -1, result.getNumberOfValues());
 
     Assert.assertEquals(0, result.getCurrentNullCount());
     Assert.assertNull(result.getCollationDefinitionString());
@@ -301,14 +238,8 @@ public class RowBufferStatsTest {
     Assert.assertArrayEquals("g".getBytes(StandardCharsets.UTF_8), result.getCurrentMaxStrValue());
     Assert.assertEquals(2, result.getCurrentNullCount());
     Assert.assertEquals(5, result.getCurrentMaxLength());
-
-    if (enableNDVAndNV) {
-      Assert.assertEquals(7, result.getDistinctValues());
-      Assert.assertEquals(8, result.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, result.getDistinctValues());
-      Assert.assertNull(result.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 7 : -1, result.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 8 : -1, result.getNumberOfValues());
 
     Assert.assertNull(result.getCurrentMinRealValue());
     Assert.assertNull(result.getCurrentMaxRealValue());
@@ -332,14 +263,8 @@ public class RowBufferStatsTest {
     RowBufferStats result = RowBufferStats.getCombinedStats(one, two);
     Assert.assertEquals(BigInteger.valueOf(2), result.getCurrentMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(8), result.getCurrentMaxIntValue());
-
-    if (enableNDVAndNV) {
-      Assert.assertEquals(4, result.getDistinctValues());
-      Assert.assertEquals(4, result.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, result.getDistinctValues());
-      Assert.assertNull(result.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getNumberOfValues());
 
     Assert.assertEquals(2, result.getCurrentNullCount());
 
@@ -359,13 +284,8 @@ public class RowBufferStatsTest {
     result = RowBufferStats.getCombinedStats(one, two);
     Assert.assertEquals(Double.valueOf(2), result.getCurrentMinRealValue());
     Assert.assertEquals(Double.valueOf(8), result.getCurrentMaxRealValue());
-    if (enableNDVAndNV) {
-      Assert.assertEquals(4, result.getDistinctValues());
-      Assert.assertEquals(4, result.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, result.getDistinctValues());
-      Assert.assertNull(result.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getNumberOfValues());
     Assert.assertEquals(0, result.getCurrentNullCount());
 
     Assert.assertNull(result.getCurrentMinStrValue());
@@ -388,13 +308,8 @@ public class RowBufferStatsTest {
         "alpha".getBytes(StandardCharsets.UTF_8), result.getCurrentMinStrValue());
     Assert.assertArrayEquals("g".getBytes(StandardCharsets.UTF_8), result.getCurrentMaxStrValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(4, result.getDistinctValues());
-      Assert.assertEquals(4, result.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, result.getDistinctValues());
-      Assert.assertNull(result.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getNumberOfValues());
     Assert.assertEquals(1, result.getCurrentNullCount());
 
     Assert.assertNull(result.getCurrentMinRealValue());

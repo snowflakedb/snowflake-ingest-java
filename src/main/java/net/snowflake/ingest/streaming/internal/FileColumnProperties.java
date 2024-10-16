@@ -45,7 +45,7 @@ class FileColumnProperties {
   private long nullCount;
 
   // for elements in repeated columns
-  private Long numberOfValues;
+  private long numberOfValues;
 
   // for binary or string columns
   private long maxLength;
@@ -289,12 +289,12 @@ class FileColumnProperties {
   }
 
   @JsonProperty("numberOfValues")
-  @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-  Long getNumberOfValues() {
+  @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = IgnoreMinusOneFilter.class)
+  long getNumberOfValues() {
     return numberOfValues;
   }
 
-  void setNumberOfValues(Long numberOfValues) {
+  void setNumberOfValues(long numberOfValues) {
     this.numberOfValues = numberOfValues;
   }
 
@@ -359,5 +359,15 @@ class FileColumnProperties {
         distinctValues,
         nullCount,
         maxLength);
+  }
+
+  static class IgnoreMinusOneFilter {
+    @Override
+    public boolean equals(Object obj) {
+      if (obj instanceof Long) {
+        return (Long) obj == -1;
+      }
+      return false;
+    }
   }
 }

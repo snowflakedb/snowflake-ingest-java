@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -77,14 +81,20 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
-    /* Null struct, map list. TODO: SNOW-1727532 Should be fixed with null values EP calculation. */
+    /* Null struct, map list. */
     Assertions.assertThatThrownBy(
             () -> assertStructuredDataType("object(a int, b string, c boolean) not null", null))
-        .isInstanceOf(NullPointerException.class);
+        .isInstanceOf(SFException.class)
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
     Assertions.assertThatThrownBy(() -> assertStructuredDataType("map(string, int) not null", null))
-        .isInstanceOf(NullPointerException.class);
+        .isInstanceOf(SFException.class)
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
     Assertions.assertThatThrownBy(() -> assertStructuredDataType("array(int) not null", null))
-        .isInstanceOf(NullPointerException.class);
+        .isInstanceOf(SFException.class)
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
     /* Nested data types. Should be fixed. Fixed in server side. */
     Assertions.assertThatThrownBy(

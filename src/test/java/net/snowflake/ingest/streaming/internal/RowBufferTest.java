@@ -46,7 +46,7 @@ import org.junit.runners.Parameterized;
 public class RowBufferTest {
   @Parameterized.Parameters(name = "isIcebergMode: {0}")
   public static Object[] isIcebergMode() {
-    return new Object[] {true};
+    return new Object[] {false, true};
   }
 
   @Parameterized.Parameter public static boolean isIcebergMode;

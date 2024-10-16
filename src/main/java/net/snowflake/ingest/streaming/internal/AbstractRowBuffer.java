@@ -292,6 +292,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Temp stats map to use until all the rows are validated
   @VisibleForTesting Map<String, RowBufferStats> tempStatsMap;
 
+  // Map of the column name to the column object, used for null/missing column check
+  protected final Map<String, ParquetColumn> fieldIndex;
+
   // Lock used to protect the buffers from concurrent read/write
   private final Lock flushLock;
 
@@ -352,6 +355,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     // Initialize empty stats
     this.statsMap = new HashMap<>();
     this.tempStatsMap = new HashMap<>();
+
+    this.fieldIndex = new HashMap<>();
   }
 
   /**
@@ -427,7 +432,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     List<String> missingCols = new ArrayList<>();
     for (String columnName : this.nonNullableFieldNames) {
       if (!inputColNamesMap.containsKey(columnName)) {
-        missingCols.add(statsMap.get(columnName).getColumnDisplayName());
+        missingCols.add(fieldIndex.get(columnName).columnMetadata.getName());
       }
     }
 
@@ -447,7 +452,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     for (String columnName : this.nonNullableFieldNames) {
       if (inputColNamesMap.containsKey(columnName)
           && row.get(inputColNamesMap.get(columnName)) == null) {
-        nullValueNotNullCols.add(statsMap.get(columnName).getColumnDisplayName());
+        nullValueNotNullCols.add(fieldIndex.get(columnName).columnMetadata.getName());
       }
     }
 

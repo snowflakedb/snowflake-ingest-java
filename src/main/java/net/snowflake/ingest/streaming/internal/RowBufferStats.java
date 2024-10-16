@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
+import static net.snowflake.ingest.utils.Constants.EP_NV_UNKNOWN;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -48,7 +49,7 @@ class RowBufferStats {
   private final boolean enableDistinctValuesCount;
   private Set<Object> distinctValues;
   private final boolean enableValuesCount;
-  private Long numberOfValues;
+  private long numberOfValues;
 
   RowBufferStats(
       String columnDisplayName,
@@ -310,9 +311,8 @@ class RowBufferStats {
     return enableDistinctValuesCount ? distinctValues.size() : EP_NDV_UNKNOWN;
   }
 
-  // TODO: change default to -1 after Oct 17
-  Long getNumberOfValues() {
-    return enableValuesCount ? numberOfValues : null;
+  long getNumberOfValues() {
+    return enableValuesCount ? numberOfValues : EP_NV_UNKNOWN;
   }
 
   String getCollationDefinitionString() {

@@ -38,8 +38,6 @@ import org.apache.parquet.schema.Type;
  */
 public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
-  private final Map<String, ParquetColumn> fieldIndex;
-
   /* map that contains metadata like typeinfo for columns and other information needed by the server scanner */
   private final Map<String, String> metadata;
 
@@ -72,7 +70,6 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         clientBufferParameters,
         offsetTokenVerificationFunction,
         telemetryService);
-    this.fieldIndex = new HashMap<>();
     this.metadata = new HashMap<>();
     this.data = new ArrayList<>();
     this.tempData = new ArrayList<>();

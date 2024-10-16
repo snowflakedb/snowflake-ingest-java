@@ -125,13 +125,8 @@ public class ChannelDataTest {
     Assert.assertNull(oneCombined.getCurrentMinRealValue());
     Assert.assertNull(oneCombined.getCurrentMaxRealValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(5, oneCombined.getDistinctValues());
-      Assert.assertEquals(5, oneCombined.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, oneCombined.getDistinctValues());
-      Assert.assertNull(oneCombined.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getNumberOfValues());
 
     Assert.assertArrayEquals(
         "10".getBytes(StandardCharsets.UTF_8), twoCombined.getCurrentMinStrValue());
@@ -142,12 +137,7 @@ public class ChannelDataTest {
     Assert.assertNull(twoCombined.getCurrentMinRealValue());
     Assert.assertNull(twoCombined.getCurrentMaxRealValue());
 
-    if (enableNDVAndNV) {
-      Assert.assertEquals(5, twoCombined.getDistinctValues());
-      Assert.assertEquals(5, twoCombined.getNumberOfValues().longValue());
-    } else {
-      Assert.assertEquals(-1, twoCombined.getDistinctValues());
-      Assert.assertNull(twoCombined.getNumberOfValues());
-    }
+    Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getDistinctValues());
+    Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getNumberOfValues());
   }
 }

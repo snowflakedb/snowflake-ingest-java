@@ -31,8 +31,8 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 
 /**
@@ -91,7 +91,8 @@ class BlobBuilder {
         final byte[] compressedChunkData;
         final int chunkLength;
         final int compressedChunkDataSize;
-        int extendedMetadataSize = -1;
+        long extendedMetadataSize = -1;
+        long metadataSize = -1;
 
         if (internalParameterProvider.getEnableChunkEncryption()) {
           Pair<byte[], Integer> paddedChunk =
@@ -115,7 +116,8 @@ class BlobBuilder {
           compressedChunkDataSize = chunkLength;
 
           if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
-            extendedMetadataSize = Utils.getExtendedMetadataSize(compressedChunkData, chunkLength);
+            metadataSize = getExtendedMetadataSize(compressedChunkData);
+            extendedMetadataSize = serializedChunk.extendedMetadataSize;
           }
         }
 
@@ -148,11 +150,12 @@ class BlobBuilder {
 
         if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
           chunkMetadataBuilder
-              .setMajorVersion(ParquetFileWriter.CURRENT_VERSION)
+              .setMajorVersion(Constants.PARQUET_MAJOR_VERSION)
               .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
               // set createdOn in seconds
               .setCreatedOn(System.currentTimeMillis() / 1000)
-              .setExtendedMetadataSize((long) extendedMetadataSize);
+              .setMetadataSize(metadataSize)
+              .setExtendedMetadataSize(extendedMetadataSize);
         }
 
         ChunkMetadata chunkMetadata = chunkMetadataBuilder.build();
@@ -297,5 +300,23 @@ class BlobBuilder {
       this.chunksMetadataList = chunksMetadataList;
       this.blobStats = blobStats;
     }
+  }
+
+  /**
+   * Get the metadata size (footer size) from a parquet file
+   *
+   * @param bytes the serialized parquet file
+   * @return the extended metadata size
+   */
+  static long getExtendedMetadataSize(byte[] bytes) throws IOException {
+    final int magicOffset = bytes.length - ParquetFileWriter.MAGIC.length;
+    final int footerSizeOffset = magicOffset - Integer.BYTES;
+    if (footerSizeOffset < 0
+        || !ParquetFileWriter.MAGIC_STR.equals(
+            new String(bytes, magicOffset, ParquetFileWriter.MAGIC.length))) {
+      throw new IllegalArgumentException("Invalid parquet file");
+    }
+
+    return BytesUtils.readIntLittleEndian(bytes, footerSizeOffset);
   }
 }
