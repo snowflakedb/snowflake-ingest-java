@@ -15,7 +15,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.hadoop.BdecParquetWriter;
+import org.apache.parquet.hadoop.SnowflakeParquetWriter;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -87,8 +87,8 @@ public class BlobBuilderTest {
 
     channelData.setRowSequencer(1L);
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    BdecParquetWriter bdecParquetWriter =
-        new BdecParquetWriter(
+    SnowflakeParquetWriter snowflakeParquetWriter =
+        new SnowflakeParquetWriter(
             stream,
             schema,
             new HashMap<>(),
@@ -100,7 +100,7 @@ public class BlobBuilderTest {
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0,
             isIceberg);
-    bdecParquetWriter.writeRow(Collections.singletonList("1"));
+    snowflakeParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
         new ParquetChunkData(
             Collections.singletonList(Collections.singletonList("A")), new HashMap<>()));
@@ -121,8 +121,10 @@ public class BlobBuilderTest {
                     Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
                         .as(LogicalTypeAnnotation.stringType())
                         .id(1)
-                        .named("test"))
-                : new RowBufferStats(columnName, null, 1, null, null));
+                        .named("test"),
+                    isIceberg,
+                    isIceberg)
+                : new RowBufferStats(columnName, null, 1, null, null, false, false));
     channelData.setChannelContext(
         new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
     return Collections.singletonList(channelData);

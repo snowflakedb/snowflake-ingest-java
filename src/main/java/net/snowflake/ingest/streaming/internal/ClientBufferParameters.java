@@ -25,6 +25,10 @@ public class ClientBufferParameters {
 
   private boolean isIcebergMode;
 
+  private boolean enableDistinctValuesCount;
+
+  private boolean enableValuesCount;
+
   /**
    * Private constructor used for test methods
    *
@@ -38,13 +42,17 @@ public class ClientBufferParameters {
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       Optional<Integer> maxRowGroups,
-      boolean isIcebergMode) {
+      boolean isIcebergMode,
+      boolean enableDistinctValuesCount,
+      boolean enableValuesCount) {
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
     this.enableNewJsonParsingLogic = enableNewJsonParsingLogic;
     this.maxRowGroups = maxRowGroups;
     this.isIcebergMode = isIcebergMode;
+    this.enableDistinctValuesCount = enableDistinctValuesCount;
+    this.enableValuesCount = enableValuesCount;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
@@ -73,6 +81,14 @@ public class ClientBufferParameters {
         isIcebergMode
             ? Optional.of(InternalParameterProvider.MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT)
             : Optional.empty();
+    this.enableDistinctValuesCount =
+        clientInternal != null
+            ? clientInternal.getInternalParameterProvider().isEnableDistinctValuesCount()
+            : InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT;
+    this.enableValuesCount =
+        clientInternal != null
+            ? clientInternal.getInternalParameterProvider().isEnableValuesCount()
+            : InternalParameterProvider.ENABLE_VALUES_COUNT_DEFAULT;
   }
 
   /**
@@ -87,14 +103,18 @@ public class ClientBufferParameters {
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       Optional<Integer> maxRowGroups,
-      boolean isIcebergMode) {
+      boolean isIcebergMode,
+      boolean enableDistinctValuesCount,
+      boolean enableValuesCount) {
     return new ClientBufferParameters(
         maxChunkSizeInBytes,
         maxAllowedRowSizeInBytes,
         bdecParquetCompression,
         enableNewJsonParsingLogic,
         maxRowGroups,
-        isIcebergMode);
+        isIcebergMode,
+        enableDistinctValuesCount,
+        enableValuesCount);
   }
 
   public long getMaxChunkSizeInBytes() {
@@ -123,6 +143,14 @@ public class ClientBufferParameters {
 
   public String getParquetMessageTypeName() {
     return isIcebergMode ? PARQUET_MESSAGE_TYPE_NAME : BDEC_PARQUET_MESSAGE_TYPE_NAME;
+  }
+
+  public boolean isEnableDistinctValuesCount() {
+    return enableDistinctValuesCount;
+  }
+
+  public boolean isEnableValuesCount() {
+    return enableValuesCount;
   }
 
   public boolean isEnableDictionaryEncoding() {

@@ -62,6 +62,7 @@ public class Constants {
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
   public static final long EP_NDV_UNKNOWN = -1L;
+  public static final long EP_NV_UNKNOWN = -1L;
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;
   public static final int BINARY_COLUMN_MAX_SIZE = 8 * 1024 * 1024;
   public static final int VARCHAR_COLUMN_MAX_SIZE = 16 * 1024 * 1024;
@@ -72,6 +73,7 @@ public class Constants {
   public static final String DROP_CHANNEL_ENDPOINT = "/v1/streaming/channels/drop/";
   public static final String REGISTER_BLOB_ENDPOINT = "/v1/streaming/channels/write/blobs/";
 
+  public static final int PARQUET_MAJOR_VERSION = 1;
   public static final int PARQUET_MINOR_VERSION = 0;
 
   /**

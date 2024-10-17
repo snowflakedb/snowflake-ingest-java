@@ -19,6 +19,7 @@ import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -31,12 +32,13 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
- * BDEC specific parquet writer.
+ * Snowflake specific parquet writer, supports BDEC file for FDN tables and parquet file for Iceberg
+ * tables.
  *
  * <p>Resides in parquet package because, it uses {@link InternalParquetRecordWriter} and {@link
  * CodecFactory} that are package private.
  */
-public class BdecParquetWriter implements AutoCloseable {
+public class SnowflakeParquetWriter implements AutoCloseable {
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
 
@@ -50,7 +52,7 @@ public class BdecParquetWriter implements AutoCloseable {
   private long rowsWritten = 0;
 
   /**
-   * Creates a BDEC specific parquet writer.
+   * Creates a Snowflake specific parquet writer.
    *
    * @param stream output
    * @param schema row schema
@@ -60,7 +62,7 @@ public class BdecParquetWriter implements AutoCloseable {
    *     exceeded we'll end up throwing
    * @throws IOException
    */
-  public BdecParquetWriter(
+  public SnowflakeParquetWriter(
       ByteArrayOutputStream stream,
       MessageType schema,
       Map<String, String> extraMetaData,
@@ -78,7 +80,7 @@ public class BdecParquetWriter implements AutoCloseable {
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
-        new BdecWriteSupport(schema, extraMetaData, channelName);
+        new SnowflakeWriteSupport(schema, extraMetaData, channelName);
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
 
     ParquetFileWriter fileWriter =
@@ -136,6 +138,24 @@ public class BdecParquetWriter implements AutoCloseable {
       blockRowCounts.add(metadata.getRowCount());
     }
     return blockRowCounts;
+  }
+
+  /** @return extended metadata size (page index size + bloom filter size) */
+  public long getExtendedMetadataSize() {
+    long extendedMetadataSize = 0;
+    for (BlockMetaData metadata : writer.getFooter().getBlocks()) {
+      for (ColumnChunkMetaData column : metadata.getColumns()) {
+        extendedMetadataSize +=
+            (column.getColumnIndexReference() != null
+                    ? column.getColumnIndexReference().getLength()
+                    : 0)
+                + (column.getOffsetIndexReference() != null
+                    ? column.getOffsetIndexReference().getLength()
+                    : 0)
+                + column.getBloomFilterLength();
+      }
+    }
+    return extendedMetadataSize;
   }
 
   public void writeRow(List<Object> row) {
@@ -263,16 +283,17 @@ public class BdecParquetWriter implements AutoCloseable {
    *
    * <p>This class is implemented as parquet library API requires, mostly to serialize user column
    * values depending on type into Parquet {@link RecordConsumer} in {@link
-   * BdecWriteSupport#write(List)}.
+   * SnowflakeWriteSupport#write(List)}.
    */
-  private static class BdecWriteSupport extends WriteSupport<List<Object>> {
+  private static class SnowflakeWriteSupport extends WriteSupport<List<Object>> {
     MessageType schema;
     RecordConsumer recordConsumer;
     Map<String, String> extraMetadata;
     private final String channelName;
 
     // TODO SNOW-672156: support specifying encodings and compression
-    BdecWriteSupport(MessageType schema, Map<String, String> extraMetadata, String channelName) {
+    SnowflakeWriteSupport(
+        MessageType schema, Map<String, String> extraMetadata, String channelName) {
       this.schema = schema;
       this.extraMetadata = extraMetadata;
       this.channelName = channelName;
