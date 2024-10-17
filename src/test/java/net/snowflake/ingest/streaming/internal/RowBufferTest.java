@@ -5,9 +5,11 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.utils.Constants.EP_NV_UNKNOWN;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYTES_DEFAULT;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -137,6 +139,67 @@ public class RowBufferTest {
     List<ColumnMetadata> columns =
         Arrays.asList(
             colTinyIntCase, colTinyInt, colSmallInt, colInt, colBigInt, colDecimal, colChar);
+    for (int i = 0; i < columns.size(); i++) {
+      columns.get(i).setOrdinal(i + 1);
+    }
+    return columns;
+  }
+
+  static List<ColumnMetadata> createStrcuturedDataTypeSchema() {
+    ColumnMetadata colObject = new ColumnMetadata();
+    colObject.setName("COLOBJECT");
+    colObject.setPhysicalType("LOB");
+    colObject.setNullable(true);
+    colObject.setLogicalType("OBJECT");
+    colObject.setSourceIcebergDataType(
+        "{\n"
+            + "    \"type\": \"struct\",\n"
+            + "    \"fields\":\n"
+            + "    [\n"
+            + "        {\n"
+            + "            \"id\": 4,\n"
+            + "            \"name\": \"a\",\n"
+            + "            \"required\": false,\n"
+            + "            \"type\": \"int\"\n"
+            + "        },\n"
+            + "        {\n"
+            + "            \"id\": 5,\n"
+            + "            \"name\": \"b\",\n"
+            + "            \"required\": false,\n"
+            + "            \"type\": \"string\"\n"
+            + "        }\n"
+            + "    ]\n"
+            + "}");
+
+    ColumnMetadata colMap = new ColumnMetadata();
+    colMap.setName("COLMAP");
+    colMap.setPhysicalType("LOB");
+    colMap.setNullable(true);
+    colMap.setLogicalType("MAP");
+    colMap.setSourceIcebergDataType(
+        "{\n"
+            + "    \"type\": \"map\",\n"
+            + "    \"key-id\": 6,\n"
+            + "    \"key\": \"string\",\n"
+            + "    \"value-id\": 7,\n"
+            + "    \"value\": \"boolean\",\n"
+            + "    \"value-required\": false\n"
+            + "}");
+
+    ColumnMetadata colArray = new ColumnMetadata();
+    colArray.setName("COLARRAY");
+    colArray.setPhysicalType("LOB");
+    colArray.setNullable(true);
+    colArray.setLogicalType("ARRAY");
+    colArray.setSourceIcebergDataType(
+        "{\n"
+            + "    \"type\": \"list\",\n"
+            + "    \"element-id\": 8,\n"
+            + "    \"element\": \"long\",\n"
+            + "    \"element-required\": false\n"
+            + "}");
+
+    List<ColumnMetadata> columns = Arrays.asList(colObject, colMap, colArray);
     for (int i = 0; i < columns.size(); i++) {
       columns.get(i).setOrdinal(i + 1);
     }
@@ -1964,6 +2027,93 @@ public class RowBufferTest {
 
     BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
     Assert.assertEquals(filePath, reader.getKeyValueMetadata().get(Constants.PRIMARY_FILE_ID_KEY));
+  }
+
+  @Test
+  public void testStructuredStatsE2E() {
+    if (!isIcebergMode) return;
+    testStructuredStatsE2EHelper(createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE));
+    testStructuredStatsE2EHelper(createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT));
+    testStructuredStatsE2EHelper(createTestBuffer(OpenChannelRequest.OnErrorOption.SKIP_BATCH));
+  }
+
+  private void testStructuredStatsE2EHelper(AbstractRowBuffer<?> rowBuffer) {
+    rowBuffer.setupSchema(createStrcuturedDataTypeSchema());
+    Map<String, Object> row1 = new HashMap<>();
+    row1.put(
+        "COLOBJECT",
+        new HashMap<String, Object>() {
+          {
+            put("a", 1);
+            put("b", "string1");
+          }
+        });
+    row1.put(
+        "COLMAP",
+        new HashMap<String, Boolean>() {
+          {
+            put("key1", true);
+            put("key2", true);
+          }
+        });
+    row1.put("COLARRAY", Arrays.asList(1, 1, 1));
+
+    Map<String, Object> row2 = new HashMap<>();
+    row2.put(
+        "COLOBJECT",
+        new HashMap<String, Object>() {
+          {
+            put("a", 2);
+            put("b", null);
+          }
+        });
+    row2.put("COLMAP", null);
+    row2.put("COLARRAY", Arrays.asList(1, null));
+
+    InsertValidationResponse response = rowBuffer.insertRows(Arrays.asList(row1, row2), null, null);
+    Assert.assertFalse(response.hasErrors());
+    ChannelData<?> result = rowBuffer.flush();
+    Map<String, RowBufferStats> columnEpStats = result.getColumnEps();
+
+    assertThat(columnEpStats.get("COLOBJECT.a").getCurrentMinIntValue())
+        .isEqualTo(BigInteger.valueOf(1));
+    assertThat(columnEpStats.get("COLOBJECT.a").getCurrentMaxIntValue())
+        .isEqualTo(BigInteger.valueOf(2));
+    assertThat(columnEpStats.get("COLOBJECT.a").getCurrentNullCount()).isEqualTo(0);
+    assertThat(columnEpStats.get("COLOBJECT.a").getDistinctValues()).isEqualTo(2);
+    assertThat(columnEpStats.get("COLOBJECT.a").getNumberOfValues()).isEqualTo(EP_NV_UNKNOWN);
+
+    assertThat(columnEpStats.get("COLOBJECT.b").getCurrentMinStrValue())
+        .isEqualTo("string1".getBytes(StandardCharsets.UTF_8));
+    assertThat(columnEpStats.get("COLOBJECT.b").getCurrentMaxStrValue())
+        .isEqualTo("string1".getBytes(StandardCharsets.UTF_8));
+    assertThat(columnEpStats.get("COLOBJECT.b").getCurrentNullCount()).isEqualTo(1);
+    assertThat(columnEpStats.get("COLOBJECT.b").getDistinctValues()).isEqualTo(1);
+    assertThat(columnEpStats.get("COLOBJECT.b").getNumberOfValues()).isEqualTo(EP_NV_UNKNOWN);
+
+    assertThat(columnEpStats.get("COLMAP.key_value.key").getCurrentMinStrValue())
+        .isEqualTo("key1".getBytes(StandardCharsets.UTF_8));
+    assertThat(columnEpStats.get("COLMAP.key_value.key").getCurrentMaxStrValue())
+        .isEqualTo("key2".getBytes(StandardCharsets.UTF_8));
+    assertThat(columnEpStats.get("COLMAP.key_value.key").getCurrentNullCount()).isEqualTo(1);
+    assertThat(columnEpStats.get("COLMAP.key_value.key").getDistinctValues()).isEqualTo(2);
+    assertThat(columnEpStats.get("COLMAP.key_value.key").getNumberOfValues()).isEqualTo(2);
+
+    assertThat(columnEpStats.get("COLMAP.key_value.value").getCurrentMinIntValue())
+        .isEqualTo(BigInteger.ONE);
+    assertThat(columnEpStats.get("COLMAP.key_value.value").getCurrentMaxIntValue())
+        .isEqualTo(BigInteger.ONE);
+    assertThat(columnEpStats.get("COLMAP.key_value.value").getCurrentNullCount()).isEqualTo(1);
+    assertThat(columnEpStats.get("COLMAP.key_value.value").getDistinctValues()).isEqualTo(1);
+    assertThat(columnEpStats.get("COLMAP.key_value.value").getNumberOfValues()).isEqualTo(2);
+
+    assertThat(columnEpStats.get("COLARRAY.list.element").getCurrentMinIntValue())
+        .isEqualTo(BigInteger.ONE);
+    assertThat(columnEpStats.get("COLARRAY.list.element").getCurrentMaxIntValue())
+        .isEqualTo(BigInteger.ONE);
+    assertThat(columnEpStats.get("COLARRAY.list.element").getCurrentNullCount()).isEqualTo(1);
+    assertThat(columnEpStats.get("COLARRAY.list.element").getDistinctValues()).isEqualTo(1);
+    assertThat(columnEpStats.get("COLARRAY.list.element").getNumberOfValues()).isEqualTo(4);
   }
 
   private static Thread getThreadThatWaitsForLockReleaseAndFlushes(

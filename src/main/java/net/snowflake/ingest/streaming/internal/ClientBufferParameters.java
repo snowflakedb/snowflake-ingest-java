@@ -73,14 +73,14 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().isEnableNewJsonParsingLogic()
             : ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
-    this.maxRowGroups =
-        isIcebergMode
-            ? Optional.of(InternalParameterProvider.MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT)
-            : Optional.empty();
     this.isIcebergMode =
         clientInternal != null
             ? clientInternal.isIcebergMode()
             : ParameterProvider.IS_ICEBERG_MODE_DEFAULT;
+    this.maxRowGroups =
+        isIcebergMode
+            ? Optional.of(InternalParameterProvider.MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT)
+            : Optional.empty();
     this.enableDistinctValuesCount =
         clientInternal != null
             ? clientInternal.getInternalParameterProvider().isEnableDistinctValuesCount()
@@ -150,7 +150,7 @@ public class ClientBufferParameters {
   }
 
   public boolean isEnableValuesCount() {
-    return enableDistinctValuesCount;
+    return enableValuesCount;
   }
 
   public boolean isEnableDictionaryEncoding() {

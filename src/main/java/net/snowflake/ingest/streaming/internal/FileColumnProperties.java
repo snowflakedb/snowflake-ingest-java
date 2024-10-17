@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.BinaryStringUtils.truncateBytesAsHex;
+import static net.snowflake.ingest.utils.Constants.EP_NV_UNKNOWN;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -45,7 +46,7 @@ class FileColumnProperties {
   private long nullCount;
 
   // for elements in repeated columns
-  private long numberOfValues;
+  private Long numberOfValues;
 
   // for binary or string columns
   private long maxLength;
@@ -113,7 +114,10 @@ class FileColumnProperties {
     this.setMinStrNonCollated(null);
     this.setNullCount(stats.getCurrentNullCount());
     this.setDistinctValues(stats.getDistinctValues());
-    this.setNumberOfValues(stats.getNumberOfValues());
+
+    if (stats.getNumberOfValues() != EP_NV_UNKNOWN) {
+      this.setNumberOfValues(stats.getNumberOfValues());
+    }
   }
 
   private void setIntValues(RowBufferStats stats) {
@@ -289,12 +293,12 @@ class FileColumnProperties {
   }
 
   @JsonProperty("numberOfValues")
-  @JsonInclude(value = JsonInclude.Include.CUSTOM, valueFilter = IgnoreMinusOneFilter.class)
-  long getNumberOfValues() {
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Long getNumberOfValues() {
     return numberOfValues;
   }
 
-  void setNumberOfValues(long numberOfValues) {
+  void setNumberOfValues(Long numberOfValues) {
     this.numberOfValues = numberOfValues;
   }
 
@@ -320,6 +324,7 @@ class FileColumnProperties {
     }
     sb.append(", \"distinctValues\": ").append(distinctValues);
     sb.append(", \"nullCount\": ").append(nullCount);
+    sb.append(", \"numberOfValues\": ").append(numberOfValues);
     return sb.append('}').toString();
   }
 
@@ -359,15 +364,5 @@ class FileColumnProperties {
         distinctValues,
         nullCount,
         maxLength);
-  }
-
-  static class IgnoreMinusOneFilter {
-    @Override
-    public boolean equals(Object obj) {
-      if (obj instanceof Long) {
-        return (Long) obj == -1;
-      }
-      return false;
-    }
   }
 }
