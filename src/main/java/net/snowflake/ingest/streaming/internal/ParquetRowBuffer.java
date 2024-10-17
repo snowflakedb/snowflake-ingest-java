@@ -86,7 +86,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   public void setupSchema(List<ColumnMetadata> columns) {
     fieldIndex.clear();
     metadata.clear();
-    metadata.put("sfVer", "1,1");
+    if (!clientBufferParameters.getIsIcebergMode()) {
+      metadata.put("sfVer", "1,1");
+    }
     List<Type> parquetTypes = new ArrayList<>();
     int id = 1;
 
