@@ -418,18 +418,31 @@ class IcebergParquetValueParser {
         DataValidationUtil.validateAndParseIcebergStruct(path, value, insertRowsCurrIndex);
     Set<String> extraFields = new HashSet<>(structVal.keySet());
     List<Object> listVal = new ArrayList<>(type.getFieldCount());
+
     float estimatedParquetSize = 0f;
     for (int i = 0; i < type.getFieldCount(); i++) {
+      StringBuilder sb = new StringBuilder();
+      String fieldName = type.getFieldName(i);
+      for (int j = 0; j < fieldName.length(); j++) {
+        if (fieldName.charAt(j) == '_') {
+          sb.append((char) Integer.parseInt(fieldName.substring(j + 2, j + 4), 16));
+          j += 3;
+        } else {
+          sb.append(fieldName.charAt(j));
+        }
+      }
+      String originalFieldName = sb.substring(0, sb.toString().lastIndexOf('_'));
+
       ParquetBufferValue parsedValue =
           parseColumnValueToParquet(
-              structVal.getOrDefault(type.getFieldName(i), null),
+              structVal.getOrDefault(originalFieldName, null),
               type.getType(i),
               statsMap,
               defaultTimezone,
               insertRowsCurrIndex,
               path,
               isDescendantsOfRepeatingGroup);
-      extraFields.remove(type.getFieldName(i));
+      extraFields.remove(originalFieldName);
       listVal.add(parsedValue.getValue());
       estimatedParquetSize += parsedValue.getSize();
     }
