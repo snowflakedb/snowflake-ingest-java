@@ -154,7 +154,7 @@ public class IcebergDataTypeParser {
           field.isObject(), "Cannot parse struct field from non-object: %s", field);
 
       int id = JsonUtil.getInt(ID, field);
-      String name = JsonUtil.getString(NAME, field);
+      String name = (JsonUtil.getString(NAME, field) + "_" + id).replace("_", "_x5F");
       Type type = getTypeFromJson(field.get(TYPE));
 
       String doc = JsonUtil.getStringOrNull(DOC, field);
