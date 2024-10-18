@@ -20,12 +20,15 @@ public interface Flusher<T> {
   /**
    * Serialize buffered rows into the underlying format.
    *
+   * @param fullyQualifiedTableName
    * @param channelsDataPerTable buffered rows
    * @param filePath file path
+   * @param chunkStartOffset
    * @return {@link SerializationResult}
    * @throws IOException
    */
-  SerializationResult serialize(List<ChannelData<T>> channelsDataPerTable, String filePath)
+  SerializationResult serialize(
+      List<ChannelData<T>> channelsDataPerTable, String filePath, long chunkStartOffset)
       throws IOException;
 
   /** Holds result of the buffered rows conversion: channel metadata and stats. */
