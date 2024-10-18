@@ -358,18 +358,16 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         if (subColumnFinder == null) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "SubColumnFinder is not initialized.");
         }
-        subColumnFinder
-            .getSubColumns(columnName)
-            .forEach(
-                subColumn -> {
-                  RowBufferStats stats = statsMap.get(subColumn);
-                  if (stats == null) {
-                    throw new SFException(
-                        ErrorCode.INTERNAL_ERROR,
-                        String.format("Column %s not found in stats map.", subColumn));
-                  }
-                  statsMap.get(subColumn).incCurrentNullCount();
-                });
+
+        for (String subColumn : subColumnFinder.getSubColumns(columnName)) {
+          RowBufferStats stats = statsMap.get(subColumn);
+          if (stats == null) {
+            throw new SFException(
+                ErrorCode.INTERNAL_ERROR,
+                String.format("Column %s not found in stats map.", subColumn));
+          }
+          stats.incCurrentNullCount();
+        }
       } else {
         statsMap.get(columnName).incCurrentNullCount();
       }

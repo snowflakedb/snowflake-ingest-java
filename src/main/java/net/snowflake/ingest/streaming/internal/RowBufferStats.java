@@ -121,22 +121,22 @@ class RowBufferStats {
 
   // TODO performance test this vs in place update
   static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
-    if (!Objects.equals(left.getCollationDefinitionString(), right.collationDefinitionString)) {
+    if (!Objects.equals(left.getCollationDefinitionString(), right.collationDefinitionString)
+        || left.enableDistinctValuesCount != right.enableDistinctValuesCount
+        || left.enableValuesCount != right.enableValuesCount) {
       throw new SFException(
           ErrorCode.INVALID_COLLATION_STRING,
-          "Tried to combine stats for different collations",
+          "Tried to combine stats for different"
+              + " collations/enableDistinctValuesCount/enableValuesCount",
           String.format(
-              "left=%s, right=%s",
-              left.getCollationDefinitionString(), right.getCollationDefinitionString()));
-    }
-
-    if (left.enableDistinctValuesCount != right.enableDistinctValuesCount) {
-      throw new SFException(
-          ErrorCode.INTERNAL_ERROR,
-          "Tried to combine stats for different distinct value settings",
-          String.format(
-              "left=%s, right=%s",
-              left.enableDistinctValuesCount, right.enableDistinctValuesCount));
+              "left={collations=%s, enableDistinctValuesCount=%s, enableValuesCount=%s}, "
+                  + "right={collations=%s, enableDistinctValuesCount=%s, enableValuesCount=%s}",
+              left.getCollationDefinitionString(),
+              left.enableDistinctValuesCount,
+              left.enableValuesCount,
+              right.getCollationDefinitionString(),
+              right.enableDistinctValuesCount,
+              right.enableValuesCount));
     }
 
     RowBufferStats combined =
