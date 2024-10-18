@@ -32,8 +32,10 @@ public class FileColumnPropertiesTest {
                 Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
-                    .named("test"))
-            : new RowBufferStats("COL", null, 1, null, null);
+                    .named("test"),
+                isIceberg,
+                isIceberg)
+            : new RowBufferStats("COL", null, 1, null, null, false, false);
     stats.addStrValue("bcd");
     stats.addStrValue("abcde");
     FileColumnProperties props = new FileColumnProperties(stats, !isIceberg);
@@ -55,8 +57,10 @@ public class FileColumnPropertiesTest {
                 Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
-                    .named("test"))
-            : new RowBufferStats("COL", null, 1, null, null);
+                    .named("test"),
+                isIceberg,
+                isIceberg)
+            : new RowBufferStats("COL", null, 1, null, null, false, false);
     stats.addStrValue("aßßßßßßßßßßßßßßßß");
     Assert.assertEquals(33, stats.getCurrentMinStrValue().length);
     props = new FileColumnProperties(stats, !isIceberg);

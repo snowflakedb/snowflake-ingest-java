@@ -884,10 +884,16 @@ public class FlushServiceTest {
 
     RowBufferStats stats1 =
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode);
     RowBufferStats stats2 =
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode);
 
     eps1.put("one", stats1);
     eps2.put("one", stats2);
@@ -919,7 +925,7 @@ public class FlushServiceTest {
 
     EpInfo expectedChunkEpInfo =
         AbstractRowBuffer.buildEpInfoFromStats(
-            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2), !isIcebergMode);
+            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2), !isIcebergMode, isIcebergMode);
 
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
@@ -1049,8 +1055,11 @@ public class FlushServiceTest {
         Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
     ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
+    InternalParameterProvider internalParameterProvider =
+        new InternalParameterProvider(isIcebergMode);
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
+    Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
@@ -1134,13 +1143,16 @@ public class FlushServiceTest {
 
     RowBufferStats stats1 =
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode);
 
     eps1.put("one", stats1);
 
     stats1.addIntValue(new BigInteger("10"));
     stats1.addIntValue(new BigInteger("15"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1, !isIcebergMode);
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1, !isIcebergMode, isIcebergMode);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()

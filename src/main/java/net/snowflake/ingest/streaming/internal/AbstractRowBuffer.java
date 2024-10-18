@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -292,6 +292,9 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   // Temp stats map to use until all the rows are validated
   @VisibleForTesting Map<String, RowBufferStats> tempStatsMap;
 
+  // Map of the column name to the column object, used for null/missing column check
+  protected final Map<String, ParquetColumn> fieldIndex;
+
   // Lock used to protect the buffers from concurrent read/write
   private final Lock flushLock;
 
@@ -352,6 +355,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     // Initialize empty stats
     this.statsMap = new HashMap<>();
     this.tempStatsMap = new HashMap<>();
+
+    this.fieldIndex = new HashMap<>();
   }
 
   /**
@@ -427,7 +432,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     List<String> missingCols = new ArrayList<>();
     for (String columnName : this.nonNullableFieldNames) {
       if (!inputColNamesMap.containsKey(columnName)) {
-        missingCols.add(statsMap.get(columnName).getColumnDisplayName());
+        missingCols.add(fieldIndex.get(columnName).columnMetadata.getName());
       }
     }
 
@@ -447,7 +452,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     for (String columnName : this.nonNullableFieldNames) {
       if (inputColNamesMap.containsKey(columnName)
           && row.get(inputColNamesMap.get(columnName)) == null) {
-        nullValueNotNullCols.add(statsMap.get(columnName).getColumnDisplayName());
+        nullValueNotNullCols.add(fieldIndex.get(columnName).columnMetadata.getName());
       }
     }
 
@@ -642,13 +647,17 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    *
    * @param rowCount: count of rows in the given buffer
    * @param colStats: map of column name to RowBufferStats
-   * @param setAllDefaultValues: whether to set default values for all null fields the EPs
-   *     irrespective of the data type of this column
+   * @param setAllDefaultValues: whether to set default values for all null min/max field in the EPs
+   * @param enableDistinctValuesCount: whether to include valid NDV in the EPs irrespective of the
+   *     data type of this column
    * @return the EPs built from column stats
    */
   static EpInfo buildEpInfoFromStats(
-      long rowCount, Map<String, RowBufferStats> colStats, boolean setAllDefaultValues) {
-    EpInfo epInfo = new EpInfo(rowCount, new HashMap<>());
+      long rowCount,
+      Map<String, RowBufferStats> colStats,
+      boolean setAllDefaultValues,
+      boolean enableDistinctValuesCount) {
+    EpInfo epInfo = new EpInfo(rowCount, new HashMap<>(), enableDistinctValuesCount);
     for (Map.Entry<String, RowBufferStats> colStat : colStats.entrySet()) {
       RowBufferStats stat = colStat.getValue();
       FileColumnProperties dto = new FileColumnProperties(stat, setAllDefaultValues);

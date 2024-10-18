@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import static net.snowflake.ingest.utils.Constants.ROLE;
@@ -96,20 +100,23 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use database %s;", databaseName));
     conn.createStatement().execute(String.format("use schema %s;", schemaName));
 
-    switch (serializationPolicy) {
-      case COMPATIBLE:
-        conn.createStatement()
-            .execute(
-                String.format(
-                    "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'COMPATIBLE';",
-                    schemaName));
-        break;
-      case OPTIMIZED:
-        conn.createStatement()
-            .execute(
-                String.format(
-                    "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'OPTIMIZED';", schemaName));
-        break;
+    if (isIceberg) {
+      switch (serializationPolicy) {
+        case COMPATIBLE:
+          conn.createStatement()
+              .execute(
+                  String.format(
+                      "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'COMPATIBLE';",
+                      schemaName));
+          break;
+        case OPTIMIZED:
+          conn.createStatement()
+              .execute(
+                  String.format(
+                      "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'OPTIMIZED';",
+                      schemaName));
+          break;
+      }
     }
 
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
@@ -163,7 +170,7 @@ public abstract class AbstractDataTypeTest {
   protected String createIcebergTable(String dataType) throws SQLException {
     String tableName = getRandomIdentifier();
     String baseLocation =
-        String.format("%s/%s/%s", databaseName, dataType.replace(" ", "_"), tableName);
+        String.format("SDK_IT/%s/%s/%s", databaseName, dataType.replace(" ", "_"), tableName);
     conn.createStatement()
         .execute(
             String.format(

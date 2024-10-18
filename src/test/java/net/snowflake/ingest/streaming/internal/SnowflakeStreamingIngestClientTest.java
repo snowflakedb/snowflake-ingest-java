@@ -506,8 +506,12 @@ public class SnowflakeStreamingIngestClientTest {
     columnEps.put(
         "column",
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1")));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode);
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode));
+    EpInfo epInfo =
+        AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode, isIcebergMode);
 
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
@@ -558,8 +562,12 @@ public class SnowflakeStreamingIngestClientTest {
     columnEps.put(
         "column",
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1")));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode);
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode));
+    EpInfo epInfo =
+        AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode, isIcebergMode);
 
     ChannelMetadata channelMetadata1 =
         ChannelMetadata.builder()
