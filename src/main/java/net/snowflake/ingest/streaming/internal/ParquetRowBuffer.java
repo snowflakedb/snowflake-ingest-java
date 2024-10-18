@@ -114,8 +114,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                 column.getOrdinal(),
                 null /* fieldId */,
                 parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null,
-                clientBufferParameters.isEnableDistinctValuesCount(),
-                clientBufferParameters.isEnableValuesCount()));
+                false /* enableDistinctValuesCount */,
+                false /* enableValuesCount */));
 
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
@@ -131,8 +131,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                   column.getOrdinal(),
                   null /* fieldId */,
                   parquetType.isPrimitive() ? parquetType.asPrimitiveType() : null,
-                  clientBufferParameters.isEnableDistinctValuesCount(),
-                  clientBufferParameters.isEnableValuesCount()));
+                  false /* enableDistinctValuesCount */,
+                  false /* enableValuesCount */));
         }
       }
 
