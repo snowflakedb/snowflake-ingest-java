@@ -100,7 +100,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     IStorageManager storageManager;
     InternalStage storage;
-    ExternalVolume extVolume;
+    PresignedUrlExternalVolume extVolume;
     ParameterProvider parameterProvider;
     RegisterService registerService;
 
@@ -108,7 +108,7 @@ public class FlushServiceTest {
 
     TestContext() {
       storage = Mockito.mock(InternalStage.class);
-      extVolume = Mockito.mock(ExternalVolume.class);
+      extVolume = Mockito.mock(PresignedUrlExternalVolume.class);
       parameterProvider = new ParameterProvider(isIcebergMode);
       InternalParameterProvider internalParameterProvider =
           new InternalParameterProvider(isIcebergMode);
@@ -118,7 +118,7 @@ public class FlushServiceTest {
       storageManager =
           Mockito.spy(
               isIcebergMode
-                  ? new ExternalVolumeManager(
+                  ? new PresignedUrlExternalVolumeManager(
                       true, "role", "client", MockSnowflakeServiceClient.create())
                   : new InternalStageManager(true, "role", "client", null));
       Mockito.doReturn(isIcebergMode ? extVolume : storage)

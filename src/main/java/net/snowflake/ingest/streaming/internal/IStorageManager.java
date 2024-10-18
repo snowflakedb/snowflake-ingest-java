@@ -4,7 +4,10 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-/** Interface to manage {@link InternalStage} and {@link ExternalVolume} for {@link FlushService} */
+/**
+ * Interface to manage {@link InternalStage} and {@link PresignedUrlExternalVolume} for {@link
+ * FlushService}
+ */
 interface IStorageManager {
 
   /** Default max upload retries for streaming ingest storage */

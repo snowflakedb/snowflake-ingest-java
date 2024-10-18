@@ -24,16 +24,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ExternalVolumeManagerTest {
+public class PresignedUrlPresignedUrlExternalVolumeManagerTest {
   private static final ObjectMapper objectMapper = new ObjectMapper();
-  private ExternalVolumeManager manager;
+  private PresignedUrlExternalVolumeManager manager;
   private FileLocationInfo fileLocationInfo;
   private ExecutorService executorService;
 
   @Before
   public void setup() throws JsonProcessingException {
     this.manager =
-        new ExternalVolumeManager(
+        new PresignedUrlExternalVolumeManager(
             false /* isTestMode */, "role", "clientName", MockSnowflakeServiceClient.create());
 
     Map<String, Object> fileLocationInfoMap = MockSnowflakeServiceClient.getStageLocationMap();
@@ -66,13 +66,13 @@ public class ExternalVolumeManagerTest {
   public void testConcurrentRegisterTable() throws Exception {
     int numThreads = 50;
     int timeoutInSeconds = 30;
-    List<Future<ExternalVolume>> allResults =
+    List<Future<PresignedUrlExternalVolume>> allResults =
         doConcurrentTest(
             numThreads,
             timeoutInSeconds,
             () -> manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo),
             () -> manager.getStorage("db.schema.table"));
-    ExternalVolume extvol = manager.getStorage("db.schema.table");
+    PresignedUrlExternalVolume extvol = manager.getStorage("db.schema.table");
     assertNotNull(extvol);
     for (int i = 0; i < numThreads; i++) {
       assertSame("" + i, extvol, allResults.get(i).get(timeoutInSeconds, TimeUnit.SECONDS));
@@ -82,7 +82,7 @@ public class ExternalVolumeManagerTest {
   @Test
   public void testGetStorage() {
     this.manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo);
-    ExternalVolume extvol = this.manager.getStorage("db.schema.table");
+    PresignedUrlExternalVolume extvol = this.manager.getStorage("db.schema.table");
     assertNotNull(extvol);
   }
 

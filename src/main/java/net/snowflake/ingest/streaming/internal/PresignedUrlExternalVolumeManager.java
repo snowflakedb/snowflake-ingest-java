@@ -15,11 +15,11 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 
 /** Class to manage multiple external volumes */
-class ExternalVolumeManager implements IStorageManager {
+class PresignedUrlExternalVolumeManager implements IStorageManager {
   // TODO: Rename all logger members to LOGGER and checkin code formatting rules
-  private static final Logging logger = new Logging(ExternalVolumeManager.class);
+  private static final Logging logger = new Logging(PresignedUrlExternalVolumeManager.class);
   // Reference to the external volume per table
-  private final Map<String, ExternalVolume> externalVolumeMap;
+  private final Map<String, PresignedUrlExternalVolume> externalVolumeMap;
 
   // name of the owning client
   private final String clientName;
@@ -48,7 +48,7 @@ class ExternalVolumeManager implements IStorageManager {
    * @param clientName the name of the client
    * @param snowflakeServiceClient the Snowflake service client used for configure calls
    */
-  ExternalVolumeManager(
+  PresignedUrlExternalVolumeManager(
       boolean isTestMode,
       String role,
       String clientName,
@@ -66,7 +66,7 @@ class ExternalVolumeManager implements IStorageManager {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
     logger.logDebug(
-        "Created ExternalVolumeManager with clientName=%s and clientPrefix=%s",
+        "Created PresignedUrlExternalVolumeManager with clientName=%s and clientPrefix=%s",
         clientName, clientPrefix);
   }
 
@@ -77,7 +77,7 @@ class ExternalVolumeManager implements IStorageManager {
    * @return target storage
    */
   @Override
-  public ExternalVolume getStorage(String fullyQualifiedTableName) {
+  public PresignedUrlExternalVolume getStorage(String fullyQualifiedTableName) {
     // Only one chunk per blob in Iceberg mode.
     return getVolumeSafe(fullyQualifiedTableName);
   }
@@ -104,8 +104,8 @@ class ExternalVolumeManager implements IStorageManager {
       }
 
       try {
-        ExternalVolume externalVolume =
-            new ExternalVolume(
+        PresignedUrlExternalVolume externalVolume =
+            new PresignedUrlExternalVolume(
                 clientName,
                 getClientPrefix(),
                 deploymentId,
@@ -132,7 +132,7 @@ class ExternalVolumeManager implements IStorageManager {
 
   @Override
   public BlobPath generateBlobPath(String fullyQualifiedTableName) {
-    ExternalVolume volume = getVolumeSafe(fullyQualifiedTableName);
+    PresignedUrlExternalVolume volume = getVolumeSafe(fullyQualifiedTableName);
     PresignedUrlInfo urlInfo = volume.dequeueUrlInfo();
     return BlobPath.presignedUrlWithToken(urlInfo.fileName, urlInfo.url);
   }
@@ -147,8 +147,8 @@ class ExternalVolumeManager implements IStorageManager {
     return this.clientPrefix;
   }
 
-  private ExternalVolume getVolumeSafe(String fullyQualifiedTableName) {
-    ExternalVolume volume = this.externalVolumeMap.get(fullyQualifiedTableName);
+  private PresignedUrlExternalVolume getVolumeSafe(String fullyQualifiedTableName) {
+    PresignedUrlExternalVolume volume = this.externalVolumeMap.get(fullyQualifiedTableName);
 
     if (volume == null) {
       throw new SFException(
