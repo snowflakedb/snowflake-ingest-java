@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Collections;
@@ -15,11 +16,20 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.SnowflakeParquetWriter;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -61,6 +71,51 @@ public class BlobBuilderTest {
       Assert.assertTrue(e.getMessage().contains("channelsCountInMetadata=1"));
       Assert.assertTrue(e.getMessage().contains("countOfSerializedJavaObjects=1"));
     }
+  }
+
+  @Test
+  public void testMetadataAndExtendedMetadataSize() throws Exception {
+    if (!isIceberg) {
+      return;
+    }
+
+    BlobBuilder.Blob blob =
+        BlobBuilder.constructBlobAndMetadata(
+            "a.parquet",
+            Collections.singletonList(createChannelDataPerTable(1)),
+            Constants.BdecVersion.THREE,
+            new InternalParameterProvider(isIceberg));
+
+    InputFile blobInputFile = new InMemoryInputFile(blob.blobBytes);
+    ParquetFileReader reader = ParquetFileReader.open(blobInputFile);
+    ParquetMetadata footer = reader.getFooter();
+
+    int extendedMetadataSize = 0;
+    long extendedMetadaOffset = 0;
+    for (BlockMetaData block : footer.getBlocks()) {
+      for (ColumnChunkMetaData column : block.getColumns()) {
+        extendedMetadataSize +=
+            (column.getColumnIndexReference() != null
+                    ? column.getColumnIndexReference().getLength()
+                    : 0)
+                + (column.getOffsetIndexReference() != null
+                    ? column.getOffsetIndexReference().getLength()
+                    : 0)
+                + (column.getBloomFilterLength() == -1 ? 0 : column.getBloomFilterLength());
+        extendedMetadaOffset =
+            Math.max(column.getFirstDataPageOffset() + column.getTotalSize(), extendedMetadaOffset);
+      }
+    }
+    Assertions.assertThat(blob.chunksMetadataList.size()).isEqualTo(1);
+    Assertions.assertThat(blob.chunksMetadataList.get(0).getExtendedMetadataSize())
+        .isEqualTo(extendedMetadataSize);
+    Assertions.assertThat(blob.chunksMetadataList.get(0).getMetadataSize())
+        .isEqualTo(
+            blob.blobBytes.length
+                - extendedMetadaOffset
+                - extendedMetadataSize
+                - ParquetFileWriter.MAGIC.length
+                - Integer.BYTES);
   }
 
   /**
@@ -133,7 +188,7 @@ public class BlobBuilderTest {
   private static MessageType createSchema(String columnName) {
     ParquetTypeInfo c1 =
         ParquetTypeGenerator.generateColumnParquetTypeInfo(createTestTextColumn(columnName), 1);
-    return new MessageType("bdec", Collections.singletonList(c1.getParquetType()));
+    return new MessageType("InMemory", Collections.singletonList(c1.getParquetType()));
   }
 
   private static ColumnMetadata createTestTextColumn(String name) {
@@ -147,5 +202,56 @@ public class BlobBuilderTest {
     colChar.setLength(11);
     colChar.setScale(0);
     return colChar;
+  }
+
+  static class InMemoryInputFile implements InputFile {
+    private final byte[] data;
+
+    public InMemoryInputFile(byte[] data) {
+      this.data = data;
+    }
+
+    @Override
+    public long getLength() {
+      return data.length;
+    }
+
+    @Override
+    public SeekableInputStream newStream() {
+      return new InMemorySeekableInputStream(new InMemoryByteArrayInputStream(data));
+    }
+  }
+
+  private static class InMemorySeekableInputStream extends DelegatingSeekableInputStream {
+    private final InMemoryByteArrayInputStream stream;
+
+    public InMemorySeekableInputStream(InMemoryByteArrayInputStream stream) {
+      super(stream);
+      this.stream = stream;
+    }
+
+    @Override
+    public long getPos() {
+      return stream.getPos();
+    }
+
+    @Override
+    public void seek(long newPos) {
+      stream.seek(newPos);
+    }
+  }
+
+  private static class InMemoryByteArrayInputStream extends ByteArrayInputStream {
+    public InMemoryByteArrayInputStream(byte[] buf) {
+      super(buf);
+    }
+
+    long getPos() {
+      return pos;
+    }
+
+    void seek(long newPos) {
+      pos = (int) newPos;
+    }
   }
 }

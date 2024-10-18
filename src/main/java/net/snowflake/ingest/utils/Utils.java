@@ -449,13 +449,13 @@ public class Utils {
           String.format("Invalid parquet file. File too small, file length=%s.", bytes.length));
     }
 
-    if (!ParquetFileWriter.MAGIC_STR.equals(
-        new String(bytes, magicOffset, ParquetFileWriter.MAGIC.length))) {
+    String fileMagic = new String(bytes, magicOffset, ParquetFileWriter.MAGIC.length);
+    if (!ParquetFileWriter.MAGIC_STR.equals(fileMagic)
+        && !ParquetFileWriter.EF_MAGIC_STR.equals(fileMagic)) {
       throw new IllegalArgumentException(
           String.format(
-              "Invalid parquet file. Bad parquet magic, expected=%s, actual=%s.",
-              ParquetFileWriter.MAGIC_STR,
-              new String(bytes, magicOffset, ParquetFileWriter.MAGIC.length)));
+              "Invalid parquet file. Bad parquet magic, expected=[%s | %s], actual=%s.",
+              ParquetFileWriter.MAGIC_STR, ParquetFileWriter.EF_MAGIC_STR, fileMagic));
     }
 
     return BytesUtils.readIntLittleEndian(bytes, footerSizeOffset);

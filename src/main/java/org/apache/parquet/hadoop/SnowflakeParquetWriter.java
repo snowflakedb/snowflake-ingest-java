@@ -152,7 +152,7 @@ public class SnowflakeParquetWriter implements AutoCloseable {
                 + (column.getOffsetIndexReference() != null
                     ? column.getOffsetIndexReference().getLength()
                     : 0)
-                + column.getBloomFilterLength();
+                + (column.getBloomFilterLength() == -1 ? 0 : column.getBloomFilterLength());
       }
     }
     return extendedMetadataSize;

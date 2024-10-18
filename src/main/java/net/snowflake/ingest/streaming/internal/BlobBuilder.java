@@ -30,8 +30,10 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
 
 /**
@@ -141,6 +143,12 @@ class BlobBuilder {
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond());
 
         if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
+          if (internalParameterProvider.getEnableChunkEncryption()) {
+            /* metadata size computation only works when encryption and padding is off */
+            throw new SFException(
+                ErrorCode.INTERNAL_ERROR,
+                "Metadata size computation is only supported when encryption is enabled");
+          }
           final long metadataSize = getParquetFooterSize(compressedChunkData);
           final long extendedMetadataSize = serializedChunk.extendedMetadataSize;
           chunkMetadataBuilder

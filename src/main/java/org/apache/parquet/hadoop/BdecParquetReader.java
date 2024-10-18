@@ -4,6 +4,7 @@
 
 package org.apache.parquet.hadoop;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -92,10 +93,11 @@ public class BdecParquetReader implements AutoCloseable {
     }
   }
 
-  private static class BdecInputFile implements InputFile {
+  @VisibleForTesting
+  public static class BdecInputFile implements InputFile {
     private final byte[] data;
 
-    private BdecInputFile(byte[] data) {
+    public BdecInputFile(byte[] data) {
       this.data = data;
     }
 

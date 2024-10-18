@@ -172,6 +172,7 @@ class ChunkMetadata {
     this.majorVersion = builder.majorVersion;
     this.minorVersion = builder.minorVersion;
     this.createdOn = builder.createdOn;
+    this.metadataSize = builder.metadataSize;
     this.extendedMetadataSize = builder.extendedMetadataSize;
   }
 
