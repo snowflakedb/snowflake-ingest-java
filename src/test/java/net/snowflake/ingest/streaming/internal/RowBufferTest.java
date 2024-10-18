@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -2028,18 +2029,40 @@ public class RowBufferTest {
     data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
 
     ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
-    Flusher.SerializationResult result =
-        flusher.serialize(Collections.singletonList(data), filePath);
+    {
+      Flusher.SerializationResult result =
+          flusher.serialize(Collections.singletonList(data), filePath, 0);
 
-    BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
-    Assert.assertEquals(
-        filePath,
-        reader
-            .getKeyValueMetadata()
-            .get(
-                enableIcebergStreaming
-                    ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
-                    : Constants.PRIMARY_FILE_ID_KEY));
+      BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
+      Assert.assertEquals(
+          "testParquetFileNameMetadata.bdec",
+          reader
+              .getKeyValueMetadata()
+              .get(
+                  enableIcebergStreaming
+                      ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+                      : Constants.PRIMARY_FILE_ID_KEY));
+      Assert.assertEquals(
+          RequestBuilder.DEFAULT_VERSION,
+          reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
+    }
+    {
+      Flusher.SerializationResult result =
+          flusher.serialize(Collections.singletonList(data), filePath, 13);
+
+      BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
+      Assert.assertEquals(
+          "testParquetFileNameMetadata_13.bdec",
+          reader
+              .getKeyValueMetadata()
+              .get(
+                  enableIcebergStreaming
+                      ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+                      : Constants.PRIMARY_FILE_ID_KEY));
+      Assert.assertEquals(
+          RequestBuilder.DEFAULT_VERSION,
+          reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
+    }
   }
 
   @Test

@@ -37,6 +37,7 @@ public class Constants {
   public static final String PRIMARY_FILE_ID_KEY =
       "primaryFileId"; // Don't change, should match Parquet Scanner
   public static final String ASSIGNED_FULL_FILE_NAME_KEY = "assignedFullFileName";
+  public static final String SDK_VERSION_KEY = "sdkVersion";
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
   public static final long RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST =
       10L; // Don't change, should match server side
