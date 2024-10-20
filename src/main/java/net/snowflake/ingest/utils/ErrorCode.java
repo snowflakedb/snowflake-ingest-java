@@ -43,7 +43,8 @@ public enum ErrorCode {
   CRYPTO_PROVIDER_ERROR("0035"),
   DROP_CHANNEL_FAILURE("0036"),
   CLIENT_DEPLOYMENT_ID_MISMATCH("0037"),
-  GENERATE_PRESIGNED_URLS_FAILURE("0038");
+  GENERATE_PRESIGNED_URLS_FAILURE("0038"),
+  REFRESH_TABLE_INFORMATION_FAILURE("0039");
 
   public static final String errorMessageResource = "net.snowflake.ingest.ingest_error_messages";
 

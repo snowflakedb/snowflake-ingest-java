@@ -43,7 +43,9 @@ public final class ServiceResponseHandler {
     STREAMING_CHANNEL_STATUS("POST"),
     STREAMING_REGISTER_BLOB("POST"),
     STREAMING_CLIENT_CONFIGURE("POST"),
-    GENERATE_PRESIGNED_URLS("POST");
+    GENERATE_PRESIGNED_URLS("POST"),
+    REFRESH_TABLE_INFORMATION("POST");
+
     private final String httpMethod;
 
     private ApiName(String httpMethod) {

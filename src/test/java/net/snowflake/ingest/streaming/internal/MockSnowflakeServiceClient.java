@@ -5,6 +5,7 @@ import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.GENERATE_PRESIGNED_URLS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.REFRESH_TABLE_INFORMATION_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -130,6 +131,15 @@ public class MockSnowflakeServiceClient {
                         clientConfigresponseMap.put("deployment_id", 123L);
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, clientConfigresponseMap);
+                      case REFRESH_TABLE_INFORMATION_ENDPOINT:
+                        Thread.sleep(1);
+                        Map<String, Object> refreshTableInformationMap = new HashMap<>();
+                        refreshTableInformationMap.put("status_code", 0L);
+                        refreshTableInformationMap.put("message", "OK");
+                        refreshTableInformationMap.put("iceberg_location", getStageLocationMap());
+                        return buildStreamingIngestResponse(
+                            HttpStatus.SC_OK, refreshTableInformationMap);
+
                       case GENERATE_PRESIGNED_URLS_ENDPOINT:
                         Thread.sleep(1);
                         Map<String, Object> generateUrlsResponseMap = new HashMap<>();
