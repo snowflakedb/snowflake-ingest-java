@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.util.Optional;
+
 /**
  * Interface to manage {@link InternalStage} and {@link PresignedUrlExternalVolume} for {@link
  * FlushService}
@@ -42,4 +44,13 @@ interface IStorageManager {
    * @return the client prefix
    */
   String getClientPrefix();
+
+  /**
+   * Get the updated subscoped tokens and location info for this table
+   *
+   * @param tableRef
+   * @param fileName
+   * @return
+   */
+  FileLocationInfo getRefreshedLocation(TableRef tableRef, Optional<String> fileName);
 }

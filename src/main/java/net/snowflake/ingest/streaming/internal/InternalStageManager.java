@@ -20,9 +20,10 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class to manage single Snowflake internal stage */
-class InternalStageManager<T> implements IStorageManager {
+class InternalStageManager implements IStorageManager {
+  public static final TableRef NO_TABLE_REF = new TableRef("$NO_DB$", "$NO_SCH$", "$NO_TABLE$");
   /** Target stage for the client */
-  private final InternalStage<T> targetStage;
+  private final InternalStage targetStage;
 
   /** Increasing counter to generate a unique blob name per client */
   private final AtomicLong counter;
@@ -70,15 +71,22 @@ class InternalStageManager<T> implements IStorageManager {
         this.clientPrefix = response.getClientPrefix();
         this.deploymentId = response.getDeploymentId();
         this.targetStage =
-            new InternalStage<T>(
-                this, clientName, response.getStageLocation(), DEFAULT_MAX_UPLOAD_RETRIES);
+            new InternalStage(
+                this,
+                clientName,
+                clientPrefix,
+                NO_TABLE_REF,
+                response.getStageLocation(),
+                DEFAULT_MAX_UPLOAD_RETRIES);
       } else {
         this.clientPrefix = null;
         this.deploymentId = null;
         this.targetStage =
-            new InternalStage<T>(
+            new InternalStage(
                 this,
                 "testClient",
+                null /* clientPrefix */,
+                NO_TABLE_REF,
                 (SnowflakeFileTransferMetadataWithAge) null,
                 DEFAULT_MAX_UPLOAD_RETRIES);
       }
@@ -98,7 +106,7 @@ class InternalStageManager<T> implements IStorageManager {
    */
   @Override
   @SuppressWarnings("unused")
-  public InternalStage<T> getStorage(String fullyQualifiedTableName) {
+  public InternalStage getStorage(String fullyQualifiedTableName) {
     // There's always only one stage for the client in non-iceberg mode
     return targetStage;
   }
@@ -117,7 +125,15 @@ class InternalStageManager<T> implements IStorageManager {
    * @param fileName optional filename for single-file signed URL fetch from server
    * @return the new location information
    */
-  FileLocationInfo getRefreshedLocation(Optional<String> fileName) {
+  @Override
+  public FileLocationInfo getRefreshedLocation(TableRef tableRef, Optional<String> fileName) {
+    if (!tableRef.equals(NO_TABLE_REF)) {
+      throw new SFException(
+          ErrorCode.INTERNAL_ERROR,
+          String.format(
+              "getRefreshedLocation received TableRef=%s and expected=%s", tableRef, NO_TABLE_REF));
+    }
+
     try {
       ClientConfigureRequest request = new ClientConfigureRequest(this.role);
       fileName.ifPresent(request::setFileName);
