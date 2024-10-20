@@ -445,7 +445,7 @@ public class FlushServiceTest {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
     String outputString =
-        ((InternalStageManager<?>) storageManager).getNextFileName(calendar, clientPrefix);
+        ((InternalStageManager) storageManager).getNextFileName(calendar, clientPrefix);
     Path outputPath = Paths.get(outputString);
     Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
     Assert.assertTrue(
@@ -1116,7 +1116,7 @@ public class FlushServiceTest {
     innerData.add(channel2Data);
 
     IStorageManager storageManager =
-        Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
+        Mockito.spy(new InternalStageManager(true, "role", "client", null));
     FlushService<StubChunkData> flushService =
         new FlushService<>(client, channelCache, storageManager, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");

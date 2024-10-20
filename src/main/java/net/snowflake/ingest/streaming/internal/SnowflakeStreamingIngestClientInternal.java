@@ -238,9 +238,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     this.storageManager =
         isIcebergMode
-            ? new PresignedUrlExternalVolumeManager(
+            ? new SubscopedTokenExternalVolumeManager(
                 isTestMode, this.role, this.name, this.snowflakeServiceClient)
-            : new InternalStageManager<T>(
+            : new InternalStageManager(
                 isTestMode, this.role, this.name, this.snowflakeServiceClient);
 
     try {

@@ -4,23 +4,24 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.streaming.internal.GeneratePresignedUrlsResponse.PresignedUrlInfo;
-
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 
 /** Class to manage multiple external volumes */
-class PresignedUrlExternalVolumeManager implements IStorageManager {
-  // TODO: Rename all logger members to LOGGER and checkin code formatting rules
-  private static final Logging logger = new Logging(PresignedUrlExternalVolumeManager.class);
+class SubscopedTokenExternalVolumeManager implements IStorageManager {
+  private static final Logging logger = new Logging(SubscopedTokenExternalVolumeManager.class);
   // Reference to the external volume per table
-  private final Map<String, PresignedUrlExternalVolume> externalVolumeMap;
+  private final Map<String, InternalStage> externalVolumeMap;
+
+  /** Increasing counter to generate a unique blob name */
+  private final AtomicLong counter;
 
   // name of the owning client
   private final String clientName;
@@ -49,13 +50,14 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
    * @param clientName the name of the client
    * @param snowflakeServiceClient the Snowflake service client used for configure calls
    */
-  PresignedUrlExternalVolumeManager(
+  SubscopedTokenExternalVolumeManager(
       boolean isTestMode,
       String role,
       String clientName,
       SnowflakeServiceClient snowflakeServiceClient) {
     this.clientName = clientName;
     this.role = role;
+    this.counter = new AtomicLong(0);
     this.serviceClient = snowflakeServiceClient;
     this.externalVolumeMap = new ConcurrentHashMap<>();
     try {
@@ -67,7 +69,7 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
     logger.logDebug(
-        "Created PresignedUrlExternalVolumeManager with clientName=%s and clientPrefix=%s",
+        "Created SubscopedTokenExternalVolumeManager with clientName=%s and clientPrefix=%s",
         clientName, clientPrefix);
   }
 
@@ -78,7 +80,7 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
    * @return target storage
    */
   @Override
-  public PresignedUrlExternalVolume getStorage(String fullyQualifiedTableName) {
+  public InternalStage getStorage(String fullyQualifiedTableName) {
     // Only one chunk per blob in Iceberg mode.
     return getVolumeSafe(fullyQualifiedTableName);
   }
@@ -105,15 +107,14 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
       }
 
       try {
-        PresignedUrlExternalVolume externalVolume =
-            new PresignedUrlExternalVolume(
+        InternalStage externalVolume =
+            new InternalStage(
+                this,
                 clientName,
                 getClientPrefix(),
-                deploymentId,
-                role,
                 tableRef,
                 locationInfo,
-                serviceClient);
+                DEFAULT_MAX_UPLOAD_RETRIES);
         this.externalVolumeMap.put(tableRef.fullyQualifiedName, externalVolume);
       } catch (SFException ex) {
         logger.logError(
@@ -133,9 +134,21 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
 
   @Override
   public BlobPath generateBlobPath(String fullyQualifiedTableName) {
-    PresignedUrlExternalVolume volume = getVolumeSafe(fullyQualifiedTableName);
-    PresignedUrlInfo urlInfo = volume.dequeueUrlInfo();
-    return new BlobPath(urlInfo.url /* uploadPath */, urlInfo.fileName /* fileRegistrationPath */);
+    InternalStage volume = getVolumeSafe(fullyQualifiedTableName);
+
+    // {nullableTableBasePath}/data/streaming_ingest/{figsId}/{twoHexChars}/snow_{volumeHash}_{figsId}_{workerRank}_1_
+    String filePathRelativeToVolume = volume.getFileLocationInfo().getPath();
+    String[] parts = filePathRelativeToVolume.split("/");
+    if (parts.length < 6) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "File path returned by server is invalid.");
+    }
+
+    String suffix = this.counter.getAndIncrement() + ".parquet";
+
+    String fileNameRelativeToCredentialedPath = parts[parts.length - 1];
+    return new BlobPath(
+        fileNameRelativeToCredentialedPath + suffix /* uploadPath */,
+        filePathRelativeToVolume + suffix /* fileRegistrationPath */);
   }
 
   /**
@@ -148,8 +161,20 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
     return this.clientPrefix;
   }
 
-  private PresignedUrlExternalVolume getVolumeSafe(String fullyQualifiedTableName) {
-    PresignedUrlExternalVolume volume = this.externalVolumeMap.get(fullyQualifiedTableName);
+  @Override
+  public FileLocationInfo getRefreshedLocation(TableRef tableRef, Optional<String> fileName) {
+    try {
+      RefreshTableInformationResponse response =
+          this.serviceClient.refreshTableInformation(
+              new RefreshTableInformationRequest(tableRef, this.role, true));
+      return response.getIcebergLocationInfo();
+    } catch (IngestResponseException | IOException e) {
+      throw new SFException(e, ErrorCode.REFRESH_TABLE_INFORMATION_FAILURE, e.getMessage());
+    }
+  }
+
+  private InternalStage getVolumeSafe(String fullyQualifiedTableName) {
+    InternalStage volume = this.externalVolumeMap.get(fullyQualifiedTableName);
 
     if (volume == null) {
       throw new SFException(
@@ -158,10 +183,5 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
     }
 
     return volume;
-  }
-
-  @Override
-  public FileLocationInfo getRefreshedLocation(TableRef tableRef, Optional<String> fileName) {
-    throw new SFException(ErrorCode.INTERNAL_ERROR, "Unsupported");
   }
 }
