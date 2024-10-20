@@ -105,9 +105,8 @@ public class PresignedUrlPresignedUrlExternalVolumeManagerTest {
     manager.registerTable(new TableRef("db", "schema", "table"), fileLocationInfo);
     BlobPath blobPath = manager.generateBlobPath("db.schema.table");
     assertNotNull(blobPath);
-    assertTrue(blobPath.hasToken);
-    assertEquals(blobPath.fileName, "f1");
-    assertEquals(blobPath.blobPath, "http://f1.com?token=t1");
+    assertEquals(blobPath.fileRegistrationPath, "f1");
+    assertEquals(blobPath.uploadPath, "http://f1.com?token=t1");
   }
 
   @Test
@@ -129,8 +128,7 @@ public class PresignedUrlPresignedUrlExternalVolumeManagerTest {
     for (int i = 0; i < numThreads; i++) {
       BlobPath blobPath = allResults.get(0).get(timeoutInSeconds, TimeUnit.SECONDS);
       assertNotNull(blobPath);
-      assertTrue(blobPath.hasToken);
-      assertTrue(blobPath.blobPath, blobPath.blobPath.contains("http://f1.com?token=t"));
+      assertTrue(blobPath.uploadPath, blobPath.uploadPath.contains("http://f1.com?token=t"));
     }
   }
 

@@ -123,12 +123,13 @@ class PresignedUrlExternalVolume implements IStorage {
   @Override
   public void put(BlobPath blobPath, byte[] blob) {
     if (this.fileTransferMetadata.isLocalFS) {
-      InternalStage.putLocal(this.fileTransferMetadata.localLocation, blobPath.fileName, blob);
+      InternalStage.putLocal(
+          this.fileTransferMetadata.localLocation, blobPath.fileRegistrationPath, blob);
       return;
     }
 
     try {
-      putRemote(blobPath.blobPath, blob);
+      putRemote(blobPath.uploadPath, blob);
     } catch (Throwable e) {
       throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
     }

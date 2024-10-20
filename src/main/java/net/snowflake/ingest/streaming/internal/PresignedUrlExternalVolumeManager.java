@@ -134,7 +134,7 @@ class PresignedUrlExternalVolumeManager implements IStorageManager {
   public BlobPath generateBlobPath(String fullyQualifiedTableName) {
     PresignedUrlExternalVolume volume = getVolumeSafe(fullyQualifiedTableName);
     PresignedUrlInfo urlInfo = volume.dequeueUrlInfo();
-    return BlobPath.presignedUrlWithToken(urlInfo.fileName, urlInfo.url);
+    return new BlobPath(urlInfo.url /* uploadPath */, urlInfo.fileName /* fileRegistrationPath */);
   }
 
   /**

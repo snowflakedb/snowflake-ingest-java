@@ -149,7 +149,9 @@ public class InternalStageTest {
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
-    stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+    stage.put(
+        new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+        dataBytes);
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class);
     SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());
     SnowflakeFileTransferConfig capturedConfig = captor.getValue();
@@ -186,7 +188,8 @@ public class InternalStageTest {
                 1));
     Mockito.doReturn(true).when(stage).isLocalFS();
 
-    stage.put(BlobPath.fileNameWithoutToken(fileName), dataBytes);
+    stage.put(
+        new BlobPath(fileName /* uploadPath */, fileName /* fileRegistrationPath */), dataBytes);
     Path outputPath = Paths.get(fullFilePath, fileName);
     List<String> output = Files.readAllLines(outputPath);
     Assert.assertEquals(1, output.size());
@@ -223,7 +226,9 @@ public class InternalStageTest {
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
     try {
-      stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+      stage.put(
+          new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+          dataBytes);
       Assert.fail("Should not succeed");
     } catch (SFException ex) {
       // Expected behavior given mocked response
@@ -272,7 +277,9 @@ public class InternalStageTest {
     SnowflakeFileTransferMetadataV1 metaMock = Mockito.mock(SnowflakeFileTransferMetadataV1.class);
 
     Mockito.doReturn(metaMock).when(stage).fetchSignedURL(Mockito.any());
-    stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+    stage.put(
+        new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+        dataBytes);
     SnowflakeFileTransferAgent.uploadWithoutConnection(Mockito.any());
     Mockito.verify(stage, times(1)).fetchSignedURL("test/path");
   }
@@ -593,7 +600,9 @@ public class InternalStageTest {
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
-    stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+    stage.put(
+        new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+        dataBytes);
 
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class, times(maxUploadRetryCount));
     SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());
