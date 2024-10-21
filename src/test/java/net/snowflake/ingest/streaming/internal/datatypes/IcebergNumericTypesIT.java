@@ -12,12 +12,14 @@ import java.util.Random;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.text.RandomStringGenerator;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Ignore("This test can be enabled after server side Iceberg EP support is released")
 public class IcebergNumericTypesIT extends AbstractDataTypeTest {
@@ -34,11 +36,21 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
   @Parameterized.Parameter(1)
   public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
 
-  static final Random generator = new Random(0x5EED);
+  private static final Logger logger = LoggerFactory.getLogger(IcebergNumericTypesIT.class);
+  private static Random generator;
+  private static RandomStringGenerator randomStringGenerator;
 
   @Before
   public void before() throws Exception {
     super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
+    long seed = System.currentTimeMillis();
+    logger.info("Random seed: {}", seed);
+    generator = new Random(123);
+    randomStringGenerator =
+        new RandomStringGenerator.Builder()
+            .usingRandom(generator::nextInt)
+            .withinRange('0', '9')
+            .build();
   }
 
   @Test
@@ -417,9 +429,10 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
       }
       list.add(
           new BigDecimal(
-              RandomStringUtils.randomNumeric(intPart)
+              (generator.nextBoolean() ? "-" : "")
+                  + randomStringGenerator.generate(intPart)
                   + "."
-                  + RandomStringUtils.randomNumeric(floatPart)));
+                  + randomStringGenerator.generate(floatPart)));
     }
     return list;
   }
