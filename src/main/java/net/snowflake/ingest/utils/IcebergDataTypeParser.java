@@ -26,14 +26,14 @@ import org.apache.iceberg.util.JsonUtil;
  * /IcebergDataTypeParser.java
  */
 public class IcebergDataTypeParser {
+  public static final String ELEMENT = "element";
+  public static final String KEY = "key";
+  public static final String VALUE = "value";
   private static final String TYPE = "type";
   private static final String STRUCT = "struct";
   private static final String LIST = "list";
   private static final String MAP = "map";
   private static final String FIELDS = "fields";
-  private static final String ELEMENT = "element";
-  private static final String KEY = "key";
-  private static final String VALUE = "value";
   private static final String DOC = "doc";
   private static final String NAME = "name";
   private static final String ID = "id";

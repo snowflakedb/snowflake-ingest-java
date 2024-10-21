@@ -13,12 +13,18 @@ class EpInfo {
 
   private Map<String, FileColumnProperties> columnEps;
 
+  private boolean enableDistinctValuesCount;
+
   /** Default constructor, needed for Jackson */
   EpInfo() {}
 
-  EpInfo(long rowCount, Map<String, FileColumnProperties> columnEps) {
+  EpInfo(
+      long rowCount,
+      Map<String, FileColumnProperties> columnEps,
+      boolean enableDistinctValuesCount) {
     this.rowCount = rowCount;
     this.columnEps = columnEps;
+    this.enableDistinctValuesCount = enableDistinctValuesCount;
   }
 
   /** Some basic verification logic to make sure the EP info is correct */
@@ -35,8 +41,8 @@ class EpInfo {
                 colName, colEp.getNullCount(), rowCount));
       }
 
-      // Make sure the NDV should always be -1
-      if (colEp.getDistinctValues() != EP_NDV_UNKNOWN) {
+      // Make sure the NDV should always be -1 when the NDV set to default
+      if (!enableDistinctValuesCount && colEp.getDistinctValues() != EP_NDV_UNKNOWN) {
         throw new SFException(
             ErrorCode.INTERNAL_ERROR,
             String.format(

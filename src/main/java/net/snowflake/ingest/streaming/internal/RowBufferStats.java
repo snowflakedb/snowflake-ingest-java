@@ -5,10 +5,14 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
+import static net.snowflake.ingest.utils.Constants.EP_NV_UNKNOWN;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.schema.PrimitiveType;
@@ -42,26 +46,50 @@ class RowBufferStats {
   // for binary or string columns
   private long currentMaxLength;
 
+  private final boolean enableDistinctValuesCount;
+  private Set<Object> distinctValues;
+  private final boolean enableValuesCount;
+  private long numberOfValues;
+
   RowBufferStats(
       String columnDisplayName,
       String collationDefinitionString,
       int ordinal,
       Integer fieldId,
-      PrimitiveType primitiveType) {
+      PrimitiveType primitiveType,
+      boolean enableDistinctValuesCount,
+      boolean enableValuesCount) {
     this.columnDisplayName = columnDisplayName;
     this.collationDefinitionString = collationDefinitionString;
     this.ordinal = ordinal;
     this.fieldId = fieldId;
     this.primitiveType = primitiveType;
+    this.enableDistinctValuesCount = enableDistinctValuesCount;
+    this.enableValuesCount = enableValuesCount;
+    if (enableDistinctValuesCount) {
+      this.distinctValues = new HashSet<>();
+    }
     reset();
   }
 
-  RowBufferStats(String columnDisplayName) {
-    this(columnDisplayName, null, -1, null, null);
+  RowBufferStats(
+      String columnDisplayName, boolean enableDistinctValuesCount, boolean enableValuesCount) {
+    this(columnDisplayName, null, -1, null, null, enableDistinctValuesCount, enableValuesCount);
   }
 
-  RowBufferStats(String columnDisplayName, PrimitiveType primitiveType) {
-    this(columnDisplayName, null, -1, null, primitiveType);
+  RowBufferStats(
+      String columnDisplayName,
+      PrimitiveType primitiveType,
+      boolean enableDistinctValuesCount,
+      boolean enableValuesCount) {
+    this(
+        columnDisplayName,
+        null,
+        -1,
+        null,
+        primitiveType,
+        enableDistinctValuesCount,
+        enableValuesCount);
   }
 
   void reset() {
@@ -73,6 +101,10 @@ class RowBufferStats {
     this.currentMinRealValue = null;
     this.currentNullCount = 0;
     this.currentMaxLength = 0;
+    if (distinctValues != null) {
+      distinctValues.clear();
+    }
+    this.numberOfValues = 0L;
   }
 
   /** Create new statistics for the same column, with all calculated values set to empty */
@@ -82,26 +114,40 @@ class RowBufferStats {
         this.getCollationDefinitionString(),
         this.getOrdinal(),
         this.getFieldId(),
-        this.getPrimitiveType());
+        this.getPrimitiveType(),
+        this.enableDistinctValuesCount,
+        this.enableValuesCount);
   }
 
   // TODO performance test this vs in place update
   static RowBufferStats getCombinedStats(RowBufferStats left, RowBufferStats right) {
-    if (!Objects.equals(left.getCollationDefinitionString(), right.collationDefinitionString)) {
+    if (!Objects.equals(left.getCollationDefinitionString(), right.collationDefinitionString)
+        || left.enableDistinctValuesCount != right.enableDistinctValuesCount
+        || left.enableValuesCount != right.enableValuesCount) {
       throw new SFException(
           ErrorCode.INVALID_COLLATION_STRING,
-          "Tried to combine stats for different collations",
+          "Tried to combine stats for different"
+              + " collations/enableDistinctValuesCount/enableValuesCount",
           String.format(
-              "left=%s, right=%s",
-              left.getCollationDefinitionString(), right.getCollationDefinitionString()));
+              "left={collations=%s, enableDistinctValuesCount=%s, enableValuesCount=%s}, "
+                  + "right={collations=%s, enableDistinctValuesCount=%s, enableValuesCount=%s}",
+              left.getCollationDefinitionString(),
+              left.enableDistinctValuesCount,
+              left.enableValuesCount,
+              right.getCollationDefinitionString(),
+              right.enableDistinctValuesCount,
+              right.enableValuesCount));
     }
+
     RowBufferStats combined =
         new RowBufferStats(
             left.columnDisplayName,
             left.getCollationDefinitionString(),
             left.getOrdinal(),
             left.getFieldId(),
-            left.getPrimitiveType());
+            left.getPrimitiveType(),
+            left.enableDistinctValuesCount,
+            left.enableValuesCount);
 
     if (left.currentMinIntValue != null) {
       combined.addIntValue(left.currentMinIntValue);
@@ -133,6 +179,15 @@ class RowBufferStats {
       combined.addRealValue(right.currentMaxRealValue);
     }
 
+    if (combined.enableDistinctValuesCount) {
+      combined.distinctValues.addAll(left.distinctValues);
+      combined.distinctValues.addAll(right.distinctValues);
+    }
+
+    if (combined.enableValuesCount) {
+      combined.numberOfValues = left.numberOfValues + right.numberOfValues;
+    }
+
     combined.currentNullCount = left.currentNullCount + right.currentNullCount;
     combined.currentMaxLength = Math.max(left.currentMaxLength, right.currentMaxLength);
 
@@ -145,7 +200,6 @@ class RowBufferStats {
 
   void addBinaryValue(byte[] valueBytes) {
     this.setCurrentMaxLength(valueBytes.length);
-
     // Check if new min/max string
     if (this.currentMinStrValue == null) {
       this.currentMinStrValue = valueBytes;
@@ -158,6 +212,13 @@ class RowBufferStats {
       } else if (compareUnsigned(currentMaxStrValue, valueBytes) < 0) {
         this.currentMaxStrValue = valueBytes;
       }
+    }
+
+    if (enableDistinctValuesCount) {
+      distinctValues.add(Arrays.hashCode(valueBytes));
+    }
+    if (enableValuesCount) {
+      numberOfValues++;
     }
   }
 
@@ -179,6 +240,13 @@ class RowBufferStats {
     } else if (this.currentMaxIntValue.compareTo(value) < 0) {
       this.currentMaxIntValue = value;
     }
+
+    if (enableDistinctValuesCount) {
+      distinctValues.add(value);
+    }
+    if (enableValuesCount) {
+      numberOfValues++;
+    }
   }
 
   BigInteger getCurrentMinIntValue() {
@@ -198,6 +266,13 @@ class RowBufferStats {
       this.currentMinRealValue = value;
     } else if (this.currentMaxRealValue.compareTo(value) < 0) {
       this.currentMaxRealValue = value;
+    }
+
+    if (enableDistinctValuesCount) {
+      distinctValues.add(value);
+    }
+    if (enableValuesCount) {
+      numberOfValues++;
     }
   }
 
@@ -233,7 +308,11 @@ class RowBufferStats {
    * @return -1 indicating the NDV is unknown
    */
   long getDistinctValues() {
-    return EP_NDV_UNKNOWN;
+    return enableDistinctValuesCount ? distinctValues.size() : EP_NDV_UNKNOWN;
+  }
+
+  long getNumberOfValues() {
+    return enableValuesCount ? numberOfValues : EP_NV_UNKNOWN;
   }
 
   String getCollationDefinitionString() {

@@ -17,7 +17,7 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.hadoop.BdecParquetWriter;
+import org.apache.parquet.hadoop.SnowflakeParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -66,7 +66,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
-    BdecParquetWriter parquetWriter;
+    SnowflakeParquetWriter parquetWriter;
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
@@ -129,7 +129,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     // http://go/streams-on-replicated-mixed-tables
     metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
     parquetWriter =
-        new BdecParquetWriter(
+        new SnowflakeParquetWriter(
             mergedData,
             schema,
             metadata,
@@ -150,7 +150,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         rowCount,
         chunkEstimatedUncompressedSize,
         mergedData,
-        chunkMinMaxInsertTimeInMs);
+        chunkMinMaxInsertTimeInMs,
+        parquetWriter.getExtendedMetadataSize());
   }
 
   /**
@@ -164,7 +165,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
    *     Used only for logging purposes if there is a mismatch.
    */
   private void verifyRowCounts(
-      BdecParquetWriter writer,
+      SnowflakeParquetWriter writer,
       long totalMetadataRowCount,
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       long javaSerializationTotalRowCount) {

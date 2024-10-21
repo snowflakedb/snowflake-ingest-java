@@ -5,25 +5,22 @@
 package net.snowflake.ingest.streaming.internal;
 
 /**
- * Class to manage blob path strings that might have an embedded security token if its a presigned
- * url
+ * Class to maintain the upload-path (relative to the location for which we have authorized access)
+ * and the file registration path (relative to the volume location).
+ *
+ * <p>In the case of FDN tables, these values are identical as we get access to the account's
+ * streaming_ingest volume.
+ *
+ * <p>In the case of Iceberg tables, these values are different since we scope the token down to a
+ * per-session subpath under the external volume's location, whereas the file registration still
+ * needs to happen relative to the ext vol.
  */
-public class BlobPath {
-  public final String blobPath;
-  public final Boolean hasToken;
-  public final String fileName;
+class BlobPath {
+  public final String uploadPath;
+  public final String fileRegistrationPath;
 
-  private BlobPath(String fileName, String blobPath, Boolean hasToken) {
-    this.blobPath = blobPath;
-    this.hasToken = hasToken;
-    this.fileName = fileName;
-  }
-
-  public static BlobPath fileNameWithoutToken(String fileName) {
-    return new BlobPath(fileName, fileName, false);
-  }
-
-  public static BlobPath presignedUrlWithToken(String fileName, String url) {
-    return new BlobPath(fileName, url, true);
+  public BlobPath(String uploadPath, String fileRegistrationPath) {
+    this.uploadPath = uploadPath;
+    this.fileRegistrationPath = fileRegistrationPath;
   }
 }

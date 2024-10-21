@@ -36,9 +36,9 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 
 /** Handles uploading files to the Iceberg Table's external volume's table data path */
-class ExternalVolume implements IStorage {
+class PresignedUrlExternalVolume implements IStorage {
   // TODO everywhere: static final should be named in all capitals
-  private static final Logging logger = new Logging(ExternalVolume.class);
+  private static final Logging logger = new Logging(PresignedUrlExternalVolume.class);
   private static final int DEFAULT_PRESIGNED_URL_COUNT = 10;
   private static final int DEFAULT_PRESIGNED_URL_TIMEOUT_IN_SECONDS = 900;
 
@@ -74,7 +74,7 @@ class ExternalVolume implements IStorage {
   private final FileLocationInfo locationInfo;
   private final SnowflakeFileTransferMetadataWithAge fileTransferMetadata;
 
-  ExternalVolume(
+  PresignedUrlExternalVolume(
       String clientName,
       String clientPrefix,
       Long deploymentId,
@@ -123,12 +123,13 @@ class ExternalVolume implements IStorage {
   @Override
   public void put(BlobPath blobPath, byte[] blob) {
     if (this.fileTransferMetadata.isLocalFS) {
-      InternalStage.putLocal(this.fileTransferMetadata.localLocation, blobPath.fileName, blob);
+      InternalStage.putLocal(
+          this.fileTransferMetadata.localLocation, blobPath.fileRegistrationPath, blob);
       return;
     }
 
     try {
-      putRemote(blobPath.blobPath, blob);
+      putRemote(blobPath.uploadPath, blob);
     } catch (Throwable e) {
       throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
     }

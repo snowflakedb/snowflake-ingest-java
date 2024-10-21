@@ -100,7 +100,7 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     IStorageManager storageManager;
     InternalStage storage;
-    ExternalVolume extVolume;
+    PresignedUrlExternalVolume extVolume;
     ParameterProvider parameterProvider;
     RegisterService registerService;
 
@@ -108,7 +108,7 @@ public class FlushServiceTest {
 
     TestContext() {
       storage = Mockito.mock(InternalStage.class);
-      extVolume = Mockito.mock(ExternalVolume.class);
+      extVolume = Mockito.mock(PresignedUrlExternalVolume.class);
       parameterProvider = new ParameterProvider(isIcebergMode);
       InternalParameterProvider internalParameterProvider =
           new InternalParameterProvider(isIcebergMode);
@@ -118,7 +118,7 @@ public class FlushServiceTest {
       storageManager =
           Mockito.spy(
               isIcebergMode
-                  ? new ExternalVolumeManager(
+                  ? new PresignedUrlExternalVolumeManager(
                       true, "role", "client", MockSnowflakeServiceClient.create())
                   : new InternalStageManager(true, "role", "client", null));
       Mockito.doReturn(isIcebergMode ? extVolume : storage)
@@ -148,7 +148,7 @@ public class FlushServiceTest {
     BlobMetadata buildAndUpload() throws Exception {
       List<List<ChannelData<T>>> blobData = Collections.singletonList(channelData);
       return flushService.buildAndUpload(
-          BlobPath.fileNameWithoutToken("file_name"),
+          new BlobPath("file_name" /* uploadPath */, "file_name" /* fileRegistrationPath */),
           blobData,
           blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName());
     }
@@ -884,10 +884,16 @@ public class FlushServiceTest {
 
     RowBufferStats stats1 =
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode);
     RowBufferStats stats2 =
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode);
 
     eps1.put("one", stats1);
     eps2.put("one", stats2);
@@ -919,7 +925,7 @@ public class FlushServiceTest {
 
     EpInfo expectedChunkEpInfo =
         AbstractRowBuffer.buildEpInfoFromStats(
-            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2), !isIcebergMode);
+            3, ChannelData.getCombinedColumnStatsMap(eps1, eps2), !isIcebergMode, isIcebergMode);
 
     ChannelMetadata expectedChannel1Metadata =
         ChannelMetadata.builder()
@@ -960,7 +966,7 @@ public class FlushServiceTest {
             blobCaptor.capture(),
             metadataCaptor.capture(),
             ArgumentMatchers.any());
-    Assert.assertEquals("file_name", nameCaptor.getValue().fileName);
+    Assert.assertEquals("file_name", nameCaptor.getValue().fileRegistrationPath);
 
     ChunkMetadata metadataResult = metadataCaptor.getValue().get(0);
     List<ChannelMetadata> channelMetadataResult = metadataResult.getChannels();
@@ -1049,8 +1055,11 @@ public class FlushServiceTest {
         Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
     ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
+    InternalParameterProvider internalParameterProvider =
+        new InternalParameterProvider(isIcebergMode);
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
+    Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel1",
@@ -1134,13 +1143,16 @@ public class FlushServiceTest {
 
     RowBufferStats stats1 =
         new RowBufferStats(
-            "COL1", Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"));
+            "COL1",
+            Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
+            isIcebergMode,
+            isIcebergMode);
 
     eps1.put("one", stats1);
 
     stats1.addIntValue(new BigInteger("10"));
     stats1.addIntValue(new BigInteger("15"));
-    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1, !isIcebergMode);
+    EpInfo epInfo = AbstractRowBuffer.buildEpInfoFromStats(2, eps1, !isIcebergMode, isIcebergMode);
 
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()

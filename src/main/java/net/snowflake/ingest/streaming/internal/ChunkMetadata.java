@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -26,6 +26,7 @@ class ChunkMetadata {
   private Integer majorVersion;
   private Integer minorVersion;
   private Long createdOn;
+  private Long metadataSize;
   private Long extendedMetadataSize;
 
   static Builder builder() {
@@ -51,6 +52,7 @@ class ChunkMetadata {
     private Integer majorVersion;
     private Integer minorVersion;
     private Long createdOn;
+    private Long metadataSize;
     private Long extendedMetadataSize;
 
     Builder setOwningTableFromChannelContext(ChannelFlushContext channelFlushContext) {
@@ -124,6 +126,11 @@ class ChunkMetadata {
       return this;
     }
 
+    Builder setMetadataSize(Long metadataSize) {
+      this.metadataSize = metadataSize;
+      return this;
+    }
+
     Builder setExtendedMetadataSize(Long extendedMetadataSize) {
       this.extendedMetadataSize = extendedMetadataSize;
       return this;
@@ -165,6 +172,7 @@ class ChunkMetadata {
     this.majorVersion = builder.majorVersion;
     this.minorVersion = builder.minorVersion;
     this.createdOn = builder.createdOn;
+    this.metadataSize = builder.metadataSize;
     this.extendedMetadataSize = builder.extendedMetadataSize;
   }
 
@@ -256,6 +264,12 @@ class ChunkMetadata {
   @JsonInclude(JsonInclude.Include.NON_NULL)
   Long getCreatedOn() {
     return this.createdOn;
+  }
+
+  @JsonProperty("metadata_size")
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  Long getMetadataSize() {
+    return this.metadataSize;
   }
 
   @JsonProperty("ext_metadata_size")

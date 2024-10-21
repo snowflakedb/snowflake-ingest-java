@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2022 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2022-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package org.apache.parquet.hadoop;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Arrays;
@@ -82,7 +83,7 @@ public class BdecParquetReader implements AutoCloseable {
    * @param data input data to be read first and then written with outputWriter
    * @param outputWriter output parquet writer
    */
-  public static void readFileIntoWriter(byte[] data, BdecParquetWriter outputWriter) {
+  public static void readFileIntoWriter(byte[] data, SnowflakeParquetWriter outputWriter) {
     try (BdecParquetReader reader = new BdecParquetReader(data)) {
       for (List<Object> record = reader.read(); record != null; record = reader.read()) {
         outputWriter.writeRow(record);
@@ -92,10 +93,11 @@ public class BdecParquetReader implements AutoCloseable {
     }
   }
 
-  private static class BdecInputFile implements InputFile {
+  @VisibleForTesting
+  public static class BdecInputFile implements InputFile {
     private final byte[] data;
 
-    private BdecInputFile(byte[] data) {
+    public BdecInputFile(byte[] data) {
       this.data = data;
     }
 
