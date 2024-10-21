@@ -45,7 +45,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
     super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
     long seed = System.currentTimeMillis();
     logger.info("Random seed: {}", seed);
-    generator = new Random(123);
+    generator = new Random(seed);
     randomStringGenerator =
         new RandomStringGenerator.Builder()
             .usingRandom(generator::nextInt)
@@ -418,6 +418,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
         bigDecimals_38_10);
   }
 
+  /** Generate a list of random BigDecimal(p', s') where p' <= precision and s' <= scale */
   private static List<Object> randomBigDecimal(int count, int precision, int scale) {
     List<Object> list = new ArrayList<>();
     for (int i = 0; i < count; i++) {
