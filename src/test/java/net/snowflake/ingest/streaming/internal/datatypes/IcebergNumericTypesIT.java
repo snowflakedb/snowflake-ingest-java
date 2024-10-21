@@ -5,15 +5,21 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.commons.text.RandomStringGenerator;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Ignore("This test can be enabled after server side Iceberg EP support is released")
 public class IcebergNumericTypesIT extends AbstractDataTypeTest {
@@ -30,9 +36,21 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
   @Parameterized.Parameter(1)
   public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
 
+  private static final Logger logger = LoggerFactory.getLogger(IcebergNumericTypesIT.class);
+  private static Random generator;
+  private static RandomStringGenerator randomStringGenerator;
+
   @Before
   public void before() throws Exception {
     super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
+    long seed = System.currentTimeMillis();
+    logger.info("Random seed: {}", seed);
+    generator = new Random(seed);
+    randomStringGenerator =
+        new RandomStringGenerator.Builder()
+            .usingRandom(generator::nextInt)
+            .withinRange('0', '9')
+            .build();
   }
 
   @Test
@@ -310,6 +328,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
     testIcebergIngestion("decimal(3, 1)", 12.5f, new FloatProvider());
     testIcebergIngestion("decimal(3, 1)", -99, new IntProvider());
     testIcebergIngestion("decimal(38, 0)", Long.MAX_VALUE, new LongProvider());
+    testIcebergIngestion("decimal(21, 0)", .0, new DoubleProvider());
     testIcebergIngestion("decimal(38, 10)", null, new BigDecimalProvider());
 
     testIcebergIngestion(
@@ -372,5 +391,50 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
         Arrays.asList(new BigDecimal("-12.3"), new BigDecimal("-12.3"), null),
         "select COUNT({columnName}) from {tableName} where {columnName} = -12.3",
         Arrays.asList(2L));
+
+    List<Object> bigDecimals_9_4 = randomBigDecimal(200, 9, 4);
+    testIcebergIngestAndQuery(
+        "decimal(9, 4)", bigDecimals_9_4, "select {columnName} from {tableName}", bigDecimals_9_4);
+
+    List<Object> bigDecimals_18_9 = randomBigDecimal(200, 18, 9);
+    testIcebergIngestAndQuery(
+        "decimal(18, 9)",
+        bigDecimals_18_9,
+        "select {columnName} from {tableName}",
+        bigDecimals_18_9);
+
+    List<Object> bigDecimals_21_0 = randomBigDecimal(200, 21, 0);
+    testIcebergIngestAndQuery(
+        "decimal(21, 0)",
+        bigDecimals_21_0,
+        "select {columnName} from {tableName}",
+        bigDecimals_21_0);
+
+    List<Object> bigDecimals_38_10 = randomBigDecimal(200, 38, 10);
+    testIcebergIngestAndQuery(
+        "decimal(38, 10)",
+        bigDecimals_38_10,
+        "select {columnName} from {tableName}",
+        bigDecimals_38_10);
+  }
+
+  /** Generate a list of random BigDecimal(p', s') where p' <= precision and s' <= scale */
+  private static List<Object> randomBigDecimal(int count, int precision, int scale) {
+    List<Object> list = new ArrayList<>();
+    for (int i = 0; i < count; i++) {
+      int intPart = generator.nextInt(precision - scale + 1);
+      int floatPart = generator.nextInt(scale + 1);
+      if (intPart == 0 && floatPart == 0) {
+        list.add(null);
+        continue;
+      }
+      list.add(
+          new BigDecimal(
+              (generator.nextBoolean() ? "-" : "")
+                  + randomStringGenerator.generate(intPart)
+                  + "."
+                  + randomStringGenerator.generate(floatPart)));
+    }
+    return list;
   }
 }
