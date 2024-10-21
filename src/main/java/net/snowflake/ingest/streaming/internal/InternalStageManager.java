@@ -153,7 +153,8 @@ class InternalStageManager<T> implements IStorageManager {
     // other implementation
     // of IStorageManager does end up using this argument.
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    return BlobPath.fileNameWithoutToken(getNextFileName(calendar, this.clientPrefix));
+    String fileName = getNextFileName(calendar, this.clientPrefix);
+    return new BlobPath(fileName /* uploadPath */, fileName /* fileRegistrationPath */);
   }
 
   /** For TESTING */

@@ -301,12 +301,11 @@ class InternalStage<T> implements IStorage {
 
   /** Upload file to internal stage */
   public void put(BlobPath blobPath, byte[] blob) {
-    String filePath = blobPath.fileName;
     if (this.isLocalFS()) {
-      putLocal(this.fileTransferMetadataWithAge.localLocation, filePath, blob);
+      putLocal(this.fileTransferMetadataWithAge.localLocation, blobPath.fileRegistrationPath, blob);
     } else {
       try {
-        putRemote(filePath, blob, 0);
+        putRemote(blobPath.uploadPath, blob, 0);
       } catch (SnowflakeSQLException | IOException e) {
         throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
       }
