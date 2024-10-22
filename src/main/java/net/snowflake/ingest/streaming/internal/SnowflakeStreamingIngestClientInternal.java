@@ -53,8 +53,6 @@ import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
-import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -72,6 +70,8 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
 
 /**
