@@ -6,6 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Utils.concatDotPath;
 
+import com.google.common.collect.Sets;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +20,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
-import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
