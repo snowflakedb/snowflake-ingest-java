@@ -416,7 +416,8 @@ public class Utils {
   }
 
   /**
-   * Get concat dot path, check if any path is empty or null
+   * Get concat dot path, check if any path is empty or null. Escape the dot field name to avoid
+   * column name collision.
    *
    * @param path the path
    */
@@ -429,7 +430,7 @@ public class Utils {
       if (sb.length() > 0) {
         sb.append(".");
       }
-      sb.append(p);
+      sb.append(p.replace("\\", "\\\\").replace(".", "\\."));
     }
     return sb.toString();
   }

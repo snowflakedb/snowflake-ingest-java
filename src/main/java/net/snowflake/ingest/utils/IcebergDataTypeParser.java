@@ -65,16 +65,21 @@ public class IcebergDataTypeParser {
       int id,
       String name) {
     Type icebergType = deserializeIcebergType(icebergDataType);
+    org.apache.parquet.schema.Type parquetType;
     if (icebergType.isPrimitiveType()) {
-      return typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
+      parquetType =
+          typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
     } else {
       switch (icebergType.typeId()) {
         case LIST:
-          return typeToMessageType.list(icebergType.asListType(), repetition, id, name);
+          parquetType = typeToMessageType.list(icebergType.asListType(), repetition, id, name);
+          break;
         case MAP:
-          return typeToMessageType.map(icebergType.asMapType(), repetition, id, name);
+          parquetType = typeToMessageType.map(icebergType.asMapType(), repetition, id, name);
+          break;
         case STRUCT:
-          return typeToMessageType.struct(icebergType.asStructType(), repetition, id, name);
+          parquetType = typeToMessageType.struct(icebergType.asStructType(), repetition, id, name);
+          break;
         default:
           throw new SFException(
               ErrorCode.INTERNAL_ERROR,
@@ -83,6 +88,7 @@ public class IcebergDataTypeParser {
                   name, icebergDataType));
       }
     }
+    return decodeAvroFieldName(parquetType);
   }
 
   /**
@@ -154,7 +160,14 @@ public class IcebergDataTypeParser {
           field.isObject(), "Cannot parse struct field from non-object: %s", field);
 
       int id = JsonUtil.getInt(ID, field);
-      String name = JsonUtil.getString(NAME, field);
+
+      /*
+       * Encoded the underscore in the field name to avoid the field name duplication after Avro
+       * schema sanitization in TypeToMessageType. See AvroSchemaUtil#sanitize for more details.
+       */
+      String name =
+          JsonUtil.getString(NAME, field)
+              .replace("_", "_x" + Integer.toHexString('_').toUpperCase());
       Type type = getTypeFromJson(field.get(TYPE));
 
       String doc = JsonUtil.getStringOrNull(DOC, field);
@@ -206,6 +219,41 @@ public class IcebergDataTypeParser {
       return Types.MapType.ofRequired(keyId, valueId, keyType, valueType);
     } else {
       return Types.MapType.ofOptional(keyId, valueId, keyType, valueType);
+    }
+  }
+
+  private static org.apache.parquet.schema.Type decodeAvroFieldName(
+      org.apache.parquet.schema.Type type) {
+    StringBuilder sb = new StringBuilder();
+    String name = type.getName();
+    for (int i = 0; i < name.length(); i++) {
+      char c = name.charAt(i);
+      if (c == '_' && i + 1 < name.length() && name.charAt(i + 1) == 'x') {
+        sb.append((char) Integer.parseInt(name.substring(i + 2, i + 4), 16));
+        i += 3;
+      } else {
+        sb.append(c);
+      }
+    }
+
+    if (type.isPrimitive()) {
+      /* rename field name */
+      return org.apache.parquet.schema.Types.primitive(
+              type.asPrimitiveType().getPrimitiveTypeName(), type.getRepetition())
+          .as(type.asPrimitiveType().getLogicalTypeAnnotation())
+          .id(type.getId().intValue())
+          .length(type.asPrimitiveType().getTypeLength())
+          .named(sb.toString());
+    } else {
+      org.apache.parquet.schema.Types.GroupBuilder<org.apache.parquet.schema.GroupType> builder =
+          org.apache.parquet.schema.Types.buildGroup(type.getRepetition());
+      for (org.apache.parquet.schema.Type fieldType : type.asGroupType().getFields()) {
+        builder.addField(decodeAvroFieldName(fieldType));
+      }
+      if (type.getId() != null) {
+        builder.id(type.getId().intValue());
+      }
+      return builder.as(type.getLogicalTypeAnnotation()).named(sb.toString());
     }
   }
 }

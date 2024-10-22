@@ -43,7 +43,8 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
   @Test
   public void testStructuredDataType() throws Exception {
     assertStructuredDataType(
-        "object(a int, b string, c boolean)", "{\"a\": 1, \"b\": \"test\", \"c\": true}");
+        "object(a int, A int, \"b.b\" string, b_x2Eb boolean)",
+        "{\"a\": 1, \"A\": 1, \"b.b\": \"test\", \"b_x2Eb\": true}");
     assertStructuredDataType("map(string, int)", "{\"key1\": 1}");
     assertStructuredDataType("array(int)", "[1, 2, 3]");
     assertMap(
@@ -56,9 +57,7 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     assertStructuredDataType("array(string)", null);
 
     /* Map with null key */
-    SFException ex =
-        Assertions.catchThrowableOfType(
-            SFException.class,
+    Assertions.assertThatThrownBy(
             () ->
                 assertMap(
                     "map(string, int)",
@@ -66,19 +65,17 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
                       {
                         put(null, 1);
                       }
-                    }));
-    Assertions.assertThat(ex)
-        .extracting(SFException::getVendorCode)
+                    }))
+        .isInstanceOf(SFException.class)
+        .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
     /* Unknown field */
-    ex =
-        Assertions.catchThrowableOfType(
-            SFException.class,
+    Assertions.assertThatThrownBy(
             () ->
-                assertStructuredDataType("object(a int, b string)", "{\"a\": 1, \"c\": \"test\"}"));
-    Assertions.assertThat(ex)
-        .extracting(SFException::getVendorCode)
+                assertStructuredDataType("object(a int, b string)", "{\"a\": 1, \"c\": \"test\"}"))
+        .isInstanceOf(SFException.class)
+        .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
     /* Null struct, map list. */
@@ -95,59 +92,30 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
         .isInstanceOf(SFException.class)
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+  }
 
-    /* Nested data types. Should be fixed. Fixed in server side. */
-    Assertions.assertThatThrownBy(
-            () -> assertStructuredDataType("array(array(int))", "[[1, 2], [3, 4]]"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "array(map(string, int))", "[{\"key1\": 1}, {\"key2\": 2}]"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "array(object(a int, b string, c boolean))",
-                    "[{\"a\": 1, \"b\": \"test\", \"c\": true}]"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "map(string, object(a int, b string, c boolean))",
-                    "{\"key1\": {\"a\": 1, \"b\": \"test\", \"c\": true}}"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () -> assertStructuredDataType("map(string, array(int))", "{\"key1\": [1, 2, 3]}"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "map(string, map(string, int))", "{\"key1\": {\"key2\": 2}}"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "map(string, array(array(int)))", "{\"key1\": [[1, 2], [3, 4]]}"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "map(string, array(map(string, int)))",
-                    "{\"key1\": [{\"key2\": 2}, {\"key3\": 3}]}"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "map(string, array(object(a int, b string, c boolean)))",
-                    "{\"key1\": [{\"a\": 1, \"b\": \"test\", \"c\": true}]}"))
-        .isInstanceOf(SFException.class);
-    Assertions.assertThatThrownBy(
-            () ->
-                assertStructuredDataType(
-                    "object(a int, b array(int), c map(string, int))",
-                    "{\"a\": 1, \"b\": [1, 2, 3], \"c\": {\"key1\": 1}}"))
-        .isInstanceOf(SFException.class);
+  @Test
+  public void testNestedDataType() throws Exception {
+    assertStructuredDataType(
+        "object(\"b.b\" int, b object(b int))", "{\"b.b\": 1, \"b\": {\"b\": 1}}");
+    assertStructuredDataType("array(array(int))", "[[1, 2], [3, 4]]");
+    assertStructuredDataType("array(map(string, int))", "[{\"key1\": 1}, {\"key2\": 2}]");
+    assertStructuredDataType(
+        "array(object(a int, b string, c boolean))", "[{\"a\": 1, \"b\": \"test\", \"c\": true}]");
+    assertStructuredDataType(
+        "map(string, object(a int, b string, c boolean))",
+        "{\"key1\": {\"a\": 1, \"b\": \"test\", \"c\": true}}");
+    assertStructuredDataType("map(string, array(int))", "{\"key1\": [1, 2, 3]}");
+    assertStructuredDataType("map(string, map(string, int))", "{\"key1\": {\"key2\": 2}}");
+    assertStructuredDataType("map(string, array(array(int)))", "{\"key1\": [[1, 2], [3, 4]]}");
+    assertStructuredDataType(
+        "map(string, array(map(string, int)))", "{\"key1\": [{\"key2\": 2}, {\"key3\": 3}]}");
+    assertStructuredDataType(
+        "map(string, array(object(a int, b string, c boolean)))",
+        "{\"key1\": [{\"a\": 1, \"b\": \"test\", \"c\": true}]}");
+    assertStructuredDataType(
+        "object(a int, b array(int), c map(string, int))",
+        "{\"a\": 1, \"b\": [1, 2, 3], \"c\": {\"key1\": 1}}");
   }
 
   private void assertStructuredDataType(String dataType, String value) throws Exception {
