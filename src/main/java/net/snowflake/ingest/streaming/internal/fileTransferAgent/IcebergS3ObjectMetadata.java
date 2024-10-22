@@ -7,7 +7,7 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 import java.util.Map;
 import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 
 /**
  * s3 implementation of platform independent StorageObjectMetadata interface, wraps an S3

@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.core.SFSessionProperty;
@@ -37,15 +38,13 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.internal.amazonaws.util.IOUtils;
-import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
-import net.snowflake.client.jdbc.internal.apache.http.StatusLine;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
-import net.snowflake.client.jdbc.internal.apache.http.entity.BasicHttpEntity;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.http.HttpEntity;
+import org.apache.http.StatusLine;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.entity.BasicHttpEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -172,7 +171,9 @@ public class InternalStageTest {
         capturedMetadata.getStageInfo().getStageType());
 
     InputStream capturedInput = capturedConfig.getUploadStream();
-    Assert.assertEquals("Hello Upload", IOUtils.toString(capturedInput));
+    final byte[] captured = new byte[12];
+    capturedInput.read(captured);
+    Assert.assertArrayEquals("Hello Upload".getBytes(), captured);
   }
 
   @Test
@@ -259,7 +260,9 @@ public class InternalStageTest {
         capturedMetadata.getStageInfo().getStageType());
 
     InputStream capturedInput = capturedConfig.getUploadStream();
-    Assert.assertEquals("Hello Upload", IOUtils.toString(capturedInput));
+    final byte[] captured = new byte[12];
+    capturedInput.read(captured);
+    Assert.assertArrayEquals("Hello Upload".getBytes(), captured);
   }
 
   @Test
@@ -655,7 +658,9 @@ public class InternalStageTest {
         capturedMetadata.getStageInfo().getStageType());
 
     InputStream capturedInput = capturedConfig.getUploadStream();
-    Assert.assertEquals("Hello Upload", IOUtils.toString(capturedInput));
+    final byte[] captured = new byte[12];
+    capturedInput.read(captured);
+    Assert.assertArrayEquals("Hello Upload".getBytes(), captured);
   }
 
   private HttpEntity createHttpEntity(String content) {

@@ -9,7 +9,7 @@ import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.execu
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.JWTManager;

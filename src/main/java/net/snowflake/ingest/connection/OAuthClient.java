@@ -6,23 +6,23 @@ package net.snowflake.ingest.connection;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import net.snowflake.client.jdbc.internal.apache.http.HttpHeaders;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.CloseableHttpResponse;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
-import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
-import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
-import net.snowflake.client.jdbc.internal.apache.http.entity.ContentType;
-import net.snowflake.client.jdbc.internal.apache.http.entity.StringEntity;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
-import net.snowflake.client.jdbc.internal.apache.http.util.EntityUtils;
-import net.snowflake.client.jdbc.internal.google.api.client.http.HttpStatusCodes;
-import net.snowflake.client.jdbc.internal.google.gson.JsonObject;
-import net.snowflake.client.jdbc.internal.google.gson.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.HttpHeaders;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SFException;
@@ -43,6 +43,8 @@ public class OAuthClient {
   private static final String ACCESS_TOKEN = "access_token";
   private static final String REFRESH_TOKEN = "refresh_token";
   private static final String EXPIRES_IN = "expires_in";
+
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   // OAuth credential
   private final AtomicReference<OAuthCredential> oAuthCredential;
@@ -75,14 +77,14 @@ public class OAuthClient {
     CloseableHttpResponse httpResponse = httpClient.execute(makeRefreshTokenRequest());
     String respBodyString = EntityUtils.toString(httpResponse.getEntity());
 
-    if (httpResponse.getStatusLine().getStatusCode() == HttpStatusCodes.STATUS_CODE_OK) {
-      JsonObject respBody = JsonParser.parseString(respBodyString).getAsJsonObject();
+    if (httpResponse.getStatusLine().getStatusCode() == HttpURLConnection.HTTP_OK) {
+      JsonNode respBody = objectMapper.readTree(respBodyString);
 
       if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
         // Trim surrounding quotation marks
         String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
         oAuthCredential.get().setAccessToken(newAccessToken);
-        oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).getAsInt());
+        oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).asInt());
         return;
       }
     }
