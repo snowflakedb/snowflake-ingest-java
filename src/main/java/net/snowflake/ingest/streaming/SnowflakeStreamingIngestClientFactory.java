@@ -31,9 +31,6 @@ public class SnowflakeStreamingIngestClientFactory {
     // Indicates whether it's under test mode
     private boolean isTestMode;
 
-    // Whether we are going to ingest into iceberg tables
-    private boolean isIceberg;
-
     private Builder(String name) {
       this.name = name;
     }
@@ -53,12 +50,6 @@ public class SnowflakeStreamingIngestClientFactory {
       return this;
     }
 
-    // do not make public until the feature is ready
-    Builder setIsIceberg(boolean isIceberg) {
-      this.isIceberg = isIceberg;
-      return this;
-    }
-
     public SnowflakeStreamingIngestClient build() {
       Utils.assertStringNotNullOrEmpty("client name", this.name);
       Utils.assertNotNull("connection properties", this.prop);
@@ -67,7 +58,7 @@ public class SnowflakeStreamingIngestClientFactory {
       SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
 
       return new SnowflakeStreamingIngestClientInternal<>(
-          this.name, accountURL, prop, this.parameterOverrides, this.isIceberg, this.isTestMode);
+          this.name, accountURL, prop, this.parameterOverrides, this.isTestMode);
     }
   }
 }
