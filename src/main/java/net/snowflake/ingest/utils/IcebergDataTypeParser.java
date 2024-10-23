@@ -44,6 +44,8 @@ public class IcebergDataTypeParser {
   private static final String ELEMENT_REQUIRED = "element-required";
   private static final String VALUE_REQUIRED = "value-required";
 
+  private static final String EMPTY_FIELD_CHAR = "\\";
+
   /** Object mapper for this class */
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -65,16 +67,21 @@ public class IcebergDataTypeParser {
       int id,
       String name) {
     Type icebergType = deserializeIcebergType(icebergDataType);
+    org.apache.parquet.schema.Type parquetType;
     if (icebergType.isPrimitiveType()) {
-      return typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
+      parquetType =
+          typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
     } else {
       switch (icebergType.typeId()) {
         case LIST:
-          return typeToMessageType.list(icebergType.asListType(), repetition, id, name);
+          parquetType = typeToMessageType.list(icebergType.asListType(), repetition, id, name);
+          break;
         case MAP:
-          return typeToMessageType.map(icebergType.asMapType(), repetition, id, name);
+          parquetType = typeToMessageType.map(icebergType.asMapType(), repetition, id, name);
+          break;
         case STRUCT:
-          return typeToMessageType.struct(icebergType.asStructType(), repetition, id, name);
+          parquetType = typeToMessageType.struct(icebergType.asStructType(), repetition, id, name);
+          break;
         default:
           throw new SFException(
               ErrorCode.INTERNAL_ERROR,
@@ -83,6 +90,7 @@ public class IcebergDataTypeParser {
                   name, icebergDataType));
       }
     }
+    return replaceWithOriginalFieldName(parquetType, icebergType, name);
   }
 
   /**
@@ -154,7 +162,14 @@ public class IcebergDataTypeParser {
           field.isObject(), "Cannot parse struct field from non-object: %s", field);
 
       int id = JsonUtil.getInt(ID, field);
-      String name = JsonUtil.getString(NAME, field);
+
+      /* TypeToMessageType throws on empty field name, use a backslash to represent it and escape remaining backslash. */
+      String name =
+          JsonUtil.getString(NAME, field)
+              .replace(EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR);
+      if (name.isEmpty()) {
+        name = EMPTY_FIELD_CHAR;
+      }
       Type type = getTypeFromJson(field.get(TYPE));
 
       String doc = JsonUtil.getStringOrNull(DOC, field);
@@ -206,6 +221,63 @@ public class IcebergDataTypeParser {
       return Types.MapType.ofRequired(keyId, valueId, keyType, valueType);
     } else {
       return Types.MapType.ofOptional(keyId, valueId, keyType, valueType);
+    }
+  }
+
+  private static org.apache.parquet.schema.Type replaceWithOriginalFieldName(
+      org.apache.parquet.schema.Type parquetType, Type icebergType, String fieldName) {
+    if (parquetType.isPrimitive() != icebergType.isPrimitiveType()
+        || (!parquetType.isPrimitive()
+            && parquetType.getLogicalTypeAnnotation()
+                == null /* ignore outer layer of map or list */
+            && parquetType.asGroupType().getFieldCount()
+                != icebergType.asNestedType().fields().size())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Parquet type and Iceberg type mismatch: %s, %s", parquetType, icebergType));
+    }
+    if (parquetType.isPrimitive()) {
+      /* rename field name */
+      return org.apache.parquet.schema.Types.primitive(
+              parquetType.asPrimitiveType().getPrimitiveTypeName(), parquetType.getRepetition())
+          .as(parquetType.asPrimitiveType().getLogicalTypeAnnotation())
+          .id(parquetType.getId().intValue())
+          .length(parquetType.asPrimitiveType().getTypeLength())
+          .named(fieldName);
+    } else {
+      org.apache.parquet.schema.Types.GroupBuilder<org.apache.parquet.schema.GroupType> builder =
+          org.apache.parquet.schema.Types.buildGroup(parquetType.getRepetition());
+      for (org.apache.parquet.schema.Type parquetFieldType :
+          parquetType.asGroupType().getFields()) {
+        if (parquetFieldType.getId() == null) {
+          /* middle layer of map or list. Skip this level as parquet's using 3-level list/map while iceberg's using 2-level list/map */
+          builder.addField(
+              replaceWithOriginalFieldName(
+                  parquetFieldType, icebergType, parquetFieldType.getName()));
+        } else {
+          Types.NestedField icebergField =
+              icebergType.asNestedType().field(parquetFieldType.getId().intValue());
+          if (icebergField == null) {
+            throw new IllegalArgumentException(
+                String.format(
+                    "Cannot find Iceberg field with id %d in Iceberg type: %s",
+                    parquetFieldType.getId().intValue(), icebergType));
+          }
+          builder.addField(
+              replaceWithOriginalFieldName(
+                  parquetFieldType,
+                  icebergField.type(),
+                  icebergField.name().equals(EMPTY_FIELD_CHAR)
+                      ? ""
+                      : icebergField
+                          .name()
+                          .replace(EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR)));
+        }
+      }
+      if (parquetType.getId() != null) {
+        builder.id(parquetType.getId().intValue());
+      }
+      return builder.as(parquetType.getLogicalTypeAnnotation()).named(fieldName);
     }
   }
 }
