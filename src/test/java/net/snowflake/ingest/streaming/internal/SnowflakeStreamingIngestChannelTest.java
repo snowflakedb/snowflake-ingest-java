@@ -89,14 +89,18 @@ public class SnowflakeStreamingIngestChannelTest {
   private SnowflakeStreamingIngestClientInternal<StubChunkData> client;
   private MockSnowflakeServiceClient.ApiOverride apiOverride;
 
+  private Properties prop;
+
   @Before
   public void setup() {
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
+    prop = new Properties();
+    prop.setProperty(Constants.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client", null, null, httpClient, isIcebergMode, true, requestBuilder, new HashMap<>());
+            "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());
 
     // some tests assume client is a mock object, just do it for everyone.
     client = Mockito.spy(client);
@@ -501,9 +505,8 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
+            prop,
             httpClient,
-            isIcebergMode,
             true,
             requestBuilder,
             null);

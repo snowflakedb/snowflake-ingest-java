@@ -136,6 +136,7 @@ public class BlobBuilderTest {
                 isIceberg
                     ? ParquetProperties.WriterVersion.PARQUET_2_0
                     : ParquetProperties.WriterVersion.PARQUET_1_0,
+                isIceberg,
                 isIceberg))
         .when(channelData)
         .createFlusher();

@@ -458,6 +458,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         clientBufferParameters.getMaxRowGroups(),
         clientBufferParameters.getBdecParquetCompression(),
         parquetWriterVersion,
-        clientBufferParameters.isEnableDictionaryEncoding());
+        parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0
+            && clientBufferParameters
+                .isEnableDictionaryEncoding() /* writer 1.0 does not support dictionary encoding*/,
+        clientBufferParameters.getIsIcebergMode());
   }
 }
