@@ -100,6 +100,7 @@ public class SnowflakeStreamingIngestClientTest {
   SnowflakeStreamingIngestClientInternal<StubChunkData> client;
   private MockSnowflakeServiceClient.ApiOverride apiOverride;
   RequestBuilder requestBuilder;
+  private Properties isIcebergProp;
 
   @Before
   public void setup() throws Exception {
@@ -110,13 +111,15 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
     prop.put(ROLE, TestUtils.getRole());
+    isIcebergProp = new Properties();
+    isIcebergProp.setProperty(Constants.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
 
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
     requestBuilder = Mockito.spy(MockSnowflakeServiceClient.createRequestBuilder(httpClient));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client", null, null, httpClient, isIcebergMode, true, requestBuilder, new HashMap<>());
+            "client", null, isIcebergProp, httpClient, true, requestBuilder, new HashMap<>());
 
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -472,9 +475,8 @@ public class SnowflakeStreamingIngestClientTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
+            isIcebergProp,
             httpClient,
-            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -1001,9 +1003,8 @@ public class SnowflakeStreamingIngestClientTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
+            isIcebergProp,
             httpClient,
-            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -1241,9 +1242,8 @@ public class SnowflakeStreamingIngestClientTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
+            isIcebergProp,
             httpClient,
-            isIcebergMode,
             true,
             requestBuilder,
             parameterMap);

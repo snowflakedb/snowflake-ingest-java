@@ -123,6 +123,7 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
+    props.setProperty(Constants.STREAMING_ICEBERG, String.valueOf(isIceberg));
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
@@ -136,7 +137,7 @@ public abstract class AbstractDataTypeTest {
     SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client1", accountURL, prop, parameterMap, isIceberg, false);
+            "client1", accountURL, prop, parameterMap, false);
   }
 
   @After
