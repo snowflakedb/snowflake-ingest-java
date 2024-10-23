@@ -424,8 +424,8 @@ public class Utils {
   public static String concatDotPath(String... path) {
     StringBuilder sb = new StringBuilder();
     for (String p : path) {
-      if (isNullOrEmpty(p)) {
-        throw new IllegalArgumentException("Path cannot be null or empty");
+      if (p == null) {
+        throw new IllegalArgumentException("Path cannot be null");
       }
       if (sb.length() > 0) {
         sb.append(".");

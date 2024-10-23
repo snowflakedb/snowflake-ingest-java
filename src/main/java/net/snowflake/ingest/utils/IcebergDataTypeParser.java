@@ -44,6 +44,8 @@ public class IcebergDataTypeParser {
   private static final String ELEMENT_REQUIRED = "element-required";
   private static final String VALUE_REQUIRED = "value-required";
 
+  private static final String EMPTY_FIELD_CHAR = "\\";
+
   /** Object mapper for this class */
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -88,7 +90,7 @@ public class IcebergDataTypeParser {
                   name, icebergDataType));
       }
     }
-    return decodeAvroFieldName(parquetType);
+    return replaceWithOriginalFieldName(parquetType, icebergType, name);
   }
 
   /**
@@ -161,13 +163,13 @@ public class IcebergDataTypeParser {
 
       int id = JsonUtil.getInt(ID, field);
 
-      /*
-       * Encoded the underscore in the field name to avoid the field name duplication after Avro
-       * schema sanitization in TypeToMessageType. See AvroSchemaUtil#sanitize for more details.
-       */
+      /* TypeToMessageType throws on empty field name, use a backslash to represent it and escape remaining backslash. */
       String name =
           JsonUtil.getString(NAME, field)
-              .replace("_", "_x" + Integer.toHexString('_').toUpperCase());
+              .replace(EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR);
+      if (name.isEmpty()) {
+        name = EMPTY_FIELD_CHAR;
+      }
       Type type = getTypeFromJson(field.get(TYPE));
 
       String doc = JsonUtil.getStringOrNull(DOC, field);
@@ -222,38 +224,60 @@ public class IcebergDataTypeParser {
     }
   }
 
-  private static org.apache.parquet.schema.Type decodeAvroFieldName(
-      org.apache.parquet.schema.Type type) {
-    StringBuilder sb = new StringBuilder();
-    String name = type.getName();
-    for (int i = 0; i < name.length(); i++) {
-      char c = name.charAt(i);
-      if (c == '_' && i + 1 < name.length() && name.charAt(i + 1) == 'x') {
-        sb.append((char) Integer.parseInt(name.substring(i + 2, i + 4), 16));
-        i += 3;
-      } else {
-        sb.append(c);
-      }
+  private static org.apache.parquet.schema.Type replaceWithOriginalFieldName(
+      org.apache.parquet.schema.Type parquetType, Type icebergType, String fieldName) {
+    if (parquetType.isPrimitive() != icebergType.isPrimitiveType()
+        || (!parquetType.isPrimitive()
+            && parquetType.getLogicalTypeAnnotation()
+                == null /* ignore outer layer of map or list */
+            && parquetType.asGroupType().getFieldCount()
+                != icebergType.asNestedType().fields().size())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Parquet type and Iceberg type mismatch: %s, %s", parquetType, icebergType));
     }
-
-    if (type.isPrimitive()) {
+    if (parquetType.isPrimitive()) {
       /* rename field name */
       return org.apache.parquet.schema.Types.primitive(
-              type.asPrimitiveType().getPrimitiveTypeName(), type.getRepetition())
-          .as(type.asPrimitiveType().getLogicalTypeAnnotation())
-          .id(type.getId().intValue())
-          .length(type.asPrimitiveType().getTypeLength())
-          .named(sb.toString());
+              parquetType.asPrimitiveType().getPrimitiveTypeName(), parquetType.getRepetition())
+          .as(parquetType.asPrimitiveType().getLogicalTypeAnnotation())
+          .id(parquetType.getId().intValue())
+          .length(parquetType.asPrimitiveType().getTypeLength())
+          .named(fieldName);
     } else {
       org.apache.parquet.schema.Types.GroupBuilder<org.apache.parquet.schema.GroupType> builder =
-          org.apache.parquet.schema.Types.buildGroup(type.getRepetition());
-      for (org.apache.parquet.schema.Type fieldType : type.asGroupType().getFields()) {
-        builder.addField(decodeAvroFieldName(fieldType));
+          org.apache.parquet.schema.Types.buildGroup(parquetType.getRepetition());
+      for (org.apache.parquet.schema.Type parquetFieldType :
+          parquetType.asGroupType().getFields()) {
+        if (parquetFieldType.getId() == null) {
+          /* middle layer of map or list. Skip this level as parquet's using 3-level list/map while iceberg's using 2-level list/map */
+          builder.addField(
+              replaceWithOriginalFieldName(
+                  parquetFieldType, icebergType, parquetFieldType.getName()));
+        } else {
+          Types.NestedField icebergField =
+              icebergType.asNestedType().field(parquetFieldType.getId().intValue());
+          if (icebergField == null) {
+            throw new IllegalArgumentException(
+                String.format(
+                    "Cannot find Iceberg field with id %d in Iceberg type: %s",
+                    parquetFieldType.getId().intValue(), icebergType));
+          }
+          builder.addField(
+              replaceWithOriginalFieldName(
+                  parquetFieldType,
+                  icebergField.type(),
+                  icebergField.name().equals(EMPTY_FIELD_CHAR)
+                      ? ""
+                      : icebergField
+                          .name()
+                          .replace(EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR)));
+        }
       }
-      if (type.getId() != null) {
-        builder.id(type.getId().intValue());
+      if (parquetType.getId() != null) {
+        builder.id(parquetType.getId().intValue());
       }
-      return builder.as(type.getLogicalTypeAnnotation()).named(sb.toString());
+      return builder.as(parquetType.getLogicalTypeAnnotation()).named(fieldName);
     }
   }
 }
