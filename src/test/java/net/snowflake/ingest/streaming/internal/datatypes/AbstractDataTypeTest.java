@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
@@ -563,6 +564,8 @@ public abstract class AbstractDataTypeTest {
             .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
             .usingRecursiveComparison()
             .isEqualTo(expectedValue);
+      } else if (expectedValue instanceof Timestamp) {
+        Assertions.assertThat(res.toString()).isEqualTo(expectedValue.toString());
       } else {
         Assertions.assertThat(res).isEqualTo(expectedValue);
       }
