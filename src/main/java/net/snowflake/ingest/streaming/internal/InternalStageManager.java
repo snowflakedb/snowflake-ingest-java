@@ -116,7 +116,7 @@ class InternalStageManager implements IStorageManager {
    * nothing as there's no per-table state yet for FDN tables (that use internal stages).
    */
   @Override
-  public void registerTable(TableRef tableRef, FileLocationInfo locationInfo) {}
+  public void registerTable(TableRef tableRef) {}
 
   /**
    * Gets the latest file location info (with a renewed short-lived access token) for the specified

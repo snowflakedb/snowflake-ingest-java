@@ -131,6 +131,7 @@ public class MockSnowflakeServiceClient {
                         clientConfigresponseMap.put("deployment_id", 123L);
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, clientConfigresponseMap);
+
                       case REFRESH_TABLE_INFORMATION_ENDPOINT:
                         Thread.sleep(1);
                         Map<String, Object> refreshTableInformationMap = new HashMap<>();
@@ -182,7 +183,6 @@ public class MockSnowflakeServiceClient {
                         openChannelResponseMap.put("table_columns", tableColumnsLists);
                         openChannelResponseMap.put("encryption_key", "test_encryption_key");
                         openChannelResponseMap.put("encryption_key_id", 123L);
-                        openChannelResponseMap.put("iceberg_location", getStageLocationMap());
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, openChannelResponseMap);
                       case DROP_CHANNEL_ENDPOINT:
@@ -268,8 +268,8 @@ public class MockSnowflakeServiceClient {
 
     Map<String, Object> stageLocationMap = new HashMap<>();
     stageLocationMap.put("locationType", "S3");
-    stageLocationMap.put("location", "test_location");
-    stageLocationMap.put("path", "test_path");
+    stageLocationMap.put("location", "container/vol/table/data/streaming_ingest/figsId");
+    stageLocationMap.put("path", "table/data/streaming_ingest/figsId/snow_volHash_figsId_1_1_");
     stageLocationMap.put("creds", credsMap);
     stageLocationMap.put("region", "test_region");
     stageLocationMap.put("endPoint", "test_endpoint");

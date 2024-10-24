@@ -97,8 +97,7 @@ class InternalStage implements IStorage {
         (SnowflakeFileTransferMetadataWithAge) null,
         maxUploadRetries);
     Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
-    this.fileLocationInfo = fileLocationInfo;
-    this.fileTransferMetadataWithAge = createFileTransferMetadataWithAge(fileLocationInfo);
+    setFileLocationInfo(fileLocationInfo);
   }
 
   /**
@@ -214,8 +213,6 @@ class InternalStage implements IStorage {
    */
   synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force)
       throws SnowflakeSQLException, IOException {
-    logger.logInfo("Refresh Snowflake metadata, client={} force={}", clientName, force);
-
     if (!force
         && fileTransferMetadataWithAge != null
         && fileTransferMetadataWithAge.timestamp.isPresent()
@@ -224,12 +221,19 @@ class InternalStage implements IStorage {
       return fileTransferMetadataWithAge;
     }
 
+    logger.logInfo(
+        "Refresh Snowflake metadata, client={} force={} tableRef={}", clientName, force, tableRef);
+
     FileLocationInfo location =
         this.owningManager.getRefreshedLocation(this.tableRef, Optional.empty());
-    SnowflakeFileTransferMetadataWithAge metadata = createFileTransferMetadataWithAge(location);
-    this.fileLocationInfo = location;
-    this.fileTransferMetadataWithAge = metadata;
-    return metadata;
+    setFileLocationInfo(location);
+    return this.fileTransferMetadataWithAge;
+  }
+
+  private synchronized void setFileLocationInfo(FileLocationInfo fileLocationInfo)
+      throws SnowflakeSQLException, IOException {
+    this.fileTransferMetadataWithAge = createFileTransferMetadataWithAge(fileLocationInfo);
+    this.fileLocationInfo = fileLocationInfo;
   }
 
   static SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
