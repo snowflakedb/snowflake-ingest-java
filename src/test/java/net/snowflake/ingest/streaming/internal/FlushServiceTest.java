@@ -100,7 +100,6 @@ public class FlushServiceTest {
     FlushService<T> flushService;
     IStorageManager storageManager;
     InternalStage storage;
-    PresignedUrlExternalVolume extVolume;
     ParameterProvider parameterProvider;
     RegisterService registerService;
 
@@ -108,7 +107,6 @@ public class FlushServiceTest {
 
     TestContext() {
       storage = Mockito.mock(InternalStage.class);
-      extVolume = Mockito.mock(PresignedUrlExternalVolume.class);
       parameterProvider = new ParameterProvider(isIcebergMode);
       InternalParameterProvider internalParameterProvider =
           new InternalParameterProvider(isIcebergMode);
@@ -118,12 +116,10 @@ public class FlushServiceTest {
       storageManager =
           Mockito.spy(
               isIcebergMode
-                  ? new PresignedUrlExternalVolumeManager(
-                      true, "role", "client", MockSnowflakeServiceClient.create())
+                  ? new SubscopedTokenExternalVolumeManager(
+                      "role", "client", MockSnowflakeServiceClient.create())
                   : new InternalStageManager(true, "role", "client", null));
-      Mockito.doReturn(isIcebergMode ? extVolume : storage)
-          .when(storageManager)
-          .getStorage(ArgumentMatchers.any());
+      Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");
       Mockito.when(client.getParameterProvider())
           .thenAnswer((Answer<ParameterProvider>) (i) -> parameterProvider);
@@ -445,7 +441,7 @@ public class FlushServiceTest {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     String clientPrefix = "honk";
     String outputString =
-        ((InternalStageManager<?>) storageManager).getNextFileName(calendar, clientPrefix);
+        ((InternalStageManager) storageManager).getNextFileName(calendar, clientPrefix);
     Path outputPath = Paths.get(outputString);
     Assert.assertTrue(outputPath.getFileName().toString().contains(clientPrefix));
     Assert.assertTrue(
@@ -1116,7 +1112,7 @@ public class FlushServiceTest {
     innerData.add(channel2Data);
 
     IStorageManager storageManager =
-        Mockito.spy(new InternalStageManager<>(true, "role", "client", null));
+        Mockito.spy(new InternalStageManager(true, "role", "client", null));
     FlushService<StubChunkData> flushService =
         new FlushService<>(client, channelCache, storageManager, false);
     flushService.invalidateAllChannelsInBlob(blobData, "Invalidated by test");

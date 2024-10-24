@@ -49,12 +49,14 @@ public class Constants {
   public static final int BLOB_FILE_SIZE_SIZE_IN_BYTES = 8;
   public static final int BLOB_CHECKSUM_SIZE_IN_BYTES = 8;
   public static final int BLOB_CHUNK_METADATA_LENGTH_SIZE_IN_BYTES = 4;
-  public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 300L;
+  public static final long THREAD_SHUTDOWN_TIMEOUT_IN_SEC = 30L;
   public static final String BLOB_EXTENSION_TYPE = "bdec";
   public static final int MAX_THREAD_COUNT = Integer.MAX_VALUE;
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
   public static final String GENERATE_PRESIGNED_URLS_ENDPOINT =
       "/v1/streaming/presignedurls/generate/";
+  public static final String REFRESH_TABLE_INFORMATION_ENDPOINT =
+      "/v1/streaming/tableinformation/refresh/";
   public static final int COMMIT_MAX_RETRY_COUNT = 60;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
