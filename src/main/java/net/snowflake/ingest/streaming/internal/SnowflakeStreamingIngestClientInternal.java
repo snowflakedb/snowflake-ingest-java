@@ -239,7 +239,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.storageManager =
         isIcebergMode
             ? new SubscopedTokenExternalVolumeManager(
-                isTestMode, this.role, this.name, this.snowflakeServiceClient)
+                this.role, this.name, this.snowflakeServiceClient)
             : new InternalStageManager(
                 isTestMode, this.role, this.name, this.snowflakeServiceClient);
 
@@ -408,8 +408,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.channelCache.addChannel(channel);
 
     this.storageManager.registerTable(
-        new TableRef(response.getDBName(), response.getSchemaName(), response.getTableName()),
-        response.getIcebergLocationInfo());
+        new TableRef(response.getDBName(), response.getSchemaName(), response.getTableName()));
 
     return channel;
   }

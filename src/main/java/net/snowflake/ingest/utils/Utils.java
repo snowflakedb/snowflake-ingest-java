@@ -28,6 +28,7 @@ import java.security.spec.RSAPublicKeySpec;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ThreadLocalRandom;
 import net.snowflake.client.core.SFSessionProperty;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.parquet.bytes.BytesUtils;
@@ -459,5 +460,15 @@ public class Utils {
     }
 
     return BytesUtils.readIntLittleEndian(bytes, footerSizeOffset);
+  }
+
+  public static String getTwoHexChars() {
+    String twoHexChars =
+        Integer.toHexString((ThreadLocalRandom.current().nextInt() & 0x7FFFFFFF) % 0x100);
+    if (twoHexChars.length() == 1) {
+      twoHexChars = "0" + twoHexChars;
+    }
+
+    return twoHexChars;
   }
 }

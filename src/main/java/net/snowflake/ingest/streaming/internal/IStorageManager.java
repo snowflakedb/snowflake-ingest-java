@@ -26,7 +26,7 @@ interface IStorageManager {
   IStorage getStorage(String fullyQualifiedTableName);
 
   /** Informs the storage manager about a new table that's being ingested into by the client. */
-  void registerTable(TableRef tableRef, FileLocationInfo locationInfo);
+  void registerTable(TableRef tableRef);
 
   /**
    * Generate a unique blob path and increment the blob sequencer

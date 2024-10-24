@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 
 /** Class to manage multiple external volumes */
 class SubscopedTokenExternalVolumeManager implements IStorageManager {
@@ -45,16 +47,12 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
   /**
    * Constructor for ExternalVolumeManager
    *
-   * @param isTestMode whether the manager in test mode
    * @param role the role of the client
    * @param clientName the name of the client
    * @param snowflakeServiceClient the Snowflake service client used for configure calls
    */
   SubscopedTokenExternalVolumeManager(
-      boolean isTestMode,
-      String role,
-      String clientName,
-      SnowflakeServiceClient snowflakeServiceClient) {
+      String role, String clientName, SnowflakeServiceClient snowflakeServiceClient) {
     this.clientName = clientName;
     this.role = role;
     this.counter = new AtomicLong(0);
@@ -63,7 +61,7 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
     try {
       ClientConfigureResponse response =
           this.serviceClient.clientConfigure(new ClientConfigureRequest(role));
-      this.clientPrefix = isTestMode ? "testPrefix" : response.getClientPrefix();
+      this.clientPrefix = response.getClientPrefix();
       this.deploymentId = response.getDeploymentId();
     } catch (IngestResponseException | IOException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
@@ -87,7 +85,7 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
 
   /** Informs the storage manager about a new table that's being ingested into by the client. */
   @Override
-  public void registerTable(TableRef tableRef, FileLocationInfo locationInfo) {
+  public void registerTable(TableRef tableRef) {
     if (this.externalVolumeMap.containsKey(tableRef.fullyQualifiedName)) {
       logger.logInfo(
           "Skip registering table since its already been registered with the VolumeManager."
@@ -105,6 +103,12 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
             tableRef);
         return;
       }
+
+      // get the locationInfo when we know this is the first register call for a given table.
+      // This is done to reduce the unnecessary overload on token generation if a client opens up a
+      // hundred channels at
+      // the same time.
+      FileLocationInfo locationInfo = getRefreshedLocation(tableRef, Optional.empty());
 
       try {
         InternalStage externalVolume =
@@ -136,16 +140,41 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
   public BlobPath generateBlobPath(String fullyQualifiedTableName) {
     InternalStage volume = getVolumeSafe(fullyQualifiedTableName);
 
-    // {nullableTableBasePath}/data/streaming_ingest/{figsId}/{twoHexChars}/snow_{volumeHash}_{figsId}_{workerRank}_1_
-    String filePathRelativeToVolume = volume.getFileLocationInfo().getPath();
+    // {nullableTableBasePath}/data/streaming_ingest/{figsId}/snow_{volumeHash}_{figsId}_{workerRank}_1_
+    return generateBlobPathFromLocationInfoPath(
+        fullyQualifiedTableName,
+        volume.getFileLocationInfo().getPath(),
+        Utils.getTwoHexChars(),
+        this.counter.getAndIncrement());
+  }
+
+  @VisibleForTesting
+  static BlobPath generateBlobPathFromLocationInfoPath(
+      String fullyQualifiedTableName,
+      String filePathRelativeToVolume,
+      String twoHexChars,
+      long counterValue) {
     String[] parts = filePathRelativeToVolume.split("/");
-    if (parts.length < 6) {
-      throw new SFException(ErrorCode.INTERNAL_ERROR, "File path returned by server is invalid.");
+    if (parts.length < 5) {
+      logger.logError(
+          "Invalid file path returned by server. Table=%s FilePathRelativeToVolume=%s",
+          fullyQualifiedTableName, filePathRelativeToVolume);
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "File path returned by server is invalid");
     }
 
-    String suffix = this.counter.getAndIncrement() + ".parquet";
-
+    // add twoHexChars as a prefix to the fileName (the last part of fileLocationInfo.getPath)
     String fileNameRelativeToCredentialedPath = parts[parts.length - 1];
+    fileNameRelativeToCredentialedPath =
+        String.join("/", twoHexChars, fileNameRelativeToCredentialedPath);
+
+    // set this new fileName (with the prefix) back on the parts array so the full path can be
+    // reconstructed
+    parts[parts.length - 1] = fileNameRelativeToCredentialedPath;
+    filePathRelativeToVolume = String.join("/", parts);
+
+    // add a monotonically increasing counter at the end and the file extension
+    String suffix = counterValue + ".parquet";
+
     return new BlobPath(
         fileNameRelativeToCredentialedPath + suffix /* uploadPath */,
         filePathRelativeToVolume + suffix /* fileRegistrationPath */);
@@ -167,6 +196,20 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
       RefreshTableInformationResponse response =
           this.serviceClient.refreshTableInformation(
               new RefreshTableInformationRequest(tableRef, this.role, true));
+      logger.logDebug("Refreshed tokens for table=%s", tableRef);
+      if (response.getIcebergLocationInfo() == null) {
+        logger.logError(
+            "Did not receive location info, this will cause ingestion to grind to a halt."
+                + " TableRef=%s");
+      } else {
+        Map<String, String> creds = response.getIcebergLocationInfo().getCredentials();
+        if (creds == null || creds.isEmpty()) {
+          logger.logError(
+              "Did not receive creds in location info, this will cause ingestion to grind to a"
+                  + " halt. TableRef=%s");
+        }
+      }
+
       return response.getIcebergLocationInfo();
     } catch (IngestResponseException | IOException e) {
       throw new SFException(e, ErrorCode.REFRESH_TABLE_INFORMATION_FAILURE, e.getMessage());
