@@ -2097,7 +2097,7 @@ public class RowBufferTest {
         .isEqualTo("key2".getBytes(StandardCharsets.UTF_8));
     assertThat(columnEpStats.get("COLMAP.key_value.key").getCurrentNullCount()).isEqualTo(1);
     assertThat(columnEpStats.get("COLMAP.key_value.key").getDistinctValues()).isEqualTo(2);
-    assertThat(columnEpStats.get("COLMAP.key_value.key").getNumberOfValues()).isEqualTo(2);
+    assertThat(columnEpStats.get("COLMAP.key_value.key").getNumberOfValues()).isEqualTo(3);
 
     assertThat(columnEpStats.get("COLMAP.key_value.value").getCurrentMinIntValue())
         .isEqualTo(BigInteger.ONE);
@@ -2105,7 +2105,7 @@ public class RowBufferTest {
         .isEqualTo(BigInteger.ONE);
     assertThat(columnEpStats.get("COLMAP.key_value.value").getCurrentNullCount()).isEqualTo(1);
     assertThat(columnEpStats.get("COLMAP.key_value.value").getDistinctValues()).isEqualTo(1);
-    assertThat(columnEpStats.get("COLMAP.key_value.value").getNumberOfValues()).isEqualTo(2);
+    assertThat(columnEpStats.get("COLMAP.key_value.value").getNumberOfValues()).isEqualTo(3);
 
     assertThat(columnEpStats.get("COLARRAY.list.element").getCurrentMinIntValue())
         .isEqualTo(BigInteger.ONE);
@@ -2113,7 +2113,7 @@ public class RowBufferTest {
         .isEqualTo(BigInteger.ONE);
     assertThat(columnEpStats.get("COLARRAY.list.element").getCurrentNullCount()).isEqualTo(1);
     assertThat(columnEpStats.get("COLARRAY.list.element").getDistinctValues()).isEqualTo(1);
-    assertThat(columnEpStats.get("COLARRAY.list.element").getNumberOfValues()).isEqualTo(4);
+    assertThat(columnEpStats.get("COLARRAY.list.element").getNumberOfValues()).isEqualTo(5);
   }
 
   private static Thread getThreadThatWaitsForLockReleaseAndFlushes(

@@ -180,7 +180,7 @@ public class RowBufferStatsTest {
     Assert.assertEquals(BigInteger.valueOf(1), result.getCurrentMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(8), result.getCurrentMaxIntValue());
     Assert.assertEquals(enableNDVAndNV ? 7 : -1, result.getDistinctValues());
-    Assert.assertEquals(enableNDVAndNV ? 8 : -1, result.getNumberOfValues());
+    Assert.assertEquals(enableNDVAndNV ? 10 : -1, result.getNumberOfValues());
 
     Assert.assertEquals(2, result.getCurrentNullCount());
     Assert.assertNull(result.getCurrentMinStrValue());
@@ -239,7 +239,7 @@ public class RowBufferStatsTest {
     Assert.assertEquals(2, result.getCurrentNullCount());
     Assert.assertEquals(5, result.getCurrentMaxLength());
     Assert.assertEquals(enableNDVAndNV ? 7 : -1, result.getDistinctValues());
-    Assert.assertEquals(enableNDVAndNV ? 8 : -1, result.getNumberOfValues());
+    Assert.assertEquals(enableNDVAndNV ? 10 : -1, result.getNumberOfValues());
 
     Assert.assertNull(result.getCurrentMinRealValue());
     Assert.assertNull(result.getCurrentMaxRealValue());
@@ -264,7 +264,7 @@ public class RowBufferStatsTest {
     Assert.assertEquals(BigInteger.valueOf(2), result.getCurrentMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(8), result.getCurrentMaxIntValue());
     Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getDistinctValues());
-    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getNumberOfValues());
+    Assert.assertEquals(enableNDVAndNV ? 6 : -1, result.getNumberOfValues());
 
     Assert.assertEquals(2, result.getCurrentNullCount());
 
@@ -309,7 +309,7 @@ public class RowBufferStatsTest {
     Assert.assertArrayEquals("g".getBytes(StandardCharsets.UTF_8), result.getCurrentMaxStrValue());
 
     Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getDistinctValues());
-    Assert.assertEquals(enableNDVAndNV ? 4 : -1, result.getNumberOfValues());
+    Assert.assertEquals(enableNDVAndNV ? 5 : -1, result.getNumberOfValues());
     Assert.assertEquals(1, result.getCurrentNullCount());
 
     Assert.assertNull(result.getCurrentMinRealValue());
