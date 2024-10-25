@@ -492,6 +492,11 @@ class IcebergParquetValueParser {
       listVal.add(Collections.singletonList(parsedValue.getValue()));
       estimatedParquetSize += parsedValue.getSize();
     }
+    if (listVal.isEmpty()) {
+      subColumnFinder
+          .getSubColumns(path)
+          .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
+    }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
   }
 
@@ -538,6 +543,11 @@ class IcebergParquetValueParser {
               true);
       listVal.add(Arrays.asList(parsedKey.getValue(), parsedValue.getValue()));
       estimatedParquetSize += parsedKey.getSize() + parsedValue.getSize();
+    }
+    if (listVal.isEmpty()) {
+      subColumnFinder
+          .getSubColumns(path)
+          .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
   }
