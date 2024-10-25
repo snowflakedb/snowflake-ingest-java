@@ -48,8 +48,9 @@ interface IStorageManager {
   /**
    * Get the updated subscoped tokens and location info for this table
    *
-   * @param tableRef
-   * @param fileName
+   * @param tableRef The table for which to get the location
+   * @param fileName Legacy, was used by deprecated GCS codepaths when it didn't support subscoped
+   *     tokens. Not in use.
    * @return
    */
   FileLocationInfo getRefreshedLocation(TableRef tableRef, Optional<String> fileName);

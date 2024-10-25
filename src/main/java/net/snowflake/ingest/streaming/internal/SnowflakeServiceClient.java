@@ -99,7 +99,7 @@ class SnowflakeServiceClient {
     return response;
   }
 
-  /** Generates a batch of presigned URLs for a table */
+  /** Fetches the latest sub-scoped tokens from the server for the requested table in the request */
   RefreshTableInformationResponse refreshTableInformation(RefreshTableInformationRequest request)
       throws IngestResponseException, IOException {
     RefreshTableInformationResponse response =
