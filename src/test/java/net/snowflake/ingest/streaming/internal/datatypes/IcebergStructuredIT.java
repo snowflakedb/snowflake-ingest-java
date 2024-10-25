@@ -101,6 +101,8 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
 
   @Test
   public void testNestedDataType() throws Exception {
+    assertStructuredDataType("map(string, map(string, object(a int, b string)))", "{}");
+    assertStructuredDataType("array(map(string, int))", "[{}]");
     assertStructuredDataType("array(array(int))", "[[1, 2], [3, 4]]");
     assertStructuredDataType("array(map(string, int))", "[{\"key1\": 1}, {\"key2\": 2}]");
     assertStructuredDataType(
