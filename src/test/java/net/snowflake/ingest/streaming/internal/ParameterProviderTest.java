@@ -152,7 +152,9 @@ public class ParameterProviderTest {
         ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT,
         parameterProvider.getMaxChannelSizeInBytes());
     Assert.assertEquals(
-        ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
+        isIcebergMode
+            ? ParameterProvider.ICEBERG_PARQUET_COMPRESSION_ALGORITHM_DEFAULT
+            : ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterProvider.getBdecParquetCompressionAlgorithm());
     Assert.assertEquals(
         isIcebergMode
