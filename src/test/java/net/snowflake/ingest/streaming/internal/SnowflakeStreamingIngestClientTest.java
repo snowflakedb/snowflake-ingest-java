@@ -112,7 +112,7 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
     prop.put(ROLE, TestUtils.getRole());
     isIcebergProp = new Properties();
-    isIcebergProp.setProperty(Constants.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    isIcebergProp.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
 
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);

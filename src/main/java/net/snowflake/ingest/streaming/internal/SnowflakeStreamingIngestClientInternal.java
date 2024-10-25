@@ -115,9 +115,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // Indicates whether the client has closed
   private volatile boolean isClosed;
 
-  // Indicates wheter the client is streaming to Iceberg tables
-  private final boolean isIcebergMode;
-
   // Indicates whether the client is under test mode
   private final boolean isTestMode;
 
@@ -164,10 +161,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       boolean isTestMode,
       RequestBuilder requestBuilder,
       Map<String, Object> parameterOverrides) {
-    this.isIcebergMode =
-        prop != null && Boolean.parseBoolean(prop.getProperty(Constants.STREAMING_ICEBERG));
-    this.parameterProvider = new ParameterProvider(parameterOverrides, prop, isIcebergMode);
-    this.internalParameterProvider = new InternalParameterProvider(isIcebergMode);
+    this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
+    this.internalParameterProvider =
+        new InternalParameterProvider(parameterProvider.isIcebergMode());
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -236,7 +232,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.snowflakeServiceClient = new SnowflakeServiceClient(this.httpClient, this.requestBuilder);
 
     this.storageManager =
-        isIcebergMode
+        parameterProvider.isIcebergMode()
             ? new PresignedUrlExternalVolumeManager(
                 isTestMode, this.role, this.name, this.snowflakeServiceClient)
             : new InternalStageManager<T>(
@@ -346,14 +342,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getTableName(),
               request.getChannelName(),
               Constants.WriteMode.CLOUD_STORAGE,
-              this.isIcebergMode,
+              this.parameterProvider.isIcebergMode(),
               request.getOffsetToken());
       response = snowflakeServiceClient.openChannel(openChannelRequest);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
 
-    if (isIcebergMode) {
+    if (parameterProvider.isIcebergMode()) {
       if (response.getTableColumns().stream().anyMatch(c -> c.getSourceIcebergDataType() == null)) {
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Iceberg table columns must have sourceIcebergDataType set");
@@ -391,7 +387,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
             .setDefaultTimezone(request.getDefaultTimezone())
             .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
             .setParquetWriterVersion(
-                isIcebergMode
+                parameterProvider.isIcebergMode()
                     ? Constants.IcebergSerializationPolicy.valueOf(
                             response.getIcebergSerializationPolicy())
                         .toParquetWriterVersion()
@@ -432,7 +428,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getSchemaName(),
               request.getTableName(),
               request.getChannelName(),
-              this.isIcebergMode,
+              this.parameterProvider.isIcebergMode(),
               request instanceof DropChannelVersionRequest
                   ? ((DropChannelVersionRequest) request).getClientSequencer()
                   : null);
@@ -592,7 +588,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.storageManager.getClientPrefix() + "_" + counter.getAndIncrement(),
               this.role,
               blobs,
-              this.isIcebergMode);
+              this.parameterProvider.isIcebergMode());
       response = snowflakeServiceClient.registerBlob(request, executionCount);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
@@ -937,11 +933,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     if (requestBuilder != null) {
       requestBuilder.setRefreshToken(refreshToken);
     }
-  }
-
-  /** Return whether the client is streaming to Iceberg tables */
-  boolean isIcebergMode() {
-    return isIcebergMode;
   }
 
   /**
