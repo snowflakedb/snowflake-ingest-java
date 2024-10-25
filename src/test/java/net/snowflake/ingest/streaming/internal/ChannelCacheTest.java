@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ParameterProvider;
 import org.apache.parquet.column.ParquetProperties;
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,7 +48,7 @@ public class ChannelCacheTest {
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
     Properties prop = new Properties();
-    prop.setProperty(Constants.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());

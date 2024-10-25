@@ -47,6 +47,8 @@ public class ParameterProvider {
   public static final String ENABLE_NEW_JSON_PARSING_LOGIC =
       "ENABLE_NEW_JSON_PARSING_LOGIC".toLowerCase();
 
+  public static final String STREAMING_ICEBERG = "STREAMING_ICEBERG".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -73,21 +75,16 @@ public class ParameterProvider {
 
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
-  public static final Constants.BdecParquetCompression
-      PARQUET_COMPRESSION_ALGORITHM_ICEBERG_MODE_DEFAULT = Constants.BdecParquetCompression.ZSTD;
 
   /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
   public static final int MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT = 1;
 
   public static final boolean ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT = true;
 
-  public static final boolean IS_ICEBERG_MODE_DEFAULT = false;
+  public static final boolean STREAMING_ICEBERG_DEFAULT = false;
 
   /** Map of parameter name to parameter value. This will be set by client/configure API Call. */
   private final Map<String, Object> parameterMap = new HashMap<>();
-
-  /* Iceberg mode flag */
-  private final boolean isIcebergMode;
 
   // Cached buffer flush interval - avoid parsing each time for quick lookup
   private Long cachedBufferFlushIntervalMs = -1L;
@@ -98,18 +95,23 @@ public class ParameterProvider {
    *
    * @param parameterOverrides Map of parameter name to value
    * @param props Properties from profile file
-   * @param isIcebergMode If the provided parameters need to be verified and modified to meet
-   *     Iceberg mode
    */
+  public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
+    this.setParameterMap(parameterOverrides, props);
+  }
+
+  /** Constructor for tests */
   public ParameterProvider(
       Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
-    this.isIcebergMode = isIcebergMode;
-    this.setParameterMap(parameterOverrides, props, isIcebergMode);
+    if (parameterOverrides != null) {
+      parameterOverrides.put(STREAMING_ICEBERG, isIcebergMode);
+    }
+    this.setParameterMap(parameterOverrides, props);
   }
 
   /** Empty constructor for tests */
   public ParameterProvider(boolean isIcebergMode) {
-    this(null, null, isIcebergMode);
+    this(new HashMap<>(), null, isIcebergMode);
   }
 
   private void checkAndUpdate(
@@ -139,11 +141,8 @@ public class ParameterProvider {
    *
    * @param parameterOverrides Map<String, Object> of parameter name -> value
    * @param props Properties file provided to client constructor
-   * @param isIcebergMode If the provided parameters need to be verified and modified to meet
-   *     Iceberg mode
    */
-  private void setParameterMap(
-      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
+  private void setParameterMap(Map<String, Object> parameterOverrides, Properties props) {
     // BUFFER_FLUSH_INTERVAL_IN_MILLIS is deprecated and disallowed
     if ((parameterOverrides != null
             && parameterOverrides.containsKey(BUFFER_FLUSH_INTERVAL_IN_MILLIS))
@@ -153,6 +152,13 @@ public class ParameterProvider {
               "%s is deprecated, please use %s instead",
               BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
     }
+
+    this.checkAndUpdate(
+        STREAMING_ICEBERG,
+        STREAMING_ICEBERG_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
 
     this.checkAndUpdate(
         BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS,
@@ -234,17 +240,17 @@ public class ParameterProvider {
 
     this.checkAndUpdate(
         MAX_CLIENT_LAG,
-        isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT,
+        isIcebergMode() ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT,
         parameterOverrides,
         props,
         false /* enforceDefault */);
 
     this.checkAndUpdate(
         MAX_CHUNKS_IN_BLOB,
-        isIcebergMode ? MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT : MAX_CHUNKS_IN_BLOB_DEFAULT,
+        isIcebergMode() ? MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT : MAX_CHUNKS_IN_BLOB_DEFAULT,
         parameterOverrides,
         props,
-        isIcebergMode);
+        isIcebergMode());
 
     this.checkAndUpdate(
         MAX_CHUNKS_IN_REGISTRATION_REQUEST,
@@ -255,9 +261,7 @@ public class ParameterProvider {
 
     this.checkAndUpdate(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
-        isIcebergMode
-            ? BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT
-            : PARQUET_COMPRESSION_ALGORITHM_ICEBERG_MODE_DEFAULT,
+        BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
         props,
         false /* enforceDefault */);
@@ -292,7 +296,7 @@ public class ParameterProvider {
     Object val =
         this.parameterMap.getOrDefault(
             MAX_CLIENT_LAG,
-            isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT);
+            isIcebergMode() ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT);
     long computedLag;
     if (val instanceof String) {
       String maxLag = (String) val;
@@ -472,7 +476,7 @@ public class ParameterProvider {
     Object val =
         this.parameterMap.getOrDefault(
             MAX_CHUNKS_IN_BLOB,
-            isIcebergMode ? MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT : MAX_CHUNKS_IN_BLOB_DEFAULT);
+            isIcebergMode() ? MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT : MAX_CHUNKS_IN_BLOB_DEFAULT);
     return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
   }
 
@@ -500,6 +504,12 @@ public class ParameterProvider {
     Object val =
         this.parameterMap.getOrDefault(
             ENABLE_NEW_JSON_PARSING_LOGIC, ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
+  }
+
+  /** @return Whether the client is in Iceberg mode */
+  public boolean isIcebergMode() {
+    Object val = this.parameterMap.getOrDefault(STREAMING_ICEBERG, STREAMING_ICEBERG_DEFAULT);
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 

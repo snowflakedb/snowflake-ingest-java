@@ -75,8 +75,8 @@ public class ClientBufferParameters {
             : ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
     this.isIcebergMode =
         clientInternal != null
-            ? clientInternal.isIcebergMode()
-            : ParameterProvider.IS_ICEBERG_MODE_DEFAULT;
+            ? clientInternal.getParameterProvider().isIcebergMode()
+            : ParameterProvider.STREAMING_ICEBERG_DEFAULT;
     this.maxRowGroups =
         isIcebergMode
             ? Optional.of(InternalParameterProvider.MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT)
