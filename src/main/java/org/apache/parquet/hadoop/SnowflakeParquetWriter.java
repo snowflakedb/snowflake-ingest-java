@@ -389,12 +389,13 @@ public class SnowflakeParquetWriter implements AutoCloseable {
               }
             } else {
               /* Struct */
-              recordConsumer.startGroup();
-              if (val instanceof List) {
-                writeValues((List<?>) val, cols.get(i).asGroupType());
-              } else {
+              if (!(val instanceof List)) {
                 throw new ParquetEncodingException(
                     String.format("Field %s should be a 2 level struct", fieldName));
+              }
+              recordConsumer.startGroup();
+              if (!((List<?>) val).isEmpty()) {
+                writeValues((List<?>) val, cols.get(i).asGroupType());
               }
               recordConsumer.endGroup();
             }

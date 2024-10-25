@@ -286,6 +286,9 @@ class RowBufferStats {
 
   void incCurrentNullCount() {
     this.currentNullCount += 1;
+    if (enableValuesCount) {
+      numberOfValues++;
+    }
   }
 
   long getCurrentNullCount() {
