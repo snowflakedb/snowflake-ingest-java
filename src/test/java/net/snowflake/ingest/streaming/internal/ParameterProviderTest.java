@@ -104,10 +104,7 @@ public class ParameterProviderTest {
     ParameterProvider parameterProvider = new ParameterProvider(null, null, isIcebergMode);
 
     Assert.assertEquals(
-        isIcebergMode
-            ? ParameterProvider.MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT
-            : ParameterProvider.MAX_CLIENT_LAG_DEFAULT,
-        parameterProvider.getCachedMaxClientLagInMs());
+        ParameterProvider.MAX_CLIENT_LAG_DEFAULT, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(
         ParameterProvider.BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT,
         parameterProvider.getBufferFlushCheckIntervalInMs());

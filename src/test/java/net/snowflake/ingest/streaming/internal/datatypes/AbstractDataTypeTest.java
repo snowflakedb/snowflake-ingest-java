@@ -123,7 +123,7 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
-    props.setProperty(Constants.STREAMING_ICEBERG, String.valueOf(isIceberg));
+    props.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIceberg));
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }

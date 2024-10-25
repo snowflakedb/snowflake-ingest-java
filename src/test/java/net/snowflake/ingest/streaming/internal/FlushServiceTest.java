@@ -130,7 +130,7 @@ public class FlushServiceTest {
     }
 
     void setParameterOverride(Map<String, Object> parameterOverride) {
-      this.parameterProvider = new ParameterProvider(parameterOverride, null, isIcebergMode);
+      this.parameterProvider = new ParameterProvider(parameterOverride, null);
     }
 
     ChannelData<T> flushChannel(String name) {

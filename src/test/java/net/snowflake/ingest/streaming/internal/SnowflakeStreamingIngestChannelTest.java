@@ -97,7 +97,7 @@ public class SnowflakeStreamingIngestChannelTest {
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
     prop = new Properties();
-    prop.setProperty(Constants.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());
