@@ -115,9 +115,9 @@ public class TestUtils {
       account = profile.get(ACCOUNT).asText();
       port = profile.get(PORT).asInt();
       ssl = profile.get(SSL).asText();
-      database = profile.get(DATABASE).asText();
+      database = profile.get(DATABASE) == null ? null : profile.get(DATABASE).asText();
       connectString = profile.get(CONNECT_STRING).asText();
-      schema = profile.get(SCHEMA).asText();
+      schema = profile.get(SCHEMA) == null ? null : profile.get(SCHEMA).asText();
       warehouse = profile.get(WAREHOUSE).asText();
       host = profile.get(HOST).asText();
       scheme = profile.get(SCHEME).asText();

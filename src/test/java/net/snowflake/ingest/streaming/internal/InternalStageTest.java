@@ -134,13 +134,15 @@ public class InternalStageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    InternalStageManager<?> storageManager = Mockito.mock(InternalStageManager.class);
+    InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
+    InternalStage stage =
         new InternalStage(
             storageManager,
             "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             1);
@@ -178,11 +180,13 @@ public class InternalStageTest {
     String fullFilePath = "testOutput";
     String fileName = "putLocalOutput";
 
-    InternalStage<?> stage =
+    InternalStage stage =
         Mockito.spy(
             new InternalStage(
                 null,
                 "clientName",
+                "testPrefix",
+                InternalStageManager.NO_TABLE_REF,
                 new SnowflakeFileTransferMetadataWithAge(
                     fullFilePath, Optional.of(System.currentTimeMillis())),
                 1));
@@ -209,10 +213,12 @@ public class InternalStageTest {
     InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
-        new InternalStage<>(
+    InternalStage stage =
+        new InternalStage(
             storageManager,
             "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -265,11 +271,13 @@ public class InternalStageTest {
     InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
+    InternalStage stage =
         Mockito.spy(
-            new InternalStage<>(
+            new InternalStage(
                 storageManager,
                 "clientName",
+                "testPrefix",
+                InternalStageManager.NO_TABLE_REF,
                 new SnowflakeFileTransferMetadataWithAge(
                     originalMetadata, Optional.of(System.currentTimeMillis())),
                 1));
@@ -302,11 +310,16 @@ public class InternalStageTest {
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
     InternalStageManager storageManager =
-        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
 
-    InternalStage<?> stage =
-        new InternalStage<>(
-            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
+    InternalStage stage =
+        new InternalStage(
+            storageManager,
+            "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
+            (SnowflakeFileTransferMetadataWithAge) null,
+            1);
 
     SnowflakeFileTransferMetadataWithAge metadataWithAge = stage.refreshSnowflakeMetadata(true);
 
@@ -355,10 +368,10 @@ public class InternalStageTest {
 
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    InternalStageManager<?> storageManager =
-        new InternalStageManager<>(true, "role", "clientName", snowflakeServiceClient);
+    InternalStageManager storageManager =
+        new InternalStageManager(true, "role", "clientName", snowflakeServiceClient);
 
-    InternalStage<?> storage = storageManager.getStorage("");
+    InternalStage storage = storageManager.getStorage("");
     storage.refreshSnowflakeMetadata(true);
 
     Assert.assertEquals(prefix + "_" + deploymentId, storageManager.getClientPrefix());
@@ -387,8 +400,8 @@ public class InternalStageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    InternalStageManager<?> storageManager =
-        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
+    InternalStageManager storageManager =
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -396,9 +409,14 @@ public class InternalStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(createHttpEntity(exampleRemoteMetaResponse));
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    InternalStage<?> stage =
+    InternalStage stage =
         new InternalStage(
-            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
+            storageManager,
+            "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
+            (SnowflakeFileTransferMetadataWithAge) null,
+            1);
 
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
 
@@ -429,8 +447,8 @@ public class InternalStageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    InternalStageManager<?> storageManager =
-        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
+    InternalStageManager storageManager =
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -438,9 +456,14 @@ public class InternalStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(createHttpEntity(exampleRemoteMetaResponse));
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    InternalStage<?> stage =
-        new InternalStage<>(
-            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
+    InternalStage stage =
+        new InternalStage(
+            storageManager,
+            "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
+            (SnowflakeFileTransferMetadataWithAge) null,
+            1);
 
     ThreadFactory buildUploadThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
@@ -571,10 +594,12 @@ public class InternalStageTest {
     InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
-        new InternalStage<>(
+    InternalStage stage =
+        new InternalStage(
             storageManager,
             "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
