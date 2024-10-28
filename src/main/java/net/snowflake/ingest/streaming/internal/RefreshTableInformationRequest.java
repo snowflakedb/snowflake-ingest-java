@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -16,14 +20,15 @@ public class RefreshTableInformationRequest implements IStreamingIngestRequest {
   private String role;
 
   @JsonProperty("is_iceberg")
-  private boolean isIceberg;
+  private boolean enableIcebergStreaming;
 
-  public RefreshTableInformationRequest(TableRef tableRef, String role, boolean isIceberg) {
+  public RefreshTableInformationRequest(
+      TableRef tableRef, String role, boolean enableIcebergStreaming) {
     this.dbName = tableRef.dbName;
     this.schemaName = tableRef.schemaName;
     this.tableName = tableRef.tableName;
     this.role = role;
-    this.isIceberg = isIceberg;
+    this.enableIcebergStreaming = enableIcebergStreaming;
   }
 
   String getDBName() {
@@ -42,14 +47,14 @@ public class RefreshTableInformationRequest implements IStreamingIngestRequest {
     return this.role;
   }
 
-  boolean getIsIceberg() {
-    return this.isIceberg;
+  boolean getEnableIcebergStreaming() {
+    return this.enableIcebergStreaming;
   }
 
   @Override
   public String getStringForLogging() {
     return String.format(
-        "RefreshTableInformation(db=%s, schema=%s, table=%s, role=%s, isIceberg=%s)",
-        dbName, schemaName, tableName, role, isIceberg);
+        "RefreshTableInformation(db=%s, schema=%s, table=%s, role=%s, enableIcebergStreaming=%s)",
+        dbName, schemaName, tableName, role, enableIcebergStreaming);
   }
 }

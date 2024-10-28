@@ -79,7 +79,7 @@ public abstract class AbstractDataTypeTest {
 
   public void before() throws Exception {
     setUp(
-        false /* isIceberg */,
+        false /* enableIcebergStreaming */,
         compressionAlgorithm,
         Constants.IcebergSerializationPolicy.COMPATIBLE);
   }
@@ -87,11 +87,11 @@ public abstract class AbstractDataTypeTest {
   public void beforeIceberg(
       String compressionAlgorithm, Constants.IcebergSerializationPolicy serializationPolicy)
       throws Exception {
-    setUp(true /* isIceberg */, compressionAlgorithm, serializationPolicy);
+    setUp(true /* enableIcebergStreaming */, compressionAlgorithm, serializationPolicy);
   }
 
   protected void setUp(
-      boolean isIceberg,
+      boolean enableIcebergStreaming,
       String compressionAlgorithm,
       Constants.IcebergSerializationPolicy serializationPolicy)
       throws Exception {
@@ -101,7 +101,7 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use database %s;", databaseName));
     conn.createStatement().execute(String.format("use schema %s;", schemaName));
 
-    if (isIceberg) {
+    if (enableIcebergStreaming) {
       switch (serializationPolicy) {
         case COMPATIBLE:
           conn.createStatement()
@@ -123,7 +123,8 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
 
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
-    props.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIceberg));
+    props.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
@@ -267,13 +268,25 @@ public abstract class AbstractDataTypeTest {
   <VALUE> void testIngestion(String dataType, VALUE expectedValue, Provider<VALUE> selectProvider)
       throws Exception {
     ingestAndAssert(
-        dataType, expectedValue, null, expectedValue, null, selectProvider, false /* isIceberg */);
+        dataType,
+        expectedValue,
+        null,
+        expectedValue,
+        null,
+        selectProvider,
+        false /* enableIcebergStreaming */);
   }
 
   <VALUE> void testIcebergIngestion(
       String dataType, VALUE expectedValue, Provider<VALUE> selectProvider) throws Exception {
     ingestAndAssert(
-        dataType, expectedValue, null, expectedValue, null, selectProvider, true /* isIceberg */);
+        dataType,
+        expectedValue,
+        null,
+        expectedValue,
+        null,
+        selectProvider,
+        true /* enableIcebergStreaming */);
   }
 
   /**
@@ -293,7 +306,7 @@ public abstract class AbstractDataTypeTest {
         expectedValue,
         null,
         selectProvider,
-        false /* isIceberg */);
+        false /* enableIcebergStreaming */);
   }
 
   <STREAMING_INGEST_WRITE, JDBC_READ> void testIcebergIngestion(
@@ -309,7 +322,7 @@ public abstract class AbstractDataTypeTest {
         expectedValue,
         null,
         selectProvider,
-        true /* isIceberg */);
+        true /* enableIcebergStreaming */);
   }
 
   /**
@@ -318,7 +331,8 @@ public abstract class AbstractDataTypeTest {
    */
   <T> void testJdbcTypeCompatibility(String typeName, T value, Provider<T> provider)
       throws Exception {
-    ingestAndAssert(typeName, value, value, value, provider, provider, false /* isIceberg */);
+    ingestAndAssert(
+        typeName, value, value, value, provider, provider, false /* enableIcebergStreaming */);
   }
 
   /** Simplified version where write value for streaming ingest and JDBC are the same */
@@ -336,7 +350,7 @@ public abstract class AbstractDataTypeTest {
         expectedValue,
         insertProvider,
         selectProvider,
-        false /* isIceberg */);
+        false /* enableIcebergStreaming */);
   }
 
   /**
@@ -352,7 +366,7 @@ public abstract class AbstractDataTypeTest {
    * @param expectedValue Expected value received from JDBC driver SELECT
    * @param insertProvider JDBC parameter provider for INSERT
    * @param selectProvider JDBC parameter provider for SELECT ... WHERE
-   * @param isIceberg whether the table is an iceberg table
+   * @param enableIcebergStreaming whether the table is an iceberg table
    */
   <STREAMING_INGEST_WRITE, JDBC_WRITE, JDBC_READ> void ingestAndAssert(
       String dataType,
@@ -361,13 +375,14 @@ public abstract class AbstractDataTypeTest {
       JDBC_READ expectedValue,
       Provider<JDBC_WRITE> insertProvider,
       Provider<JDBC_READ> selectProvider,
-      boolean isIceberg)
+      boolean enableIcebergStreaming)
       throws Exception {
     if (jdbcWriteValue == null ^ insertProvider == null)
       throw new IllegalArgumentException(
           "jdbcWriteValue and provider must be both null or not null");
     boolean insertAlsoWithJdbc = jdbcWriteValue != null;
-    String tableName = isIceberg ? createIcebergTable(dataType) : createTable(dataType);
+    String tableName =
+        enableIcebergStreaming ? createIcebergTable(dataType) : createTable(dataType);
     String offsetToken = UUID.randomUUID().toString();
 
     // Insert using JDBC
@@ -418,7 +433,7 @@ public abstract class AbstractDataTypeTest {
     Assert.assertTrue(resultSet.next());
     int count = resultSet.getInt(1);
     Assert.assertEquals(insertAlsoWithJdbc ? 2 : 1, count);
-    if (!isIceberg) {
+    if (!enableIcebergStreaming) {
       migrateTable(tableName); // migration should always succeed
     }
   }

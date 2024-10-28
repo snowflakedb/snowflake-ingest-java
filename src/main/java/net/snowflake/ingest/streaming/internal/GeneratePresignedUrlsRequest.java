@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,7 +29,7 @@ class GeneratePresignedUrlsRequest implements IStreamingIngestRequest {
   private Long deploymentGlobalId;
 
   @JsonProperty("is_iceberg")
-  private boolean isIceberg;
+  private boolean enableIcebergStreaming;
 
   public GeneratePresignedUrlsRequest(
       TableRef tableRef,
@@ -33,7 +37,7 @@ class GeneratePresignedUrlsRequest implements IStreamingIngestRequest {
       int count,
       int timeoutInSeconds,
       Long deploymentGlobalId,
-      boolean isIceberg) {
+      boolean enableIcebergStreaming) {
     this.dbName = tableRef.dbName;
     this.schemaName = tableRef.schemaName;
     this.tableName = tableRef.tableName;
@@ -41,7 +45,7 @@ class GeneratePresignedUrlsRequest implements IStreamingIngestRequest {
     this.role = role;
     this.timeoutInSeconds = timeoutInSeconds;
     this.deploymentGlobalId = deploymentGlobalId;
-    this.isIceberg = isIceberg;
+    this.enableIcebergStreaming = enableIcebergStreaming;
   }
 
   String getDBName() {
@@ -72,15 +76,15 @@ class GeneratePresignedUrlsRequest implements IStreamingIngestRequest {
     return this.timeoutInSeconds;
   }
 
-  boolean getIsIceberg() {
-    return this.isIceberg;
+  boolean getEnableIcebergStreaming() {
+    return this.enableIcebergStreaming;
   }
 
   @Override
   public String getStringForLogging() {
     return String.format(
         "GetPresignedUrlsRequest(db=%s, schema=%s, table=%s, count=%s, timeoutInSeconds=%s"
-            + " deploymentGlobalId=%s role=%s, isIceberg=%s)",
+            + " deploymentGlobalId=%s role=%s, enableIcebergStreaming=%s)",
         dbName,
         schemaName,
         tableName,
@@ -88,6 +92,6 @@ class GeneratePresignedUrlsRequest implements IStreamingIngestRequest {
         timeoutInSeconds,
         deploymentGlobalId,
         role,
-        isIceberg);
+        enableIcebergStreaming);
   }
 }

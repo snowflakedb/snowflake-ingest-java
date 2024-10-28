@@ -39,12 +39,12 @@ import org.openjdk.jmh.runner.options.TimeValue;
 @State(Scope.Thread)
 @RunWith(Parameterized.class)
 public class InsertRowsBenchmarkTest {
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIcebergMode;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   private SnowflakeStreamingIngestChannelInternal<?> channel;
   private SnowflakeStreamingIngestClientInternal<?> client;
@@ -58,7 +58,8 @@ public class InsertRowsBenchmarkTest {
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
     Properties prop = new Properties();
-    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    prop.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client_PARQUET", null, prop, httpClient, true, requestBuilder, new HashMap<>());
@@ -78,7 +79,7 @@ public class InsertRowsBenchmarkTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     // Setup column fields and vectors

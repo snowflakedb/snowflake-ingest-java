@@ -86,7 +86,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
   public void setupSchema(List<ColumnMetadata> columns) {
     fieldIndex.clear();
     metadata.clear();
-    if (!clientBufferParameters.getIsIcebergMode()) {
+    if (!clientBufferParameters.getEnableIcebergStreaming()) {
       metadata.put("sfVer", "1,1");
     }
     List<Type> parquetTypes = new ArrayList<>();
@@ -106,7 +106,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         addNonNullableFieldName(column.getInternalName());
       }
 
-      if (!clientBufferParameters.getIsIcebergMode()) {
+      if (!clientBufferParameters.getEnableIcebergStreaming()) {
         /* Streaming to FDN table doesn't support sub-columns, set up the stats here. */
         this.statsMap.put(
             column.getInternalName(),
@@ -190,7 +190,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
      *   F6.element:     ordinal=6, fieldId=12
      *   F7:             ordinal=7, fieldId=0
      */
-    if (clientBufferParameters.getIsIcebergMode()) {
+    if (clientBufferParameters.getEnableIcebergStreaming()) {
       for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
         String[] path = columnDescriptor.getPath();
         String columnDotPath = concatDotPath(path);
@@ -313,7 +313,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int colIndex = parquetColumn.index;
       ColumnMetadata column = parquetColumn.columnMetadata;
       ParquetBufferValue valueWithSize =
-          (clientBufferParameters.getIsIcebergMode()
+          (clientBufferParameters.getEnableIcebergStreaming()
               ? IcebergParquetValueParser.parseColumnValueToParquet(
                   value,
                   parquetColumn.type,
@@ -356,7 +356,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
     // Increment null count for column and its sub-columns missing in the input map
     for (String columnName : Sets.difference(this.fieldIndex.keySet(), inputColumnNames)) {
-      if (clientBufferParameters.getIsIcebergMode()) {
+      if (clientBufferParameters.getEnableIcebergStreaming()) {
         if (subColumnFinder == null) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "SubColumnFinder is not initialized.");
         }

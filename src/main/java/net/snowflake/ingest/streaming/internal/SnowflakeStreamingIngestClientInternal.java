@@ -163,7 +163,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
     this.internalParameterProvider =
-        new InternalParameterProvider(parameterProvider.isIcebergMode());
+        new InternalParameterProvider(parameterProvider.isEnableIcebergStreaming());
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -232,7 +232,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.snowflakeServiceClient = new SnowflakeServiceClient(this.httpClient, this.requestBuilder);
 
     this.storageManager =
-        parameterProvider.isIcebergMode()
+        parameterProvider.isEnableIcebergStreaming()
             ? new SubscopedTokenExternalVolumeManager(
                 this.role, this.name, this.snowflakeServiceClient)
             : new InternalStageManager(
@@ -342,14 +342,14 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getTableName(),
               request.getChannelName(),
               Constants.WriteMode.CLOUD_STORAGE,
-              this.parameterProvider.isIcebergMode(),
+              this.parameterProvider.isEnableIcebergStreaming(),
               request.getOffsetToken());
       response = snowflakeServiceClient.openChannel(openChannelRequest);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.OPEN_CHANNEL_FAILURE, e.getMessage());
     }
 
-    if (parameterProvider.isIcebergMode()) {
+    if (parameterProvider.isEnableIcebergStreaming()) {
       if (response.getTableColumns().stream().anyMatch(c -> c.getSourceIcebergDataType() == null)) {
         throw new SFException(
             ErrorCode.INTERNAL_ERROR, "Iceberg table columns must have sourceIcebergDataType set");
@@ -387,7 +387,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
             .setDefaultTimezone(request.getDefaultTimezone())
             .setOffsetTokenVerificationFunction(request.getOffsetTokenVerificationFunction())
             .setParquetWriterVersion(
-                parameterProvider.isIcebergMode()
+                parameterProvider.isEnableIcebergStreaming()
                     ? Constants.IcebergSerializationPolicy.valueOf(
                             response.getIcebergSerializationPolicy())
                         .toParquetWriterVersion()
@@ -427,7 +427,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               request.getSchemaName(),
               request.getTableName(),
               request.getChannelName(),
-              this.parameterProvider.isIcebergMode(),
+              this.parameterProvider.isEnableIcebergStreaming(),
               request instanceof DropChannelVersionRequest
                   ? ((DropChannelVersionRequest) request).getClientSequencer()
                   : null);
@@ -587,7 +587,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.storageManager.getClientPrefix() + "_" + counter.getAndIncrement(),
               this.role,
               blobs,
-              this.parameterProvider.isIcebergMode());
+              this.parameterProvider.isEnableIcebergStreaming());
       response = snowflakeServiceClient.registerBlob(request, executionCount);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());

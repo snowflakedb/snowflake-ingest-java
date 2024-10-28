@@ -34,7 +34,7 @@ class DropChannelRequestInternal implements IStreamingIngestRequest {
   Long clientSequencer;
 
   @JsonProperty("is_iceberg")
-  boolean isIceberg;
+  boolean enableIcebergStreaming;
 
   DropChannelRequestInternal(
       String requestId,
@@ -43,7 +43,7 @@ class DropChannelRequestInternal implements IStreamingIngestRequest {
       String schema,
       String table,
       String channel,
-      boolean isIceberg,
+      boolean enableIcebergStreaming,
       Long clientSequencer) {
     this.requestId = requestId;
     this.role = role;
@@ -51,7 +51,7 @@ class DropChannelRequestInternal implements IStreamingIngestRequest {
     this.schema = schema;
     this.table = table;
     this.channel = channel;
-    this.isIceberg = isIceberg;
+    this.enableIcebergStreaming = enableIcebergStreaming;
     this.clientSequencer = clientSequencer;
   }
 
@@ -79,8 +79,8 @@ class DropChannelRequestInternal implements IStreamingIngestRequest {
     return schema;
   }
 
-  boolean isIceberg() {
-    return isIceberg;
+  boolean enableIcebergStreaming() {
+    return enableIcebergStreaming;
   }
 
   Long getClientSequencer() {
@@ -95,7 +95,7 @@ class DropChannelRequestInternal implements IStreamingIngestRequest {
   public String getStringForLogging() {
     return String.format(
         "DropChannelRequest(requestId=%s, role=%s, db=%s, schema=%s, table=%s, channel=%s,"
-            + " isIceberg=%s, clientSequencer=%s)",
-        requestId, role, database, schema, table, channel, isIceberg, clientSequencer);
+            + " enableIcebergStreaming=%s, clientSequencer=%s)",
+        requestId, role, database, schema, table, channel, enableIcebergStreaming, clientSequencer);
   }
 }

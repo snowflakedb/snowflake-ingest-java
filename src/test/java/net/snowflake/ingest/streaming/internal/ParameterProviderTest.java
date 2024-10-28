@@ -23,12 +23,12 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class ParameterProviderTest {
 
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIcebergMode;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   private Map<String, Object> getStartingParameterMap() {
     Map<String, Object> parameterMap = new HashMap<>();
@@ -50,7 +50,7 @@ public class ParameterProviderTest {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
 
     Assert.assertEquals(1000L, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(4L, parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -74,7 +74,7 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
     parameterMap.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, null, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, null, enableIcebergStreaming);
 
     Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -93,7 +93,7 @@ public class ParameterProviderTest {
     props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_PERCENTAGE, 6);
     props.put(ParameterProvider.INSERT_THROTTLE_THRESHOLD_IN_BYTES, 1024);
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(null, props, isIcebergMode);
+        TestUtils.createParameterProvider(null, props, enableIcebergStreaming);
 
     Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
     Assert.assertEquals(4, parameterProvider.getBufferFlushCheckIntervalInMs());
@@ -107,7 +107,7 @@ public class ParameterProviderTest {
   @Test
   public void withNullInputs() {
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(null, null, isIcebergMode);
+        TestUtils.createParameterProvider(null, null, enableIcebergStreaming);
 
     Assert.assertEquals(
         ParameterProvider.MAX_CLIENT_LAG_DEFAULT, parameterProvider.getCachedMaxClientLagInMs());
@@ -127,10 +127,10 @@ public class ParameterProviderTest {
 
   @Test
   public void withDefaultValues() {
-    ParameterProvider parameterProvider = TestUtils.createParameterProvider(isIcebergMode);
+    ParameterProvider parameterProvider = TestUtils.createParameterProvider(enableIcebergStreaming);
 
     Assert.assertEquals(
-        isIcebergMode
+        enableIcebergStreaming
             ? ParameterProvider.MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT
             : ParameterProvider.MAX_CLIENT_LAG_DEFAULT,
         parameterProvider.getCachedMaxClientLagInMs());
@@ -161,7 +161,7 @@ public class ParameterProviderTest {
         ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterProvider.getBdecParquetCompressionAlgorithm());
     Assert.assertEquals(
-        isIcebergMode
+        enableIcebergStreaming
             ? ParameterProvider.MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT
             : ParameterProvider.MAX_CHUNKS_IN_BLOB_DEFAULT,
         parameterProvider.getMaxChunksInBlob());
@@ -172,13 +172,13 @@ public class ParameterProviderTest {
 
   @Test
   public void testEnforceDefaultValues() {
-    if (!isIcebergMode) {
+    if (!enableIcebergStreaming) {
       return;
     }
     Map<String, Object> parameterMap = new HashMap<>();
     parameterMap.put(ParameterProvider.MAX_CHUNKS_IN_BLOB, 2);
     Assertions.assertThatThrownBy(
-            () -> TestUtils.createParameterProvider(parameterMap, null, isIcebergMode))
+            () -> TestUtils.createParameterProvider(parameterMap, null, enableIcebergStreaming))
         .isInstanceOf(SFException.class)
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_CONFIG_PARAMETER.getMessageCode());
@@ -190,7 +190,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "2 second");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(2000, parameterProvider.getCachedMaxClientLagInMs());
     // call again to trigger caching logic
     Assert.assertEquals(2000, parameterProvider.getCachedMaxClientLagInMs());
@@ -202,7 +202,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "2 seconds");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(2000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
@@ -212,7 +212,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "1 minute");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(60000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
@@ -222,7 +222,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "2 minutes");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(120000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
@@ -231,7 +231,7 @@ public class ParameterProviderTest {
     Properties prop = new Properties();
     Map<String, Object> parameterMap = getStartingParameterMap();
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(
         ParameterProvider.MAX_CLIENT_LAG_DEFAULT, parameterProvider.getCachedMaxClientLagInMs());
   }
@@ -242,7 +242,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "3000");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
@@ -252,7 +252,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 3000L);
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(3000, parameterProvider.getCachedMaxClientLagInMs());
   }
 
@@ -262,7 +262,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, " year");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     try {
       parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
@@ -277,7 +277,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "1 year");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     try {
       parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
@@ -292,7 +292,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "banana minute");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     try {
       parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
@@ -307,7 +307,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "0 second");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     try {
       parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
@@ -322,7 +322,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "11 minutes");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     try {
       parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
@@ -337,7 +337,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     try {
       parameterProvider.getCachedMaxClientLagInMs();
       Assert.fail("Should not have succeeded");
@@ -352,16 +352,16 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put("max_chunks_in_blob", 1);
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(1, parameterProvider.getMaxChunksInBlob());
 
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       SFException e =
           Assert.assertThrows(
               SFException.class,
               () -> {
                 parameterMap.put("max_chunks_in_blob", 100);
-                TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+                TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
               });
       Assert.assertEquals(e.getVendorCode(), ErrorCode.INVALID_CONFIG_PARAMETER.getMessageCode());
     }
@@ -373,7 +373,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put("max_chunks_in_registration_request", 101);
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertEquals(101, parameterProvider.getMaxChunksInRegistrationRequest());
 
     IllegalArgumentException e =
@@ -381,7 +381,7 @@ public class ParameterProviderTest {
             IllegalArgumentException.class,
             () -> {
               parameterMap.put("max_chunks_in_registration_request", 0);
-              TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+              TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
             });
     Assert.assertEquals(
         e.getMessage(),
@@ -400,7 +400,7 @@ public class ParameterProviderTest {
           Map<String, Object> parameterMap = getStartingParameterMap();
           parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, v);
           ParameterProvider parameterProvider =
-              TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+              TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
           Assert.assertEquals(
               Constants.BdecParquetCompression.GZIP,
               parameterProvider.getBdecParquetCompressionAlgorithm());
@@ -412,7 +412,7 @@ public class ParameterProviderTest {
           Map<String, Object> parameterMap = getStartingParameterMap();
           parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, v);
           ParameterProvider parameterProvider =
-              TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+              TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
           Assert.assertEquals(
               Constants.BdecParquetCompression.ZSTD,
               parameterProvider.getBdecParquetCompressionAlgorithm());
@@ -425,7 +425,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, "invalid_comp");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     try {
       parameterProvider.getBdecParquetCompressionAlgorithm();
       Assert.fail("Should not have succeeded");
@@ -443,7 +443,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC, false);
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertFalse(parameterProvider.isEnableNewJsonParsingLogic());
   }
 
@@ -453,7 +453,7 @@ public class ParameterProviderTest {
     Map<String, Object> parameterMap = getStartingParameterMap();
     parameterMap.put(ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC, "false");
     ParameterProvider parameterProvider =
-        TestUtils.createParameterProvider(parameterMap, prop, isIcebergMode);
+        TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertFalse(parameterProvider.isEnableNewJsonParsingLogic());
   }
 }

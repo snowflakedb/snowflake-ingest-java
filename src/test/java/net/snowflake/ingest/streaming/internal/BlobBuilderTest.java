@@ -38,12 +38,12 @@ import org.mockito.Mockito;
 
 @RunWith(Parameterized.class)
 public class BlobBuilderTest {
-  @Parameterized.Parameters(name = "isIceberg: {0}")
-  public static Object[] isIceberg() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIceberg;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   @Test
   public void testSerializationErrors() throws Exception {
@@ -52,7 +52,7 @@ public class BlobBuilderTest {
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
-        new InternalParameterProvider(isIceberg));
+        new InternalParameterProvider(enableIcebergStreaming));
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
@@ -60,7 +60,7 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
-          new InternalParameterProvider(isIceberg));
+          new InternalParameterProvider(enableIcebergStreaming));
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
@@ -75,7 +75,7 @@ public class BlobBuilderTest {
 
   @Test
   public void testMetadataAndExtendedMetadataSize() throws Exception {
-    if (!isIceberg) {
+    if (!enableIcebergStreaming) {
       return;
     }
 
@@ -84,7 +84,7 @@ public class BlobBuilderTest {
             "a.parquet",
             Collections.singletonList(createChannelDataPerTable(1)),
             Constants.BdecVersion.THREE,
-            new InternalParameterProvider(isIceberg));
+            new InternalParameterProvider(enableIcebergStreaming));
 
     InputFile blobInputFile = new InMemoryInputFile(blob.blobBytes);
     ParquetFileReader reader = ParquetFileReader.open(blobInputFile);
@@ -131,12 +131,12 @@ public class BlobBuilderTest {
             new ParquetFlusher(
                 schema,
                 100L,
-                isIceberg ? Optional.of(1) : Optional.empty(),
+                enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
                 Constants.BdecParquetCompression.GZIP,
-                isIceberg
+                enableIcebergStreaming
                     ? ParquetProperties.WriterVersion.PARQUET_2_0
                     : ParquetProperties.WriterVersion.PARQUET_1_0,
-                isIceberg))
+                enableIcebergStreaming))
         .when(channelData)
         .createFlusher();
 
@@ -149,12 +149,12 @@ public class BlobBuilderTest {
             new HashMap<>(),
             "CHANNEL",
             1000,
-            isIceberg ? Optional.of(1) : Optional.empty(),
+            enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
             Constants.BdecParquetCompression.GZIP,
-            isIceberg
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0,
-            isIceberg);
+            enableIcebergStreaming);
     snowflakeParquetWriter.writeRow(Collections.singletonList("1"));
     channelData.setVectors(
         new ParquetChunkData(
@@ -167,7 +167,7 @@ public class BlobBuilderTest {
         .getColumnEps()
         .putIfAbsent(
             columnName,
-            isIceberg
+            enableIcebergStreaming
                 ? new RowBufferStats(
                     columnName,
                     null,
@@ -177,8 +177,8 @@ public class BlobBuilderTest {
                         .as(LogicalTypeAnnotation.stringType())
                         .id(1)
                         .named("test"),
-                    isIceberg,
-                    isIceberg)
+                    enableIcebergStreaming,
+                    enableIcebergStreaming)
                 : new RowBufferStats(columnName, null, 1, null, null, false, false));
     channelData.setChannelContext(
         new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));

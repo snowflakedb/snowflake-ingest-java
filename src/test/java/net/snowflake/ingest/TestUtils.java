@@ -18,7 +18,7 @@ import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
-import static net.snowflake.ingest.utils.ParameterProvider.STREAMING_ICEBERG;
+import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_ICEBERG_STREAMING;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -504,20 +504,21 @@ public class TestUtils {
   }
 
   public static ParameterProvider createParameterProvider(
-      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
+      Map<String, Object> parameterOverrides, Properties props, boolean enableIcebergStreaming) {
     if (parameterOverrides != null) {
-      parameterOverrides.put(STREAMING_ICEBERG, isIcebergMode);
+      parameterOverrides.put(ENABLE_ICEBERG_STREAMING, enableIcebergStreaming);
     }
     return new ParameterProvider(parameterOverrides, props);
   }
 
-  public static ParameterProvider createParameterProvider(boolean isIcebergMode) {
-    return createParameterProvider(new HashMap<>(), null, isIcebergMode);
+  public static ParameterProvider createParameterProvider(boolean enableIcebergStreaming) {
+    return createParameterProvider(new HashMap<>(), null, enableIcebergStreaming);
   }
 
-  public static Properties createProps(boolean isIcebergMode) {
+  public static Properties createProps(boolean enableIcebergStreaming) {
     Properties prop = new Properties();
-    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    prop.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     return prop;
   }
 

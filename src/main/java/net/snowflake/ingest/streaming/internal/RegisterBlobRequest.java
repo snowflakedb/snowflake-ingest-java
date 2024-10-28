@@ -22,13 +22,14 @@ class RegisterBlobRequest implements IStreamingIngestRequest {
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("is_iceberg")
-  private boolean isIceberg;
+  private boolean enableIcebergStreaming;
 
-  RegisterBlobRequest(String requestId, String role, List<BlobMetadata> blobs, boolean isIceberg) {
+  RegisterBlobRequest(
+      String requestId, String role, List<BlobMetadata> blobs, boolean enableIcebergStreaming) {
     this.requestId = requestId;
     this.role = role;
     this.blobs = blobs;
-    this.isIceberg = isIceberg;
+    this.enableIcebergStreaming = enableIcebergStreaming;
   }
 
   String getRequestId() {
@@ -43,8 +44,8 @@ class RegisterBlobRequest implements IStreamingIngestRequest {
     return blobs;
   }
 
-  boolean getIsIceberg() {
-    return isIceberg;
+  boolean getEnableIcebergStreaming() {
+    return enableIcebergStreaming;
   }
 
   @Override

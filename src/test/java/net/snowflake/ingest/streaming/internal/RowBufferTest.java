@@ -46,12 +46,12 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class RowBufferTest {
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public static boolean isIcebergMode;
+  @Parameterized.Parameter public static boolean enableIcebergStreaming;
 
   private AbstractRowBuffer<?> rowBufferOnErrorContinue;
   private AbstractRowBuffer<?> rowBufferOnErrorAbort;
@@ -126,7 +126,7 @@ public class RowBufferTest {
     colChar.setLength(11);
     colChar.setScale(0);
 
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       colTinyIntCase.setSourceIcebergDataType("\"decimal(2,0)\"");
       colTinyInt.setSourceIcebergDataType("\"decimal(1,0)\"");
       colSmallInt.setSourceIcebergDataType("\"decimal(2,0)\"");
@@ -220,12 +220,12 @@ public class RowBufferTest {
             MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
             Constants.BdecParquetCompression.GZIP,
             ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
-            isIcebergMode ? Optional.of(1) : Optional.empty(),
-            isIcebergMode,
-            isIcebergMode,
-            isIcebergMode),
+            enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
+            enableIcebergStreaming,
+            enableIcebergStreaming,
+            enableIcebergStreaming),
         null,
-        isIcebergMode
+        enableIcebergStreaming
             ? ParquetProperties.WriterVersion.PARQUET_2_0
             : ParquetProperties.WriterVersion.PARQUET_1_0,
         null);
@@ -373,7 +373,7 @@ public class RowBufferTest {
   @Test
   public void testStringLength() {
     /* Iceberg cannot specify max length of string */
-    if (!isIcebergMode) {
+    if (!enableIcebergStreaming) {
       testStringLengthHelper(this.rowBufferOnErrorContinue);
       testStringLengthHelper(this.rowBufferOnErrorAbort);
       testStringLengthHelper(this.rowBufferOnErrorSkipBatch);
@@ -642,8 +642,8 @@ public class RowBufferTest {
         new RowBufferStats(
             "intColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("intColumn"),
-            isIcebergMode,
-            isIcebergMode);
+            enableIcebergStreaming,
+            enableIcebergStreaming);
     stats1.addIntValue(BigInteger.valueOf(2));
     stats1.addIntValue(BigInteger.valueOf(10));
     stats1.addIntValue(BigInteger.valueOf(1));
@@ -652,8 +652,8 @@ public class RowBufferTest {
         new RowBufferStats(
             "strColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("strColumn"),
-            isIcebergMode,
-            isIcebergMode);
+            enableIcebergStreaming,
+            enableIcebergStreaming);
     stats2.addStrValue("alice");
     stats2.addStrValue("bob");
     stats2.incCurrentNullCount();
@@ -662,12 +662,13 @@ public class RowBufferTest {
     colStats.put("strColumn", stats2);
 
     EpInfo result =
-        AbstractRowBuffer.buildEpInfoFromStats(2, colStats, !isIcebergMode, isIcebergMode);
+        AbstractRowBuffer.buildEpInfoFromStats(
+            2, colStats, !enableIcebergStreaming, enableIcebergStreaming);
     Map<String, FileColumnProperties> columnResults = result.getColumnEps();
     Assert.assertEquals(2, columnResults.keySet().size());
 
     FileColumnProperties strColumnResult = columnResults.get("strColumn");
-    Assert.assertEquals(isIcebergMode ? 2 : -1, strColumnResult.getDistinctValues());
+    Assert.assertEquals(enableIcebergStreaming ? 2 : -1, strColumnResult.getDistinctValues());
     Assert.assertEquals(
         Hex.encodeHexString("alice".getBytes(StandardCharsets.UTF_8)),
         strColumnResult.getMinStrValue());
@@ -677,7 +678,7 @@ public class RowBufferTest {
     Assert.assertEquals(1, strColumnResult.getNullCount());
 
     FileColumnProperties intColumnResult = columnResults.get("intColumn");
-    Assert.assertEquals(isIcebergMode ? 3 : -1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(enableIcebergStreaming ? 3 : -1, intColumnResult.getDistinctValues());
     Assert.assertEquals(BigInteger.valueOf(1), intColumnResult.getMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(10), intColumnResult.getMaxIntValue());
     Assert.assertEquals(0, intColumnResult.getNullCount());
@@ -693,14 +694,14 @@ public class RowBufferTest {
         new RowBufferStats(
             intColName,
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named(intColName),
-            isIcebergMode,
-            isIcebergMode);
+            enableIcebergStreaming,
+            enableIcebergStreaming);
     RowBufferStats stats2 =
         new RowBufferStats(
             realColName,
             Types.optional(PrimitiveType.PrimitiveTypeName.DOUBLE).id(2).named(realColName),
-            isIcebergMode,
-            isIcebergMode);
+            enableIcebergStreaming,
+            enableIcebergStreaming);
     stats1.incCurrentNullCount();
     stats2.incCurrentNullCount();
 
@@ -708,12 +709,13 @@ public class RowBufferTest {
     colStats.put(realColName, stats2);
 
     EpInfo result =
-        AbstractRowBuffer.buildEpInfoFromStats(2, colStats, !isIcebergMode, isIcebergMode);
+        AbstractRowBuffer.buildEpInfoFromStats(
+            2, colStats, !enableIcebergStreaming, enableIcebergStreaming);
     Map<String, FileColumnProperties> columnResults = result.getColumnEps();
     Assert.assertEquals(2, columnResults.keySet().size());
 
     FileColumnProperties intColumnResult = columnResults.get(intColName);
-    Assert.assertEquals(isIcebergMode ? 0 : -1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(enableIcebergStreaming ? 0 : -1, intColumnResult.getDistinctValues());
     Assert.assertEquals(
         FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMinIntValue());
     Assert.assertEquals(
@@ -722,7 +724,7 @@ public class RowBufferTest {
     Assert.assertEquals(0, intColumnResult.getMaxLength());
 
     FileColumnProperties realColumnResult = columnResults.get(realColName);
-    Assert.assertEquals(isIcebergMode ? 0 : -1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(enableIcebergStreaming ? 0 : -1, intColumnResult.getDistinctValues());
     Assert.assertEquals(
         FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMinRealValue());
     Assert.assertEquals(
@@ -739,8 +741,8 @@ public class RowBufferTest {
         new RowBufferStats(
             "intColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("intColumn"),
-            isIcebergMode,
-            isIcebergMode);
+            enableIcebergStreaming,
+            enableIcebergStreaming);
     stats1.addIntValue(BigInteger.valueOf(2));
     stats1.addIntValue(BigInteger.valueOf(10));
     stats1.addIntValue(BigInteger.valueOf(1));
@@ -749,8 +751,8 @@ public class RowBufferTest {
         new RowBufferStats(
             "strColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("strColumn"),
-            isIcebergMode,
-            isIcebergMode);
+            enableIcebergStreaming,
+            enableIcebergStreaming);
     stats2.addStrValue("alice");
     stats2.incCurrentNullCount();
     stats2.incCurrentNullCount();
@@ -759,7 +761,8 @@ public class RowBufferTest {
     colStats.put("strColumn", stats2);
 
     try {
-      AbstractRowBuffer.buildEpInfoFromStats(1, colStats, !isIcebergMode, isIcebergMode);
+      AbstractRowBuffer.buildEpInfoFromStats(
+          1, colStats, !enableIcebergStreaming, enableIcebergStreaming);
       fail("should fail when row count is smaller than null count.");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
@@ -873,7 +876,7 @@ public class RowBufferTest {
         BigInteger.valueOf(10), columnEpStats.get("colTinyInt").getCurrentMinIntValue());
     Assert.assertEquals(0, columnEpStats.get("colTinyInt").getCurrentNullCount());
     Assert.assertEquals(
-        isIcebergMode ? 2 : -1, columnEpStats.get("colTinyInt").getDistinctValues());
+        enableIcebergStreaming ? 2 : -1, columnEpStats.get("colTinyInt").getDistinctValues());
 
     Assert.assertEquals(
         BigInteger.valueOf(1), columnEpStats.get("COLTINYINT").getCurrentMaxIntValue());
@@ -881,7 +884,7 @@ public class RowBufferTest {
         BigInteger.valueOf(1), columnEpStats.get("COLTINYINT").getCurrentMinIntValue());
     Assert.assertEquals(0, columnEpStats.get("COLTINYINT").getCurrentNullCount());
     Assert.assertEquals(
-        isIcebergMode ? 1 : -1, columnEpStats.get("COLTINYINT").getDistinctValues());
+        enableIcebergStreaming ? 1 : -1, columnEpStats.get("COLTINYINT").getDistinctValues());
 
     Assert.assertEquals(
         BigInteger.valueOf(3), columnEpStats.get("COLSMALLINT").getCurrentMaxIntValue());
@@ -889,19 +892,21 @@ public class RowBufferTest {
         BigInteger.valueOf(2), columnEpStats.get("COLSMALLINT").getCurrentMinIntValue());
     Assert.assertEquals(0, columnEpStats.get("COLSMALLINT").getCurrentNullCount());
     Assert.assertEquals(
-        isIcebergMode ? 2 : -1, columnEpStats.get("COLSMALLINT").getDistinctValues());
+        enableIcebergStreaming ? 2 : -1, columnEpStats.get("COLSMALLINT").getDistinctValues());
 
     Assert.assertEquals(BigInteger.valueOf(3), columnEpStats.get("COLINT").getCurrentMaxIntValue());
     Assert.assertEquals(BigInteger.valueOf(3), columnEpStats.get("COLINT").getCurrentMinIntValue());
     Assert.assertEquals(1L, columnEpStats.get("COLINT").getCurrentNullCount());
-    Assert.assertEquals(isIcebergMode ? 1 : -1, columnEpStats.get("COLINT").getDistinctValues());
+    Assert.assertEquals(
+        enableIcebergStreaming ? 1 : -1, columnEpStats.get("COLINT").getDistinctValues());
 
     Assert.assertEquals(
         BigInteger.valueOf(40), columnEpStats.get("COLBIGINT").getCurrentMaxIntValue());
     Assert.assertEquals(
         BigInteger.valueOf(4), columnEpStats.get("COLBIGINT").getCurrentMinIntValue());
     Assert.assertEquals(0, columnEpStats.get("COLBIGINT").getCurrentNullCount());
-    Assert.assertEquals(isIcebergMode ? 2 : -1, columnEpStats.get("COLBIGINT").getDistinctValues());
+    Assert.assertEquals(
+        enableIcebergStreaming ? 2 : -1, columnEpStats.get("COLBIGINT").getDistinctValues());
 
     Assert.assertArrayEquals(
         "2".getBytes(StandardCharsets.UTF_8), columnEpStats.get("COLCHAR").getCurrentMinStrValue());
@@ -909,7 +914,8 @@ public class RowBufferTest {
         "alice".getBytes(StandardCharsets.UTF_8),
         columnEpStats.get("COLCHAR").getCurrentMaxStrValue());
     Assert.assertEquals(0, columnEpStats.get("COLCHAR").getCurrentNullCount());
-    Assert.assertEquals(isIcebergMode ? 2 : -1, columnEpStats.get("COLCHAR").getDistinctValues());
+    Assert.assertEquals(
+        enableIcebergStreaming ? 2 : -1, columnEpStats.get("COLCHAR").getDistinctValues());
 
     // Confirm we reset
     ChannelData<?> resetResults = rowBuffer.flush();
@@ -950,7 +956,7 @@ public class RowBufferTest {
     colTimestampLtzSB16Scale6.setLogicalType("TIMESTAMP_LTZ");
     colTimestampLtzSB16Scale6.setScale(6);
 
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       colTimestampLtzSB8.setSourceIcebergDataType("\"timestamptz\"");
       colTimestampLtzSB16.setSourceIcebergDataType("\"timestamptz\"");
       colTimestampLtzSB16Scale6.setSourceIcebergDataType("\"timestamptz\"");
@@ -981,14 +987,14 @@ public class RowBufferTest {
     Assert.assertEquals(3, result.getRowCount());
 
     Assert.assertEquals(
-        BigInteger.valueOf(1621899220 * (isIcebergMode ? 1000000L : 1)),
+        BigInteger.valueOf(1621899220 * (enableIcebergStreaming ? 1000000L : 1)),
         result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMinIntValue());
     Assert.assertEquals(
-        BigInteger.valueOf(1621899221 * (isIcebergMode ? 1000000L : 1)),
+        BigInteger.valueOf(1621899221 * (enableIcebergStreaming ? 1000000L : 1)),
         result.getColumnEps().get("COLTIMESTAMPLTZ_SB8").getCurrentMaxIntValue());
 
     /* Iceberg only supports microsecond precision for TIMESTAMP_LTZ */
-    if (!isIcebergMode) {
+    if (!enableIcebergStreaming) {
       Assert.assertEquals(
           new BigInteger("1621899220123456789"),
           result.getColumnEps().get("COLTIMESTAMPLTZ_SB16").getCurrentMinIntValue());
@@ -1087,7 +1093,7 @@ public class RowBufferTest {
     colTimeSB8.setLogicalType("TIME");
     colTimeSB8.setScale(3);
 
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       colTimeSB4.setSourceIcebergDataType("\"time\"");
       colTimeSB8.setSourceIcebergDataType("\"time\"");
     }
@@ -1111,7 +1117,7 @@ public class RowBufferTest {
     Assert.assertFalse(response.hasErrors());
 
     // Check data was inserted into the buffer correctly
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       Assert.assertEquals(10 * 60 * 60 * 1000000L, innerBuffer.getVectorValueAt("COLTIMESB4", 0));
       Assert.assertEquals(
           (11 * 60 * 60 + 15 * 60) * 1000000L, innerBuffer.getVectorValueAt("COLTIMESB4", 1));
@@ -1137,7 +1143,7 @@ public class RowBufferTest {
     ChannelData<?> result = innerBuffer.flush();
     Assert.assertEquals(3, result.getRowCount());
 
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       Assert.assertEquals(
           BigInteger.valueOf(10 * 60 * 60 * 1000000L),
           result.getColumnEps().get("COLTIMESB4").getCurrentMinIntValue());
@@ -1188,7 +1194,7 @@ public class RowBufferTest {
     colBinary.setLogicalType("BINARY");
     colBinary.setLength(8 * 1024 * 1024);
     colBinary.setByteLength(8 * 1024 * 1024);
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       colBinary.setSourceIcebergDataType("\"binary\"");
     }
 
@@ -1423,7 +1429,7 @@ public class RowBufferTest {
     colBoolean.setNullable(true);
     colBoolean.setLogicalType("BOOLEAN");
     colBoolean.setScale(0);
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       colBoolean.setSourceIcebergDataType("\"boolean\"");
     }
 
@@ -1478,7 +1484,7 @@ public class RowBufferTest {
     colBinary.setLength(32);
     colBinary.setByteLength(256);
     colBinary.setScale(0);
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       colBinary.setSourceIcebergDataType("\"binary\"");
     }
 
@@ -1723,7 +1729,7 @@ public class RowBufferTest {
 
   @Test
   public void testE2EVariant() {
-    if (!isIcebergMode) {
+    if (!enableIcebergStreaming) {
       testE2EVariantHelper(OpenChannelRequest.OnErrorOption.ABORT);
       testE2EVariantHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
       testE2EVariantHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
@@ -1776,7 +1782,7 @@ public class RowBufferTest {
 
   @Test
   public void testE2EObject() {
-    if (!isIcebergMode) {
+    if (!enableIcebergStreaming) {
       testE2EObjectHelper(OpenChannelRequest.OnErrorOption.ABORT);
       testE2EObjectHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
       testE2EObjectHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
@@ -1811,7 +1817,7 @@ public class RowBufferTest {
 
   @Test
   public void testE2EArray() {
-    if (!isIcebergMode) {
+    if (!enableIcebergStreaming) {
       testE2EArrayHelper(OpenChannelRequest.OnErrorOption.ABORT);
       testE2EArrayHelper(OpenChannelRequest.OnErrorOption.CONTINUE);
       testE2EArrayHelper(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
@@ -1906,7 +1912,7 @@ public class RowBufferTest {
 
     List<List<Object>> snapshotContinueParquet =
         ((ParquetChunkData) innerBufferOnErrorContinue.getSnapshot().get()).rows;
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       // Convert every object to string for iceberg mode
       snapshotContinueParquet =
           snapshotContinueParquet.stream()
@@ -1930,7 +1936,7 @@ public class RowBufferTest {
 
     List<List<Object>> snapshotAbortParquet =
         ((ParquetChunkData) innerBufferOnErrorAbort.getSnapshot().get()).rows;
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       // Convert every object to string for iceberg mode
       snapshotAbortParquet =
           snapshotAbortParquet.stream()
@@ -2031,7 +2037,7 @@ public class RowBufferTest {
 
   @Test
   public void testStructuredStatsE2E() {
-    if (!isIcebergMode) return;
+    if (!enableIcebergStreaming) return;
     testStructuredStatsE2EHelper(createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE));
     testStructuredStatsE2EHelper(createTestBuffer(OpenChannelRequest.OnErrorOption.ABORT));
     testStructuredStatsE2EHelper(createTestBuffer(OpenChannelRequest.OnErrorOption.SKIP_BATCH));
