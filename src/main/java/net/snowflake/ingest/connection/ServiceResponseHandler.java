@@ -6,7 +6,6 @@ package net.snowflake.ingest.connection;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.util.UUID;
 import net.snowflake.client.jdbc.internal.apache.http.HttpEntity;
@@ -294,8 +293,7 @@ public final class ServiceResponseHandler {
    *     respective Response Object
    * @throws IOException if parsing error
    */
-  @VisibleForTesting
-  public static String consumeAndReturnResponseEntityAsString(HttpEntity httpResponseEntity)
+  private static String consumeAndReturnResponseEntityAsString(HttpEntity httpResponseEntity)
       throws IOException {
     // grab the string version of the response entity
     String responseEntityAsString = EntityUtils.toString(httpResponseEntity);

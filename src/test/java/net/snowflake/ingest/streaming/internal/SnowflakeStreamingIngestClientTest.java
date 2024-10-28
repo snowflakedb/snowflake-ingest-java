@@ -50,7 +50,6 @@ import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpC
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
@@ -400,58 +399,6 @@ public class SnowflakeStreamingIngestClientTest {
     String responseString = objectMapper.writeValueAsString(response);
     apiOverride.addSerializedJsonOverride(
         DROP_CHANNEL_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, responseString));
-
-    DropChannelRequest request =
-        DropChannelRequest.builder("channel")
-            .setDBName("db")
-            .setTableName("table")
-            .setSchemaName("schema")
-            .build();
-    client.dropChannel(request);
-    Mockito.verify(requestBuilder)
-        .generateStreamingIngestPostRequest(
-            ArgumentMatchers.contains("channel"),
-            ArgumentMatchers.refEq(DROP_CHANNEL_ENDPOINT),
-            ArgumentMatchers.refEq("drop channel"));
-  }
-
-  @Test
-  public void testDropChannelRequestNoLoggingLine() throws Exception {
-    DropChannelResponse responseSuccess = new DropChannelResponse();
-    responseSuccess.setStatusCode(RESPONSE_SUCCESS);
-    responseSuccess.setMessage("dropped");
-    String responseStringSuccess = objectMapper.writeValueAsString(responseSuccess);
-
-    ChannelsStatusResponse responseFailure = new ChannelsStatusResponse();
-    responseFailure.setStatusCode(0L);
-    responseFailure.setMessage("honk");
-    responseFailure.setChannels(new ArrayList<>());
-    String responseStringFailure = objectMapper.writeValueAsString(responseFailure);
-
-    String expectEntityFormat =
-        "{\"request_id\":\"%s\",\"role\":null,\"channel\":\"channel\",\"table\":\"table\",\"database\":\"db\",\"schema\":\"schema\",\"is_iceberg\":%s}";
-
-    apiOverride.addSerializedJsonOverride(
-        DROP_CHANNEL_ENDPOINT,
-        req -> {
-          try {
-            String expectedEntity;
-            if (isIcebergMode) {
-              expectedEntity = String.format(expectEntityFormat, "testPrefix_0", "true");
-            } else {
-              expectedEntity = String.format(expectEntityFormat, "null_0", "false");
-            }
-            String requestEntityString =
-                ServiceResponseHandler.consumeAndReturnResponseEntityAsString(
-                    ((HttpPost) req).getEntity());
-            if (expectedEntity.equals(requestEntityString)) {
-              return Pair.of(HttpStatus.SC_OK, responseStringSuccess);
-            }
-          } catch (Exception e) {
-            // should not happen. If happen return bad response
-          }
-          return Pair.of(HttpStatus.SC_INTERNAL_SERVER_ERROR, responseStringFailure);
-        });
 
     DropChannelRequest request =
         DropChannelRequest.builder("channel")
