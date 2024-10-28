@@ -15,7 +15,7 @@ import org.junit.Test;
 
 public class StringsIT extends AbstractDataTypeTest {
 
-  private static final int MB_16 = 16 * 1024 * 1024;
+  private static final int MB_128 = 128 * 1024 * 1024;
 
   @Before
   public void before() throws Exception {
@@ -94,23 +94,23 @@ public class StringsIT extends AbstractDataTypeTest {
   @Test
   public void testMaxAllowedString() throws Exception {
     // 1-byte chars
-    String maxString = buildString("a", MB_16);
+    String maxString = buildString("a", MB_128);
     testIngestion("VARCHAR", maxString, new StringProvider());
     expectNotSupported("VARCHAR", maxString + "a");
 
     // 2-byte chars
-    maxString = buildString("š", MB_16 / 2);
+    maxString = buildString("š", MB_128 / 2);
     testIngestion("VARCHAR", maxString, new StringProvider());
 
     expectNotSupported("VARCHAR", maxString + "a");
 
     // 3-byte chars
-    maxString = buildString("❄", MB_16 / 3);
+    maxString = buildString("❄", MB_128 / 3);
     testIngestion("VARCHAR", maxString, new StringProvider());
     expectNotSupported("VARCHAR", maxString + "aa");
 
     // 4-byte chars
-    maxString = buildString("🍞", MB_16 / 4);
+    maxString = buildString("🍞", MB_128 / 4);
     testIngestion("VARCHAR", maxString, new StringProvider());
     expectNotSupported("VARCHAR", maxString + "a");
   }

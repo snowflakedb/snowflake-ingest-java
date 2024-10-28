@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_128_MB;
 import static net.snowflake.ingest.utils.Constants.EP_NV_UNKNOWN;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT;
@@ -395,7 +396,7 @@ public class RowBufferTest {
     rows.add(row);
 
     row = new HashMap<>();
-    row.put("colChar", StringUtils.repeat('1', 16777217)); // too big
+    row.put("colChar", StringUtils.repeat('1', BYTES_128_MB + 1)); // too big
     rows.add(row);
 
     row = new HashMap<>();
@@ -403,7 +404,7 @@ public class RowBufferTest {
     rows.add(row);
 
     row = new HashMap<>();
-    row.put("colChar", StringUtils.repeat('1', 16777217)); // too big
+    row.put("colChar", StringUtils.repeat('1', BYTES_128_MB + 1)); // too big
     rows.add(row);
 
     InsertValidationResponse response = rowBuffer.insertRows(rows, null, null);
@@ -435,8 +436,8 @@ public class RowBufferTest {
             .equalsIgnoreCase(
                 "The given row cannot be converted to the internal format due to invalid value:"
                     + " Value cannot be ingested into Snowflake column COLCHAR of type STRING,"
-                    + " rowIndex:1, reason: String too long: length=16777217 bytes"
-                    + " maxLength=16777216 bytes"));
+                    + " rowIndex:1, reason: String too long: length=134217729 bytes"
+                    + " maxLength=134217728 bytes"));
     Assert.assertTrue(
         response
             .getInsertErrors()
@@ -446,8 +447,8 @@ public class RowBufferTest {
             .equalsIgnoreCase(
                 "The given row cannot be converted to the internal format due to invalid value:"
                     + " Value cannot be ingested into Snowflake column COLCHAR of type STRING,"
-                    + " rowIndex:3, reason: String too long: length=16777217 bytes"
-                    + " maxLength=16777216 bytes"));
+                    + " rowIndex:3, reason: String too long: length=134217729 bytes"
+                    + " maxLength=134217728 bytes"));
   }
 
   private void testStringLengthHelper(AbstractRowBuffer<?> rowBuffer) {

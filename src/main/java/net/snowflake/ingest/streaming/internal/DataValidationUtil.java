@@ -12,6 +12,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -75,11 +76,16 @@ class DataValidationUtil {
 
   // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its
   // server-side representation. Validation leaves a small buffer for this difference.
-  static final int MAX_SEMI_STRUCTURED_LENGTH = BYTES_16_MB - 64;
+  static final int MAX_SEMI_STRUCTURED_LENGTH = BYTES_128_MB - 64;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final JsonFactory factory = new JsonFactory();
+
+  // set the max length to 128 MB
+  static {
+    factory.setStreamReadConstraints(StreamReadConstraints.builder().maxStringLength(BYTES_128_MB).build());
+  }
 
   // The version of Jackson we are using does not support serialization of date objects from the
   // java.time package. Here we define a module with custom java.time serializers. Additionally, we
@@ -677,7 +683,7 @@ class DataValidationUtil {
           columnName,
           "STRING",
           String.format(
-              "String too long: length=%d bytes maxLength=%d bytes", utf8Bytes.length, BYTES_16_MB),
+              "String too long: length=%d bytes maxLength=%d bytes", utf8Bytes.length, BYTES_128_MB),
           insertRowIndex);
     }
 
