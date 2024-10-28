@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.TestUtils.createParameterProvider;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
@@ -89,18 +90,20 @@ public class SnowflakeStreamingIngestChannelTest {
   private SnowflakeStreamingIngestClientInternal<StubChunkData> client;
   private MockSnowflakeServiceClient.ApiOverride apiOverride;
 
-  private Properties prop;
-
   @Before
   public void setup() {
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
-    prop = new Properties();
-    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());
+            "client",
+            null,
+            TestUtils.createProps(isIcebergMode),
+            httpClient,
+            true,
+            requestBuilder,
+            new HashMap<>());
 
     // some tests assume client is a mock object, just do it for everyone.
     client = Mockito.spy(client);
@@ -505,7 +508,7 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            prop,
+            TestUtils.createProps(isIcebergMode),
             httpClient,
             true,
             requestBuilder,
@@ -745,7 +748,7 @@ public class SnowflakeStreamingIngestChannelTest {
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
 
-    ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
+    ParameterProvider parameterProvider = createParameterProvider(isIcebergMode);
     memoryInfoProvider.freeMemory =
         maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100;
 

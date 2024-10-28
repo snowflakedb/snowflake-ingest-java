@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest;
 
 import static net.snowflake.ingest.utils.Constants.ACCOUNT;
@@ -14,6 +18,7 @@ import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.ParameterProvider.STREAMING_ICEBERG;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -46,6 +51,7 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.Object
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Assert;
@@ -495,6 +501,24 @@ public class TestUtils {
     }
 
     return tokenRequestURI;
+  }
+
+  public static ParameterProvider createParameterProvider(
+      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
+    if (parameterOverrides != null) {
+      parameterOverrides.put(STREAMING_ICEBERG, isIcebergMode);
+    }
+    return new ParameterProvider(parameterOverrides, props);
+  }
+
+  public static ParameterProvider createParameterProvider(boolean isIcebergMode) {
+    return createParameterProvider(new HashMap<>(), null, isIcebergMode);
+  }
+
+  public static Properties createProps(boolean isIcebergMode) {
+    Properties prop = new Properties();
+    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    return prop;
   }
 
   private static <T> T nullOrIfNullable(boolean nullable, Random r, Supplier<T> value) {

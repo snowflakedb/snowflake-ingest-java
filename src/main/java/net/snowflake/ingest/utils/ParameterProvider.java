@@ -89,6 +89,9 @@ public class ParameterProvider {
   // Cached buffer flush interval - avoid parsing each time for quick lookup
   private Long cachedBufferFlushIntervalMs = -1L;
 
+  // Cached isIcebergMode - avoid parsing each time for quick lookup
+  private Boolean cachedIsIcebergMode = null;
+
   /**
    * Constructor. Takes properties from profile file and properties from client constructor and
    * resolves final parameter value
@@ -98,20 +101,6 @@ public class ParameterProvider {
    */
   public ParameterProvider(Map<String, Object> parameterOverrides, Properties props) {
     this.setParameterMap(parameterOverrides, props);
-  }
-
-  /** Constructor for tests */
-  public ParameterProvider(
-      Map<String, Object> parameterOverrides, Properties props, boolean isIcebergMode) {
-    if (parameterOverrides != null) {
-      parameterOverrides.put(STREAMING_ICEBERG, isIcebergMode);
-    }
-    this.setParameterMap(parameterOverrides, props);
-  }
-
-  /** Empty constructor for tests */
-  public ParameterProvider(boolean isIcebergMode) {
-    this(new HashMap<>(), null, isIcebergMode);
   }
 
   private void checkAndUpdate(
@@ -153,6 +142,7 @@ public class ParameterProvider {
               BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
     }
 
+    /* STREAMING_ICEBERG should be the first thing to set as it affects other parameters */
     this.checkAndUpdate(
         STREAMING_ICEBERG,
         STREAMING_ICEBERG_DEFAULT,
@@ -509,8 +499,19 @@ public class ParameterProvider {
 
   /** @return Whether the client is in Iceberg mode */
   public boolean isIcebergMode() {
+    if (cachedIsIcebergMode != null) {
+      return cachedIsIcebergMode;
+    }
     Object val = this.parameterMap.getOrDefault(STREAMING_ICEBERG, STREAMING_ICEBERG_DEFAULT);
-    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
+
+    try {
+      cachedIsIcebergMode =
+          (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
+    } catch (Throwable t) {
+      throw new IllegalArgumentException(
+          String.format("Failed to parse STREAMING_ICEBERG = '%s'", val), t);
+    }
+    return cachedIsIcebergMode;
   }
 
   @Override
