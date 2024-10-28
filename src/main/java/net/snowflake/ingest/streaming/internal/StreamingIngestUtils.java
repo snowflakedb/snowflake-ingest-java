@@ -154,6 +154,14 @@ public class StreamingIngestUtils {
     return parts[parts.length - 1];
   }
 
+  /**
+   * Serialize the given Request to string. If there is any json processing exception, return the
+   * given message with BUILD_REQUEST_FAILURE
+   *
+   * @param payload the request to serialize
+   * @param message the message to return when facing json processing exception
+   * @return the serialized request
+   */
   static String serializeRequestToString(IStreamingIngestRequest payload, String message) {
     try {
       return objectMapper.writeValueAsString(payload);
