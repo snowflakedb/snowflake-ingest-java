@@ -142,7 +142,7 @@ public class ParameterProvider {
               BUFFER_FLUSH_INTERVAL_IN_MILLIS, MAX_CLIENT_LAG));
     }
 
-    /* STREAMING_ICEBERG should be the first thing to set as it affects other parameters */
+    /* ENABLE_ICEBERG_STREAMING should be the first thing to set as it affects other parameters */
     this.checkAndUpdate(
         ENABLE_ICEBERG_STREAMING,
         ENABLE_ICEBERG_STREAMING_DEFAULT,
