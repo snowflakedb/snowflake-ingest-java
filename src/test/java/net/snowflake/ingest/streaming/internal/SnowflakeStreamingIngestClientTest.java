@@ -90,16 +90,17 @@ public class SnowflakeStreamingIngestClientTest {
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel3;
   SnowflakeStreamingIngestChannelInternal<StubChunkData> channel4;
 
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIcebergMode;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   SnowflakeStreamingIngestClientInternal<StubChunkData> client;
   private MockSnowflakeServiceClient.ApiOverride apiOverride;
   RequestBuilder requestBuilder;
+  private Properties enableIcebergStreamingProp;
 
   @Before
   public void setup() throws Exception {
@@ -110,13 +111,22 @@ public class SnowflakeStreamingIngestClientTest {
     prop.put(ACCOUNT_URL, TestUtils.getHost());
     prop.put(PRIVATE_KEY, TestUtils.getPrivateKey());
     prop.put(ROLE, TestUtils.getRole());
+    enableIcebergStreamingProp = new Properties();
+    enableIcebergStreamingProp.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
 
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
     requestBuilder = Mockito.spy(MockSnowflakeServiceClient.createRequestBuilder(httpClient));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client", null, null, httpClient, isIcebergMode, true, requestBuilder, new HashMap<>());
+            "client",
+            null,
+            enableIcebergStreamingProp,
+            httpClient,
+            true,
+            requestBuilder,
+            new HashMap<>());
 
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -472,9 +482,8 @@ public class SnowflakeStreamingIngestClientTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
+            enableIcebergStreamingProp,
             httpClient,
-            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -508,10 +517,11 @@ public class SnowflakeStreamingIngestClientTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            isIcebergMode,
-            isIcebergMode));
+            enableIcebergStreaming,
+            enableIcebergStreaming));
     EpInfo epInfo =
-        AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode, isIcebergMode);
+        AbstractRowBuffer.buildEpInfoFromStats(
+            1, columnEps, !enableIcebergStreaming, enableIcebergStreaming);
 
     ChunkMetadata chunkMetadata =
         ChunkMetadata.builder()
@@ -564,10 +574,11 @@ public class SnowflakeStreamingIngestClientTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            isIcebergMode,
-            isIcebergMode));
+            enableIcebergStreaming,
+            enableIcebergStreaming));
     EpInfo epInfo =
-        AbstractRowBuffer.buildEpInfoFromStats(1, columnEps, !isIcebergMode, isIcebergMode);
+        AbstractRowBuffer.buildEpInfoFromStats(
+            1, columnEps, !enableIcebergStreaming, enableIcebergStreaming);
 
     ChannelMetadata channelMetadata1 =
         ChannelMetadata.builder()
@@ -826,8 +837,10 @@ public class SnowflakeStreamingIngestClientTest {
     client.registerBlobs(blobs);
     Mockito.verify(
             requestBuilder,
-            // isIcebergMode results in a clientconfigure call from ExtVol ctor, thus the extra +1
-            Mockito.times(MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1 + (isIcebergMode ? 1 : 0)))
+            // enableIcebergStreaming results in a clientconfigure call from ExtVol ctor, thus the
+            // extra +1
+            Mockito.times(
+                MAX_STREAMING_INGEST_API_CHANNEL_RETRY + 1 + (enableIcebergStreaming ? 1 : 0)))
         .generateStreamingIngestPostRequest(Mockito.anyString(), Mockito.any(), Mockito.any());
     Assert.assertFalse(channel1.isValid());
     Assert.assertFalse(channel2.isValid());
@@ -1001,9 +1014,8 @@ public class SnowflakeStreamingIngestClientTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
+            enableIcebergStreamingProp,
             httpClient,
-            isIcebergMode,
             true,
             requestBuilder,
             null);
@@ -1077,7 +1089,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel2 =
@@ -1095,7 +1107,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     client.getChannelCache().addChannel(channel1);
@@ -1205,7 +1217,7 @@ public class SnowflakeStreamingIngestClientTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     client.getChannelCache().addChannel(channel);
@@ -1241,9 +1253,8 @@ public class SnowflakeStreamingIngestClientTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
+            enableIcebergStreamingProp,
             httpClient,
-            isIcebergMode,
             true,
             requestBuilder,
             parameterMap);

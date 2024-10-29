@@ -12,18 +12,18 @@ import org.junit.Test;
 import org.junit.runners.Parameterized;
 
 public class FileColumnPropertiesTest {
-  @Parameterized.Parameters(name = "isIceberg: {0}")
-  public static Object[] isIceberg() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIceberg;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   @Test
   public void testFileColumnPropertiesConstructor() {
     // Test simple construction
     RowBufferStats stats =
-        isIceberg
+        enableIcebergStreaming
             ? new RowBufferStats(
                 "COL",
                 null,
@@ -33,14 +33,14 @@ public class FileColumnPropertiesTest {
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
                     .named("test"),
-                isIceberg,
-                isIceberg)
+                enableIcebergStreaming,
+                enableIcebergStreaming)
             : new RowBufferStats("COL", null, 1, null, null, false, false);
     stats.addStrValue("bcd");
     stats.addStrValue("abcde");
-    FileColumnProperties props = new FileColumnProperties(stats, !isIceberg);
+    FileColumnProperties props = new FileColumnProperties(stats, !enableIcebergStreaming);
     Assert.assertEquals(1, props.getColumnOrdinal());
-    Assert.assertEquals(isIceberg ? 1 : null, props.getFieldId());
+    Assert.assertEquals(enableIcebergStreaming ? 1 : null, props.getFieldId());
     Assert.assertEquals("6162636465", props.getMinStrValue());
     Assert.assertNull(props.getMinStrNonCollated());
     Assert.assertEquals("626364", props.getMaxStrValue());
@@ -48,7 +48,7 @@ public class FileColumnPropertiesTest {
 
     // Test that truncation is performed
     stats =
-        isIceberg
+        enableIcebergStreaming
             ? new RowBufferStats(
                 "COL",
                 null,
@@ -58,12 +58,12 @@ public class FileColumnPropertiesTest {
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
                     .named("test"),
-                isIceberg,
-                isIceberg)
+                enableIcebergStreaming,
+                enableIcebergStreaming)
             : new RowBufferStats("COL", null, 1, null, null, false, false);
     stats.addStrValue("aßßßßßßßßßßßßßßßß");
     Assert.assertEquals(33, stats.getCurrentMinStrValue().length);
-    props = new FileColumnProperties(stats, !isIceberg);
+    props = new FileColumnProperties(stats, !enableIcebergStreaming);
     Assert.assertEquals(1, props.getColumnOrdinal());
     Assert.assertNull(props.getMinStrNonCollated());
     Assert.assertNull(props.getMaxStrNonCollated());
