@@ -30,12 +30,12 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class RegisterServiceTest {
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIcebergMode;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   private SnowflakeStreamingIngestClientInternal<StubChunkData> client;
 
@@ -44,7 +44,8 @@ public class RegisterServiceTest {
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
     Properties prop = new Properties();
-    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    prop.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());

@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.GENERATE_PRESIGNED_URLS;
+import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.REFRESH_TABLE_INFORMATION;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CHANNEL_STATUS;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_CLIENT_CONFIGURE;
 import static net.snowflake.ingest.connection.ServiceResponseHandler.ApiName.STREAMING_DROP_CHANNEL;
@@ -16,6 +17,7 @@ import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.GENERATE_PRESIGNED_URLS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.REFRESH_TABLE_INFORMATION_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
@@ -93,6 +95,27 @@ class SnowflakeServiceClient {
           request.getStringForLogging(),
           response.getMessage());
       throw new SFException(ErrorCode.GENERATE_PRESIGNED_URLS_FAILURE, response.getMessage());
+    }
+    return response;
+  }
+
+  /** Fetches the latest sub-scoped tokens from the server for the requested table in the request */
+  RefreshTableInformationResponse refreshTableInformation(RefreshTableInformationRequest request)
+      throws IngestResponseException, IOException {
+    RefreshTableInformationResponse response =
+        executeApiRequestWithRetries(
+            RefreshTableInformationResponse.class,
+            request,
+            REFRESH_TABLE_INFORMATION_ENDPOINT,
+            "refresh table information",
+            REFRESH_TABLE_INFORMATION);
+
+    if (response.getStatusCode() != RESPONSE_SUCCESS) {
+      logger.logDebug(
+          "RefreshTableInformation request failed, request={}, response={}",
+          request.getStringForLogging(),
+          response.getMessage());
+      throw new SFException(ErrorCode.REFRESH_TABLE_INFORMATION_FAILURE, response.getMessage());
     }
     return response;
   }

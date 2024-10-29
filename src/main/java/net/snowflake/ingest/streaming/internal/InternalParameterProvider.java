@@ -10,16 +10,16 @@ class InternalParameterProvider {
   public static final boolean ENABLE_DISTINCT_VALUES_COUNT_DEFAULT = false;
   public static final boolean ENABLE_VALUES_COUNT_DEFAULT = false;
 
-  private final boolean isIcebergMode;
+  private final boolean enableIcebergStreaming;
 
-  InternalParameterProvider(boolean isIcebergMode) {
-    this.isIcebergMode = isIcebergMode;
+  InternalParameterProvider(boolean enableIcebergStreaming) {
+    this.enableIcebergStreaming = enableIcebergStreaming;
   }
 
   boolean getEnableChunkEncryption() {
     // When in Iceberg mode, chunk encryption is disabled. Otherwise, it is enabled. Since Iceberg
     // mode does not need client-side encryption.
-    return !isIcebergMode;
+    return !enableIcebergStreaming;
   }
 
   boolean setAllDefaultValuesInEp() {
@@ -27,23 +27,23 @@ class InternalParameterProvider {
     // to 0 / to "".
     // However when in iceberg mode, we want to default only those stats that are
     // relevant to the current datatype.
-    return !isIcebergMode;
+    return !enableIcebergStreaming;
   }
 
   boolean setIcebergSpecificFieldsInEp() {
     // When in Iceberg mode, we need to explicitly populate the major and minor version of parquet
     // in the EP metadata, createdOn, and extendedMetadataSize.
-    return isIcebergMode;
+    return enableIcebergStreaming;
   }
 
   boolean isEnableDistinctValuesCount() {
     // When in Iceberg mode, we enabled distinct values count in EP metadata.
-    return isIcebergMode;
+    return enableIcebergStreaming;
   }
 
   boolean isEnableValuesCount() {
     // When in Iceberg mode, we enabled values count in EP metadata for repeated group (e.g. map,
     // list).
-    return isIcebergMode;
+    return enableIcebergStreaming;
   }
 }

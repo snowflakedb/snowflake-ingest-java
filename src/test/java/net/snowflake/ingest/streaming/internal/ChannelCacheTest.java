@@ -25,12 +25,12 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class ChannelCacheTest {
 
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public static boolean isIcebergMode;
+  @Parameterized.Parameter public static boolean enableIcebergStreaming;
 
   ChannelCache<StubChunkData> cache;
   SnowflakeStreamingIngestClientInternal<StubChunkData> client;
@@ -48,7 +48,8 @@ public class ChannelCacheTest {
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
     Properties prop = new Properties();
-    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
+    prop.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());
@@ -68,7 +69,7 @@ public class ChannelCacheTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     channel2 =
@@ -86,7 +87,7 @@ public class ChannelCacheTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     channel3 =
@@ -104,7 +105,7 @@ public class ChannelCacheTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.addChannel(channel1);
@@ -134,7 +135,7 @@ public class ChannelCacheTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.addChannel(channel);
@@ -156,7 +157,7 @@ public class ChannelCacheTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.addChannel(channelDup);
@@ -241,7 +242,7 @@ public class ChannelCacheTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     cache.removeChannelIfSequencersMatch(channel3Dup);

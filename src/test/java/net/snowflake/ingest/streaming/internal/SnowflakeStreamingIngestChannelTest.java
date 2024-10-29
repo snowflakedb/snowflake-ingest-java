@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
+import static net.snowflake.ingest.TestUtils.createParameterProvider;
 import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
@@ -79,28 +80,30 @@ public class SnowflakeStreamingIngestChannelTest {
     }
   }
 
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIcebergMode;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   private SnowflakeStreamingIngestClientInternal<StubChunkData> client;
   private MockSnowflakeServiceClient.ApiOverride apiOverride;
-
-  private Properties prop;
 
   @Before
   public void setup() {
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
     RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
-    prop = new Properties();
-    prop.setProperty(ParameterProvider.STREAMING_ICEBERG, String.valueOf(isIcebergMode));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());
+            "client",
+            null,
+            TestUtils.createProps(enableIcebergStreaming),
+            httpClient,
+            true,
+            requestBuilder,
+            new HashMap<>());
 
     // some tests assume client is a mock object, just do it for everyone.
     client = Mockito.spy(client);
@@ -206,7 +209,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
 
@@ -258,7 +261,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
 
@@ -444,7 +447,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testOpenChannelSuccessResponse() throws Exception {
     // TODO: SNOW-1490151 Iceberg testing gaps
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       return;
     }
     String name = "CHANNEL";
@@ -505,7 +508,7 @@ public class SnowflakeStreamingIngestChannelTest {
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
             new SnowflakeURL("snowflake.dev.local:8082"),
-            prop,
+            TestUtils.createProps(enableIcebergStreaming),
             httpClient,
             true,
             requestBuilder,
@@ -559,7 +562,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
 
@@ -619,7 +622,7 @@ public class SnowflakeStreamingIngestChannelTest {
                   col.setLogicalType("BINARY");
                   col.setLength(8388608);
                   col.setByteLength(8388608);
-                  if (isIcebergMode) {
+                  if (enableIcebergStreaming) {
                     col.setSourceIcebergDataType("\"binary\"");
                   }
                   return col;
@@ -649,7 +652,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     channel.setupSchema(schema);
@@ -677,7 +680,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.ABORT,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     channel.setupSchema(schema);
@@ -706,7 +709,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.SKIP_BATCH,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     channel.setupSchema(schema);
@@ -741,11 +744,11 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
 
-    ParameterProvider parameterProvider = new ParameterProvider(isIcebergMode);
+    ParameterProvider parameterProvider = createParameterProvider(enableIcebergStreaming);
     memoryInfoProvider.freeMemory =
         maxMemory * (parameterProvider.getInsertThrottleThresholdInPercentage() - 1) / 100;
 
@@ -789,7 +792,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -827,7 +830,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -863,7 +866,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -902,7 +905,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
     ChannelsStatusResponse response = new ChannelsStatusResponse();
@@ -937,7 +940,7 @@ public class SnowflakeStreamingIngestChannelTest {
             OpenChannelRequest.OnErrorOption.CONTINUE,
             UTC,
             null /* offsetTokenVerificationFunction */,
-            isIcebergMode
+            enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
 

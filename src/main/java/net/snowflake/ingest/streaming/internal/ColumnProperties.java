@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 /**
@@ -67,7 +71,7 @@ public class ColumnProperties {
    * here is meant to conform to the json schema specified here:
    * https://iceberg.apache.org/spec/#appendix-c-json-serialization
    *
-   * <p>Make this a public API when the Builder.setIsIceberg API is made public.
+   * <p>Make this a public API when the Builder.setEnableIcebergStreaming API is made public.
    */
   String getIcebergSchema() {
     return icebergColumnSchema;

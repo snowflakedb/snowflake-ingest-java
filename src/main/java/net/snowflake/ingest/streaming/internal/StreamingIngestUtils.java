@@ -86,12 +86,8 @@ public class StreamingIngestUtils {
       CloseableHttpClient httpClient,
       RequestBuilder requestBuilder)
       throws IOException, IngestResponseException {
-    String payloadInString;
-    try {
-      payloadInString = objectMapper.writeValueAsString(payload);
-    } catch (JsonProcessingException e) {
-      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
-    }
+    String payloadInString = serializeRequestToString(payload, message);
+
     return executeWithRetries(
         targetClass, endpoint, payloadInString, message, apiName, httpClient, requestBuilder);
   }
@@ -156,5 +152,21 @@ public class StreamingIngestUtils {
   public static String getShortname(final String fullname) {
     final String[] parts = fullname.split("/");
     return parts[parts.length - 1];
+  }
+
+  /**
+   * Serialize the given Request to string. If there is any json processing exception, return the
+   * given message with BUILD_REQUEST_FAILURE
+   *
+   * @param payload the request to serialize
+   * @param message the message to return when facing json processing exception
+   * @return the serialized request
+   */
+  static String serializeRequestToString(IStreamingIngestRequest payload, String message) {
+    try {
+      return objectMapper.writeValueAsString(payload);
+    } catch (JsonProcessingException e) {
+      throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
+    }
   }
 }

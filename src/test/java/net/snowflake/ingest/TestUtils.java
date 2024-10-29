@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest;
 
 import static net.snowflake.ingest.utils.Constants.ACCOUNT;
@@ -14,6 +18,7 @@ import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
+import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_ICEBERG_STREAMING;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -46,6 +51,7 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.Object
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Assert;
@@ -115,9 +121,9 @@ public class TestUtils {
       account = profile.get(ACCOUNT).asText();
       port = profile.get(PORT).asInt();
       ssl = profile.get(SSL).asText();
-      database = profile.get(DATABASE).asText();
+      database = profile.get(DATABASE) == null ? null : profile.get(DATABASE).asText();
       connectString = profile.get(CONNECT_STRING).asText();
-      schema = profile.get(SCHEMA).asText();
+      schema = profile.get(SCHEMA) == null ? null : profile.get(SCHEMA).asText();
       warehouse = profile.get(WAREHOUSE).asText();
       host = profile.get(HOST).asText();
       scheme = profile.get(SCHEME).asText();
@@ -495,6 +501,25 @@ public class TestUtils {
     }
 
     return tokenRequestURI;
+  }
+
+  public static ParameterProvider createParameterProvider(
+      Map<String, Object> parameterOverrides, Properties props, boolean enableIcebergStreaming) {
+    if (parameterOverrides != null) {
+      parameterOverrides.put(ENABLE_ICEBERG_STREAMING, enableIcebergStreaming);
+    }
+    return new ParameterProvider(parameterOverrides, props);
+  }
+
+  public static ParameterProvider createParameterProvider(boolean enableIcebergStreaming) {
+    return createParameterProvider(new HashMap<>(), null, enableIcebergStreaming);
+  }
+
+  public static Properties createProps(boolean enableIcebergStreaming) {
+    Properties prop = new Properties();
+    prop.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
+    return prop;
   }
 
   private static <T> T nullOrIfNullable(boolean nullable, Random r, Supplier<T> value) {

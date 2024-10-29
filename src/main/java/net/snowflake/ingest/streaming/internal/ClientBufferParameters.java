@@ -24,7 +24,7 @@ public class ClientBufferParameters {
 
   private final Optional<Integer> maxRowGroups;
 
-  private boolean isIcebergMode;
+  private boolean enableIcebergStreaming;
 
   private boolean enableDistinctValuesCount;
 
@@ -37,7 +37,7 @@ public class ClientBufferParameters {
    *
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
-   * @param isIcebergMode
+   * @param enableIcebergStreaming
    */
   private ClientBufferParameters(
       long maxChunkSizeInBytes,
@@ -45,7 +45,7 @@ public class ClientBufferParameters {
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       Optional<Integer> maxRowGroups,
-      boolean isIcebergMode,
+      boolean enableIcebergStreaming,
       boolean enableDistinctValuesCount,
       boolean enableValuesCount) {
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
@@ -53,10 +53,10 @@ public class ClientBufferParameters {
     this.bdecParquetCompression = bdecParquetCompression;
     this.enableNewJsonParsingLogic = enableNewJsonParsingLogic;
     this.maxRowGroups = maxRowGroups;
-    this.isIcebergMode = isIcebergMode;
+    this.enableIcebergStreaming = enableIcebergStreaming;
     this.enableDistinctValuesCount = enableDistinctValuesCount;
     this.enableValuesCount = enableValuesCount;
-    this.enableDictionaryEncoding = isIcebergMode;
+    this.enableDictionaryEncoding = enableIcebergStreaming;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
@@ -79,12 +79,12 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().isEnableNewJsonParsingLogic()
             : ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
-    this.isIcebergMode =
+    this.enableIcebergStreaming =
         clientInternal != null
-            ? clientInternal.getParameterProvider().isIcebergMode()
-            : ParameterProvider.STREAMING_ICEBERG_DEFAULT;
+            ? clientInternal.getParameterProvider().isEnableIcebergStreaming()
+            : ParameterProvider.ENABLE_ICEBERG_STREAMING_DEFAULT;
     this.maxRowGroups =
-        isIcebergMode
+        enableIcebergStreaming
             ? Optional.of(InternalParameterProvider.MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT)
             : Optional.empty();
     this.enableDistinctValuesCount =
@@ -96,13 +96,13 @@ public class ClientBufferParameters {
             ? clientInternal.getInternalParameterProvider().isEnableValuesCount()
             : InternalParameterProvider.ENABLE_VALUES_COUNT_DEFAULT;
     this.enableDictionaryEncoding =
-        isIcebergMode && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
+        enableIcebergStreaming && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
   }
 
   /**
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
-   * @param isIcebergMode
+   * @param enableIcebergStreaming
    * @return ClientBufferParameters object
    */
   public static ClientBufferParameters test_createClientBufferParameters(
@@ -111,7 +111,7 @@ public class ClientBufferParameters {
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       Optional<Integer> maxRowGroups,
-      boolean isIcebergMode,
+      boolean enableIcebergStreaming,
       boolean enableDistinctValuesCount,
       boolean enableValuesCount) {
     return new ClientBufferParameters(
@@ -120,7 +120,7 @@ public class ClientBufferParameters {
         bdecParquetCompression,
         enableNewJsonParsingLogic,
         maxRowGroups,
-        isIcebergMode,
+        enableIcebergStreaming,
         enableDistinctValuesCount,
         enableValuesCount);
   }
@@ -141,8 +141,8 @@ public class ClientBufferParameters {
     return enableNewJsonParsingLogic;
   }
 
-  public boolean getIsIcebergMode() {
-    return isIcebergMode;
+  public boolean getEnableIcebergStreaming() {
+    return enableIcebergStreaming;
   }
 
   public Optional<Integer> getMaxRowGroups() {
@@ -150,7 +150,7 @@ public class ClientBufferParameters {
   }
 
   public String getParquetMessageTypeName() {
-    return isIcebergMode ? PARQUET_MESSAGE_TYPE_NAME : BDEC_PARQUET_MESSAGE_TYPE_NAME;
+    return enableIcebergStreaming ? PARQUET_MESSAGE_TYPE_NAME : BDEC_PARQUET_MESSAGE_TYPE_NAME;
   }
 
   public boolean isEnableDistinctValuesCount() {
