@@ -117,7 +117,9 @@ public class SnowflakeStreamingIngestClientTest {
 
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
-    requestBuilder = Mockito.spy(MockSnowflakeServiceClient.createRequestBuilder(httpClient));
+    requestBuilder =
+        Mockito.spy(
+            MockSnowflakeServiceClient.createRequestBuilder(httpClient, enableIcebergStreaming));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
@@ -476,7 +478,8 @@ public class SnowflakeStreamingIngestClientTest {
             (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
     RequestBuilder requestBuilder =
-        new RequestBuilder(url, prop.get(USER).toString(), keyPair, httpClient, null);
+        new RequestBuilder(
+            url, prop.get(USER).toString(), keyPair, httpClient, enableIcebergStreaming, null);
 
     SnowflakeStreamingIngestClientInternal<?> client =
         new SnowflakeStreamingIngestClientInternal<>(

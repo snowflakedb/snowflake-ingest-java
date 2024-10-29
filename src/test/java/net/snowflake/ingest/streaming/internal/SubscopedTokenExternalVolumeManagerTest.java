@@ -37,7 +37,9 @@ public class SubscopedTokenExternalVolumeManagerTest {
   public void setup() {
     this.manager =
         new SubscopedTokenExternalVolumeManager(
-            "role", "clientName", MockSnowflakeServiceClient.create());
+            "role",
+            "clientName",
+            MockSnowflakeServiceClient.create(true /* enableIcebergStreaming */));
   }
 
   @After

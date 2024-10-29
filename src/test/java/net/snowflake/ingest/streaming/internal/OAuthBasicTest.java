@@ -17,12 +17,25 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 /**
  * This test only contains basic construction of client using OAuth authentication. Further
  * integration test would be added in dew.
  */
+@RunWith(Parameterized.class)
 public class OAuthBasicTest {
+
+  @Parameters(name = "{index}: {0}")
+  public static Object[] icebergStreamingModes() {
+    return new Object[] {false};
+  }
+  ;
+
+  @Parameter public boolean enableIcebergStreaming;
 
   /** Create client with invalid authorization type, this should fail. */
   @Test
@@ -135,6 +148,7 @@ public class OAuthBasicTest {
             null,
             oAuthManager,
             null,
+            enableIcebergStreaming,
             null);
     client.injectRequestBuilder(requestBuilder);
 

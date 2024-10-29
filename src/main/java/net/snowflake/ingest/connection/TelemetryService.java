@@ -26,6 +26,8 @@ import net.snowflake.ingest.utils.Logging;
  * telemetry API
  */
 public class TelemetryService {
+  private final String enableIcebergStreaming;
+
   // Enum for different client telemetries
   enum TelemetryType {
     STREAMING_INGEST_LATENCY_IN_SEC("streaming_ingest_latency_in_ms"),
@@ -51,6 +53,7 @@ public class TelemetryService {
 
   private static final String TYPE = "type";
   private static final String CLIENT_NAME = "client_name";
+  private static final String ENABLE_ICEBERG_STREAMING = "enable_iceberg_streaming";
   private static final String COUNT = "count";
   private static final String MAX = "max";
   private static final String MIN = "min";
@@ -65,11 +68,17 @@ public class TelemetryService {
    * Default constructor
    *
    * @param httpClient http client
+   * @param enableIcebergStreaming whether the ingestion client is running in iceberg mode
    * @param clientName name of the client
    * @param url account url
    */
-  TelemetryService(CloseableHttpClient httpClient, String clientName, String url) {
+  TelemetryService(
+      CloseableHttpClient httpClient,
+      boolean enableIcebergStreaming,
+      String clientName,
+      String url) {
     this.clientName = clientName;
+    this.enableIcebergStreaming = String.valueOf(enableIcebergStreaming);
     this.telemetry = (TelemetryClient) TelemetryClient.createSessionlessTelemetry(httpClient, url);
     this.rateLimitersMap = new HashMap<>();
   }
@@ -157,6 +166,7 @@ public class TelemetryService {
     try {
       msg.put(TYPE, type.toString());
       msg.put(CLIENT_NAME, clientName);
+      msg.put(ENABLE_ICEBERG_STREAMING, enableIcebergStreaming);
       telemetry.addLogToBatch(TelemetryUtil.buildJobData(msg));
     } catch (Exception e) {
       logger.logWarn("Failed to send telemetry data, error: {}", e.getMessage());

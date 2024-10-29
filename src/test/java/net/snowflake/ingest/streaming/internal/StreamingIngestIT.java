@@ -77,6 +77,14 @@ public class StreamingIngestIT {
   private String testDb;
 
   @Parameters(name = "{index}: {0}")
+  public static Object[] icebergStreamingModes() {
+    return new Object[] {false};
+  }
+  ;
+
+  @Parameter public boolean enableIcebergStreaming;
+
+  @Parameters(name = "{index}: {0}")
   public static Object[] compressionAlgorithms() {
     return new Object[] {"GZIP", "ZSTD"};
   }
@@ -163,6 +171,7 @@ public class StreamingIngestIT {
                 TestUtils.getUser(),
                 TestUtils.getKeyPair(),
                 HttpUtil.getHttpClient(url.getAccount()),
+                enableIcebergStreaming,
                 "testrequestbuilder"));
     client.injectRequestBuilder(requestBuilder);
 
@@ -249,6 +258,7 @@ public class StreamingIngestIT {
                 TestUtils.getUser(),
                 TestUtils.getKeyPair(),
                 HttpUtil.getHttpClient(url.getAccount()),
+                enableIcebergStreaming,
                 "testrequestbuilder"));
     client.injectRequestBuilder(requestBuilder);
 

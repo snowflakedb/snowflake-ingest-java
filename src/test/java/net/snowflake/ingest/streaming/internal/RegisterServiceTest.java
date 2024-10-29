@@ -42,7 +42,8 @@ public class RegisterServiceTest {
   @Before
   public void setup() {
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
-    RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
+    RequestBuilder requestBuilder =
+        MockSnowflakeServiceClient.createRequestBuilder(httpClient, enableIcebergStreaming);
     Properties prop = new Properties();
     prop.setProperty(
         ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));

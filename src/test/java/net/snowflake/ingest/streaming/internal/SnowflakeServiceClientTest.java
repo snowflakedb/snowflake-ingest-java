@@ -25,7 +25,7 @@ public class SnowflakeServiceClientTest {
 
   @Before
   public void setUp() {
-    snowflakeServiceClient = MockSnowflakeServiceClient.create();
+    snowflakeServiceClient = MockSnowflakeServiceClient.create(enableIcebergStreaming);
   }
 
   @Test

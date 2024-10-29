@@ -64,17 +64,18 @@ public class MockSnowflakeServiceClient {
     }
   }
 
-  public static SnowflakeServiceClient create() {
+  public static SnowflakeServiceClient create(boolean enableIcebergStreaming) {
     try {
       CloseableHttpClient httpClient = createHttpClient(new ApiOverride());
-      RequestBuilder requestBuilder = createRequestBuilder(httpClient);
+      RequestBuilder requestBuilder = createRequestBuilder(httpClient, enableIcebergStreaming);
       return new SnowflakeServiceClient(httpClient, requestBuilder);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  public static RequestBuilder createRequestBuilder(CloseableHttpClient httpClient) {
+  public static RequestBuilder createRequestBuilder(
+      CloseableHttpClient httpClient, boolean enableIcebergStreaming) {
     try {
       return new RequestBuilder(
           "test_host",
@@ -86,6 +87,7 @@ public class MockSnowflakeServiceClient {
           null,
           null,
           httpClient,
+          enableIcebergStreaming,
           "mock_client");
     } catch (Exception e) {
       throw new RuntimeException(e);
