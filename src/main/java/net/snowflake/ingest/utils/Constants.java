@@ -64,8 +64,8 @@ public class Constants {
   public static final long EP_NDV_UNKNOWN = -1L;
   public static final long EP_NV_UNKNOWN = -1L;
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;
-  public static final int BINARY_COLUMN_MAX_SIZE = 8 * 1024 * 1024;
-  public static final int VARCHAR_COLUMN_MAX_SIZE = 16 * 1024 * 1024;
+  public static final int BINARY_COLUMN_MAX_SIZE = 64 * 1024 * 1024;
+  public static final int VARCHAR_COLUMN_MAX_SIZE = 128 * 1024 * 1024;
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";

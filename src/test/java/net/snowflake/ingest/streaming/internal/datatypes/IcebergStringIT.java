@@ -40,7 +40,7 @@ public class IcebergStringIT extends AbstractDataTypeTest {
     testIcebergIngestion("string", true, "true", new StringProvider());
     testIcebergIngestion(
         "string", new BigDecimal("123456.789"), "123456.789", new StringProvider());
-    testIcebergIngestion("string", StringUtils.repeat("a", 16 * 1024 * 1024), new StringProvider());
+    testIcebergIngestion("string", StringUtils.repeat("a", MB_128), new StringProvider());
     testIcebergIngestion("string", "❄️", new StringProvider());
     testIcebergIngestion("string", null, new StringProvider());
 
@@ -57,7 +57,7 @@ public class IcebergStringIT extends AbstractDataTypeTest {
             SFException.class,
             () ->
                 testIcebergIngestion(
-                    "string", StringUtils.repeat("a", 16 * 1024 * 1024 + 1), new StringProvider()));
+                    "string", StringUtils.repeat("a", MB_128 + 1), new StringProvider()));
     Assertions.assertThat(ex)
         .extracting(SFException::getVendorCode)
         .isEqualTo(ErrorCode.INVALID_VALUE_ROW.getMessageCode());
@@ -83,9 +83,9 @@ public class IcebergStringIT extends AbstractDataTypeTest {
         "select COUNT(*) from {tableName} where {columnName} is null", Arrays.asList(4L));
     testIcebergIngestAndQuery(
         "string",
-        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024), null, null, null, "aaa"),
+        Arrays.asList(StringUtils.repeat("a", MB_128), null, null, null, "aaa"),
         "select MAX({columnName}) from {tableName}",
-        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024)));
+        Arrays.asList(StringUtils.repeat("a", MB_128)));
     testIcebergIngestAndQuery(
         "string",
         Arrays.asList(StringUtils.repeat("a", 33), StringUtils.repeat("*", 3), null, ""),

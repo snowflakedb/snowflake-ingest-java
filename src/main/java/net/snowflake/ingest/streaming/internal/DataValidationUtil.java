@@ -70,9 +70,8 @@ class DataValidationUtil {
    */
   private static final long MICROSECONDS_LIMIT_FOR_EPOCH = SECONDS_LIMIT_FOR_EPOCH * 1000000L;
 
-  public static final int BYTES_8_MB = 8 * 1024 * 1024;
-  public static final int BYTES_16_MB = 2 * BYTES_8_MB;
-  public static final int BYTES_128_MB = 8 * BYTES_16_MB;
+  public static final int BYTES_64_MB = 64 * 1024 * 1024;
+  public static final int BYTES_128_MB = 2 * BYTES_64_MB;
 
   // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its
   // server-side representation. Validation leaves a small buffer for this difference.
@@ -84,7 +83,8 @@ class DataValidationUtil {
 
   // set the max length to 128 MB
   static {
-    factory.setStreamReadConstraints(StreamReadConstraints.builder().maxStringLength(BYTES_128_MB).build());
+    factory.setStreamReadConstraints(
+        StreamReadConstraints.builder().maxStringLength(BYTES_128_MB).build());
   }
 
   // The version of Jackson we are using does not support serialization of date objects from the
@@ -683,7 +683,8 @@ class DataValidationUtil {
           columnName,
           "STRING",
           String.format(
-              "String too long: length=%d bytes maxLength=%d bytes", utf8Bytes.length, BYTES_128_MB),
+              "String too long: length=%d bytes maxLength=%d bytes",
+              utf8Bytes.length, BYTES_128_MB),
           insertRowIndex);
     }
 
@@ -822,7 +823,7 @@ class DataValidationUtil {
           insertRowIndex);
     }
 
-    int maxLength = maxLengthOptional.orElse(BYTES_8_MB);
+    int maxLength = maxLengthOptional.orElse(BYTES_64_MB);
     if (output.length > maxLength) {
       throw valueFormatNotAllowedException(
           columnName,

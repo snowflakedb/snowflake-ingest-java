@@ -15,8 +15,6 @@ import org.junit.Test;
 
 public class StringsIT extends AbstractDataTypeTest {
 
-  private static final int MB_128 = 128 * 1024 * 1024;
-
   @Before
   public void before() throws Exception {
     super.before();

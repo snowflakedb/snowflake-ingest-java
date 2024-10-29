@@ -71,7 +71,7 @@ public class BinaryIT extends AbstractDataTypeTest {
 
   @Test
   public void testMaxBinary() throws Exception {
-    byte[] arr = new byte[8 * 1024 * 1024];
+    byte[] arr = new byte[MB_64];
     testJdbcTypeCompatibility("BINARY", arr, new ByteArrayProvider());
   }
 }

@@ -7,7 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import static java.time.ZoneOffset.UTC;
 import static net.snowflake.ingest.TestUtils.buildString;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_128_MB;
-import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_8_MB;
+import static net.snowflake.ingest.streaming.internal.DataValidationUtil.BYTES_64_MB;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.isAllowedSemiStructuredType;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseArray;
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseArrayNew;
@@ -763,7 +763,7 @@ public class DataValidationUtilTest {
 
     final String tooLargeObject =
         objectMapper.writeValueAsString(
-            Collections.singletonMap("key", StringUtils.repeat('a', 128*1024*1024)));
+            Collections.singletonMap("key", StringUtils.repeat('a', 128 * 1024 * 1024)));
     expectError(
         ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseObject("COL", tooLargeObject, 0));
     expectError(
@@ -1056,8 +1056,8 @@ public class DataValidationUtilTest {
 
   @Test
   public void testValidateAndParseBinary() throws DecoderException {
-    byte[] maxAllowedArray = new byte[BYTES_8_MB];
-    byte[] maxAllowedArrayMinusOne = new byte[BYTES_8_MB - 1];
+    byte[] maxAllowedArray = new byte[BYTES_64_MB];
+    byte[] maxAllowedArrayMinusOne = new byte[BYTES_64_MB - 1];
 
     assertArrayEquals(
         "honk".getBytes(StandardCharsets.UTF_8),
@@ -1094,7 +1094,7 @@ public class DataValidationUtilTest {
         () -> validateAndParseBinary("COL", new byte[1], Optional.of(0), 0));
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseBinary("COL", new byte[BYTES_8_MB + 1], Optional.empty(), 0));
+        () -> validateAndParseBinary("COL", new byte[BYTES_64_MB + 1], Optional.empty(), 0));
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseBinary("COL", new byte[8], Optional.of(7), 0));

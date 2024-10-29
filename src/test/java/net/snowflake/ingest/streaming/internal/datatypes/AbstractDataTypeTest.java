@@ -42,6 +42,9 @@ import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractDataTypeTest {
+  protected static final int MB_64 = 64 * 1024 * 1024;
+  protected static final int MB_128 = 128 * 1024 * 1024;
+
   private static final String SOURCE_COLUMN_NAME = "source";
   private static final String VALUE_COLUMN_NAME = "value";
 
@@ -101,6 +104,15 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement().execute(String.format("use database %s;", databaseName));
     conn.createStatement().execute(String.format("use schema %s;", schemaName));
 
+    // setup for the large lob size parameters
+    conn.createStatement()
+        .execute(
+            "alter session set FEATURE_INCREASED_MAX_LOB_SIZE_IN_MEMORY = enabled,"
+                + " FEATURE_INCREASED_MAX_LOB_SIZE_PERSISTED=enabled,"
+                + " ENABLE_ISMAXLENGTH_FIELD_IN_DATATYPE = true,"
+                + " ENABLE_DEFAULT_VARCHAR_AND_BINARY_LENGTH=true, \n"
+                + "DEFAULT_VARCHAR_LENGTH= 134217728;");
+
     if (isIceberg) {
       switch (serializationPolicy) {
         case COMPATIBLE:
@@ -131,6 +143,7 @@ public abstract class AbstractDataTypeTest {
     // Override Iceberg mode client lag to 1 second for faster test execution
     Map<String, Object> parameterMap = new HashMap<>();
     parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 1000L);
+    parameterMap.put(ParameterProvider.MAX_ALLOWED_ROW_SIZE_IN_BYTES, 4L * MB_128);
 
     Properties prop = Utils.createProperties(props);
     SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));

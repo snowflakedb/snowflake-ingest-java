@@ -231,6 +231,13 @@ public class ParameterProvider {
         false /* enforceDefault */);
 
     this.checkAndUpdate(
+        MAX_ALLOWED_ROW_SIZE_IN_BYTES,
+        MAX_ALLOWED_ROW_SIZE_IN_BYTES_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
+
+    this.checkAndUpdate(
         MAX_CLIENT_LAG,
         isIcebergMode ? MAX_CLIENT_LAG_ICEBERG_MODE_DEFAULT : MAX_CLIENT_LAG_DEFAULT,
         parameterOverrides,
