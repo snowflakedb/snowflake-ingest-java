@@ -68,14 +68,7 @@ public class RequestSerializationTest {
   public void testValidateChannelsStatusRequest() {
     SnowflakeStreamingIngestClientInternal<?> client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client",
-            new SnowflakeURL("snowflake.dev.local:8082"),
-            null,
-            null,
-            false,
-            true,
-            null,
-            null);
+            "client", new SnowflakeURL("snowflake.dev.local:8082"), null, null, true, null, null);
     SnowflakeStreamingIngestChannelInternal<?> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
             "channel",
