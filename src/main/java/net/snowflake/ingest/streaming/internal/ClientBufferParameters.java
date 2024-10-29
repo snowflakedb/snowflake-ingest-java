@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.Optional;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
+import org.apache.parquet.column.ParquetProperties;
 
 /** Channel's buffer relevant parameters that are set at the owning client level. */
 public class ClientBufferParameters {
@@ -28,6 +29,8 @@ public class ClientBufferParameters {
   private boolean enableDistinctValuesCount;
 
   private boolean enableValuesCount;
+
+  private boolean enableDictionaryEncoding;
 
   /**
    * Private constructor used for test methods
@@ -53,10 +56,13 @@ public class ClientBufferParameters {
     this.enableIcebergStreaming = enableIcebergStreaming;
     this.enableDistinctValuesCount = enableDistinctValuesCount;
     this.enableValuesCount = enableValuesCount;
+    this.enableDictionaryEncoding = enableIcebergStreaming;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
-  public ClientBufferParameters(SnowflakeStreamingIngestClientInternal clientInternal) {
+  public ClientBufferParameters(
+      SnowflakeStreamingIngestClientInternal clientInternal,
+      ParquetProperties.WriterVersion parquetWriterVersion) {
     this.maxChunkSizeInBytes =
         clientInternal != null
             ? clientInternal.getParameterProvider().getMaxChunkSizeInBytes()
@@ -89,6 +95,9 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getInternalParameterProvider().isEnableValuesCount()
             : InternalParameterProvider.ENABLE_VALUES_COUNT_DEFAULT;
+    this.enableDictionaryEncoding =
+        enableIcebergStreaming
+            && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
   }
 
   /**
@@ -154,6 +163,6 @@ public class ClientBufferParameters {
   }
 
   public boolean isEnableDictionaryEncoding() {
-    return enableIcebergStreaming;
+    return enableDictionaryEncoding;
   }
 }

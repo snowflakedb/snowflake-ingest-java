@@ -76,6 +76,9 @@ public class ParameterProvider {
   public static final Constants.BdecParquetCompression BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT =
       Constants.BdecParquetCompression.GZIP;
 
+  public static final Constants.BdecParquetCompression
+      ICEBERG_PARQUET_COMPRESSION_ALGORITHM_DEFAULT = Constants.BdecParquetCompression.ZSTD;
+
   /* Iceberg mode parameters: When streaming to Iceberg mode, different default parameters are required because it generates Parquet files instead of BDEC files. */
   public static final int MAX_CHUNKS_IN_BLOB_ICEBERG_MODE_DEFAULT = 1;
 
@@ -253,7 +256,9 @@ public class ParameterProvider {
 
     this.checkAndUpdate(
         BDEC_PARQUET_COMPRESSION_ALGORITHM,
-        BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
+        isEnableIcebergStreaming()
+            ? ICEBERG_PARQUET_COMPRESSION_ALGORITHM_DEFAULT
+            : BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT,
         parameterOverrides,
         props,
         false /* enforceDefault */);
@@ -488,7 +493,10 @@ public class ParameterProvider {
   public Constants.BdecParquetCompression getBdecParquetCompressionAlgorithm() {
     Object val =
         this.parameterMap.getOrDefault(
-            BDEC_PARQUET_COMPRESSION_ALGORITHM, BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT);
+            BDEC_PARQUET_COMPRESSION_ALGORITHM,
+            isEnableIcebergStreaming()
+                ? ICEBERG_PARQUET_COMPRESSION_ALGORITHM_DEFAULT
+                : BDEC_PARQUET_COMPRESSION_ALGORITHM_DEFAULT);
     if (val instanceof Constants.BdecParquetCompression) {
       return (Constants.BdecParquetCompression) val;
     }
