@@ -96,7 +96,8 @@ public class ClientBufferParameters {
             ? clientInternal.getInternalParameterProvider().isEnableValuesCount()
             : InternalParameterProvider.ENABLE_VALUES_COUNT_DEFAULT;
     this.enableDictionaryEncoding =
-        enableIcebergStreaming && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
+        enableIcebergStreaming
+            && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
   }
 
   /**
