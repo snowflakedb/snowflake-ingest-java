@@ -136,6 +136,7 @@ public class BlobBuilderTest {
                 enableIcebergStreaming
                     ? ParquetProperties.WriterVersion.PARQUET_2_0
                     : ParquetProperties.WriterVersion.PARQUET_1_0,
+                enableIcebergStreaming,
                 enableIcebergStreaming))
         .when(channelData)
         .createFlusher();
