@@ -2032,7 +2032,14 @@ public class RowBufferTest {
         flusher.serialize(Collections.singletonList(data), filePath);
 
     BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
-    Assert.assertEquals(filePath, reader.getKeyValueMetadata().get(Constants.PRIMARY_FILE_ID_KEY));
+    Assert.assertEquals(
+        filePath,
+        reader
+            .getKeyValueMetadata()
+            .get(
+                enableIcebergStreaming
+                    ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+                    : Constants.PRIMARY_FILE_ID_KEY));
   }
 
   @Test

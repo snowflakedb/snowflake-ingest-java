@@ -142,7 +142,7 @@ public class ClientBufferParameters {
     return enableNewJsonParsingLogic;
   }
 
-  public boolean getEnableIcebergStreaming() {
+  public boolean isEnableIcebergStreaming() {
     return enableIcebergStreaming;
   }
 

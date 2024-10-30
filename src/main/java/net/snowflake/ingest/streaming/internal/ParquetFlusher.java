@@ -33,6 +33,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final Constants.BdecParquetCompression bdecParquetCompression;
   private final ParquetProperties.WriterVersion parquetWriterVersion;
   private final boolean enableDictionaryEncoding;
+  private final boolean enableIcebergStreaming;
 
   /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
@@ -41,13 +42,15 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       Optional<Integer> maxRowGroups,
       Constants.BdecParquetCompression bdecParquetCompression,
       ParquetProperties.WriterVersion parquetWriterVersion,
-      boolean enableDictionaryEncoding) {
+      boolean enableDictionaryEncoding,
+      boolean enableIcebergStreaming) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
     this.bdecParquetCompression = bdecParquetCompression;
     this.parquetWriterVersion = parquetWriterVersion;
     this.enableDictionaryEncoding = enableDictionaryEncoding;
+    this.enableIcebergStreaming = enableIcebergStreaming;
   }
 
   @Override
@@ -127,7 +130,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
     // http://go/streams-on-replicated-mixed-tables
-    metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
+    metadata.put(
+        enableIcebergStreaming
+            ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+            : Constants.PRIMARY_FILE_ID_KEY,
+        StreamingIngestUtils.getShortname(filePath));
     parquetWriter =
         new SnowflakeParquetWriter(
             mergedData,
