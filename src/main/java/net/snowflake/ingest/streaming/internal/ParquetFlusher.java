@@ -128,8 +128,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     // We insert the filename in the file itself as metadata so that streams can work on replicated
-    // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
-    // http://go/streams-on-replicated-mixed-tables
+    // tables. For a more detailed discussion on the topic see SNOW-561447,
+    // http://go/streams-on-replicated-mixed-tables, and
+    // http://go/managed-iceberg-replication-change-tracking
     metadata.put(
         enableIcebergStreaming
             ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
