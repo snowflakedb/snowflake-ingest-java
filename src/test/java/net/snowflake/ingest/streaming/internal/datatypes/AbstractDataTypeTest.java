@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -16,8 +17,12 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import net.snowflake.ingest.TestUtils;
@@ -124,6 +129,19 @@ public abstract class AbstractDataTypeTest {
                 VALUE_COLUMN_NAME,
                 dataType,
                 getIcebergTableConfig(tableName)));
+
+    return tableName;
+  }
+
+  protected String createIcebergTableWithColumns(String columns) throws SQLException {
+    String tableName = getRandomIdentifier();
+    String baseLocation =
+        String.format("SDK_IT/%s/%s/%s", databaseName, columns.replace(" ", "_"), tableName);
+    conn.createStatement()
+        .execute(
+            String.format(
+                "create or replace iceberg table %s (%s) %s",
+                tableName, columns, getIcebergTableConfig(tableName)));
 
     return tableName;
   }
@@ -526,20 +544,55 @@ public abstract class AbstractDataTypeTest {
     for (Object expectedValue : expectedValues) {
       Assertions.assertThat(resultSet.next()).isTrue();
       Object res = resultSet.getObject(1);
-      if (expectedValue instanceof BigDecimal) {
-        Assertions.assertThat(res)
-            .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
-            .usingRecursiveComparison()
-            .isEqualTo(expectedValue);
-      } else if (expectedValue instanceof Map) {
-        Assertions.assertThat(objectMapper.readTree((String) res))
-            .isEqualTo(objectMapper.valueToTree(expectedValue));
-      } else if (expectedValue instanceof Timestamp) {
-        Assertions.assertThat(res.toString()).isEqualTo(expectedValue.toString());
-      } else {
-        Assertions.assertThat(res).isEqualTo(expectedValue);
-      }
+      assertEqualValues(expectedValue, res);
     }
     Assertions.assertThat(resultSet.next()).isFalse();
+  }
+
+  protected void verifyMultipleColumns(
+      String tableName,
+      List<Map<String, Object>> values,
+      List<Map<String, Object>> expectedValues,
+      String orderBy)
+      throws Exception {
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    Set<String> keySet = new HashSet<>();
+    for (Map<String, Object> value : values) {
+      String offsetToken = UUID.randomUUID().toString();
+      channel.insertRow(value, offsetToken);
+      TestUtils.waitForOffset(channel, offsetToken);
+    }
+
+    for (Map<String, Object> value : expectedValues) {
+      keySet.addAll(value.keySet());
+    }
+
+    for (String key : keySet) {
+      String query = String.format("select %s from %s order by %s", key, tableName, orderBy);
+      ResultSet resultSet = conn.createStatement().executeQuery(query);
+
+      for (Map<String, Object> expectedValue : expectedValues) {
+        Assertions.assertThat(resultSet.next()).isTrue();
+        Object res = resultSet.getObject(1);
+        assertEqualValues(expectedValue.get(key), res);
+      }
+      Assertions.assertThat(resultSet.next()).isFalse();
+    }
+  }
+
+  private void assertEqualValues(Object expectedValue, Object actualValue) throws JsonProcessingException {
+    if (expectedValue instanceof BigDecimal) {
+      Assertions.assertThat(actualValue)
+          .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+          .usingRecursiveComparison()
+          .isEqualTo(expectedValue);
+    } else if (expectedValue instanceof Map) {
+      Assertions.assertThat(objectMapper.readTree((String) actualValue))
+          .isEqualTo(objectMapper.valueToTree(expectedValue));
+    } else if (expectedValue instanceof Timestamp) {
+      Assertions.assertThat(actualValue.toString()).isEqualTo(expectedValue.toString());
+    } else {
+      Assertions.assertThat(actualValue).isEqualTo(expectedValue);
+    }
   }
 }
