@@ -94,7 +94,8 @@ public class SnowflakeStreamingIngestChannelTest {
   public void setup() {
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
-    RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
+    RequestBuilder requestBuilder =
+        MockSnowflakeServiceClient.createRequestBuilder(httpClient, enableIcebergStreaming);
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client",
@@ -340,7 +341,8 @@ public class SnowflakeStreamingIngestChannelTest {
         Utils.createKeyPairFromPrivateKey(
             (PrivateKey) prop.get(SFSessionProperty.PRIVATE_KEY.getPropertyKey()));
     RequestBuilder requestBuilder =
-        new RequestBuilder(url, prop.get(USER).toString(), keyPair, null, null);
+        new RequestBuilder(
+            url, prop.get(USER).toString(), keyPair, null, enableIcebergStreaming, null);
 
     Map<Object, Object> payload = new HashMap<>();
     payload.put("channel", "CHANNEL");

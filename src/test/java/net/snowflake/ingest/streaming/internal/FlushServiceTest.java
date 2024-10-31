@@ -118,7 +118,7 @@ public class FlushServiceTest {
           Mockito.spy(
               enableIcebergStreaming
                   ? new SubscopedTokenExternalVolumeManager(
-                      "role", "client", MockSnowflakeServiceClient.create())
+                      "role", "client", MockSnowflakeServiceClient.create(enableIcebergStreaming))
                   : new InternalStageManager(true, "role", "client", null));
       Mockito.doReturn(storage).when(storageManager).getStorage(ArgumentMatchers.any());
       Mockito.when(storageManager.getClientPrefix()).thenReturn("client_prefix");

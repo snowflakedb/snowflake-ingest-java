@@ -6,16 +6,33 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 import org.mockito.Mockito;
 
+@RunWith(Parameterized.class)
 public class TelemetryServiceTest {
+  @Parameters(name = "{index}: {0}")
+  public static Object[] icebergStreamingModes() {
+    return new Object[] {false};
+  }
+  ;
+
+  @Parameter public boolean enableIcebergStreaming;
+
   @Test
   public void testReportLatencyInSec() {
     CloseableHttpClient httpClient = Mockito.mock(CloseableHttpClient.class);
 
     TelemetryService telemetryService =
         Mockito.spy(
-            new TelemetryService(httpClient, "testReportLatencyInSec", "snowflake.dev.local:8082"));
+            new TelemetryService(
+                httpClient,
+                enableIcebergStreaming,
+                "testReportLatencyInSec",
+                "snowflake.dev.local:8082"));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
     MetricRegistry metrics = new MetricRegistry();
     Timer flushLatency = metrics.timer(MetricRegistry.name("latency", "flush"));
@@ -34,7 +51,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportClientFailure", "snowflake.dev.local:8082"));
+                httpClient,
+                enableIcebergStreaming,
+                "testReportClientFailure",
+                "snowflake.dev.local:8082"));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
 
     // Make sure there is no exception thrown
@@ -48,7 +68,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportThroughputBytesPerSecond", "snowflake.dev.local:8082"));
+                httpClient,
+                enableIcebergStreaming,
+                "testReportThroughputBytesPerSecond",
+                "snowflake.dev.local:8082"));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
     MetricRegistry metrics = new MetricRegistry();
     Meter uploadThroughput = metrics.meter(MetricRegistry.name("throughput", "upload"));
@@ -65,7 +88,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportCpuMemoryUsage", "snowflake.dev.local:8082"));
+                httpClient,
+                enableIcebergStreaming,
+                "testReportCpuMemoryUsage",
+                "snowflake.dev.local:8082"));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
     MetricRegistry metrics = new MetricRegistry();
     Histogram cpuHistogram = metrics.histogram(MetricRegistry.name("cpu", "usage", "histogram"));
@@ -81,7 +107,10 @@ public class TelemetryServiceTest {
     TelemetryService telemetryService =
         Mockito.spy(
             new TelemetryService(
-                httpClient, "testReportClientFailure", "snowflake.dev.local:8082"));
+                httpClient,
+                enableIcebergStreaming,
+                "testReportClientFailure",
+                "snowflake.dev.local:8082"));
     Mockito.doNothing().when(telemetryService).send(Mockito.any(), Mockito.any());
 
     // Make sure there is no exception thrown

@@ -54,6 +54,7 @@ public class StreamingIngestUtilsIT {
                 "testJWTRetries",
                 spyManager,
                 httpClient,
+                false /* enableIcebergMode */,
                 "testJWTRetries"));
 
     // build payload

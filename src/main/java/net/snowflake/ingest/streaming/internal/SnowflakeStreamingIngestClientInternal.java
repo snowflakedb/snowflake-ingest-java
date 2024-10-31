@@ -219,6 +219,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               prop.get(USER).toString(),
               credential,
               this.httpClient,
+              parameterProvider.isEnableIcebergStreaming(),
               String.format("%s_%s", this.name, System.currentTimeMillis()));
 
       logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
