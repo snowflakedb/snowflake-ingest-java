@@ -510,7 +510,8 @@ public class SnowflakeParquetValueParserTest {
                     0,
                     ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT));
     Assert.assertEquals(
-        "Unknown data type for logical: TIMESTAMP_NTZ, physical: SB4.", exception.getMessage());
+        "Unknown data type for column: testCol. logical: TIMESTAMP_NTZ, physical: SB4.",
+        exception.getMessage());
   }
 
   @Test
@@ -694,6 +695,7 @@ public class SnowflakeParquetValueParserTest {
                     0,
                     ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT));
     Assert.assertEquals(
-        "Unknown data type for logical: TIME, physical: SB16.", exception.getMessage());
+        "Unknown data type for column: testCol. logical: TIME, physical: SB16.",
+        exception.getMessage());
   }
 }

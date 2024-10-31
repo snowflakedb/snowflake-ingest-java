@@ -65,7 +65,10 @@ public class ParquetTypeGenerator {
         logicalType = AbstractRowBuffer.ColumnLogicalType.valueOf(column.getLogicalType());
       } catch (IllegalArgumentException e) {
         throw new SFException(
-            ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+            ErrorCode.UNKNOWN_DATA_TYPE,
+            column.getName(),
+            column.getLogicalType(),
+            column.getPhysicalType());
       }
 
       metadata.put(
@@ -137,7 +140,10 @@ public class ParquetTypeGenerator {
           break;
         default:
           throw new SFException(
-              ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+              ErrorCode.UNKNOWN_DATA_TYPE,
+              column.getName(),
+              column.getLogicalType(),
+              column.getPhysicalType());
       }
     }
     return new ParquetTypeInfo(parquetType, metadata);
@@ -196,7 +202,10 @@ public class ParquetTypeGenerator {
           break;
         default:
           throw new SFException(
-              ErrorCode.UNKNOWN_DATA_TYPE, column.getLogicalType(), column.getPhysicalType());
+              ErrorCode.UNKNOWN_DATA_TYPE,
+              column.getName(),
+              column.getLogicalType(),
+              column.getPhysicalType());
       }
     }
     return parquetType;
@@ -225,7 +234,9 @@ public class ParquetTypeGenerator {
     if (scale == null || scale > 9 || scale < 0 || !supportedPhysicalTypes.contains(physicalType)) {
       throw new SFException(
           ErrorCode.UNKNOWN_DATA_TYPE,
-          "Data type: " + logicalType + ", " + physicalType + ", scale: " + scale);
+          name,
+          String.format("%s(%d)", logicalType, scale),
+          physicalType);
     }
 
     PrimitiveType.PrimitiveTypeName type = getTimePrimitiveType(physicalType);
@@ -245,7 +256,7 @@ public class ParquetTypeGenerator {
         length = 16;
         break;
       default:
-        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, name, logicalType, physicalType);
     }
     return Types.primitive(type, repetition).as(typeAnnotation).length(length).id(id).named(name);
   }
