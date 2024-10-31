@@ -2047,21 +2047,31 @@ public class RowBufferTest {
           reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
     }
     {
-      Flusher.SerializationResult result =
-          flusher.serialize(Collections.singletonList(data), filePath, 13);
+      try {
+        Flusher.SerializationResult result =
+            flusher.serialize(Collections.singletonList(data), filePath, 13);
+        if (enableIcebergStreaming) {
+          Assert.fail(
+              "Should have thrown an exception because iceberg streams do not support offsets");
+        }
 
-      BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
-      Assert.assertEquals(
-          "testParquetFileNameMetadata_13.bdec",
-          reader
-              .getKeyValueMetadata()
-              .get(
-                  enableIcebergStreaming
-                      ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
-                      : Constants.PRIMARY_FILE_ID_KEY));
-      Assert.assertEquals(
-          RequestBuilder.DEFAULT_VERSION,
-          reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
+        BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
+        Assert.assertEquals(
+            "testParquetFileNameMetadata_13.bdec",
+            reader
+                .getKeyValueMetadata()
+                .get(
+                    enableIcebergStreaming
+                        ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+                        : Constants.PRIMARY_FILE_ID_KEY));
+        Assert.assertEquals(
+            RequestBuilder.DEFAULT_VERSION,
+            reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
+      } catch (IllegalStateException ex) {
+        if (!enableIcebergStreaming) {
+          throw ex;
+        }
+      }
     }
   }
 
