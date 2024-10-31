@@ -1226,9 +1226,8 @@ class DataValidationUtil {
     return new SFException(
         ErrorCode.INVALID_VALUE_ROW,
         String.format(
-            "Value cannot be ingested into Snowflake column %s of type %s, rowIndex:%d, column:%s,"
-                + " reason:%s",
-            columnName, snowflakeType, rowIndex, columnName, reason));
+            "Value cannot be ingested into Snowflake column %s of type %s, rowIndex:%d, reason: %s",
+            columnName, snowflakeType, rowIndex, reason));
   }
 
   /**
