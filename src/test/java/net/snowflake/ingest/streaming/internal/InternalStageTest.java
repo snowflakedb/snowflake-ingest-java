@@ -487,8 +487,9 @@ public class InternalStageTest {
             throw new RuntimeException(e);
           }
         });
+    workers.shutdown();
 
-    workers.awaitTermination(150, TimeUnit.MILLISECONDS);
+    Assert.assertTrue(workers.awaitTermination(1, TimeUnit.SECONDS));
 
     Mockito.verify(mockClient).execute(Mockito.any());
   }
