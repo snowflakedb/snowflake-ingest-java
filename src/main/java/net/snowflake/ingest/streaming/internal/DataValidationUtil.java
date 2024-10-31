@@ -627,8 +627,8 @@ class DataValidationUtil {
           ErrorCode.INVALID_VALUE_ROW,
           String.format(
               "Timestamp out of representable inclusive range of years between 1 and 9999,"
-                  + " rowIndex:%d",
-              insertRowIndex));
+                  + " rowIndex:%d, column:%s, value:%s",
+              insertRowIndex, columnName, offsetDateTime));
     }
     return new TimestampWrapper(offsetDateTime, scale);
   }
@@ -767,8 +767,8 @@ class DataValidationUtil {
           ErrorCode.INVALID_VALUE_ROW,
           String.format(
               "Date out of representable inclusive range of years between -9999 and 9999,"
-                  + " rowIndex:%d",
-              insertRowIndex));
+                  + " rowIndex:%d, column:%s, value:%s",
+              insertRowIndex, columnName, offsetDateTime));
     }
 
     return Math.toIntExact(offsetDateTime.toLocalDate().toEpochDay());
@@ -989,8 +989,8 @@ class DataValidationUtil {
           ErrorCode.INVALID_VALUE_ROW,
           String.format(
               "Number out of representable inclusive range of integers between %d and %d,"
-                  + " rowIndex:%d",
-              Integer.MIN_VALUE, Integer.MAX_VALUE, insertRowIndex));
+                  + " rowIndex:%d, column:%s, value:%s",
+              Integer.MIN_VALUE, Integer.MAX_VALUE, insertRowIndex, columnName, input));
     }
   }
 
@@ -1019,8 +1019,8 @@ class DataValidationUtil {
           ErrorCode.INVALID_VALUE_ROW,
           String.format(
               "Number out of representable inclusive range of integers between %d and %d,"
-                  + " rowIndex:%d",
-              Long.MIN_VALUE, Long.MAX_VALUE, insertRowIndex));
+                  + " rowIndex:%d, column:%s, value:%s",
+              Long.MIN_VALUE, Long.MAX_VALUE, insertRowIndex, columnName, input));
     }
   }
 
@@ -1082,8 +1082,9 @@ class DataValidationUtil {
         throw new SFException(
             ErrorCode.INVALID_FORMAT_ROW,
             String.format(
-                "Field name of struct %s must be of type String, rowIndex:%d",
-                columnName, insertRowIndex));
+                "Field name of struct typed column must be of type String, but found %s."
+                    + " rowIndex:%d, column:%s",
+                key.getClass().getName(), insertRowIndex, columnName));
       }
     }
 
@@ -1133,7 +1134,11 @@ class DataValidationUtil {
   }
 
   static void checkValueInRange(
-      BigDecimal bigDecimalValue, int scale, int precision, final long insertRowIndex) {
+      String columnName,
+      BigDecimal bigDecimalValue,
+      int scale,
+      int precision,
+      final long insertRowIndex) {
     BigDecimal comparand =
         (precision >= scale) && (precision - scale) < POWER_10.length
             ? POWER_10[precision - scale]
@@ -1142,18 +1147,20 @@ class DataValidationUtil {
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
           String.format(
-              "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d",
-              precision - scale, precision - scale, insertRowIndex));
+              "Number out of representable exclusive range of (-1e%s..1e%s), rowIndex:%d,"
+                  + " column:%s, value:%s",
+              precision - scale, precision - scale, insertRowIndex, columnName, bigDecimalValue));
     }
   }
 
-  static void checkFixedLengthByteArray(byte[] bytes, int length, final long insertRowIndex) {
+  static void checkFixedLengthByteArray(
+      String columnName, byte[] bytes, int length, final long insertRowIndex) {
     if (bytes.length != length) {
       throw new SFException(
           ErrorCode.INVALID_VALUE_ROW,
           String.format(
-              "Binary length mismatch: expected=%d, actual=%d, rowIndex:%d",
-              length, bytes.length, insertRowIndex));
+              "Binary length mismatch: expected:%d, actual:%d, rowIndex:%d, column:%s",
+              length, bytes.length, insertRowIndex, columnName));
     }
   }
 
@@ -1219,9 +1226,9 @@ class DataValidationUtil {
     return new SFException(
         ErrorCode.INVALID_VALUE_ROW,
         String.format(
-            "Value cannot be ingested into Snowflake column %s of type %s, rowIndex:%d, reason:"
-                + " %s",
-            columnName, snowflakeType, rowIndex, reason));
+            "Value cannot be ingested into Snowflake column %s of type %s, rowIndex:%d, column:%s,"
+                + " reason:%s",
+            columnName, snowflakeType, rowIndex, columnName, reason));
   }
 
   /**

@@ -148,6 +148,7 @@ class IcebergParquetValueParser {
           default:
             throw new SFException(
                 ErrorCode.UNKNOWN_DATA_TYPE,
+                path,
                 type.getLogicalTypeAnnotation(),
                 primitiveType.getPrimitiveTypeName());
         }
@@ -167,7 +168,11 @@ class IcebergParquetValueParser {
     if (value == null) {
       if (type.isRepetition(Repetition.REQUIRED)) {
         throw new SFException(
-            ErrorCode.INVALID_FORMAT_ROW, path, "Passed null to non nullable field");
+            ErrorCode.INVALID_FORMAT_ROW,
+            path,
+            String.format(
+                "Passed null to non nullable field, rowIndex:%d, column:%s",
+                insertRowsCurrIndex, path));
       }
       subColumnFinder
           .getSubColumns(path)
@@ -199,7 +204,7 @@ class IcebergParquetValueParser {
       return DataValidationUtil.validateAndParseDate(path, value, insertRowsCurrIndex);
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getPrimitiveTypeName());
   }
 
   /**
@@ -247,6 +252,7 @@ class IcebergParquetValueParser {
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE,
+        path,
         logicalTypeAnnotation,
         type.asPrimitiveType().getPrimitiveTypeName());
   }
@@ -283,7 +289,7 @@ class IcebergParquetValueParser {
       return string.getBytes(StandardCharsets.UTF_8);
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getPrimitiveTypeName());
   }
 
   /**
@@ -324,11 +330,11 @@ class IcebergParquetValueParser {
       }
     }
     if (bytes != null) {
-      checkFixedLengthByteArray(bytes, length, insertRowsCurrIndex);
+      checkFixedLengthByteArray(path, bytes, length, insertRowsCurrIndex);
       return bytes;
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getPrimitiveTypeName());
   }
 
   /**
@@ -347,7 +353,8 @@ class IcebergParquetValueParser {
     BigDecimal bigDecimalValue =
         DataValidationUtil.validateAndParseBigDecimal(path, value, insertRowsCurrIndex);
     bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-    DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, insertRowsCurrIndex);
+    DataValidationUtil.checkValueInRange(
+        path, bigDecimalValue, scale, precision, insertRowsCurrIndex);
     return bigDecimalValue;
   }
 
@@ -408,7 +415,7 @@ class IcebergParquetValueParser {
           value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex, path);
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getClass().getSimpleName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getClass().getSimpleName());
   }
 
   /**

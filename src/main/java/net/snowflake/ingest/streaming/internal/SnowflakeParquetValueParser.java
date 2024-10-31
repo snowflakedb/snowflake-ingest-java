@@ -128,7 +128,8 @@ class SnowflakeParquetValueParser {
           estimatedParquetSize += 16;
           break;
         default:
-          throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+          throw new SFException(
+              ErrorCode.UNKNOWN_DATA_TYPE, columnMetadata.getName(), logicalType, physicalType);
       }
     }
 
@@ -137,7 +138,7 @@ class SnowflakeParquetValueParser {
         throw new SFException(
             ErrorCode.INVALID_FORMAT_ROW,
             columnMetadata.getName(),
-            "Passed null to non nullable field");
+            String.format("Passed null to non nullable field, rowIndex:%d", insertRowsCurrIndex));
       }
       stats.incCurrentNullCount();
     }
@@ -180,11 +181,11 @@ class SnowflakeParquetValueParser {
             DataValidationUtil.validateAndParseBigDecimal(columnName, value, insertRowsCurrIndex);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
         DataValidationUtil.checkValueInRange(
-            bigDecimalValue, scale, precision, insertRowsCurrIndex);
+            columnName, bigDecimalValue, scale, precision, insertRowsCurrIndex);
         intVal = bigDecimalValue.intValue();
         break;
       default:
-        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, columnName, logicalType, physicalType);
     }
     return intVal;
   }
@@ -237,11 +238,11 @@ class SnowflakeParquetValueParser {
             DataValidationUtil.validateAndParseBigDecimal(columnName, value, insertRowsCurrIndex);
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
         DataValidationUtil.checkValueInRange(
-            bigDecimalValue, scale, precision, insertRowsCurrIndex);
+            columnName, bigDecimalValue, scale, precision, insertRowsCurrIndex);
         longValue = bigDecimalValue.longValue();
         break;
       default:
-        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, columnName, logicalType, physicalType);
     }
     return longValue;
   }
@@ -282,10 +283,10 @@ class SnowflakeParquetValueParser {
         // explicitly match the BigDecimal input scale with the Snowflake data type scale
         bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
         DataValidationUtil.checkValueInRange(
-            bigDecimalValue, scale, precision, insertRowsCurrIndex);
+            columnName, bigDecimalValue, scale, precision, insertRowsCurrIndex);
         return bigDecimalValue.unscaledValue();
       default:
-        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, logicalType, physicalType);
+        throw new SFException(ErrorCode.UNKNOWN_DATA_TYPE, columnName, logicalType, physicalType);
     }
   }
 
@@ -352,7 +353,10 @@ class SnowflakeParquetValueParser {
           break;
         default:
           throw new SFException(
-              ErrorCode.UNKNOWN_DATA_TYPE, logicalType, columnMetadata.getPhysicalType());
+              ErrorCode.UNKNOWN_DATA_TYPE,
+              columnMetadata.getName(),
+              logicalType,
+              columnMetadata.getPhysicalType());
       }
     } else {
       String maxLengthString = columnMetadata.getLength().toString();
