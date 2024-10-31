@@ -163,7 +163,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       String filePath, long chunkStartOffset, Map<String, String> metadata) {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
-    // http://go/streams-on-replicated-mixed-tables
+    // http://go/streams-on-replicated-mixed-tables,  and
+    // http://go/managed-iceberg-replication-change-tracking
     // Using chunk offset as suffix ensures that for interleaved tables, the file
     // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
     // to be bundled together.
@@ -174,13 +175,13 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               : Constants.PRIMARY_FILE_ID_KEY,
           StreamingIngestUtils.getShortname(filePath));
     } else {
+      Preconditions.checkState(
+          !enableIcebergStreaming, "Iceberg streaming is not supported with non-zero offsets");
       String shortName = StreamingIngestUtils.getShortname(filePath);
       final String[] parts = shortName.split("\\.");
       Preconditions.checkState(parts.length == 2, "Invalid file name format");
       metadata.put(
-          enableIcebergStreaming
-              ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
-              : Constants.PRIMARY_FILE_ID_KEY,
+          Constants.PRIMARY_FILE_ID_KEY,
           String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]));
     }
   }
