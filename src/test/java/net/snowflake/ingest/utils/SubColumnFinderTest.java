@@ -4,16 +4,17 @@
 
 package net.snowflake.ingest.utils;
 
-import static net.snowflake.ingest.utils.Utils.concatDotPath;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.Type;
 import org.junit.Test;
 
 public class SubColumnFinderTest {
@@ -102,39 +103,46 @@ public class SubColumnFinderTest {
 
   private void assertFindSubColumns(MessageType schema) {
     SubColumnFinder subColumnFinder = new SubColumnFinder(schema);
-    for (String dotPath : getAllPossibleDotPath(schema)) {
-      assertThat(subColumnFinder.getSubColumns(dotPath))
+    for (String id : getAllPossibleFieldId(schema)) {
+      assertThat(subColumnFinder.getSubColumns(id))
           .usingRecursiveComparison()
           .ignoringCollectionOrder()
-          .isEqualTo(findSubColumn(schema, dotPath));
+          .isEqualTo(findSubColumn(schema, id, false));
     }
   }
 
-  private Iterable<String> getAllPossibleDotPath(MessageType schema) {
-    Set<String> dotPaths = new HashSet<>();
+  private Iterable<String> getAllPossibleFieldId(MessageType schema) {
+    Set<String> ids = new HashSet<>();
     for (ColumnDescriptor column : schema.getColumns()) {
       String[] path = column.getPath();
       if (path.length == 0) {
         continue;
       }
-      String dotPath = path[0];
-      dotPaths.add(dotPath);
       for (int i = 1; i < path.length; i++) {
-        dotPath = concatDotPath(dotPath, path[i]);
-        dotPaths.add(dotPath);
+        Type type = schema.getType(Arrays.copyOfRange(path, 0, i));
+        if (type.getId() != null) {
+          ids.add(type.getId().toString());
+        }
       }
     }
-    return dotPaths;
+    return ids;
   }
 
-  private List<String> findSubColumn(MessageType schema, String dotPath) {
-    return schema.getColumns().stream()
-        .map(ColumnDescriptor::getPath)
-        .map(Utils::concatDotPath)
-        .filter(
-            s ->
-                s.startsWith(dotPath)
-                    && (s.length() == dotPath.length() || s.charAt(dotPath.length()) == '.'))
-        .collect(Collectors.toList());
+  private List<String> findSubColumn(Type node, String id, boolean isDescendant) {
+    if (node.getId() != null && node.getId().toString().equals(id)) {
+      isDescendant = true;
+    }
+    if (node.isPrimitive()) {
+      if (isDescendant) {
+        return Arrays.asList(node.getId().toString());
+      }
+      return new ArrayList<>();
+    }
+
+    List<String> subColumn = new ArrayList<>();
+    for (Type child : node.asGroupType().getFields()) {
+      subColumn.addAll(findSubColumn(child, id, isDescendant));
+    }
+    return subColumn;
   }
 }

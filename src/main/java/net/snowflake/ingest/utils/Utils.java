@@ -417,20 +417,21 @@ public class Utils {
   }
 
   /**
-   * Get concat dot path, check if any path is empty or null
+   * Get concat dot path, check if any path is empty or null. Escape the dot field name to avoid
+   * column name collision.
    *
    * @param path the path
    */
   public static String concatDotPath(String... path) {
     StringBuilder sb = new StringBuilder();
     for (String p : path) {
-      if (isNullOrEmpty(p)) {
-        throw new IllegalArgumentException("Path cannot be null or empty");
+      if (p == null) {
+        throw new IllegalArgumentException("Path cannot be null");
       }
       if (sb.length() > 0) {
         sb.append(".");
       }
-      sb.append(p);
+      sb.append(p.replace("\\", "\\\\").replace(".", "\\."));
     }
     return sb.toString();
   }
