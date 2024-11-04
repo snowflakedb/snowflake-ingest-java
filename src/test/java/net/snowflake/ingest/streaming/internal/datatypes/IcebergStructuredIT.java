@@ -4,12 +4,18 @@
 
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -236,6 +242,76 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
         val);
   }
 
+  @Test
+  public void testExtraFields() throws SQLException {
+    String tableName = createIcebergTable("object(k1 int)");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+    Map<String, Object> row = new HashMap<>();
+    row.put("k2", 1);
+    row.put("k.3", 1);
+    row.put("k\\4", 1);
+    InsertValidationResponse insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(row), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getExtraColNames())
+        .containsOnly("VALUE.k2", "VALUE.k\\.3", "VALUE.k\\\\4");
+
+    tableName = createIcebergTable("map(string, array(object(k1 int)))");
+    channel = openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+    row.put(
+        "key1",
+        new ArrayList<Object>() {
+          {
+            add(
+                new HashMap<String, Object>() {
+                  {
+                    put("k2", 1);
+                  }
+                });
+          }
+        });
+    insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(row), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getExtraColNames())
+        .containsOnly("VALUE.key_value.value.list.element.k2");
+  }
+
+  @Test
+  public void testMissingFields() throws SQLException {
+    String tableName = createIcebergTable("object(k1 int not null, k2 int not null) not null");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+
+    InsertValidationResponse insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(null), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getNullValueForNotNullColNames())
+        .containsOnly("VALUE");
+
+    insertValidationResponse =
+        channel.insertRow(
+            createStreamingIngestRow(new HashMap<String, Object>()), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getMissingNotNullColNames())
+        .containsOnly("VALUE.k1", "VALUE.k2");
+
+    insertValidationResponse =
+        channel.insertRow(
+            createStreamingIngestRow(
+                new HashMap<String, Object>() {
+                  {
+                    put("k1", null);
+                    put("k2", null);
+                  }
+                }),
+            UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getNullValueForNotNullColNames())
+        .containsOnly("VALUE.k1");
+  }
+
   private void assertStructuredDataType(String dataType, String value) throws Exception {
     String tableName = createIcebergTable(dataType);
     String offsetToken = UUID.randomUUID().toString();
@@ -255,7 +331,7 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     String tmp = res.getString(2);
     JsonNode actualNode = tmp == null ? null : objectMapper.readTree(tmp);
     JsonNode expectedNode = value == null ? null : objectMapper.readTree(value);
-    Assertions.assertThat(actualNode).isEqualTo(expectedNode);
+    assertThat(actualNode).isEqualTo(expectedNode);
   }
 
   private void assertMap(String dataType, Map<?, ?> value) throws Exception {
@@ -274,6 +350,6 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     String tmp = res.getString(2);
     JsonNode actualNode = tmp == null ? null : objectMapper.readTree(tmp);
     JsonNode expectedNode = value == null ? null : objectMapper.valueToTree(value);
-    Assertions.assertThat(actualNode).isEqualTo(expectedNode);
+    assertThat(actualNode).isEqualTo(expectedNode);
   }
 }

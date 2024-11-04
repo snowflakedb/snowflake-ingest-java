@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.TelemetryService;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
@@ -275,8 +276,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int bufferedRowIndex,
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
-      final long insertRowIndex) {
-    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex);
+      final long insertRowIndex,
+      InsertValidationResponse.InsertError error) {
+    return addRow(row, this::writeRow, statsMap, formattedInputColumnNames, insertRowIndex, error);
   }
 
   void writeRow(List<Object> row) {
@@ -289,8 +291,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       int curRowIndex,
       Map<String, RowBufferStats> statsMap,
       Set<String> formattedInputColumnNames,
-      long insertRowIndex) {
-    return addRow(row, tempData::add, statsMap, formattedInputColumnNames, insertRowIndex);
+      long insertRowIndex,
+      InsertValidationResponse.InsertError error) {
+    return addRow(row, tempData::add, statsMap, formattedInputColumnNames, insertRowIndex, error);
   }
 
   /**
@@ -303,6 +306,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
    * @param insertRowsCurrIndex Row index of the input Rows passed in {@link
    *     net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel#insertRows(Iterable,
    *     String)}
+   * @param error insertion error object to populate if there is an error
    * @return row size
    */
   private float addRow(
@@ -310,7 +314,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       Consumer<List<Object>> out,
       Map<String, RowBufferStats> statsMap,
       Set<String> inputColumnNames,
-      long insertRowsCurrIndex) {
+      long insertRowsCurrIndex,
+      InsertValidationResponse.InsertError error) {
     Object[] indexedRow = new Object[fieldIndex.size()];
     float size = 0F;
 
@@ -333,7 +338,8 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
                   forkedStatsMap,
                   subColumnFinder,
                   defaultTimezone,
-                  insertRowsCurrIndex)
+                  insertRowsCurrIndex,
+                  error)
               : SnowflakeParquetValueParser.parseColumnValueToParquet(
                   value,
                   column,

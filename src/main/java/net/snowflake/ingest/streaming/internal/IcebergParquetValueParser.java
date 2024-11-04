@@ -5,6 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.checkFixedLengthByteArray;
+import static net.snowflake.ingest.utils.Utils.concatDotPath;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -49,6 +51,7 @@ class IcebergParquetValueParser {
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Row index corresponding the row to parse (w.r.t input rows in
    *     insertRows API, and not buffered row)
+   * @param error InsertError object to add errors
    * @return parsed value and byte size of Parquet internal representation
    */
   static ParquetBufferValue parseColumnValueToParquet(
@@ -57,10 +60,18 @@ class IcebergParquetValueParser {
       Map<String, RowBufferStats> statsMap,
       SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
-      long insertRowsCurrIndex) {
+      long insertRowsCurrIndex,
+      InsertValidationResponse.InsertError error) {
     Utils.assertNotNull("Parquet column stats map", statsMap);
     return parseColumnValueToParquet(
-        value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex, false);
+        value,
+        type,
+        statsMap,
+        subColumnFinder,
+        defaultTimezone,
+        insertRowsCurrIndex,
+        false /* isDescendantsOfRepeatingGroup */,
+        error);
   }
 
   private static ParquetBufferValue parseColumnValueToParquet(
@@ -70,7 +81,8 @@ class IcebergParquetValueParser {
       SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       long insertRowsCurrIndex,
-      boolean isDescendantsOfRepeatingGroup) {
+      boolean isDescendantsOfRepeatingGroup,
+      InsertValidationResponse.InsertError error) {
     float estimatedParquetSize = 0F;
 
     if (type.getId() == null) {
@@ -160,12 +172,16 @@ class IcebergParquetValueParser {
             subColumnFinder,
             defaultTimezone,
             insertRowsCurrIndex,
-            isDescendantsOfRepeatingGroup);
+            isDescendantsOfRepeatingGroup,
+            error);
       }
     }
 
     if (value == null) {
       if (type.isRepetition(Repetition.REQUIRED)) {
+        if (error != null) {
+          error.addNullValueForNotNullColName(subColumnFinder.getDotPath(id));
+        }
         throw new SFException(
             ErrorCode.INVALID_FORMAT_ROW,
             subColumnFinder.getDotPath(id),
@@ -381,6 +397,7 @@ class IcebergParquetValueParser {
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @param isDescendantsOfRepeatingGroup true if the column is a descendant of a repeating group,
+   * @param error InsertError object to add errors
    * @return list of parsed values
    */
   private static ParquetBufferValue getGroupValue(
@@ -390,7 +407,8 @@ class IcebergParquetValueParser {
       SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
-      boolean isDescendantsOfRepeatingGroup) {
+      boolean isDescendantsOfRepeatingGroup,
+      InsertValidationResponse.InsertError error) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation == null) {
       return getStructValue(
@@ -400,15 +418,16 @@ class IcebergParquetValueParser {
           subColumnFinder,
           defaultTimezone,
           insertRowsCurrIndex,
-          isDescendantsOfRepeatingGroup);
+          isDescendantsOfRepeatingGroup,
+          error);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
       return get3LevelListValue(
-          value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex);
+          value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex, error);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation) {
       return get3LevelMapValue(
-          value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex);
+          value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex, error);
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE,
@@ -429,28 +448,68 @@ class IcebergParquetValueParser {
       SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
-      boolean isDescendantsOfRepeatingGroup) {
+      boolean isDescendantsOfRepeatingGroup,
+      InsertValidationResponse.InsertError error) {
     Map<String, ?> structVal =
         DataValidationUtil.validateAndParseIcebergStruct(
             subColumnFinder.getDotPath(type.getId()), value, insertRowsCurrIndex);
     Set<String> extraFields = new HashSet<>(structVal.keySet());
+    List<String> missingFields = new ArrayList<>();
     List<Object> listVal = new ArrayList<>(type.getFieldCount());
     float estimatedParquetSize = 0f;
     for (int i = 0; i < type.getFieldCount(); i++) {
-      ParquetBufferValue parsedValue =
-          parseColumnValueToParquet(
-              structVal.getOrDefault(type.getFieldName(i), null),
-              type.getType(i),
-              statsMap,
-              subColumnFinder,
-              defaultTimezone,
-              insertRowsCurrIndex,
-              isDescendantsOfRepeatingGroup);
       extraFields.remove(type.getFieldName(i));
-      listVal.add(parsedValue.getValue());
-      estimatedParquetSize += parsedValue.getSize();
+      if (structVal.containsKey(type.getFieldName(i))) {
+        ParquetBufferValue parsedValue =
+            parseColumnValueToParquet(
+                structVal.get(type.getFieldName(i)),
+                type.getType(i),
+                statsMap,
+                subColumnFinder,
+                defaultTimezone,
+                insertRowsCurrIndex,
+                isDescendantsOfRepeatingGroup,
+                error);
+        listVal.add(parsedValue.getValue());
+        estimatedParquetSize += parsedValue.getSize();
+      } else {
+        if (type.getType(i).isRepetition(Repetition.REQUIRED)) {
+          missingFields.add(type.getFieldName(i));
+        } else {
+          listVal.add(null);
+        }
+      }
     }
+
+    if (!missingFields.isEmpty()) {
+      missingFields.forEach(
+          missingField -> {
+            if (error != null) {
+              List<String> missingFieldPath =
+                  new ArrayList<>(subColumnFinder.getPath(type.getId()));
+              missingFieldPath.add(missingField);
+              error.addMissingNotNullColName(
+                  concatDotPath(missingFieldPath.toArray(new String[0])));
+            }
+          });
+      String missingFieldsStr = missingFields.stream().collect(Collectors.joining(", ", "[", "]"));
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          "Missing fields: " + missingFieldsStr,
+          String.format(
+              "Fields %s are required but not present in the struct %s, rowIndex:%d",
+              missingFieldsStr, subColumnFinder.getDotPath(type.getId()), insertRowsCurrIndex));
+    }
+
     if (!extraFields.isEmpty()) {
+      extraFields.forEach(
+          extraField -> {
+            if (error != null) {
+              List<String> extraFieldPath = new ArrayList<>(subColumnFinder.getPath(type.getId()));
+              extraFieldPath.add(extraField);
+              error.addExtraColName(concatDotPath(extraFieldPath.toArray(new String[0])));
+            }
+          });
       String extraFieldsStr = extraFields.stream().collect(Collectors.joining(", ", "[", "]"));
       throw new SFException(
           ErrorCode.INVALID_FORMAT_ROW,
@@ -475,7 +534,8 @@ class IcebergParquetValueParser {
       Map<String, RowBufferStats> statsMap,
       SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
-      final long insertRowsCurrIndex) {
+      final long insertRowsCurrIndex,
+      InsertValidationResponse.InsertError error) {
     Iterable<?> iterableVal =
         DataValidationUtil.validateAndParseIcebergList(
             subColumnFinder.getDotPath(type.getId()), value, insertRowsCurrIndex);
@@ -490,7 +550,8 @@ class IcebergParquetValueParser {
               subColumnFinder,
               defaultTimezone,
               insertRowsCurrIndex,
-              true);
+              true /* isDecedentOfRepeatingGroup */,
+              error);
       listVal.add(Collections.singletonList(parsedValue.getValue()));
       estimatedParquetSize += parsedValue.getSize();
     }
@@ -515,7 +576,8 @@ class IcebergParquetValueParser {
       Map<String, RowBufferStats> statsMap,
       SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
-      final long insertRowsCurrIndex) {
+      final long insertRowsCurrIndex,
+      InsertValidationResponse.InsertError error) {
     Map<?, ?> mapVal =
         DataValidationUtil.validateAndParseIcebergMap(
             subColumnFinder.getDotPath(type.getId()), value, insertRowsCurrIndex);
@@ -530,7 +592,8 @@ class IcebergParquetValueParser {
               subColumnFinder,
               defaultTimezone,
               insertRowsCurrIndex,
-              true);
+              true /* isDecedentOfRepeatingGroup */,
+              error);
       ParquetBufferValue parsedValue =
           parseColumnValueToParquet(
               entry.getValue(),
@@ -539,7 +602,8 @@ class IcebergParquetValueParser {
               subColumnFinder,
               defaultTimezone,
               insertRowsCurrIndex,
-              true);
+              true /* isDecedentOfRepeatingGroup */,
+              error);
       listVal.add(Arrays.asList(parsedKey.getValue(), parsedValue.getValue()));
       estimatedParquetSize += parsedKey.getSize() + parsedValue.getSize();
     }

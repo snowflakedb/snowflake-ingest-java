@@ -60,7 +60,7 @@ public class IcebergParquetValueParserTest {
 
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            true, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            true, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -85,7 +85,7 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            Integer.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            Integer.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -113,7 +113,13 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            new BigDecimal("12345.6789"), type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            new BigDecimal("12345.6789"),
+            type,
+            rowBufferStatsMap,
+            mockSubColumnFinder,
+            UTC,
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -141,7 +147,7 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            "2024-01-01", type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            "2024-01-01", type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -166,7 +172,7 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            Long.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            Long.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -199,7 +205,8 @@ public class IcebergParquetValueParserTest {
             rowBufferStatsMap,
             mockSubColumnFinder,
             UTC,
-            0);
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -227,7 +234,7 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            "12:34:56.789", type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            "12:34:56.789", type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -255,7 +262,13 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            "2024-01-01T12:34:56.789+08:00", type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            "2024-01-01T12:34:56.789+08:00",
+            type,
+            rowBufferStatsMap,
+            mockSubColumnFinder,
+            UTC,
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -283,7 +296,13 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            "2024-01-01T12:34:56.789+08:00", type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            "2024-01-01T12:34:56.789+08:00",
+            type,
+            rowBufferStatsMap,
+            mockSubColumnFinder,
+            UTC,
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -308,7 +327,7 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            Float.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            Float.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -333,7 +352,7 @@ public class IcebergParquetValueParserTest {
         };
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            Double.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            Double.MAX_VALUE, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -359,7 +378,7 @@ public class IcebergParquetValueParserTest {
     byte[] value = "snowflake_to_the_moon".getBytes();
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -389,7 +408,7 @@ public class IcebergParquetValueParserTest {
     String value = "snowflake_to_the_moon";
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -421,7 +440,7 @@ public class IcebergParquetValueParserTest {
     byte[] value = "snow".getBytes();
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -452,7 +471,7 @@ public class IcebergParquetValueParserTest {
     BigDecimal value = new BigDecimal("1234567890.0123456789");
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .rowBufferStats(rowBufferStats)
@@ -480,10 +499,16 @@ public class IcebergParquetValueParserTest {
         };
 
     IcebergParquetValueParser.parseColumnValueToParquet(
-        null, list, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+        null, list, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            Arrays.asList(1, 2, 3, 4, 5), list, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            Arrays.asList(1, 2, 3, 4, 5),
+            list,
+            rowBufferStatsMap,
+            mockSubColumnFinder,
+            UTC,
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .rowBufferStats(rowBufferStats)
         .parquetBufferValue(pv)
@@ -507,10 +532,10 @@ public class IcebergParquetValueParserTest {
         SFException.class,
         () ->
             IcebergParquetValueParser.parseColumnValueToParquet(
-                null, requiredList, rowBufferStatsMap, mockSubColumnFinder, UTC, 0));
+                null, requiredList, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null));
     pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
-            new ArrayList<>(), requiredList, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+            new ArrayList<>(), requiredList, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .rowBufferStats(rowBufferStats)
         .parquetBufferValue(pv)
@@ -536,7 +561,8 @@ public class IcebergParquetValueParserTest {
                 rowBufferStatsMap,
                 mockSubColumnFinder,
                 UTC,
-                0));
+                0,
+                null));
   }
 
   @Test
@@ -557,7 +583,7 @@ public class IcebergParquetValueParserTest {
           }
         };
     IcebergParquetValueParser.parseColumnValueToParquet(
-        null, map, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+        null, map, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<Integer, Integer>() {
@@ -570,7 +596,8 @@ public class IcebergParquetValueParserTest {
             rowBufferStatsMap,
             mockSubColumnFinder,
             UTC,
-            0);
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .rowBufferStats(rowBufferKeyStats)
         .parquetBufferValue(pv)
@@ -596,7 +623,7 @@ public class IcebergParquetValueParserTest {
         SFException.class,
         () ->
             IcebergParquetValueParser.parseColumnValueToParquet(
-                null, requiredMap, rowBufferStatsMap, mockSubColumnFinder, UTC, 0));
+                null, requiredMap, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null));
     pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<Integer, Integer>(),
@@ -604,7 +631,8 @@ public class IcebergParquetValueParserTest {
             rowBufferStatsMap,
             mockSubColumnFinder,
             UTC,
-            0);
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .rowBufferStats(rowBufferKeyStats)
         .parquetBufferValue(pv)
@@ -635,7 +663,8 @@ public class IcebergParquetValueParserTest {
                 rowBufferStatsMap,
                 mockSubColumnFinder,
                 UTC,
-                0));
+                0,
+                null));
   }
 
   @Test
@@ -662,7 +691,7 @@ public class IcebergParquetValueParserTest {
         };
 
     IcebergParquetValueParser.parseColumnValueToParquet(
-        null, struct, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+        null, struct, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
     Assert.assertThrows(
         SFException.class,
         () ->
@@ -676,7 +705,8 @@ public class IcebergParquetValueParserTest {
                 rowBufferStatsMap,
                 mockSubColumnFinder,
                 UTC,
-                0));
+                0,
+                null));
     Assert.assertThrows(
         SFException.class,
         () ->
@@ -690,7 +720,8 @@ public class IcebergParquetValueParserTest {
                 rowBufferStatsMap,
                 mockSubColumnFinder,
                 UTC,
-                0));
+                0,
+                null));
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             Collections.unmodifiableMap(
@@ -704,7 +735,8 @@ public class IcebergParquetValueParserTest {
             rowBufferStatsMap,
             mockSubColumnFinder,
             UTC,
-            0);
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .expectedValueClass(ArrayList.class)
@@ -729,7 +761,7 @@ public class IcebergParquetValueParserTest {
         SFException.class,
         () ->
             IcebergParquetValueParser.parseColumnValueToParquet(
-                null, requiredStruct, rowBufferStatsMap, mockSubColumnFinder, UTC, 0));
+                null, requiredStruct, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null));
     pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<String, Object>(),
@@ -737,7 +769,8 @@ public class IcebergParquetValueParserTest {
             rowBufferStatsMap,
             mockSubColumnFinder,
             UTC,
-            0);
+            0,
+            null);
     ParquetValueParserAssertionBuilder.newBuilder()
         .parquetBufferValue(pv)
         .expectedValueClass(ArrayList.class)
@@ -758,7 +791,7 @@ public class IcebergParquetValueParserTest {
       List<?> reference = (List<?>) res.getSecond();
       ParquetBufferValue pv =
           IcebergParquetValueParser.parseColumnValueToParquet(
-              value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0);
+              value, type, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
       ParquetValueParserAssertionBuilder.newBuilder()
           .parquetBufferValue(pv)
           .expectedValueClass(ArrayList.class)

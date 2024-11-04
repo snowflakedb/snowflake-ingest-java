@@ -30,11 +30,13 @@ public class SubColumnFinder {
 
     /* Dot path of the node. */
     final String dotPath;
+    final List<String> path;
 
-    SubtreeInfo(int startTag, int endTag, String dotPath) {
+    SubtreeInfo(int startTag, int endTag, String dotPath, List<String> path) {
       this.startTag = startTag;
       this.endTag = endTag;
       this.dotPath = dotPath;
+      this.path = path;
     }
   }
 
@@ -78,6 +80,19 @@ public class SubColumnFinder {
   }
 
   /**
+   * Get the path of a node in the schema.
+   *
+   * @param id Field ID of the node
+   * @return Path of the node
+   */
+  public List<String> getPath(Type.ID id) {
+    if (!accessMap.containsKey(id)) {
+      throw new IllegalArgumentException(String.format("Field %s not found in schema", id));
+    }
+    return accessMap.get(id).path;
+  }
+
+  /**
    * Build the list of leaf columns in preorder traversal and the map of field id to the interval of
    * a node's leaf columns in the list.
    *
@@ -106,7 +121,10 @@ public class SubColumnFinder {
       accessMap.put(
           node.getId(),
           new SubtreeInfo(
-              startTag, list.size(), concatDotPath(currentPath.toArray(new String[0]))));
+              startTag,
+              list.size(),
+              concatDotPath(currentPath.toArray(new String[0])),
+              new ArrayList<>(currentPath)));
     }
     if (!currentPath.isEmpty()) {
       /* Remove the last element of the path at the end of recursion. */
