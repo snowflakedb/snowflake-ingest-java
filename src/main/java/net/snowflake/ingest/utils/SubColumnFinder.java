@@ -77,6 +77,15 @@ public class SubColumnFinder {
     return accessMap.get(id).dotPath;
   }
 
+  /**
+   * Build the list of leaf columns in preorder traversal and the map of field id to the interval of
+   * a node's leaf columns in the list.
+   *
+   * @param node The node to build the list and accessMap for its children.
+   * @param currentPath The current path of the node. This serve like a stack and used to keep track
+   *     of the dot path of current node. Always pop the last element of the path at the end of the
+   *     recursion
+   */
   private void build(Type node, List<String> currentPath) {
     if (currentPath == null) {
       /* Ignore root node type name (bdec or schema) */
