@@ -69,4 +69,106 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
     verifyMultipleColumns(
         tableName, Collections.singletonList(newValue), Arrays.asList(value, newValue), "id");
   }
+
+  @Test
+  public void testStructType() throws Exception {
+    String tableName = createIcebergTableWithColumns("id int, object_col object(a int)");
+    Map<String, Object> value = new HashMap<>();
+    value.put("id", 0L);
+    value.put("object_col", Collections.singletonMap("a", 1));
+    verifyMultipleColumns(
+        tableName, Collections.singletonList(value), Collections.singletonList(value), "id");
+
+    conn.createStatement()
+        .execute(
+            String.format(
+                "ALTER ICEBERG TABLE %s ALTER COLUMN object_col SET DATA TYPE object(a int, b int)",
+                tableName));
+    value.put(
+        "object_col",
+        new HashMap<String, Object>() {
+          {
+            put("a", 1);
+            put("b", null);
+          }
+        });
+
+    Map<String, Object> newValue = new HashMap<>();
+    newValue.put("id", 1L);
+    newValue.put(
+        "object_col",
+        new HashMap<String, Object>() {
+          {
+            put("a", 2);
+            put("b", 3);
+          }
+        });
+    verifyMultipleColumns(
+        tableName, Collections.singletonList(newValue), Arrays.asList(value, newValue), "id");
+  }
+
+  @Test
+  public void testNestedDataType() throws Exception {
+    String tableName =
+        createIcebergTableWithColumns(
+            "id int, object_col object(map_col map(string, array(object(a int))))");
+    Map<String, Object> value = new HashMap<>();
+    value.put("id", 0L);
+    value.put(
+        "object_col",
+        Collections.singletonMap(
+            "map_col",
+            Collections.singletonMap(
+                "key", Collections.singletonList(Collections.singletonMap("a", 1)))));
+    verifyMultipleColumns(
+        tableName, Collections.singletonList(value), Collections.singletonList(value), "id");
+
+    conn.createStatement()
+        .execute(
+            String.format(
+                "ALTER ICEBERG TABLE %s ALTER COLUMN object_col SET DATA TYPE object(map_col"
+                    + " map(string, array(object(a int, b int))), map_col_2 map(string, int))",
+                tableName));
+    value.put(
+        "object_col",
+        new HashMap<String, Object>() {
+          {
+            put(
+                "map_col",
+                Collections.singletonMap(
+                    "key",
+                    Collections.singletonList(
+                        new HashMap<String, Object>() {
+                          {
+                            put("a", 1);
+                            put("b", null);
+                          }
+                        })));
+            put("map_col_2", null);
+          }
+        });
+
+    Map<String, Object> newValue = new HashMap<>();
+    newValue.put("id", 1L);
+    newValue.put(
+        "object_col",
+        new HashMap<String, Object>() {
+          {
+            put(
+                "map_col",
+                Collections.singletonMap(
+                    "key",
+                    Collections.singletonList(
+                        new HashMap<String, Object>() {
+                          {
+                            put("a", 2);
+                            put("b", 3);
+                          }
+                        })));
+            put("map_col_2", Collections.singletonMap("key", 4));
+          }
+        });
+    verifyMultipleColumns(
+        tableName, Collections.singletonList(newValue), Arrays.asList(value, newValue), "id");
+  }
 }
