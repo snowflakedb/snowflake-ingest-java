@@ -10,7 +10,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.snowflake.ingest.TestUtils;
@@ -276,6 +278,66 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
     assertThat(insertValidationResponse.getInsertErrors().get(0).getExtraColNames())
         .containsOnly("VALUE.key_value.value.list.element.k2");
+  }
+
+  @Test
+  public void testNestedExtraFields() throws SQLException {
+    String tableName =
+        createIcebergTable(
+            "array(map(string, object(k1 int, k2 long, k3 string, k4 boolean, k5 double, k6"
+                + " fixed(10), k7 binary, k8 decimal(38, 10), k9 date, k10 time, k11 timestamp, k12"
+                + " timestamp_ltz)))");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+    List<Object> row =
+        Collections.singletonList(
+            Collections.singletonMap(
+                "key",
+                new HashMap<String, Object>() {
+                  {
+                    put("_k1", 1);
+                    put("k1", 1);
+                    put("_k2", 2);
+                    put("k2", 2);
+                    put("_k3", "3");
+                    put("k3", "3");
+                    put("_k4", true);
+                    put("k4", true);
+                    put("_k5", 5.0);
+                    put("k5", 5.0);
+                    put("_k6", "41424344454647484950");
+                    put("k6", "41424344454647484950");
+                    put("_k7", "41424344");
+                    put("k7", "41424344");
+                    put("_k8", "1234567890.1234567890");
+                    put("k8", "1234567890.1234567890");
+                    put("_k9", "2024-01-01");
+                    put("k9", "2024-01-01");
+                    put("_k10", "12:00:00");
+                    put("k10", "12:00:00");
+                    put("_k11", "2024-01-01T12:00:00.000000");
+                    put("k11", "2024-01-01T12:00:00.000000");
+                    put("_k12", "2024-01-01T12:00:00.000000+08:00");
+                    put("k12", "2024-01-01T12:00:00.000000+08:00");
+                  }
+                }));
+    InsertValidationResponse insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(row), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getExtraColNames())
+        .containsOnly(
+            "VALUE.list.element.key_value.value._k1",
+            "VALUE.list.element.key_value.value._k2",
+            "VALUE.list.element.key_value.value._k3",
+            "VALUE.list.element.key_value.value._k4",
+            "VALUE.list.element.key_value.value._k5",
+            "VALUE.list.element.key_value.value._k6",
+            "VALUE.list.element.key_value.value._k7",
+            "VALUE.list.element.key_value.value._k8",
+            "VALUE.list.element.key_value.value._k9",
+            "VALUE.list.element.key_value.value._k10",
+            "VALUE.list.element.key_value.value._k11",
+            "VALUE.list.element.key_value.value._k12");
   }
 
   @Test
