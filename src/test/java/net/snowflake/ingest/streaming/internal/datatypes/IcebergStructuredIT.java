@@ -68,6 +68,9 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
                       }
                     }))
         .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: VALUE.key_value.key. "
+                + "Passed null to non nullable field, rowIndex:0, column:VALUE.key_value.key")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
@@ -76,6 +79,9 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
             () ->
                 assertStructuredDataType("object(a int, b string)", "{\"a\": 1, \"c\": \"test\"}"))
         .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Extra fields: [c]. "
+                + "Fields not present in the struct VALUE shouldn't be specified, rowIndex:0")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
@@ -83,14 +89,26 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     Assertions.assertThatThrownBy(
             () -> assertStructuredDataType("object(a int, b string, c boolean) not null", null))
         .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Not-nullable columns with"
+                + " null values: [VALUE]. Values for all non-nullable columns must not be null,"
+                + " rowIndex:0")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
     Assertions.assertThatThrownBy(() -> assertStructuredDataType("map(string, int) not null", null))
         .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Not-nullable columns with"
+                + " null values: [VALUE]. Values for all non-nullable columns must not be null,"
+                + " rowIndex:0")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
     Assertions.assertThatThrownBy(() -> assertStructuredDataType("array(int) not null", null))
         .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Not-nullable columns with"
+                + " null values: [VALUE]. Values for all non-nullable columns must not be null,"
+                + " rowIndex:0")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
   }

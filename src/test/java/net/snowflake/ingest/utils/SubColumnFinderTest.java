@@ -103,7 +103,7 @@ public class SubColumnFinderTest {
 
   private void assertFindSubColumns(MessageType schema) {
     SubColumnFinder subColumnFinder = new SubColumnFinder(schema);
-    for (String id : getAllPossibleFieldId(schema)) {
+    for (Type.ID id : getAllPossibleFieldId(schema)) {
       assertThat(subColumnFinder.getSubColumns(id))
           .usingRecursiveComparison()
           .ignoringCollectionOrder()
@@ -111,8 +111,8 @@ public class SubColumnFinderTest {
     }
   }
 
-  private Iterable<String> getAllPossibleFieldId(MessageType schema) {
-    Set<String> ids = new HashSet<>();
+  private Iterable<Type.ID> getAllPossibleFieldId(MessageType schema) {
+    Set<Type.ID> ids = new HashSet<>();
     for (ColumnDescriptor column : schema.getColumns()) {
       String[] path = column.getPath();
       if (path.length == 0) {
@@ -121,15 +121,15 @@ public class SubColumnFinderTest {
       for (int i = 1; i < path.length; i++) {
         Type type = schema.getType(Arrays.copyOfRange(path, 0, i));
         if (type.getId() != null) {
-          ids.add(type.getId().toString());
+          ids.add(type.getId());
         }
       }
     }
     return ids;
   }
 
-  private List<String> findSubColumn(Type node, String id, boolean isDescendant) {
-    if (node.getId() != null && node.getId().toString().equals(id)) {
+  private List<String> findSubColumn(Type node, Type.ID id, boolean isDescendant) {
+    if (node.getId() != null && node.getId().equals(id)) {
       isDescendant = true;
     }
     if (node.isPrimitive()) {

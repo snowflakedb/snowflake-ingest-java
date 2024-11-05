@@ -77,20 +77,19 @@ class IcebergParquetValueParser {
       throw new SFException(
           ErrorCode.INTERNAL_ERROR, String.format("Id not found for field: %s", type.getName()));
     }
-    String id = type.getId().toString();
+    Type.ID id = type.getId();
 
     if (type.isPrimitive()) {
-      if (!statsMap.containsKey(id)) {
+      if (!statsMap.containsKey(id.toString())) {
         throw new SFException(
-            ErrorCode.INTERNAL_ERROR,
-            String.format("Stats not found for fieldId: %s", type.getId()));
+            ErrorCode.INTERNAL_ERROR, String.format("Stats not found. id=%s", type.getId()));
       }
     }
 
     if (value != null) {
       String path = subColumnFinder.getDotPath(id);
       if (type.isPrimitive()) {
-        RowBufferStats stats = statsMap.get(id);
+        RowBufferStats stats = statsMap.get(id.toString());
         estimatedParquetSize += ParquetBufferValue.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
         estimatedParquetSize +=
             isDescendantsOfRepeatingGroup
@@ -413,7 +412,7 @@ class IcebergParquetValueParser {
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE,
-        subColumnFinder.getDotPath(type.getId().toString()),
+        subColumnFinder.getDotPath(type.getId()),
         logicalTypeAnnotation,
         type.getClass().getSimpleName());
   }
@@ -433,7 +432,7 @@ class IcebergParquetValueParser {
       boolean isDescendantsOfRepeatingGroup) {
     Map<String, ?> structVal =
         DataValidationUtil.validateAndParseIcebergStruct(
-            subColumnFinder.getDotPath(type.getId().toString()), value, insertRowsCurrIndex);
+            subColumnFinder.getDotPath(type.getId()), value, insertRowsCurrIndex);
     Set<String> extraFields = new HashSet<>(structVal.keySet());
     List<Object> listVal = new ArrayList<>(type.getFieldCount());
     float estimatedParquetSize = 0f;
@@ -458,7 +457,7 @@ class IcebergParquetValueParser {
           "Extra fields: " + extraFieldsStr,
           String.format(
               "Fields not present in the struct %s shouldn't be specified, rowIndex:%d",
-              subColumnFinder.getDotPath(type.getId().toString()), insertRowsCurrIndex));
+              subColumnFinder.getDotPath(type.getId()), insertRowsCurrIndex));
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
   }
@@ -479,7 +478,7 @@ class IcebergParquetValueParser {
       final long insertRowsCurrIndex) {
     Iterable<?> iterableVal =
         DataValidationUtil.validateAndParseIcebergList(
-            subColumnFinder.getDotPath(type.getId().toString()), value, insertRowsCurrIndex);
+            subColumnFinder.getDotPath(type.getId()), value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     float estimatedParquetSize = 0;
     for (Object val : iterableVal) {
@@ -497,7 +496,7 @@ class IcebergParquetValueParser {
     }
     if (listVal.isEmpty()) {
       subColumnFinder
-          .getSubColumns(type.getId().toString())
+          .getSubColumns(type.getId())
           .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
@@ -519,7 +518,7 @@ class IcebergParquetValueParser {
       final long insertRowsCurrIndex) {
     Map<?, ?> mapVal =
         DataValidationUtil.validateAndParseIcebergMap(
-            subColumnFinder.getDotPath(type.getId().toString()), value, insertRowsCurrIndex);
+            subColumnFinder.getDotPath(type.getId()), value, insertRowsCurrIndex);
     List<Object> listVal = new ArrayList<>();
     float estimatedParquetSize = 0;
     for (Map.Entry<?, ?> entry : mapVal.entrySet()) {
@@ -546,7 +545,7 @@ class IcebergParquetValueParser {
     }
     if (listVal.isEmpty()) {
       subColumnFinder
-          .getSubColumns(type.getId().toString())
+          .getSubColumns(type.getId())
           .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);

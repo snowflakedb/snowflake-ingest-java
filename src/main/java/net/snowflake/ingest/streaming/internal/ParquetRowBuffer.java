@@ -365,12 +365,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         }
 
         for (String subColumnId :
-            subColumnFinder.getSubColumns(fieldIndex.get(columnName).type.getId().toString())) {
+            subColumnFinder.getSubColumns(fieldIndex.get(columnName).type.getId())) {
           RowBufferStats stats = statsMap.get(subColumnId);
           if (stats == null) {
             throw new SFException(
                 ErrorCode.INTERNAL_ERROR,
-                String.format("Field id %s not found in stats map.", subColumnId));
+                String.format(
+                    "Entry not found in stats map. fieldId=%s, column=%s.",
+                    subColumnId,
+                    subColumnFinder.getDotPath(new Type.ID(Integer.parseInt(subColumnId)))));
           }
           stats.incCurrentNullCount();
         }

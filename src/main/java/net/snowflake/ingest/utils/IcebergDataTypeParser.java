@@ -224,6 +224,18 @@ public class IcebergDataTypeParser {
     }
   }
 
+  /**
+   * Replace the field name in the parquet schema with the original field name in the Iceberg
+   * schema. The parsed parquet schema my TypeToMessageType may have different field names than the
+   * original Iceberg schema as it uses AvroSchemaUtil to encode the field name. See {@link
+   * TypeToMessageType} and {@link org.apache.iceberg.avro.AvroSchemaUtil#makeCompatibleName} for
+   * more details.
+   *
+   * @param parquetType parquet schema type
+   * @param icebergType iceberg schema type
+   * @param fieldName original field name in the Iceberg schema
+   * @return parquet schema type with original field name
+   */
   private static org.apache.parquet.schema.Type replaceWithOriginalFieldName(
       org.apache.parquet.schema.Type parquetType, Type icebergType, String fieldName) {
     if (parquetType.isPrimitive() != icebergType.isPrimitiveType()
@@ -234,7 +246,8 @@ public class IcebergDataTypeParser {
                 != icebergType.asNestedType().fields().size())) {
       throw new IllegalArgumentException(
           String.format(
-              "Parquet type and Iceberg type mismatch: %s, %s", parquetType, icebergType));
+              "Parquet type and Iceberg type mismatch. parquetType=%s, icebergType=%s",
+              parquetType, icebergType));
     }
     if (parquetType.isPrimitive()) {
       /* rename field name */
@@ -244,40 +257,40 @@ public class IcebergDataTypeParser {
           .id(parquetType.getId().intValue())
           .length(parquetType.asPrimitiveType().getTypeLength())
           .named(fieldName);
-    } else {
-      org.apache.parquet.schema.Types.GroupBuilder<org.apache.parquet.schema.GroupType> builder =
-          org.apache.parquet.schema.Types.buildGroup(parquetType.getRepetition());
-      for (org.apache.parquet.schema.Type parquetFieldType :
-          parquetType.asGroupType().getFields()) {
-        if (parquetFieldType.getId() == null) {
-          /* middle layer of map or list. Skip this level as parquet's using 3-level list/map while iceberg's using 2-level list/map */
-          builder.addField(
-              replaceWithOriginalFieldName(
-                  parquetFieldType, icebergType, parquetFieldType.getName()));
-        } else {
-          Types.NestedField icebergField =
-              icebergType.asNestedType().field(parquetFieldType.getId().intValue());
-          if (icebergField == null) {
-            throw new IllegalArgumentException(
-                String.format(
-                    "Cannot find Iceberg field with id %d in Iceberg type: %s",
-                    parquetFieldType.getId().intValue(), icebergType));
-          }
-          builder.addField(
-              replaceWithOriginalFieldName(
-                  parquetFieldType,
-                  icebergField.type(),
-                  icebergField.name().equals(EMPTY_FIELD_CHAR)
-                      ? ""
-                      : icebergField
-                          .name()
-                          .replace(EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR)));
-        }
-      }
-      if (parquetType.getId() != null) {
-        builder.id(parquetType.getId().intValue());
-      }
-      return builder.as(parquetType.getLogicalTypeAnnotation()).named(fieldName);
     }
+    org.apache.parquet.schema.Types.GroupBuilder<org.apache.parquet.schema.GroupType> builder =
+        org.apache.parquet.schema.Types.buildGroup(parquetType.getRepetition());
+    for (org.apache.parquet.schema.Type parquetFieldType : parquetType.asGroupType().getFields()) {
+      if (parquetFieldType.getId() == null) {
+        /* middle layer of map or list. Skip this level as parquet's using 3-level list/map while iceberg's using 2-level list/map */
+        builder.addField(
+            replaceWithOriginalFieldName(
+                parquetFieldType, icebergType, parquetFieldType.getName()));
+      } else {
+        Types.NestedField icebergField =
+            icebergType.asNestedType().field(parquetFieldType.getId().intValue());
+        if (icebergField == null) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Cannot find Iceberg field with id %d. parquetFieldType=%s, icebergType=%s",
+                  parquetFieldType.getId().intValue(), parquetFieldType, icebergType));
+        }
+        builder.addField(
+            replaceWithOriginalFieldName(
+                parquetFieldType,
+                icebergField.type(),
+                icebergField.name().equals(EMPTY_FIELD_CHAR)
+                    ? "" /* Empty string are encoded as single backslash in #structFromJson. Decode them here. */
+                    : icebergField
+                        .name()
+                        .replace(EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR)));
+      }
+    }
+
+    /* Some parquet types may not have id, e.g. the middle layer of map or list */
+    if (parquetType.getId() != null) {
+      builder.id(parquetType.getId().intValue());
+    }
+    return builder.as(parquetType.getLogicalTypeAnnotation()).named(fieldName);
   }
 }

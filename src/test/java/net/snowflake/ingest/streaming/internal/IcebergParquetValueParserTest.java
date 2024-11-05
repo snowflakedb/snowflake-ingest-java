@@ -41,7 +41,7 @@ public class IcebergParquetValueParserTest {
   public void setUp() {
     objectMapper = new ObjectMapper();
     mockSubColumnFinder = Mockito.mock(SubColumnFinder.class);
-    Mockito.when(mockSubColumnFinder.getSubColumns(Mockito.anyString()))
+    Mockito.when(mockSubColumnFinder.getSubColumns(Mockito.any(Type.ID.class)))
         .thenReturn(Collections.emptyList());
   }
 

@@ -14,11 +14,21 @@ import java.util.Map;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
-/** Helper class to find all leaf sub-columns in an immutable schema given a fieldId. */
+/** Helper class to find all leaf columns in an immutable schema given a fieldId. */
 public class SubColumnFinder {
+
+  /**
+   * Helper class to store the start and end index of the interval of leaf columns of a node in the
+   * list and the dot path of the node.
+   */
   static class SubtreeInfo {
+    /* Start index of the leaf column in the list. */
     final int startTag;
+
+    /* End index of the leaf column in the list. */
     final int endTag;
+
+    /* Dot path of the node. */
     final String dotPath;
 
     SubtreeInfo(int startTag, int endTag, String dotPath) {
@@ -28,8 +38,11 @@ public class SubColumnFinder {
     }
   }
 
+  /* A list to store all leaf columns field id in preorder traversal. */
   private final List<String> list;
-  private final Map<String, SubtreeInfo> accessMap;
+
+  /* A map to cache query result, avoid recursive query during runtime. */
+  private final Map<Type.ID, SubtreeInfo> accessMap;
 
   public SubColumnFinder(MessageType schema) {
     accessMap = new HashMap<>();
@@ -37,7 +50,13 @@ public class SubColumnFinder {
     build(schema, null);
   }
 
-  public List<String> getSubColumns(String id) {
+  /**
+   * Get all leaf sub-column's field id of a node in the schema.
+   *
+   * @param id Field id of the node
+   * @return List of sub-column's field id
+   */
+  public List<String> getSubColumns(Type.ID id) {
     if (!accessMap.containsKey(id)) {
       throw new IllegalArgumentException(String.format("Field %s not found in schema", id));
     }
@@ -45,36 +64,44 @@ public class SubColumnFinder {
     return Collections.unmodifiableList(list.subList(interval.startTag, interval.endTag));
   }
 
-  public String getDotPath(String id) {
+  /**
+   * Get the dot path of a node in the schema.
+   *
+   * @param id Field ID of the node
+   * @return Dot path of the node
+   */
+  public String getDotPath(Type.ID id) {
     if (!accessMap.containsKey(id)) {
       throw new IllegalArgumentException(String.format("Field %s not found in schema", id));
     }
     return accessMap.get(id).dotPath;
   }
 
-  private void build(Type node, List<String> path) {
-    if (path == null) {
+  private void build(Type node, List<String> currentPath) {
+    if (currentPath == null) {
       /* Ignore root node type name (bdec or schema) */
-      path = new ArrayList<>();
+      currentPath = new ArrayList<>();
     } else {
-      path.add(node.getName());
+      currentPath.add(node.getName());
     }
 
     int startTag = list.size();
     if (!node.isPrimitive()) {
       for (Type child : node.asGroupType().getFields()) {
-        build(child, path);
+        build(child, currentPath);
       }
     } else {
       list.add(node.getId().toString());
     }
-    if (!path.isEmpty() && node.getId() != null) {
+    if (!currentPath.isEmpty() && node.getId() != null) {
       accessMap.put(
-          node.getId().toString(),
-          new SubtreeInfo(startTag, list.size(), concatDotPath(path.toArray(new String[0]))));
+          node.getId(),
+          new SubtreeInfo(
+              startTag, list.size(), concatDotPath(currentPath.toArray(new String[0]))));
     }
-    if (!path.isEmpty()) {
-      path.remove(path.size() - 1);
+    if (!currentPath.isEmpty()) {
+      /* Remove the last element of the path at the end of recursion. */
+      currentPath.remove(currentPath.size() - 1);
     }
   }
 }
