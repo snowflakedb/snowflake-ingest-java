@@ -5,7 +5,16 @@
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
-import static net.snowflake.ingest.utils.Constants.*;
+import static net.snowflake.ingest.utils.Constants.ACCOUNT_URL;
+import static net.snowflake.ingest.utils.Constants.CHANNEL_STATUS_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
+import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
+import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
+import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_SNOWPIPE_STREAMING_METRICS;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.when;
