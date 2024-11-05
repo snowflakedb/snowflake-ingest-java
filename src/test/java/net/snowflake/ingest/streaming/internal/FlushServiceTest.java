@@ -128,7 +128,7 @@ public class FlushServiceTest {
           .thenAnswer((Answer<ParameterProvider>) (i) -> parameterProvider);
 
       encryptionKeysPerTable = new ConcurrentHashMap<>();
-      if (isIcebergMode) {
+      if (enableIcebergStreaming) {
         encryptionKeysPerTable.put(
             new FullyQualifiedTableName("db1", "schema1", "table1"),
             new EncryptionKey("db1", "schema1", "table1", "key1", 1234L));

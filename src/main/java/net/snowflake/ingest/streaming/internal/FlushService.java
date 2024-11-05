@@ -502,13 +502,6 @@ class FlushService<T> {
           .getEncryptionKeysPerTable()
           .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
 
-      // Copy encryptionKeysPerTable from owning client
-      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable =
-          new ConcurrentHashMap<>();
-      this.owningClient
-          .getEncryptionKeysPerTable()
-          .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
-
       Supplier<BlobMetadata> supplier =
           () -> {
             try {
@@ -619,7 +612,8 @@ class FlushService<T> {
             blobPath.fileRegistrationPath,
             blobData,
             bdecVersion,
-            this.owningClient.getInternalParameterProvider(), encryptionKeysPerTable);
+            this.owningClient.getInternalParameterProvider(),
+            encryptionKeysPerTable);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

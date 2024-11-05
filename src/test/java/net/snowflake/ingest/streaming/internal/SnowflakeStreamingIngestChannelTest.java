@@ -974,7 +974,7 @@ public class SnowflakeStreamingIngestChannelTest {
   @Test
   public void testOpenChannelWithEncryptionKey() throws Exception {
     // TODO: SNOW-1490151 Iceberg testing gaps
-    if (isIcebergMode) {
+    if (enableIcebergStreaming) {
       return;
     }
 

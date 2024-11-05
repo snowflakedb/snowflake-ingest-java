@@ -59,7 +59,8 @@ public class BlobBuilderTest {
         "a.bdec",
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
-        new InternalParameterProvider(enableIcebergStreaming), encryptionKeysPerTable);
+        new InternalParameterProvider(enableIcebergStreaming),
+        encryptionKeysPerTable);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
@@ -67,7 +68,8 @@ public class BlobBuilderTest {
           "a.bdec",
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
-          new InternalParameterProvider(enableIcebergStreaming), encryptionKeysPerTable);
+          new InternalParameterProvider(enableIcebergStreaming),
+          encryptionKeysPerTable);
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(e.getMessage().contains("parquetTotalRowsInFooter=1"));
@@ -91,7 +93,8 @@ public class BlobBuilderTest {
             "a.parquet",
             Collections.singletonList(createChannelDataPerTable(1)),
             Constants.BdecVersion.THREE,
-            new InternalParameterProvider(enableIcebergStreaming));
+            new InternalParameterProvider(enableIcebergStreaming),
+            new ConcurrentHashMap<>());
 
     InputFile blobInputFile = new InMemoryInputFile(blob.blobBytes);
     ParquetFileReader reader = ParquetFileReader.open(blobInputFile);
