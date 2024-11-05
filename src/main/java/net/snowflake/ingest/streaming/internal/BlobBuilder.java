@@ -86,12 +86,18 @@ class BlobBuilder {
       ChannelFlushContext firstChannelFlushContext =
           channelsDataPerTable.get(0).getChannelContext();
 
-      EncryptionKey encryptionKey =
-          encryptionKeysPerTable.get(
+      final EncryptionKey encryptionKey =
+          encryptionKeysPerTable.getOrDefault(
               new FullyQualifiedTableName(
                   firstChannelFlushContext.getDbName(),
                   firstChannelFlushContext.getSchemaName(),
-                  firstChannelFlushContext.getTableName()));
+                  firstChannelFlushContext.getTableName()),
+              new EncryptionKey(
+                  firstChannelFlushContext.getDbName(),
+                  firstChannelFlushContext.getSchemaName(),
+                  firstChannelFlushContext.getTableName(),
+                  firstChannelFlushContext.getEncryptionKey(),
+                  firstChannelFlushContext.getEncryptionKeyId()));
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
@@ -114,15 +120,6 @@ class BlobBuilder {
           // to align with decryption on the Snowflake query path.
           // TODO: address alignment for the header SNOW-557866
           long iv = curDataSize / Constants.ENCRYPTION_ALGORITHM_BLOCK_SIZE_BYTES;
-
-          if (encryptionKey == null)
-            encryptionKey =
-                new EncryptionKey(
-                    firstChannelFlushContext.getDbName(),
-                    firstChannelFlushContext.getSchemaName(),
-                    firstChannelFlushContext.getTableName(),
-                    firstChannelFlushContext.getEncryptionKey(),
-                    firstChannelFlushContext.getEncryptionKeyId());
 
           compressedChunkData =
               Cryptor.encrypt(paddedChunkData, encryptionKey.getEncryptionKey(), filePath, iv);
