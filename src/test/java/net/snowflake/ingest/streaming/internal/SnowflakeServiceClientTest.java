@@ -14,18 +14,18 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class SnowflakeServiceClientTest {
-  @Parameterized.Parameters(name = "isIceberg: {0}")
-  public static Object[] isIceberg() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIceberg;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   private SnowflakeServiceClient snowflakeServiceClient;
 
   @Before
   public void setUp() {
-    snowflakeServiceClient = MockSnowflakeServiceClient.create();
+    snowflakeServiceClient = MockSnowflakeServiceClient.create(enableIcebergStreaming);
   }
 
   @Test
@@ -60,7 +60,7 @@ public class SnowflakeServiceClientTest {
             "test_table",
             "test_channel",
             Constants.WriteMode.CLOUD_STORAGE,
-            isIceberg,
+            enableIcebergStreaming,
             "test_offset_token");
     OpenChannelResponse openChannelResponse =
         snowflakeServiceClient.openChannel(openChannelRequest);
@@ -88,7 +88,7 @@ public class SnowflakeServiceClientTest {
             "test_schema",
             "test_table",
             "test_channel",
-            isIceberg,
+            enableIcebergStreaming,
             0L);
     DropChannelResponse dropChannelResponse =
         snowflakeServiceClient.dropChannel(dropChannelRequest);

@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SubColumnFinder;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -49,6 +50,7 @@ class IcebergParquetValueParser {
    * @param value column value provided by user in a row
    * @param type Parquet column type
    * @param statsMap column stats map to update
+   * @param subColumnFinder helper class to find stats of sub-columns
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Row index corresponding the row to parse (w.r.t input rows in
    *     insertRows API, and not buffered row)
@@ -58,17 +60,19 @@ class IcebergParquetValueParser {
       Object value,
       Type type,
       Map<String, RowBufferStats> statsMap,
+      SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       long insertRowsCurrIndex) {
     Utils.assertNotNull("Parquet column stats map", statsMap);
     return parseColumnValueToParquet(
-        value, type, statsMap, defaultTimezone, insertRowsCurrIndex, null, false);
+        value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex, null, false);
   }
 
   private static ParquetBufferValue parseColumnValueToParquet(
       Object value,
       Type type,
       Map<String, RowBufferStats> statsMap,
+      SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       long insertRowsCurrIndex,
       String path,
@@ -144,6 +148,7 @@ class IcebergParquetValueParser {
           default:
             throw new SFException(
                 ErrorCode.UNKNOWN_DATA_TYPE,
+                path,
                 type.getLogicalTypeAnnotation(),
                 primitiveType.getPrimitiveTypeName());
         }
@@ -152,6 +157,7 @@ class IcebergParquetValueParser {
             value,
             type.asGroupType(),
             statsMap,
+            subColumnFinder,
             defaultTimezone,
             insertRowsCurrIndex,
             path,
@@ -162,11 +168,15 @@ class IcebergParquetValueParser {
     if (value == null) {
       if (type.isRepetition(Repetition.REQUIRED)) {
         throw new SFException(
-            ErrorCode.INVALID_FORMAT_ROW, path, "Passed null to non nullable field");
+            ErrorCode.INVALID_FORMAT_ROW,
+            path,
+            String.format(
+                "Passed null to non nullable field, rowIndex:%d, column:%s",
+                insertRowsCurrIndex, path));
       }
-      if (type.isPrimitive()) {
-        statsMap.get(path).incCurrentNullCount();
-      }
+      subColumnFinder
+          .getSubColumns(path)
+          .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
     }
 
     return new ParquetBufferValue(value, estimatedParquetSize);
@@ -194,7 +204,7 @@ class IcebergParquetValueParser {
       return DataValidationUtil.validateAndParseDate(path, value, insertRowsCurrIndex);
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getPrimitiveTypeName());
   }
 
   /**
@@ -242,6 +252,7 @@ class IcebergParquetValueParser {
     }
     throw new SFException(
         ErrorCode.UNKNOWN_DATA_TYPE,
+        path,
         logicalTypeAnnotation,
         type.asPrimitiveType().getPrimitiveTypeName());
   }
@@ -278,7 +289,7 @@ class IcebergParquetValueParser {
       return string.getBytes(StandardCharsets.UTF_8);
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getPrimitiveTypeName());
   }
 
   /**
@@ -319,11 +330,11 @@ class IcebergParquetValueParser {
       }
     }
     if (bytes != null) {
-      checkFixedLengthByteArray(bytes, length, insertRowsCurrIndex);
+      checkFixedLengthByteArray(path, bytes, length, insertRowsCurrIndex);
       return bytes;
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getPrimitiveTypeName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getPrimitiveTypeName());
   }
 
   /**
@@ -342,7 +353,8 @@ class IcebergParquetValueParser {
     BigDecimal bigDecimalValue =
         DataValidationUtil.validateAndParseBigDecimal(path, value, insertRowsCurrIndex);
     bigDecimalValue = bigDecimalValue.setScale(scale, RoundingMode.HALF_UP);
-    DataValidationUtil.checkValueInRange(bigDecimalValue, scale, precision, insertRowsCurrIndex);
+    DataValidationUtil.checkValueInRange(
+        path, bigDecimalValue, scale, precision, insertRowsCurrIndex);
     return bigDecimalValue;
   }
 
@@ -366,6 +378,7 @@ class IcebergParquetValueParser {
    * @param value value to parse
    * @param type Parquet column type
    * @param statsMap column stats map to update
+   * @param subColumnFinder helper class to find stats of sub-columns
    * @param defaultTimezone default timezone to use for timestamp parsing
    * @param insertRowsCurrIndex Used for logging the row of index given in insertRows API
    * @param path dot path of the column
@@ -376,6 +389,7 @@ class IcebergParquetValueParser {
       Object value,
       GroupType type,
       Map<String, RowBufferStats> statsMap,
+      SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path,
@@ -386,19 +400,22 @@ class IcebergParquetValueParser {
           value,
           type,
           statsMap,
+          subColumnFinder,
           defaultTimezone,
           insertRowsCurrIndex,
           path,
           isDescendantsOfRepeatingGroup);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
-      return get3LevelListValue(value, type, statsMap, defaultTimezone, insertRowsCurrIndex, path);
+      return get3LevelListValue(
+          value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex, path);
     }
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.MapLogicalTypeAnnotation) {
-      return get3LevelMapValue(value, type, statsMap, defaultTimezone, insertRowsCurrIndex, path);
+      return get3LevelMapValue(
+          value, type, statsMap, subColumnFinder, defaultTimezone, insertRowsCurrIndex, path);
     }
     throw new SFException(
-        ErrorCode.UNKNOWN_DATA_TYPE, logicalTypeAnnotation, type.getClass().getSimpleName());
+        ErrorCode.UNKNOWN_DATA_TYPE, path, logicalTypeAnnotation, type.getClass().getSimpleName());
   }
 
   /**
@@ -410,6 +427,7 @@ class IcebergParquetValueParser {
       Object value,
       GroupType type,
       Map<String, RowBufferStats> statsMap,
+      SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path,
@@ -425,6 +443,7 @@ class IcebergParquetValueParser {
               structVal.getOrDefault(type.getFieldName(i), null),
               type.getType(i),
               statsMap,
+              subColumnFinder,
               defaultTimezone,
               insertRowsCurrIndex,
               path,
@@ -457,6 +476,7 @@ class IcebergParquetValueParser {
       Object value,
       GroupType type,
       Map<String, RowBufferStats> statsMap,
+      SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path) {
@@ -471,12 +491,18 @@ class IcebergParquetValueParser {
               val,
               type.getType(0).asGroupType().getType(0),
               statsMap,
+              subColumnFinder,
               defaultTimezone,
               insertRowsCurrIndex,
               listGroupPath,
               true);
       listVal.add(Collections.singletonList(parsedValue.getValue()));
       estimatedParquetSize += parsedValue.getSize();
+    }
+    if (listVal.isEmpty()) {
+      subColumnFinder
+          .getSubColumns(path)
+          .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
   }
@@ -492,6 +518,7 @@ class IcebergParquetValueParser {
       Object value,
       GroupType type,
       Map<String, RowBufferStats> statsMap,
+      SubColumnFinder subColumnFinder,
       ZoneId defaultTimezone,
       final long insertRowsCurrIndex,
       String path) {
@@ -506,6 +533,7 @@ class IcebergParquetValueParser {
               entry.getKey(),
               type.getType(0).asGroupType().getType(0),
               statsMap,
+              subColumnFinder,
               defaultTimezone,
               insertRowsCurrIndex,
               mapGroupPath,
@@ -515,12 +543,18 @@ class IcebergParquetValueParser {
               entry.getValue(),
               type.getType(0).asGroupType().getType(1),
               statsMap,
+              subColumnFinder,
               defaultTimezone,
               insertRowsCurrIndex,
               mapGroupPath,
               true);
       listVal.add(Arrays.asList(parsedKey.getValue(), parsedValue.getValue()));
       estimatedParquetSize += parsedKey.getSize() + parsedValue.getSize();
+    }
+    if (listVal.isEmpty()) {
+      subColumnFinder
+          .getSubColumns(path)
+          .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
   }

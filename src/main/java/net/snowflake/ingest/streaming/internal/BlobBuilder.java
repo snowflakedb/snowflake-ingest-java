@@ -11,6 +11,7 @@ import static net.snowflake.ingest.utils.Constants.BLOB_FILE_SIZE_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_NO_HEADER;
 import static net.snowflake.ingest.utils.Constants.BLOB_TAG_SIZE_IN_BYTES;
 import static net.snowflake.ingest.utils.Constants.BLOB_VERSION_SIZE_IN_BYTES;
+import static net.snowflake.ingest.utils.Utils.getParquetFooterSize;
 import static net.snowflake.ingest.utils.Utils.toByteArray;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -30,8 +31,10 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
 
 /**
@@ -153,17 +156,27 @@ class BlobBuilder {
                     AbstractRowBuffer.buildEpInfoFromStats(
                         serializedChunk.rowCount,
                         serializedChunk.columnEpStatsMapCombined,
-                        internalParameterProvider.setDefaultValuesInEp()))
+                        internalParameterProvider.setAllDefaultValuesInEp(),
+                        internalParameterProvider.isEnableDistinctValuesCount()))
                 .setFirstInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getFirst())
                 .setLastInsertTimeInMs(serializedChunk.chunkMinMaxInsertTimeInMs.getSecond());
 
         if (internalParameterProvider.setIcebergSpecificFieldsInEp()) {
+          if (internalParameterProvider.getEnableChunkEncryption()) {
+            /* metadata size computation only works when encryption and padding is off */
+            throw new SFException(
+                ErrorCode.INTERNAL_ERROR,
+                "Metadata size computation is only supported when encryption is enabled");
+          }
+          final long metadataSize = getParquetFooterSize(compressedChunkData);
+          final long extendedMetadataSize = serializedChunk.extendedMetadataSize;
           chunkMetadataBuilder
               .setMajorVersion(Constants.PARQUET_MAJOR_VERSION)
               .setMinorVersion(Constants.PARQUET_MINOR_VERSION)
               // set createdOn in seconds
               .setCreatedOn(System.currentTimeMillis() / 1000)
-              .setExtendedMetadataSize(-1L);
+              .setMetadataSize(metadataSize)
+              .setExtendedMetadataSize(extendedMetadataSize);
         }
 
         ChunkMetadata chunkMetadata = chunkMetadataBuilder.build();

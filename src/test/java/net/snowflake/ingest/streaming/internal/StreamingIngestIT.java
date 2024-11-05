@@ -6,8 +6,7 @@ import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.Is.is;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.atLeastOnce;
 
 import java.math.BigDecimal;
@@ -76,12 +75,17 @@ public class StreamingIngestIT {
   private Connection jdbcConnection;
   private String testDb;
 
-  @Parameters(name = "{index}: {0}")
-  public static Object[] compressionAlgorithms() {
-    return new Object[] {"GZIP", "ZSTD"};
+  @Parameters
+  public static Iterable<Object[]> getParameterPermutations() {
+    return Arrays.asList(
+        new Object[][] {{"GZIP", false}, {"ZSTD", false}, {"GZIP", true}, {"ZSTD", true}});
   }
 
-  @Parameter public String compressionAlgorithm;
+  @Parameter(0)
+  public String compressionAlgorithm;
+
+  @Parameter(1)
+  public boolean enableIcebergStreaming;
 
   private static final OffsetTokenVerificationFunction offsetTokenVerificationFunction =
       (prevBatchEndOffset, curBatchStartOffset, curBatchEndOffset, rowCount) -> {
@@ -163,6 +167,7 @@ public class StreamingIngestIT {
                 TestUtils.getUser(),
                 TestUtils.getKeyPair(),
                 HttpUtil.getHttpClient(url.getAccount()),
+                enableIcebergStreaming,
                 "testrequestbuilder"));
     client.injectRequestBuilder(requestBuilder);
 
@@ -249,6 +254,7 @@ public class StreamingIngestIT {
                 TestUtils.getUser(),
                 TestUtils.getKeyPair(),
                 HttpUtil.getHttpClient(url.getAccount()),
+                enableIcebergStreaming,
                 "testrequestbuilder"));
     client.injectRequestBuilder(requestBuilder);
 
@@ -1483,11 +1489,12 @@ public class StreamingIngestIT {
         for (int col : columnIndexes) {
           String value = result.getString("C" + col);
           String expectedValue = String.format(valueFormat, col, startIndex + i);
-          String errorMessage =
-              String.format(
-                  "Ingested value mismatch: table %s, startIndex %d, column %s, index %d",
-                  tableName, startIndex, "c" + col, i);
-          assertThat(errorMessage, value, is(expectedValue));
+
+          assertThat(value)
+              .describedAs(
+                  "Ingested value mismatch for table %s, startIndex %d, column c%d, index %d",
+                  tableName, startIndex, col, i)
+              .isEqualTo(expectedValue);
         }
       }
     }

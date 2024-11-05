@@ -35,7 +35,7 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Storage */
-class InternalStage<T> implements IStorage {
+class InternalStage implements IStorage {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   /**
@@ -59,32 +59,45 @@ class InternalStage<T> implements IStorage {
 
   private static final Logging logger = new Logging(InternalStage.class);
 
-  private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
-  private final InternalStageManager<T> owningManager;
+  private final IStorageManager owningManager;
   private final String clientName;
-
+  private final String clientPrefix;
+  private final TableRef tableRef;
   private final int maxUploadRetries;
 
   // Proxy parameters that we set while calling the Snowflake JDBC to upload the streams
   private final Properties proxyProperties;
+
+  private FileLocationInfo fileLocationInfo;
+  private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
 
   /**
    * Default constructor
    *
    * @param owningManager the storage manager owning this storage
    * @param clientName The client name
+   * @param clientPrefix client prefix
+   * @param tableRef
    * @param fileLocationInfo The file location information from open channel response
    * @param maxUploadRetries The maximum number of retries to attempt
    */
   InternalStage(
-      InternalStageManager<T> owningManager,
+      IStorageManager owningManager,
       String clientName,
+      String clientPrefix,
+      TableRef tableRef,
       FileLocationInfo fileLocationInfo,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
-    this(owningManager, clientName, (SnowflakeFileTransferMetadataWithAge) null, maxUploadRetries);
-    Utils.assertStringNotNullOrEmpty("client prefix", this.owningManager.getClientPrefix());
-    this.fileTransferMetadataWithAge = createFileTransferMetadataWithAge(fileLocationInfo);
+    this(
+        owningManager,
+        clientName,
+        clientPrefix,
+        tableRef,
+        (SnowflakeFileTransferMetadataWithAge) null,
+        maxUploadRetries);
+    Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
+    setFileLocationInfo(fileLocationInfo);
   }
 
   /**
@@ -92,17 +105,23 @@ class InternalStage<T> implements IStorage {
    *
    * @param owningManager the storage manager owning this storage
    * @param clientName the client name
+   * @param clientPrefix
+   * @param tableRef
    * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
    * @param maxUploadRetries the maximum number of retries to attempt
    */
   InternalStage(
-      InternalStageManager<T> owningManager,
+      IStorageManager owningManager,
       String clientName,
+      String clientPrefix,
+      TableRef tableRef,
       SnowflakeFileTransferMetadataWithAge testMetadata,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this.owningManager = owningManager;
     this.clientName = clientName;
+    this.clientPrefix = clientPrefix;
+    this.tableRef = tableRef;
     this.maxUploadRetries = maxUploadRetries;
     this.proxyProperties = generateProxyPropertiesForJDBC();
     this.fileTransferMetadataWithAge = testMetadata;
@@ -153,7 +172,7 @@ class InternalStage<T> implements IStorage {
               .setUploadStream(inStream)
               .setRequireCompress(false)
               .setOcspMode(OCSPMode.FAIL_OPEN)
-              .setStreamingIngestClientKey(this.owningManager.getClientPrefix())
+              .setStreamingIngestClientKey(this.clientPrefix)
               .setStreamingIngestClientName(this.clientName)
               .setProxyProperties(this.proxyProperties)
               .setDestFileName(fullFilePath)
@@ -194,8 +213,6 @@ class InternalStage<T> implements IStorage {
    */
   synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force)
       throws SnowflakeSQLException, IOException {
-    logger.logInfo("Refresh Snowflake metadata, client={} force={}", clientName, force);
-
     if (!force
         && fileTransferMetadataWithAge != null
         && fileTransferMetadataWithAge.timestamp.isPresent()
@@ -204,10 +221,19 @@ class InternalStage<T> implements IStorage {
       return fileTransferMetadataWithAge;
     }
 
-    FileLocationInfo location = this.owningManager.getRefreshedLocation(Optional.empty());
-    SnowflakeFileTransferMetadataWithAge metadata = createFileTransferMetadataWithAge(location);
-    this.fileTransferMetadataWithAge = metadata;
-    return metadata;
+    logger.logInfo(
+        "Refresh Snowflake metadata, client={} force={} tableRef={}", clientName, force, tableRef);
+
+    FileLocationInfo location =
+        this.owningManager.getRefreshedLocation(this.tableRef, Optional.empty());
+    setFileLocationInfo(location);
+    return this.fileTransferMetadataWithAge;
+  }
+
+  private synchronized void setFileLocationInfo(FileLocationInfo fileLocationInfo)
+      throws SnowflakeSQLException, IOException {
+    this.fileTransferMetadataWithAge = createFileTransferMetadataWithAge(fileLocationInfo);
+    this.fileLocationInfo = fileLocationInfo;
   }
 
   static SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
@@ -265,7 +291,8 @@ class InternalStage<T> implements IStorage {
   SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
       throws SnowflakeSQLException, IOException {
 
-    FileLocationInfo location = this.owningManager.getRefreshedLocation(Optional.of(fileName));
+    FileLocationInfo location =
+        this.owningManager.getRefreshedLocation(this.tableRef, Optional.of(fileName));
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
@@ -301,12 +328,11 @@ class InternalStage<T> implements IStorage {
 
   /** Upload file to internal stage */
   public void put(BlobPath blobPath, byte[] blob) {
-    String filePath = blobPath.fileName;
     if (this.isLocalFS()) {
-      putLocal(this.fileTransferMetadataWithAge.localLocation, filePath, blob);
+      putLocal(this.fileTransferMetadataWithAge.localLocation, blobPath.fileRegistrationPath, blob);
     } else {
       try {
-        putRemote(filePath, blob, 0);
+        putRemote(blobPath.uploadPath, blob, 0);
       } catch (SnowflakeSQLException | IOException e) {
         throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
       }
@@ -336,5 +362,9 @@ class InternalStage<T> implements IStorage {
     } catch (Exception ex) {
       throw new SFException(ex, ErrorCode.BLOB_UPLOAD_FAILURE);
     }
+  }
+
+  FileLocationInfo getFileLocationInfo() {
+    return this.fileLocationInfo;
   }
 }

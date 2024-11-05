@@ -134,13 +134,15 @@ public class InternalStageTest {
 
     byte[] dataBytes = "Hello Upload".getBytes(StandardCharsets.UTF_8);
 
-    InternalStageManager<?> storageManager = Mockito.mock(InternalStageManager.class);
+    InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
+    InternalStage stage =
         new InternalStage(
             storageManager,
             "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             1);
@@ -149,7 +151,9 @@ public class InternalStageTest {
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
-    stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+    stage.put(
+        new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+        dataBytes);
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class);
     SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());
     SnowflakeFileTransferConfig capturedConfig = captor.getValue();
@@ -176,17 +180,20 @@ public class InternalStageTest {
     String fullFilePath = "testOutput";
     String fileName = "putLocalOutput";
 
-    InternalStage<?> stage =
+    InternalStage stage =
         Mockito.spy(
             new InternalStage(
                 null,
                 "clientName",
+                "testPrefix",
+                InternalStageManager.NO_TABLE_REF,
                 new SnowflakeFileTransferMetadataWithAge(
                     fullFilePath, Optional.of(System.currentTimeMillis())),
                 1));
     Mockito.doReturn(true).when(stage).isLocalFS();
 
-    stage.put(BlobPath.fileNameWithoutToken(fileName), dataBytes);
+    stage.put(
+        new BlobPath(fileName /* uploadPath */, fileName /* fileRegistrationPath */), dataBytes);
     Path outputPath = Paths.get(fullFilePath, fileName);
     List<String> output = Files.readAllLines(outputPath);
     Assert.assertEquals(1, output.size());
@@ -206,10 +213,12 @@ public class InternalStageTest {
     InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
-        new InternalStage<>(
+    InternalStage stage =
+        new InternalStage(
             storageManager,
             "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -223,7 +232,9 @@ public class InternalStageTest {
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
     try {
-      stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+      stage.put(
+          new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+          dataBytes);
       Assert.fail("Should not succeed");
     } catch (SFException ex) {
       // Expected behavior given mocked response
@@ -260,11 +271,13 @@ public class InternalStageTest {
     InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
+    InternalStage stage =
         Mockito.spy(
-            new InternalStage<>(
+            new InternalStage(
                 storageManager,
                 "clientName",
+                "testPrefix",
+                InternalStageManager.NO_TABLE_REF,
                 new SnowflakeFileTransferMetadataWithAge(
                     originalMetadata, Optional.of(System.currentTimeMillis())),
                 1));
@@ -272,7 +285,9 @@ public class InternalStageTest {
     SnowflakeFileTransferMetadataV1 metaMock = Mockito.mock(SnowflakeFileTransferMetadataV1.class);
 
     Mockito.doReturn(metaMock).when(stage).fetchSignedURL(Mockito.any());
-    stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+    stage.put(
+        new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+        dataBytes);
     SnowflakeFileTransferAgent.uploadWithoutConnection(Mockito.any());
     Mockito.verify(stage, times(1)).fetchSignedURL("test/path");
   }
@@ -295,11 +310,16 @@ public class InternalStageTest {
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
     InternalStageManager storageManager =
-        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
 
-    InternalStage<?> stage =
-        new InternalStage<>(
-            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
+    InternalStage stage =
+        new InternalStage(
+            storageManager,
+            "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
+            (SnowflakeFileTransferMetadataWithAge) null,
+            1);
 
     SnowflakeFileTransferMetadataWithAge metadataWithAge = stage.refreshSnowflakeMetadata(true);
 
@@ -348,10 +368,10 @@ public class InternalStageTest {
 
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    InternalStageManager<?> storageManager =
-        new InternalStageManager<>(true, "role", "clientName", snowflakeServiceClient);
+    InternalStageManager storageManager =
+        new InternalStageManager(true, "role", "clientName", snowflakeServiceClient);
 
-    InternalStage<?> storage = storageManager.getStorage("");
+    InternalStage storage = storageManager.getStorage("");
     storage.refreshSnowflakeMetadata(true);
 
     Assert.assertEquals(prefix + "_" + deploymentId, storageManager.getClientPrefix());
@@ -380,8 +400,8 @@ public class InternalStageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    InternalStageManager<?> storageManager =
-        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
+    InternalStageManager storageManager =
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -389,9 +409,14 @@ public class InternalStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(createHttpEntity(exampleRemoteMetaResponse));
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    InternalStage<?> stage =
+    InternalStage stage =
         new InternalStage(
-            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
+            storageManager,
+            "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
+            (SnowflakeFileTransferMetadataWithAge) null,
+            1);
 
     SnowflakeFileTransferMetadataV1 metadata = stage.fetchSignedURL("path/fileName");
 
@@ -422,8 +447,8 @@ public class InternalStageTest {
     Mockito.when(mockClientInternal.getRole()).thenReturn("role");
     SnowflakeServiceClient snowflakeServiceClient =
         new SnowflakeServiceClient(mockClient, mockBuilder);
-    InternalStageManager<?> storageManager =
-        new InternalStageManager<>(true, "role", "client", snowflakeServiceClient);
+    InternalStageManager storageManager =
+        new InternalStageManager(true, "role", "client", snowflakeServiceClient);
     StatusLine mockStatusLine = Mockito.mock(StatusLine.class);
     Mockito.when(mockStatusLine.getStatusCode()).thenReturn(200);
 
@@ -431,9 +456,14 @@ public class InternalStageTest {
     Mockito.when(mockResponse.getEntity()).thenReturn(createHttpEntity(exampleRemoteMetaResponse));
     Mockito.when(mockClient.execute(Mockito.any())).thenReturn(mockResponse);
 
-    InternalStage<?> stage =
-        new InternalStage<>(
-            storageManager, "clientName", (SnowflakeFileTransferMetadataWithAge) null, 1);
+    InternalStage stage =
+        new InternalStage(
+            storageManager,
+            "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
+            (SnowflakeFileTransferMetadataWithAge) null,
+            1);
 
     ThreadFactory buildUploadThreadFactory =
         new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
@@ -457,8 +487,9 @@ public class InternalStageTest {
             throw new RuntimeException(e);
           }
         });
+    workers.shutdown();
 
-    workers.awaitTermination(150, TimeUnit.MILLISECONDS);
+    Assert.assertTrue(workers.awaitTermination(1, TimeUnit.SECONDS));
 
     Mockito.verify(mockClient).execute(Mockito.any());
   }
@@ -564,10 +595,12 @@ public class InternalStageTest {
     InternalStageManager storageManager = Mockito.mock(InternalStageManager.class);
     Mockito.when(storageManager.getClientPrefix()).thenReturn("testPrefix");
 
-    InternalStage<?> stage =
-        new InternalStage<>(
+    InternalStage stage =
+        new InternalStage(
             storageManager,
             "clientName",
+            "testPrefix",
+            InternalStageManager.NO_TABLE_REF,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -593,7 +626,9 @@ public class InternalStageTest {
     final ArgumentCaptor<SnowflakeFileTransferConfig> captor =
         ArgumentCaptor.forClass(SnowflakeFileTransferConfig.class);
 
-    stage.put(BlobPath.fileNameWithoutToken("test/path"), dataBytes);
+    stage.put(
+        new BlobPath("test/path" /* uploadPath */, "test/path" /* fileRegistrationPath */),
+        dataBytes);
 
     PowerMockito.verifyStatic(SnowflakeFileTransferAgent.class, times(maxUploadRetryCount));
     SnowflakeFileTransferAgent.uploadWithoutConnection(captor.capture());

@@ -110,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "2.2.2";
+  public static final String DEFAULT_VERSION = "2.3.0";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 
@@ -130,6 +130,7 @@ public class RequestBuilder {
    * @param userName - the username of the entity loading files
    * @param credential - the credential we'll use to authenticate
    */
+  @Deprecated
   public RequestBuilder(String accountName, String userName, Object credential) {
     this(
         accountName, userName, credential, DEFAULT_SCHEME, DEFAULT_HOST_SUFFIX, DEFAULT_PORT, null);
@@ -143,6 +144,7 @@ public class RequestBuilder {
    * @param credential - the credential we'll use to authenticate
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
+  @Deprecated
   public RequestBuilder(
       String accountName,
       String userName,
@@ -164,6 +166,7 @@ public class RequestBuilder {
    * @param hostName - the host for this snowflake instance
    * @param portNum - the port number
    */
+  @Deprecated
   public RequestBuilder(
       String accountName,
       String userName,
@@ -185,6 +188,7 @@ public class RequestBuilder {
    * @param portNum - the port number
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    */
+  @Deprecated
   public RequestBuilder(
       String accountName,
       String userName,
@@ -201,9 +205,10 @@ public class RequestBuilder {
         hostName,
         portNum,
         userAgentSuffix,
-        null,
-        null,
-        null);
+        null /* securityManager */,
+        null /* httpClient */,
+        false /* enableIcebergStreaming */,
+        null /* clientName */);
   }
 
   /**
@@ -213,6 +218,7 @@ public class RequestBuilder {
    * @param userName - the username of the entity loading files
    * @param credential - the credential we'll use to authenticate
    * @param httpClient - reference to the http client
+   * @param enableIcebergStreaming whether the client is running in iceberg mode
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
@@ -220,6 +226,7 @@ public class RequestBuilder {
       String userName,
       Object credential,
       CloseableHttpClient httpClient,
+      boolean enableIcebergStreaming,
       String clientName) {
     this(
         url.getAccount(),
@@ -228,9 +235,10 @@ public class RequestBuilder {
         url.getScheme(),
         url.getUrlWithoutPort(),
         url.getPort(),
-        null,
-        null,
+        null /* userAgentSuffix */,
+        null /* securityManager */,
         httpClient,
+        enableIcebergStreaming,
         clientName);
   }
 
@@ -246,6 +254,7 @@ public class RequestBuilder {
    * @param userAgentSuffix - The suffix part of HTTP Header User-Agent
    * @param securityManager - The security manager for authentication
    * @param httpClient - reference to the http client
+   * @param enableIcebergStreaming whether the client is running in iceberg mode
    * @param clientName - name of the client, used to uniquely identify a client if used
    */
   public RequestBuilder(
@@ -258,6 +267,7 @@ public class RequestBuilder {
       String userAgentSuffix,
       SecurityManager securityManager,
       CloseableHttpClient httpClient,
+      boolean enableIcebergStreaming,
       String clientName) {
     // none of these arguments should be null
     if (accountName == null || userName == null || credential == null) {
@@ -269,7 +279,10 @@ public class RequestBuilder {
     this.telemetryService =
         ENABLE_TELEMETRY_TO_SF && credential instanceof KeyPair
             ? new TelemetryService(
-                httpClient, clientName, schemeName + "://" + hostName + ":" + portNum)
+                httpClient,
+                enableIcebergStreaming,
+                clientName,
+                schemeName + "://" + hostName + ":" + portNum)
             : null;
 
     // stash references to the account and username as well

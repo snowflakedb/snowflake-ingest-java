@@ -4,7 +4,12 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-/** Interface to manage {@link InternalStage} and {@link ExternalVolume} for {@link FlushService} */
+import java.util.Optional;
+
+/**
+ * Interface to manage {@link InternalStage} and {@link PresignedUrlExternalVolume} for {@link
+ * FlushService}
+ */
 interface IStorageManager {
 
   /** Default max upload retries for streaming ingest storage */
@@ -21,7 +26,7 @@ interface IStorageManager {
   IStorage getStorage(String fullyQualifiedTableName);
 
   /** Informs the storage manager about a new table that's being ingested into by the client. */
-  void registerTable(TableRef tableRef, FileLocationInfo locationInfo);
+  void registerTable(TableRef tableRef);
 
   /**
    * Generate a unique blob path and increment the blob sequencer
@@ -39,4 +44,14 @@ interface IStorageManager {
    * @return the client prefix
    */
   String getClientPrefix();
+
+  /**
+   * Get the updated subscoped tokens and location info for this table
+   *
+   * @param tableRef The table for which to get the location
+   * @param fileName Legacy, was used by deprecated GCS codepaths when it didn't support subscoped
+   *     tokens. Not in use.
+   * @return
+   */
+  FileLocationInfo getRefreshedLocation(TableRef tableRef, Optional<String> fileName);
 }

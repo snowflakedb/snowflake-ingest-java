@@ -2,9 +2,14 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import org.junit.Before;
 import org.junit.Test;
 
 public class NumericTypesIT extends AbstractDataTypeTest {
+  @Before
+  public void before() throws Exception {
+    super.before();
+  }
 
   @Test
   public void testIntegers() throws Exception {

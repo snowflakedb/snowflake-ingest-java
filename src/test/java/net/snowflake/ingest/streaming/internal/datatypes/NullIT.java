@@ -1,9 +1,14 @@
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.util.Arrays;
+import org.junit.Before;
 import org.junit.Test;
 
 public class NullIT extends AbstractDataTypeTest {
+  @Before
+  public void before() throws Exception {
+    super.before();
+  }
 
   @Test
   public void testNullIngestion() throws Exception {

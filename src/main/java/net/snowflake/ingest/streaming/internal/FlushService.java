@@ -492,8 +492,15 @@ class FlushService<T> {
       long flushStartMs = System.currentTimeMillis();
       if (this.owningClient.flushLatency != null) {
         latencyTimerContextMap.putIfAbsent(
-            blobPath.fileName, this.owningClient.flushLatency.time());
+            blobPath.fileRegistrationPath, this.owningClient.flushLatency.time());
       }
+
+      // Copy encryptionKeysPerTable from owning client
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable =
+          new ConcurrentHashMap<>();
+      this.owningClient
+          .getEncryptionKeysPerTable()
+          .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
 
       // Copy encryptionKeysPerTable from owning client
       Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable =
@@ -518,7 +525,7 @@ class FlushService<T> {
                           + " detail=%s, trace=%s, all channels in the blob will be"
                           + " invalidated",
                       this.owningClient.getName(),
-                      blobPath.fileName,
+                      blobPath.fileRegistrationPath,
                       ex,
                       ex.getMessage(),
                       getStackTrace(ex));
@@ -548,7 +555,7 @@ class FlushService<T> {
 
       blobs.add(
           new Pair<>(
-              new BlobData<>(blobPath.fileName, blobData),
+              new BlobData<>(blobPath.fileRegistrationPath, blobData),
               CompletableFuture.supplyAsync(supplier, this.buildUploadWorkers)));
 
       logger.logInfo(
@@ -606,11 +613,13 @@ class FlushService<T> {
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
-    InternalParameterProvider paramProvider = this.owningClient.getInternalParameterProvider();
     // Construct the blob along with the metadata of the blob
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
-            blobPath.fileName, blobData, bdecVersion, paramProvider, encryptionKeysPerTable);
+            blobPath.fileRegistrationPath,
+            blobData,
+            bdecVersion,
+            this.owningClient.getInternalParameterProvider(), encryptionKeysPerTable);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 
@@ -639,7 +648,7 @@ class FlushService<T> {
       List<ChunkMetadata> metadata,
       BlobStats blobStats)
       throws NoSuchAlgorithmException {
-    logger.logInfo("Start uploading blob={}, size={}", blobPath.fileName, blob.length);
+    logger.logInfo("Start uploading blob={}, size={}", blobPath.fileRegistrationPath, blob.length);
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
@@ -655,14 +664,14 @@ class FlushService<T> {
 
     logger.logInfo(
         "Finish uploading blob={}, size={}, timeInMillis={}",
-        blobPath.fileName,
+        blobPath.fileRegistrationPath,
         blob.length,
         System.currentTimeMillis() - startTime);
 
     // at this point we know for sure if the BDEC file has data for more than one chunk, i.e.
     // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
-        blobPath.fileName,
+        blobPath.fileRegistrationPath,
         BlobBuilder.computeMD5(blob),
         bdecVersion,
         metadata,

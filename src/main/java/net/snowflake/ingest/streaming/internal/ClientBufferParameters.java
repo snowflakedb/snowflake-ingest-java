@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.Optional;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
+import org.apache.parquet.column.ParquetProperties;
 
 /** Channel's buffer relevant parameters that are set at the owning client level. */
 public class ClientBufferParameters {
@@ -23,14 +24,20 @@ public class ClientBufferParameters {
 
   private final Optional<Integer> maxRowGroups;
 
-  private boolean isIcebergMode;
+  private boolean enableIcebergStreaming;
+
+  private boolean enableDistinctValuesCount;
+
+  private boolean enableValuesCount;
+
+  private boolean enableDictionaryEncoding;
 
   /**
    * Private constructor used for test methods
    *
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
-   * @param isIcebergMode
+   * @param enableIcebergStreaming
    */
   private ClientBufferParameters(
       long maxChunkSizeInBytes,
@@ -38,17 +45,24 @@ public class ClientBufferParameters {
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       Optional<Integer> maxRowGroups,
-      boolean isIcebergMode) {
+      boolean enableIcebergStreaming,
+      boolean enableDistinctValuesCount,
+      boolean enableValuesCount) {
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
     this.enableNewJsonParsingLogic = enableNewJsonParsingLogic;
     this.maxRowGroups = maxRowGroups;
-    this.isIcebergMode = isIcebergMode;
+    this.enableIcebergStreaming = enableIcebergStreaming;
+    this.enableDistinctValuesCount = enableDistinctValuesCount;
+    this.enableValuesCount = enableValuesCount;
+    this.enableDictionaryEncoding = enableIcebergStreaming;
   }
 
   /** @param clientInternal reference to the client object where the relevant parameters are set */
-  public ClientBufferParameters(SnowflakeStreamingIngestClientInternal clientInternal) {
+  public ClientBufferParameters(
+      SnowflakeStreamingIngestClientInternal clientInternal,
+      ParquetProperties.WriterVersion parquetWriterVersion) {
     this.maxChunkSizeInBytes =
         clientInternal != null
             ? clientInternal.getParameterProvider().getMaxChunkSizeInBytes()
@@ -65,20 +79,31 @@ public class ClientBufferParameters {
         clientInternal != null
             ? clientInternal.getParameterProvider().isEnableNewJsonParsingLogic()
             : ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT;
-    this.isIcebergMode =
+    this.enableIcebergStreaming =
         clientInternal != null
-            ? clientInternal.isIcebergMode()
-            : ParameterProvider.IS_ICEBERG_MODE_DEFAULT;
+            ? clientInternal.getParameterProvider().isEnableIcebergStreaming()
+            : ParameterProvider.ENABLE_ICEBERG_STREAMING_DEFAULT;
     this.maxRowGroups =
-        isIcebergMode
+        enableIcebergStreaming
             ? Optional.of(InternalParameterProvider.MAX_ROW_GROUP_COUNT_ICEBERG_MODE_DEFAULT)
             : Optional.empty();
+    this.enableDistinctValuesCount =
+        clientInternal != null
+            ? clientInternal.getInternalParameterProvider().isEnableDistinctValuesCount()
+            : InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT;
+    this.enableValuesCount =
+        clientInternal != null
+            ? clientInternal.getInternalParameterProvider().isEnableValuesCount()
+            : InternalParameterProvider.ENABLE_VALUES_COUNT_DEFAULT;
+    this.enableDictionaryEncoding =
+        enableIcebergStreaming
+            && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
   }
 
   /**
    * @param maxChunkSizeInBytes maximum chunk size in bytes
    * @param maxAllowedRowSizeInBytes maximum row size in bytes
-   * @param isIcebergMode
+   * @param enableIcebergStreaming
    * @return ClientBufferParameters object
    */
   public static ClientBufferParameters test_createClientBufferParameters(
@@ -87,14 +112,18 @@ public class ClientBufferParameters {
       Constants.BdecParquetCompression bdecParquetCompression,
       boolean enableNewJsonParsingLogic,
       Optional<Integer> maxRowGroups,
-      boolean isIcebergMode) {
+      boolean enableIcebergStreaming,
+      boolean enableDistinctValuesCount,
+      boolean enableValuesCount) {
     return new ClientBufferParameters(
         maxChunkSizeInBytes,
         maxAllowedRowSizeInBytes,
         bdecParquetCompression,
         enableNewJsonParsingLogic,
         maxRowGroups,
-        isIcebergMode);
+        enableIcebergStreaming,
+        enableDistinctValuesCount,
+        enableValuesCount);
   }
 
   public long getMaxChunkSizeInBytes() {
@@ -113,8 +142,8 @@ public class ClientBufferParameters {
     return enableNewJsonParsingLogic;
   }
 
-  public boolean getIsIcebergMode() {
-    return isIcebergMode;
+  public boolean isEnableIcebergStreaming() {
+    return enableIcebergStreaming;
   }
 
   public Optional<Integer> getMaxRowGroups() {
@@ -122,6 +151,18 @@ public class ClientBufferParameters {
   }
 
   public String getParquetMessageTypeName() {
-    return isIcebergMode ? PARQUET_MESSAGE_TYPE_NAME : BDEC_PARQUET_MESSAGE_TYPE_NAME;
+    return enableIcebergStreaming ? PARQUET_MESSAGE_TYPE_NAME : BDEC_PARQUET_MESSAGE_TYPE_NAME;
+  }
+
+  public boolean isEnableDistinctValuesCount() {
+    return enableDistinctValuesCount;
+  }
+
+  public boolean isEnableValuesCount() {
+    return enableValuesCount;
+  }
+
+  public boolean isEnableDictionaryEncoding() {
+    return enableDictionaryEncoding;
   }
 }

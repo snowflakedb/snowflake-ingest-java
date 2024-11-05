@@ -17,7 +17,8 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.hadoop.BdecParquetWriter;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.hadoop.SnowflakeParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -31,17 +32,26 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final Optional<Integer> maxRowGroups;
 
   private final Constants.BdecParquetCompression bdecParquetCompression;
+  private final ParquetProperties.WriterVersion parquetWriterVersion;
+  private final boolean enableDictionaryEncoding;
+  private final boolean enableIcebergStreaming;
 
   /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
       MessageType schema,
       long maxChunkSizeInBytes,
       Optional<Integer> maxRowGroups,
-      Constants.BdecParquetCompression bdecParquetCompression) {
+      Constants.BdecParquetCompression bdecParquetCompression,
+      ParquetProperties.WriterVersion parquetWriterVersion,
+      boolean enableDictionaryEncoding,
+      boolean enableIcebergStreaming) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
     this.bdecParquetCompression = bdecParquetCompression;
+    this.parquetWriterVersion = parquetWriterVersion;
+    this.enableDictionaryEncoding = enableDictionaryEncoding;
+    this.enableIcebergStreaming = enableIcebergStreaming;
   }
 
   @Override
@@ -64,7 +74,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
-    BdecParquetWriter parquetWriter;
+    SnowflakeParquetWriter parquetWriter;
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
@@ -124,14 +134,16 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     addFileIdToMetadata(filePath, chunkStartOffset, metadata);
     parquetWriter =
-        new BdecParquetWriter(
+        new SnowflakeParquetWriter(
             mergedData,
             schema,
             metadata,
             firstChannelFullyQualifiedTableName,
             maxChunkSizeInBytes,
             maxRowGroups,
-            bdecParquetCompression);
+            bdecParquetCompression,
+            parquetWriterVersion,
+            enableDictionaryEncoding);
     rows.forEach(parquetWriter::writeRow);
     parquetWriter.close();
 
@@ -143,20 +155,28 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         rowCount,
         chunkEstimatedUncompressedSize,
         mergedData,
-        chunkMinMaxInsertTimeInMs);
+        chunkMinMaxInsertTimeInMs,
+        parquetWriter.getExtendedMetadataSize());
   }
 
-  private static void addFileIdToMetadata(
+  private void addFileIdToMetadata(
       String filePath, long chunkStartOffset, Map<String, String> metadata) {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
-    // http://go/streams-on-replicated-mixed-tables
+    // http://go/streams-on-replicated-mixed-tables,  and
+    // http://go/managed-iceberg-replication-change-tracking
     // Using chunk offset as suffix ensures that for interleaved tables, the file
     // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
     // to be bundled together.
     if (chunkStartOffset == 0) {
-      metadata.put(Constants.PRIMARY_FILE_ID_KEY, StreamingIngestUtils.getShortname(filePath));
+      metadata.put(
+          enableIcebergStreaming
+              ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+              : Constants.PRIMARY_FILE_ID_KEY,
+          StreamingIngestUtils.getShortname(filePath));
     } else {
+      Preconditions.checkState(
+          !enableIcebergStreaming, "Iceberg streaming is not supported with non-zero offsets");
       String shortName = StreamingIngestUtils.getShortname(filePath);
       final String[] parts = shortName.split("\\.");
       Preconditions.checkState(parts.length == 2, "Invalid file name format");
@@ -177,7 +197,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
    *     Used only for logging purposes if there is a mismatch.
    */
   private void verifyRowCounts(
-      BdecParquetWriter writer,
+      SnowflakeParquetWriter writer,
       long totalMetadataRowCount,
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       long javaSerializationTotalRowCount) {

@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeoutException;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.ParameterProvider;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,22 +30,26 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class RegisterServiceTest {
-  @Parameterized.Parameters(name = "isIcebergMode: {0}")
-  public static Object[] isIcebergMode() {
+  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
+  public static Object[] enableIcebergStreaming() {
     return new Object[] {false, true};
   }
 
-  @Parameterized.Parameter public boolean isIcebergMode;
+  @Parameterized.Parameter public boolean enableIcebergStreaming;
 
   private SnowflakeStreamingIngestClientInternal<StubChunkData> client;
 
   @Before
   public void setup() {
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
-    RequestBuilder requestBuilder = MockSnowflakeServiceClient.createRequestBuilder(httpClient);
+    RequestBuilder requestBuilder =
+        MockSnowflakeServiceClient.createRequestBuilder(httpClient, enableIcebergStreaming);
+    Properties prop = new Properties();
+    prop.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
-            "client", null, null, httpClient, isIcebergMode, true, requestBuilder, new HashMap<>());
+            "client", null, prop, httpClient, true, requestBuilder, new HashMap<>());
   }
 
   @After

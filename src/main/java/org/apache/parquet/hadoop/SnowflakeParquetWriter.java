@@ -15,10 +15,11 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.values.factory.DefaultV1ValuesWriterFactory;
+import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.io.DelegatingPositionOutputStream;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -31,22 +32,27 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
- * BDEC specific parquet writer.
+ * Snowflake specific parquet writer, supports BDEC file for FDN tables and parquet file for Iceberg
+ * tables.
  *
  * <p>Resides in parquet package because, it uses {@link InternalParquetRecordWriter} and {@link
  * CodecFactory} that are package private.
  */
-public class BdecParquetWriter implements AutoCloseable {
+public class SnowflakeParquetWriter implements AutoCloseable {
   private final InternalParquetRecordWriter<List<Object>> writer;
   private final CodecFactory codecFactory;
 
   // Optional cap on the max number of row groups to allow per file, if this is exceeded we'll end
   // up throwing
   private final Optional<Integer> maxRowGroups;
+
+  private final ParquetProperties.WriterVersion writerVersion;
+  private final boolean enableDictionaryEncoding;
+
   private long rowsWritten = 0;
 
   /**
-   * Creates a BDEC specific parquet writer.
+   * Creates a Snowflake specific parquet writer.
    *
    * @param stream output
    * @param schema row schema
@@ -56,21 +62,25 @@ public class BdecParquetWriter implements AutoCloseable {
    *     exceeded we'll end up throwing
    * @throws IOException
    */
-  public BdecParquetWriter(
+  public SnowflakeParquetWriter(
       ByteArrayOutputStream stream,
       MessageType schema,
       Map<String, String> extraMetaData,
       String channelName,
       long maxChunkSizeInBytes,
       Optional<Integer> maxRowGroups,
-      Constants.BdecParquetCompression bdecParquetCompression)
+      Constants.BdecParquetCompression bdecParquetCompression,
+      ParquetProperties.WriterVersion writerVersion,
+      boolean enableDictionaryEncoding)
       throws IOException {
     OutputFile file = new ByteArrayOutputFile(stream, maxChunkSizeInBytes);
     this.maxRowGroups = maxRowGroups;
+    this.writerVersion = writerVersion;
+    this.enableDictionaryEncoding = enableDictionaryEncoding;
     ParquetProperties encodingProps = createParquetProperties();
     Configuration conf = new Configuration();
     WriteSupport<List<Object>> writeSupport =
-        new BdecWriteSupport(schema, extraMetaData, channelName);
+        new SnowflakeWriteSupport(schema, extraMetaData, channelName);
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
 
     ParquetFileWriter fileWriter =
@@ -130,6 +140,24 @@ public class BdecParquetWriter implements AutoCloseable {
     return blockRowCounts;
   }
 
+  /** @return extended metadata size (page index size + bloom filter size) */
+  public long getExtendedMetadataSize() {
+    long extendedMetadataSize = 0;
+    for (BlockMetaData metadata : writer.getFooter().getBlocks()) {
+      for (ColumnChunkMetaData column : metadata.getColumns()) {
+        extendedMetadataSize +=
+            (column.getColumnIndexReference() != null
+                    ? column.getColumnIndexReference().getLength()
+                    : 0)
+                + (column.getOffsetIndexReference() != null
+                    ? column.getOffsetIndexReference().getLength()
+                    : 0)
+                + (column.getBloomFilterLength() == -1 ? 0 : column.getBloomFilterLength());
+      }
+    }
+    return extendedMetadataSize;
+  }
+
   public void writeRow(List<Object> row) {
     try {
       writer.write(row);
@@ -154,7 +182,7 @@ public class BdecParquetWriter implements AutoCloseable {
     }
   }
 
-  private static ParquetProperties createParquetProperties() {
+  private ParquetProperties createParquetProperties() {
     /**
      * There are two main limitations on the server side that we have to overcome by tweaking
      * Parquet limits:
@@ -182,11 +210,11 @@ public class BdecParquetWriter implements AutoCloseable {
     return ParquetProperties.builder()
         // PARQUET_2_0 uses Encoding.DELTA_BYTE_ARRAY for byte arrays (e.g. SF sb16)
         // server side does not support it TODO: SNOW-657238
-        .withWriterVersion(ParquetProperties.WriterVersion.PARQUET_1_0)
-        .withValuesWriterFactory(new DefaultV1ValuesWriterFactory())
+        .withWriterVersion(writerVersion)
+        .withValuesWriterFactory(new DefaultValuesWriterFactory())
         // the dictionary encoding (Encoding.*_DICTIONARY) is not supported by server side
         // scanner yet
-        .withDictionaryEncoding(false)
+        .withDictionaryEncoding(enableDictionaryEncoding)
         .withPageRowCountLimit(Integer.MAX_VALUE)
         .withMinRowCountForPageSizeCheck(Integer.MAX_VALUE)
         .build();
@@ -255,16 +283,17 @@ public class BdecParquetWriter implements AutoCloseable {
    *
    * <p>This class is implemented as parquet library API requires, mostly to serialize user column
    * values depending on type into Parquet {@link RecordConsumer} in {@link
-   * BdecWriteSupport#write(List)}.
+   * SnowflakeWriteSupport#write(List)}.
    */
-  private static class BdecWriteSupport extends WriteSupport<List<Object>> {
+  private static class SnowflakeWriteSupport extends WriteSupport<List<Object>> {
     MessageType schema;
     RecordConsumer recordConsumer;
     Map<String, String> extraMetadata;
     private final String channelName;
 
     // TODO SNOW-672156: support specifying encodings and compression
-    BdecWriteSupport(MessageType schema, Map<String, String> extraMetadata, String channelName) {
+    SnowflakeWriteSupport(
+        MessageType schema, Map<String, String> extraMetadata, String channelName) {
       this.schema = schema;
       this.extraMetadata = extraMetadata;
       this.channelName = channelName;
@@ -360,12 +389,13 @@ public class BdecParquetWriter implements AutoCloseable {
               }
             } else {
               /* Struct */
-              recordConsumer.startGroup();
-              if (val instanceof List) {
-                writeValues((List<?>) val, cols.get(i).asGroupType());
-              } else {
+              if (!(val instanceof List)) {
                 throw new ParquetEncodingException(
                     String.format("Field %s should be a 2 level struct", fieldName));
+              }
+              recordConsumer.startGroup();
+              if (!((List<?>) val).isEmpty()) {
+                writeValues((List<?>) val, cols.get(i).asGroupType());
               }
               recordConsumer.endGroup();
             }

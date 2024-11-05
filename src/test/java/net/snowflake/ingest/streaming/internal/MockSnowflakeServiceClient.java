@@ -5,6 +5,7 @@ import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.GENERATE_PRESIGNED_URLS_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.OPEN_CHANNEL_ENDPOINT;
+import static net.snowflake.ingest.utils.Constants.REFRESH_TABLE_INFORMATION_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -63,17 +64,18 @@ public class MockSnowflakeServiceClient {
     }
   }
 
-  public static SnowflakeServiceClient create() {
+  public static SnowflakeServiceClient create(boolean enableIcebergStreaming) {
     try {
       CloseableHttpClient httpClient = createHttpClient(new ApiOverride());
-      RequestBuilder requestBuilder = createRequestBuilder(httpClient);
+      RequestBuilder requestBuilder = createRequestBuilder(httpClient, enableIcebergStreaming);
       return new SnowflakeServiceClient(httpClient, requestBuilder);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  public static RequestBuilder createRequestBuilder(CloseableHttpClient httpClient) {
+  public static RequestBuilder createRequestBuilder(
+      CloseableHttpClient httpClient, boolean enableIcebergStreaming) {
     try {
       return new RequestBuilder(
           "test_host",
@@ -85,6 +87,7 @@ public class MockSnowflakeServiceClient {
           null,
           null,
           httpClient,
+          enableIcebergStreaming,
           "mock_client");
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -130,7 +133,18 @@ public class MockSnowflakeServiceClient {
                         clientConfigresponseMap.put("deployment_id", 123L);
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, clientConfigresponseMap);
+
+                      case REFRESH_TABLE_INFORMATION_ENDPOINT:
+                        Thread.sleep(1);
+                        Map<String, Object> refreshTableInformationMap = new HashMap<>();
+                        refreshTableInformationMap.put("status_code", 0L);
+                        refreshTableInformationMap.put("message", "OK");
+                        refreshTableInformationMap.put("iceberg_location", getStageLocationMap());
+                        return buildStreamingIngestResponse(
+                            HttpStatus.SC_OK, refreshTableInformationMap);
+
                       case GENERATE_PRESIGNED_URLS_ENDPOINT:
+                        Thread.sleep(1);
                         Map<String, Object> generateUrlsResponseMap = new HashMap<>();
                         generateUrlsResponseMap.put("status_code", 0L);
                         generateUrlsResponseMap.put("message", "OK");
@@ -140,9 +154,9 @@ public class MockSnowflakeServiceClient {
                                 new GeneratePresignedUrlsResponse.PresignedUrlInfo(
                                     "f1", "http://f1.com?token=t1"),
                                 new GeneratePresignedUrlsResponse.PresignedUrlInfo(
-                                    "f2", "http://f2.com?token=t2"),
+                                    "f2", "http://f1.com?token=t2"),
                                 new GeneratePresignedUrlsResponse.PresignedUrlInfo(
-                                    "f3", "http://f3.com?token=t3")));
+                                    "f3", "http://f1.com?token=t3")));
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, generateUrlsResponseMap);
                       case OPEN_CHANNEL_ENDPOINT:
@@ -171,7 +185,6 @@ public class MockSnowflakeServiceClient {
                         openChannelResponseMap.put("table_columns", tableColumnsLists);
                         openChannelResponseMap.put("encryption_key", "test_encryption_key");
                         openChannelResponseMap.put("encryption_key_id", 123L);
-                        openChannelResponseMap.put("iceberg_location", getStageLocationMap());
                         return buildStreamingIngestResponse(
                             HttpStatus.SC_OK, openChannelResponseMap);
                       case DROP_CHANNEL_ENDPOINT:
@@ -257,8 +270,8 @@ public class MockSnowflakeServiceClient {
 
     Map<String, Object> stageLocationMap = new HashMap<>();
     stageLocationMap.put("locationType", "S3");
-    stageLocationMap.put("location", "test_location");
-    stageLocationMap.put("path", "test_path");
+    stageLocationMap.put("location", "container/vol/table/data/streaming_ingest/figsId");
+    stageLocationMap.put("path", "table/data/streaming_ingest/figsId/snow_volHash_figsId_1_1_");
     stageLocationMap.put("creds", credsMap);
     stageLocationMap.put("region", "test_region");
     stageLocationMap.put("endPoint", "test_endpoint");

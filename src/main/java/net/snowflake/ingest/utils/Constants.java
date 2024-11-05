@@ -5,6 +5,7 @@
 package net.snowflake.ingest.utils;
 
 import java.util.Arrays;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 /** Contains all the constants needed for Streaming Ingest */
@@ -35,6 +36,7 @@ public class Constants {
   public static final String SNOWFLAKE_OAUTH_TOKEN_ENDPOINT = "/oauth/token-request";
   public static final String PRIMARY_FILE_ID_KEY =
       "primaryFileId"; // Don't change, should match Parquet Scanner
+  public static final String ASSIGNED_FULL_FILE_NAME_KEY = "assignedFullFileName";
   public static final String SDK_VERSION_KEY = "sdkVersion";
   public static final long RESPONSE_SUCCESS = 0L; // Don't change, should match server side
   public static final long RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST =
@@ -55,6 +57,8 @@ public class Constants {
   public static final String CLIENT_CONFIGURE_ENDPOINT = "/v1/streaming/client/configure/";
   public static final String GENERATE_PRESIGNED_URLS_ENDPOINT =
       "/v1/streaming/presignedurls/generate/";
+  public static final String REFRESH_TABLE_INFORMATION_ENDPOINT =
+      "/v1/streaming/tableinformation/refresh/";
   public static final int COMMIT_MAX_RETRY_COUNT = 60;
   public static final int COMMIT_RETRY_INTERVAL_IN_MS = 1000;
   public static final String ENCRYPTION_ALGORITHM = "AES/CTR/NoPadding";
@@ -62,6 +66,7 @@ public class Constants {
   public static final int MAX_STREAMING_INGEST_API_CHANNEL_RETRY = 3;
   public static final int STREAMING_INGEST_TELEMETRY_UPLOAD_INTERVAL_IN_SEC = 10;
   public static final long EP_NDV_UNKNOWN = -1L;
+  public static final long EP_NV_UNKNOWN = -1L;
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;
   public static final int BINARY_COLUMN_MAX_SIZE = 8 * 1024 * 1024;
   public static final int VARCHAR_COLUMN_MAX_SIZE = 16 * 1024 * 1024;
@@ -74,6 +79,29 @@ public class Constants {
 
   public static final int PARQUET_MAJOR_VERSION = 1;
   public static final int PARQUET_MINOR_VERSION = 0;
+
+  /**
+   * Iceberg table serialization policy. Use v2 parquet writer for optimized serialization,
+   * otherwise v1.
+   */
+  public enum IcebergSerializationPolicy {
+    COMPATIBLE,
+    OPTIMIZED;
+
+    public ParquetProperties.WriterVersion toParquetWriterVersion() {
+      switch (this) {
+        case COMPATIBLE:
+          return ParquetProperties.WriterVersion.PARQUET_1_0;
+        case OPTIMIZED:
+          return ParquetProperties.WriterVersion.PARQUET_2_0;
+        default:
+          throw new IllegalArgumentException(
+              String.format(
+                  "Unsupported ICEBERG_SERIALIZATION_POLICY = '%s', allowed values are %s",
+                  this.name(), Arrays.asList(IcebergSerializationPolicy.values())));
+      }
+    }
+  }
 
   public enum WriteMode {
     CLOUD_STORAGE,

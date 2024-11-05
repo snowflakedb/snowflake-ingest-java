@@ -16,9 +16,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class SemiStructuredIT extends AbstractDataTypeTest {
+  @Before
+  public void before() throws Exception {
+    super.before();
+  }
 
   // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its
   // server-side representation. Validation leaves a small buffer for this difference.

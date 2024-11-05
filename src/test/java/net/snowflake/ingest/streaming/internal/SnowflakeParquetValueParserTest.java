@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static java.time.ZoneOffset.UTC;
@@ -29,7 +33,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             12,
@@ -61,7 +65,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             1234,
@@ -93,7 +97,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             123456789,
@@ -125,7 +129,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             123456789987654321L,
@@ -157,7 +161,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             new BigDecimal("91234567899876543219876543211234567891"),
@@ -191,7 +195,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             new BigDecimal("12345.54321"),
@@ -221,7 +225,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             12345.54321d,
@@ -251,7 +255,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             true,
@@ -281,7 +285,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             "1234abcd".getBytes(),
@@ -326,7 +330,7 @@ public class SnowflakeParquetValueParserTest {
     String var =
         "{\"key1\":-879869596,\"key2\":\"value2\",\"key3\":null,"
             + "\"key4\":{\"key41\":0.032437,\"key42\":\"value42\",\"key43\":null}}";
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             var,
@@ -376,7 +380,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             var,
@@ -417,7 +421,7 @@ public class SnowflakeParquetValueParserTest {
     input.put("b", "2");
     input.put("c", "3");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             input,
@@ -455,7 +459,7 @@ public class SnowflakeParquetValueParserTest {
 
     String text = "This is a sample text! Length is bigger than 32 bytes :)";
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             text,
@@ -492,7 +496,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     SFException exception =
         Assert.assertThrows(
             SFException.class,
@@ -506,7 +510,8 @@ public class SnowflakeParquetValueParserTest {
                     0,
                     ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT));
     Assert.assertEquals(
-        "Unknown data type for logical: TIMESTAMP_NTZ, physical: SB4.", exception.getMessage());
+        "Unknown data type for column: testCol. logical: TIMESTAMP_NTZ, physical: SB4.",
+        exception.getMessage());
   }
 
   @Test
@@ -520,7 +525,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             "2013-04-28T20:57:01.000",
@@ -551,7 +556,7 @@ public class SnowflakeParquetValueParserTest {
             .scale(9) // nanos
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             "2022-09-18T22:05:07.123456789",
@@ -583,7 +588,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             "2021-01-01",
@@ -614,7 +619,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             "01:00:00",
@@ -645,7 +650,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     ParquetBufferValue pv =
         SnowflakeParquetValueParser.parseColumnValueToParquet(
             "01:00:00.123",
@@ -676,7 +681,7 @@ public class SnowflakeParquetValueParserTest {
             .nullable(true)
             .build();
 
-    RowBufferStats rowBufferStats = new RowBufferStats("COL1");
+    RowBufferStats rowBufferStats = new RowBufferStats("COL1", false, false);
     SFException exception =
         Assert.assertThrows(
             SFException.class,
@@ -690,6 +695,7 @@ public class SnowflakeParquetValueParserTest {
                     0,
                     ParameterProvider.ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT));
     Assert.assertEquals(
-        "Unknown data type for logical: TIME, physical: SB16.", exception.getMessage());
+        "Unknown data type for column: testCol. logical: TIME, physical: SB16.",
+        exception.getMessage());
   }
 }

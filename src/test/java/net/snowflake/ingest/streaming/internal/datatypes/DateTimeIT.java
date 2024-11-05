@@ -21,6 +21,7 @@ public class DateTimeIT extends AbstractDataTypeTest {
 
   @Before
   public void setup() throws Exception {
+    super.before();
     // Set to a random time zone not to interfere with any of the tests
     conn.createStatement().execute("alter session set timezone = 'America/New_York';");
   }
