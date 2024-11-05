@@ -71,7 +71,7 @@
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.5</snappy.version>
-    <snowjdbc.version>3.18.0</snowjdbc.version>
+    <snowjdbc.version>3.20.0</snowjdbc.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
 
@@ -888,7 +888,18 @@
                   </ignoreClasses>
                   <findAllDuplicates>true</findAllDuplicates>
                   <ignoreWhenIdentical>true</ignoreWhenIdentical>
+                  <dependencies>
+                    <dependency>
+                      <groupId>net.snowflake</groupId>
+                      <artifactId>snowflake-jdbc</artifactId>
+                      <ignoreClasses>
+                        <!-- zstd exists in ingest JAR, as well as JDBC jar and cannot be relocated, so we need to ignore it here -->
+                        <ignoreClass>com.github.luben.zstd.*</ignoreClass>
+                      </ignoreClasses>
+                    </dependency>
+                  </dependencies>
                 </banDuplicateClasses>
+
                 <banDuplicatePomDependencyVersions/>
                 <bannedDependencies/>
                 <dependencyConvergence/>
