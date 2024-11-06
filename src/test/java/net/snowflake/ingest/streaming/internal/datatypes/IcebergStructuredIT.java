@@ -371,7 +371,51 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
             UUID.randomUUID().toString());
     assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
     assertThat(insertValidationResponse.getInsertErrors().get(0).getNullValueForNotNullColNames())
-        .containsOnly("VALUE.k1");
+        .containsOnly("VALUE.k1", "VALUE.k2");
+  }
+
+  @Test
+  public void testMultipleErrors() throws Exception {
+    String tableName =
+        createIcebergTable(
+            "object(k1 int not null, k2 object(k3 int not null, k4 object(k5 int not null) not"
+                + " null) not null) not null");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.ABORT);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                channel.insertRow(
+                    createStreamingIngestRow(
+                        new HashMap<String, Object>() {
+                          {
+                            put("k1", null);
+                            put(
+                                "k2",
+                                new HashMap<String, Object>() {
+                                  {
+                                    put(
+                                        "k4",
+                                        new HashMap<String, Object>() {
+                                          {
+                                            put("k5", null);
+                                            put("k7", 1);
+                                          }
+                                        });
+                                    put("k6", null);
+                                  }
+                                });
+                          }
+                        }),
+                    UUID.randomUUID().toString()))
+        .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Invalid row 0. "
+                + "missingNotNullColNames=[VALUE.k2.k3], "
+                + "extraColNames=[VALUE.k2.k4.k7, VALUE.k2.k6], "
+                + "nullValueForNotNullColNames=[VALUE.k1, VALUE.k2.k4.k5]")
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
   }
 
   private void assertStructuredDataType(String dataType, String value) throws Exception {

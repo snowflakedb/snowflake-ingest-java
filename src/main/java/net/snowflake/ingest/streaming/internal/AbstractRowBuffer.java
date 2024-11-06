@@ -211,7 +211,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
                 rowBuffer.tempStatsMap,
                 inputColumnNames,
                 tempRowCount,
-                null /* error */);
+                new InsertValidationResponse.InsertError(row, 0) /* dummy error */);
         tempRowCount++;
         if ((long) rowBuffer.bufferedRowCount + tempRowCount >= Integer.MAX_VALUE) {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "Row count reaches MAX value");
@@ -587,7 +587,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param formattedInputColumnNames list of input column names after formatting
    * @param insertRowIndex Index of the rows given in insertRows API. Not the same as
    *     bufferedRowIndex
-   * @param error
+   * @param error Insert error object, used to populate error details when doing structured data
+   *     type parsing
    * @return row size
    */
   abstract float addRow(
@@ -609,7 +610,8 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
    * @param statsMap column stats map
    * @param formattedInputColumnNames list of input column names after formatting
    * @param insertRowIndex index of the row being inserteed from User Input List
-   * @param error
+   * @param error Insert error object, used to populate error details when doing structured data
+   *     type parsing
    * @return row size
    */
   abstract float addTempRow(

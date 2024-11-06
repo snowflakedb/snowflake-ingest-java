@@ -352,6 +352,19 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       size += valueWithSize.getSize();
     }
 
+    if (error.getMissingNotNullColNames() != null
+        || error.getExtraColNames() != null
+        || error.getNullValueForNotNullColNames() != null) {
+      throw new SFException(
+          ErrorCode.INVALID_FORMAT_ROW,
+          String.format("Invalid row %d", insertRowsCurrIndex),
+          String.format(
+              "missingNotNullColNames=%s, extraColNames=%s, nullValueForNotNullColNames=%s",
+              error.getMissingNotNullColNames(),
+              error.getExtraColNames(),
+              error.getNullValueForNotNullColNames()));
+    }
+
     long rowSizeRoundedUp = Double.valueOf(Math.ceil(size)).longValue();
 
     if (rowSizeRoundedUp > clientBufferParameters.getMaxAllowedRowSizeInBytes()) {

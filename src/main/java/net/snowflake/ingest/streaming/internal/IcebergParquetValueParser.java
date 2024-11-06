@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -98,8 +97,8 @@ class IcebergParquetValueParser {
       }
     }
 
+    String path = subColumnFinder.getDotPath(id);
     if (value != null) {
-      String path = subColumnFinder.getDotPath(id);
       if (type.isPrimitive()) {
         RowBufferStats stats = statsMap.get(id.toString());
         estimatedParquetSize += ParquetBufferValue.DEFINITION_LEVEL_ENCODING_BYTE_LEN;
@@ -179,15 +178,7 @@ class IcebergParquetValueParser {
 
     if (value == null) {
       if (type.isRepetition(Repetition.REQUIRED)) {
-        if (error != null) {
-          error.addNullValueForNotNullColName(subColumnFinder.getDotPath(id));
-        }
-        throw new SFException(
-            ErrorCode.INVALID_FORMAT_ROW,
-            subColumnFinder.getDotPath(id),
-            String.format(
-                "Passed null to non nullable field, rowIndex:%d, column:%s",
-                insertRowsCurrIndex, subColumnFinder.getDotPath(id)));
+        error.addNullValueForNotNullColName(path);
       }
       subColumnFinder
           .getSubColumns(id)
@@ -481,42 +472,15 @@ class IcebergParquetValueParser {
       }
     }
 
-    if (!missingFields.isEmpty()) {
-      missingFields.forEach(
-          missingField -> {
-            if (error != null) {
-              List<String> missingFieldPath =
-                  new ArrayList<>(subColumnFinder.getPath(type.getId()));
-              missingFieldPath.add(missingField);
-              error.addMissingNotNullColName(
-                  concatDotPath(missingFieldPath.toArray(new String[0])));
-            }
-          });
-      String missingFieldsStr = missingFields.stream().collect(Collectors.joining(", ", "[", "]"));
-      throw new SFException(
-          ErrorCode.INVALID_FORMAT_ROW,
-          "Missing fields: " + missingFieldsStr,
-          String.format(
-              "Fields %s are required but not present in the struct %s, rowIndex:%d",
-              missingFieldsStr, subColumnFinder.getDotPath(type.getId()), insertRowsCurrIndex));
+    for (String missingField : missingFields) {
+      List<String> missingFieldPath = new ArrayList<>(subColumnFinder.getPath(type.getId()));
+      missingFieldPath.add(missingField);
+      error.addMissingNotNullColName(concatDotPath(missingFieldPath.toArray(new String[0])));
     }
-
-    if (!extraFields.isEmpty()) {
-      extraFields.forEach(
-          extraField -> {
-            if (error != null) {
-              List<String> extraFieldPath = new ArrayList<>(subColumnFinder.getPath(type.getId()));
-              extraFieldPath.add(extraField);
-              error.addExtraColName(concatDotPath(extraFieldPath.toArray(new String[0])));
-            }
-          });
-      String extraFieldsStr = extraFields.stream().collect(Collectors.joining(", ", "[", "]"));
-      throw new SFException(
-          ErrorCode.INVALID_FORMAT_ROW,
-          "Extra fields: " + extraFieldsStr,
-          String.format(
-              "Fields not present in the struct %s shouldn't be specified, rowIndex:%d",
-              subColumnFinder.getDotPath(type.getId()), insertRowsCurrIndex));
+    for (String extraField : extraFields) {
+      List<String> extraFieldPath = new ArrayList<>(subColumnFinder.getPath(type.getId()));
+      extraFieldPath.add(extraField);
+      error.addExtraColName(concatDotPath(extraFieldPath.toArray(new String[0])));
     }
     return new ParquetBufferValue(listVal, estimatedParquetSize);
   }

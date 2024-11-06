@@ -19,8 +19,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.utils.Pair;
-import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SubColumnFinder;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -528,11 +528,13 @@ public class IcebergParquetValueParserTest {
             .element(Types.optional(PrimitiveTypeName.INT32).id(2).named("element"))
             .id(1)
             .named("LIST_COL");
-    Assert.assertThrows(
-        SFException.class,
-        () ->
-            IcebergParquetValueParser.parseColumnValueToParquet(
-                null, requiredList, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null));
+    InsertValidationResponse.InsertError error = new InsertValidationResponse.InsertError(null, 0);
+    IcebergParquetValueParser.parseColumnValueToParquet(
+        null, requiredList, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, error);
+    Assert.assertNotNull(error.getNullValueForNotNullColNames());
+    Assert.assertNull(error.getExtraColNames());
+    Assert.assertNull(error.getMissingNotNullColNames());
+
     pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new ArrayList<>(), requiredList, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
@@ -549,20 +551,21 @@ public class IcebergParquetValueParserTest {
     /* Test required list with required elements */
     Type requiredElements =
         Types.requiredList()
-            .element(Types.required(PrimitiveTypeName.INT32).id(1).named("element"))
-            .id(2)
+            .element(Types.required(PrimitiveTypeName.INT32).id(2).named("element"))
+            .id(1)
             .named("LIST_COL");
-    Assert.assertThrows(
-        SFException.class,
-        () ->
-            IcebergParquetValueParser.parseColumnValueToParquet(
-                Collections.singletonList(null),
-                requiredElements,
-                rowBufferStatsMap,
-                mockSubColumnFinder,
-                UTC,
-                0,
-                null));
+    error = new InsertValidationResponse.InsertError(null, 0);
+    IcebergParquetValueParser.parseColumnValueToParquet(
+        Collections.singletonList(null),
+        requiredElements,
+        rowBufferStatsMap,
+        mockSubColumnFinder,
+        UTC,
+        0,
+        error);
+    Assert.assertNotNull(error.getNullValueForNotNullColNames());
+    Assert.assertNull(error.getExtraColNames());
+    Assert.assertNull(error.getMissingNotNullColNames());
   }
 
   @Test
@@ -619,11 +622,13 @@ public class IcebergParquetValueParserTest {
             .value(Types.optional(PrimitiveTypeName.INT32).id(3).named("value"))
             .id(1)
             .named("MAP_COL");
-    Assert.assertThrows(
-        SFException.class,
-        () ->
-            IcebergParquetValueParser.parseColumnValueToParquet(
-                null, requiredMap, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null));
+    InsertValidationResponse.InsertError error = new InsertValidationResponse.InsertError(null, 0);
+    IcebergParquetValueParser.parseColumnValueToParquet(
+        null, requiredMap, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, error);
+    Assert.assertNotNull(error.getNullValueForNotNullColNames());
+    Assert.assertNull(error.getExtraColNames());
+    Assert.assertNull(error.getMissingNotNullColNames());
+
     pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<Integer, Integer>(),
@@ -650,21 +655,22 @@ public class IcebergParquetValueParserTest {
             .value(Types.required(PrimitiveTypeName.INT32).id(3).named("value"))
             .id(1)
             .named("MAP_COL");
-    Assert.assertThrows(
-        SFException.class,
-        () ->
-            IcebergParquetValueParser.parseColumnValueToParquet(
-                new java.util.HashMap<Integer, Integer>() {
-                  {
-                    put(1, null);
-                  }
-                },
-                requiredValues,
-                rowBufferStatsMap,
-                mockSubColumnFinder,
-                UTC,
-                0,
-                null));
+    error = new InsertValidationResponse.InsertError(null, 0);
+    IcebergParquetValueParser.parseColumnValueToParquet(
+        new java.util.HashMap<Integer, Integer>() {
+          {
+            put(1, null);
+          }
+        },
+        requiredValues,
+        rowBufferStatsMap,
+        mockSubColumnFinder,
+        UTC,
+        0,
+        error);
+    Assert.assertNotNull(error.getNullValueForNotNullColNames());
+    Assert.assertNull(error.getExtraColNames());
+    Assert.assertNull(error.getMissingNotNullColNames());
   }
 
   @Test
@@ -692,36 +698,40 @@ public class IcebergParquetValueParserTest {
 
     IcebergParquetValueParser.parseColumnValueToParquet(
         null, struct, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null);
-    Assert.assertThrows(
-        SFException.class,
-        () ->
-            IcebergParquetValueParser.parseColumnValueToParquet(
-                new java.util.HashMap<String, Object>() {
-                  {
-                    put("a", 1);
-                  }
-                },
-                struct,
-                rowBufferStatsMap,
-                mockSubColumnFinder,
-                UTC,
-                0,
-                null));
-    Assert.assertThrows(
-        SFException.class,
-        () ->
-            IcebergParquetValueParser.parseColumnValueToParquet(
-                new java.util.HashMap<String, Object>() {
-                  {
-                    put("c", 1);
-                  }
-                },
-                struct,
-                rowBufferStatsMap,
-                mockSubColumnFinder,
-                UTC,
-                0,
-                null));
+    InsertValidationResponse.InsertError error = new InsertValidationResponse.InsertError(null, 0);
+    IcebergParquetValueParser.parseColumnValueToParquet(
+        new java.util.HashMap<String, Object>() {
+          {
+            put("a", 1);
+          }
+        },
+        struct,
+        rowBufferStatsMap,
+        mockSubColumnFinder,
+        UTC,
+        0,
+        error);
+    Assert.assertNotNull(error.getMissingNotNullColNames());
+    Assert.assertNull(error.getExtraColNames());
+    Assert.assertNull(error.getNullValueForNotNullColNames());
+
+    error = new InsertValidationResponse.InsertError(null, 0);
+    IcebergParquetValueParser.parseColumnValueToParquet(
+        new java.util.HashMap<String, Object>() {
+          {
+            put("c", 1);
+          }
+        },
+        struct,
+        rowBufferStatsMap,
+        mockSubColumnFinder,
+        UTC,
+        0,
+        error);
+    Assert.assertNotNull(error.getMissingNotNullColNames());
+    Assert.assertNotNull(error.getExtraColNames());
+    Assert.assertNull(error.getNullValueForNotNullColNames());
+
     ParquetBufferValue pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             Collections.unmodifiableMap(
@@ -757,11 +767,14 @@ public class IcebergParquetValueParserTest {
                     .named("b"))
             .id(1)
             .named("STRUCT_COL");
-    Assert.assertThrows(
-        SFException.class,
-        () ->
-            IcebergParquetValueParser.parseColumnValueToParquet(
-                null, requiredStruct, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, null));
+
+    error = new InsertValidationResponse.InsertError(null, 0);
+    IcebergParquetValueParser.parseColumnValueToParquet(
+        null, requiredStruct, rowBufferStatsMap, mockSubColumnFinder, UTC, 0, error);
+    Assert.assertNotNull(error.getNullValueForNotNullColNames());
+    Assert.assertNull(error.getExtraColNames());
+    Assert.assertNull(error.getMissingNotNullColNames());
+
     pv =
         IcebergParquetValueParser.parseColumnValueToParquet(
             new java.util.HashMap<String, Object>(),

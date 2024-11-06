@@ -89,7 +89,7 @@ public class SubColumnFinder {
     if (!accessMap.containsKey(id)) {
       throw new IllegalArgumentException(String.format("Field %s not found in schema", id));
     }
-    return accessMap.get(id).path;
+    return Collections.unmodifiableList(accessMap.get(id).path);
   }
 
   /**
