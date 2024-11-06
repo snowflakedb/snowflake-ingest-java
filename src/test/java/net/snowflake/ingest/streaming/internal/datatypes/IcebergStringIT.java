@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
@@ -8,11 +12,9 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 
-@Ignore("This test can be enabled after server side Iceberg EP support is released")
 public class IcebergStringIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
   public static Object[][] parameters() {

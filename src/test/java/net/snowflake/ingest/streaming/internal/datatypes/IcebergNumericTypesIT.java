@@ -15,13 +15,11 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.text.RandomStringGenerator;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Ignore("This test can be enabled after server side Iceberg EP support is released")
 public class IcebergNumericTypesIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
   public static Object[][] parameters() {
