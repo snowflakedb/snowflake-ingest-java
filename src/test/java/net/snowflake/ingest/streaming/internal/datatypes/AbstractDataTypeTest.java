@@ -7,7 +7,9 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Connection;
@@ -68,7 +70,8 @@ public abstract class AbstractDataTypeTest {
 
   private String schemaName = "PUBLIC";
   private SnowflakeStreamingIngestClient client;
-  protected static final ObjectMapper objectMapper = new ObjectMapper();
+  protected static final ObjectMapper objectMapper =
+      JsonMapper.builder().enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER).build();
 
   @Parameters(name = "{index}: {0}")
   public static Object[] parameters() {
@@ -172,8 +175,7 @@ public abstract class AbstractDataTypeTest {
 
   protected String createIcebergTable(String dataType) throws SQLException {
     String tableName = getRandomIdentifier();
-    String baseLocation =
-        String.format("SDK_IT/%s/%s/%s", databaseName, dataType.replace(" ", "_"), tableName);
+    String baseLocation = String.format("SDK_IT/%s/%s", databaseName, tableName);
     conn.createStatement()
         .execute(
             String.format(
@@ -580,6 +582,9 @@ public abstract class AbstractDataTypeTest {
             .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
             .usingRecursiveComparison()
             .isEqualTo(expectedValue);
+      } else if (expectedValue instanceof Map) {
+        Assertions.assertThat(objectMapper.readTree((String) res))
+            .isEqualTo(objectMapper.valueToTree(expectedValue));
       } else if (expectedValue instanceof Timestamp) {
         Assertions.assertThat(res.toString()).isEqualTo(expectedValue.toString());
       } else {

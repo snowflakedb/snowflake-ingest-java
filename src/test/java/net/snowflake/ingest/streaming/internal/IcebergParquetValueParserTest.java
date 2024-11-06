@@ -41,20 +41,20 @@ public class IcebergParquetValueParserTest {
   public void setUp() {
     objectMapper = new ObjectMapper();
     mockSubColumnFinder = Mockito.mock(SubColumnFinder.class);
-    Mockito.when(mockSubColumnFinder.getSubColumns(Mockito.anyString()))
+    Mockito.when(mockSubColumnFinder.getSubColumns(Mockito.any(Type.ID.class)))
         .thenReturn(Collections.emptyList());
   }
 
   @Test
   public void parseValueBoolean() {
     Type type =
-        Types.primitive(PrimitiveTypeName.BOOLEAN, Repetition.OPTIONAL).named("BOOLEAN_COL");
+        Types.primitive(PrimitiveTypeName.BOOLEAN, Repetition.OPTIONAL).id(1).named("BOOLEAN_COL");
 
     RowBufferStats rowBufferStats = new RowBufferStats("BOOLEAN_COL", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("BOOLEAN_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
 
@@ -73,13 +73,14 @@ public class IcebergParquetValueParserTest {
 
   @Test
   public void parseValueInt() {
-    Type type = Types.primitive(PrimitiveTypeName.INT32, Repetition.OPTIONAL).named("INT_COL");
+    Type type =
+        Types.primitive(PrimitiveTypeName.INT32, Repetition.OPTIONAL).id(1).named("INT_COL");
 
     RowBufferStats rowBufferStats = new RowBufferStats("INT_COL", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("INT_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -99,6 +100,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueDecimalToInt() {
     Type type =
         Types.primitive(PrimitiveTypeName.INT32, Repetition.OPTIONAL)
+            .id(1)
             .as(LogicalTypeAnnotation.decimalType(4, 9))
             .named("DECIMAL_COL");
 
@@ -106,7 +108,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("DECIMAL_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -126,6 +128,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueDateToInt() {
     Type type =
         Types.primitive(PrimitiveTypeName.INT32, Repetition.OPTIONAL)
+            .id(1)
             .as(LogicalTypeAnnotation.dateType())
             .named("DATE_COL");
 
@@ -133,7 +136,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("DATE_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -151,13 +154,14 @@ public class IcebergParquetValueParserTest {
 
   @Test
   public void parseValueLong() {
-    Type type = Types.primitive(PrimitiveTypeName.INT64, Repetition.OPTIONAL).named("LONG_COL");
+    Type type =
+        Types.primitive(PrimitiveTypeName.INT64, Repetition.OPTIONAL).id(1).named("LONG_COL");
 
     RowBufferStats rowBufferStats = new RowBufferStats("LONG_COL", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("LONG_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -177,6 +181,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueDecimalToLong() {
     Type type =
         Types.primitive(PrimitiveTypeName.INT64, Repetition.OPTIONAL)
+            .id(1)
             .as(LogicalTypeAnnotation.decimalType(9, 18))
             .named("DECIMAL_COL");
 
@@ -184,7 +189,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("DECIMAL_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -209,6 +214,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueTimeToLong() {
     Type type =
         Types.primitive(PrimitiveTypeName.INT64, Repetition.OPTIONAL)
+            .id(1)
             .as(LogicalTypeAnnotation.timeType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
             .named("TIME_COL");
 
@@ -216,7 +222,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("TIME_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -236,6 +242,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueTimestampToLong() {
     Type type =
         Types.primitive(PrimitiveTypeName.INT64, Repetition.OPTIONAL)
+            .id(1)
             .as(LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
             .named("TIMESTAMP_COL");
 
@@ -243,7 +250,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("TIMESTAMP_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -263,6 +270,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueTimestampTZToLong() {
     Type type =
         Types.primitive(PrimitiveTypeName.INT64, Repetition.OPTIONAL)
+            .id(1)
             .as(LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
             .named("TIMESTAMP_TZ_COL");
 
@@ -270,7 +278,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("TIMESTAMP_TZ_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -288,13 +296,14 @@ public class IcebergParquetValueParserTest {
 
   @Test
   public void parseValueFloat() {
-    Type type = Types.primitive(PrimitiveTypeName.FLOAT, Repetition.OPTIONAL).named("FLOAT_COL");
+    Type type =
+        Types.primitive(PrimitiveTypeName.FLOAT, Repetition.OPTIONAL).id(1).named("FLOAT_COL");
 
     RowBufferStats rowBufferStats = new RowBufferStats("FLOAT_COL", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("FLOAT_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -312,13 +321,14 @@ public class IcebergParquetValueParserTest {
 
   @Test
   public void parseValueDouble() {
-    Type type = Types.primitive(PrimitiveTypeName.DOUBLE, Repetition.OPTIONAL).named("DOUBLE_COL");
+    Type type =
+        Types.primitive(PrimitiveTypeName.DOUBLE, Repetition.OPTIONAL).id(1).named("DOUBLE_COL");
 
     RowBufferStats rowBufferStats = new RowBufferStats("DOUBLE_COL", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("DOUBLE_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     ParquetBufferValue pv =
@@ -336,13 +346,14 @@ public class IcebergParquetValueParserTest {
 
   @Test
   public void parseValueBinary() {
-    Type type = Types.primitive(PrimitiveTypeName.BINARY, Repetition.OPTIONAL).named("BINARY_COL");
+    Type type =
+        Types.primitive(PrimitiveTypeName.BINARY, Repetition.OPTIONAL).id(1).named("BINARY_COL");
 
     RowBufferStats rowBufferStats = new RowBufferStats("BINARY_COL", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("BINARY_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     byte[] value = "snowflake_to_the_moon".getBytes();
@@ -364,6 +375,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueStringToBinary() {
     Type type =
         Types.primitive(PrimitiveTypeName.BINARY, Repetition.OPTIONAL)
+            .id(1)
             .as(LogicalTypeAnnotation.stringType())
             .named("BINARY_COL");
 
@@ -371,7 +383,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("BINARY_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     String value = "snowflake_to_the_moon";
@@ -395,6 +407,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueFixed() {
     Type type =
         Types.primitive(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, Repetition.OPTIONAL)
+            .id(1)
             .length(4)
             .named("FIXED_COL");
 
@@ -402,7 +415,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("FIXED_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     byte[] value = "snow".getBytes();
@@ -424,6 +437,7 @@ public class IcebergParquetValueParserTest {
   public void parseValueDecimalToFixed() {
     Type type =
         Types.primitive(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, Repetition.OPTIONAL)
+            .id(1)
             .length(9)
             .as(LogicalTypeAnnotation.decimalType(10, 20))
             .named("FIXED_COL");
@@ -432,7 +446,7 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("FIXED_COL", rowBufferStats);
+            put("1", rowBufferStats);
           }
         };
     BigDecimal value = new BigDecimal("1234567890.0123456789");
@@ -454,13 +468,14 @@ public class IcebergParquetValueParserTest {
   public void parseList() throws JsonProcessingException {
     Type list =
         Types.optionalList()
-            .element(Types.optional(PrimitiveTypeName.INT32).named("element"))
+            .element(Types.optional(PrimitiveTypeName.INT32).id(2).named("element"))
+            .id(1)
             .named("LIST_COL");
     RowBufferStats rowBufferStats = new RowBufferStats("LIST_COL.list.element", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("LIST_COL.list.element", rowBufferStats);
+            put("2", rowBufferStats);
           }
         };
 
@@ -485,7 +500,8 @@ public class IcebergParquetValueParserTest {
     /* Test required list */
     Type requiredList =
         Types.requiredList()
-            .element(Types.optional(PrimitiveTypeName.INT32).named("element"))
+            .element(Types.optional(PrimitiveTypeName.INT32).id(2).named("element"))
+            .id(1)
             .named("LIST_COL");
     Assert.assertThrows(
         SFException.class,
@@ -508,7 +524,8 @@ public class IcebergParquetValueParserTest {
     /* Test required list with required elements */
     Type requiredElements =
         Types.requiredList()
-            .element(Types.required(PrimitiveTypeName.INT32).named("element"))
+            .element(Types.required(PrimitiveTypeName.INT32).id(1).named("element"))
+            .id(2)
             .named("LIST_COL");
     Assert.assertThrows(
         SFException.class,
@@ -526,16 +543,17 @@ public class IcebergParquetValueParserTest {
   public void parseMap() throws JsonProcessingException {
     Type map =
         Types.optionalMap()
-            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
-            .value(Types.optional(PrimitiveTypeName.INT32).named("value"))
+            .key(Types.required(PrimitiveTypeName.INT32).id(2).named("key"))
+            .value(Types.optional(PrimitiveTypeName.INT32).id(3).named("value"))
+            .id(1)
             .named("MAP_COL");
     RowBufferStats rowBufferKeyStats = new RowBufferStats("MAP_COL.key_value.key", true, true);
     RowBufferStats rowBufferValueStats = new RowBufferStats("MAP_COL.key_value.value", true, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("MAP_COL.key_value.key", rowBufferKeyStats);
-            put("MAP_COL.key_value.value", rowBufferValueStats);
+            put("2", rowBufferKeyStats);
+            put("3", rowBufferValueStats);
           }
         };
     IcebergParquetValueParser.parseColumnValueToParquet(
@@ -570,8 +588,9 @@ public class IcebergParquetValueParserTest {
     /* Test required map */
     Type requiredMap =
         Types.requiredMap()
-            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
-            .value(Types.optional(PrimitiveTypeName.INT32).named("value"))
+            .key(Types.required(PrimitiveTypeName.INT32).id(2).named("key"))
+            .value(Types.optional(PrimitiveTypeName.INT32).id(3).named("value"))
+            .id(1)
             .named("MAP_COL");
     Assert.assertThrows(
         SFException.class,
@@ -599,8 +618,9 @@ public class IcebergParquetValueParserTest {
     /* Test required map with required values */
     Type requiredValues =
         Types.requiredMap()
-            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
-            .value(Types.required(PrimitiveTypeName.INT32).named("value"))
+            .key(Types.required(PrimitiveTypeName.INT32).id(2).named("key"))
+            .value(Types.required(PrimitiveTypeName.INT32).id(3).named("value"))
+            .id(1)
             .named("MAP_COL");
     Assert.assertThrows(
         SFException.class,
@@ -622,11 +642,13 @@ public class IcebergParquetValueParserTest {
   public void parseStruct() throws JsonProcessingException {
     Type struct =
         Types.optionalGroup()
-            .addField(Types.optional(PrimitiveTypeName.INT32).named("a"))
+            .addField(Types.optional(PrimitiveTypeName.INT32).id(2).named("a"))
             .addField(
                 Types.required(PrimitiveTypeName.BINARY)
+                    .id(3)
                     .as(LogicalTypeAnnotation.stringType())
                     .named("b"))
+            .id(1)
             .named("STRUCT_COL");
 
     RowBufferStats rowBufferAStats = new RowBufferStats("STRUCT_COL.a", true, true);
@@ -634,8 +656,8 @@ public class IcebergParquetValueParserTest {
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
-            put("STRUCT_COL.a", rowBufferAStats);
-            put("STRUCT_COL.b", rowBufferBStats);
+            put("2", rowBufferAStats);
+            put("3", rowBufferBStats);
           }
         };
 
@@ -695,11 +717,13 @@ public class IcebergParquetValueParserTest {
     /* Test required struct */
     Type requiredStruct =
         Types.requiredGroup()
-            .addField(Types.optional(PrimitiveTypeName.INT32).named("a"))
+            .addField(Types.optional(PrimitiveTypeName.INT32).id(2).named("a"))
             .addField(
                 Types.optional(PrimitiveTypeName.BINARY)
+                    .id(3)
                     .as(LogicalTypeAnnotation.stringType())
                     .named("b"))
+            .id(1)
             .named("STRUCT_COL");
     Assert.assertThrows(
         SFException.class,
@@ -749,8 +773,8 @@ public class IcebergParquetValueParserTest {
   private static Type generateNestedTypeAndStats(
       int depth, String name, Map<String, RowBufferStats> rowBufferStatsMap, String path) {
     if (depth == 0) {
-      rowBufferStatsMap.put(path, new RowBufferStats(path, true, true));
-      return Types.optional(PrimitiveTypeName.INT32).named(name);
+      rowBufferStatsMap.put("0", new RowBufferStats(path, true, true));
+      return Types.optional(PrimitiveTypeName.INT32).id(0).named(name);
     }
     switch (depth % 3) {
       case 1:
@@ -758,19 +782,22 @@ public class IcebergParquetValueParserTest {
             .element(
                 generateNestedTypeAndStats(
                     depth - 1, "element", rowBufferStatsMap, path + ".list.element"))
+            .id(1)
             .named(name);
       case 2:
         return Types.optionalGroup()
             .addField(generateNestedTypeAndStats(depth - 1, "a", rowBufferStatsMap, path + ".a"))
+            .id(1)
             .named(name);
       case 0:
         rowBufferStatsMap.put(
-            path + ".key_value.key", new RowBufferStats(path + ".key_value.key", true, true));
+            String.valueOf(depth), new RowBufferStats(path + ".key_value.key", true, true));
         return Types.optionalMap()
-            .key(Types.required(PrimitiveTypeName.INT32).named("key"))
+            .key(Types.required(PrimitiveTypeName.INT32).id(depth).named("key"))
             .value(
                 generateNestedTypeAndStats(
                     depth - 1, "value", rowBufferStatsMap, path + ".key_value.value"))
+            .id(1)
             .named(name);
     }
     return null;
