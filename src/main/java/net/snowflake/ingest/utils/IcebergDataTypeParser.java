@@ -68,6 +68,7 @@ public class IcebergDataTypeParser {
       String name) {
     Type icebergType = deserializeIcebergType(icebergDataType);
     org.apache.parquet.schema.Type parquetType;
+    name = sanitizeFieldName(name);
     if (icebergType.isPrimitiveType()) {
       parquetType =
           typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
@@ -163,13 +164,7 @@ public class IcebergDataTypeParser {
 
       int id = JsonUtil.getInt(ID, field);
 
-      /* TypeToMessageType throws on empty field name, use a backslash to represent it and escape remaining backslash. */
-      String name =
-          JsonUtil.getString(NAME, field)
-              .replace(EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR);
-      if (name.isEmpty()) {
-        name = EMPTY_FIELD_CHAR;
-      }
+      String name = sanitizeFieldName(JsonUtil.getStringOrNull(NAME, field));
       Type type = getTypeFromJson(field.get(TYPE));
 
       String doc = JsonUtil.getStringOrNull(DOC, field);
@@ -280,7 +275,7 @@ public class IcebergDataTypeParser {
                 parquetFieldType,
                 icebergField.type(),
                 icebergField.name().equals(EMPTY_FIELD_CHAR)
-                    ? "" /* Empty string are encoded as single backslash in #structFromJson. Decode them here. */
+                    ? "" /* Empty string are encoded as single backslash in #sanitizeFieldName. Decode them here. */
                     : icebergField
                         .name()
                         .replace(EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR)));
@@ -292,5 +287,14 @@ public class IcebergDataTypeParser {
       builder.id(parquetType.getId().intValue());
     }
     return builder.as(parquetType.getLogicalTypeAnnotation()).named(fieldName);
+  }
+
+  /* TypeToMessageType throws on empty field name, use a backslash to represent it and escape remaining backslash. */
+  private static String sanitizeFieldName(String fieldName) {
+    String name = fieldName.replace(EMPTY_FIELD_CHAR, EMPTY_FIELD_CHAR + EMPTY_FIELD_CHAR);
+    if (name.isEmpty()) {
+      name = EMPTY_FIELD_CHAR;
+    }
+    return name;
   }
 }

@@ -179,13 +179,24 @@ public abstract class AbstractDataTypeTest {
     conn.createStatement()
         .execute(
             String.format(
-                "create or replace iceberg table %s (%s string, %s %s) "
-                    + "catalog = 'SNOWFLAKE' "
-                    + "external_volume = 'streaming_ingest' "
-                    + "base_location = '%s';",
-                tableName, SOURCE_COLUMN_NAME, VALUE_COLUMN_NAME, dataType, baseLocation));
+                "create or replace iceberg table %s (%s string, %s %s) %s",
+                tableName,
+                SOURCE_COLUMN_NAME,
+                VALUE_COLUMN_NAME,
+                dataType,
+                baseLocation,
+                getIcebergTableConfig(tableName)));
 
     return tableName;
+  }
+
+  protected String getIcebergTableConfig(String tableName) {
+    String baseLocation = String.format("SDK_IT/%s/%s", databaseName, tableName);
+    return String.format(
+        "catalog = 'SNOWFLAKE' "
+            + "external_volume = 'streaming_ingest' "
+            + "base_location = '%s';",
+        baseLocation);
   }
 
   protected String getRandomIdentifier() {
