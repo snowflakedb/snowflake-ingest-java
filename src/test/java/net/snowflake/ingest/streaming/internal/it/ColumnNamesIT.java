@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal.it;
 
 import java.sql.ResultSet;
@@ -13,17 +17,45 @@ import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.internal.datatypes.AbstractDataTypeTest;
+import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SFException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runners.Parameterized;
 
 public class ColumnNamesIT extends AbstractDataTypeTest {
   private static final int INGEST_VALUE = 1;
 
+  @Parameterized.Parameters(
+      name = "enableIcebergStreaming={0}, compressionAlgorithm={1}, icebergSerializationPolicy={2}")
+  public static Object[][] parameters() {
+    return new Object[][] {
+      // TODO: Enable this after Iceberg testing is set up on sfctest0 GCP / Azure
+      //      {true, "ZSTD", Constants.IcebergSerializationPolicy.COMPATIBLE},
+      //      {true, "ZSTD", Constants.IcebergSerializationPolicy.OPTIMIZED},
+      {false, "GZIP", null},
+      {false, "ZSTD", null},
+    };
+  }
+
+  @Parameterized.Parameter(0)
+  public static boolean enableIcebergStreaming;
+
+  @Parameterized.Parameter(1)
+  public static String compressionAlgorithm;
+
+  @Parameterized.Parameter(2)
+  public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
+
   @Before
   public void before() throws Exception {
-    super.before();
+    if (enableIcebergStreaming) {
+      super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
+    } else {
+      super.compressionAlgorithm = compressionAlgorithm;
+      super.before();
+    }
   }
 
   @Test
@@ -93,9 +125,11 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
     conn.createStatement()
         .execute(
             String.format(
-                "create or replace table %s (AbC int, \"AbC\" int, \"abC\" int, ab\\ c int, \"Ab"
-                    + " c\" int);",
-                tableName));
+                "create or replace %s table %s (AbC int, \"AbC\" int, \"abC\" int, ab\\ c int, \"Ab"
+                    + " c\" int) %s",
+                enableIcebergStreaming ? "iceberg" : "",
+                tableName,
+                enableIcebergStreaming ? getIcebergTableConfig(tableName) : ""));
     SnowflakeStreamingIngestChannel channel = openChannel(tableName);
     String offsetToken = "token1";
     channel.insertRow(new HashMap<>(), offsetToken);
@@ -119,7 +153,12 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
   public void testExtraColNames() throws Exception {
     String tableName = "t1";
     conn.createStatement()
-        .execute(String.format("create or replace table %s (\"create\" int);", tableName));
+        .execute(
+            String.format(
+                "create or replace %s table %s (\"create\" int) %s;",
+                enableIcebergStreaming ? "iceberg" : "",
+                tableName,
+                enableIcebergStreaming ? getIcebergTableConfig(tableName) : ""));
     SnowflakeStreamingIngestChannel channel =
         openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
 
@@ -152,9 +191,11 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
     conn.createStatement()
         .execute(
             String.format(
-                "create or replace table %s (\"CrEaTe\" int not null, a int not null, \"a\" int not"
-                    + " null, \"create\" int);",
-                tableName));
+                "create or replace %s table %s (\"CrEaTe\" int not null, a int not null, \"a\" int"
+                    + " not null, \"create\" int) %s;",
+                enableIcebergStreaming ? "iceberg" : "",
+                tableName,
+                enableIcebergStreaming ? getIcebergTableConfig(tableName) : ""));
     SnowflakeStreamingIngestChannel channel =
         openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
 
@@ -174,9 +215,11 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
     conn.createStatement()
         .execute(
             String.format(
-                "create or replace table %s (col1 int not null,  a int not null, \"a\" int not"
-                    + " null, col2 int not null, \"col3\" int);",
-                tableName));
+                "create or replace %s table %s (col1 int not null,  a int not null, \"a\" int not"
+                    + " null, col2 int not null, \"col3\" int) %s;",
+                enableIcebergStreaming ? "iceberg" : "",
+                tableName,
+                enableIcebergStreaming ? getIcebergTableConfig(tableName) : ""));
     SnowflakeStreamingIngestChannel channel =
         openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
 
@@ -222,7 +265,9 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
     }
     Assert.assertEquals(1, count);
 
-    conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
+    if (!enableIcebergStreaming) {
+      conn.createStatement().execute(String.format("alter table %s migrate;", tableName));
+    }
   }
 
   private void testColumnNameSupported(String column) throws SQLException, InterruptedException {
@@ -252,7 +297,12 @@ public class ColumnNamesIT extends AbstractDataTypeTest {
   private String createSimpleTable(String createTableColumnName) throws SQLException {
     String tableName = "a" + UUID.randomUUID().toString().replace("-", "_");
     String createTableSql =
-        String.format("create table %s (%s int);", tableName, createTableColumnName);
+        String.format(
+            "create %s table %s (%s int) %s",
+            enableIcebergStreaming ? "iceberg" : "",
+            tableName,
+            createTableColumnName,
+            enableIcebergStreaming ? getIcebergTableConfig(tableName) : "");
     conn.createStatement().execute(createTableSql);
     return tableName;
   }
