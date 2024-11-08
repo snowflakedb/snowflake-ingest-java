@@ -26,9 +26,11 @@ import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @Ignore("This test can be enabled after server side Iceberg EP support is released")
+@RunWith(Parameterized.class)
 public class IcebergStructuredIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
   public static Object[][] parameters() {
@@ -38,14 +40,15 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     };
   }
 
-  @Parameterized.Parameter public static String compressionAlgorithm;
+  @Parameterized.Parameter(0)
+  public static String compressionAlgorithm;
 
   @Parameterized.Parameter(1)
   public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
 
   @Before
   public void before() throws Exception {
-    super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
+    super.setUp(true, compressionAlgorithm, icebergSerializationPolicy);
   }
 
   @Test

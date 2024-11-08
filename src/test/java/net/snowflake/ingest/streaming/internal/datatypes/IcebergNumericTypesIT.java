@@ -17,11 +17,13 @@ import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Ignore("This test can be enabled after server side Iceberg EP support is released")
+@RunWith(Parameterized.class)
 public class IcebergNumericTypesIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
   public static Object[][] parameters() {
@@ -31,7 +33,8 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
     };
   }
 
-  @Parameterized.Parameter public static String compressionAlgorithm;
+  @Parameterized.Parameter(0)
+  public static String compressionAlgorithm;
 
   @Parameterized.Parameter(1)
   public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
@@ -42,7 +45,7 @@ public class IcebergNumericTypesIT extends AbstractDataTypeTest {
 
   @Before
   public void before() throws Exception {
-    super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
+    super.setUp(true, compressionAlgorithm, icebergSerializationPolicy);
     long seed = System.currentTimeMillis();
     logger.info("Random seed: {}", seed);
     generator = new Random(seed);

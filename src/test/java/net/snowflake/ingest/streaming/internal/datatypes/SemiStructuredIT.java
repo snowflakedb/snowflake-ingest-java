@@ -18,11 +18,23 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class SemiStructuredIT extends AbstractDataTypeTest {
+  @Parameters(name = "{index}: {0}")
+  public static Object[] parameters() {
+    return new Object[] {"GZIP", "ZSTD"};
+  }
+
+  @Parameter public String compressionAlgorithm;
+
   @Before
   public void before() throws Exception {
-    super.before();
+    super.setUp(false, compressionAlgorithm, null);
   }
 
   // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its

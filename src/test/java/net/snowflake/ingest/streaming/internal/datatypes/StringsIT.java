@@ -12,14 +12,26 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class StringsIT extends AbstractDataTypeTest {
 
   private static final int MB_16 = 16 * 1024 * 1024;
 
+  @Parameters(name = "{index}: {0}")
+  public static Object[] parameters() {
+    return new Object[] {"GZIP", "ZSTD"};
+  }
+
+  @Parameter public String compressionAlgorithm;
+
   @Before
   public void before() throws Exception {
-    super.before();
+    super.setUp(false, compressionAlgorithm, null);
   }
 
   @Test

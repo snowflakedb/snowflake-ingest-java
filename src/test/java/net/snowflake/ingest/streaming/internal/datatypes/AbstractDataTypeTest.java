@@ -4,9 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal.datatypes;
 
-import static net.snowflake.ingest.utils.Constants.ROLE;
-import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
-
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -21,28 +18,18 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.function.Predicate;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
-import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
-import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.SnowflakeURL;
-import net.snowflake.ingest.utils.Utils;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
-@RunWith(Parameterized.class)
 public abstract class AbstractDataTypeTest {
   private static final String SOURCE_COLUMN_NAME = "source";
   private static final String VALUE_COLUMN_NAME = "value";
@@ -58,6 +45,8 @@ public abstract class AbstractDataTypeTest {
 
   protected static BigDecimal MAX_ALLOWED_BIG_DECIMAL = new BigDecimal(MAX_ALLOWED_BIG_INTEGER);
   protected static BigDecimal MIN_ALLOWED_BIG_DECIMAL = new BigDecimal(MIN_ALLOWED_BIG_INTEGER);
+  protected static final ObjectMapper objectMapper =
+      JsonMapper.builder().enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER).build();
 
   protected Connection conn;
   private String databaseName;
@@ -69,79 +58,29 @@ public abstract class AbstractDataTypeTest {
   private Optional<ZoneId> defaultTimezone = Optional.empty();
 
   private String schemaName = "PUBLIC";
-  private SnowflakeStreamingIngestClient client;
-  protected static final ObjectMapper objectMapper =
-      JsonMapper.builder().enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER).build();
-
-  @Parameters(name = "{index}: {0}")
-  public static Object[] parameters() {
-    return new Object[] {"GZIP", "ZSTD"};
-  }
-
-  @Parameter public String compressionAlgorithm;
-
-  public void before() throws Exception {
-    setUp(
-        false /* enableIcebergStreaming */,
-        compressionAlgorithm,
-        Constants.IcebergSerializationPolicy.COMPATIBLE);
-  }
-
-  public void beforeIceberg(
-      String compressionAlgorithm, Constants.IcebergSerializationPolicy serializationPolicy)
-      throws Exception {
-    setUp(true /* enableIcebergStreaming */, compressionAlgorithm, serializationPolicy);
-  }
+  protected SnowflakeStreamingIngestClient client = null;
+  protected Boolean enableIcebergStreaming = null;
+  protected String compressionAlgorithm = null;
+  protected Constants.IcebergSerializationPolicy serializationPolicy = null;
 
   protected void setUp(
       boolean enableIcebergStreaming,
       String compressionAlgorithm,
       Constants.IcebergSerializationPolicy serializationPolicy)
       throws Exception {
-    databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
-    conn = TestUtils.getConnection(true);
-    conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
-    conn.createStatement().execute(String.format("use database %s;", databaseName));
-    conn.createStatement().execute(String.format("use schema %s;", schemaName));
-
-    if (enableIcebergStreaming) {
-      switch (serializationPolicy) {
-        case COMPATIBLE:
-          conn.createStatement()
-              .execute(
-                  String.format(
-                      "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'COMPATIBLE';",
-                      schemaName));
-          break;
-        case OPTIMIZED:
-          conn.createStatement()
-              .execute(
-                  String.format(
-                      "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'OPTIMIZED';",
-                      schemaName));
-          break;
-      }
-    }
-
-    conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
-
-    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
-    props.setProperty(
-        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
-    if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
-      props.setProperty(ROLE, "ACCOUNTADMIN");
-    }
-    props.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
-
-    // Override Iceberg mode client lag to 1 second for faster test execution
-    Map<String, Object> parameterMap = new HashMap<>();
-    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 1000L);
-
-    Properties prop = Utils.createProperties(props);
-    SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
-    client =
-        new SnowflakeStreamingIngestClientInternal<>(
-            "client1", accountURL, prop, parameterMap, false);
+    this.enableIcebergStreaming = enableIcebergStreaming;
+    this.compressionAlgorithm = compressionAlgorithm;
+    this.serializationPolicy = serializationPolicy;
+    this.databaseName = String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", getRandomIdentifier());
+    this.conn = TestUtils.getConnection(true);
+    this.client =
+        TestUtils.setUp(
+            conn,
+            databaseName,
+            schemaName,
+            enableIcebergStreaming,
+            compressionAlgorithm,
+            serializationPolicy);
   }
 
   @After
