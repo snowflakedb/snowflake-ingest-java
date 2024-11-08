@@ -1406,6 +1406,10 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <groups>${failsafe.groups}</groups>
+              <excludedGroups>${failsafe.excludedGroups}</excludedGroups>
+            </configuration>
             <executions>
               <execution>
                 <goals>
