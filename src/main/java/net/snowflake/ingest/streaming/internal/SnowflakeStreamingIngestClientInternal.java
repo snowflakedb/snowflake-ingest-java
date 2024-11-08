@@ -409,17 +409,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     this.storageManager.registerTable(
         new TableRef(response.getDBName(), response.getSchemaName(), response.getTableName()));
 
-    // Add encryption key to the client map for the table
-    this.encryptionKeysPerTable.put(
-        new FullyQualifiedTableName(
-            request.getDBName(), request.getSchemaName(), request.getTableName()),
-        new EncryptionKey(
-            response.getDBName(),
-            response.getSchemaName(),
-            response.getTableName(),
-            response.getEncryptionKey(),
-            response.getEncryptionKeyId()));
-
     return channel;
   }
 
