@@ -184,7 +184,6 @@ public abstract class AbstractDataTypeTest {
                 SOURCE_COLUMN_NAME,
                 VALUE_COLUMN_NAME,
                 dataType,
-                baseLocation,
                 getIcebergTableConfig(tableName)));
 
     return tableName;
