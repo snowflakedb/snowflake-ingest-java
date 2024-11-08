@@ -12,6 +12,7 @@ class RegisterBlobResponse extends StreamingIngestResponse {
   private Long statusCode;
   private String message;
   private List<BlobRegisterStatus> blobsStatus;
+  private List<EncryptionKey> encryptionKeys;
 
   @JsonProperty("status_code")
   void setStatusCode(Long statusCode) {
@@ -38,5 +39,14 @@ class RegisterBlobResponse extends StreamingIngestResponse {
 
   List<BlobRegisterStatus> getBlobsStatus() {
     return this.blobsStatus;
+  }
+
+  @JsonProperty("encryption_keys")
+  void setEncryptionKeys(List<EncryptionKey> encryptionKeys) {
+    this.encryptionKeys = encryptionKeys;
+  }
+
+  List<EncryptionKey> getEncryptionKeys() {
+    return this.encryptionKeys;
   }
 }

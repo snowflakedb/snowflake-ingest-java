@@ -495,11 +495,19 @@ class FlushService<T> {
             blobPath.fileRegistrationPath, this.owningClient.flushLatency.time());
       }
 
+      // Copy encryptionKeysPerTable from owning client
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable =
+          new ConcurrentHashMap<>();
+      this.owningClient
+          .getEncryptionKeysPerTable()
+          .forEach((k, v) -> encryptionKeysPerTable.put(k, new EncryptionKey(v)));
+
       Supplier<BlobMetadata> supplier =
           () -> {
             try {
               BlobMetadata blobMetadata =
-                  buildAndUpload(blobPath, blobData, fullyQualifiedTableName);
+                  buildAndUpload(
+                      blobPath, blobData, fullyQualifiedTableName, encryptionKeysPerTable);
               blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
               return blobMetadata;
             } catch (Throwable e) {
@@ -562,8 +570,6 @@ class FlushService<T> {
    *
    * <p>When the chunk size is larger than a certain threshold
    *
-   * <p>When the encryption key ids are not the same
-   *
    * <p>When the schemas are not the same
    */
   private boolean shouldStopProcessing(
@@ -591,7 +597,10 @@ class FlushService<T> {
    * @return BlobMetadata for FlushService.upload
    */
   BlobMetadata buildAndUpload(
-      BlobPath blobPath, List<List<ChannelData<T>>> blobData, String fullyQualifiedTableName)
+      BlobPath blobPath,
+      List<List<ChannelData<T>>> blobData,
+      String fullyQualifiedTableName,
+      Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
       throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
           NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
           InvalidKeyException {
@@ -603,7 +612,8 @@ class FlushService<T> {
             blobPath.fileRegistrationPath,
             blobData,
             bdecVersion,
-            this.owningClient.getInternalParameterProvider());
+            this.owningClient.getInternalParameterProvider(),
+            encryptionKeysPerTable);
 
     blob.blobStats.setBuildDurationMs(buildContext);
 

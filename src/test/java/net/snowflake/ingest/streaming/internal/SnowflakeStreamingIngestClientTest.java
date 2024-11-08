@@ -750,6 +750,7 @@ public class SnowflakeStreamingIngestClientTest {
         "{\n"
             + "  \"status_code\" : 0,\n"
             + "  \"message\" : \"Success\",\n"
+            + "  \"encryption_keys\": [],\n"
             + "  \"blobs\" : [ {\n"
             + "    \"chunks\" : [ {\n"
             + "      \"database\" : \"DB_STREAMINGINGEST\",\n"
@@ -804,10 +805,12 @@ public class SnowflakeStreamingIngestClientTest {
     RegisterBlobResponse initialResponse = new RegisterBlobResponse();
     initialResponse.setMessage("successish");
     initialResponse.setStatusCode(RESPONSE_SUCCESS);
+    initialResponse.setEncryptionKeys(new ArrayList<>());
 
     RegisterBlobResponse retryResponse = new RegisterBlobResponse();
     retryResponse.setMessage("successish");
     retryResponse.setStatusCode(RESPONSE_SUCCESS);
+    retryResponse.setEncryptionKeys(new ArrayList<>());
 
     List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
     BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
@@ -974,10 +977,12 @@ public class SnowflakeStreamingIngestClientTest {
     RegisterBlobResponse initialResponse = new RegisterBlobResponse();
     initialResponse.setMessage("successish");
     initialResponse.setStatusCode(RESPONSE_SUCCESS);
+    initialResponse.setEncryptionKeys(new ArrayList<>());
 
     RegisterBlobResponse retryResponse = new RegisterBlobResponse();
     retryResponse.setMessage("successish");
     retryResponse.setStatusCode(RESPONSE_SUCCESS);
+    retryResponse.setEncryptionKeys(new ArrayList<>());
 
     List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
     BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
@@ -1050,6 +1055,7 @@ public class SnowflakeStreamingIngestClientTest {
             "{\n"
                 + "  \"status_code\" : 0,\n"
                 + "  \"message\" : \"Success\",\n"
+                + "  \"encryption_keys\": [],\n"
                 + "  \"blobs\" : [ {\n"
                 + "    \"chunks\" : [ {\n"
                 + "      \"database\" : \"%s\",\n"
@@ -1126,6 +1132,58 @@ public class SnowflakeStreamingIngestClientTest {
     // Channel2 should be invalidated now
     Assert.assertTrue(channel1.isValid());
     Assert.assertFalse(channel2.isValid());
+  }
+
+  @Test
+  public void testRegisterBlobSuccessResponseWithEncryptionKeys() throws Exception {
+    String response =
+        "{\n"
+            + "  \"status_code\" : 0,\n"
+            + "  \"message\" : \"Success\",\n"
+            + "  \"encryption_keys\": [\n"
+            + "    {\n"
+            + "      \"database\" : \"DB_STREAMINGINGEST\",\n"
+            + "      \"schema\" : \"PUBLIC\",\n"
+            + "      \"table\" : \"T_STREAMINGINGEST\",\n"
+            + "      \"encryption_key\" : \"key\",\n"
+            + "      \"encryption_key_id\" : 1234\n"
+            + "    }\n"
+            + "  ],\n"
+            + "  \"blobs\" : [ {\n"
+            + "    \"chunks\" : [ {\n"
+            + "      \"database\" : \"DB_STREAMINGINGEST\",\n"
+            + "      \"schema\" : \"PUBLIC\",\n"
+            + "      \"table\" : \"T_STREAMINGINGEST\",\n"
+            + "      \"channels\" : [ {\n"
+            + "        \"status_code\" : 0,\n"
+            + "        \"channel\" : \"CHANNEL\",\n"
+            + "        \"client_sequencer\" : 0\n"
+            + "      }, {\n"
+            + "        \"status_code\" : 0,\n"
+            + "        \"channel\" : \"CHANNEL1\",\n"
+            + "        \"client_sequencer\" : 0\n"
+            + "      } ]\n"
+            + "    } ]\n"
+            + "  } ]\n"
+            + "}";
+
+    apiOverride.addSerializedJsonOverride(
+        REGISTER_BLOB_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
+
+    List<BlobMetadata> blobs =
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
+
+    FullyQualifiedTableName fqn =
+        new FullyQualifiedTableName("DB_STREAMINGINGEST", "PUBLIC", "T_STREAMINGINGEST");
+    client.registerBlobs(blobs);
+    Assert.assertEquals(1, client.getEncryptionKeysPerTable().size());
+    Assert.assertEquals(
+        "DB_STREAMINGINGEST", client.getEncryptionKeysPerTable().get(fqn).getDatabaseName());
+    Assert.assertEquals("PUBLIC", client.getEncryptionKeysPerTable().get(fqn).getSchemaName());
+    Assert.assertEquals(
+        "T_STREAMINGINGEST", client.getEncryptionKeysPerTable().get(fqn).getTableName());
+    Assert.assertEquals("key", client.getEncryptionKeysPerTable().get(fqn).getEncryptionKey());
+    Assert.assertEquals(1234, client.getEncryptionKeysPerTable().get(fqn).getEncryptionKeyId());
   }
 
   @Test
