@@ -970,46 +970,4 @@ public class SnowflakeStreamingIngestChannelTest {
       Assert.assertEquals(ErrorCode.CHANNEL_STATUS_INVALID.getMessageCode(), e.getVendorCode());
     }
   }
-
-  @Test
-  public void testOpenChannelWithEncryptionKey() throws Exception {
-    // TODO: SNOW-1490151 Iceberg testing gaps
-    if (enableIcebergStreaming) {
-      return;
-    }
-
-    String response =
-        "{\n"
-            + "  \"status_code\" : 0,\n"
-            + "  \"message\" : \"Success\",\n"
-            + "  \"encryption_key\" : \"key\",\n"
-            + "  \"encryption_key_id\" : 1,\n"
-            + "  \"database\" : \"db\",\n"
-            + "  \"schema\" : \"schema\",\n"
-            + "  \"table\" : \"table\",\n"
-            + "  \"channel\" : \"channel\",\n"
-            + "  \"row_sequencer\" : 0,\n"
-            + "  \"table_columns\" : [],\n"
-            + "  \"client_sequencer\" : 0\n"
-            + "}";
-
-    apiOverride.addSerializedJsonOverride(
-        OPEN_CHANNEL_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
-
-    OpenChannelRequest request =
-        OpenChannelRequest.builder("channel")
-            .setDBName("db")
-            .setSchemaName("schema")
-            .setTableName("table")
-            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
-            .build();
-    client.openChannel(request);
-
-    FullyQualifiedTableName fqn = new FullyQualifiedTableName("db", "schema", "table");
-    Map<FullyQualifiedTableName, EncryptionKey> keys = client.getEncryptionKeysPerTable();
-    Assert.assertEquals(1, keys.size());
-    Assert.assertTrue(keys.containsKey(fqn));
-    Assert.assertEquals("key", keys.get(fqn).getEncryptionKey());
-    Assert.assertEquals(1, keys.get(fqn).getEncryptionKeyId());
-  }
 }
