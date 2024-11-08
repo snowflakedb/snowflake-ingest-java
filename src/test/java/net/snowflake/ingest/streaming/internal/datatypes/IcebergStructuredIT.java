@@ -4,12 +4,20 @@
 
 package net.snowflake.ingest.streaming.internal.datatypes;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.snowflake.ingest.TestUtils;
+import net.snowflake.ingest.streaming.InsertValidationResponse;
+import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -236,6 +244,180 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
         val);
   }
 
+  @Test
+  public void testExtraFields() throws SQLException {
+    String tableName = createIcebergTable("object(k1 int)");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+    Map<String, Object> row = new HashMap<>();
+    row.put("k2", 1);
+    row.put("k.3", 1);
+    row.put("k\\4", 1);
+    InsertValidationResponse insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(row), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getExtraColNames())
+        .containsOnly("VALUE.k2", "VALUE.k\\.3", "VALUE.k\\\\4");
+
+    tableName = createIcebergTable("map(string, array(object(k1 int)))");
+    channel = openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+    row.put(
+        "key1",
+        new ArrayList<Object>() {
+          {
+            add(
+                new HashMap<String, Object>() {
+                  {
+                    put("k2", 1);
+                  }
+                });
+          }
+        });
+    insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(row), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getExtraColNames())
+        .containsOnly("VALUE.key_value.value.list.element.k2");
+  }
+
+  @Test
+  public void testNestedExtraFields() throws SQLException {
+    String tableName =
+        createIcebergTable(
+            "array(map(string, object(k1 int, k2 long, k3 string, k4 boolean, k5 double, k6"
+                + " fixed(10), k7 binary, k8 decimal(38, 10), k9 date, k10 time, k11 timestamp, k12"
+                + " timestamp_ltz)))");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+    List<Object> row =
+        Collections.singletonList(
+            Collections.singletonMap(
+                "key",
+                new HashMap<String, Object>() {
+                  {
+                    put("_k1", 1);
+                    put("k1", 1);
+                    put("_k2", 2);
+                    put("k2", 2);
+                    put("_k3", "3");
+                    put("k3", "3");
+                    put("_k4", true);
+                    put("k4", true);
+                    put("_k5", 5.0);
+                    put("k5", 5.0);
+                    put("_k6", "41424344454647484950");
+                    put("k6", "41424344454647484950");
+                    put("_k7", "41424344");
+                    put("k7", "41424344");
+                    put("_k8", "1234567890.1234567890");
+                    put("k8", "1234567890.1234567890");
+                    put("_k9", "2024-01-01");
+                    put("k9", "2024-01-01");
+                    put("_k10", "12:00:00");
+                    put("k10", "12:00:00");
+                    put("_k11", "2024-01-01T12:00:00.000000");
+                    put("k11", "2024-01-01T12:00:00.000000");
+                    put("_k12", "2024-01-01T12:00:00.000000+08:00");
+                    put("k12", "2024-01-01T12:00:00.000000+08:00");
+                  }
+                }));
+    InsertValidationResponse insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(row), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getExtraColNames())
+        .containsOnly(
+            "VALUE.list.element.key_value.value._k1",
+            "VALUE.list.element.key_value.value._k2",
+            "VALUE.list.element.key_value.value._k3",
+            "VALUE.list.element.key_value.value._k4",
+            "VALUE.list.element.key_value.value._k5",
+            "VALUE.list.element.key_value.value._k6",
+            "VALUE.list.element.key_value.value._k7",
+            "VALUE.list.element.key_value.value._k8",
+            "VALUE.list.element.key_value.value._k9",
+            "VALUE.list.element.key_value.value._k10",
+            "VALUE.list.element.key_value.value._k11",
+            "VALUE.list.element.key_value.value._k12");
+  }
+
+  @Test
+  public void testMissingFields() throws SQLException {
+    String tableName = createIcebergTable("object(k1 int not null, k2 int not null) not null");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.CONTINUE);
+
+    InsertValidationResponse insertValidationResponse =
+        channel.insertRow(createStreamingIngestRow(null), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getNullValueForNotNullColNames())
+        .containsOnly("VALUE");
+
+    insertValidationResponse =
+        channel.insertRow(
+            createStreamingIngestRow(new HashMap<String, Object>()), UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getMissingNotNullColNames())
+        .containsOnly("VALUE.k1", "VALUE.k2");
+
+    insertValidationResponse =
+        channel.insertRow(
+            createStreamingIngestRow(
+                new HashMap<String, Object>() {
+                  {
+                    put("k1", null);
+                    put("k2", null);
+                  }
+                }),
+            UUID.randomUUID().toString());
+    assertThat(insertValidationResponse.getInsertErrors().size()).isEqualTo(1);
+    assertThat(insertValidationResponse.getInsertErrors().get(0).getNullValueForNotNullColNames())
+        .containsOnly("VALUE.k1", "VALUE.k2");
+  }
+
+  @Test
+  public void testMultipleErrors() throws Exception {
+    String tableName =
+        createIcebergTable(
+            "object(k1 int not null, k2 object(k3 int not null, k4 object(k5 int not null) not"
+                + " null) not null) not null");
+    SnowflakeStreamingIngestChannel channel =
+        openChannel(tableName, OpenChannelRequest.OnErrorOption.ABORT);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                channel.insertRow(
+                    createStreamingIngestRow(
+                        new HashMap<String, Object>() {
+                          {
+                            put("k1", null);
+                            put(
+                                "k2",
+                                new HashMap<String, Object>() {
+                                  {
+                                    put(
+                                        "k4",
+                                        new HashMap<String, Object>() {
+                                          {
+                                            put("k5", null);
+                                            put("k7", 1);
+                                          }
+                                        });
+                                    put("k6", null);
+                                  }
+                                });
+                          }
+                        }),
+                    UUID.randomUUID().toString()))
+        .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Invalid row 0. "
+                + "missingNotNullColNames=[VALUE.k2.k3], "
+                + "extraColNames=[VALUE.k2.k4.k7, VALUE.k2.k6], "
+                + "nullValueForNotNullColNames=[VALUE.k1, VALUE.k2.k4.k5]")
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+  }
+
   private void assertStructuredDataType(String dataType, String value) throws Exception {
     String tableName = createIcebergTable(dataType);
     String offsetToken = UUID.randomUUID().toString();
@@ -255,7 +437,7 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     String tmp = res.getString(2);
     JsonNode actualNode = tmp == null ? null : objectMapper.readTree(tmp);
     JsonNode expectedNode = value == null ? null : objectMapper.readTree(value);
-    Assertions.assertThat(actualNode).isEqualTo(expectedNode);
+    assertThat(actualNode).isEqualTo(expectedNode);
   }
 
   private void assertMap(String dataType, Map<?, ?> value) throws Exception {
@@ -274,6 +456,6 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     String tmp = res.getString(2);
     JsonNode actualNode = tmp == null ? null : objectMapper.readTree(tmp);
     JsonNode expectedNode = value == null ? null : objectMapper.valueToTree(value);
-    Assertions.assertThat(actualNode).isEqualTo(expectedNode);
+    assertThat(actualNode).isEqualTo(expectedNode);
   }
 }

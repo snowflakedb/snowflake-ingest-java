@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming;
@@ -115,6 +115,18 @@ public class InsertValidationResponse {
       this.extraColNames = extraColNames;
     }
 
+    /**
+     * Add an extra column name in the input row compared with the table schema
+     *
+     * @param extraColName the extra column name
+     */
+    public void addExtraColName(String extraColName) {
+      if (extraColNames == null) {
+        extraColNames = new ArrayList<>();
+      }
+      extraColNames.add(extraColName);
+    }
+
     /** Get the list of extra column names in the input row compared with the table schema */
     public List<String> getExtraColNames() {
       return extraColNames;
@@ -123,6 +135,18 @@ public class InsertValidationResponse {
     /** Set the missing non-nullable column names in the input row compared with the table schema */
     public void setMissingNotNullColNames(List<String> missingNotNullColNames) {
       this.missingNotNullColNames = missingNotNullColNames;
+    }
+
+    /**
+     * Add a missing non-nullable column name in the input row compared with the table schema
+     *
+     * @param missingNotNullColName the missing non-nullable column name
+     */
+    public void addMissingNotNullColName(String missingNotNullColName) {
+      if (missingNotNullColNames == null) {
+        missingNotNullColNames = new ArrayList<>();
+      }
+      missingNotNullColNames.add(missingNotNullColName);
     }
 
     /**
@@ -139,6 +163,19 @@ public class InsertValidationResponse {
      */
     public void setNullValueForNotNullColNames(List<String> nullValueForNotNullColNames) {
       this.nullValueForNotNullColNames = nullValueForNotNullColNames;
+    }
+
+    /**
+     * Add a name of non-nullable column which have null value in the input row compared with the
+     * table schema
+     *
+     * @param nullValueForNotNullColName the name of non-nullable column which have null value
+     */
+    public void addNullValueForNotNullColName(String nullValueForNotNullColName) {
+      if (nullValueForNotNullColNames == null) {
+        nullValueForNotNullColNames = new ArrayList<>();
+      }
+      nullValueForNotNullColNames.add(nullValueForNotNullColName);
     }
 
     /**
