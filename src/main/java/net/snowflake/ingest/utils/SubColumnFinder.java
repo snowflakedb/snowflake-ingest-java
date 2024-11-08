@@ -5,7 +5,6 @@
 package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Utils.concatDotPath;
-import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,20 +14,35 @@ import java.util.Map;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
-/** Helper class to find all leaf sub-columns in an immutable schema given a dot path. */
+/** Helper class to find all leaf columns in an immutable schema given a fieldId. */
 public class SubColumnFinder {
-  static class SubtreeInterval {
+
+  /**
+   * Helper class to store the start and end index of the interval of leaf columns of a node in the
+   * list and the dot path of the node.
+   */
+  static class SubtreeInfo {
+    /* Start index of the leaf column in the list. */
     final int startTag;
+
+    /* End index of the leaf column in the list. */
     final int endTag;
 
-    SubtreeInterval(int startTag, int endTag) {
+    /* Dot path of the node. */
+    final String dotPath;
+
+    SubtreeInfo(int startTag, int endTag, String dotPath) {
       this.startTag = startTag;
       this.endTag = endTag;
+      this.dotPath = dotPath;
     }
   }
 
+  /* A list to store all leaf columns field id in preorder traversal. */
   private final List<String> list;
-  private final Map<String, SubtreeInterval> accessMap;
+
+  /* A map to cache query result, avoid recursive query during runtime. */
+  private final Map<Type.ID, SubtreeInfo> accessMap;
 
   public SubColumnFinder(MessageType schema) {
     accessMap = new HashMap<>();
@@ -36,34 +50,67 @@ public class SubColumnFinder {
     build(schema, null);
   }
 
-  public List<String> getSubColumns(String dotPath) {
-    if (!accessMap.containsKey(dotPath)) {
-      throw new IllegalArgumentException(String.format("Column %s not found in schema", dotPath));
+  /**
+   * Get all leaf sub-column's field id of a node in the schema.
+   *
+   * @param id Field id of the node
+   * @return List of sub-column's field id
+   */
+  public List<String> getSubColumns(Type.ID id) {
+    if (!accessMap.containsKey(id)) {
+      throw new IllegalArgumentException(String.format("Field %s not found in schema", id));
     }
-    SubtreeInterval interval = accessMap.get(dotPath);
+    SubtreeInfo interval = accessMap.get(id);
     return Collections.unmodifiableList(list.subList(interval.startTag, interval.endTag));
   }
 
-  private void build(Type node, String dotPath) {
-    if (dotPath == null) {
+  /**
+   * Get the dot path of a node in the schema.
+   *
+   * @param id Field ID of the node
+   * @return Dot path of the node
+   */
+  public String getDotPath(Type.ID id) {
+    if (!accessMap.containsKey(id)) {
+      throw new IllegalArgumentException(String.format("Field %s not found in schema", id));
+    }
+    return accessMap.get(id).dotPath;
+  }
+
+  /**
+   * Build the list of leaf columns in preorder traversal and the map of field id to the interval of
+   * a node's leaf columns in the list.
+   *
+   * @param node The node to build the list and accessMap for its children.
+   * @param currentPath The current path of the node. This serve like a stack and used to keep track
+   *     of the dot path of current node. Always pop the last element of the path at the end of the
+   *     recursion
+   */
+  private void build(Type node, List<String> currentPath) {
+    if (currentPath == null) {
       /* Ignore root node type name (bdec or schema) */
-      dotPath = "";
-    } else if (dotPath.isEmpty()) {
-      dotPath = node.getName();
+      currentPath = new ArrayList<>();
     } else {
-      dotPath = concatDotPath(dotPath, node.getName());
+      currentPath.add(node.getName());
     }
 
     int startTag = list.size();
     if (!node.isPrimitive()) {
       for (Type child : node.asGroupType().getFields()) {
-        build(child, dotPath);
+        build(child, currentPath);
       }
     } else {
-      list.add(dotPath);
+      list.add(node.getId().toString());
     }
-    if (!isNullOrEmpty(dotPath)) {
-      accessMap.put(dotPath, new SubtreeInterval(startTag, list.size()));
+    if (!currentPath.isEmpty() && node.getId() != null) {
+      accessMap.put(
+          node.getId(),
+          new SubtreeInfo(
+              startTag, list.size(), concatDotPath(currentPath.toArray(new String[0]))));
+    }
+    if (!currentPath.isEmpty()) {
+      /* Remove the last element of the path at the end of recursion. */
+      currentPath.remove(currentPath.size() - 1);
     }
   }
 }

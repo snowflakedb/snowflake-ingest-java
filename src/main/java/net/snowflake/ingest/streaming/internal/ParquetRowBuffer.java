@@ -219,14 +219,24 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
           isInRepeatedGroup = true;
         }
 
+        boolean isPrimitiveColumn = path.length == 1;
+
         /* set fieldId to 0 for non-structured columns */
-        int fieldId = path.length == 1 ? 0 : primitiveType.getId().intValue();
+        int fieldId = isPrimitiveColumn ? 0 : primitiveType.getId().intValue();
         int ordinal = schema.getType(columnDescriptor.getPath()[0]).getId().intValue();
 
+        /**
+         * For non-structured columns, server side performs EP metadata check by columnsDisplayName,
+         * set it to the original column name to avoid EP validation error. Structured datatype is
+         * checked by fieldId and ordinal where columnDisplayName doesn't matter.
+         */
+        String columnDisplayName =
+            isPrimitiveColumn ? columns.get(ordinal - 1).getName() : columnDotPath;
+
         this.statsMap.put(
-            columnDotPath,
+            primitiveType.getId().toString(),
             new RowBufferStats(
-                columnDotPath,
+                columnDisplayName,
                 null /* collationDefinitionString */,
                 ordinal,
                 fieldId,
@@ -237,9 +247,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         if (onErrorOption == OpenChannelRequest.OnErrorOption.ABORT
             || onErrorOption == OpenChannelRequest.OnErrorOption.SKIP_BATCH) {
           this.tempStatsMap.put(
-              columnDotPath,
+              primitiveType.getId().toString(),
               new RowBufferStats(
-                  columnDotPath,
+                  columnDisplayName,
                   null /* collationDefinitionString */,
                   ordinal,
                   fieldId,
@@ -364,12 +374,16 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
           throw new SFException(ErrorCode.INTERNAL_ERROR, "SubColumnFinder is not initialized.");
         }
 
-        for (String subColumn : subColumnFinder.getSubColumns(columnName)) {
-          RowBufferStats stats = statsMap.get(subColumn);
+        for (String subColumnId :
+            subColumnFinder.getSubColumns(fieldIndex.get(columnName).type.getId())) {
+          RowBufferStats stats = statsMap.get(subColumnId);
           if (stats == null) {
             throw new SFException(
                 ErrorCode.INTERNAL_ERROR,
-                String.format("Column %s not found in stats map.", subColumn));
+                String.format(
+                    "Entry not found in stats map. fieldId=%s, column=%s.",
+                    subColumnId,
+                    subColumnFinder.getDotPath(new Type.ID(Integer.parseInt(subColumnId)))));
           }
           stats.incCurrentNullCount();
         }
