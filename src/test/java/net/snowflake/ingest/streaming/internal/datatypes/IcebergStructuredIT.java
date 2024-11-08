@@ -80,8 +80,9 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
                     }))
         .isInstanceOf(SFException.class)
         .hasMessage(
-            "The given row cannot be converted to the internal format: VALUE.key_value.key. "
-                + "Passed null to non nullable field, rowIndex:0, column:VALUE.key_value.key")
+            "The given row cannot be converted to the internal format: Invalid row 0."
+                + " missingNotNullColNames=null, extraColNames=null,"
+                + " nullValueForNotNullColNames=[VALUE.key_value.key]")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
@@ -91,8 +92,9 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
                 assertStructuredDataType("object(a int, b string)", "{\"a\": 1, \"c\": \"test\"}"))
         .isInstanceOf(SFException.class)
         .hasMessage(
-            "The given row cannot be converted to the internal format: Extra fields: [c]. "
-                + "Fields not present in the struct VALUE shouldn't be specified, rowIndex:0")
+            "The given row cannot be converted to the internal format: Invalid row 0."
+                + " missingNotNullColNames=null, extraColNames=[VALUE.c],"
+                + " nullValueForNotNullColNames=null")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
