@@ -64,6 +64,7 @@ ADDITIONAL_LICENSES_MAP = {
     "com.thoughtworks.paranamer:paranamer": BSD_2_CLAUSE_LICENSE,
     "org.roaringbitmap:RoaringBitmap": APACHE_LICENSE,
     "org.roaringbitmap:shims": APACHE_LICENSE,
+    "dev.failsafe:failsafe": APACHE_LICENSE,
 }
 
 
