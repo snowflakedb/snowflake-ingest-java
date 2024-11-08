@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Objects;
+import net.snowflake.ingest.utils.Utils;
 
 /**
  * FullyQualifiedTableName is a class that represents a fully qualified table name. It is used to
@@ -35,7 +36,7 @@ public class FullyQualifiedTableName {
   }
 
   public String getFullyQualifiedName() {
-    return String.format("%s.%s.%s", databaseName, schemaName, tableName);
+    return Utils.getFullyQualifiedTableName(databaseName, schemaName, tableName);
   }
 
   private int hashCode;

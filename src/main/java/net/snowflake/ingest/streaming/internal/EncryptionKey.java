@@ -1,6 +1,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import net.snowflake.ingest.utils.Utils;
 
 /** Represents an encryption key for a table */
 public class EncryptionKey {
@@ -39,7 +40,7 @@ public class EncryptionKey {
   }
 
   public String getFullyQualifiedTableName() {
-    return String.format("%s.%s.%s", databaseName, schemaName, tableName);
+    return Utils.getFullyQualifiedTableName(databaseName, schemaName, tableName);
   }
 
   @JsonProperty("database")
