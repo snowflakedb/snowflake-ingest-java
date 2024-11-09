@@ -3,11 +3,23 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 import org.bouncycastle.util.encoders.Hex;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class BinaryIT extends AbstractDataTypeTest {
+  @Parameters(name = "{index}: {0}")
+  public static Object[] parameters() {
+    return new Object[] {"GZIP", "ZSTD"};
+  }
+
+  @Parameter public String compressionAlgorithm;
+
   @Before
   public void before() throws Exception {
-    super.before();
+    super.setUp(false, compressionAlgorithm, null);
   }
 
   @Test

@@ -26,9 +26,11 @@ import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @Ignore("This test can be enabled after server side Iceberg EP support is released")
+@RunWith(Parameterized.class)
 public class IcebergStructuredIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
   public static Object[][] parameters() {
@@ -38,14 +40,15 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     };
   }
 
-  @Parameterized.Parameter public static String compressionAlgorithm;
+  @Parameterized.Parameter(0)
+  public static String compressionAlgorithm;
 
   @Parameterized.Parameter(1)
   public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
 
   @Before
   public void before() throws Exception {
-    super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
+    super.setUp(true, compressionAlgorithm, icebergSerializationPolicy);
   }
 
   @Test
@@ -77,8 +80,9 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
                     }))
         .isInstanceOf(SFException.class)
         .hasMessage(
-            "The given row cannot be converted to the internal format: VALUE.key_value.key. "
-                + "Passed null to non nullable field, rowIndex:0, column:VALUE.key_value.key")
+            "The given row cannot be converted to the internal format: Invalid row 0."
+                + " missingNotNullColNames=null, extraColNames=null,"
+                + " nullValueForNotNullColNames=[VALUE.key_value.key]")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 
@@ -88,8 +92,9 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
                 assertStructuredDataType("object(a int, b string)", "{\"a\": 1, \"c\": \"test\"}"))
         .isInstanceOf(SFException.class)
         .hasMessage(
-            "The given row cannot be converted to the internal format: Extra fields: [c]. "
-                + "Fields not present in the struct VALUE shouldn't be specified, rowIndex:0")
+            "The given row cannot be converted to the internal format: Invalid row 0."
+                + " missingNotNullColNames=null, extraColNames=[VALUE.c],"
+                + " nullValueForNotNullColNames=null")
         .extracting("vendorCode")
         .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
 

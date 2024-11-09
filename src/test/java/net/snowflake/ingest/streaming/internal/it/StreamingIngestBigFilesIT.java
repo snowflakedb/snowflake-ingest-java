@@ -1,4 +1,4 @@
-package net.snowflake.ingest.streaming.internal;
+package net.snowflake.ingest.streaming.internal.it;
 
 import static net.snowflake.ingest.TestUtils.verifyTableRowCount;
 import static net.snowflake.ingest.utils.Constants.ROLE;
@@ -13,6 +13,7 @@ import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
 import org.junit.Assert;

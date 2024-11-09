@@ -17,6 +17,7 @@ import static net.snowflake.ingest.utils.Constants.SCHEME;
 import static net.snowflake.ingest.utils.Constants.SSL;
 import static net.snowflake.ingest.utils.Constants.USER;
 import static net.snowflake.ingest.utils.Constants.WAREHOUSE;
+import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_ICEBERG_STREAMING;
 
@@ -50,8 +51,12 @@ import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMappe
 import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
+import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.Constants.IcebergSerializationPolicy;
 import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
 import org.junit.Assert;
@@ -520,6 +525,57 @@ public class TestUtils {
     prop.setProperty(
         ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     return prop;
+  }
+
+  public static SnowflakeStreamingIngestClient setUp(
+      Connection conn,
+      String databaseName,
+      String schemaName,
+      boolean enableIcebergStreaming,
+      String compressionAlgorithm,
+      IcebergSerializationPolicy serializationPolicy)
+      throws Exception {
+    conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
+    conn.createStatement().execute(String.format("use database %s;", databaseName));
+    conn.createStatement().execute(String.format("use schema %s;", schemaName));
+
+    if (enableIcebergStreaming) {
+      switch (serializationPolicy) {
+        case COMPATIBLE:
+          conn.createStatement()
+              .execute(
+                  String.format(
+                      "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'COMPATIBLE';",
+                      schemaName));
+          break;
+        case OPTIMIZED:
+          conn.createStatement()
+              .execute(
+                  String.format(
+                      "alter schema %s set STORAGE_SERIALIZATION_POLICY = 'OPTIMIZED';",
+                      schemaName));
+          break;
+      }
+    }
+
+    conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
+
+    Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
+    props.setProperty(
+        ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
+    if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
+      props.setProperty(ROLE, "ACCOUNTADMIN");
+    }
+    props.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
+
+    // Override Iceberg mode client lag to 1 second for faster test execution
+    Map<String, Object> parameterMap = new HashMap<>();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, 1000L);
+
+    Properties prop = Utils.createProperties(props);
+    SnowflakeURL accountURL = new SnowflakeURL(prop.getProperty(Constants.ACCOUNT_URL));
+    return new SnowflakeStreamingIngestClientInternal<>(
+        "client1", accountURL, prop, parameterMap, false);
   }
 
   private static <T> T nullOrIfNullable(boolean nullable, Random r, Supplier<T> value) {
