@@ -4,12 +4,11 @@
 
 package net.snowflake.ingest.streaming.internal.it;
 
-import net.snowflake.ingest.IcebergIT;
 import net.snowflake.ingest.utils.Constants.IcebergSerializationPolicy;
 import org.junit.Before;
-import org.junit.experimental.categories.Category;
+import org.junit.Ignore;
 
-@Category(IcebergIT.class)
+@Ignore("Enable this after the Iceberg testing on GCS / Azure is ready")
 public class IcebergColumnNamesIT extends ColumnNamesITBase {
   @Before
   public void before() throws Exception {
