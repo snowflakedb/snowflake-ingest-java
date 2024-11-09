@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import net.snowflake.ingest.IcebergIT;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
@@ -24,12 +25,12 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-@Ignore("This test can be enabled after server side Iceberg EP support is released")
+@Category(IcebergIT.class)
 @RunWith(Parameterized.class)
 public class IcebergStructuredIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
