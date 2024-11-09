@@ -66,7 +66,8 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
-        run: mvn -DghActionsIT verify --batch-mode
+        run: |
+          mvn -DghActionsIT -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
   build-iceberg:
     name: Build & Test Streaming Iceberg - JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: ubuntu-20.04
@@ -126,7 +127,8 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
-        run: mvn -DghActionsIT -Dfailsafe.groups="net.snowflake.ingest.IcebergIT" verify --batch-mode
+        run: |
+          mvn -DghActionsIT -"Dfailsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
   build-e2e-jar-test:
     name: e2e-jar-test cloud=${{ matrix.snowflake_cloud }} test_type=${{ matrix.test_type }} java=${{ matrix.java_path_env_var }}
     runs-on: ubuntu-20.04
