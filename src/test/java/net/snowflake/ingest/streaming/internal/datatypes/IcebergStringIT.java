@@ -94,13 +94,12 @@ public class IcebergStringIT extends AbstractDataTypeTest {
         Arrays.asList(StringUtils.repeat("a", 33), StringUtils.repeat("*", 3), null, ""),
         "select MAX(LENGTH({columnName})) from {tableName}",
         Arrays.asList(33L));
-    // TODO: Add this back after the following JIRA is fixed
-    // SNOW-1798403 Error when querying maximum values on string columns of managed Iceberg tables
-    // with maximum length
-    //    testIcebergIngestAndQuery(
-    //        "string",
-    //        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024), null, null, null, "aaa"),
-    //        "select MAX({columnName}) from {tableName}",
-    //        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024)));
+
+    // TODO: Change to 16MB after SNOW-1798403 fixed
+    testIcebergIngestAndQuery(
+        "string",
+        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024 - 1), null, null, null, "aaa"),
+        "select MAX({columnName}) from {tableName}",
+        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024 - 1)));
   }
 }
