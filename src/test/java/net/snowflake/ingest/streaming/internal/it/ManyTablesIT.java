@@ -2,7 +2,7 @@
  * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
  */
 
-package net.snowflake.ingest.streaming.internal;
+package net.snowflake.ingest.streaming.internal.it;
 
 import static net.snowflake.ingest.utils.Constants.ROLE;
 

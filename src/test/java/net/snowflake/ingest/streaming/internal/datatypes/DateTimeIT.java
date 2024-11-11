@@ -12,16 +12,27 @@ import java.time.ZonedDateTime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+@RunWith(Parameterized.class)
 public class DateTimeIT extends AbstractDataTypeTest {
-
   private static final ZoneId TZ_LOS_ANGELES = ZoneId.of("America/Los_Angeles");
   private static final ZoneId TZ_BERLIN = ZoneId.of("Europe/Berlin");
   private static final ZoneId TZ_TOKYO = ZoneId.of("Asia/Tokyo");
 
+  @Parameters(name = "{index}: {0}")
+  public static Object[] parameters() {
+    return new Object[] {"GZIP", "ZSTD"};
+  }
+
+  @Parameter public String compressionAlgorithm;
+
   @Before
   public void setup() throws Exception {
-    super.before();
+    super.setUp(false, compressionAlgorithm, null);
     // Set to a random time zone not to interfere with any of the tests
     conn.createStatement().execute("alter session set timezone = 'America/New_York';");
   }
