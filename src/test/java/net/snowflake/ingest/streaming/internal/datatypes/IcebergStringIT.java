@@ -91,13 +91,16 @@ public class IcebergStringIT extends AbstractDataTypeTest {
         "select COUNT(*) from {tableName} where {columnName} is null", Arrays.asList(4L));
     testIcebergIngestAndQuery(
         "string",
-        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024), null, null, null, "aaa"),
-        "select MAX({columnName}) from {tableName}",
-        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024)));
-    testIcebergIngestAndQuery(
-        "string",
         Arrays.asList(StringUtils.repeat("a", 33), StringUtils.repeat("*", 3), null, ""),
         "select MAX(LENGTH({columnName})) from {tableName}",
         Arrays.asList(33L));
+    // TODO: Add this back after the following JIRA is fixed
+    // SNOW-1798403 Error when querying maximum values on string columns of managed Iceberg tables
+    // with maximum length
+    //    testIcebergIngestAndQuery(
+    //        "string",
+    //        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024), null, null, null, "aaa"),
+    //        "select MAX({columnName}) from {tableName}",
+    //        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024)));
   }
 }
