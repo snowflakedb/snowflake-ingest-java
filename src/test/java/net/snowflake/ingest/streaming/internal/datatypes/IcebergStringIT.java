@@ -1,19 +1,24 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal.datatypes;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import net.snowflake.ingest.IcebergIT;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-@Ignore("This test can be enabled after server side Iceberg EP support is released")
+@Category(IcebergIT.class)
 @RunWith(Parameterized.class)
 public class IcebergStringIT extends AbstractDataTypeTest {
   @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
@@ -86,13 +91,15 @@ public class IcebergStringIT extends AbstractDataTypeTest {
         "select COUNT(*) from {tableName} where {columnName} is null", Arrays.asList(4L));
     testIcebergIngestAndQuery(
         "string",
-        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024), null, null, null, "aaa"),
-        "select MAX({columnName}) from {tableName}",
-        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024)));
-    testIcebergIngestAndQuery(
-        "string",
         Arrays.asList(StringUtils.repeat("a", 33), StringUtils.repeat("*", 3), null, ""),
         "select MAX(LENGTH({columnName})) from {tableName}",
         Arrays.asList(33L));
+
+    // TODO: Change to 16MB after SNOW-1798403 fixed
+    testIcebergIngestAndQuery(
+        "string",
+        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024 - 1), null, null, null, "aaa"),
+        "select MAX({columnName}) from {tableName}",
+        Arrays.asList(StringUtils.repeat("a", 16 * 1024 * 1024 - 1)));
   }
 }

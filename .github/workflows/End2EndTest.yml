@@ -37,7 +37,7 @@ jobs:
           WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
         continue-on-error: false
         run: |
-          ./scripts/run_gh_actions.sh
+          ./scripts/run_gh_actions.sh -Dfailsafe.excludedGroups="net.snowflake.ingest.IcebergIT"
 
       - name: Code Coverage
         uses: codecov/codecov-action@v1
@@ -66,7 +66,69 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
-        run: mvn -DghActionsIT verify --batch-mode
+        run: |
+          mvn -DghActionsIT -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+  build-iceberg:
+    name: Build & Test Streaming Iceberg - JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast
+      matrix:
+        java: [ 8 ]
+        snowflake_cloud: [ 'AWS' ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Install Java ${{ matrix.java }}
+        uses: actions/setup-java@v2
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
+        env:
+          DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
+        run: |
+          ./scripts/decrypt_secret.sh ${{ matrix.snowflake_cloud }}
+
+      - name: Unit & Integration Test against Cloud ${{ matrix.snowflake_cloud }}
+        env:
+          JACOCO_COVERAGE: true
+          WHITESOURCE_API_KEY: ${{ secrets.WHITESOURCE_API_KEY }}
+        continue-on-error: false
+        run: |
+          ./scripts/run_gh_actions.sh -Dfailsafe.groups="net.snowflake.ingest.IcebergIT"
+
+      - name: Code Coverage
+        uses: codecov/codecov-action@v1
+  build-iceberg-windows:
+    name: Build & Test - Streaming Iceberg Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        java: [ 8 ]
+        snowflake_cloud: [ 'AWS' ]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Install Java ${{ matrix.java }}
+        uses: actions/setup-java@v2
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+      - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
+        env:
+          DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
+        shell: pwsh
+        run: |
+          ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
+      - name: Unit & Integration Test (Windows)
+        continue-on-error: false
+        run: |
+          mvn -DghActionsIT -"Dfailsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
   build-e2e-jar-test:
     name: e2e-jar-test cloud=${{ matrix.snowflake_cloud }} test_type=${{ matrix.test_type }} java=${{ matrix.java_path_env_var }}
     runs-on: ubuntu-20.04
