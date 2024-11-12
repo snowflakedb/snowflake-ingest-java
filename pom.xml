@@ -43,7 +43,7 @@
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.15</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
-    <commonscompress.version>1.26.0</commonscompress.version>
+    <commonscompress.version>1.26.2</commonscompress.version>
     <commonsconfiguration2.version>2.10.1</commonsconfiguration2.version>
     <commonsio.version>2.15.1</commonsio.version>
     <commonslang3.version>3.14.0</commonslang3.version>
