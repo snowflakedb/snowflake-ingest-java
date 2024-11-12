@@ -75,7 +75,7 @@ jobs:
       fail-fast: false # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast
       matrix:
         java: [ 8 ]
-        snowflake_cloud: [ 'AWS' ]
+        snowflake_cloud: [ 'AWS', 'AZURE' ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -109,7 +109,7 @@ jobs:
       fail-fast: false
       matrix:
         java: [ 8 ]
-        snowflake_cloud: [ 'AWS' ]
+        snowflake_cloud: [ 'AWS', 'AZURE' ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
