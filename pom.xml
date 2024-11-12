@@ -86,11 +86,6 @@
         <scope>import</scope>
       </dependency>
       <dependency>
-        <groupId>org.apache.avro</groupId>
-        <artifactId>avro</artifactId>
-        <version>${avro.version}</version>
-      </dependency>
-      <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
         <version>${guava.version}</version>
@@ -144,6 +139,11 @@
         <groupId>net.snowflake</groupId>
         <artifactId>snowflake-jdbc</artifactId>
         <version>${snowjdbc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.avro</groupId>
+        <artifactId>avro</artifactId>
+        <version>${avro.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
