@@ -62,7 +62,7 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <net.minidev.version>2.4.9</net.minidev.version>
-    <netty.version>4.1.113.Final</netty.version>
+    <netty.version>4.1.115.Final</netty.version>
     <nimbusds.version>9.37.3</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.14.1</parquet.version>
