@@ -4,33 +4,42 @@
 
 package net.snowflake.ingest.streaming.internal.it;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import net.snowflake.ingest.IcebergIT;
+import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.internal.datatypes.AbstractDataTypeTest;
 import net.snowflake.ingest.utils.Constants;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
+import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+@Category(IcebergIT.class)
+@RunWith(Parameterized.class)
 public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
-  @Parameterized.Parameters(name = "compressionAlgorithm={0}, icebergSerializationPolicy={1}")
-  public static Object[][] parameters() {
-    return new Object[][] {
-      {"ZSTD", Constants.IcebergSerializationPolicy.COMPATIBLE},
-      {"ZSTD", Constants.IcebergSerializationPolicy.OPTIMIZED}
+  @Parameterized.Parameters(name = "icebergSerializationPolicy={0}")
+  public static Object[] parameters() {
+    return new Object[] {
+      Constants.IcebergSerializationPolicy.COMPATIBLE,
+      Constants.IcebergSerializationPolicy.OPTIMIZED
     };
   }
 
-  @Parameterized.Parameter public static String compressionAlgorithm;
-
-  @Parameterized.Parameter(1)
+  @Parameterized.Parameter
   public static Constants.IcebergSerializationPolicy icebergSerializationPolicy;
 
   @Before
   public void before() throws Exception {
-    super.beforeIceberg(compressionAlgorithm, icebergSerializationPolicy);
+    super.setUp(true, "ZSTD", icebergSerializationPolicy);
   }
 
   @Test
@@ -39,6 +48,7 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
         createIcebergTableWithColumns(
             "id int, int_col int, string_col string, double_col double, boolean_col boolean, "
                 + " binary_col binary");
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
     Map<String, Object> value = new HashMap<>();
     value.put("id", 0L);
     value.put("int_col", 1L);
@@ -47,7 +57,11 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
     value.put("boolean_col", true);
     value.put("binary_col", "4".getBytes());
     verifyMultipleColumns(
-        tableName, Collections.singletonList(value), Collections.singletonList(value), "id");
+        tableName,
+        channel,
+        Collections.singletonList(value),
+        Collections.singletonList(value),
+        "id");
 
     conn.createStatement()
         .execute(
@@ -66,18 +80,45 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
     newValue.put("new_string_col", "7");
     newValue.put("new_boolean_col", true);
     newValue.put("new_binary_col", "8".getBytes());
+    Assertions.assertThatThrownBy(
+            () ->
+                verifyMultipleColumns(
+                    tableName,
+                    channel,
+                    Collections.singletonList(newValue),
+                    Arrays.asList(value, newValue),
+                    "id"))
+        .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: "
+                + "Extra columns: [new_binary_col, new_boolean_col, new_int_col, new_string_col]. "
+                + "Columns not present in the table shouldn't be specified, rowIndex:0")
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+    channel.close();
+
+    SnowflakeStreamingIngestChannel newChannel = openChannel(tableName);
     verifyMultipleColumns(
-        tableName, Collections.singletonList(newValue), Arrays.asList(value, newValue), "id");
+        tableName,
+        newChannel,
+        Collections.singletonList(newValue),
+        Arrays.asList(value, newValue),
+        "id");
   }
 
   @Test
   public void testStructType() throws Exception {
     String tableName = createIcebergTableWithColumns("id int, object_col object(a int)");
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
     Map<String, Object> value = new HashMap<>();
     value.put("id", 0L);
-    value.put("object_col", Collections.singletonMap("a", 1));
+    value.put("object_col", ImmutableMap.of("a", 1));
     verifyMultipleColumns(
-        tableName, Collections.singletonList(value), Collections.singletonList(value), "id");
+        tableName,
+        channel,
+        Collections.singletonList(value),
+        Collections.singletonList(value),
+        "id");
 
     conn.createStatement()
         .execute(
@@ -86,25 +127,40 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
                 tableName));
     value.put(
         "object_col",
-        new HashMap<String, Object>() {
-          {
-            put("a", 1);
-            put("b", null);
-          }
-        });
-
+        Collections.unmodifiableMap(
+            new HashMap<String, Object>() {
+              {
+                put("a", 1);
+                put("b", null);
+              }
+            }));
     Map<String, Object> newValue = new HashMap<>();
     newValue.put("id", 1L);
-    newValue.put(
-        "object_col",
-        new HashMap<String, Object>() {
-          {
-            put("a", 2);
-            put("b", 3);
-          }
-        });
+    newValue.put("object_col", ImmutableMap.of("a", 2, "b", 3));
+    Assertions.assertThatThrownBy(
+            () ->
+                verifyMultipleColumns(
+                    tableName,
+                    channel,
+                    Collections.singletonList(newValue),
+                    Arrays.asList(value, newValue),
+                    "id"))
+        .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Invalid row 0."
+                + " missingNotNullColNames=null, extraColNames=[OBJECT_COL.b],"
+                + " nullValueForNotNullColNames=null")
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+    channel.close();
+
+    SnowflakeStreamingIngestChannel newChannel = openChannel(tableName);
     verifyMultipleColumns(
-        tableName, Collections.singletonList(newValue), Arrays.asList(value, newValue), "id");
+        tableName,
+        newChannel,
+        Collections.singletonList(newValue),
+        Arrays.asList(value, newValue),
+        "id");
   }
 
   @Test
@@ -112,16 +168,19 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
     String tableName =
         createIcebergTableWithColumns(
             "id int, object_col object(map_col map(string, array(object(a int))))");
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
     Map<String, Object> value = new HashMap<>();
     value.put("id", 0L);
     value.put(
         "object_col",
-        Collections.singletonMap(
-            "map_col",
-            Collections.singletonMap(
-                "key", Collections.singletonList(Collections.singletonMap("a", 1)))));
+        ImmutableMap.of(
+            "map_col", ImmutableMap.of("key", ImmutableList.of((ImmutableMap.of("a", 1))))));
     verifyMultipleColumns(
-        tableName, Collections.singletonList(value), Collections.singletonList(value), "id");
+        tableName,
+        channel,
+        Collections.singletonList(value),
+        Collections.singletonList(value),
+        "id");
 
     conn.createStatement()
         .execute(
@@ -131,44 +190,58 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
                 tableName));
     value.put(
         "object_col",
-        new HashMap<String, Object>() {
-          {
-            put(
-                "map_col",
-                Collections.singletonMap(
-                    "key",
-                    Collections.singletonList(
-                        new HashMap<String, Object>() {
-                          {
-                            put("a", 1);
-                            put("b", null);
-                          }
-                        })));
-            put("map_col_2", null);
-          }
-        });
+        Collections.unmodifiableMap(
+            new HashMap<String, Object>() {
+              {
+                put(
+                    "map_col",
+                    ImmutableMap.of(
+                        "key",
+                        ImmutableList.of(
+                            Collections.unmodifiableMap(
+                                new HashMap<String, Object>() {
+                                  {
+                                    put("a", 1);
+                                    put("b", null);
+                                  }
+                                }))));
+                put("map_col_2", null);
+              }
+            }));
 
     Map<String, Object> newValue = new HashMap<>();
     newValue.put("id", 1L);
     newValue.put(
         "object_col",
-        new HashMap<String, Object>() {
-          {
-            put(
-                "map_col",
-                Collections.singletonMap(
-                    "key",
-                    Collections.singletonList(
-                        new HashMap<String, Object>() {
-                          {
-                            put("a", 2);
-                            put("b", 3);
-                          }
-                        })));
-            put("map_col_2", Collections.singletonMap("key", 4));
-          }
-        });
+        ImmutableMap.of(
+            "map_col",
+            ImmutableMap.of("key", ImmutableList.of(ImmutableMap.of("a", 2, "b", 3))),
+            "map_col_2",
+            ImmutableMap.of("key", 4)));
+    Assertions.assertThatThrownBy(
+            () ->
+                verifyMultipleColumns(
+                    tableName,
+                    channel,
+                    Collections.singletonList(newValue),
+                    Arrays.asList(value, newValue),
+                    "id"))
+        .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Invalid row 0."
+                + " missingNotNullColNames=null,"
+                + " extraColNames=[OBJECT_COL.map_col.key_value.value.list.element.b,"
+                + " OBJECT_COL.map_col_2], nullValueForNotNullColNames=null")
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+    channel.close();
+
+    SnowflakeStreamingIngestChannel newChannel = openChannel(tableName);
     verifyMultipleColumns(
-        tableName, Collections.singletonList(newValue), Arrays.asList(value, newValue), "id");
+        tableName,
+        newChannel,
+        Collections.singletonList(newValue),
+        Arrays.asList(value, newValue),
+        "id");
   }
 }

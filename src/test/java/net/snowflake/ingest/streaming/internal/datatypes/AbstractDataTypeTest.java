@@ -6,7 +6,6 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.math.BigDecimal;
@@ -17,12 +16,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -32,6 +31,7 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assert;
@@ -552,36 +552,41 @@ public abstract class AbstractDataTypeTest {
 
   protected void verifyMultipleColumns(
       String tableName,
+      SnowflakeStreamingIngestChannel channel,
       List<Map<String, Object>> values,
       List<Map<String, Object>> expectedValues,
       String orderBy)
       throws Exception {
-    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+
     Set<String> keySet = new HashSet<>();
+    String offsetToken = null;
     for (Map<String, Object> value : values) {
-      String offsetToken = UUID.randomUUID().toString();
+      offsetToken = UUID.randomUUID().toString();
       channel.insertRow(value, offsetToken);
-      TestUtils.waitForOffset(channel, offsetToken);
     }
+    TestUtils.waitForOffset(channel, offsetToken);
 
     for (Map<String, Object> value : expectedValues) {
       keySet.addAll(value.keySet());
     }
 
-    for (String key : keySet) {
-      String query = String.format("select %s from %s order by %s", key, tableName, orderBy);
-      ResultSet resultSet = conn.createStatement().executeQuery(query);
+    List<String> keyList = new ArrayList<>(keySet);
+    String query =
+        String.format(
+            "select %s from %s order by %s", StringUtils.join(keyList, ", "), tableName, orderBy);
+    ResultSet resultSet = conn.createStatement().executeQuery(query);
 
-      for (Map<String, Object> expectedValue : expectedValues) {
-        Assertions.assertThat(resultSet.next()).isTrue();
-        Object res = resultSet.getObject(1);
-        assertEqualValues(expectedValue.get(key), res);
+    for (Map<String, Object> expectedValue : expectedValues) {
+      Assertions.assertThat(resultSet.next()).isTrue();
+      for (String key : keyList) {
+        assertEqualValues(expectedValue.get(key), resultSet.getObject(keyList.indexOf(key) + 1));
       }
-      Assertions.assertThat(resultSet.next()).isFalse();
     }
+    Assertions.assertThat(resultSet.next()).isFalse();
   }
 
-  private void assertEqualValues(Object expectedValue, Object actualValue) throws JsonProcessingException {
+  private void assertEqualValues(Object expectedValue, Object actualValue)
+      throws JsonProcessingException {
     if (expectedValue instanceof BigDecimal) {
       Assertions.assertThat(actualValue)
           .usingComparatorForType(BigDecimal::compareTo, BigDecimal.class)
