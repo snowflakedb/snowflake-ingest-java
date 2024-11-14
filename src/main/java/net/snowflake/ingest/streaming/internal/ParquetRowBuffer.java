@@ -195,6 +195,11 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
      *   F7:             ordinal=7, fieldId=0
      */
     if (clientBufferParameters.isEnableIcebergStreaming()) {
+      Map<Integer, ColumnMetadata> ordinalToColumn = new HashMap<>();
+      for (ColumnMetadata column : columns) {
+        ordinalToColumn.put(column.getOrdinal(), column);
+      }
+
       for (ColumnDescriptor columnDescriptor : schema.getColumns()) {
         String[] path = columnDescriptor.getPath();
         String columnDotPath = concatDotPath(path);
@@ -232,7 +237,15 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
          * checked by fieldId and ordinal where columnDisplayName doesn't matter.
          */
         String columnDisplayName =
-            isPrimitiveColumn ? columns.get(ordinal - 1).getName() : columnDotPath;
+            isPrimitiveColumn
+                ? Optional.ofNullable(ordinalToColumn.get(ordinal))
+                    .orElseThrow(
+                        () ->
+                            new SFException(
+                                ErrorCode.INTERNAL_ERROR,
+                                String.format("Column not found. ordinal=%d.", ordinal)))
+                    .getName()
+                : columnDotPath;
 
         this.statsMap.put(
             primitiveType.getId().toString(),
