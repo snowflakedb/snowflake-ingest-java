@@ -7,6 +7,7 @@ package net.snowflake.ingest.streaming.internal.datatypes;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -58,6 +59,7 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
         "object(a int, b string, c boolean)", "{\"a\": 1, \"b\": \"test\", \"c\": true}");
     assertStructuredDataType("map(string, int)", "{\"key1\": 1}");
     assertStructuredDataType("array(int)", "[1, 2, 3]");
+    assertStructuredDataType("object(a int, b string, c boolean) not null", "{}");
     assertStructuredDataType("array(string) not null", "[]");
     assertStructuredDataType("map(string, int) not null", "{}");
     assertMap(
@@ -68,6 +70,9 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
           }
         });
     assertStructuredDataType("array(string)", null);
+    assertStructuredDataType("map(string, int)", null);
+    assertStructuredDataType("object(a int, b string, c boolean)", null);
+    assertStructuredDataType("object(a int, b string, c boolean)", "{\"a\": null}");
 
     /* Map with null key */
     Assertions.assertThatThrownBy(
@@ -443,6 +448,8 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     String tmp = res.getString(2);
     JsonNode actualNode = tmp == null ? null : objectMapper.readTree(tmp);
     JsonNode expectedNode = value == null ? null : objectMapper.readTree(value);
+    removeNullFields(actualNode);
+    removeNullFields(expectedNode);
     assertThat(actualNode).isEqualTo(expectedNode);
   }
 
@@ -463,5 +470,26 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     JsonNode actualNode = tmp == null ? null : objectMapper.readTree(tmp);
     JsonNode expectedNode = value == null ? null : objectMapper.valueToTree(value);
     assertThat(actualNode).isEqualTo(expectedNode);
+  }
+
+  private void removeNullFields(JsonNode node) {
+    if (node == null) {
+      return;
+    }
+    if (node.isObject()) {
+      List<String> keys = new ArrayList<>();
+      node.fields()
+          .forEachRemaining(
+              entry -> {
+                if (entry.getValue().isNull()) {
+                  keys.add(entry.getKey());
+                } else {
+                  removeNullFields(entry.getValue());
+                }
+              });
+      keys.forEach(((ObjectNode) (node))::remove);
+    } else if (node.isArray()) {
+      node.forEach(this::removeNullFields);
+    }
   }
 }

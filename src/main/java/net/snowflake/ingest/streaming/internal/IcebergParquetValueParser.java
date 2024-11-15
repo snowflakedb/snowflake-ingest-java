@@ -468,6 +468,9 @@ class IcebergParquetValueParser {
           missingFields.add(type.getFieldName(i));
         } else {
           listVal.add(null);
+          subColumnFinder
+              .getSubColumns(type.getType(i).getId())
+              .forEach(subColumn -> statsMap.get(subColumn).incCurrentNullCount());
         }
       }
     }
