@@ -472,6 +472,12 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
     assertThat(actualNode).isEqualTo(expectedNode);
   }
 
+  /**
+   * Remove null fields from the JSON node. This is used to compare the JSON node ignoring null
+   * values. e.g. "{}" and "{a: null}".
+   *
+   * @param node JSON node
+   */
   private void removeNullFields(JsonNode node) {
     if (node == null) {
       return;
