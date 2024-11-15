@@ -244,4 +244,106 @@ public class IcebergSchemaEvolutionIT extends AbstractDataTypeTest {
         Arrays.asList(value, newValue),
         "id");
   }
+
+  /** KC Testing pattern */
+  @Test
+  public void testReopen() throws Exception {
+    String tableName = createIcebergTableWithColumns("id int, int_col int");
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+    String channelName = channel.getName();
+
+    Map<String, Object> value = new HashMap<>();
+    value.put("id", 0L);
+    value.put("int_col", 1L);
+
+    verifyMultipleColumns(
+        tableName,
+        channel,
+        Collections.singletonList(value),
+        Collections.singletonList(value),
+        "id");
+
+    Map<String, Object> newValue = new HashMap<>();
+    newValue.put("id", 1L);
+    newValue.put("new_int_col", 2L);
+    Assertions.assertThatThrownBy(
+            () ->
+                verifyMultipleColumns(
+                    tableName,
+                    channel,
+                    Collections.singletonList(newValue),
+                    Arrays.asList(value, newValue),
+                    "id"))
+        .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Extra columns:"
+                + " [new_int_col]. Columns not present in the table shouldn't be specified,"
+                + " rowIndex:0")
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+
+    conn.createStatement()
+        .execute(String.format("ALTER ICEBERG TABLE %s ADD COLUMN new_int_col int", tableName));
+
+    Assertions.assertThat(channel.isValid()).isTrue();
+    SnowflakeStreamingIngestChannel newChannel = openChannel(tableName);
+    Assertions.assertThat(newChannel.getName()).isEqualTo(channelName);
+    Assertions.assertThat(channel.isValid()).isFalse();
+
+    verifyMultipleColumns(
+        tableName,
+        newChannel,
+        Collections.singletonList(newValue),
+        Arrays.asList(value, newValue),
+        "id");
+  }
+
+  @Test
+  public void testNewFieldId() throws Exception {
+    String tableName = createIcebergTableWithColumns("id int, obj_col object(a int, b int)");
+    SnowflakeStreamingIngestChannel channel = openChannel(tableName);
+
+    Map<String, Object> value = new HashMap<>();
+    value.put("id", 0L);
+    value.put("obj_col", ImmutableMap.of("a", 1, "b", 2));
+
+    verifyMultipleColumns(
+        tableName,
+        channel,
+        Collections.singletonList(value),
+        Collections.singletonList(value),
+        "id");
+
+    conn.createStatement()
+        .execute(String.format("ALTER ICEBERG TABLE %s ADD COLUMN new_col int", tableName));
+
+    Map<String, Object> newValue = new HashMap<>();
+    newValue.put("id", 1L);
+    newValue.put("obj_col", ImmutableMap.of("a", 3, "b", 4));
+    newValue.put("new_col", 5L);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                verifyMultipleColumns(
+                    tableName,
+                    channel,
+                    Collections.singletonList(newValue),
+                    Arrays.asList(value, newValue),
+                    "id"))
+        .isInstanceOf(SFException.class)
+        .hasMessage(
+            "The given row cannot be converted to the internal format: Extra columns: [new_col]."
+                + " Columns not present in the table shouldn't be specified, rowIndex:0")
+        .extracting("vendorCode")
+        .isEqualTo(ErrorCode.INVALID_FORMAT_ROW.getMessageCode());
+
+    channel.close();
+    SnowflakeStreamingIngestChannel newChannel = openChannel(tableName);
+    verifyMultipleColumns(
+        tableName,
+        newChannel,
+        Collections.singletonList(newValue),
+        Arrays.asList(value, newValue),
+        "id");
+  }
 }
