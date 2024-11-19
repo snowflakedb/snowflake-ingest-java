@@ -223,7 +223,7 @@ public class RowBufferTest {
             ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
             enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
             enableIcebergStreaming,
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming),
         null,
         enableIcebergStreaming
@@ -645,7 +645,7 @@ public class RowBufferTest {
         new RowBufferStats(
             "intColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("intColumn"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     stats1.addIntValue(BigInteger.valueOf(2));
     stats1.addIntValue(BigInteger.valueOf(10));
@@ -655,7 +655,7 @@ public class RowBufferTest {
         new RowBufferStats(
             "strColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("strColumn"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     stats2.addStrValue("alice");
     stats2.addStrValue("bob");
@@ -671,7 +671,9 @@ public class RowBufferTest {
     Assert.assertEquals(2, columnResults.keySet().size());
 
     FileColumnProperties strColumnResult = columnResults.get("strColumn");
-    Assert.assertEquals(enableIcebergStreaming ? 2 : -1, strColumnResult.getDistinctValues());
+    Assert.assertEquals(
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 2 : -1,
+        strColumnResult.getDistinctValues());
     Assert.assertEquals(
         Hex.encodeHexString("alice".getBytes(StandardCharsets.UTF_8)),
         strColumnResult.getMinStrValue());
@@ -681,7 +683,9 @@ public class RowBufferTest {
     Assert.assertEquals(1, strColumnResult.getNullCount());
 
     FileColumnProperties intColumnResult = columnResults.get("intColumn");
-    Assert.assertEquals(enableIcebergStreaming ? 3 : -1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 3 : -1,
+        intColumnResult.getDistinctValues());
     Assert.assertEquals(BigInteger.valueOf(1), intColumnResult.getMinIntValue());
     Assert.assertEquals(BigInteger.valueOf(10), intColumnResult.getMaxIntValue());
     Assert.assertEquals(0, intColumnResult.getNullCount());
@@ -697,13 +701,13 @@ public class RowBufferTest {
         new RowBufferStats(
             intColName,
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named(intColName),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     RowBufferStats stats2 =
         new RowBufferStats(
             realColName,
             Types.optional(PrimitiveType.PrimitiveTypeName.DOUBLE).id(2).named(realColName),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     stats1.incCurrentNullCount();
     stats2.incCurrentNullCount();
@@ -718,7 +722,9 @@ public class RowBufferTest {
     Assert.assertEquals(2, columnResults.keySet().size());
 
     FileColumnProperties intColumnResult = columnResults.get(intColName);
-    Assert.assertEquals(enableIcebergStreaming ? 0 : -1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 0 : -1,
+        intColumnResult.getDistinctValues());
     Assert.assertEquals(
         FileColumnProperties.DEFAULT_MIN_MAX_INT_VAL_FOR_EP, intColumnResult.getMinIntValue());
     Assert.assertEquals(
@@ -727,7 +733,9 @@ public class RowBufferTest {
     Assert.assertEquals(0, intColumnResult.getMaxLength());
 
     FileColumnProperties realColumnResult = columnResults.get(realColName);
-    Assert.assertEquals(enableIcebergStreaming ? 0 : -1, intColumnResult.getDistinctValues());
+    Assert.assertEquals(
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 0 : -1,
+        intColumnResult.getDistinctValues());
     Assert.assertEquals(
         FileColumnProperties.DEFAULT_MIN_MAX_REAL_VAL_FOR_EP, realColumnResult.getMinRealValue());
     Assert.assertEquals(
@@ -744,7 +752,7 @@ public class RowBufferTest {
         new RowBufferStats(
             "intColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("intColumn"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     stats1.addIntValue(BigInteger.valueOf(2));
     stats1.addIntValue(BigInteger.valueOf(10));
@@ -754,7 +762,7 @@ public class RowBufferTest {
         new RowBufferStats(
             "strColumn",
             Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).id(2).named("strColumn"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     stats2.addStrValue("alice");
     stats2.incCurrentNullCount();
@@ -882,7 +890,7 @@ public class RowBufferTest {
     Assert.assertEquals(
         0, columnEpStats.get(enableIcebergStreaming ? "1" : "colTinyInt").getCurrentNullCount());
     Assert.assertEquals(
-        enableIcebergStreaming ? 2 : -1,
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 2 : -1,
         columnEpStats.get(enableIcebergStreaming ? "1" : "colTinyInt").getDistinctValues());
 
     Assert.assertEquals(
@@ -894,7 +902,7 @@ public class RowBufferTest {
     Assert.assertEquals(
         0, columnEpStats.get(enableIcebergStreaming ? "2" : "COLTINYINT").getCurrentNullCount());
     Assert.assertEquals(
-        enableIcebergStreaming ? 1 : -1,
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 1 : -1,
         columnEpStats.get(enableIcebergStreaming ? "2" : "COLTINYINT").getDistinctValues());
 
     Assert.assertEquals(
@@ -906,7 +914,7 @@ public class RowBufferTest {
     Assert.assertEquals(
         0, columnEpStats.get(enableIcebergStreaming ? "3" : "COLSMALLINT").getCurrentNullCount());
     Assert.assertEquals(
-        enableIcebergStreaming ? 2 : -1,
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 2 : -1,
         columnEpStats.get(enableIcebergStreaming ? "3" : "COLSMALLINT").getDistinctValues());
 
     Assert.assertEquals(
@@ -918,7 +926,7 @@ public class RowBufferTest {
     Assert.assertEquals(
         1L, columnEpStats.get(enableIcebergStreaming ? "4" : "COLINT").getCurrentNullCount());
     Assert.assertEquals(
-        enableIcebergStreaming ? 1 : -1,
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 1 : -1,
         columnEpStats.get(enableIcebergStreaming ? "4" : "COLINT").getDistinctValues());
 
     Assert.assertEquals(
@@ -930,7 +938,7 @@ public class RowBufferTest {
     Assert.assertEquals(
         0, columnEpStats.get(enableIcebergStreaming ? "5" : "COLBIGINT").getCurrentNullCount());
     Assert.assertEquals(
-        enableIcebergStreaming ? 2 : -1,
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 2 : -1,
         columnEpStats.get(enableIcebergStreaming ? "5" : "COLBIGINT").getDistinctValues());
 
     Assert.assertArrayEquals(
@@ -942,7 +950,7 @@ public class RowBufferTest {
     Assert.assertEquals(
         0, columnEpStats.get(enableIcebergStreaming ? "7" : "COLCHAR").getCurrentNullCount());
     Assert.assertEquals(
-        enableIcebergStreaming ? 2 : -1,
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 2 : -1,
         columnEpStats.get(enableIcebergStreaming ? "7" : "COLCHAR").getDistinctValues());
 
     // Confirm we reset
@@ -2419,7 +2427,7 @@ public class RowBufferTest {
             columnEpStats.get(enableIcebergStreaming ? "4" : "COLOBJECT.a").getCurrentNullCount())
         .isEqualTo(0);
     assertThat(columnEpStats.get(enableIcebergStreaming ? "4" : "COLOBJECT.a").getDistinctValues())
-        .isEqualTo(2);
+        .isEqualTo(InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 2 : -1);
     assertThat(columnEpStats.get(enableIcebergStreaming ? "4" : "COLOBJECT.a").getNumberOfValues())
         .isEqualTo(EP_NV_UNKNOWN);
 
@@ -2433,7 +2441,7 @@ public class RowBufferTest {
             columnEpStats.get(enableIcebergStreaming ? "5" : "COLOBJECT.b").getCurrentNullCount())
         .isEqualTo(1);
     assertThat(columnEpStats.get(enableIcebergStreaming ? "5" : "COLOBJECT.b").getDistinctValues())
-        .isEqualTo(1);
+        .isEqualTo(InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 1 : -1);
     assertThat(columnEpStats.get(enableIcebergStreaming ? "5" : "COLOBJECT.b").getNumberOfValues())
         .isEqualTo(EP_NV_UNKNOWN);
 
@@ -2456,7 +2464,7 @@ public class RowBufferTest {
             columnEpStats
                 .get(enableIcebergStreaming ? "6" : "COLMAP.key_value.key")
                 .getDistinctValues())
-        .isEqualTo(2);
+        .isEqualTo(InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 2 : -1);
     assertThat(
             columnEpStats
                 .get(enableIcebergStreaming ? "6" : "COLMAP.key_value.key")
@@ -2482,7 +2490,7 @@ public class RowBufferTest {
             columnEpStats
                 .get(enableIcebergStreaming ? "7" : "COLMAP.key_value.value")
                 .getDistinctValues())
-        .isEqualTo(1);
+        .isEqualTo(InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 1 : -1);
     assertThat(
             columnEpStats
                 .get(enableIcebergStreaming ? "7" : "COLMAP.key_value.value")
@@ -2508,7 +2516,7 @@ public class RowBufferTest {
             columnEpStats
                 .get(enableIcebergStreaming ? "8" : "COLARRAY.list.element")
                 .getDistinctValues())
-        .isEqualTo(1);
+        .isEqualTo(InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 1 : -1);
     assertThat(
             columnEpStats
                 .get(enableIcebergStreaming ? "8" : "COLARRAY.list.element")

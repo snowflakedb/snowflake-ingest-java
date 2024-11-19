@@ -188,7 +188,7 @@ public class BlobBuilderTest {
                         .as(LogicalTypeAnnotation.stringType())
                         .id(1)
                         .named("test"),
-                    enableIcebergStreaming,
+                    InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
                     enableIcebergStreaming)
                 : new RowBufferStats(columnName, null, 1, null, null, false, false));
     channelData.setChannelContext(
