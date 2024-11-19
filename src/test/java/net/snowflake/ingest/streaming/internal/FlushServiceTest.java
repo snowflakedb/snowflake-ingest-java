@@ -112,7 +112,7 @@ public class FlushServiceTest {
       storage = Mockito.mock(InternalStage.class);
       parameterProvider = createParameterProvider(enableIcebergStreaming);
       InternalParameterProvider internalParameterProvider =
-          new InternalParameterProvider(enableIcebergStreaming);
+          new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
@@ -1078,7 +1078,7 @@ public class FlushServiceTest {
     ParameterProvider parameterProvider = createParameterProvider(enableIcebergStreaming);
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
     InternalParameterProvider internalParameterProvider =
-        new InternalParameterProvider(enableIcebergStreaming);
+        new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */);
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
     Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
