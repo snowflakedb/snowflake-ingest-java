@@ -157,7 +157,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param requestBuilder http request builder
    * @param parameterOverrides parameters we override in case we want to set different values
    */
-  SnowflakeStreamingIngestClientInternal(
+  @VisibleForTesting
+  public SnowflakeStreamingIngestClientInternal(
       String name,
       SnowflakeURL accountURL,
       Properties prop,
@@ -219,14 +220,16 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN),
                 oAuthTokenEndpoint);
       }
-      this.requestBuilder =
-          new RequestBuilder(
-              accountURL,
-              prop.get(USER).toString(),
-              credential,
-              this.httpClient,
-              parameterProvider.isEnableIcebergStreaming(),
-              String.format("%s_%s", this.name, System.currentTimeMillis()));
+      if (this.requestBuilder == null) {
+        this.requestBuilder =
+            new RequestBuilder(
+                accountURL,
+                prop.get(USER).toString(),
+                credential,
+                this.httpClient,
+                parameterProvider.isEnableIcebergStreaming(),
+                String.format("%s_%s", this.name, System.currentTimeMillis()));
+      }
 
       logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
     }
@@ -293,21 +296,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   public void injectRequestBuilder(RequestBuilder requestBuilder) {
     this.requestBuilder = requestBuilder;
     this.snowflakeServiceClient = new SnowflakeServiceClient(this.httpClient, this.requestBuilder);
-    this.storageManager =
-        parameterProvider.isEnableIcebergStreaming()
-            ? new SubscopedTokenExternalVolumeManager(
-                this.role, this.name, this.snowflakeServiceClient)
-            : new InternalStageManager(
-                isTestMode, this.role, this.name, this.snowflakeServiceClient);
-
-    try {
-      this.flushService =
-          new FlushService<>(this, this.channelCache, this.storageManager, this.isTestMode);
-    } catch (Exception e) {
-      // Need to clean up the resources before throwing any exceptions
-      cleanUpResources();
-      throw e;
-    }
   }
 
   /**

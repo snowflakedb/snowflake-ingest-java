@@ -4,9 +4,9 @@
 
 package net.snowflake.ingest.streaming.internal.it;
 
-import static net.snowflake.ingest.utils.Constants.IcebergSerializationPolicy.OPTIMIZED;
 import static net.snowflake.ingest.utils.Constants.REFRESH_TABLE_INFORMATION_ENDPOINT;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_ICEBERG_STREAMING;
+import static net.snowflake.ingest.utils.ParameterProvider.MAX_CLIENT_LAG;
 
 import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
@@ -20,6 +20,7 @@ import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInt
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SnowflakeURL;
+import net.snowflake.ingest.utils.Utils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,9 +43,15 @@ public class SubscopedTokenRefreshIT {
 
     conn = TestUtils.getConnection(true);
 
+    conn.createStatement().execute(String.format("create or replace database %s;", database));
+    conn.createStatement().execute(String.format("use database %s;", database));
+    conn.createStatement().execute(String.format("use schema %s;", schema));
+    conn.createStatement().execute(String.format("use warehouse %s;", TestUtils.getWarehouse()));
+
     SnowflakeURL url = new SnowflakeURL(TestUtils.getAccountURL());
     Properties properties = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
     properties.setProperty(ENABLE_ICEBERG_STREAMING, "true");
+    properties.setProperty(MAX_CLIENT_LAG, "1000");
     requestBuilder =
         Mockito.spy(
             new RequestBuilder(
@@ -55,10 +62,14 @@ public class SubscopedTokenRefreshIT {
                 true /* enableIcebergStreaming */,
                 "client1"));
     this.client =
-        (SnowflakeStreamingIngestClientInternal<?>)
-            TestUtils.setUp(
-                conn, database, schema, true /* enableIcebergStreaming */, "ZSTD", OPTIMIZED);
-    client.injectRequestBuilder(requestBuilder);
+        new SnowflakeStreamingIngestClientInternal<>(
+            "client1",
+            url,
+            Utils.createProperties(properties),
+            HttpUtil.getHttpClient(url.getAccount()),
+            false /* isTestMode */,
+            requestBuilder,
+            null /* parameterOverrides */);
   }
 
   @After
