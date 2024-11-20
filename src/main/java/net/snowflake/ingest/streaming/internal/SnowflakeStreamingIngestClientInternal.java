@@ -108,7 +108,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   private final ChannelCache<T> channelCache;
 
   // Reference to the flush service
-  private final FlushService<T> flushService;
+  private FlushService<T> flushService;
 
   // Reference to storage manager
   private IStorageManager storageManager;
@@ -293,6 +293,21 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   public void injectRequestBuilder(RequestBuilder requestBuilder) {
     this.requestBuilder = requestBuilder;
     this.snowflakeServiceClient = new SnowflakeServiceClient(this.httpClient, this.requestBuilder);
+    this.storageManager =
+        parameterProvider.isEnableIcebergStreaming()
+            ? new SubscopedTokenExternalVolumeManager(
+                this.role, this.name, this.snowflakeServiceClient)
+            : new InternalStageManager(
+                isTestMode, this.role, this.name, this.snowflakeServiceClient);
+
+    try {
+      this.flushService =
+          new FlushService<>(this, this.channelCache, this.storageManager, this.isTestMode);
+    } catch (Exception e) {
+      // Need to clean up the resources before throwing any exceptions
+      cleanUpResources();
+      throw e;
+    }
   }
 
   /**
