@@ -11,9 +11,11 @@ class InternalParameterProvider {
   public static final boolean ENABLE_VALUES_COUNT_DEFAULT = false;
 
   private final boolean enableIcebergStreaming;
+  private final boolean enableNDVTracking;
 
-  InternalParameterProvider(boolean enableIcebergStreaming) {
+  InternalParameterProvider(boolean enableIcebergStreaming, boolean enableNDVTracking) {
     this.enableIcebergStreaming = enableIcebergStreaming;
+    this.enableNDVTracking = enableNDVTracking;
   }
 
   boolean getEnableChunkEncryption() {
@@ -38,7 +40,7 @@ class InternalParameterProvider {
 
   boolean isEnableDistinctValuesCount() {
     // When in Iceberg mode, we enabled distinct values count in EP metadata.
-    return enableIcebergStreaming;
+    return enableIcebergStreaming && enableNDVTracking;
   }
 
   boolean isEnableValuesCount() {

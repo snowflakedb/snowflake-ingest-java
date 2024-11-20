@@ -520,7 +520,7 @@ public class SnowflakeStreamingIngestClientTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming));
     EpInfo epInfo =
         AbstractRowBuffer.buildEpInfoFromStats(
@@ -577,7 +577,7 @@ public class SnowflakeStreamingIngestClientTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming));
     EpInfo epInfo =
         AbstractRowBuffer.buildEpInfoFromStats(

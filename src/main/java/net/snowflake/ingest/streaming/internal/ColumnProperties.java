@@ -70,10 +70,8 @@ public class ColumnProperties {
    * when this object represents an iceberg table's column, null otherwise. The String returned from
    * here is meant to conform to the json schema specified here:
    * https://iceberg.apache.org/spec/#appendix-c-json-serialization
-   *
-   * <p>Make this a public API when the Builder.setEnableIcebergStreaming API is made public.
    */
-  String getIcebergSchema() {
+  public String getIcebergSchema() {
     return icebergColumnSchema;
   }
 }
