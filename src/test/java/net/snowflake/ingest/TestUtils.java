@@ -302,6 +302,7 @@ public class TestUtils {
     props.put("warehouse", warehouse);
     props.put("client_session_keep_alive", "true");
     props.put("privateKey", privateKey);
+    props.put("role", role);
 
     if (isStreamingConnection) {
       streamingConn = DriverManager.getConnection(connectString, props);

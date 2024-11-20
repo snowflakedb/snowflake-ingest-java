@@ -58,8 +58,9 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
     logger.logDebug(
-        "Created SubscopedTokenExternalVolumeManager with clientName=%s and clientPrefix=%s",
-        clientName, clientPrefix);
+        "Created SubscopedTokenExternalVolumeManager with clientName={} and clientPrefix={}",
+        clientName,
+        clientPrefix);
   }
 
   /**

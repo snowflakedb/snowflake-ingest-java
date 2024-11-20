@@ -33,7 +33,7 @@ public class FileColumnPropertiesTest {
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
                     .named("test"),
-                enableIcebergStreaming,
+                InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
                 enableIcebergStreaming)
             : new RowBufferStats("COL", null, 1, null, null, false, false);
     stats.addStrValue("bcd");
@@ -58,7 +58,7 @@ public class FileColumnPropertiesTest {
                     .as(LogicalTypeAnnotation.stringType())
                     .id(1)
                     .named("test"),
-                enableIcebergStreaming,
+                InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
                 enableIcebergStreaming)
             : new RowBufferStats("COL", null, 1, null, null, false, false);
     stats.addStrValue("aßßßßßßßßßßßßßßßß");

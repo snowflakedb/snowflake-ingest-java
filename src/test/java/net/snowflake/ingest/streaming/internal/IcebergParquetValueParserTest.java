@@ -50,7 +50,9 @@ public class IcebergParquetValueParserTest {
     Type type =
         Types.primitive(PrimitiveTypeName.BOOLEAN, Repetition.OPTIONAL).id(1).named("BOOLEAN_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("BOOLEAN_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "BOOLEAN_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -76,7 +78,9 @@ public class IcebergParquetValueParserTest {
     Type type =
         Types.primitive(PrimitiveTypeName.INT32, Repetition.OPTIONAL).id(1).named("INT_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("INT_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "INT_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -104,7 +108,9 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.decimalType(4, 9))
             .named("DECIMAL_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("DECIMAL_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "DECIMAL_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -138,7 +144,9 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.dateType())
             .named("DATE_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("DATE_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "DATE_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -163,7 +171,9 @@ public class IcebergParquetValueParserTest {
     Type type =
         Types.primitive(PrimitiveTypeName.INT64, Repetition.OPTIONAL).id(1).named("LONG_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("LONG_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "LONG_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -191,7 +201,9 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.decimalType(9, 18))
             .named("DECIMAL_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("DECIMAL_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "DECIMAL_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -225,7 +237,9 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.timeType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
             .named("TIME_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("TIME_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "TIME_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -253,7 +267,9 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.timestampType(false, LogicalTypeAnnotation.TimeUnit.MICROS))
             .named("TIMESTAMP_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("TIMESTAMP_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "TIMESTAMP_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -287,7 +303,11 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS))
             .named("TIMESTAMP_TZ_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("TIMESTAMP_TZ_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "TIMESTAMP_TZ_COL",
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
+            true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -318,7 +338,9 @@ public class IcebergParquetValueParserTest {
     Type type =
         Types.primitive(PrimitiveTypeName.FLOAT, Repetition.OPTIONAL).id(1).named("FLOAT_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("FLOAT_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "FLOAT_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -343,7 +365,9 @@ public class IcebergParquetValueParserTest {
     Type type =
         Types.primitive(PrimitiveTypeName.DOUBLE, Repetition.OPTIONAL).id(1).named("DOUBLE_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("DOUBLE_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "DOUBLE_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -368,7 +392,9 @@ public class IcebergParquetValueParserTest {
     Type type =
         Types.primitive(PrimitiveTypeName.BINARY, Repetition.OPTIONAL).id(1).named("BINARY_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("BINARY_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "BINARY_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -398,7 +424,9 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.stringType())
             .named("BINARY_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("BINARY_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "BINARY_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -430,7 +458,9 @@ public class IcebergParquetValueParserTest {
             .length(4)
             .named("FIXED_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("FIXED_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "FIXED_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -461,7 +491,9 @@ public class IcebergParquetValueParserTest {
             .as(LogicalTypeAnnotation.decimalType(10, 20))
             .named("FIXED_COL");
 
-    RowBufferStats rowBufferStats = new RowBufferStats("FIXED_COL", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "FIXED_COL", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -490,7 +522,11 @@ public class IcebergParquetValueParserTest {
             .element(Types.optional(PrimitiveTypeName.INT32).id(2).named("element"))
             .id(1)
             .named("LIST_COL");
-    RowBufferStats rowBufferStats = new RowBufferStats("LIST_COL.list.element", true, true);
+    RowBufferStats rowBufferStats =
+        new RowBufferStats(
+            "LIST_COL.list.element",
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
+            true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -576,8 +612,16 @@ public class IcebergParquetValueParserTest {
             .value(Types.optional(PrimitiveTypeName.INT32).id(3).named("value"))
             .id(1)
             .named("MAP_COL");
-    RowBufferStats rowBufferKeyStats = new RowBufferStats("MAP_COL.key_value.key", true, true);
-    RowBufferStats rowBufferValueStats = new RowBufferStats("MAP_COL.key_value.value", true, true);
+    RowBufferStats rowBufferKeyStats =
+        new RowBufferStats(
+            "MAP_COL.key_value.key",
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
+            true);
+    RowBufferStats rowBufferValueStats =
+        new RowBufferStats(
+            "MAP_COL.key_value.value",
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
+            true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -686,8 +730,12 @@ public class IcebergParquetValueParserTest {
             .id(1)
             .named("STRUCT_COL");
 
-    RowBufferStats rowBufferAStats = new RowBufferStats("STRUCT_COL.a", true, true);
-    RowBufferStats rowBufferBStats = new RowBufferStats("STRUCT_COL.b", true, true);
+    RowBufferStats rowBufferAStats =
+        new RowBufferStats(
+            "STRUCT_COL.a", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
+    RowBufferStats rowBufferBStats =
+        new RowBufferStats(
+            "STRUCT_COL.b", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true);
     Map<String, RowBufferStats> rowBufferStatsMap =
         new HashMap<String, RowBufferStats>() {
           {
@@ -819,7 +867,10 @@ public class IcebergParquetValueParserTest {
   private static Type generateNestedTypeAndStats(
       int depth, String name, Map<String, RowBufferStats> rowBufferStatsMap, String path) {
     if (depth == 0) {
-      rowBufferStatsMap.put("0", new RowBufferStats(path, true, true));
+      rowBufferStatsMap.put(
+          "0",
+          new RowBufferStats(
+              path, InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, true));
       return Types.optional(PrimitiveTypeName.INT32).id(0).named(name);
     }
     switch (depth % 3) {
@@ -837,7 +888,11 @@ public class IcebergParquetValueParserTest {
             .named(name);
       case 0:
         rowBufferStatsMap.put(
-            String.valueOf(depth), new RowBufferStats(path + ".key_value.key", true, true));
+            String.valueOf(depth),
+            new RowBufferStats(
+                path + ".key_value.key",
+                InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
+                true));
         return Types.optionalMap()
             .key(Types.required(PrimitiveTypeName.INT32).id(depth).named("key"))
             .value(

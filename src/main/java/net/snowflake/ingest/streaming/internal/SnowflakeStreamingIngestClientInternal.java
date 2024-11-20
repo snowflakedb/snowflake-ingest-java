@@ -167,7 +167,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
     this.internalParameterProvider =
-        new InternalParameterProvider(parameterProvider.isEnableIcebergStreaming());
+        new InternalParameterProvider(
+            parameterProvider.isEnableIcebergStreaming(), false /* enableNDVCount */);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
