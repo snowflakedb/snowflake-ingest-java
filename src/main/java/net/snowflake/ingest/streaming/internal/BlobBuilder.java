@@ -186,13 +186,14 @@ class BlobBuilder {
 
         logger.logInfo(
             "Finish building chunk in blob={}, table={}, rowCount={}, startOffset={},"
-                + " estimatedUncompressedSize={}, chunkLength={}, compressedSize={},"
+                + " estimatedUncompressedSize={}, md5={}, chunkLength={}, compressedSize={},"
                 + " encrypt={}, bdecVersion={}",
             filePath,
             firstChannelFlushContext.getFullyQualifiedTableName(),
             serializedChunk.rowCount,
             startOffset,
             serializedChunk.chunkEstimatedUncompressedSize,
+            md5,
             chunkLength,
             compressedChunkDataSize,
             internalParameterProvider.getEnableChunkEncryption(),
