@@ -112,7 +112,7 @@ public class FlushServiceTest {
       storage = Mockito.mock(InternalStage.class);
       parameterProvider = createParameterProvider(enableIcebergStreaming);
       InternalParameterProvider internalParameterProvider =
-          new InternalParameterProvider(enableIcebergStreaming);
+          new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
@@ -905,13 +905,13 @@ public class FlushServiceTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     RowBufferStats stats2 =
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
 
     eps1.put("one", stats1);
@@ -1078,7 +1078,7 @@ public class FlushServiceTest {
     ParameterProvider parameterProvider = createParameterProvider(enableIcebergStreaming);
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
     InternalParameterProvider internalParameterProvider =
-        new InternalParameterProvider(enableIcebergStreaming);
+        new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */);
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
     Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
@@ -1167,7 +1167,7 @@ public class FlushServiceTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
 
     eps1.put("one", stats1);
