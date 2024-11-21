@@ -397,9 +397,15 @@ public class TestUtils {
    */
   public static void waitForOffset(SnowflakeStreamingIngestChannel channel, String expectedOffset)
       throws InterruptedException {
+    waitForOffset(channel, expectedOffset, 60);
+  }
+
+  public static void waitForOffset(
+      SnowflakeStreamingIngestChannel channel, String expectedOffset, int seconds)
+      throws InterruptedException {
     int counter = 0;
     String lastCommittedOffset = null;
-    while (counter < 600) {
+    while (counter < seconds * 10) {
       String currentOffset = channel.getLatestCommittedOffsetToken();
       if (expectedOffset.equals(currentOffset)) {
         return;
