@@ -25,6 +25,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.mockito.Mockito;
 
 @RunWith(Parameterized.class)
 public class RegisterServiceTest {
@@ -57,7 +58,17 @@ public class RegisterServiceTest {
 
   @Test
   public void testRegisterService() throws ExecutionException, InterruptedException {
-    RegisterService<StubChunkData> rs = new RegisterService<>(null, true);
+    SnowflakeStreamingIngestClientInternal<StubChunkData> client =
+        Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
+    ParameterProvider parameterProvider = Mockito.mock(ParameterProvider.class);
+    Mockito.when(parameterProvider.getBlobUploadTimeOutInSec())
+        .thenReturn(
+            enableIcebergStreaming
+                ? ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
+                : ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT);
+    Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
+
+    RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
 
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
         new Pair<>(
