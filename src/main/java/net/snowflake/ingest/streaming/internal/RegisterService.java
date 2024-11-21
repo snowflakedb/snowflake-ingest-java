@@ -1,10 +1,9 @@
 /*
- * Copyright (c) 2021 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
@@ -120,7 +119,8 @@ class RegisterService<T> {
               "Start loop inner for uploading blobs, size={}, idx={}", oldList.size(), idx);
           while (idx < oldList.size()
               && System.currentTimeMillis() - startTime
-                  <= TimeUnit.SECONDS.toMillis(BLOB_UPLOAD_TIMEOUT_IN_SEC * 2)) {
+                  <= TimeUnit.SECONDS.toMillis(
+                      owningClient.getParameterProvider().getBlobUploadTimeOutInSec() * 2L)) {
             Pair<FlushService.BlobData<T>, CompletableFuture<BlobMetadata>> futureBlob =
                 oldList.get(idx);
             try {
@@ -128,7 +128,11 @@ class RegisterService<T> {
                   "Start waiting on uploading blob={}, idx={}", futureBlob.getKey().getPath(), idx);
               // Wait for uploading to finish
               BlobMetadata blob =
-                  futureBlob.getValue().get(BLOB_UPLOAD_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+                  futureBlob
+                      .getValue()
+                      .get(
+                          owningClient.getParameterProvider().getBlobUploadTimeOutInSec(),
+                          TimeUnit.SECONDS);
               logger.logDebug(
                   "Finish waiting on uploading blob={}, idx={}",
                   futureBlob.getKey().getPath(),

@@ -4,8 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.BLOB_UPLOAD_TIMEOUT_IN_SEC;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -120,7 +118,9 @@ public class RegisterServiceTest {
     future.thenRunAsync(
         () -> {
           try {
-            Thread.sleep(TimeUnit.SECONDS.toMillis(BLOB_UPLOAD_TIMEOUT_IN_SEC) + 5);
+            Thread.sleep(
+                TimeUnit.SECONDS.toMillis(client.getParameterProvider().getBlobUploadTimeOutInSec())
+                    + 5);
           } catch (InterruptedException e) {
             e.printStackTrace();
           }

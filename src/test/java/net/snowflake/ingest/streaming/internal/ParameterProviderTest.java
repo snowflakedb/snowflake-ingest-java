@@ -170,6 +170,11 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         ParameterProvider.MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT,
         parameterProvider.getMaxChunksInRegistrationRequest());
+    Assert.assertEquals(
+        enableIcebergStreaming
+            ? ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
+            : ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT,
+        parameterProvider.getBlobUploadTimeOutInSec());
   }
 
   @Test

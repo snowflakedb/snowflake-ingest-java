@@ -38,6 +38,8 @@ public class ParameterProvider {
   public static final String MAX_CHUNKS_IN_BLOB = "MAX_CHUNKS_IN_BLOB".toLowerCase();
   public static final String MAX_CHUNKS_IN_REGISTRATION_REQUEST =
       "MAX_CHUNKS_IN_REGISTRATION_REQUEST".toLowerCase();
+  public static final String BLOB_UPLOAD_TIMEOUT_IN_SEC =
+      "BLOB_UPLOAD_TIMEOUT_IN_SEC".toLowerCase();
 
   public static final String MAX_CLIENT_LAG = "MAX_CLIENT_LAG".toLowerCase();
 
@@ -62,6 +64,8 @@ public class ParameterProvider {
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 256 * 1024 * 1024;
+  public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT = 5;
+  public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT = 20;
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
@@ -94,6 +98,9 @@ public class ParameterProvider {
 
   // Cached enableIcebergStreaming - avoid parsing each time for quick lookup
   private Boolean cachedEnableIcebergStreaming = null;
+
+  // Cached blob upload timeout - avoid parsing each time for quick lookup
+  private int cachedBlobUploadTimeoutInSec = -1;
 
   /**
    * Constructor. Takes properties from profile file and properties from client constructor and
@@ -266,6 +273,15 @@ public class ParameterProvider {
     this.checkAndUpdate(
         ENABLE_NEW_JSON_PARSING_LOGIC,
         ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
+
+    this.checkAndUpdate(
+        BLOB_UPLOAD_TIMEOUT_IN_SEC,
+        isEnableIcebergStreaming()
+            ? BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
+            : BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT,
         parameterOverrides,
         props,
         false /* enforceDefault */);
@@ -527,6 +543,22 @@ public class ParameterProvider {
           String.format("Failed to parse STREAMING_ICEBERG = '%s'", val), t);
     }
     return cachedEnableIcebergStreaming;
+  }
+
+  /** @return The timeout in seconds for waiting for a blob upload task to finish. */
+  public int getBlobUploadTimeOutInSec() {
+    if (cachedBlobUploadTimeoutInSec != -1) {
+      return cachedBlobUploadTimeoutInSec;
+    }
+    Object val =
+        this.parameterMap.getOrDefault(
+            BLOB_UPLOAD_TIMEOUT_IN_SEC,
+            isEnableIcebergStreaming()
+                ? BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
+                : BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT);
+    cachedBlobUploadTimeoutInSec =
+        (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
+    return cachedBlobUploadTimeoutInSec;
   }
 
   @Override
