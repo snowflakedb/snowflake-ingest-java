@@ -31,7 +31,6 @@ import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
-import net.snowflake.ingest.streaming.internal.datatypes.IcebergNumericTypesIT;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -51,7 +50,7 @@ import org.slf4j.LoggerFactory;
 @Category(IcebergIT.class)
 @RunWith(Parameterized.class)
 public class IcebergBigFilesIT {
-  private static final Logger logger = LoggerFactory.getLogger(IcebergNumericTypesIT.class);
+  private static final Logger logger = LoggerFactory.getLogger(IcebergBigFilesIT.class);
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   @Parameterized.Parameters(name = "icebergSerializationPolicy={0}")
@@ -138,7 +137,7 @@ public class IcebergBigFilesIT {
             String.format(
                 "create or replace iceberg table %s(string_col string)"
                     + "catalog = 'SNOWFLAKE' "
-                    + "external_volume = 'exvol_managed' "
+                    + "external_volume = 'streaming_ingest' "
                     + "base_location = 'SDK_IT/%s/%s'"
                     + "storage_serialization_policy = %s;",
                 tableName, database, tableName, icebergSerializationPolicy.name()));
