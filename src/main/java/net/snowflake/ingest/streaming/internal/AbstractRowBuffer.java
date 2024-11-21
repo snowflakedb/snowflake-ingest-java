@@ -357,7 +357,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.channelState = channelRuntimeState;
     this.channelFullyQualifiedName = fullyQualifiedChannelName;
     this.nonNullableFieldNames = new HashSet<>();
-    this.flushLock = new ReentrantLock();
+    this.flushLock = new ReentrantLock(true);
     this.bufferedRowCount = 0;
     this.bufferSize = 0F;
     this.clientBufferParameters = clientBufferParameters;
