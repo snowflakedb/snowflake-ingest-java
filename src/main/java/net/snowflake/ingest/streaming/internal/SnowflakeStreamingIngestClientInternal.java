@@ -108,7 +108,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   private final ChannelCache<T> channelCache;
 
   // Reference to the flush service
-  private final FlushService<T> flushService;
+  private FlushService<T> flushService;
 
   // Reference to storage manager
   private IStorageManager storageManager;
@@ -157,7 +157,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param requestBuilder http request builder
    * @param parameterOverrides parameters we override in case we want to set different values
    */
-  SnowflakeStreamingIngestClientInternal(
+  @VisibleForTesting
+  public SnowflakeStreamingIngestClientInternal(
       String name,
       SnowflakeURL accountURL,
       Properties prop,
@@ -167,7 +168,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
     this.internalParameterProvider =
-        new InternalParameterProvider(parameterProvider.isEnableIcebergStreaming());
+        new InternalParameterProvider(
+            parameterProvider.isEnableIcebergStreaming(), false /* enableNDVCount */);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -218,14 +220,16 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN),
                 oAuthTokenEndpoint);
       }
-      this.requestBuilder =
-          new RequestBuilder(
-              accountURL,
-              prop.get(USER).toString(),
-              credential,
-              this.httpClient,
-              parameterProvider.isEnableIcebergStreaming(),
-              String.format("%s_%s", this.name, System.currentTimeMillis()));
+      if (this.requestBuilder == null) {
+        this.requestBuilder =
+            new RequestBuilder(
+                accountURL,
+                prop.get(USER).toString(),
+                credential,
+                this.httpClient,
+                parameterProvider.isEnableIcebergStreaming(),
+                String.format("%s_%s", this.name, System.currentTimeMillis()));
+      }
 
       logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
     }

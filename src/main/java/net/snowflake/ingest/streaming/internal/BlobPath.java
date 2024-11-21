@@ -23,4 +23,9 @@ class BlobPath {
     this.uploadPath = uploadPath;
     this.fileRegistrationPath = fileRegistrationPath;
   }
+
+  @Override
+  public String toString() {
+    return String.format("uploadPath=%s fileRegistrationPath=%s", uploadPath, fileRegistrationPath);
+  }
 }
