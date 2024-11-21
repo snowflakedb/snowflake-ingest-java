@@ -4,7 +4,11 @@ import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
 import static net.snowflake.client.jdbc.SnowflakeUtil.isBlank;
 
 import com.google.common.base.Strings;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.security.InvalidKeyException;
 import java.util.ArrayList;
@@ -19,7 +23,12 @@ import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.client.jdbc.internal.google.api.gax.rpc.FixedHeaderProvider;
-import net.snowflake.client.jdbc.internal.google.cloud.storage.*;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.Blob;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.BlobId;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.BlobInfo;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.Storage;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageException;
+import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageOptions;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.client.util.SFPair;
 import net.snowflake.client.util.Stopwatch;
@@ -237,7 +246,10 @@ class IcebergGCSClient implements IcebergStorageClient {
       IOUtils.closeQuietly(is);
     }
 
-    return uploadedBlob.getEtag();
+    // For GCS, return null instead of returning uploadedBlob.getEtag(), as the service does expect
+    // to see blob MD5
+    // and not the ETag.
+    return null;
   }
 
   /**

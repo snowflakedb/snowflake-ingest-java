@@ -213,5 +213,11 @@ public class IcebergBigFilesIT {
     assertThat(rs.next()).isTrue();
     assertThat(rs.getLong(1)).isEqualTo(expectedCount.get());
     assertThat(rs.next()).isFalse();
+
+    ResultSet rs2 =
+        conn.createStatement().executeQuery(String.format("select hash_agg(*) from %s", tableName));
+    assertThat(rs2.next()).isTrue();
+    assertThat(rs2.getLong(1)).isNotNull();
+    assertThat(rs2.next()).isFalse();
   }
 }

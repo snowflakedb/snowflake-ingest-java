@@ -4,7 +4,11 @@ import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPI
 import static net.snowflake.client.jdbc.SnowflakeUtil.createDefaultExecutorService;
 import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.security.InvalidKeyException;
 import java.security.KeyManagementException;

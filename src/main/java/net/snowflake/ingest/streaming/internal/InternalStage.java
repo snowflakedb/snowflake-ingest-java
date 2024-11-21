@@ -176,7 +176,7 @@ class InternalStage implements IStorage {
       }
 
       if (this.useIcebergFileTransferAgent) {
-        return Optional.of(
+        return Optional.ofNullable(
             IcebergFileTransferAgent.uploadWithoutConnection(
                 fileTransferMetadataCopy,
                 inStream,
