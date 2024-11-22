@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -646,7 +647,14 @@ class FlushService<T> {
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-    storage.put(blobPath, blob);
+
+    // The returned etag is non-empty ONLY in case of iceberg uploads. With iceberg files, the XP
+    // scanner expects the
+    // MD5 value to exactly match the etag value in S3. This assumption doesn't hold when multipart
+    // upload kicks in,
+    // causing scan time failures and table corruption. By plugging in the etag value instead of the
+    // md5 value,
+    Optional<String> etag = storage.put(blobPath, blob);
 
     if (uploadContext != null) {
       blobStats.setUploadDurationMs(uploadContext);
@@ -657,16 +665,17 @@ class FlushService<T> {
     }
 
     logger.logInfo(
-        "Finish uploading blob={}, size={}, timeInMillis={}",
+        "Finish uploading blob={}, size={}, timeInMillis={}, etag={}",
         blobPath.fileRegistrationPath,
         blob.length,
-        System.currentTimeMillis() - startTime);
+        System.currentTimeMillis() - startTime,
+        etag);
 
     // at this point we know for sure if the BDEC file has data for more than one chunk, i.e.
     // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
         blobPath.fileRegistrationPath,
-        BlobBuilder.computeMD5(blob),
+        etag.isPresent() ? etag.get() : BlobBuilder.computeMD5(blob),
         bdecVersion,
         metadata,
         blobStats,

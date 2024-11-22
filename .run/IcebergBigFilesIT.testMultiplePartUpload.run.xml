@@ -1,0 +1,19 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="IcebergBigFilesIT.testMultiplePartUpload" type="JUnit" factoryName="JUnit" nameIsGenerated="true">
+    <module name="snowflake-ingest-sdk" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="net.snowflake.ingest.streaming.internal.it.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <option name="PACKAGE_NAME" value="net.snowflake.ingest.streaming.internal.it" />
+    <option name="MAIN_CLASS_NAME" value="net.snowflake.ingest.streaming.internal.it.IcebergBigFilesIT" />
+    <option name="METHOD_NAME" value="testMultiplePartUpload" />
+    <option name="TEST_OBJECT" value="method" />
+    <option name="VM_PARAMETERS" value="-ea --add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

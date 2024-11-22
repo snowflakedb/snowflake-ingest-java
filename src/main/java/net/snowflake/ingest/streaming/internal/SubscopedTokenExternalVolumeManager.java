@@ -91,7 +91,13 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
 
     try {
       return new InternalStage(
-          this, clientName, getClientPrefix(), tableRef, locationInfo, DEFAULT_MAX_UPLOAD_RETRIES);
+          this,
+          clientName,
+          getClientPrefix(),
+          tableRef,
+          true /* useIcebergFileTransferAgent */,
+          locationInfo,
+          DEFAULT_MAX_UPLOAD_RETRIES);
     } catch (SFException ex) {
       logger.logError(
           "ExtVolManager.registerTable for tableRef={} failed with exception={}", tableRef, ex);

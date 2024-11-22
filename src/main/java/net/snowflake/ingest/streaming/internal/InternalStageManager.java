@@ -76,6 +76,7 @@ class InternalStageManager implements IStorageManager {
                 clientName,
                 clientPrefix,
                 NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 response.getStageLocation(),
                 DEFAULT_MAX_UPLOAD_RETRIES);
       } else {
@@ -87,6 +88,7 @@ class InternalStageManager implements IStorageManager {
                 "testClient",
                 null /* clientPrefix */,
                 NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 (SnowflakeFileTransferMetadataWithAge) null,
                 DEFAULT_MAX_UPLOAD_RETRIES);
       }

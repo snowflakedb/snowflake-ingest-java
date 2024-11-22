@@ -143,6 +143,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             1);
@@ -187,6 +188,7 @@ public class InternalStageTest {
                 "clientName",
                 "testPrefix",
                 InternalStageManager.NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 new SnowflakeFileTransferMetadataWithAge(
                     fullFilePath, Optional.of(System.currentTimeMillis())),
                 1));
@@ -219,6 +221,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -278,6 +281,7 @@ public class InternalStageTest {
                 "clientName",
                 "testPrefix",
                 InternalStageManager.NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 new SnowflakeFileTransferMetadataWithAge(
                     originalMetadata, Optional.of(System.currentTimeMillis())),
                 1));
@@ -318,6 +322,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             (SnowflakeFileTransferMetadataWithAge) null,
             1);
 
@@ -415,6 +420,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             (SnowflakeFileTransferMetadataWithAge) null,
             1);
 
@@ -462,6 +468,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             (SnowflakeFileTransferMetadataWithAge) null,
             1);
 
@@ -601,6 +608,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);

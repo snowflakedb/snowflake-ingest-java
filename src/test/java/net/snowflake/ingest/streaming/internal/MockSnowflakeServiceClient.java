@@ -26,18 +26,16 @@ import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpPost;
 import net.snowflake.client.jdbc.internal.apache.http.client.methods.HttpUriRequest;
 import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.client.jdbc.internal.apache.http.message.BasicStatusLine;
-import net.snowflake.client.log.SFLogger;
-import net.snowflake.client.log.SFLoggerFactory;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.utils.Logging;
 import org.apache.commons.lang3.tuple.Pair;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 public class MockSnowflakeServiceClient {
   private static final ObjectMapper objectMapper = new ObjectMapper();
-  private static final SFLogger LOGGER =
-      SFLoggerFactory.getLogger(MockSnowflakeServiceClient.class);
+  private static final Logging LOGGER = new Logging(MockSnowflakeServiceClient.class);
 
   public static class ApiOverride {
     private final Map<String, Function<HttpUriRequest, Pair<Integer, Map<String, Object>>>>
@@ -107,7 +105,7 @@ public class MockSnowflakeServiceClient {
                   invocation -> {
                     HttpUriRequest request = invocation.getArgument(0);
                     if (request.getMethod().equals(HttpPost.METHOD_NAME)) {
-                      LOGGER.debug(
+                      LOGGER.logDebug(
                           request.toString()
                               + IOUtils.toString(
                                   ((HttpPost) request).getEntity().getContent(),
