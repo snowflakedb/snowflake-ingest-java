@@ -64,8 +64,8 @@ public class RegisterServiceTest {
     Mockito.when(parameterProvider.getBlobUploadTimeOutInSec())
         .thenReturn(
             enableIcebergStreaming
-                ? ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
-                : ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT);
+                ? ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SECONDS_ICEBERG_MODE_DEFAULT
+                : ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SECONDS_DEFAULT);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
 
     RegisterService<StubChunkData> rs = new RegisterService<>(client, true);

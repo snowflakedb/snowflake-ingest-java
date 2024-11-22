@@ -38,8 +38,8 @@ public class ParameterProvider {
   public static final String MAX_CHUNKS_IN_BLOB = "MAX_CHUNKS_IN_BLOB".toLowerCase();
   public static final String MAX_CHUNKS_IN_REGISTRATION_REQUEST =
       "MAX_CHUNKS_IN_REGISTRATION_REQUEST".toLowerCase();
-  public static final String BLOB_UPLOAD_TIMEOUT_IN_SEC =
-      "BLOB_UPLOAD_TIMEOUT_IN_SEC".toLowerCase();
+  public static final String BLOB_UPLOAD_TIMEOUT_IN_SECONDS =
+      "BLOB_UPLOAD_TIMEOUT_IN_SECONDS".toLowerCase();
 
   public static final String MAX_CLIENT_LAG = "MAX_CLIENT_LAG".toLowerCase();
 
@@ -64,8 +64,8 @@ public class ParameterProvider {
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 256 * 1024 * 1024;
-  public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT = 5;
-  public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT = 20;
+  public static final int BLOB_UPLOAD_TIMEOUT_IN_SECONDS_DEFAULT = 5;
+  public static final int BLOB_UPLOAD_TIMEOUT_IN_SECONDS_ICEBERG_MODE_DEFAULT = 30;
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
@@ -278,10 +278,10 @@ public class ParameterProvider {
         false /* enforceDefault */);
 
     this.checkAndUpdate(
-        BLOB_UPLOAD_TIMEOUT_IN_SEC,
+        BLOB_UPLOAD_TIMEOUT_IN_SECONDS,
         isEnableIcebergStreaming()
-            ? BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
-            : BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT,
+            ? BLOB_UPLOAD_TIMEOUT_IN_SECONDS_ICEBERG_MODE_DEFAULT
+            : BLOB_UPLOAD_TIMEOUT_IN_SECONDS_DEFAULT,
         parameterOverrides,
         props,
         false /* enforceDefault */);
@@ -552,10 +552,10 @@ public class ParameterProvider {
     }
     Object val =
         this.parameterMap.getOrDefault(
-            BLOB_UPLOAD_TIMEOUT_IN_SEC,
+            BLOB_UPLOAD_TIMEOUT_IN_SECONDS,
             isEnableIcebergStreaming()
-                ? BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
-                : BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT);
+                ? BLOB_UPLOAD_TIMEOUT_IN_SECONDS_ICEBERG_MODE_DEFAULT
+                : BLOB_UPLOAD_TIMEOUT_IN_SECONDS_DEFAULT);
     cachedBlobUploadTimeoutInSec =
         (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
     return cachedBlobUploadTimeoutInSec;

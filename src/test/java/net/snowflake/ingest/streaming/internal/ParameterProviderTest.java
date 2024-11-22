@@ -172,8 +172,8 @@ public class ParameterProviderTest {
         parameterProvider.getMaxChunksInRegistrationRequest());
     Assert.assertEquals(
         enableIcebergStreaming
-            ? ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_ICEBERG_MODE_DEFAULT
-            : ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SEC_DEFAULT,
+            ? ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SECONDS_ICEBERG_MODE_DEFAULT
+            : ParameterProvider.BLOB_UPLOAD_TIMEOUT_IN_SECONDS_DEFAULT,
         parameterProvider.getBlobUploadTimeOutInSec());
   }
 
