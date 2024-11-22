@@ -21,14 +21,13 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ParameterProvider;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Verified that ingestion work when we ingest into large number of tables from the same client and
  * blobs and registration requests have to be cut, so they don't contain large number of chunks
  */
-public class ManyTablesIT {
+public abstract class ManyTablesITBase {
 
   private static final int TABLES_COUNT = 20;
   private static final int TOTAL_ROWS_COUNT = 200_000;
@@ -38,11 +37,13 @@ public class ManyTablesIT {
   private SnowflakeStreamingIngestChannel[] channels;
   private String[] offsetTokensPerChannel;
 
-  @Before
-  public void setUp() throws Exception {
+  public void setUp(boolean enableIcebergStreaming) throws Exception {
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
-    props.put(ParameterProvider.MAX_CHUNKS_IN_BLOB, 2);
+    if (!enableIcebergStreaming) {
+      props.put(ParameterProvider.MAX_CHUNKS_IN_BLOB, 2);
+    }
     props.put(ParameterProvider.MAX_CHUNKS_IN_REGISTRATION_REQUEST, 2);
+    props.put(ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
@@ -57,7 +58,21 @@ public class ManyTablesIT {
     String[] tableNames = new String[TABLES_COUNT];
     for (int i = 0; i < tableNames.length; i++) {
       tableNames[i] = String.format("table_%d", i);
-      connection.createStatement().execute(String.format("create table table_%d(c int);", i));
+      if (enableIcebergStreaming) {
+        connection
+            .createStatement()
+            .execute(
+                String.format(
+                    "create or replace iceberg table table_%s(c int)"
+                        + "catalog = 'SNOWFLAKE' "
+                        + "external_volume = 'streaming_ingest' "
+                        + "base_location = 'SDK_IT/%s/%s'",
+                    i, dbName, tableNames[i]));
+      } else {
+        connection
+            .createStatement()
+            .execute(String.format("create or replace table table_%d(c int);", i));
+      }
       channels[i] =
           client.openChannel(
               OpenChannelRequest.builder(String.format("channel-%d", i))

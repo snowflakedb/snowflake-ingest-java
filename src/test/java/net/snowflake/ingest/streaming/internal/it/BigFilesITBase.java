@@ -1,8 +1,13 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal.it;
 
 import static net.snowflake.ingest.TestUtils.verifyTableRowCount;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM;
+import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_ICEBERG_STREAMING;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -27,16 +32,14 @@ import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInt
 import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 /** Ingest large amount of rows. */
 @RunWith(Parameterized.class)
-public class StreamingIngestBigFilesIT {
+public abstract class BigFilesITBase {
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
@@ -45,16 +48,15 @@ public class StreamingIngestBigFilesIT {
   private SnowflakeStreamingIngestClientInternal<?> client;
   private Connection jdbcConnection;
   private String testDb;
+  private boolean enableIcebergStreaming;
 
-  @Parameters(name = "{index}: {0}")
-  public static Object[] compressionAlgorithms() {
-    return new Object[] {"GZIP", "ZSTD"};
-  }
+  @Parameter(0)
+  public String compressionAlgorithm;
 
-  @Parameter public String compressionAlgorithm;
+  @Parameter(1)
+  public Constants.IcebergSerializationPolicy icebergSerializationPolicy;
 
-  @Before
-  public void beforeAll() throws Exception {
+  public void beforeAll(boolean enableIcebergStreaming) throws Exception {
     testDb = TEST_DB_PREFIX + "_" + UUID.randomUUID().toString().substring(0, 4);
     // Create a streaming ingest client
     jdbcConnection = TestUtils.getConnection(true);
@@ -76,9 +78,11 @@ public class StreamingIngestBigFilesIT {
       prop.setProperty(ROLE, "ACCOUNTADMIN");
     }
     prop.setProperty(BDEC_PARQUET_COMPRESSION_ALGORITHM, compressionAlgorithm);
+    prop.setProperty(ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     client =
         (SnowflakeStreamingIngestClientInternal<?>)
             SnowflakeStreamingIngestClientFactory.builder("client1").setProperties(prop).build();
+    this.enableIcebergStreaming = enableIcebergStreaming;
   }
 
   @After
@@ -176,20 +180,41 @@ public class StreamingIngestBigFilesIT {
 
   private void createTableForTest(String tableName) {
     try {
-      jdbcConnection
-          .createStatement()
-          .execute(
-              String.format(
-                  "create or replace table %s (\n"
-                      + "                                    num_2_1 NUMBER(2, 1),\n"
-                      + "                                    num_4_2 NUMBER(4, 2),\n"
-                      + "                                    num_9_4 NUMBER(9, 4),\n"
-                      + "                                    num_18_7 NUMBER(18, 7),\n"
-                      + "                                    num_38_15 NUMBER(38, 15),\n"
-                      + "                                    num_float FLOAT,\n"
-                      + "                                    str VARCHAR(256),\n"
-                      + "                                    bin BINARY(256));",
-                  tableName));
+      if (enableIcebergStreaming) {
+        jdbcConnection
+            .createStatement()
+            .execute(
+                String.format(
+                    "create or replace iceberg table %s (\n"
+                        + "                                    num_2_1 decimal(2, 1),\n"
+                        + "                                    num_4_2 decimal(4, 2),\n"
+                        + "                                    num_9_4 decimal(9, 4),\n"
+                        + "                                    num_18_7 decimal(18, 7),\n"
+                        + "                                    num_38_15 decimal(38, 15),\n"
+                        + "                                    num_float float,\n"
+                        + "                                    str string,\n"
+                        + "                                    bin binary)\n"
+                        + "catalog = 'SNOWFLAKE'\n"
+                        + "external_volume = 'streaming_ingest'\n"
+                        + "base_location = 'SDK_IT/%s/%s'\n"
+                        + "storage_serialization_policy = %s;",
+                    tableName, testDb, tableName, icebergSerializationPolicy.name()));
+      } else {
+        jdbcConnection
+            .createStatement()
+            .execute(
+                String.format(
+                    "create or replace table %s (\n"
+                        + "                                    num_2_1 NUMBER(2, 1),\n"
+                        + "                                    num_4_2 NUMBER(4, 2),\n"
+                        + "                                    num_9_4 NUMBER(9, 4),\n"
+                        + "                                    num_18_7 NUMBER(18, 7),\n"
+                        + "                                    num_38_15 NUMBER(38, 15),\n"
+                        + "                                    num_float FLOAT,\n"
+                        + "                                    str VARCHAR(256),\n"
+                        + "                                    bin BINARY(256));",
+                    tableName));
+      }
     } catch (SQLException e) {
       throw new RuntimeException("Cannot create table " + tableName, e);
     }
