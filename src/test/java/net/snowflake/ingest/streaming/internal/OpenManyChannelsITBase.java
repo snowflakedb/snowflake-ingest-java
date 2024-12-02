@@ -1,6 +1,11 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal;
 
 import static net.snowflake.ingest.utils.Constants.ROLE;
+import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_ICEBERG_STREAMING;
 
 import java.sql.Connection;
 import java.util.ArrayList;
@@ -22,13 +27,12 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
 /** Tries to open several thousand channels into the same table from multiple threads in parallel */
 @Ignore("Will be reimplemented in dew: SNOW-807102")
-public class OpenManyChannelsIT {
+public abstract class OpenManyChannelsITBase {
   private static final int THREAD_COUNT = 20;
   private static final int CHANNELS_PER_THREAD = 250;
   private static final String SCHEMA_NAME = "PUBLIC";
@@ -40,18 +44,29 @@ public class OpenManyChannelsIT {
 
   private SnowflakeStreamingIngestClient client;
 
-  @Before
-  public void setUp() throws Exception {
+  public void setUp(boolean enableIcebergStreaming) throws Exception {
     databaseName =
         String.format("SDK_DATATYPE_COMPATIBILITY_IT_%s", RandomStringUtils.randomNumeric(9));
     conn = TestUtils.getConnection(true);
     conn.createStatement().execute(String.format("create or replace database %s;", databaseName));
-    conn.createStatement()
-        .execute(
-            String.format(
-                "create or replace table %s.%s.%s (col int)",
-                databaseName, SCHEMA_NAME, TABLE_NAME));
+    if (enableIcebergStreaming) {
+      conn.createStatement()
+          .execute(
+              String.format(
+                  "create or replace iceberg table %s.%s.%s (col int)\n"
+                      + "catalog = 'SNOWFLAKE'\n"
+                      + "external_volume = 'streaming_ingest'\n"
+                      + "base_location = 'SDK_IT/%s/%s';",
+                  databaseName, SCHEMA_NAME, TABLE_NAME, databaseName, TABLE_NAME));
+    } else {
+      conn.createStatement()
+          .execute(
+              String.format(
+                  "create or replace table %s.%s.%s (col int)",
+                  databaseName, SCHEMA_NAME, TABLE_NAME));
+    }
     Properties props = TestUtils.getProperties(Constants.BdecVersion.THREE, false);
+    props.setProperty(ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     if (props.getProperty(ROLE).equals("DEFAULT_ROLE")) {
       props.setProperty(ROLE, "ACCOUNTADMIN");
     }
