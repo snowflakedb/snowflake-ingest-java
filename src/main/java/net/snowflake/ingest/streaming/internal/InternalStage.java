@@ -181,8 +181,8 @@ class InternalStage implements IStorage {
                 fileTransferMetadataCopy,
                 inStream,
                 proxyProperties,
-                clientPrefix,
                 clientName,
+                clientPrefix,
                 fullFilePath));
       } else {
         SnowflakeFileTransferAgent.uploadWithoutConnection(

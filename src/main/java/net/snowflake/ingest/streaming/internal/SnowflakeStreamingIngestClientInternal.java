@@ -585,9 +585,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   void registerBlobs(List<BlobMetadata> blobs, final int executionCount) {
     logger.logInfo(
-        "Register blob request preparing for blob={}, client={}, executionCount={}",
+        "Register blob request preparing for blob={}, clientName={}, clientKey={},"
+            + " executionCount={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name,
+        this.storageManager.getClientPrefix(),
         executionCount);
 
     RegisterBlobResponse response = null;
@@ -597,7 +599,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.storageManager.getClientPrefix() + "_" + counter.getAndIncrement(),
               this.role,
               blobs,
-              this.parameterProvider.isEnableIcebergStreaming());
+              this.parameterProvider.isEnableIcebergStreaming(),
+              this.getName(),
+              this.storageManager.getClientPrefix());
       response = snowflakeServiceClient.registerBlob(request, executionCount);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
