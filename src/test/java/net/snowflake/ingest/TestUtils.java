@@ -21,6 +21,8 @@ import static net.snowflake.ingest.utils.ParameterProvider.BDEC_PARQUET_COMPRESS
 import static net.snowflake.ingest.utils.ParameterProvider.BLOB_FORMAT_VERSION;
 import static net.snowflake.ingest.utils.ParameterProvider.ENABLE_ICEBERG_STREAMING;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -46,9 +48,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.function.Supplier;
-import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper;
-import net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.node.ObjectNode;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
@@ -59,6 +58,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.http.client.utils.URIBuilder;
 import org.junit.Assert;
 
 public class TestUtils {
