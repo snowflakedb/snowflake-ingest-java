@@ -1544,7 +1544,9 @@
                     <exclude>LICENSE</exclude>
                     <exclude>NOTICE</exclude>
                     <exclude>iceberg-build.properties</exclude>
-                    <exclude>google/protobuf/**/*.proto</exclude>
+                    <exclude>google/**/**/*.proto</exclude>
+                    <exclude>grpc/**/**/*.proto</exclude>
+                    <exclude>opencensus/proto/**/v1/*.proto</exclude>
                     <exclude>THIRD-PARTY.txt</exclude>
                   </excludes>
                 </filter>
