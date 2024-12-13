@@ -110,7 +110,11 @@ public class IngestTestUtils {
   private Connection getConnection()
       throws IOException, ClassNotFoundException, SQLException, NoSuchAlgorithmException,
           InvalidKeySpecException {
-    Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
+    try {
+      Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
+    } catch (ClassNotFoundException e) {
+      Class.forName("net.snowflake.ingest.internal.net.snowflake.client.jdbc.SnowflakeDriver");
+    }
 
     Properties loadedProps = loadProperties();
 

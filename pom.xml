@@ -1504,14 +1504,6 @@
                   <shadedPattern>${shadeBase}.org.roaringbitmap</shadedPattern>
                 </relocation>
                 <relocation>
-                  <pattern>net.snowflake.client</pattern>
-                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>com.snowflake.client</pattern>
-                  <shadedPattern>${shadeBase}.com.snowflake.client</shadedPattern>
-                </relocation>
-                <relocation>
                   <pattern>com.amazonaws</pattern>
                   <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
                 </relocation>
