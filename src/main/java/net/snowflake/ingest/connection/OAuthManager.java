@@ -6,10 +6,10 @@ package net.snowflake.ingest.connection;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
-import org.apache.http.client.utils.URIBuilder;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.http.client.utils.URIBuilder;
 
 /** This class manages creating and automatically refresh the OAuth token */
 public final class OAuthManager extends SecurityManager {

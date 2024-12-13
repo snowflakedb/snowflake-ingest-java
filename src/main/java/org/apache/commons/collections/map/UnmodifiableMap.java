@@ -11,7 +11,7 @@ import java.util.Map;
  */
 public class UnmodifiableMap {
 
-    public static Map<?, ?> decorate(final Map<?, ?> map) {
-        return Collections.unmodifiableMap(map);
-    }
+  public static Map<?, ?> decorate(final Map<?, ?> map) {
+    return Collections.unmodifiableMap(map);
+  }
 }

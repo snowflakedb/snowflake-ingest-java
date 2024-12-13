@@ -17,6 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
 import net.snowflake.client.core.SFSessionProperty;
+import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -40,7 +41,6 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.pool.PoolStats;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContexts;
-import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

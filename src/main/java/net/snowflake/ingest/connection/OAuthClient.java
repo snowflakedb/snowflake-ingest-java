@@ -4,6 +4,8 @@
 
 package net.snowflake.ingest.connection;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
@@ -12,8 +14,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.HttpUtil;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -23,9 +26,6 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.HttpUtil;
-import net.snowflake.ingest.utils.SFException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
