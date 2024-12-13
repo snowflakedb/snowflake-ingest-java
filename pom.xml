@@ -41,6 +41,7 @@
     <apache.httpclient.version>4.5.14</apache.httpclient.version>
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
     <avro.version>1.11.4</avro.version>
+    <aws.version>1.12.655</aws.version>
     <bouncycastle.version>1.78.1</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.17.1</commonscodec.version>
@@ -96,6 +97,26 @@
         <version>${aws.version}</version>
       </dependency>
       <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-s3</artifactId>
+        <version>${aws.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.api</groupId>
+        <artifactId>gax</artifactId>
+        <version>2.31.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-core</artifactId>
+        <version>2.21.0</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>google-cloud-storage</artifactId>
+        <version>2.22.6</version>
+      </dependency>
+      <dependency>
         <groupId>com.google.code.gson</groupId>
         <artifactId>gson</artifactId>
         <version>${gson.version}</version>
@@ -119,6 +140,11 @@
         <groupId>com.google.protobuf</groupId>
         <artifactId>protobuf-java</artifactId>
         <version>${protobuf.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.microsoft.azure</groupId>
+        <artifactId>azure-storage</artifactId>
+        <version>5.0.0</version>
       </dependency>
       <dependency>
         <groupId>com.nimbusds</groupId>
@@ -580,6 +606,14 @@
   <!-- All of our needed dependencies -->
   <dependencies>
     <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.amazonaws</groupId>
+      <artifactId>aws-java-sdk-s3</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
     </dependency>
@@ -612,6 +646,48 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>com.google.api</groupId>
+      <artifactId>gax</artifactId>
+      <exclusions>
+        <!-- Dependencies are excluded because CDDL + GPLv2 with classpath exception license is not approved -->
+        <exclusion>
+          <groupId>javax.annotation</groupId>
+          <artifactId>javax.annotation-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-core</artifactId>
+      <exclusions>
+        <!-- Dependencies are excluded because they are causing enforcer failures (they are already pulled in by Guava) -->
+        <exclusion>
+          <groupId>com.google.errorprone</groupId>
+          <artifactId>error_prone_annotations</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-storage</artifactId>
+      <exclusions>
+        <!-- Dependencies are excluded because they are causing enforcer failures (they are already pulled in by Guava) -->
+        <exclusion>
+          <groupId>com.google.errorprone</groupId>
+          <artifactId>error_prone_annotations</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.grpc</groupId>
+          <artifactId>grpc-context</artifactId>
+        </exclusion>
+        <!-- Dependencies are excluded because CDDL + GPLv2 with classpath exception license is not approved -->
+        <exclusion>
+          <groupId>javax.annotation</groupId>
+          <artifactId>javax.annotation-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
       <version>3.0.2</version>
@@ -619,6 +695,10 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.azure</groupId>
+      <artifactId>azure-storage</artifactId>
     </dependency>
 
     <!-- jwt token for key pair authentication with GS -->
@@ -1278,6 +1358,50 @@
               </artifactSet>
               <relocations>
                 <relocation>
+                  <pattern>io.perfmark</pattern>
+                  <shadedPattern>${shadeBase}.io.perfmark</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.grpc</pattern>
+                  <shadedPattern>${shadeBase}.io.grpc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>io.opencensus</pattern>
+                  <shadedPattern>${shadeBase}.io.opencensus</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.conscrypt</pattern>
+                  <shadedPattern>${shadeBase}.org.conscrypt</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.microsoft</pattern>
+                  <shadedPattern>${shadeBase}.com.microsoft</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.yammer</pattern>
+                  <shadedPattern>${shadeBase}.com.yammer</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.jsoup</pattern>
+                  <shadedPattern>${shadeBase}.org.jsoup</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.joda</pattern>
+                  <shadedPattern>${shadeBase}.org.joda</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.threeten</pattern>
+                  <shadedPattern>${shadeBase}.org.threeten</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>javax.servlet</pattern>
+                  <shadedPattern>${shadeBase}.javax.servlet</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>android.annotation</pattern>
+                  <shadedPattern>${shadeBase}.android.annotation</shadedPattern>
+                </relocation>
+                <relocation>
                   <pattern>com.nimbusds</pattern>
                   <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
                 </relocation>
@@ -1378,6 +1502,22 @@
                 <relocation>
                   <pattern>org.roaringbitmap</pattern>
                   <shadedPattern>${shadeBase}.org.roaringbitmap</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>net.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.com.snowflake.client</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.amazonaws</pattern>
+                  <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>software.amazon.ion</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon.ion</shadedPattern>
                 </relocation>
               </relocations>
               <filters>
