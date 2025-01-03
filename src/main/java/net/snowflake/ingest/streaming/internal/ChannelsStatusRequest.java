@@ -29,7 +29,7 @@ class ChannelsStatusRequest implements IStreamingIngestRequest {
     // Client Sequencer
     private final Long clientSequencer;
 
-    ChannelStatusRequestDTO(SnowflakeStreamingIngestChannelInternal channel) {
+    ChannelStatusRequestDTO(SnowflakeStreamingIngestChannelFlushable channel) {
       this.channelName = channel.getName();
       this.databaseName = channel.getDBName();
       this.schemaName = channel.getSchemaName();
