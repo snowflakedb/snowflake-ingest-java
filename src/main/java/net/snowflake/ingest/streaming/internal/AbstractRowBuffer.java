@@ -20,12 +20,10 @@ import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
-import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
-import org.apache.parquet.column.ParquetProperties;
 
 /**
  * The abstract implementation of the buffer in the Streaming Ingest channel that holds the
@@ -326,7 +324,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
   private final Consumer<Float> rowSizeMetric;
 
   // State of the owning channel
-  final ChannelRuntimeState channelState;
+  final ChannelRuntimeStateImpl channelState;
 
   // ON_ERROR option for this channel
   final OpenChannelRequest.OnErrorOption onErrorOption;
@@ -354,7 +352,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     this.onErrorOption = onErrorOption;
     this.defaultTimezone = defaultTimezone;
     this.rowSizeMetric = rowSizeMetric;
-    this.channelState = channelRuntimeState;
+    this.channelState = (ChannelRuntimeStateImpl)channelRuntimeState;
     this.channelFullyQualifiedName = fullyQualifiedChannelName;
     this.nonNullableFieldNames = new HashSet<>();
     this.flushLock = new ReentrantLock(true);
@@ -559,7 +557,7 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
           oldBufferSize);
 
       if (oldData.isPresent()) {
-        ChannelData<T> data = new ChannelData<>();
+        ChannelData<T> data = newChannelData();
         data.setVectors(oldData.get());
         data.setRowCount(oldRowCount);
         data.setBufferSize(oldBufferSize);
@@ -573,6 +571,10 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
       }
     }
     return null;
+  }
+
+  protected ChannelData<T> newChannelData() {
+    return new ChannelData<>();
   }
 
   /** Whether row has a column with a given name. */
@@ -684,38 +686,6 @@ abstract class AbstractRowBuffer<T> implements RowBuffer<T> {
     }
     epInfo.verifyEpInfo();
     return epInfo;
-  }
-
-  /** Row buffer factory. */
-  static <T> AbstractRowBuffer<T> createRowBuffer(
-      OpenChannelRequest.OnErrorOption onErrorOption,
-      ZoneId defaultTimezone,
-      Constants.BdecVersion bdecVersion,
-      String fullyQualifiedChannelName,
-      Consumer<Float> rowSizeMetric,
-      ChannelRuntimeState channelRuntimeState,
-      ClientBufferParameters clientBufferParameters,
-      OffsetTokenVerificationFunction offsetTokenVerificationFunction,
-      ParquetProperties.WriterVersion parquetWriterVersion,
-      TelemetryService telemetryService) {
-    switch (bdecVersion) {
-      case THREE:
-        //noinspection unchecked
-        return (AbstractRowBuffer<T>)
-            new ParquetRowBuffer(
-                onErrorOption,
-                defaultTimezone,
-                fullyQualifiedChannelName,
-                rowSizeMetric,
-                channelRuntimeState,
-                clientBufferParameters,
-                offsetTokenVerificationFunction,
-                parquetWriterVersion,
-                telemetryService);
-      default:
-        throw new SFException(
-            ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
-    }
   }
 
   private void checkBatchSizeRecommendedMaximum(float batchSizeInBytes) {

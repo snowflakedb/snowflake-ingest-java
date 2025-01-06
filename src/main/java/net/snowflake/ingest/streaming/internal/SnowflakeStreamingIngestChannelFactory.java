@@ -106,7 +106,7 @@ class SnowflakeStreamingIngestChannelFactory {
       return this;
     }
 
-    SnowflakeStreamingIngestChannelInternal<T> build() {
+    SnowflakeStreamingIngestChannelFlushable<T> build() {
       Utils.assertStringNotNullOrEmpty("channel name", this.name);
       Utils.assertStringNotNullOrEmpty("table name", this.tableName);
       Utils.assertStringNotNullOrEmpty("schema name", this.schemaName);
@@ -118,7 +118,8 @@ class SnowflakeStreamingIngestChannelFactory {
       Utils.assertNotNull("encryption key_id", this.encryptionKeyId);
       Utils.assertNotNull("on_error option", this.onErrorOption);
       Utils.assertNotNull("default timezone", this.defaultTimezone);
-      return new SnowflakeStreamingIngestChannelInternal<>(
+
+      ObservabilitySnowflakeStreamingIngestChannel channel = new ObservabilitySnowflakeStreamingIngestChannel(
           this.name,
           this.dbName,
           this.schemaName,
@@ -126,13 +127,15 @@ class SnowflakeStreamingIngestChannelFactory {
           this.offsetToken,
           this.channelSequencer,
           this.rowSequencer,
-          this.owningClient,
+          (SnowflakeStreamingIngestClientInternal<ParquetChunkData>)this.owningClient,
           this.encryptionKey,
           this.encryptionKeyId,
           this.onErrorOption,
           this.defaultTimezone,
           this.offsetTokenVerificationFunction,
           this.parquetWriterVersion);
+
+      return (SnowflakeStreamingIngestChannelFlushable<T>)channel;
     }
   }
 }

@@ -163,7 +163,7 @@ public class SnowflakeStreamingIngestChannelTest {
     Long channelSequencer = 0L;
     long rowSequencer = 0L;
 
-    SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
+    SnowflakeStreamingIngestChannelFlushable<StubChunkData> channel =
         SnowflakeStreamingIngestChannelFactory.<StubChunkData>builder(name)
             .setDBName(dbName)
             .setSchemaName(schemaName)
@@ -184,7 +184,7 @@ public class SnowflakeStreamingIngestChannelTest {
     Assert.assertEquals(tableName, channel.getTableName());
     Assert.assertEquals(offsetToken, channel.getChannelState().getEndOffsetToken());
     Assert.assertEquals(channelSequencer, channel.getChannelSequencer());
-    Assert.assertEquals(rowSequencer + 1L, channel.getChannelState().incrementAndGetRowSequencer());
+    Assert.assertEquals(rowSequencer + 1L, ((ChannelRuntimeStateImpl)channel.getChannelState()).incrementAndGetRowSequencer());
     Assert.assertEquals(
         String.format("%s.%s.%s.%s", dbName, schemaName, tableName, name),
         channel.getFullyQualifiedName());
@@ -584,8 +584,8 @@ public class SnowflakeStreamingIngestChannelTest {
     row.put("col", 1);
 
     // Get data before insert to verify that there is no row (data should be null)
-    ChannelData<?> data = channel.getData();
-    Assert.assertNull(data);
+    List<? extends ChannelData<?>> allData = channel.getData();
+    Assert.assertTrue(allData.isEmpty());
 
     long insertStartTimeInMs = System.currentTimeMillis();
     InsertValidationResponse response = channel.insertRow(row, "1");
@@ -597,7 +597,9 @@ public class SnowflakeStreamingIngestChannelTest {
     long insertEndTimeInMs = System.currentTimeMillis();
 
     // Get data again to verify the row is inserted
-    data = channel.getData();
+    allData = channel.getData();
+    Assert.assertEquals(1, allData.size());
+    ChannelData<?> data = allData.get(0);
     Assert.assertEquals(3, data.getRowCount());
     Assert.assertEquals((Long) 1L, data.getRowSequencer());
     Assert.assertEquals(1, ((ChannelData<ParquetChunkData>) data).getVectors().rows.get(0).size());

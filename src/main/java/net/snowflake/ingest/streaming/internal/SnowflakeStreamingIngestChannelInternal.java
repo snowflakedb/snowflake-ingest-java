@@ -9,6 +9,7 @@ import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
 import com.google.common.annotations.VisibleForTesting;
+
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,18 +18,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+
+import net.snowflake.ingest.connection.TelemetryService;
 import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.utils.ErrorCode;
-import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.Utils;
+import net.snowflake.ingest.utils.*;
 import org.apache.parquet.column.ParquetProperties;
 
 /**
@@ -57,7 +58,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
   // State of the channel that will be shared with its underlying buffer
-  private final ChannelRuntimeState channelState;
+  private final ChannelRuntimeStateImpl channelState;
 
   // Internal map of column name -> column properties
   private final Map<String, ColumnProperties> tableColumns;
@@ -68,7 +69,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   private final MemoryInfoProvider memoryInfoProvider;
   private volatile long freeMemoryInBytes = 0;
 
-  /** Default constructor */
+  /**
+   * Default constructor
+   */
   SnowflakeStreamingIngestChannelInternal(
       String name,
       String dbName,
@@ -100,9 +103,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     this.channelFlushContext =
         new ChannelFlushContext(
             name, dbName, schemaName, tableName, channelSequencer, encryptionKey, encryptionKeyId);
-    this.channelState = new ChannelRuntimeState(endOffsetToken, rowSequencer, true);
+    this.channelState = new ChannelRuntimeStateImpl(endOffsetToken, rowSequencer, true);
     this.rowBuffer =
-        AbstractRowBuffer.createRowBuffer(
+        createRowBuffer(
             onErrorOption,
             defaultTimezone,
             client.getParameterProvider().getBlobFormatVersion(),
@@ -121,10 +124,45 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /**
+   * Row buffer factory.
+   */
+  @VisibleForTesting
+  static <T> AbstractRowBuffer<T> createRowBuffer(
+      OpenChannelRequest.OnErrorOption onErrorOption,
+      ZoneId defaultTimezone,
+      Constants.BdecVersion bdecVersion,
+      String fullyQualifiedChannelName,
+      Consumer<Float> rowSizeMetric,
+      ChannelRuntimeState channelRuntimeState,
+      ClientBufferParameters clientBufferParameters,
+      OffsetTokenVerificationFunction offsetTokenVerificationFunction,
+      ParquetProperties.WriterVersion parquetWriterVersion,
+      TelemetryService telemetryService) {
+    switch (bdecVersion) {
+      case THREE:
+        //noinspection unchecked
+        return (AbstractRowBuffer<T>)
+            new ParquetRowBuffer(
+                onErrorOption,
+                defaultTimezone,
+                fullyQualifiedChannelName,
+                rowSizeMetric,
+                channelRuntimeState,
+                clientBufferParameters,
+                offsetTokenVerificationFunction,
+                parquetWriterVersion,
+                telemetryService);
+      default:
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR, "Unsupported BDEC format version: " + bdecVersion);
+    }
+  }
+
+  /**
    * Get the fully qualified channel name
    *
    * @return fully qualified name of the channel, in the format of
-   *     dbName.schemaName.tableName.channelName
+   * dbName.schemaName.tableName.channelName
    */
   @Override
   public String getFullyQualifiedName() {
@@ -161,7 +199,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.channelFlushContext.getChannelSequencer();
   }
 
-  /** @return current state of the channel */
+  /**
+   * @return current state of the channel
+   */
   @Override
   @VisibleForTesting
   public ChannelRuntimeState getChannelState() {
@@ -184,21 +224,25 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    * @return a ChannelData object
    */
   @Override
-  public ChannelData<T> getData() {
+  public List<ChannelData<T>> getData() {
     ChannelData<T> data = this.rowBuffer.flush();
     if (data != null) {
       data.setChannelContext(channelFlushContext);
     }
-    return data;
+    return Collections.singletonList(data);
   }
 
-  /** @return a boolean to indicate whether the channel is valid or not */
+  /**
+   * @return a boolean to indicate whether the channel is valid or not
+   */
   @Override
   public boolean isValid() {
     return this.channelState.isValid();
   }
 
-  /** Mark the channel as invalid, and release resources */
+  /**
+   * Mark the channel as invalid, and release resources
+   */
   @Override
   public void invalidate(String message, String invalidationCause) {
     this.channelState.invalidate();
@@ -212,13 +256,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         message);
   }
 
-  /** @return a boolean to indicate whether the channel is closed or not */
+  /**
+   * @return a boolean to indicate whether the channel is closed or not
+   */
   @Override
   public boolean isClosed() {
     return this.isClosed;
   }
 
-  /** Mark the channel as closed */
+  /**
+   * Mark the channel as closed
+   */
   @Override
   public void markClosed() {
     this.isClosed = true;
@@ -323,7 +371,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   /**
    * The row is represented using Map where the key is column name and the value is a row of data
    *
-   * @param row object data to write
+   * @param row         object data to write
    * @param offsetToken offset of given row, used for replay in case of failures
    * @return insert response that possibly contains errors because of insertion failures
    * @throws SFException when the channel is invalid or closed
@@ -345,10 +393,10 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    * SnowflakeStreamingIngestChannel#insertRow(Map, String)} for more information about accepted
    * values.
    *
-   * @param rows object data to write
+   * @param rows             object data to write
    * @param startOffsetToken start offset of the batch/row-set
-   * @param endOffsetToken end offset of the batch/row-set, used for replay in case of failures, *
-   *     It could be null if you don't plan on replaying or can't replay
+   * @param endOffsetToken   end offset of the batch/row-set, used for replay in case of failures, *
+   *                         It could be null if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
    */
   @Override
@@ -394,7 +442,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return insertRows(rows, null, offsetToken);
   }
 
-  /** Collect the row size from row buffer if required */
+  /**
+   * Collect the row size from row buffer if required
+   */
   void collectRowSize(float rowSize) {
     if (this.owningClient.inputThroughput != null) {
       this.owningClient.inputThroughput.mark((long) rowSize);
@@ -422,18 +472,22 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return response.getPersistedOffsetToken();
   }
 
-  /** Returns a map of column name -> datatype for the table the channel is bound to */
+  /**
+   * Returns a map of column name -> datatype for the table the channel is bound to
+   */
   @Override
   public Map<String, ColumnProperties> getTableSchema() {
     return this.tableColumns;
   }
 
-  /** Check whether we need to throttle the insertRows API */
+  /**
+   * Check whether we need to throttle the insertRows API
+   */
   void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
     while ((hasLowRuntimeMemory(memoryInfoProvider)
-            || (this.owningClient.getFlushService() != null
-                && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
+        || (this.owningClient.getFlushService() != null
+        && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
         && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
       try {
         Thread.sleep(insertThrottleIntervalInMs);
@@ -452,7 +506,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     }
   }
 
-  /** Check whether we have a low runtime memory condition */
+  /**
+   * Check whether we have a low runtime memory condition
+   */
   private boolean hasLowRuntimeMemory(MemoryInfoProvider memoryInfoProvider) {
     long maxMemory =
         maxMemoryLimitInBytes == MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT
@@ -472,7 +528,9 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return hasLowRuntimeMemory;
   }
 
-  /** Check whether the channel is still valid, cleanup and throw an error if not */
+  /**
+   * Check whether the channel is still valid, cleanup and throw an error if not
+   */
   private void checkValidation() {
     if (!isValid()) {
       this.owningClient.removeChannelIfSequencersMatch(this);
@@ -482,12 +540,16 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     }
   }
 
-  /** Returns underlying channel's row buffer implementation. */
+  /**
+   * Returns underlying channel's row buffer implementation.
+   */
   RowBuffer<T> getRowBuffer() {
     return rowBuffer;
   }
 
-  /** Returns underlying channel's attributes. */
+  /**
+   * Returns underlying channel's attributes.
+   */
   @VisibleForTesting
   public ChannelFlushContext getChannelContext() {
     return channelFlushContext;

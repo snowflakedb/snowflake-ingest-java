@@ -510,7 +510,7 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelMetadata channelMetadata =
         ChannelMetadata.builder()
             .setOwningChannelFromContext(channel.getChannelContext())
-            .setRowSequencer(channel.getChannelState().incrementAndGetRowSequencer())
+            .setRowSequencer(((ChannelRuntimeStateImpl)channel.getChannelState()).incrementAndGetRowSequencer())
             .setOffsetToken(channel.getChannelState().getEndOffsetToken())
             .build();
 
@@ -586,25 +586,25 @@ public class SnowflakeStreamingIngestClientTest {
     ChannelMetadata channelMetadata1 =
         ChannelMetadata.builder()
             .setOwningChannelFromContext(channel1.getChannelContext())
-            .setRowSequencer(channel1.getChannelState().incrementAndGetRowSequencer())
+            .setRowSequencer(((ChannelRuntimeStateImpl)channel1.getChannelState()).incrementAndGetRowSequencer())
             .setOffsetToken(channel1.getChannelState().getEndOffsetToken())
             .build();
     ChannelMetadata channelMetadata2 =
         ChannelMetadata.builder()
             .setOwningChannelFromContext(channel2.getChannelContext())
-            .setRowSequencer(channel2.getChannelState().incrementAndGetRowSequencer())
+            .setRowSequencer(((ChannelRuntimeStateImpl)channel2.getChannelState()).incrementAndGetRowSequencer())
             .setOffsetToken(channel2.getChannelState().getEndOffsetToken())
             .build();
     ChannelMetadata channelMetadata3 =
         ChannelMetadata.builder()
             .setOwningChannelFromContext(channel3.getChannelContext())
-            .setRowSequencer(channel3.getChannelState().incrementAndGetRowSequencer())
+            .setRowSequencer(((ChannelRuntimeStateImpl)channel3.getChannelState()).incrementAndGetRowSequencer())
             .setOffsetToken(channel3.getChannelState().getEndOffsetToken())
             .build();
     ChannelMetadata channelMetadata4 =
         ChannelMetadata.builder()
             .setOwningChannelFromContext(channel4.getChannelContext())
-            .setRowSequencer(channel4.getChannelState().incrementAndGetRowSequencer())
+            .setRowSequencer(((ChannelRuntimeStateImpl)channel4.getChannelState()).incrementAndGetRowSequencer())
             .setOffsetToken(channel4.getChannelState().getEndOffsetToken())
             .build();
 

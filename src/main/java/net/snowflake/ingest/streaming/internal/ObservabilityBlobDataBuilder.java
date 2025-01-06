@@ -1,5 +1,6 @@
 package net.snowflake.ingest.streaming.internal;
 
+import net.snowflake.ingest.streaming.ObservabilityClusteringKey;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.ParameterProvider;
 
@@ -20,35 +21,36 @@ import static net.snowflake.ingest.utils.Constants.MAX_BLOB_SIZE_IN_BYTES;
  * <p>
  * This class returns a list of blobs
  */
-class BlobDataBuilder<T> {
+class ObservabilityBlobDataBuilder {
   private static final Logging logger = new Logging(BlobDataBuilder.class);
-  private final List<List<List<ChannelData<T>>>> allBlobs;
+  private final List<List<List<ChannelData<ParquetChunkData>>>> allBlobs;
   private final ParameterProvider parameterProvider;
   private final String clientName;
-  private List<List<ChannelData<T>>> currentBlob;
-  private ChannelData<T> prevChannelData = null;
+  private List<List<ChannelData<ParquetChunkData>>> currentBlob;
+  private ChannelData<ParquetChunkData> prevChannelData = null;
+  private ObservabilityClusteringKey prevClusteringKey = null;
   private float totalCurrentBlobSizeInBytes = 0F;
   private float totalBufferSizeInBytes = 0F;
 
-  public BlobDataBuilder(String clientName, ParameterProvider parameterProvider) {
+  public ObservabilityBlobDataBuilder(String clientName, ParameterProvider parameterProvider) {
     this.clientName = clientName;
     this.parameterProvider = parameterProvider;
     this.currentBlob = new ArrayList<>();
     this.allBlobs = new ArrayList<>();
   }
 
-  public List<List<List<ChannelData<T>>>> getAllBlobData() {
+  public List<List<List<ChannelData<ParquetChunkData>>>> getAllBlobData() {
     addCurrentBlob();
     return allBlobs;
   }
 
-  public void appendDataForTable(Collection<? extends SnowflakeStreamingIngestChannelFlushable<T>> tableChannels) {
-    List<ChannelData<T>> chunk = getChunkForTable(tableChannels);
+  public void appendDataForTable(Collection<? extends SnowflakeStreamingIngestChannelFlushable<ParquetChunkData>> tableChannels) {
+    List<ChannelData<ParquetChunkData>> chunk = getChunkForTable(tableChannels);
     appendChunk(chunk);
   }
 
-  private List<ChannelData<T>> getChunkForTable(Collection<? extends SnowflakeStreamingIngestChannelFlushable<T>> tableChannels) {
-    List<ChannelData<T>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
+  private List<ChannelData<ParquetChunkData>> getChunkForTable(Collection<? extends SnowflakeStreamingIngestChannelFlushable<ParquetChunkData>> tableChannels) {
+    List<ChannelData<ParquetChunkData>> channelsDataPerTable = Collections.synchronizedList(new ArrayList<>());
     // Use parallel stream since getData could be the performance bottleneck when we have a
     // high number of channels
     tableChannels.parallelStream()
@@ -63,7 +65,7 @@ class BlobDataBuilder<T> {
     return channelsDataPerTable;
   }
 
-  private void appendChunk(List<ChannelData<T>> chunkData) {
+  private void appendChunk(List<ChannelData<ParquetChunkData>> chunkData) {
     if (chunkData.isEmpty()) {
       return;
     }
@@ -81,10 +83,15 @@ class BlobDataBuilder<T> {
 
     int i, start = 0;
     for (i = 0; i < chunkData.size(); i++) {
-      ChannelData<T> channelData = chunkData.get(i);
+      ChannelData<ParquetChunkData> channelData = chunkData.get(i);
+      ObservabilityClusteringKey currentClusteringKey = createFromChannelData(channelData);
+
       if (prevChannelData != null && shouldStopProcessing(
           totalCurrentBlobSizeInBytes,
           totalBufferSizeInBytes,
+          parameterProvider.getMaxChunkSizeInBytes(),
+          currentClusteringKey,
+          prevClusteringKey,
           channelData,
           prevChannelData)) {
         logger.logInfo(
@@ -113,11 +120,19 @@ class BlobDataBuilder<T> {
       totalCurrentBlobSizeInBytes += channelData.getBufferSize();
       totalBufferSizeInBytes += channelData.getBufferSize();
       prevChannelData = channelData;
+      prevClusteringKey = currentClusteringKey;
     }
 
     if (i != start) {
       currentBlob.add(chunkData.subList(start, i));
     }
+  }
+
+  private ObservabilityClusteringKey createFromChannelData(ChannelData<ParquetChunkData> channelData) {
+    if (channelData instanceof ObservabilityChannelData) {
+      return ((ObservabilityChannelData)channelData).getClusteringKey();
+    }
+    return null;
   }
 
   private void addCurrentBlob() {
@@ -139,14 +154,17 @@ class BlobDataBuilder<T> {
    *
    * <p>When the schemas are not the same
    */
-  private boolean shouldStopProcessing(
+  private static boolean shouldStopProcessing(
       float totalBufferSizeInBytes,
       float totalBufferSizePerTableInBytes,
-      ChannelData<T> current,
-      ChannelData<T> prev) {
+      float maxChunkSizeInBytes,
+      ObservabilityClusteringKey currentKey,
+      ObservabilityClusteringKey prevKey,
+      ChannelData<ParquetChunkData> current,
+      ChannelData<ParquetChunkData> prev) {
+
     return totalBufferSizeInBytes + current.getBufferSize() > MAX_BLOB_SIZE_IN_BYTES
-        || totalBufferSizePerTableInBytes + current.getBufferSize()
-        > parameterProvider.getMaxChunkSizeInBytes()
+        || totalBufferSizePerTableInBytes + current.getBufferSize() > maxChunkSizeInBytes
         || !Objects.equals(
         current.getChannelContext().getEncryptionKeyId(),
         prev.getChannelContext().getEncryptionKeyId())

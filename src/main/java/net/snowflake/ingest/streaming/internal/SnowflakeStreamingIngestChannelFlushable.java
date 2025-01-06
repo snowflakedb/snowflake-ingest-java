@@ -10,7 +10,7 @@ interface SnowflakeStreamingIngestChannelFlushable<TData> extends SnowflakeStrea
 
   ChannelRuntimeState getChannelState();
 
-  ChannelData<TData> getData();
+  List<ChannelData<TData>> getData();
 
   void invalidate(String message, String invalidationCause);
 
