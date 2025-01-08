@@ -166,7 +166,7 @@ public class ChannelCacheTest {
     Assert.assertTrue(!channel.isValid());
     Assert.assertTrue(channelDup.isValid());
     Assert.assertEquals(1, cache.getSize());
-    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>> channels =
+    ConcurrentHashMap<String, SnowflakeStreamingIngestChannelFlushable<StubChunkData>> channels =
         cache.entrySet().iterator().next().getValue();
     Assert.assertEquals(1, channels.size());
     Assert.assertTrue(channelDup == channels.get(channelName));
@@ -179,15 +179,15 @@ public class ChannelCacheTest {
     Iterator<
             Map.Entry<
                 String,
-                ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>>
+                ConcurrentHashMap<String, SnowflakeStreamingIngestChannelFlushable<StubChunkData>>>>
         iter = cache.entrySet().iterator();
     Map.Entry<
             String,
-            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>
+            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelFlushable<StubChunkData>>>
         firstTable = iter.next();
     Map.Entry<
             String,
-            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>
+            ConcurrentHashMap<String, SnowflakeStreamingIngestChannelFlushable<StubChunkData>>>
         secondTable = iter.next();
     Assert.assertFalse(iter.hasNext());
     if (firstTable.getKey().equals(channel1.getFullyQualifiedTableName())) {
@@ -209,10 +209,10 @@ public class ChannelCacheTest {
     Iterator<
             Map.Entry<
                 String,
-                ConcurrentHashMap<String, SnowflakeStreamingIngestChannelInternal<StubChunkData>>>>
+                ConcurrentHashMap<String, SnowflakeStreamingIngestChannelFlushable<StubChunkData>>>>
         iter = cache.entrySet().iterator();
     while (iter.hasNext()) {
-      for (SnowflakeStreamingIngestChannelInternal<?> channel : iter.next().getValue().values()) {
+      for (SnowflakeStreamingIngestChannelFlushable<?> channel : iter.next().getValue().values()) {
         Assert.assertTrue(channel.isClosed());
       }
     }
