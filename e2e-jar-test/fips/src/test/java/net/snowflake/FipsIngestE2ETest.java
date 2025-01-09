@@ -6,7 +6,6 @@ import java.time.temporal.ChronoUnit;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class FipsIngestE2ETest {
@@ -32,7 +31,6 @@ public class FipsIngestE2ETest {
   }
 
   @Test
-  @Ignore("Takes too long to run")
   public void longRunningTest() throws InterruptedException {
     ingestTestUtils.runLongRunningTest(Duration.of(80, ChronoUnit.MINUTES));
   }

@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class StandardIngestE2ETest {
@@ -27,7 +26,6 @@ public class StandardIngestE2ETest {
   }
 
   @Test
-  @Ignore("Takes too long to run")
   public void longRunningTest() throws InterruptedException {
     ingestTestUtils.runLongRunningTest(Duration.of(80, ChronoUnit.MINUTES));
   }
