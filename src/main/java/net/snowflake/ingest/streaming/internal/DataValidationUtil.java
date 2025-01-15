@@ -181,7 +181,12 @@ class DataValidationUtil {
           throw valueFormatNotAllowedException(
               columnName, snowflakeType, "Not a valid JSON: duplicate field", insertRowIndex);
         }
-        throw new SFException(e, ErrorCode.IO_ERROR, "Cannot create JSON Parser or JSON generator");
+        throw new SFException(
+            e,
+            ErrorCode.IO_ERROR,
+            String.format(
+                "Cannot create JSON Parser or JSON generator for column %s of type %s, rowIndex:%d",
+                columnName, snowflakeType, insertRowIndex));
       }
       // We return the minified string from the result writer
       return resultWriter.toString();
