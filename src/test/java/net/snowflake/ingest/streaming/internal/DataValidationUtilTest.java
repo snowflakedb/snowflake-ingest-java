@@ -857,6 +857,35 @@ public class DataValidationUtilTest {
   }
 
   @Test
+  public void testValidateDuplicateKeys() {
+    // simple JSON object with duplicate keys can not be ingested
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseObjectNew("COL", "{\"key\":1, \"key\":2}", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseVariantNew("COL", "{\"key\":1, \"key\":2}", 0));
+
+    // nested JSON object with duplicate keys can not be ingested
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseObjectNew("COL", "{\"key\":1, \"nested\":{\"key\":2, \"key\":3}}", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariantNew("COL", "{\"key\":1, \"nested\":{\"key\":2, \"key\":3}}", 0));
+
+    // array of objects with duplicate keys can not be ingested
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseArrayNew("COL", "[{\"key\":1, \"key\":2}]", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseVariantNew("COL", "[{\"key\":1, \"key\":2}]", 0));
+  }
+
+  @Test
   public void testTooLargeVariant() {
     char[] stringContent = new char[16 * 1024 * 1024 - 16]; // {"a":"11","b":""}
     Arrays.fill(stringContent, 'c');
