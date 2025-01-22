@@ -698,25 +698,6 @@
     </dependency>
   </dependencies>
 
-  <repositories>
-    <repository>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <id>central</id>
-      <name>Internal Maven Central Repository</name>
-      <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual/</url>
-    </repository>
-  </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>central</id>
-      <name>Internal Maven Repository</name>
-      <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual/</url>
-    </pluginRepository>
-  </pluginRepositories>
-
   <build>
     <finalName>${project.artifactId}</finalName>
     <resources>
@@ -772,7 +753,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>3.5.2</version>
+          <version>3.0.0-M5</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
