@@ -698,6 +698,25 @@
     </dependency>
   </dependencies>
 
+  <repositories>
+    <repository>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>central</id>
+      <name>Internal Maven Central Repository</name>
+      <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual/</url>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>central</id>
+      <name>Internal Maven Repository</name>
+      <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
   <build>
     <finalName>${project.artifactId}</finalName>
     <resources>
