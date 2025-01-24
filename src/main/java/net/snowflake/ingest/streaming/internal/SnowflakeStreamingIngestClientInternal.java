@@ -243,11 +243,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     try {
       this.storageManager =
-              parameterProvider.isEnableIcebergStreaming()
-                      ? new SubscopedTokenExternalVolumeManager(
-                      this.role, this.name, this.snowflakeServiceClient)
-                      : new InternalStageManager(
-                      isTestMode, this.role, this.name, this.snowflakeServiceClient);
+          parameterProvider.isEnableIcebergStreaming()
+              ? new SubscopedTokenExternalVolumeManager(
+                  this.role, this.name, this.snowflakeServiceClient)
+              : new InternalStageManager(
+                  isTestMode, this.role, this.name, this.snowflakeServiceClient);
       this.flushService =
           new FlushService<>(this, this.channelCache, this.storageManager, this.isTestMode);
     } catch (Exception e) {
