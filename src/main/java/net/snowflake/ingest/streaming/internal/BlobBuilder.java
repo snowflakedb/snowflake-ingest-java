@@ -104,7 +104,7 @@ class BlobBuilder {
                   firstChannelFlushContext.getEncryptionKeyId()));
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
-      String fileId = customFileId.orElse(defaultFileId(filePath, curDataSize));
+      String fileId = customFileId.orElse(createFileId(filePath, curDataSize));
       Flusher.SerializationResult serializedChunk =
           flusher.serialize(channelsDataPerTable, filePath, curDataSize, fileId);
 
@@ -212,7 +212,7 @@ class BlobBuilder {
     return new Blob(blobBytes, chunksMetadataList, new BlobStats());
   }
 
-  private static String defaultFileId(String filePath, long chunkStartOffset) {
+  private static String createFileId(String filePath, long chunkStartOffset) {
     String shortName = StreamingIngestUtils.getShortname(filePath);
     if (chunkStartOffset == 0) {
       return shortName;
