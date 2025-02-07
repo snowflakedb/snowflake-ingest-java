@@ -215,13 +215,13 @@ class BlobBuilder {
   private static String defaultFileId(String filePath, long chunkStartOffset) {
     String shortName = StreamingIngestUtils.getShortname(filePath);
     if (chunkStartOffset == 0) {
-        return shortName;
+      return shortName;
     } else {
-        // Using chunk offset as suffix ensures that for interleaved tables, the file
-        // id key is unique for each chunk.
-        final String[] parts = shortName.split("\\.");
-        Preconditions.checkState(parts.length == 2, "Invalid file name format");
-        return String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]);
+      // Using chunk offset as suffix ensures that for interleaved tables, the file
+      // id key is unique for each chunk.
+      final String[] parts = shortName.split("\\.");
+      Preconditions.checkState(parts.length == 2, "Invalid file name format");
+      return String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]);
     }
   }
 

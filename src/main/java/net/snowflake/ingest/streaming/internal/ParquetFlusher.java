@@ -93,7 +93,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       channelsMetadataList.add(channelMetadata);
 
       logger.logDebug(
-          "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={}, fileId={}",
+          "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={},"
+              + " fileId={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
@@ -127,7 +128,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       chunkEstimatedUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
-          "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}, fileId={}",
+          "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
+              + " fileId={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
@@ -172,7 +174,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     // Each chunk is logically a separate Parquet file that happens to be bundled together.
     if (enableIcebergStreaming) {
       Preconditions.checkState(
-              chunkStartOffset == 0, "Iceberg streaming is not supported with non-zero offsets");
+          chunkStartOffset == 0, "Iceberg streaming is not supported with non-zero offsets");
       metadata.put(Constants.ASSIGNED_FULL_FILE_NAME_KEY, fileId);
     } else {
       metadata.put(Constants.PRIMARY_FILE_ID_KEY, fileId);

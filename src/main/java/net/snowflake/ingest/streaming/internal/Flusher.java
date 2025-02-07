@@ -29,7 +29,10 @@ public interface Flusher<T> {
    * @throws IOException
    */
   SerializationResult serialize(
-      List<ChannelData<T>> channelsDataPerTable, String filePath, long chunkStartOffset, String fileId)
+      List<ChannelData<T>> channelsDataPerTable,
+      String filePath,
+      long chunkStartOffset,
+      String fileId)
       throws IOException;
 
   /** Holds result of the buffered rows conversion: channel metadata and stats. */

@@ -659,7 +659,12 @@ public class FlushServiceTest {
     if (!enableIcebergStreaming) {
       flushService.flush(true).get();
       Mockito.verify(flushService, Mockito.atLeast(2))
-          .buildAndUpload(Mockito.any(), Mockito.eq(Optional.empty()), Mockito.any(), Mockito.any(), Mockito.any());
+          .buildAndUpload(
+              Mockito.any(),
+              Mockito.eq(Optional.empty()),
+              Mockito.any(),
+              Mockito.any(),
+              Mockito.any());
     }
   }
 
@@ -712,7 +717,12 @@ public class FlushServiceTest {
       // Force = true flushes
       flushService.flush(true).get();
       Mockito.verify(flushService, Mockito.atLeast(2))
-          .buildAndUpload(Mockito.any(), Mockito.eq(Optional.empty()), Mockito.any(), Mockito.any(), Mockito.any());
+          .buildAndUpload(
+              Mockito.any(),
+              Mockito.eq(Optional.empty()),
+              Mockito.any(),
+              Mockito.any(),
+              Mockito.any());
     }
   }
 
@@ -750,7 +760,12 @@ public class FlushServiceTest {
       // Force = true flushes
       flushService.flush(true).get();
       Mockito.verify(flushService, Mockito.times(2))
-          .buildAndUpload(Mockito.any(), Mockito.eq(Optional.empty()), Mockito.any(), Mockito.any(), Mockito.any());
+          .buildAndUpload(
+              Mockito.any(),
+              Mockito.eq(Optional.empty()),
+              Mockito.any(),
+              Mockito.any(),
+              Mockito.any());
     }
   }
 
@@ -798,7 +813,12 @@ public class FlushServiceTest {
     ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
         ArgumentCaptor.forClass(List.class);
     Mockito.verify(flushService, Mockito.times(expectedBlobs))
-        .buildAndUpload(Mockito.any(), Mockito.eq(Optional.empty()), blobDataCaptor.capture(), Mockito.any(), Mockito.any());
+        .buildAndUpload(
+            Mockito.any(),
+            Mockito.eq(Optional.empty()),
+            blobDataCaptor.capture(),
+            Mockito.any(),
+            Mockito.any());
 
     // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
@@ -846,7 +866,12 @@ public class FlushServiceTest {
     ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
         ArgumentCaptor.forClass(List.class);
     Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), Mockito.eq(Optional.empty()), blobDataCaptor.capture(), Mockito.any(), Mockito.any());
+        .buildAndUpload(
+            Mockito.any(),
+            Mockito.eq(Optional.empty()),
+            blobDataCaptor.capture(),
+            Mockito.any(),
+            Mockito.any());
 
     // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =

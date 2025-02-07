@@ -508,7 +508,11 @@ class FlushService<T> {
             try {
               BlobMetadata blobMetadata =
                   buildAndUpload(
-                      blobPath, Optional.empty(), blobData, fullyQualifiedTableName, encryptionKeysPerTable);
+                      blobPath,
+                      Optional.empty(),
+                      blobData,
+                      fullyQualifiedTableName,
+                      encryptionKeysPerTable);
               blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
               return blobMetadata;
             } catch (Throwable e) {

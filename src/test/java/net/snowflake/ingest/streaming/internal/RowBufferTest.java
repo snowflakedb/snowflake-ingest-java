@@ -2354,7 +2354,8 @@ public class RowBufferTest {
 
         BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
         Assert.assertEquals(
-            // NB the file ID passed to `serialize` would normally reflect the offset, but here it's a static value.
+            // NB the file ID passed to `serialize` would normally reflect the offset, but here it's
+            // a static value.
             "testParquetFileNameMetadata.bdec",
             reader
                 .getKeyValueMetadata()
