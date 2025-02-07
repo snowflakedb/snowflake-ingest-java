@@ -2306,6 +2306,7 @@ public class RowBufferTest {
   @Test
   public void testParquetFileNameMetadata() throws IOException {
     String filePath = "testParquetFileNameMetadata.bdec";
+    String fileId = filePath;
     final ParquetRowBuffer bufferUnderTest =
         (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
 
@@ -2327,7 +2328,7 @@ public class RowBufferTest {
     ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
     {
       Flusher.SerializationResult result =
-          flusher.serialize(Collections.singletonList(data), filePath, 0);
+          flusher.serialize(Collections.singletonList(data), filePath, 0, fileId);
 
       BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
       Assert.assertEquals(
@@ -2345,7 +2346,7 @@ public class RowBufferTest {
     {
       try {
         Flusher.SerializationResult result =
-            flusher.serialize(Collections.singletonList(data), filePath, 13);
+            flusher.serialize(Collections.singletonList(data), filePath, 13, fileId);
         if (enableIcebergStreaming) {
           Assert.fail(
               "Should have thrown an exception because iceberg streams do not support offsets");
@@ -2353,7 +2354,8 @@ public class RowBufferTest {
 
         BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
         Assert.assertEquals(
-            "testParquetFileNameMetadata_13.bdec",
+            // NB the file ID passed to `serialize` would normally reflect the offset, but here it's a static value.
+            "testParquetFileNameMetadata.bdec",
             reader
                 .getKeyValueMetadata()
                 .get(

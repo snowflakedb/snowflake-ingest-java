@@ -25,6 +25,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.zip.CRC32;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -36,6 +37,7 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.parquet.Preconditions;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -62,6 +64,7 @@ class BlobBuilder {
    * Builds blob.
    *
    * @param filePath Path of the destination file in cloud storage
+   * @param customFileId Allows setting a custom file ID to be embedded for all chunks in storage.
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
@@ -69,6 +72,7 @@ class BlobBuilder {
    */
   static <T> Blob constructBlobAndMetadata(
       String filePath,
+      Optional<String> customFileId,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
       InternalParameterProvider internalParameterProvider,
@@ -100,8 +104,9 @@ class BlobBuilder {
                   firstChannelFlushContext.getEncryptionKeyId()));
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
+      String fileId = customFileId.orElse(defaultFileId(filePath, curDataSize));
       Flusher.SerializationResult serializedChunk =
-          flusher.serialize(channelsDataPerTable, filePath, curDataSize);
+          flusher.serialize(channelsDataPerTable, filePath, curDataSize, fileId);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         final byte[] compressedChunkData;
@@ -205,6 +210,19 @@ class BlobBuilder {
     byte[] blobBytes =
         buildBlob(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
     return new Blob(blobBytes, chunksMetadataList, new BlobStats());
+  }
+
+  private static String defaultFileId(String filePath, long chunkStartOffset) {
+    String shortName = StreamingIngestUtils.getShortname(filePath);
+    if (chunkStartOffset == 0) {
+        return shortName;
+    } else {
+        // Using chunk offset as suffix ensures that for interleaved tables, the file
+        // id key is unique for each chunk.
+        final String[] parts = shortName.split("\\.");
+        Preconditions.checkState(parts.length == 2, "Invalid file name format");
+        return String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]);
+    }
   }
 
   /**

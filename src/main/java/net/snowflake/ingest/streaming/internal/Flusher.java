@@ -24,11 +24,12 @@ public interface Flusher<T> {
    * @param channelsDataPerTable buffered rows
    * @param filePath file path
    * @param chunkStartOffset
+   * @param fileId the file ID to be stored within the chunk
    * @return {@link SerializationResult}
    * @throws IOException
    */
   SerializationResult serialize(
-      List<ChannelData<T>> channelsDataPerTable, String filePath, long chunkStartOffset)
+      List<ChannelData<T>> channelsDataPerTable, String filePath, long chunkStartOffset, String fileId)
       throws IOException;
 
   /** Holds result of the buffered rows conversion: channel metadata and stats. */

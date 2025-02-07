@@ -508,7 +508,7 @@ class FlushService<T> {
             try {
               BlobMetadata blobMetadata =
                   buildAndUpload(
-                      blobPath, blobData, fullyQualifiedTableName, encryptionKeysPerTable);
+                      blobPath, Optional.empty(), blobData, fullyQualifiedTableName, encryptionKeysPerTable);
               blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
               return blobMetadata;
             } catch (Throwable e) {
@@ -599,6 +599,7 @@ class FlushService<T> {
    */
   BlobMetadata buildAndUpload(
       BlobPath blobPath,
+      Optional<String> customFileId,
       List<List<ChannelData<T>>> blobData,
       String fullyQualifiedTableName,
       Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
@@ -611,6 +612,7 @@ class FlushService<T> {
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
             blobPath.fileRegistrationPath,
+            customFileId,
             blobData,
             bdecVersion,
             this.owningClient.getInternalParameterProvider(),
