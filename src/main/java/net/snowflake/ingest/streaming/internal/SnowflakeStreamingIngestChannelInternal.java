@@ -36,7 +36,7 @@ import org.apache.parquet.column.ParquetProperties;
  *
  * @param <T> type of column data {@link ParquetChunkData})
  */
-class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannel {
+class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIngestChannelFlushable<T> {
 
   private static final Logging logger = new Logging(SnowflakeStreamingIngestChannelInternal.class);
 
@@ -156,13 +156,15 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.channelFlushContext.getTableName();
   }
 
-  Long getChannelSequencer() {
+  @Override
+  public Long getChannelSequencer() {
     return this.channelFlushContext.getChannelSequencer();
   }
 
   /** @return current state of the channel */
+  @Override
   @VisibleForTesting
-  ChannelRuntimeState getChannelState() {
+  public ChannelRuntimeState getChannelState() {
     return this.channelState;
   }
 
@@ -181,7 +183,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    *
    * @return a ChannelData object
    */
-  ChannelData<T> getData() {
+  @Override
+  public ChannelData<T> getData() {
     ChannelData<T> data = this.rowBuffer.flush();
     if (data != null) {
       data.setChannelContext(channelFlushContext);
@@ -196,7 +199,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Mark the channel as invalid, and release resources */
-  void invalidate(String message, String invalidationCause) {
+  @Override
+  public void invalidate(String message, String invalidationCause) {
     this.channelState.invalidate();
     this.invalidationCause = invalidationCause;
     this.rowBuffer.close("invalidate");
@@ -215,7 +219,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /** Mark the channel as closed */
-  void markClosed() {
+  @Override
+  public void markClosed() {
     this.isClosed = true;
     logger.logInfo(
         "Channel is marked as closed, name={}, channel sequencer={}, row sequencer={}",
@@ -230,7 +235,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    * @param closing whether the flush is called as part of channel closing
    * @return future which will be complete when the flush the data is registered
    */
-  CompletableFuture<Void> flush(boolean closing) {
+  @Override
+  public CompletableFuture<Void> flush(boolean closing) {
     // Skip this check for closing because we need to set the channel to closed first and then flush
     // in case there is any leftover rows
     if (isClosed() && !closing) {
@@ -268,7 +274,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return flush(true)
         .thenRunAsync(
             () -> {
-              List<SnowflakeStreamingIngestChannelInternal<?>> uncommittedChannels =
+              List<SnowflakeStreamingIngestChannelFlushable<?>> uncommittedChannels =
                   this.owningClient.verifyChannelsAreFullyCommitted(
                       Collections.singletonList(this));
 
@@ -280,7 +286,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
                 throw new SFException(
                     ErrorCode.CHANNELS_WITH_UNCOMMITTED_ROWS,
                     uncommittedChannels.stream()
-                        .map(SnowflakeStreamingIngestChannelInternal::getFullyQualifiedName)
+                        .map(SnowflakeStreamingIngestChannelFlushable::getFullyQualifiedName)
                         .collect(Collectors.toList()));
               }
               if (drop) {
@@ -301,7 +307,8 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    * @param columns
    */
   // TODO: need to verify with the table schema when supporting sub-columns
-  void setupSchema(List<ColumnMetadata> columns) {
+  @Override
+  public void setupSchema(List<ColumnMetadata> columns) {
     logger.logDebug("Setup schema for channel={}, schema={}", getFullyQualifiedName(), columns);
     this.rowBuffer.setupSchema(columns);
     columns.forEach(c -> tableColumns.putIfAbsent(c.getName(), new ColumnProperties(c)));
