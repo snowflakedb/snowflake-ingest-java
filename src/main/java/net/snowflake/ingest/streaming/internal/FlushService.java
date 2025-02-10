@@ -595,6 +595,8 @@ class FlushService<T> {
    * Builds and uploads blob to cloud storage.
    *
    * @param blobPath Path of the destination blob in cloud storage
+   * @param customFileId Allows setting a custom file ID to be embedded for all chunks in storage.
+   *     Used for testing.
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param fullyQualifiedTableName the table name of the first channel in the blob, only matters in

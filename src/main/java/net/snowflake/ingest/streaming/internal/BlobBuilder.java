@@ -65,6 +65,7 @@ class BlobBuilder {
    *
    * @param filePath Path of the destination file in cloud storage
    * @param customFileId Allows setting a custom file ID to be embedded for all chunks in storage.
+   *     Used for testing.
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
