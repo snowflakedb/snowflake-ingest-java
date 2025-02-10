@@ -7,6 +7,8 @@ package net.snowflake.ingest.streaming.internal;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -131,28 +133,101 @@ public class BlobBuilderTest {
                 - Integer.BYTES);
   }
 
+  @Test
+  public void testFileIdCreationSingleTable() throws Exception {
+    ParquetFlusher flusher = Mockito.spy(createParquetFlusher(createSchema("C1")));
+
+    Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable = new ConcurrentHashMap<>();
+    encryptionKeysPerTable.put(
+        new FullyQualifiedTableName("DB", "SCHEMA", "TABLE"),
+        new EncryptionKey("DB", "SCHEMA", "TABLE", "KEY", 1234L));
+
+    ChannelData<ParquetChunkData> channelData = Mockito.spy(createChannelDataPerTable(1).get(0));
+    channelData.setFlusherFactory(() -> flusher);
+    List<ChannelData<ParquetChunkData>> tableData = Collections.singletonList(channelData);
+
+    BlobBuilder.constructBlobAndMetadata(
+        "a.bdec",
+        Optional.empty(),
+        Collections.singletonList(tableData),
+        Constants.BdecVersion.THREE,
+        new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),
+        encryptionKeysPerTable);
+
+    Mockito.verify(flusher)
+        .serialize(Mockito.any(), Mockito.eq("a.bdec"), Mockito.eq(0L), Mockito.eq("a.bdec"));
+  }
+
+  @Test
+  public void testFileIdCreationMultipleTables() throws Exception {
+    ParquetFlusher flusher = Mockito.spy(createParquetFlusher(createSchema("C1")));
+
+    Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable = new ConcurrentHashMap<>();
+    List<List<ChannelData<ParquetChunkData>>> blobData = new ArrayList<>();
+    for (String tableName : Arrays.asList("TABLE", "OTHERTABLE")) {
+      encryptionKeysPerTable.put(
+          new FullyQualifiedTableName("DB", "SCHEMA", tableName),
+          new EncryptionKey("DB", "SCHEMA", tableName, "KEY", 1234L));
+
+      ChannelData<ParquetChunkData> channelData =
+          Mockito.spy(createChannelDataPerTable(1, tableName).get(0));
+      channelData.setFlusherFactory(() -> flusher);
+      blobData.add(Collections.singletonList(channelData));
+    }
+
+    try {
+      BlobBuilder.constructBlobAndMetadata(
+          "a.bdec",
+          Optional.empty(),
+          blobData,
+          Constants.BdecVersion.THREE,
+          new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),
+          encryptionKeysPerTable);
+    } catch (IllegalStateException e) {
+      if (enableIcebergStreaming) {
+        Assert.assertTrue(
+            e.getMessage().contains("Iceberg streaming is not supported with non-zero offsets"));
+        return;
+      } else {
+        throw e;
+      }
+    }
+
+    Mockito.verify(flusher)
+        .serialize(Mockito.any(), Mockito.eq("a.bdec"), Mockito.eq(0L), Mockito.eq("a.bdec"));
+
+    Mockito.verify(flusher)
+        .serialize(Mockito.any(), Mockito.eq("a.bdec"), Mockito.eq(336L), Mockito.eq("a_336.bdec"));
+  }
+
+  private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(int metadataRowCount)
+      throws IOException {
+    return createChannelDataPerTable(metadataRowCount, "TABLE");
+  }
+
+  private ParquetFlusher createParquetFlusher(MessageType schema) {
+    return new ParquetFlusher(
+        schema,
+        100L,
+        enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
+        Constants.BdecParquetCompression.GZIP,
+        enableIcebergStreaming
+            ? ParquetProperties.WriterVersion.PARQUET_2_0
+            : ParquetProperties.WriterVersion.PARQUET_1_0,
+        enableIcebergStreaming,
+        enableIcebergStreaming);
+  }
+
   /**
    * Creates a channel data configurable number of rows in metadata and 1 physical row (using both
    * with and without internal buffering optimization)
    */
-  private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(int metadataRowCount)
-      throws IOException {
+  private List<ChannelData<ParquetChunkData>> createChannelDataPerTable(
+      int metadataRowCount, String tableName) throws IOException {
     String columnName = "C1";
     ChannelData<ParquetChunkData> channelData = Mockito.spy(new ChannelData<>());
     MessageType schema = createSchema(columnName);
-    Mockito.doReturn(
-            new ParquetFlusher(
-                schema,
-                100L,
-                enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
-                Constants.BdecParquetCompression.GZIP,
-                enableIcebergStreaming
-                    ? ParquetProperties.WriterVersion.PARQUET_2_0
-                    : ParquetProperties.WriterVersion.PARQUET_1_0,
-                enableIcebergStreaming,
-                enableIcebergStreaming))
-        .when(channelData)
-        .createFlusher();
+    Mockito.doReturn(createParquetFlusher(schema)).when(channelData).createFlusher();
 
     channelData.setRowSequencer(1L);
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
@@ -195,7 +270,7 @@ public class BlobBuilderTest {
                     enableIcebergStreaming)
                 : new RowBufferStats(columnName, null, 1, null, null, false, false));
     channelData.setChannelContext(
-        new ChannelFlushContext("channel1", "DB", "SCHEMA", "TABLE", 1L, "enc", 1L));
+        new ChannelFlushContext("channel1", "DB", "SCHEMA", tableName, 1L, "enc", 1L));
     return Collections.singletonList(channelData);
   }
 
