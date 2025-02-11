@@ -37,7 +37,6 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.parquet.Preconditions;
 
 /**
  * Build a single blob file that contains file header plus data. The header will be a
@@ -105,9 +104,8 @@ class BlobBuilder {
                   firstChannelFlushContext.getEncryptionKeyId()));
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
-      String fileId = customFileId.orElse(createFileId(filePath, curDataSize));
       Flusher.SerializationResult serializedChunk =
-          flusher.serialize(channelsDataPerTable, filePath, curDataSize, fileId);
+          flusher.serialize(channelsDataPerTable, filePath, curDataSize, customFileId);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         final byte[] compressedChunkData;
@@ -211,19 +209,6 @@ class BlobBuilder {
     byte[] blobBytes =
         buildBlob(chunksMetadataList, chunksDataList, crc.getValue(), curDataSize, bdecVersion);
     return new Blob(blobBytes, chunksMetadataList, new BlobStats());
-  }
-
-  private static String createFileId(String filePath, long chunkStartOffset) {
-    String shortName = StreamingIngestUtils.getShortname(filePath);
-    if (chunkStartOffset == 0) {
-      return shortName;
-    } else {
-      // Using chunk offset as suffix ensures that for interleaved tables, the file
-      // id key is unique for each chunk.
-      final String[] parts = shortName.split("\\.");
-      Preconditions.checkState(parts.length == 2, "Invalid file name format");
-      return String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]);
-    }
   }
 
   /**

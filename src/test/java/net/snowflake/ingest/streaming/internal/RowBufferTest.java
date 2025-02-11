@@ -2306,7 +2306,6 @@ public class RowBufferTest {
   @Test
   public void testParquetFileNameMetadata() throws IOException {
     String filePath = "testParquetFileNameMetadata.bdec";
-    String fileId = filePath;
     final ParquetRowBuffer bufferUnderTest =
         (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
 
@@ -2328,7 +2327,7 @@ public class RowBufferTest {
     ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
     {
       Flusher.SerializationResult result =
-          flusher.serialize(Collections.singletonList(data), filePath, 0, fileId);
+          flusher.serialize(Collections.singletonList(data), filePath, 0, Optional.empty());
 
       BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
       Assert.assertEquals(
@@ -2346,7 +2345,7 @@ public class RowBufferTest {
     {
       try {
         Flusher.SerializationResult result =
-            flusher.serialize(Collections.singletonList(data), filePath, 13, fileId);
+            flusher.serialize(Collections.singletonList(data), filePath, 13, Optional.empty());
         if (enableIcebergStreaming) {
           Assert.fail(
               "Should have thrown an exception because iceberg streams do not support offsets");
@@ -2354,9 +2353,7 @@ public class RowBufferTest {
 
         BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
         Assert.assertEquals(
-            // NB the file ID passed to `serialize` would normally reflect the offset, but here it's
-            // a static value.
-            "testParquetFileNameMetadata.bdec",
+            "testParquetFileNameMetadata_13.bdec",
             reader
                 .getKeyValueMetadata()
                 .get(
@@ -2371,6 +2368,23 @@ public class RowBufferTest {
           throw ex;
         }
       }
+    }
+    {
+      Flusher.SerializationResult result =
+          flusher.serialize(Collections.singletonList(data), filePath, 0, Optional.of("customId"));
+
+      BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
+      Assert.assertEquals(
+          "customId",
+          reader
+              .getKeyValueMetadata()
+              .get(
+                  enableIcebergStreaming
+                      ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+                      : Constants.PRIMARY_FILE_ID_KEY));
+      Assert.assertEquals(
+          RequestBuilder.DEFAULT_VERSION,
+          reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
     }
   }
 

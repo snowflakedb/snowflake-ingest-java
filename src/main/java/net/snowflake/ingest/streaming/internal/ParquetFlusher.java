@@ -59,16 +59,16 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       String filePath,
       long chunkStartOffset,
-      String fileId)
+      Optional<String> customFileId)
       throws IOException {
-    return serializeFromJavaObjects(channelsDataPerTable, filePath, chunkStartOffset, fileId);
+    return serializeFromJavaObjects(channelsDataPerTable, filePath, chunkStartOffset, customFileId);
   }
 
   private SerializationResult serializeFromJavaObjects(
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       String filePath,
       long chunkStartOffset,
-      String fileId)
+      Optional<String> customFileId)
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
@@ -94,12 +94,12 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
       logger.logDebug(
           "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={},"
-              + " fileId={}",
+              + " customFileId={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
           filePath,
-          fileId);
+          customFileId.orElse("N/A"));
 
       if (rows == null) {
         columnEpStatsMapCombined = data.getColumnEps();
@@ -129,16 +129,16 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
-              + " fileId={}",
+              + " customFileId={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
           filePath,
-          fileId);
+          customFileId.orElse("N/A"));
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
-    addFileIdToMetadata(fileId, chunkStartOffset, metadata);
+    addFileIdToMetadata(filePath, chunkStartOffset, metadata, customFileId);
     parquetWriter =
         new SnowflakeParquetWriter(
             mergedData,
@@ -166,19 +166,38 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   }
 
   private void addFileIdToMetadata(
-      String fileId, long chunkStartOffset, Map<String, String> metadata) {
+      String filePath,
+      long chunkStartOffset,
+      Map<String, String> metadata,
+      Optional<String> customFileId) {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
     // http://go/streams-on-replicated-mixed-tables,  and
     // http://go/managed-iceberg-replication-change-tracking
-    // Each chunk is logically a separate Parquet file that happens to be bundled together.
+    // Using chunk offset as suffix ensures that for interleaved tables, the file
+    // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
+    // to be bundled together.
     if (enableIcebergStreaming) {
       Preconditions.checkState(
           chunkStartOffset == 0, "Iceberg streaming is not supported with non-zero offsets");
-      metadata.put(Constants.ASSIGNED_FULL_FILE_NAME_KEY, fileId);
-    } else {
-      metadata.put(Constants.PRIMARY_FILE_ID_KEY, fileId);
     }
+    String key =
+        enableIcebergStreaming
+            ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+            : Constants.PRIMARY_FILE_ID_KEY;
+    String value =
+        customFileId.orElseGet(
+            () -> {
+              String shortName = StreamingIngestUtils.getShortname(filePath);
+              if (chunkStartOffset == 0) {
+                return shortName;
+              } else {
+                final String[] parts = shortName.split("\\.");
+                Preconditions.checkState(parts.length == 2, "Invalid file name format");
+                return String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]);
+              }
+            });
+    metadata.put(key, value);
   }
 
   /**
