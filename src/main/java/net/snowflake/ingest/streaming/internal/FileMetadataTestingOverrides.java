@@ -34,4 +34,14 @@ public class FileMetadataTestingOverrides {
         + customSdkVersion.map((v) -> v.orElse("<removed>")).orElse("<unchanged>")
         + "}";
   }
+
+  @Override
+  public boolean equals(Object o) {
+    if (!(o instanceof FileMetadataTestingOverrides)) {
+      return false;
+    }
+    FileMetadataTestingOverrides other = (FileMetadataTestingOverrides) o;
+    return customFileId.equals(other.customFileId)
+        && customSdkVersion.equals(other.customSdkVersion);
+  }
 }
