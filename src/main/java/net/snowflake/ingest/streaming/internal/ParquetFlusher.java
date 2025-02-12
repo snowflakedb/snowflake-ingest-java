@@ -139,9 +139,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
-    addFileIdToMetadata(
-        filePath, chunkStartOffset, metadata, fileMetadataTestingOverrides.customFileId);
-    overrideSdkVersionInMetadata(metadata, fileMetadataTestingOverrides.customSdkVersion);
+    addFileIdToMetadata(filePath, chunkStartOffset, metadata);
+    overrideMetadataForTesting(metadata, fileMetadataTestingOverrides);
     parquetWriter =
         new SnowflakeParquetWriter(
             mergedData,
@@ -169,10 +168,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   }
 
   private void addFileIdToMetadata(
-      String filePath,
-      long chunkStartOffset,
-      Map<String, String> metadata,
-      Optional<String> customFileIdForTesting) {
+      String filePath, long chunkStartOffset, Map<String, String> metadata) {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
     // http://go/streams-on-replicated-mixed-tables,  and
@@ -180,39 +176,40 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     // Using chunk offset as suffix ensures that for interleaved tables, the file
     // id key is unique for each chunk. Each chunk is logically a separate Parquet file that happens
     // to be bundled together.
-    if (enableIcebergStreaming) {
+    if (chunkStartOffset == 0) {
+      metadata.put(
+          enableIcebergStreaming
+              ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+              : Constants.PRIMARY_FILE_ID_KEY,
+          StreamingIngestUtils.getShortname(filePath));
+    } else {
       Preconditions.checkState(
-          chunkStartOffset == 0, "Iceberg streaming is not supported with non-zero offsets");
+          !enableIcebergStreaming, "Iceberg streaming is not supported with non-zero offsets");
+      String shortName = StreamingIngestUtils.getShortname(filePath);
+      final String[] parts = shortName.split("\\.");
+      Preconditions.checkState(parts.length == 2, "Invalid file name format");
+      metadata.put(
+          Constants.PRIMARY_FILE_ID_KEY,
+          String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]));
     }
-    String key =
-        enableIcebergStreaming
-            ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
-            : Constants.PRIMARY_FILE_ID_KEY;
-    String value =
-        customFileIdForTesting.orElseGet(
-            () -> {
-              String shortName = StreamingIngestUtils.getShortname(filePath);
-              if (chunkStartOffset == 0) {
-                return shortName;
-              } else {
-                final String[] parts = shortName.split("\\.");
-                Preconditions.checkState(parts.length == 2, "Invalid file name format");
-                return String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]);
-              }
-            });
-    metadata.put(key, value);
   }
 
-  private void overrideSdkVersionInMetadata(
-      Map<String, String> metadata, Optional<Optional<String>> customSdkVersionForTesting) {
-    if (!customSdkVersionForTesting.isPresent()) {
-      return;
+  private void overrideMetadataForTesting(
+      Map<String, String> metadata, FileMetadataTestingOverrides overrides) {
+    if (overrides.customFileId.isPresent()) {
+      metadata.put(
+          enableIcebergStreaming
+              ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+              : Constants.PRIMARY_FILE_ID_KEY,
+          overrides.customFileId.get());
     }
-    Optional<String> sdkVersionOverride = customSdkVersionForTesting.get();
-    if (sdkVersionOverride.isPresent()) {
-      metadata.put(Constants.SDK_VERSION_KEY, sdkVersionOverride.get());
-    } else {
-      metadata.remove(Constants.SDK_VERSION_KEY);
+    if (overrides.customSdkVersion.isPresent()) {
+      Optional<String> sdkVersionOverride = overrides.customSdkVersion.get();
+      if (sdkVersionOverride.isPresent()) {
+        metadata.put(Constants.SDK_VERSION_KEY, sdkVersionOverride.get());
+      } else {
+        metadata.remove(Constants.SDK_VERSION_KEY);
+      }
     }
   }
 
