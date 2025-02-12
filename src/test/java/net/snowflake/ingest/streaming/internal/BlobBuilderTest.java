@@ -57,7 +57,7 @@ public class BlobBuilderTest {
     // Construction succeeds if both data and metadata contain 1 row
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
-        Optional.empty(),
+        FileMetadataTestingOverrides.none(),
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
         new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),
@@ -67,7 +67,7 @@ public class BlobBuilderTest {
     try {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
-          Optional.empty(),
+          FileMetadataTestingOverrides.none(),
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
           new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),
@@ -93,7 +93,7 @@ public class BlobBuilderTest {
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
             "a.parquet",
-            Optional.empty(),
+            FileMetadataTestingOverrides.none(),
             Collections.singletonList(createChannelDataPerTable(1)),
             Constants.BdecVersion.THREE,
             new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),

@@ -39,7 +39,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.TimeZone;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -168,7 +167,7 @@ public class FlushServiceTest {
       List<List<ChannelData<T>>> blobData = Collections.singletonList(channelData);
       return flushService.buildAndUpload(
           new BlobPath("file_name" /* uploadPath */, "file_name" /* fileRegistrationPath */),
-          Optional.empty(),
+          FileMetadataTestingOverrides.none(),
           blobData,
           blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName(),
           encryptionKeysPerTable);
@@ -661,7 +660,7 @@ public class FlushServiceTest {
       Mockito.verify(flushService, Mockito.atLeast(2))
           .buildAndUpload(
               Mockito.any(),
-              Mockito.eq(Optional.empty()),
+              Mockito.eq(FileMetadataTestingOverrides.none()),
               Mockito.any(),
               Mockito.any(),
               Mockito.any());
@@ -719,7 +718,7 @@ public class FlushServiceTest {
       Mockito.verify(flushService, Mockito.atLeast(2))
           .buildAndUpload(
               Mockito.any(),
-              Mockito.eq(Optional.empty()),
+              Mockito.eq(FileMetadataTestingOverrides.none()),
               Mockito.any(),
               Mockito.any(),
               Mockito.any());
@@ -762,7 +761,7 @@ public class FlushServiceTest {
       Mockito.verify(flushService, Mockito.times(2))
           .buildAndUpload(
               Mockito.any(),
-              Mockito.eq(Optional.empty()),
+              Mockito.eq(FileMetadataTestingOverrides.none()),
               Mockito.any(),
               Mockito.any(),
               Mockito.any());
@@ -815,7 +814,7 @@ public class FlushServiceTest {
     Mockito.verify(flushService, Mockito.times(expectedBlobs))
         .buildAndUpload(
             Mockito.any(),
-            Mockito.eq(Optional.empty()),
+            Mockito.eq(FileMetadataTestingOverrides.none()),
             blobDataCaptor.capture(),
             Mockito.any(),
             Mockito.any());
@@ -868,7 +867,7 @@ public class FlushServiceTest {
     Mockito.verify(flushService, Mockito.atLeast(2))
         .buildAndUpload(
             Mockito.any(),
-            Mockito.eq(Optional.empty()),
+            Mockito.eq(FileMetadataTestingOverrides.none()),
             blobDataCaptor.capture(),
             Mockito.any(),
             Mockito.any());

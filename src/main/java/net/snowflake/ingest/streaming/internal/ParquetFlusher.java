@@ -59,16 +59,17 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       String filePath,
       long chunkStartOffset,
-      Optional<String> customFileId)
+      FileMetadataTestingOverrides fileMetadataTestingOverrides)
       throws IOException {
-    return serializeFromJavaObjects(channelsDataPerTable, filePath, chunkStartOffset, customFileId);
+    return serializeFromJavaObjects(
+        channelsDataPerTable, filePath, chunkStartOffset, fileMetadataTestingOverrides);
   }
 
   private SerializationResult serializeFromJavaObjects(
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       String filePath,
       long chunkStartOffset,
-      Optional<String> customFileId)
+      FileMetadataTestingOverrides fileMetadataTestingOverrides)
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
@@ -94,12 +95,12 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
       logger.logDebug(
           "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={},"
-              + " customFileId={}",
+              + " fileMetadataTestingOverrides={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
           filePath,
-          customFileId.orElse("N/A"));
+          fileMetadataTestingOverrides);
 
       if (rows == null) {
         columnEpStatsMapCombined = data.getColumnEps();
@@ -129,16 +130,18 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
       logger.logDebug(
           "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
-              + " customFileId={}",
+              + " fileMetadataTestingOverrides={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
           filePath,
-          customFileId.orElse("N/A"));
+          fileMetadataTestingOverrides);
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
-    addFileIdToMetadata(filePath, chunkStartOffset, metadata, customFileId);
+    addFileIdToMetadata(
+        filePath, chunkStartOffset, metadata, fileMetadataTestingOverrides.customFileId);
+    overrideSdkVersionInMetadata(metadata, fileMetadataTestingOverrides.customSdkVersion);
     parquetWriter =
         new SnowflakeParquetWriter(
             mergedData,
@@ -169,7 +172,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       String filePath,
       long chunkStartOffset,
       Map<String, String> metadata,
-      Optional<String> customFileId) {
+      Optional<String> customFileIdForTesting) {
     // We insert the filename in the file itself as metadata so that streams can work on replicated
     // mixed tables. For a more detailed discussion on the topic see SNOW-561447 and
     // http://go/streams-on-replicated-mixed-tables,  and
@@ -186,7 +189,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
             ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
             : Constants.PRIMARY_FILE_ID_KEY;
     String value =
-        customFileId.orElseGet(
+        customFileIdForTesting.orElseGet(
             () -> {
               String shortName = StreamingIngestUtils.getShortname(filePath);
               if (chunkStartOffset == 0) {
@@ -198,6 +201,19 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               }
             });
     metadata.put(key, value);
+  }
+
+  private void overrideSdkVersionInMetadata(
+      Map<String, String> metadata, Optional<Optional<String>> customSdkVersionForTesting) {
+    if (!customSdkVersionForTesting.isPresent()) {
+      return;
+    }
+    Optional<String> sdkVersionOverride = customSdkVersionForTesting.get();
+    if (sdkVersionOverride.isPresent()) {
+      metadata.put(Constants.SDK_VERSION_KEY, sdkVersionOverride.get());
+    } else {
+      metadata.remove(Constants.SDK_VERSION_KEY);
+    }
   }
 
   /**

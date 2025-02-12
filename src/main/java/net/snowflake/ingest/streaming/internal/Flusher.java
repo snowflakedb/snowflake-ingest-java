@@ -8,7 +8,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import net.snowflake.ingest.utils.Pair;
 
 /**
@@ -24,8 +23,8 @@ public interface Flusher<T> {
    * @param channelsDataPerTable buffered rows
    * @param filePath file path
    * @param chunkStartOffset
-   * @param customFileId Allows setting a custom file ID to be embedded for all chunks in storage.
-   *     Used for testing.
+   * @param fileMetadataTestingOverrides Allows setting a custom file ID and SDK version to be
+   *     embedded for all chunks in storage. Used for testing.
    * @return {@link SerializationResult}
    * @throws IOException
    */
@@ -33,7 +32,7 @@ public interface Flusher<T> {
       List<ChannelData<T>> channelsDataPerTable,
       String filePath,
       long chunkStartOffset,
-      Optional<String> customFileId)
+      FileMetadataTestingOverrides fileMetadataTestingOverrides)
       throws IOException;
 
   /** Holds result of the buffered rows conversion: channel metadata and stats. */
