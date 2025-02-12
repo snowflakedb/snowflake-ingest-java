@@ -62,6 +62,8 @@ class BlobBuilder {
    * Builds blob.
    *
    * @param filePath Path of the destination file in cloud storage
+   * @param fileMetadataTestingOverrides Allows setting a custom file ID and SDK version to be
+   *     embedded for all chunks in storage. Used for testing.
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param bdecVersion version of blob
@@ -69,6 +71,7 @@ class BlobBuilder {
    */
   static <T> Blob constructBlobAndMetadata(
       String filePath,
+      FileMetadataTestingOverrides fileMetadataTestingOverrides,
       List<List<ChannelData<T>>> blobData,
       Constants.BdecVersion bdecVersion,
       InternalParameterProvider internalParameterProvider,
@@ -101,7 +104,8 @@ class BlobBuilder {
 
       Flusher<T> flusher = channelsDataPerTable.get(0).createFlusher();
       Flusher.SerializationResult serializedChunk =
-          flusher.serialize(channelsDataPerTable, filePath, curDataSize);
+          flusher.serialize(
+              channelsDataPerTable, filePath, curDataSize, fileMetadataTestingOverrides);
 
       if (!serializedChunk.channelsMetadataList.isEmpty()) {
         final byte[] compressedChunkData;
