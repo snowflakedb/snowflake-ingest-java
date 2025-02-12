@@ -58,15 +58,18 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   public SerializationResult serialize(
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       String filePath,
-      long chunkStartOffset)
+      long chunkStartOffset,
+      FileMetadataTestingOverrides fileMetadataTestingOverrides)
       throws IOException {
-    return serializeFromJavaObjects(channelsDataPerTable, filePath, chunkStartOffset);
+    return serializeFromJavaObjects(
+        channelsDataPerTable, filePath, chunkStartOffset, fileMetadataTestingOverrides);
   }
 
   private SerializationResult serializeFromJavaObjects(
       List<ChannelData<ParquetChunkData>> channelsDataPerTable,
       String filePath,
-      long chunkStartOffset)
+      long chunkStartOffset,
+      FileMetadataTestingOverrides fileMetadataTestingOverrides)
       throws IOException {
     List<ChannelMetadata> channelsMetadataList = new ArrayList<>();
     long rowCount = 0L;
@@ -91,11 +94,13 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       channelsMetadataList.add(channelMetadata);
 
       logger.logDebug(
-          "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={}",
+          "Parquet Flusher: Start building channel={}, rowCount={}, bufferSize={} in blob={},"
+              + " fileMetadataTestingOverrides={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
-          filePath);
+          filePath,
+          fileMetadataTestingOverrides);
 
       if (rows == null) {
         columnEpStatsMapCombined = data.getColumnEps();
@@ -124,15 +129,18 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       chunkEstimatedUncompressedSize += data.getBufferSize();
 
       logger.logDebug(
-          "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={}",
+          "Parquet Flusher: Finish building channel={}, rowCount={}, bufferSize={} in blob={},"
+              + " fileMetadataTestingOverrides={}",
           data.getChannelContext().getFullyQualifiedName(),
           data.getRowCount(),
           data.getBufferSize(),
-          filePath);
+          filePath,
+          fileMetadataTestingOverrides);
     }
 
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     addFileIdToMetadata(filePath, chunkStartOffset, metadata);
+    overrideMetadataForTesting(metadata, fileMetadataTestingOverrides);
     parquetWriter =
         new SnowflakeParquetWriter(
             mergedData,
@@ -183,6 +191,25 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       metadata.put(
           Constants.PRIMARY_FILE_ID_KEY,
           String.format("%s_%d.%s", parts[0], chunkStartOffset, parts[1]));
+    }
+  }
+
+  private void overrideMetadataForTesting(
+      Map<String, String> metadata, FileMetadataTestingOverrides overrides) {
+    if (overrides.customFileId.isPresent()) {
+      metadata.put(
+          enableIcebergStreaming
+              ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+              : Constants.PRIMARY_FILE_ID_KEY,
+          overrides.customFileId.get());
+    }
+    if (overrides.customSdkVersion.isPresent()) {
+      Optional<String> sdkVersionOverride = overrides.customSdkVersion.get();
+      if (sdkVersionOverride.isPresent()) {
+        metadata.put(Constants.SDK_VERSION_KEY, sdkVersionOverride.get());
+      } else {
+        metadata.remove(Constants.SDK_VERSION_KEY);
+      }
     }
   }
 

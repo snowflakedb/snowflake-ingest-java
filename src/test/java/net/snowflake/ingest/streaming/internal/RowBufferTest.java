@@ -2327,7 +2327,8 @@ public class RowBufferTest {
     ParquetFlusher flusher = (ParquetFlusher) bufferUnderTest.createFlusher();
     {
       Flusher.SerializationResult result =
-          flusher.serialize(Collections.singletonList(data), filePath, 0);
+          flusher.serialize(
+              Collections.singletonList(data), filePath, 0, FileMetadataTestingOverrides.none());
 
       BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
       Assert.assertEquals(
@@ -2345,7 +2346,8 @@ public class RowBufferTest {
     {
       try {
         Flusher.SerializationResult result =
-            flusher.serialize(Collections.singletonList(data), filePath, 13);
+            flusher.serialize(
+                Collections.singletonList(data), filePath, 13, FileMetadataTestingOverrides.none());
         if (enableIcebergStreaming) {
           Assert.fail(
               "Should have thrown an exception because iceberg streams do not support offsets");
@@ -2368,6 +2370,48 @@ public class RowBufferTest {
           throw ex;
         }
       }
+    }
+    {
+      // Test custom file ID and SDK version written to the file.
+      Flusher.SerializationResult result =
+          flusher.serialize(
+              Collections.singletonList(data),
+              filePath,
+              0,
+              new FileMetadataTestingOverrides(
+                  Optional.of("customId"), Optional.of(Optional.of("customVersion"))));
+
+      BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
+      Assert.assertEquals(
+          "customId",
+          reader
+              .getKeyValueMetadata()
+              .get(
+                  enableIcebergStreaming
+                      ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+                      : Constants.PRIMARY_FILE_ID_KEY));
+      Assert.assertEquals(
+          "customVersion", reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
+    }
+    {
+      // Test removing the SDK version written to the file.
+      Flusher.SerializationResult result =
+          flusher.serialize(
+              Collections.singletonList(data),
+              filePath,
+              0,
+              new FileMetadataTestingOverrides(Optional.empty(), Optional.of(Optional.empty())));
+
+      BdecParquetReader reader = new BdecParquetReader(result.chunkData.toByteArray());
+      Assert.assertEquals(
+          "testParquetFileNameMetadata.bdec",
+          reader
+              .getKeyValueMetadata()
+              .get(
+                  enableIcebergStreaming
+                      ? Constants.ASSIGNED_FULL_FILE_NAME_KEY
+                      : Constants.PRIMARY_FILE_ID_KEY));
+      Assert.assertNull(reader.getKeyValueMetadata().get(Constants.SDK_VERSION_KEY));
     }
   }
 
