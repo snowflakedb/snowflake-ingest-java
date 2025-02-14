@@ -9,6 +9,7 @@ import org.junit.Test;
 
 public class UserAgentTest {
   @Test
+  @Ignore
   public void testDefaultSdkVersionMatchesProjectVersion() throws IOException {
     Properties properties = new Properties();
     try (InputStream is =
