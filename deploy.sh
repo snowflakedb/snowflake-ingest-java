@@ -12,14 +12,14 @@ if [ -z "$GPG_KEY_PASSPHRASE" ]; then
   exit 1
 fi
 
-if [ -z "$GPG_PRIVATE_KEY" ]; then
+if [ -z "$SF_PRIVATE_KEY_FILE" ]; then
   echo "[ERROR] GPG private key file is not specified!"
   exit 1
 fi
 
 echo "[INFO] Import PGP Key"
 if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
-  gpg --allow-secret-key-import --import "$GPG_PRIVATE_KEY"
+  gpg --allow-secret-key-import --import "$SF_PRIVATE_KEY_FILE"
 fi
 
 # copy the settings.xml template and inject credential information 
