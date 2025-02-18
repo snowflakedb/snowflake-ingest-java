@@ -188,6 +188,7 @@ class InternalStage implements IStorage {
         SnowflakeFileTransferAgent.uploadWithoutConnection(
             SnowflakeFileTransferConfig.Builder.newInstance()
                 .setSnowflakeFileTransferMetadata(fileTransferMetadataCopy)
+                .setSilentException(true)
                 .setUploadStream(inStream)
                 .setRequireCompress(false)
                 .setOcspMode(OCSPMode.FAIL_OPEN)
