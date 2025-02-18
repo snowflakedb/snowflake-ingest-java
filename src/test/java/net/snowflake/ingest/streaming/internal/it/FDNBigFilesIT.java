@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.streaming.internal.it;
 
 import static net.snowflake.ingest.TestUtils.verifyTableRowCount;
@@ -36,7 +40,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 /** Ingest large amount of rows. */
 @RunWith(Parameterized.class)
-public class StreamingIngestBigFilesIT {
+public class FDNBigFilesIT {
   private static final String TEST_DB_PREFIX = "STREAMING_INGEST_TEST_DB";
   private static final String TEST_SCHEMA = "STREAMING_INGEST_TEST_SCHEMA";
 
