@@ -29,7 +29,7 @@
       <dependency>
         <groupId>net.snowflake</groupId>
         <artifactId>snowflake-ingest-sdk</artifactId>
-        <version>3.1.0-unshaded</version>
+        <version>3.1.0</version>
       </dependency>
 
       <dependency>
