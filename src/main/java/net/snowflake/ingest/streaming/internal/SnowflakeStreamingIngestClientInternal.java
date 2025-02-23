@@ -482,10 +482,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
-   * Fetch channels status from Snowflake
+   * Fetch the status of one or more Channels from Snowflake
    *
-   * @param channels a list of channels that we want to get the status on
+   * @param channels a list of channels that we want to get the status of
    * @return a ChannelsStatusResponse object
+   * @throws SFException if the caller cannot communicate with Snowflake
    */
   ChannelsStatusResponse getChannelsStatus(
       List<SnowflakeStreamingIngestChannelInternal<?>> channels) {
@@ -507,9 +508,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
           String errorMessage =
               String.format(
-                  "Channel has failure status_code, name=%s, channel_sequencer=%d, status_code=%d",
+                  "Channel has failure status_code, name=%s, current.channel_sequencer=%d,"
+                      + " persisted.channel_sequencer=%d, status_code=%d",
                   channel.getFullyQualifiedName(),
                   channel.getChannelSequencer(),
+                  channelStatus.getPersistedClientSequencer(),
                   channelStatus.getStatusCode());
           logger.logWarn(errorMessage);
           if (getTelemetryService() != null) {

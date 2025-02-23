@@ -220,7 +220,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.isClosed;
   }
 
-  /** Mark the channel as closed */
+  /** Mark the channel as closed, meaning that no additional writes can be made to the channel */
   void markClosed() {
     this.isClosed = true;
     logger.logInfo(
@@ -262,6 +262,14 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.close(false);
   }
 
+  /**
+   * Attempts to close the channel by draining any outstanding data and rejecting further writes to
+   * the channel.
+   *
+   * @param drop if true, the channel will be dropped after all data is successfully committed.
+   * @throws SFException when the channel is invalid or closed, meaning that no new rows can be
+   *     inserted via this instance of the channel.
+   */
   @Override
   public CompletableFuture<Void> close(boolean drop) {
     checkValidation();
@@ -302,7 +310,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /**
-   * Setup the column fields and vectors using the column metadata from the server
+   * Set up the column fields and vectors using the column metadata from the server
    *
    * @param columns
    */
@@ -314,18 +322,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /**
-   * --------------------------------------------------------------------------------------------
-   * Insert one row into the channel
-   * --------------------------------------------------------------------------------------------
-   */
-
-  /**
    * The row is represented using Map where the key is column name and the value is a row of data
+   *
+   * <p>Notes: this may throttle on the calling thread if there is insufficient memory to accept the
+   * supplied rows. This is done by sleeping in the current thread and checking memory conditions.
+   * Thus, the caller should expect this to not return immediately.
    *
    * @param row object data to write
    * @param offsetToken offset of given row, used for replay in case of failures
    * @return insert response that possibly contains errors because of insertion failures
-   * @throws SFException when the channel is invalid or closed
+   * @throws SFException when the channel is invalid or closed, meaning that no new rows can be
+   *     inserted via this instance of the channel.
    */
   @Override
   public InsertValidationResponse insertRow(Map<String, Object> row, String offsetToken) {
@@ -333,22 +340,24 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /**
-   * --------------------------------------------------------------------------------------------
-   * Insert a batch of rows into the channel
-   * --------------------------------------------------------------------------------------------
-   */
-
-  /**
    * Insert a batch of rows into the channel, each row is represented using Map where the key is
    * column name and the value is a row of data. See {@link
    * SnowflakeStreamingIngestChannel#insertRow(Map, String)} for more information about accepted
    * values.
+   *
+   * <p>Notes: this may throttle on the calling thread if there is insufficient memory to accept the
+   * supplied rows. This is done by sleeping in the current thread and checking memory conditions.
+   * Thus, the caller should expect this to not return immediately.
    *
    * @param rows object data to write
    * @param startOffsetToken start offset of the batch/row-set
    * @param endOffsetToken end offset of the batch/row-set, used for replay in case of failures, *
    *     It could be null if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
+   * @throws SFException if the channel is closed or is considered "invalid", i.e. another Client
+   *     instance has opened the Channel.
+   * @throws SFException when the channel is invalid or closed, meaning that no new rows can be
+   *     inserted via this instance of the channel.
    */
   @Override
   public InsertValidationResponse insertRows(
@@ -401,23 +410,21 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
   }
 
   /**
-   * Get the latest committed offset token from Snowflake, an exception will be thrown if the
-   * channel becomes invalid due to errors and the channel needs to be reopened in order to return a
-   * valid offset token
+   * Get the latest, persisted committed offset token from Snowflake for this channel.
    *
-   * @return the latest committed offset token
+   * @return the latest committed offset token for this instance of the Channel
+   * @throws SFException if the current instance of the Channel is not the current owner OR if the
+   *     caller cannot communicate with Snowflake. Typically, this indicates that another Client
+   *     instance has opened up the Channel with the same name.
    */
   @Override
   public String getLatestCommittedOffsetToken() {
     checkValidation();
-
     ChannelsStatusResponse.ChannelStatusResponseDTO response =
         this.owningClient.getChannelsStatus(Collections.singletonList(this)).getChannels().get(0);
-
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       throw new SFException(ErrorCode.CHANNEL_STATUS_INVALID, getName(), response.getStatusCode());
     }
-
     return response.getPersistedOffsetToken();
   }
 
@@ -427,7 +434,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return this.tableColumns;
   }
 
-  /** Check whether we need to throttle the insertRows API */
+  /**
+   * Potentially throttles a call to the `insertRow(s)` APIs if needed. Note that throttling applies
+   * to the calling thread by sleeping on the curernt thread and checking whether memory conditions
+   * are suitable to accepting the current row.
+   */
   void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
     while ((hasLowRuntimeMemory(memoryInfoProvider)
@@ -443,7 +454,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     }
     if (retry > 0) {
       logger.logInfo(
-          "Insert throttled for a total of {} milliseconds, retryCount={}, client={}, channel={}",
+          "Insert throttled.millisecondsThrottled={}, retryCount={}, client={}, channel={}",
           retry * insertThrottleIntervalInMs,
           retry,
           this.owningClient.getName(),
@@ -471,7 +482,12 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return hasLowRuntimeMemory;
   }
 
-  /** Check whether the channel is still valid, cleanup and throw an error if not */
+  /**
+   * Check whether the channel is considered "valid", i.e. the current instance of the channel
+   * matches the server-side persisted Client epoch.
+   *
+   * @throws SFException if the current instance of the channel is no longer considered valid
+   */
   private void checkValidation() {
     if (!isValid()) {
       this.owningClient.removeChannelIfSequencersMatch(this);
