@@ -41,6 +41,26 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
 </settings>
 SETTINGS.XML
 
+# ---------------------------------------------------------------------------
+# execute with local settings
+echo "---------------------- Running with local settings ----------------------"
+MVN_REPOSITORY="$WORKSPACE/mvn_local"
+cd $WORKSPACE/snowflake/GSCommon
+
+mvn \
+    --batch-mode \
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+    -Dmaven.test.skip=true \
+    -Dmaven.repo.local=$MVN_REPOSITORY \
+    --settings mvn_settings.xml \
+  install
+
+pwd
+cd $WORKSPACE/snowflake-ingest-java
+pwd
+  echo "----------------------------------------------------------------------"
+# ---------------------------------------------------------------------------
+
 MVN_OPTIONS+=(
   "--settings" "$OSSRH_DEPLOY_SETTINGS_XML"
   "--batch-mode"
@@ -50,7 +70,7 @@ echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dmaven.wagon.http.retryHandler.requestSentEnabled=true -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
