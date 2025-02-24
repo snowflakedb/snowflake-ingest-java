@@ -45,7 +45,9 @@ SETTINGS.XML
 # execute with local settings
 echo "---------------------- Running with local settings ----------------------"
 MVN_REPOSITORY="$WORKSPACE/mvn_local"
-cd $WORKSPACE/snowflake/GSCommon
+pwd
+ls
+cd $WORKSPACE/GSCommon
 
 mvn \
     --batch-mode \
