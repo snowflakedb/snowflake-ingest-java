@@ -31,6 +31,35 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <profiles>
+    <profile>
+      <id>internal-maven</id>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <name>Internal Maven Repository</name>
+          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+        </repository>
+        <repository>
+          <id>deployment</id>
+          <name>Internal Releases</name>
+          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>central</id>
+          <name>Internal Maven Repository</name>
+          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+        </pluginRepository>
+        <pluginRepository>
+          <id>deployment</id>
+          <name>Internal Releases</name>
+          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
   <servers>
     <server>
       <id>$MVN_REPOSITORY_ID</id>
@@ -38,30 +67,11 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
       <password>$SONATYPE_PWD</password>
     </server>
   </servers>
+  <activeProfiles>
+    <activeProfile>internal-maven</activeProfile>
+  </activeProfiles>
 </settings>
 SETTINGS.XML
-
-# ---------------------------------------------------------------------------
-# execute with local settings
-echo "---------------------- Running with local settings ----------------------"
-MVN_REPOSITORY="$WORKSPACE/mvn_local"
-pwd
-ls
-cd $WORKSPACE/GSCommon
-
-mvn \
-    --batch-mode \
-    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
-    -Dmaven.test.skip=true \
-    -Dmaven.repo.local=$MVN_REPOSITORY \
-    --settings mvn_settings.xml \
-  install
-
-pwd
-cd $WORKSPACE/snowflake-ingest-java
-pwd
-  echo "----------------------------------------------------------------------"
-# ---------------------------------------------------------------------------
 
 MVN_OPTIONS+=(
   "--settings" "$OSSRH_DEPLOY_SETTINGS_XML"
