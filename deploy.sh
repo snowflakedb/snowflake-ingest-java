@@ -22,18 +22,18 @@ if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
   gpg --allow-secret-key-import --import "$GPG_PRIVATE_KEY"
 fi
 # -------------------------------------------------------------------------------------------------------
-echo "================ testing local settings ================"
-MVN_REPOSITORY="$WORKSPACE/mvn_local"
-mvn \
-    --batch-mode \
-    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
-    -Dmaven.repo.local=$MVN_REPOSITORY \
-    -Dself-contained-jar=true \
-    --settings $WORKSPACE/Client/mvn_settings.xml \
-    clean \
-    install
-[[ -f pom.xml.versionsBackup ]] && mv -f pom.xml.versionsBackup pom.xml || true
-echo "================ testing local settings ================"
+# echo "================ testing local settings ================"
+# MVN_REPOSITORY="$WORKSPACE/mvn_local"
+# mvn \
+#     --batch-mode \
+#     -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+#     -Dmaven.repo.local=$MVN_REPOSITORY \
+#     -Dself-contained-jar=true \
+#     --settings $WORKSPACE/Client/mvn_settings.xml \
+#     clean \
+#     install
+# [[ -f pom.xml.versionsBackup ]] && mv -f pom.xml.versionsBackup pom.xml || true
+# echo "================ testing local settings ================"
 # -------------------------------------------------------------------------------------------------------
 # copy the settings.xml template and inject credential information 
 OSSRH_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_ossrh_deploy.xml"
@@ -95,7 +95,7 @@ echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -X -e
+mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dhttp.keepAlive=false -X -e
 
 # echo "[INFO] Close and Release"
 # snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
