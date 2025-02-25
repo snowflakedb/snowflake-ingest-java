@@ -21,6 +21,7 @@ if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
   gpg --allow-secret-key-import --import "$GPG_PRIVATE_KEY"
 fi
 
+echo "[Info] Running using settings in GSCommont/mvn_settings.xml"
 MVN_REPOSITORY="$WORKSPACE/mvn_local"
 mvn \
     --batch-mode \
@@ -29,6 +30,17 @@ mvn \
     -Dmaven.repo.local=$MVN_REPOSITORY \
     --settings $WORKSPACE/GSCommon/mvn_settings.xml \
   install
+[[ -f pom.xml.versionsBackup ]] && mv -f pom.xml.versionsBackup pom.xml || true
+
+echo "[Info] Running using settings in Client/mvn_settings.xml"
+mvn \
+    --batch-mode \
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+    -Dmaven.repo.local=$MVN_REPOSITORY \
+    -Dself-contained-jar=true \
+    --settings $WORKSPACE/Client/mvn_settings.xml \
+    clean \
+    install
 [[ -f pom.xml.versionsBackup ]] && mv -f pom.xml.versionsBackup pom.xml || true
 
 # copy the settings.xml template and inject credential information
