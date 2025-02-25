@@ -81,7 +81,7 @@ echo "[Info] Sign unshaded package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 echo "[Info] Project version: $project_version"
 $THIS_DIR/scripts/update_project_version.py pom.xml ${project_version} > generated_public_pom.xml
-echo "[Info] Running with parameter http.pool=false and -X -e
+echo "[Info] Running with parameter http.pool=false and -X -e"
 mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy -Dmaven.wagon.http.pool=false -X -e
 
 # echo "[INFO] Close and Release"
