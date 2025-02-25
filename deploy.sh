@@ -22,7 +22,7 @@ if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
   gpg --allow-secret-key-import --import "$GPG_PRIVATE_KEY"
 fi
 
-# copy the settings.xml template and inject credential information
+# copy the settings.xml template and inject credential information 
 OSSRH_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_ossrh_deploy.xml"
 MVN_REPOSITORY_ID=ossrh
 
