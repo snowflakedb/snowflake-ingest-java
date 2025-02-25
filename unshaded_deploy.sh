@@ -21,6 +21,16 @@ if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
   gpg --allow-secret-key-import --import "$GPG_PRIVATE_KEY"
 fi
 
+MVN_REPOSITORY="$WORKSPACE/mvn_local"
+mvn \
+    --batch-mode \
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
+    -Dmaven.test.skip=true \
+    -Dmaven.repo.local=$MVN_REPOSITORY \
+    --settings $WORKSPACE/GSCommon/mvn_settings.xml \
+  install
+[[ -f pom.xml.versionsBackup ]] && mv -f pom.xml.versionsBackup pom.xml || true
+
 # copy the settings.xml template and inject credential information
 OSSRH_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_ossrh_deploy.xml"
 MVN_REPOSITORY_ID=ossrh
