@@ -30,6 +30,35 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <profiles>
+    <profile>
+      <id>internal-maven</id>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <name>Internal Maven Repository</name>
+          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+        </repository>
+        <repository>
+          <id>deployment</id>
+          <name>Internal Releases</name>
+          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>central</id>
+          <name>Internal Maven Repository</name>
+          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+        </pluginRepository>
+        <pluginRepository>
+          <id>deployment</id>
+          <name>Internal Releases</name>
+          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
   <servers>
     <server>
       <id>$MVN_REPOSITORY_ID</id>
@@ -37,6 +66,9 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
       <password>$SONATYPE_PWD</password>
     </server>
   </servers>
+  <activeProfiles>
+    <activeProfile>internal-maven</activeProfile>
+  </activeProfiles>
 </settings>
 SETTINGS.XML
 
@@ -50,39 +82,39 @@ project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.x
 echo "[Info] Project version: $project_version"
 $THIS_DIR/scripts/update_project_version.py pom.xml ${project_version} > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy 
+mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy -Dmaven.wagon.http.pool=false
 
-echo "[INFO] Close and Release"
-snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
-    -DserverId=$MVN_REPOSITORY_ID  -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true \
-    -DnexusUrl=https://oss.sonatype.org/ | grep netsnowflake | awk '{print $2}')
-IFS=" "
-if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
-    echo "[ERROR] Not single netsnowflake repository is staged. Login https://oss.sonatype.org/ and make sure no netsnowflake remains there."
-    exit 1
-fi
-if ! mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-close \
-    -DserverId=$MVN_REPOSITORY_ID \
-    -DnexusUrl=https://oss.sonatype.org/ \
-    -DstagingRepositoryId=$snowflake_repositories \
-    -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true\
-    -DstagingDescription="Automated Close"; then
-    echo "[ERROR] Failed to close. Fix the errors and try this script again"
-    mvn ${MVN_OPTIONS[@]} \
-        nexus-staging:rc-drop \
-        -DserverId=$MVN_REPOSITORY_ID \
-        -DnexusUrl=https://oss.sonatype.org/ \
-        -DstagingRepositoryId=$snowflake_repositories -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true\
-        -DstagingDescription="Failed to close. Dropping..."
-fi
+# echo "[INFO] Close and Release"
+# snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
+#     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
+#     -DserverId=$MVN_REPOSITORY_ID  -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true \
+#     -DnexusUrl=https://oss.sonatype.org/ | grep netsnowflake | awk '{print $2}')
+# IFS=" "
+# if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
+#     echo "[ERROR] Not single netsnowflake repository is staged. Login https://oss.sonatype.org/ and make sure no netsnowflake remains there."
+#     exit 1
+# fi
+# if ! mvn ${MVN_OPTIONS[@]} \
+#     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-close \
+#     -DserverId=$MVN_REPOSITORY_ID \
+#     -DnexusUrl=https://oss.sonatype.org/ \
+#     -DstagingRepositoryId=$snowflake_repositories \
+#     -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true\
+#     -DstagingDescription="Automated Close"; then
+#     echo "[ERROR] Failed to close. Fix the errors and try this script again"
+#     mvn ${MVN_OPTIONS[@]} \
+#         nexus-staging:rc-drop \
+#         -DserverId=$MVN_REPOSITORY_ID \
+#         -DnexusUrl=https://oss.sonatype.org/ \
+#         -DstagingRepositoryId=$snowflake_repositories -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true\
+#         -DstagingDescription="Failed to close. Dropping..."
+# fi
 
-mvn ${MVN_OPTIONS[@]} \
-    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
-    -DserverId=$MVN_REPOSITORY_ID \
-    -DnexusUrl=https://oss.sonatype.org/ \
-    -DstagingRepositoryId=$snowflake_repositories -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true\
-    -DstagingDescription="Automated Release"
+# mvn ${MVN_OPTIONS[@]} \
+#     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
+#     -DserverId=$MVN_REPOSITORY_ID \
+#     -DnexusUrl=https://oss.sonatype.org/ \
+#     -DstagingRepositoryId=$snowflake_repositories -Dnot-shadeDep  versions:set -DnewVersion=$project_version-unshaded -Dmaven.javadoc.skip=true -Dmaven.source.skip=true\
+#     -DstagingDescription="Automated Release"
 
 rm $OSSRH_DEPLOY_SETTINGS_XML
