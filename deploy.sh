@@ -21,21 +21,7 @@ echo "[INFO] Import PGP Key"
 if ! gpg --list-secret-key | grep "$GPG_KEY_ID"; then
   gpg --allow-secret-key-import --import "$GPG_PRIVATE_KEY"
 fi
-# -------------------------------------------------------------------------------------------------------
-# echo "================ testing local settings ================"
-# MVN_REPOSITORY="$WORKSPACE/mvn_local"
-# mvn \
-#     --batch-mode \
-#     -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn \
-#     -Dmaven.repo.local=$MVN_REPOSITORY \
-#     -Dself-contained-jar=true \
-#     --settings $WORKSPACE/Client/mvn_settings.xml \
-#     clean \
-#     install
-# [[ -f pom.xml.versionsBackup ]] && mv -f pom.xml.versionsBackup pom.xml || true
-# echo "================ testing local settings ================"
-# -------------------------------------------------------------------------------------------------------
-# copy the settings.xml template and inject credential information 
+
 OSSRH_DEPLOY_SETTINGS_XML="$THIS_DIR/mvn_settings_ossrh_deploy.xml"
 MVN_REPOSITORY_ID=ossrh
 
@@ -97,36 +83,36 @@ $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > ge
 
 mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dmaven.wagon.http.pool=false -X -e
 
-# echo "[INFO] Close and Release"
-# snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
-#     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
-#     -DserverId=$MVN_REPOSITORY_ID \
-#     -DnexusUrl=https://oss.sonatype.org/ | grep netsnowflake | awk '{print $2}')
-# IFS=" "
-# if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
-#     echo "[ERROR] Not single netsnowflake repository is staged. Login https://oss.sonatype.org/ and make sure no netsnowflake remains there."
-#     exit 1
-# fi
-# if ! mvn ${MVN_OPTIONS[@]} \
-#     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-close \
-#     -DserverId=$MVN_REPOSITORY_ID \
-#     -DnexusUrl=https://oss.sonatype.org/ \
-#     -DstagingRepositoryId=$snowflake_repositories \
-#     -DstagingDescription="Automated Close"; then
-#     echo "[ERROR] Failed to close. Fix the errors and try this script again"
-#     mvn ${MVN_OPTIONS[@]} \
-#         nexus-staging:rc-drop \
-#         -DserverId=$MVN_REPOSITORY_ID \
-#         -DnexusUrl=https://oss.sonatype.org/ \
-#         -DstagingRepositoryId=$snowflake_repositories \
-#         -DstagingDescription="Failed to close. Dropping..."
-# fi
+echo "[INFO] Close and Release"
+snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
+    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-list \
+    -DserverId=$MVN_REPOSITORY_ID \
+    -DnexusUrl=https://oss.sonatype.org/ | grep netsnowflake | awk '{print $2}')
+IFS=" "
+if (( $(echo $snowflake_repositories | wc -l)!=1 )); then
+    echo "[ERROR] Not single netsnowflake repository is staged. Login https://oss.sonatype.org/ and make sure no netsnowflake remains there."
+    exit 1
+fi
+if ! mvn ${MVN_OPTIONS[@]} \
+    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-close \
+    -DserverId=$MVN_REPOSITORY_ID \
+    -DnexusUrl=https://oss.sonatype.org/ \
+    -DstagingRepositoryId=$snowflake_repositories \
+    -DstagingDescription="Automated Close"; then
+    echo "[ERROR] Failed to close. Fix the errors and try this script again"
+    mvn ${MVN_OPTIONS[@]} \
+        nexus-staging:rc-drop \
+        -DserverId=$MVN_REPOSITORY_ID \
+        -DnexusUrl=https://oss.sonatype.org/ \
+        -DstagingRepositoryId=$snowflake_repositories \
+        -DstagingDescription="Failed to close. Dropping..."
+fi
 
-# mvn ${MVN_OPTIONS[@]} \
-#     org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
-#     -DserverId=$MVN_REPOSITORY_ID \
-#     -DnexusUrl=https://oss.sonatype.org/ \
-#     -DstagingRepositoryId=$snowflake_repositories \
-#     -DstagingDescription="Automated Release"
+mvn ${MVN_OPTIONS[@]} \
+    org.sonatype.plugins:nexus-staging-maven-plugin:1.6.7:rc-release \
+    -DserverId=$MVN_REPOSITORY_ID \
+    -DnexusUrl=https://oss.sonatype.org/ \
+    -DstagingRepositoryId=$snowflake_repositories \
+    -DstagingDescription="Automated Release"
 
 rm $OSSRH_DEPLOY_SETTINGS_XML
