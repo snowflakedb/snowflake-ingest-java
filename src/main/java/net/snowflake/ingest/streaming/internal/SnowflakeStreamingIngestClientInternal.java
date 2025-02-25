@@ -317,7 +317,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     return this.role;
   }
 
-  /** @return a boolean to indicate whether the client is closed or not */
+  /**
+   * @return a boolean to indicate whether the client is closed or not
+   */
   @Override
   public boolean isClosed() {
     return isClosed;

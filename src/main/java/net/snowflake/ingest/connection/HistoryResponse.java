@@ -26,6 +26,7 @@ public class HistoryResponse {
   public HistoryResponse() {
     this.files = new ArrayList<>();
   }
+
   /**
    * HistoryStats - The statistics reported back by the service about the currently loading set of
    * files

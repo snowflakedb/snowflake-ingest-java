@@ -20,6 +20,7 @@ public enum IngestStatus {
   /** If ON_ERROR for pipe field is set and the file was loaded with a few errors */
   PARTIALLY_LOADED(4, "Partially loaded"),
   ;
+
   /**
    * Constructor, set id and description
    *
