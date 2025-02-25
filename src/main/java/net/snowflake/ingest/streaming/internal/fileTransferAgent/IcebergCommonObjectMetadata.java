@@ -36,13 +36,17 @@ public class IcebergCommonObjectMetadata implements StorageObjectMetadata {
     this.userDefinedMetadata = SnowflakeUtil.createCaseInsensitiveMap(userDefinedMetadata);
   }
 
-  /** @return returns a Map/key-value pairs of metadata properties */
+  /**
+   * @return returns a Map/key-value pairs of metadata properties
+   */
   @Override
   public Map<String, String> getUserMetadata() {
     return userDefinedMetadata;
   }
 
-  /** @return returns the size of object in bytes */
+  /**
+   * @return returns the size of object in bytes
+   */
   @Override
   public long getContentLength() {
     return contentLength;

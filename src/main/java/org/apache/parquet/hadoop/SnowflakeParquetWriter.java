@@ -123,7 +123,9 @@ public class SnowflakeParquetWriter implements AutoCloseable {
             encodingProps);
   }
 
-  /** @return List of row counts per block stored in the parquet footer */
+  /**
+   * @return List of row counts per block stored in the parquet footer
+   */
   public List<Long> getRowCountsFromFooter() {
     if (maxRowGroups.isPresent() && writer.getFooter().getBlocks().size() > maxRowGroups.get()) {
       throw new SFException(
@@ -140,7 +142,9 @@ public class SnowflakeParquetWriter implements AutoCloseable {
     return blockRowCounts;
   }
 
-  /** @return extended metadata size (page index size + bloom filter size) */
+  /**
+   * @return extended metadata size (page index size + bloom filter size)
+   */
   public long getExtendedMetadataSize() {
     long extendedMetadataSize = 0;
     for (BlockMetaData metadata : writer.getFooter().getBlocks()) {

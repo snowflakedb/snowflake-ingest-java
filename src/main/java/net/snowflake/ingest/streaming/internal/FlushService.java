@@ -609,8 +609,12 @@ class FlushService<T> {
       List<List<ChannelData<T>>> blobData,
       String fullyQualifiedTableName,
       Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
-      throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-          NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
+      throws IOException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          NoSuchPaddingException,
+          IllegalBlockSizeException,
+          BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
