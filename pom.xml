@@ -1148,15 +1148,7 @@
 
                 <banDuplicatePomDependencyVersions/>
                 <bannedDependencies/>
-                <dependencyConvergence>
-                  <excludes>
-                    <exclude>commons-io:commons-io</exclude>
-                    <exclude>commons-codec:commons-codec</exclude>
-                    <exclude>org.apache.avro:avro</exclude>
-                    <exclude>org.apache.commons:commons-compress</exclude>
-                    <exclude>org.apache.commons:commons-lang3</exclude>
-                  </excludes>
-                </dependencyConvergence>
+                <dependencyConvergence/>
                 <requireUpperBoundDeps/>
               </rules>
             </configuration>
@@ -1387,18 +1379,7 @@
             <configuration>
               <artifactSet>
                 <excludes>
-                  <exclude>net.snowflake:snowflake-jdbc-thin</exclude>
-                  <exclude>org.apache.httpcomponents:httpclient</exclude>
-                  <exclude>org.apache.httpcomponents:httpcore</exclude>
                   <exclude>org.slf4j:slf4j-api</exclude>
-                  <exclude>com.fasterxml.jackson.core:jackson-annotations</exclude>
-                  <exclude>com.fasterxml.jackson.core:jackson-core</exclude>
-                  <exclude>com.fasterxml.jackson.core:jackson-databind</exclude>
-                  <exclude>com.fasterxml.jackson.dataformat:jackson-dataformat-toml</exclude>
-                  <exclude>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</exclude>
-                  <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310</exclude>
-                  <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jdk8</exclude>
-                  <exclude>com.google.guava:guava</exclude>
                   <exclude>com.github.luben:zstd-jni</exclude>
                 </excludes>
               </artifactSet>
@@ -1422,6 +1403,18 @@
                 <relocation>
                   <pattern>net.minidev</pattern>
                   <shadedPattern>${shadeBase}.net.minidev</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>net.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.snowflake.client.jdbc</pattern>
+                  <shadedPattern>${shadeBase}.com.snowflake.client.jdbc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.fasterxml</pattern>
+                  <shadedPattern>${shadeBase}.com.fasterxml</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.objectweb</pattern>
@@ -1450,6 +1443,10 @@
                 <relocation>
                   <pattern>org.apache.hc</pattern>
                   <shadedPattern>${shadeBase}.org.apache.hc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.apache.http</pattern>
+                  <shadedPattern>${shadeBase}.org.apache.http</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>org.apache.iceberg</pattern>
