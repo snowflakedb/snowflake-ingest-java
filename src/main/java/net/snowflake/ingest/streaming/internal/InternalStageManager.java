@@ -22,6 +22,7 @@ import net.snowflake.ingest.utils.Utils;
 /** Class to manage single Snowflake internal stage */
 class InternalStageManager implements IStorageManager {
   public static final TableRef NO_TABLE_REF = new TableRef("$NO_DB$", "$NO_SCH$", "$NO_TABLE$");
+
   /** Target stage for the client */
   private final InternalStage targetStage;
 
