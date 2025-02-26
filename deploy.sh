@@ -31,6 +31,35 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <profiles>
+    <profile>
+      <id>internal-maven</id>
+      <repositories>
+        <repository>
+          <id>central</id>
+          <name>Internal Maven Repository</name>
+          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+        </repository>
+        <repository>
+          <id>deployment</id>
+          <name>Internal Releases</name>
+          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>central</id>
+          <name>Internal Maven Repository</name>
+          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+        </pluginRepository>
+        <pluginRepository>
+          <id>deployment</id>
+          <name>Internal Releases</name>
+          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
   <servers>
     <server>
       <id>$MVN_REPOSITORY_ID</id>
@@ -38,6 +67,9 @@ cat > $OSSRH_DEPLOY_SETTINGS_XML << SETTINGS.XML
       <password>$SONATYPE_PWD</password>
     </server>
   </servers>
+  <activeProfiles>
+    <activeProfile>internal-maven</activeProfile>
+  </activeProfiles>
 </settings>
 SETTINGS.XML
 
@@ -50,7 +82,7 @@ echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy
+mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dmaven.wagon.http.pool=false -X -e
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \

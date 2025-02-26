@@ -44,22 +44,30 @@ class ChannelRuntimeState {
     isValid = false;
   }
 
-  /** @return current end offset token */
+  /**
+   * @return current end offset token
+   */
   String getEndOffsetToken() {
     return endOffsetToken;
   }
 
-  /** @return current start offset token */
+  /**
+   * @return current start offset token
+   */
   String getStartOffsetToken() {
     return startOffsetToken;
   }
 
-  /** @return current offset token after first incrementing it by one. */
+  /**
+   * @return current offset token after first incrementing it by one.
+   */
   long incrementAndGetRowSequencer() {
     return rowSequencer.incrementAndGet();
   }
 
-  /** @return row sequencer of the channel. */
+  /**
+   * @return row sequencer of the channel.
+   */
   long getRowSequencer() {
     return rowSequencer.get();
   }

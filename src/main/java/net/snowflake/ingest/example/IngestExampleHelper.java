@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class IngestExampleHelper {
   // a logger for all of our needs in this class
   private static final Logger LOGGER = LoggerFactory.getLogger(IngestExampleHelper.class.getName());
+
   /**
    * Create directories if they don't exist under directoryPath.
    *
@@ -133,6 +134,7 @@ public class IngestExampleHelper {
   }
 
   private static String ALGORITHM = "RSA";
+
   /**
    * Generates an RSA keypair for use in this test
    *

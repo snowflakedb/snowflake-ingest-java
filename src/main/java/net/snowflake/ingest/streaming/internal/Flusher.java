@@ -20,15 +20,19 @@ public interface Flusher<T> {
   /**
    * Serialize buffered rows into the underlying format.
    *
-   * @param fullyQualifiedTableName
    * @param channelsDataPerTable buffered rows
    * @param filePath file path
    * @param chunkStartOffset
+   * @param fileMetadataTestingOverrides Allows setting a custom file ID and SDK version to be
+   *     embedded for all chunks in storage. Used for testing.
    * @return {@link SerializationResult}
    * @throws IOException
    */
   SerializationResult serialize(
-      List<ChannelData<T>> channelsDataPerTable, String filePath, long chunkStartOffset)
+      List<ChannelData<T>> channelsDataPerTable,
+      String filePath,
+      long chunkStartOffset,
+      FileMetadataTestingOverrides fileMetadataTestingOverrides)
       throws IOException;
 
   /** Holds result of the buffered rows conversion: channel metadata and stats. */

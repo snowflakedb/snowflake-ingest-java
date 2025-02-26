@@ -279,7 +279,9 @@ public class ParameterProvider {
     }
   }
 
-  /** @return Longest interval in milliseconds between buffer flushes */
+  /**
+   * @return Longest interval in milliseconds between buffer flushes
+   */
   public long getCachedMaxClientLagInMs() {
     if (cachedBufferFlushIntervalMs != -1L) {
       return cachedBufferFlushIntervalMs;
@@ -344,7 +346,9 @@ public class ParameterProvider {
     return computedLag;
   }
 
-  /** @return Time in milliseconds between checks to see if the buffer should be flushed */
+  /**
+   * @return Time in milliseconds between checks to see if the buffer should be flushed
+   */
   public long getBufferFlushCheckIntervalInMs() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -355,7 +359,9 @@ public class ParameterProvider {
     return (long) val;
   }
 
-  /** @return Duration in milliseconds to delay data insertion to the buffer when throttled */
+  /**
+   * @return Duration in milliseconds to delay data insertion to the buffer when throttled
+   */
   public long getInsertThrottleIntervalInMs() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -366,7 +372,9 @@ public class ParameterProvider {
     return (long) val;
   }
 
-  /** @return Percent of free total memory at which we throttle row inserts */
+  /**
+   * @return Percent of free total memory at which we throttle row inserts
+   */
   public int getInsertThrottleThresholdInPercentage() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -378,7 +386,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return Absolute size in bytes of free total memory at which we throttle row inserts */
+  /**
+   * @return Absolute size in bytes of free total memory at which we throttle row inserts
+   */
   public int getInsertThrottleThresholdInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -389,7 +399,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return true if jmx metrics are enabled for a client */
+  /**
+   * @return true if jmx metrics are enabled for a client
+   */
   public boolean hasEnabledSnowpipeStreamingMetrics() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -400,7 +412,9 @@ public class ParameterProvider {
     return (boolean) val;
   }
 
-  /** @return Blob format version */
+  /**
+   * @return Blob format version
+   */
   public Constants.BdecVersion getBlobFormatVersion() {
     Object val = this.parameterMap.getOrDefault(BLOB_FORMAT_VERSION, BLOB_FORMAT_VERSION_DEFAULT);
     if (val instanceof Constants.BdecVersion) {
@@ -429,7 +443,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return the max retry count when waiting for a blob upload task to finish */
+  /**
+   * @return the max retry count when waiting for a blob upload task to finish
+   */
   public int getBlobUploadMaxRetryCount() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -440,7 +456,9 @@ public class ParameterProvider {
     return (int) val;
   }
 
-  /** @return The max memory limit in bytes */
+  /**
+   * @return The max memory limit in bytes
+   */
   public long getMaxMemoryLimitInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -448,7 +466,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
-  /** @return The max channel size in bytes */
+  /**
+   * @return The max channel size in bytes
+   */
   public long getMaxChannelSizeInBytes() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -456,7 +476,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
-  /** @return The max chunk size in bytes that could avoid OOM at server side */
+  /**
+   * @return The max chunk size in bytes that could avoid OOM at server side
+   */
   public long getMaxChunkSizeInBytes() {
     Object val =
         this.parameterMap.getOrDefault(MAX_CHUNK_SIZE_IN_BYTES, MAX_CHUNK_SIZE_IN_BYTES_DEFAULT);
@@ -470,7 +492,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Long.parseLong(val.toString()) : (long) val;
   }
 
-  /** @return The max number of chunks that can be put into a single BDEC. */
+  /**
+   * @return The max number of chunks that can be put into a single BDEC.
+   */
   public int getMaxChunksInBlob() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -481,7 +505,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
   }
 
-  /** @return The max number of chunks that can be put into a single blob registration request. */
+  /**
+   * @return The max number of chunks that can be put into a single blob registration request.
+   */
   public int getMaxChunksInRegistrationRequest() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -489,7 +515,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Integer.parseInt(val.toString()) : (int) val;
   }
 
-  /** @return BDEC compression algorithm */
+  /**
+   * @return BDEC compression algorithm
+   */
   public Constants.BdecParquetCompression getBdecParquetCompressionAlgorithm() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -503,7 +531,9 @@ public class ParameterProvider {
     return Constants.BdecParquetCompression.fromName((String) val);
   }
 
-  /** @return Whether new JSON parsing logic, which preserves */
+  /**
+   * @return Whether new JSON parsing logic, which preserves
+   */
   public boolean isEnableNewJsonParsingLogic() {
     Object val =
         this.parameterMap.getOrDefault(
@@ -511,7 +541,9 @@ public class ParameterProvider {
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
-  /** @return Whether the client is in Iceberg mode */
+  /**
+   * @return Whether the client is in Iceberg mode
+   */
   public boolean isEnableIcebergStreaming() {
     if (cachedEnableIcebergStreaming != null) {
       return cachedEnableIcebergStreaming;
