@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 import net.snowflake.ingest.streaming.internal.ColumnProperties;
+import net.snowflake.ingest.utils.SFException;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
@@ -67,17 +68,27 @@ public interface SnowflakeStreamingIngestChannel {
   String getFullyQualifiedTableName();
 
   /**
-   * @return a boolean which indicates whether the channel is valid
+   * @return a boolean which indicates whether the channel is valid. Typically, this means whether
+   *     the current instance is the owner of the channel, i.e., if another Client opens a {@link
+   *     SnowflakeStreamingIngestChannel} of the same name then the current instance will be
+   *     considered "invalid" as its persisted epoch will have increased. If this returns false then
+   *     calling `insertRow(s)` on this channel instance will result in an {@link SFException} and
+   *     no further writes to the channel will be accepted.
+   *     <p>>Note: there may be a delay between server-side invalidations and the Client detecting
+   *     it so this may not immediately return false in the event of a server-side invalidation.
    */
   boolean isValid();
 
   /**
-   * @return a boolean which indicates whether the channel is closed
+   * @return a boolean which indicates whether the channel is closed. If true this means that the
+   *     current {@link SnowflakeStreamingIngestChannel} will not accept any additional rows on
+   *     calls to `insertRow(s)`
    */
   boolean isClosed();
 
   /**
-   * Close the channel, this function will make sure all the data in this channel is committed
+   * Close the channel. Closing entails draining any outstanding data in the Channel's buffer and
+   * marking the Channel as no longer being able to accept writes via `insertRow(s)`*
    *
    * @return a completable future which will be completed when the channel is closed
    */
@@ -206,7 +217,7 @@ public interface SnowflakeStreamingIngestChannel {
    *                 </li>
    *
    *             </ul>
-   *
+   * <p>
    *             For TIMESTAMP_LTZ and TIMESTAMP_TZ, all input without timezone will be by default interpreted in the timezone "America/Los_Angeles". This can be changed by calling {@link net.snowflake.ingest.streaming.OpenChannelRequest.OpenChannelRequestBuilder#setDefaultTimezone(ZoneId)}.
    *         </td>
    *         <tr>
@@ -248,6 +259,9 @@ public interface SnowflakeStreamingIngestChannel {
    * @param offsetToken offset of given row, used for replay in case of failures. It could be null
    *     if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
+   * @throws SFException if the channel is not considered "valid". Typically, this means that
+   *     another Client has claimed ownership of the Channel. Writes to this channel will be
+   *     rejected and result in this exception being thrown.
    */
   InsertValidationResponse insertRow(Map<String, Object> row, @Nullable String offsetToken);
 
@@ -262,6 +276,9 @@ public interface SnowflakeStreamingIngestChannel {
    * @param endOffsetToken end offset of the batch/row-set, used for replay in case of failures, *
    *     It could be null if you don't plan on replaying or can't replay
    * @return insert response that possibly contains errors because of insertion failures
+   * @throws SFException if the channel is not considered "valid". Typically, this means that
+   *     another Client has claimed ownership of the Channel. Writes to this channel will be
+   *     rejected and result in this exception being thrown.
    */
   InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows,
@@ -271,6 +288,10 @@ public interface SnowflakeStreamingIngestChannel {
   /**
    * Insert a batch of rows into the channel with the end offset token only, please see {@link
    * SnowflakeStreamingIngestChannel#insertRows(Iterable, String, String)} for more information.
+   *
+   * @throws SFException if the channel is not considered "valid". Typically, this means that
+   *     another Client has claimed ownership of the Channel. Writes to this channel will be
+   *     rejected and result in this exception being thrown.
    */
   InsertValidationResponse insertRows(
       Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
@@ -279,6 +300,11 @@ public interface SnowflakeStreamingIngestChannel {
    * Get the latest committed offset token from Snowflake
    *
    * @return the latest committed offset token
+   * @throws SFException if Snowflake returns an invalid response code from its `status` endpoint
+   *     which typically indicates that the channel needs to be re-opened. This is evaluated with
+   *     respect to the current Client epoch, i.e. if another Client opens the channel with the same
+   *     name this will throw an exception as the current instant is not the active version of the
+   *     channel.
    */
   @Nullable
   String getLatestCommittedOffsetToken();
