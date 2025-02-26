@@ -27,7 +27,9 @@ public class ChannelDataTest {
   @Test
   public void testGetCombinedColumnStatsMapNulls() {
     Map<String, RowBufferStats> left = new HashMap<>();
-    RowBufferStats leftStats1 = new RowBufferStats("COL1", enableNDVAndNV, enableNDVAndNV);
+    RowBufferStats leftStats1 =
+        new RowBufferStats(
+            "COL1", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, enableNDVAndNV);
     left.put("one", leftStats1);
     leftStats1.addIntValue(new BigInteger("10"));
 
@@ -56,12 +58,16 @@ public class ChannelDataTest {
   @Test
   public void testGetCombinedColumnStatsMapMissingColumn() {
     Map<String, RowBufferStats> left = new HashMap<>();
-    RowBufferStats leftStats1 = new RowBufferStats("COL1", enableNDVAndNV, enableNDVAndNV);
+    RowBufferStats leftStats1 =
+        new RowBufferStats(
+            "COL1", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, enableNDVAndNV);
     left.put("one", leftStats1);
     leftStats1.addIntValue(new BigInteger("10"));
 
     Map<String, RowBufferStats> right = new HashMap<>();
-    RowBufferStats rightStats1 = new RowBufferStats("COL1", enableNDVAndNV, enableNDVAndNV);
+    RowBufferStats rightStats1 =
+        new RowBufferStats(
+            "COL1", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, enableNDVAndNV);
     right.put("foo", rightStats1);
     rightStats1.addIntValue(new BigInteger("11"));
 
@@ -91,10 +97,18 @@ public class ChannelDataTest {
     Map<String, RowBufferStats> left = new HashMap<>();
     Map<String, RowBufferStats> right = new HashMap<>();
 
-    RowBufferStats leftStats1 = new RowBufferStats("COL1", enableNDVAndNV, enableNDVAndNV);
-    RowBufferStats rightStats1 = new RowBufferStats("COL1", enableNDVAndNV, enableNDVAndNV);
-    RowBufferStats leftStats2 = new RowBufferStats("COL1", enableNDVAndNV, enableNDVAndNV);
-    RowBufferStats rightStats2 = new RowBufferStats("COL1", enableNDVAndNV, enableNDVAndNV);
+    RowBufferStats leftStats1 =
+        new RowBufferStats(
+            "COL1", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, enableNDVAndNV);
+    RowBufferStats rightStats1 =
+        new RowBufferStats(
+            "COL1", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, enableNDVAndNV);
+    RowBufferStats leftStats2 =
+        new RowBufferStats(
+            "COL1", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, enableNDVAndNV);
+    RowBufferStats rightStats2 =
+        new RowBufferStats(
+            "COL1", InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT, enableNDVAndNV);
 
     left.put("one", leftStats1);
     left.put("two", leftStats2);
@@ -125,7 +139,9 @@ public class ChannelDataTest {
     Assert.assertNull(oneCombined.getCurrentMinRealValue());
     Assert.assertNull(oneCombined.getCurrentMaxRealValue());
 
-    Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getDistinctValues());
+    Assert.assertEquals(
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 5 : -1,
+        oneCombined.getDistinctValues());
     Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getNumberOfValues());
 
     Assert.assertArrayEquals(
@@ -137,7 +153,9 @@ public class ChannelDataTest {
     Assert.assertNull(twoCombined.getCurrentMinRealValue());
     Assert.assertNull(twoCombined.getCurrentMaxRealValue());
 
-    Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getDistinctValues());
+    Assert.assertEquals(
+        InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT ? 5 : -1,
+        oneCombined.getDistinctValues());
     Assert.assertEquals(enableNDVAndNV ? 5 : -1, oneCombined.getNumberOfValues());
   }
 }

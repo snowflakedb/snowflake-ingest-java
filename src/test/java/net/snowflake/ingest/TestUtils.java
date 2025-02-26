@@ -156,7 +156,9 @@ public class TestUtils {
     isInitialized = true;
   }
 
-  /** @return profile path that will be used for tests. */
+  /**
+   * @return profile path that will be used for tests.
+   */
   private static String getTestProfilePath() {
     String testProfilePath =
         System.getProperty("testProfilePath") != null
@@ -302,6 +304,7 @@ public class TestUtils {
     props.put("warehouse", warehouse);
     props.put("client_session_keep_alive", "true");
     props.put("privateKey", privateKey);
+    props.put("role", role);
 
     if (isStreamingConnection) {
       streamingConn = DriverManager.getConnection(connectString, props);
@@ -396,9 +399,15 @@ public class TestUtils {
    */
   public static void waitForOffset(SnowflakeStreamingIngestChannel channel, String expectedOffset)
       throws InterruptedException {
+    waitForOffset(channel, expectedOffset, 60);
+  }
+
+  public static void waitForOffset(
+      SnowflakeStreamingIngestChannel channel, String expectedOffset, int seconds)
+      throws InterruptedException {
     int counter = 0;
     String lastCommittedOffset = null;
-    while (counter < 600) {
+    while (counter < seconds * 10) {
       String currentOffset = channel.getLatestCommittedOffsetToken();
       if (expectedOffset.equals(currentOffset)) {
         return;

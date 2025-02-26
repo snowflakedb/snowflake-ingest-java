@@ -56,6 +56,7 @@ public final class ServiceResponseHandler {
       return httpMethod;
     }
   }
+
   // the object mapper we use for deserialization
   static ObjectMapper mapper = new ObjectMapper();
 

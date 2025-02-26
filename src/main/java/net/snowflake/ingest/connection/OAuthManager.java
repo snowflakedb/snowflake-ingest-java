@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
@@ -89,7 +89,7 @@ public final class OAuthManager extends SecurityManager {
       throw new IllegalArgumentException("updateThresholdRatio should fall in (0, 1)");
     }
     this.updateThresholdRatio = updateThresholdRatio;
-    this.oAuthClient = new OAuthClient(accountName, oAuthCredential, baseURIBuilder);
+    this.oAuthClient = new OAuthClient(oAuthCredential, baseURIBuilder);
 
     // generate our first token
     refreshToken();

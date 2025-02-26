@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -143,6 +143,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             1);
@@ -187,6 +188,7 @@ public class InternalStageTest {
                 "clientName",
                 "testPrefix",
                 InternalStageManager.NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 new SnowflakeFileTransferMetadataWithAge(
                     fullFilePath, Optional.of(System.currentTimeMillis())),
                 1));
@@ -219,6 +221,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -278,6 +281,7 @@ public class InternalStageTest {
                 "clientName",
                 "testPrefix",
                 InternalStageManager.NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 new SnowflakeFileTransferMetadataWithAge(
                     originalMetadata, Optional.of(System.currentTimeMillis())),
                 1));
@@ -318,6 +322,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             (SnowflakeFileTransferMetadataWithAge) null,
             1);
 
@@ -415,6 +420,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             (SnowflakeFileTransferMetadataWithAge) null,
             1);
 
@@ -462,6 +468,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             (SnowflakeFileTransferMetadataWithAge) null,
             1);
 
@@ -532,18 +539,12 @@ public class InternalStageTest {
           nonProxyHosts, props.get(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey()));
     } finally {
       // Cleanup
-      if (oldUseProxy != null) {
-        System.setProperty(USE_PROXY, oldUseProxy);
-        System.setProperty(PROXY_HOST, oldProxyHost);
-        System.setProperty(PROXY_PORT, oldProxyPort);
-      }
-      if (oldUser != null) {
-        System.setProperty(HTTP_PROXY_USER, oldUser);
-        System.setProperty(HTTP_PROXY_PASSWORD, oldPassword);
-      }
-      if (oldNonProxyHosts != null) {
-        System.setProperty(NON_PROXY_HOSTS, oldNonProxyHosts);
-      }
+      resetProperty(USE_PROXY, oldUseProxy);
+      resetProperty(PROXY_HOST, oldProxyHost);
+      resetProperty(PROXY_PORT, oldProxyPort);
+      resetProperty(HTTP_PROXY_USER, oldUser);
+      resetProperty(HTTP_PROXY_PASSWORD, oldPassword);
+      resetProperty(NON_PROXY_HOSTS, oldNonProxyHosts);
     }
   }
 
@@ -577,9 +578,7 @@ public class InternalStageTest {
     Assert.assertFalse(shouldBypassProxy(accountUnderscoreName));
     Assert.assertFalse(shouldBypassProxy(accountNamePrivateLink));
 
-    if (oldNonProxyHosts != null) {
-      System.setProperty(NON_PROXY_HOSTS, oldNonProxyHosts);
-    }
+    resetProperty(NON_PROXY_HOSTS, oldNonProxyHosts);
   }
 
   @Test
@@ -601,6 +600,7 @@ public class InternalStageTest {
             "clientName",
             "testPrefix",
             InternalStageManager.NO_TABLE_REF,
+            false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
                 originalMetadata, Optional.of(System.currentTimeMillis())),
             maxUploadRetryCount);
@@ -654,5 +654,13 @@ public class InternalStageTest {
     BasicHttpEntity entity = new BasicHttpEntity();
     entity.setContent(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
     return entity;
+  }
+
+  private void resetProperty(String key, String oldValue) {
+    if (oldValue != null) {
+      System.setProperty(key, oldValue);
+    } else {
+      System.clearProperty(key);
+    }
   }
 }

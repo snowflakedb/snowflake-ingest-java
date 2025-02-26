@@ -57,18 +57,20 @@ public class BlobBuilderTest {
     // Construction succeeds if both data and metadata contain 1 row
     BlobBuilder.constructBlobAndMetadata(
         "a.bdec",
+        FileMetadataTestingOverrides.none(),
         Collections.singletonList(createChannelDataPerTable(1)),
         Constants.BdecVersion.THREE,
-        new InternalParameterProvider(enableIcebergStreaming),
+        new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),
         encryptionKeysPerTable);
 
     // Construction fails if metadata contains 0 rows and data 1 row
     try {
       BlobBuilder.constructBlobAndMetadata(
           "a.bdec",
+          FileMetadataTestingOverrides.none(),
           Collections.singletonList(createChannelDataPerTable(0)),
           Constants.BdecVersion.THREE,
-          new InternalParameterProvider(enableIcebergStreaming),
+          new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),
           encryptionKeysPerTable);
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.INTERNAL_ERROR.getMessageCode(), e.getVendorCode());
@@ -91,9 +93,10 @@ public class BlobBuilderTest {
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
             "a.parquet",
+            FileMetadataTestingOverrides.none(),
             Collections.singletonList(createChannelDataPerTable(1)),
             Constants.BdecVersion.THREE,
-            new InternalParameterProvider(enableIcebergStreaming),
+            new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */),
             new ConcurrentHashMap<>());
 
     InputFile blobInputFile = new InMemoryInputFile(blob.blobBytes);
@@ -188,7 +191,7 @@ public class BlobBuilderTest {
                         .as(LogicalTypeAnnotation.stringType())
                         .id(1)
                         .named("test"),
-                    enableIcebergStreaming,
+                    InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
                     enableIcebergStreaming)
                 : new RowBufferStats(columnName, null, 1, null, null, false, false));
     channelData.setChannelContext(

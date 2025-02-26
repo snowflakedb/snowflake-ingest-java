@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -507,7 +508,11 @@ class FlushService<T> {
             try {
               BlobMetadata blobMetadata =
                   buildAndUpload(
-                      blobPath, blobData, fullyQualifiedTableName, encryptionKeysPerTable);
+                      blobPath,
+                      FileMetadataTestingOverrides.none(),
+                      blobData,
+                      fullyQualifiedTableName,
+                      encryptionKeysPerTable);
               blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
               return blobMetadata;
             } catch (Throwable e) {
@@ -590,6 +595,8 @@ class FlushService<T> {
    * Builds and uploads blob to cloud storage.
    *
    * @param blobPath Path of the destination blob in cloud storage
+   * @param fileMetadataTestingOverrides Allows setting a custom file ID and SDK version to be
+   *     embedded for all chunks in storage. Used for testing.
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param fullyQualifiedTableName the table name of the first channel in the blob, only matters in
@@ -598,11 +605,16 @@ class FlushService<T> {
    */
   BlobMetadata buildAndUpload(
       BlobPath blobPath,
+      FileMetadataTestingOverrides fileMetadataTestingOverrides,
       List<List<ChannelData<T>>> blobData,
       String fullyQualifiedTableName,
       Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
-      throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-          NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
+      throws IOException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          NoSuchPaddingException,
+          IllegalBlockSizeException,
+          BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
@@ -610,6 +622,7 @@ class FlushService<T> {
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
             blobPath.fileRegistrationPath,
+            fileMetadataTestingOverrides,
             blobData,
             bdecVersion,
             this.owningClient.getInternalParameterProvider(),
@@ -646,7 +659,14 @@ class FlushService<T> {
     long startTime = System.currentTimeMillis();
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
-    storage.put(blobPath, blob);
+
+    // The returned etag is non-empty ONLY in case of iceberg uploads. With iceberg files, the XP
+    // scanner expects the
+    // MD5 value to exactly match the etag value in S3. This assumption doesn't hold when multipart
+    // upload kicks in,
+    // causing scan time failures and table corruption. By plugging in the etag value instead of the
+    // md5 value,
+    Optional<String> etag = storage.put(blobPath, blob);
 
     if (uploadContext != null) {
       blobStats.setUploadDurationMs(uploadContext);
@@ -657,16 +677,17 @@ class FlushService<T> {
     }
 
     logger.logInfo(
-        "Finish uploading blob={}, size={}, timeInMillis={}",
+        "Finish uploading blob={}, size={}, timeInMillis={}, etag={}",
         blobPath.fileRegistrationPath,
         blob.length,
-        System.currentTimeMillis() - startTime);
+        System.currentTimeMillis() - startTime,
+        etag);
 
     // at this point we know for sure if the BDEC file has data for more than one chunk, i.e.
     // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
         blobPath.fileRegistrationPath,
-        BlobBuilder.computeMD5(blob),
+        etag.isPresent() ? etag.get() : BlobBuilder.computeMD5(blob),
         bdecVersion,
         metadata,
         blobStats,

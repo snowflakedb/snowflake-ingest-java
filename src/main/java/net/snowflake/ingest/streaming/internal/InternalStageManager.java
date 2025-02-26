@@ -22,6 +22,7 @@ import net.snowflake.ingest.utils.Utils;
 /** Class to manage single Snowflake internal stage */
 class InternalStageManager implements IStorageManager {
   public static final TableRef NO_TABLE_REF = new TableRef("$NO_DB$", "$NO_SCH$", "$NO_TABLE$");
+
   /** Target stage for the client */
   private final InternalStage targetStage;
 
@@ -76,6 +77,7 @@ class InternalStageManager implements IStorageManager {
                 clientName,
                 clientPrefix,
                 NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 response.getStageLocation(),
                 DEFAULT_MAX_UPLOAD_RETRIES);
       } else {
@@ -87,6 +89,7 @@ class InternalStageManager implements IStorageManager {
                 "testClient",
                 null /* clientPrefix */,
                 NO_TABLE_REF,
+                false /* useIcebergFileTransferAgent */,
                 (SnowflakeFileTransferMetadataWithAge) null,
                 DEFAULT_MAX_UPLOAD_RETRIES);
       }

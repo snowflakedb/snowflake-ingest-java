@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-GOOGLE_FORMAT_VERSION="1.10.0"
+GOOGLE_FORMAT_VERSION="1.20.0"
 DOWNLOAD_URL="https://github.com/google/google-java-format/releases/download/v${GOOGLE_FORMAT_VERSION}/google-java-format-${GOOGLE_FORMAT_VERSION}-all-deps.jar"
 JAR_FILE="./.cache/google-java-format-${GOOGLE_FORMAT_VERSION}-all-deps.jar"
 

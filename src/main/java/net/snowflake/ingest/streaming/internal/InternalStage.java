@@ -29,6 +29,7 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.IcebergFileTransferAgent;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -67,6 +68,7 @@ class InternalStage implements IStorage {
 
   // Proxy parameters that we set while calling the Snowflake JDBC to upload the streams
   private final Properties proxyProperties;
+  private final boolean useIcebergFileTransferAgent;
 
   private FileLocationInfo fileLocationInfo;
   private SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
@@ -78,6 +80,8 @@ class InternalStage implements IStorage {
    * @param clientName The client name
    * @param clientPrefix client prefix
    * @param tableRef
+   * @param useIcebergFileTransferAgent Whether to use the local copy of the JDBC file transfer
+   *     agent so that the etag of the uploaded file can be registered to snowflake
    * @param fileLocationInfo The file location information from open channel response
    * @param maxUploadRetries The maximum number of retries to attempt
    */
@@ -86,6 +90,7 @@ class InternalStage implements IStorage {
       String clientName,
       String clientPrefix,
       TableRef tableRef,
+      boolean useIcebergFileTransferAgent,
       FileLocationInfo fileLocationInfo,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
@@ -94,6 +99,7 @@ class InternalStage implements IStorage {
         clientName,
         clientPrefix,
         tableRef,
+        useIcebergFileTransferAgent,
         (SnowflakeFileTransferMetadataWithAge) null,
         maxUploadRetries);
     Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
@@ -107,6 +113,7 @@ class InternalStage implements IStorage {
    * @param clientName the client name
    * @param clientPrefix
    * @param tableRef
+   * @param useIcebergFileTransferAgent
    * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
    * @param maxUploadRetries the maximum number of retries to attempt
    */
@@ -115,6 +122,7 @@ class InternalStage implements IStorage {
       String clientName,
       String clientPrefix,
       TableRef tableRef,
+      boolean useIcebergFileTransferAgent,
       SnowflakeFileTransferMetadataWithAge testMetadata,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
@@ -123,11 +131,12 @@ class InternalStage implements IStorage {
     this.clientPrefix = clientPrefix;
     this.tableRef = tableRef;
     this.maxUploadRetries = maxUploadRetries;
+    this.useIcebergFileTransferAgent = useIcebergFileTransferAgent;
     this.proxyProperties = generateProxyPropertiesForJDBC();
     this.fileTransferMetadataWithAge = testMetadata;
   }
 
-  private void putRemote(String fullFilePath, byte[] data, int retryCount)
+  private Optional<String> putRemote(String fullFilePath, byte[] data, int retryCount)
       throws SnowflakeSQLException, IOException {
     SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy;
     if (this.fileTransferMetadataWithAge.fileTransferMetadata.isForOneFile()) {
@@ -166,17 +175,30 @@ class InternalStage implements IStorage {
         refreshSnowflakeMetadata(false /* force */);
       }
 
-      SnowflakeFileTransferAgent.uploadWithoutConnection(
-          SnowflakeFileTransferConfig.Builder.newInstance()
-              .setSnowflakeFileTransferMetadata(fileTransferMetadataCopy)
-              .setUploadStream(inStream)
-              .setRequireCompress(false)
-              .setOcspMode(OCSPMode.FAIL_OPEN)
-              .setStreamingIngestClientKey(this.clientPrefix)
-              .setStreamingIngestClientName(this.clientName)
-              .setProxyProperties(this.proxyProperties)
-              .setDestFileName(fullFilePath)
-              .build());
+      if (this.useIcebergFileTransferAgent) {
+        return Optional.ofNullable(
+            IcebergFileTransferAgent.uploadWithoutConnection(
+                fileTransferMetadataCopy,
+                inStream,
+                proxyProperties,
+                clientName,
+                clientPrefix,
+                fullFilePath));
+      } else {
+        SnowflakeFileTransferAgent.uploadWithoutConnection(
+            SnowflakeFileTransferConfig.Builder.newInstance()
+                .setSnowflakeFileTransferMetadata(fileTransferMetadataCopy)
+                .setSilentException(true)
+                .setUploadStream(inStream)
+                .setRequireCompress(false)
+                .setOcspMode(OCSPMode.FAIL_OPEN)
+                .setStreamingIngestClientKey(this.clientPrefix)
+                .setStreamingIngestClientName(this.clientName)
+                .setProxyProperties(this.proxyProperties)
+                .setDestFileName(fullFilePath)
+                .build());
+        return Optional.empty();
+      }
     } catch (Exception e) {
       if (retryCount == 0) {
         // for the first exception, we always perform a metadata refresh.
@@ -198,7 +220,7 @@ class InternalStage implements IStorage {
           maxUploadRetries,
           e.getMessage(),
           getStackTrace(e));
-      this.putRemote(fullFilePath, data, retryCount);
+      return this.putRemote(fullFilePath, data, retryCount);
     }
   }
 
@@ -327,12 +349,13 @@ class InternalStage implements IStorage {
   }
 
   /** Upload file to internal stage */
-  public void put(BlobPath blobPath, byte[] blob) {
+  public Optional<String> put(BlobPath blobPath, byte[] blob) {
     if (this.isLocalFS()) {
       putLocal(this.fileTransferMetadataWithAge.localLocation, blobPath.fileRegistrationPath, blob);
+      return Optional.empty();
     } else {
       try {
-        putRemote(blobPath.uploadPath, blob, 0);
+        return putRemote(blobPath.uploadPath, blob, 0);
       } catch (SnowflakeSQLException | IOException e) {
         throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
       }

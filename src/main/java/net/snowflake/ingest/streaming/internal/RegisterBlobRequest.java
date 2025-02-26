@@ -20,16 +20,29 @@ class RegisterBlobRequest implements IStreamingIngestRequest {
   @JsonProperty("blobs")
   private List<BlobMetadata> blobs;
 
+  @JsonProperty("client_name")
+  private String clientName;
+
+  @JsonProperty("client_key")
+  private String clientKey;
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonProperty("is_iceberg")
   private boolean enableIcebergStreaming;
 
   RegisterBlobRequest(
-      String requestId, String role, List<BlobMetadata> blobs, boolean enableIcebergStreaming) {
+      String requestId,
+      String role,
+      List<BlobMetadata> blobs,
+      boolean enableIcebergStreaming,
+      String clientName,
+      String clientKey) {
     this.requestId = requestId;
     this.role = role;
     this.blobs = blobs;
     this.enableIcebergStreaming = enableIcebergStreaming;
+    this.clientName = clientName;
+    this.clientKey = clientKey;
   }
 
   String getRequestId() {

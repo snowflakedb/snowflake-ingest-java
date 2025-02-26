@@ -58,8 +58,9 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
     }
     logger.logDebug(
-        "Created SubscopedTokenExternalVolumeManager with clientName=%s and clientPrefix=%s",
-        clientName, clientPrefix);
+        "Created SubscopedTokenExternalVolumeManager with clientName={} and clientPrefix={}",
+        clientName,
+        clientPrefix);
   }
 
   /**
@@ -90,15 +91,21 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
 
     try {
       return new InternalStage(
-          this, clientName, getClientPrefix(), tableRef, locationInfo, DEFAULT_MAX_UPLOAD_RETRIES);
+          this,
+          clientName,
+          getClientPrefix(),
+          tableRef,
+          true /* useIcebergFileTransferAgent */,
+          locationInfo,
+          DEFAULT_MAX_UPLOAD_RETRIES);
     } catch (SFException ex) {
       logger.logError(
-          "ExtVolManager.registerTable for tableRef=% failed with exception=%s", tableRef, ex);
+          "ExtVolManager.registerTable for tableRef={} failed with exception={}", tableRef, ex);
       // allow external volume ctor's SFExceptions to bubble up directly
       throw ex;
     } catch (Exception err) {
       logger.logError(
-          "ExtVolManager.registerTable for tableRef=% failed with exception=%s", tableRef, err);
+          "ExtVolManager.registerTable for tableRef={} failed with exception={}", tableRef, err);
       throw new SFException(
           err,
           ErrorCode.UNABLE_TO_CONNECT_TO_STAGE,
@@ -127,8 +134,9 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
     String[] parts = filePathRelativeToVolume.split("/");
     if (parts.length < 5) {
       logger.logError(
-          "Invalid file path returned by server. Table=%s FilePathRelativeToVolume=%s",
-          fullyQualifiedTableName, filePathRelativeToVolume);
+          "Invalid file path returned by server. Table={} FilePathRelativeToVolume={}",
+          fullyQualifiedTableName,
+          filePathRelativeToVolume);
       throw new SFException(ErrorCode.INTERNAL_ERROR, "File path returned by server is invalid");
     }
 
@@ -166,17 +174,19 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
       RefreshTableInformationResponse response =
           this.serviceClient.refreshTableInformation(
               new RefreshTableInformationRequest(tableRef, this.role, true));
-      logger.logDebug("Refreshed tokens for table=%s", tableRef);
+      logger.logDebug("Refreshed tokens for table={}", tableRef);
       if (response.getIcebergLocationInfo() == null) {
         logger.logError(
             "Did not receive location info, this will cause ingestion to grind to a halt."
-                + " TableRef=%s");
+                + " TableRef={}",
+            tableRef);
       } else {
         Map<String, String> creds = response.getIcebergLocationInfo().getCredentials();
         if (creds == null || creds.isEmpty()) {
           logger.logError(
               "Did not receive creds in location info, this will cause ingestion to grind to a"
-                  + " halt. TableRef=%s");
+                  + " halt. TableRef={}",
+              tableRef);
         }
       }
 

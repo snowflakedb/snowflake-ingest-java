@@ -31,8 +31,10 @@ class RowBufferStats {
   private final Integer fieldId;
 
   private final String collationDefinitionString;
+
   /** Display name is required for the registration endpoint */
   private final String columnDisplayName;
+
   /** Primitive type of the column, only used for Iceberg columns */
   private final PrimitiveType primitiveType;
 

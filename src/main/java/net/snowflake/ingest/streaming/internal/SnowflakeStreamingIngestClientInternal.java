@@ -108,7 +108,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   private final ChannelCache<T> channelCache;
 
   // Reference to the flush service
-  private final FlushService<T> flushService;
+  private FlushService<T> flushService;
 
   // Reference to storage manager
   private IStorageManager storageManager;
@@ -157,7 +157,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @param requestBuilder http request builder
    * @param parameterOverrides parameters we override in case we want to set different values
    */
-  SnowflakeStreamingIngestClientInternal(
+  @VisibleForTesting
+  public SnowflakeStreamingIngestClientInternal(
       String name,
       SnowflakeURL accountURL,
       Properties prop,
@@ -167,7 +168,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       Map<String, Object> parameterOverrides) {
     this.parameterProvider = new ParameterProvider(parameterOverrides, prop);
     this.internalParameterProvider =
-        new InternalParameterProvider(parameterProvider.isEnableIcebergStreaming());
+        new InternalParameterProvider(
+            parameterProvider.isEnableIcebergStreaming(), false /* enableNDVCount */);
 
     this.name = name;
     String accountName = accountURL == null ? null : accountURL.getAccount();
@@ -218,14 +220,16 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                 prop.getProperty(Constants.OAUTH_REFRESH_TOKEN),
                 oAuthTokenEndpoint);
       }
-      this.requestBuilder =
-          new RequestBuilder(
-              accountURL,
-              prop.get(USER).toString(),
-              credential,
-              this.httpClient,
-              parameterProvider.isEnableIcebergStreaming(),
-              String.format("%s_%s", this.name, System.currentTimeMillis()));
+      if (this.requestBuilder == null) {
+        this.requestBuilder =
+            new RequestBuilder(
+                accountURL,
+                prop.get(USER).toString(),
+                credential,
+                this.httpClient,
+                parameterProvider.isEnableIcebergStreaming(),
+                String.format("%s_%s", this.name, System.currentTimeMillis()));
+      }
 
       logger.logInfo("Using {} for authorization", this.requestBuilder.getAuthType());
     }
@@ -313,7 +317,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     return this.role;
   }
 
-  /** @return a boolean to indicate whether the client is closed or not */
+  /**
+   * @return a boolean to indicate whether the client is closed or not
+   */
   @Override
   public boolean isClosed() {
     return isClosed;
@@ -581,9 +587,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    */
   void registerBlobs(List<BlobMetadata> blobs, final int executionCount) {
     logger.logInfo(
-        "Register blob request preparing for blob={}, client={}, executionCount={}",
+        "Register blob request preparing for blob={}, clientName={}, clientKey={},"
+            + " executionCount={}",
         blobs.stream().map(BlobMetadata::getPath).collect(Collectors.toList()),
         this.name,
+        this.storageManager.getClientPrefix(),
         executionCount);
 
     RegisterBlobResponse response = null;
@@ -593,7 +601,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.storageManager.getClientPrefix() + "_" + counter.getAndIncrement(),
               this.role,
               blobs,
-              this.parameterProvider.isEnableIcebergStreaming());
+              this.parameterProvider.isEnableIcebergStreaming(),
+              this.getName(),
+              this.storageManager.getClientPrefix());
       response = snowflakeServiceClient.registerBlob(request, executionCount);
     } catch (IOException | IngestResponseException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());

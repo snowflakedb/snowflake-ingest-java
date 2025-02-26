@@ -78,7 +78,8 @@ class DataValidationUtil {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  private static final JsonFactory factory = new JsonFactory();
+  private static final JsonFactory factory =
+      new JsonFactory().configure(JsonGenerator.Feature.STRICT_DUPLICATE_DETECTION, true);
 
   // The version of Jackson we are using does not support serialization of date objects from the
   // java.time package. Here we define a module with custom java.time serializers. Additionally, we
@@ -176,7 +177,16 @@ class DataValidationUtil {
         throw valueFormatNotAllowedException(
             columnName, snowflakeType, "Not a valid JSON", insertRowIndex);
       } catch (IOException e) {
-        throw new SFException(e, ErrorCode.IO_ERROR, "Cannot create JSON Parser or JSON generator");
+        if (e.getMessage().contains("Duplicate field")) {
+          throw valueFormatNotAllowedException(
+              columnName, snowflakeType, "Not a valid JSON: duplicate field", insertRowIndex);
+        }
+        throw new SFException(
+            e,
+            ErrorCode.IO_ERROR,
+            String.format(
+                "Cannot create JSON Parser or JSON generator for column %s of type %s, rowIndex:%d",
+                columnName, snowflakeType, insertRowIndex));
       }
       // We return the minified string from the result writer
       return resultWriter.toString();

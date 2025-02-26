@@ -112,7 +112,7 @@ public class FlushServiceTest {
       storage = Mockito.mock(InternalStage.class);
       parameterProvider = createParameterProvider(enableIcebergStreaming);
       InternalParameterProvider internalParameterProvider =
-          new InternalParameterProvider(enableIcebergStreaming);
+          new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */);
       client = Mockito.mock(SnowflakeStreamingIngestClientInternal.class);
       Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
       Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
@@ -167,6 +167,7 @@ public class FlushServiceTest {
       List<List<ChannelData<T>>> blobData = Collections.singletonList(channelData);
       return flushService.buildAndUpload(
           new BlobPath("file_name" /* uploadPath */, "file_name" /* fileRegistrationPath */),
+          FileMetadataTestingOverrides.none(),
           blobData,
           blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName(),
           encryptionKeysPerTable);
@@ -657,7 +658,12 @@ public class FlushServiceTest {
     if (!enableIcebergStreaming) {
       flushService.flush(true).get();
       Mockito.verify(flushService, Mockito.atLeast(2))
-          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+          .buildAndUpload(
+              Mockito.any(),
+              Mockito.eq(FileMetadataTestingOverrides.none()),
+              Mockito.any(),
+              Mockito.any(),
+              Mockito.any());
     }
   }
 
@@ -710,7 +716,12 @@ public class FlushServiceTest {
       // Force = true flushes
       flushService.flush(true).get();
       Mockito.verify(flushService, Mockito.atLeast(2))
-          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+          .buildAndUpload(
+              Mockito.any(),
+              Mockito.eq(FileMetadataTestingOverrides.none()),
+              Mockito.any(),
+              Mockito.any(),
+              Mockito.any());
     }
   }
 
@@ -748,7 +759,12 @@ public class FlushServiceTest {
       // Force = true flushes
       flushService.flush(true).get();
       Mockito.verify(flushService, Mockito.times(2))
-          .buildAndUpload(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+          .buildAndUpload(
+              Mockito.any(),
+              Mockito.eq(FileMetadataTestingOverrides.none()),
+              Mockito.any(),
+              Mockito.any(),
+              Mockito.any());
     }
   }
 
@@ -796,7 +812,12 @@ public class FlushServiceTest {
     ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
         ArgumentCaptor.forClass(List.class);
     Mockito.verify(flushService, Mockito.times(expectedBlobs))
-        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any(), Mockito.any());
+        .buildAndUpload(
+            Mockito.any(),
+            Mockito.eq(FileMetadataTestingOverrides.none()),
+            blobDataCaptor.capture(),
+            Mockito.any(),
+            Mockito.any());
 
     // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
@@ -844,7 +865,12 @@ public class FlushServiceTest {
     ArgumentCaptor<List<List<ChannelData<List<List<Object>>>>>> blobDataCaptor =
         ArgumentCaptor.forClass(List.class);
     Mockito.verify(flushService, Mockito.atLeast(2))
-        .buildAndUpload(Mockito.any(), blobDataCaptor.capture(), Mockito.any(), Mockito.any());
+        .buildAndUpload(
+            Mockito.any(),
+            Mockito.eq(FileMetadataTestingOverrides.none()),
+            blobDataCaptor.capture(),
+            Mockito.any(),
+            Mockito.any());
 
     // 1. list => blobs; 2. list => chunks; 3. list => channels; 4. list => rows, 5. list => columns
     List<List<List<ChannelData<List<List<Object>>>>>> allUploadedBlobs =
@@ -905,13 +931,13 @@ public class FlushServiceTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
     RowBufferStats stats2 =
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
 
     eps1.put("one", stats1);
@@ -1078,7 +1104,7 @@ public class FlushServiceTest {
     ParameterProvider parameterProvider = createParameterProvider(enableIcebergStreaming);
     ChannelCache<StubChunkData> channelCache = new ChannelCache<>();
     InternalParameterProvider internalParameterProvider =
-        new InternalParameterProvider(enableIcebergStreaming);
+        new InternalParameterProvider(enableIcebergStreaming, false /* enableNDVCount */);
     Mockito.when(client.getChannelCache()).thenReturn(channelCache);
     Mockito.when(client.getParameterProvider()).thenReturn(parameterProvider);
     Mockito.when(client.getInternalParameterProvider()).thenReturn(internalParameterProvider);
@@ -1167,7 +1193,7 @@ public class FlushServiceTest {
         new RowBufferStats(
             "COL1",
             Types.optional(PrimitiveType.PrimitiveTypeName.INT32).id(1).named("COL1"),
-            enableIcebergStreaming,
+            InternalParameterProvider.ENABLE_DISTINCT_VALUES_COUNT_DEFAULT,
             enableIcebergStreaming);
 
     eps1.put("one", stats1);
@@ -1274,8 +1300,12 @@ public class FlushServiceTest {
 
   @Test
   public void testEncryptionDecryption()
-      throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException,
-          NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+      throws InvalidAlgorithmParameterException,
+          NoSuchPaddingException,
+          IllegalBlockSizeException,
+          NoSuchAlgorithmException,
+          BadPaddingException,
+          InvalidKeyException {
     byte[] data = "testEncryptionDecryption".getBytes(StandardCharsets.UTF_8);
     String encryptionKey =
         Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));
