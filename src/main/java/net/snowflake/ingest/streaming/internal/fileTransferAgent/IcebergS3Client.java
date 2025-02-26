@@ -603,16 +603,11 @@ class IcebergS3Client implements IcebergStorageClient {
         clientConfig.setNonProxyHosts(nonProxyHosts);
         clientConfig.setProxyProtocol(protocolEnum);
         String logMessage =
-            "Setting sessionless S3 proxy. Host: "
-                + proxyHost
-                + ", port: "
-                + proxyPort
-                + ", non-proxy hosts: "
-                + nonProxyHosts
-                + ", protocol: "
-                + proxyProtocol;
+            String.format(
+                "Set sessionless S3 proxy. Host: %s, port: %d, non-proxy hosts: %s, protocol: %s",
+                proxyHost, proxyPort, nonProxyHosts, proxyProtocol);
         if (isNotEmpty(proxyUser) && isNotEmpty(proxyPassword)) {
-          logMessage = logMessage + ", user: " + proxyUser + " with password provided";
+          logMessage = String.format("%s, user: %s with password provided", logMessage, proxyUser);
           clientConfig.setProxyUsername(proxyUser);
           clientConfig.setProxyPassword(proxyPassword);
         }
