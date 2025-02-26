@@ -65,8 +65,7 @@ dependencies {
 ## Jar Versions
 
 The Snowflake Ingest SDK provides shaded and unshaded versions of its jar. The shaded version bundles the dependencies
-into its own jar,
-whereas the unshaded version declares its dependencies in `pom.xml`, which are fetched as standard transitive
+into its own jar, whereas the unshaded version declares its dependencies in `pom.xml`, which are fetched as standard transitive
 dependencies by the build system like Maven or Gradle.
 The shaded JAR can help avoid potential dependency conflicts, but the unshaded version provides finer graned control
 over transitive dependencies.
@@ -107,12 +106,9 @@ Check out `SnowflakeStreamingIngestExample.java`, which performs following opera
        queries to create them:
 
 ```sql
-create
-or replace database MY_DATABASE;
-create
-or replace schema MY_SCHEMA;
-create
-or replace table MY_TABLE(c1 number);
+create or replace database MY_DATABASE;
+create or replace schema MY_SCHEMA;
+create or replace table MY_TABLE(c1 number);
 ```
 
 4. Inserts 1000 rows into the channel created in 3rd step using the `insertRows` API on the Channel object
