@@ -482,10 +482,11 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
-   * Fetch channels status from Snowflake
+   * Fetch the status of one or more Channels from Snowflake
    *
-   * @param channels a list of channels that we want to get the status on
+   * @param channels a list of channels that we want to get the status of
    * @return a ChannelsStatusResponse object
+   * @throws SFException if the caller cannot communicate with Snowflake
    */
   ChannelsStatusResponse getChannelsStatus(
       List<SnowflakeStreamingIngestChannelInternal<?>> channels) {

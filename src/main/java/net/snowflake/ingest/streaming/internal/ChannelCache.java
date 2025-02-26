@@ -43,6 +43,12 @@ class ChannelCache<T> {
   /**
    * Add a channel to the channel cache
    *
+   * <p>Note: if there was a previous instance of the channel then the old one is considered
+   * "invalid". Callers with a reference to the old channel object will have their writes rejected
+   * as the channel reference will be marked "invalid". Similarly, calls to fetch the current status
+   * of old versions of the channel will have an exception thrown as the channel is considered
+   * invalid.
+   *
    * @param channel
    */
   void addChannel(SnowflakeStreamingIngestChannelInternal<T> channel) {
