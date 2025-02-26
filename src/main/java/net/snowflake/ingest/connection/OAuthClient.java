@@ -1,11 +1,14 @@
 /*
- * Copyright (c) 2023 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2023-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
 
+import static net.snowflake.ingest.utils.HttpUtil.NON_PROXY_HOSTS;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
@@ -53,16 +56,20 @@ public class OAuthClient {
   /**
    * Creates an AuthClient for Snowflake OAuth given account, credential and base uri
    *
-   * @param accountName - the snowflake account name of this user
    * @param oAuthCredential - the OAuth credential we're using to connect
    * @param baseURIBuilder - the uri builder with common scheme, host and port
    */
-  OAuthClient(String accountName, OAuthCredential oAuthCredential, URIBuilder baseURIBuilder) {
+  OAuthClient(OAuthCredential oAuthCredential, URIBuilder baseURIBuilder) {
     this.oAuthCredential = new AtomicReference<>(oAuthCredential);
 
     // build token request uri
     baseURIBuilder.setPath(TOKEN_REQUEST_ENDPOINT);
-    this.httpClient = HttpUtil.getHttpClient(accountName);
+    URI oAuthTokenEndpoint = oAuthCredential.getOAuthTokenEndpoint();
+    this.httpClient =
+        HttpUtil.initHttpClient(
+            System.getProperty(NON_PROXY_HOSTS) != null
+                && HttpUtil.isInNonProxyHosts(
+                    oAuthTokenEndpoint == null ? "" : oAuthTokenEndpoint.getHost()));
   }
 
   /** Get access token */

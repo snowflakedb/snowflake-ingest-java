@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2025 Snowflake Computing Inc. All rights reserved.
+ */
+
 package net.snowflake.ingest.connection;
 
 import java.util.UUID;
@@ -13,10 +17,7 @@ public class MockOAuthClient extends OAuthClient {
   private int futureRefreshFailCount = 0;
 
   public MockOAuthClient() {
-    super(
-        "ACCOUNT_NAME",
-        new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN"),
-        new URIBuilder());
+    super(new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN"), new URIBuilder());
     oAuthCredential =
         new AtomicReference<>(new OAuthCredential("CLIENT_ID", "CLIENT_SECRET", "REFRESH_TOKEN"));
     oAuthCredential.get().setExpiresIn(600);
