@@ -9,7 +9,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>3.1.1</version>
+  <version>4.0.0-beta.unshaded</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -1117,8 +1117,8 @@
               <ignoreNonCompile>true</ignoreNonCompile>
               <ignoredDependencies>
                 <!-- We defined these as direct dependencies (as opposed to just declaring it in dependencyManagement)
-                                                                                                                                                                                                                                                to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency analyzer complains that
-                                                                                                                                                                                                                                                the dependency is unused, so we ignore it here-->
+                                                                                                                                                                                                                                                                to workaround https://issues.apache.org/jira/browse/MNG-7982. Now the dependency analyzer complains that
+                                                                                                                                                                                                                                                                the dependency is unused, so we ignore it here-->
                 <ignoredDependency>org.apache.commons:commons-compress</ignoredDependency>
                 <ignoredDependency>org.apache.commons:commons-configuration2</ignoredDependency>
               </ignoredDependencies>
@@ -1214,9 +1214,9 @@
         <configuration>
           <errorRemedy>failFast</errorRemedy>
           <!--
-                                                                                                                                                                                               The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
-                                                                                                                                                                                              check your dependencies", verify the conditions of the license and add the reference to it here.
-                                                                                                                                                                                            -->
+                                                                                                                                                                                                         The list of allowed licenses. If you see the build failing due to "There are some forbidden licenses used, please
+                                                                                                                                                                                                        check your dependencies", verify the conditions of the license and add the reference to it here.
+                                                                                                                                                                                                      -->
           <includedLicenses>
             <includedLicense>Apache License 2.0</includedLicense>
             <includedLicense>BSD 2-Clause License</includedLicense>
@@ -1236,10 +1236,10 @@
                             |Apache-2.0
                             |Apache License, Version 2.0
                             |Apache 2.0
-              |Apache License V2.0
-              |Apache 2</licenseMerge>
+                            |Apache License V2.0
+                            |Apache 2</licenseMerge>
             <licenseMerge>BSD 2-Clause License
-              |The BSD License |BSD</licenseMerge>
+                            |The BSD License |BSD</licenseMerge>
             <licenseMerge>The MIT License|MIT License|MIT license</licenseMerge>
             <licenseMerge>3-Clause BSD License|BSD-3-Clause</licenseMerge>
             <licenseMerge>The Go License|Go License</licenseMerge>
@@ -1621,9 +1621,9 @@
             </executions>
           </plugin>
           <!--
-                                                                                                                                                                                                        Plugin executes license processing Python script, which copies third party license files into the directory
-                                                                                                                                                                                                        target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR.
-                                                                                                                                                                                                        -->
+                                                                                                                                                                                                                  Plugin executes license processing Python script, which copies third party license files into the directory
+                                                                                                                                                                                                                  target/generated-licenses-info/META-INF/third-party-licenses, which is then included in the shaded JAR.
+                                                                                                                                                                                                                  -->
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
