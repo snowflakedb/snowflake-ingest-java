@@ -1300,8 +1300,12 @@ public class FlushServiceTest {
 
   @Test
   public void testEncryptionDecryption()
-      throws InvalidAlgorithmParameterException, NoSuchPaddingException, IllegalBlockSizeException,
-          NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+      throws InvalidAlgorithmParameterException,
+          NoSuchPaddingException,
+          IllegalBlockSizeException,
+          NoSuchAlgorithmException,
+          BadPaddingException,
+          InvalidKeyException {
     byte[] data = "testEncryptionDecryption".getBytes(StandardCharsets.UTF_8);
     String encryptionKey =
         Base64.getEncoder().encodeToString("encryption_key".getBytes(StandardCharsets.UTF_8));

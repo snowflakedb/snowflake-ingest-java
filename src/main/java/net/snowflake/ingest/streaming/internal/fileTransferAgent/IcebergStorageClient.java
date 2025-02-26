@@ -95,11 +95,13 @@ interface IcebergStorageClient {
         null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
-        /*session = */ "uploadWithPresignedUrlWithoutConnection"
+        /* session= */ "uploadWithPresignedUrlWithoutConnection"
             + " only works for pre-signed URL.");
   }
 
-  /** @return Returns the Max number of retry attempts */
+  /**
+   * @return Returns the Max number of retry attempts
+   */
   int getMaxRetries();
 
   /**
@@ -110,6 +112,8 @@ interface IcebergStorageClient {
    */
   int getRetryBackoffMaxExponent();
 
-  /** @return Returns the min number of milliseconds to sleep before retry */
+  /**
+   * @return Returns the min number of milliseconds to sleep before retry
+   */
   int getRetryBackoffMin();
 }

@@ -98,8 +98,12 @@ public class Cryptor {
    */
   public static byte[] encrypt(
       byte[] compressedChunkData, String encryptionKey, String diversifier, long iv)
-      throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-          InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+      throws NoSuchPaddingException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          InvalidKeyException,
+          IllegalBlockSizeException,
+          BadPaddingException {
     // Generate the derived key
     SecretKey derivedKey = deriveKey(encryptionKey, diversifier);
 
@@ -122,8 +126,12 @@ public class Cryptor {
    */
   @VisibleForTesting
   public static byte[] decrypt(byte[] input, String encryptionKey, String diversifier, long iv)
-      throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-          InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+      throws NoSuchPaddingException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          InvalidKeyException,
+          IllegalBlockSizeException,
+          BadPaddingException {
     // Generate the derived key
     SecretKey derivedKey = deriveKey(encryptionKey, diversifier);
 

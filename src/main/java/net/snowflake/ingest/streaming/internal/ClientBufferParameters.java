@@ -59,7 +59,9 @@ public class ClientBufferParameters {
     this.enableDictionaryEncoding = enableIcebergStreaming;
   }
 
-  /** @param clientInternal reference to the client object where the relevant parameters are set */
+  /**
+   * @param clientInternal reference to the client object where the relevant parameters are set
+   */
   public ClientBufferParameters(
       SnowflakeStreamingIngestClientInternal clientInternal,
       ParquetProperties.WriterVersion parquetWriterVersion) {

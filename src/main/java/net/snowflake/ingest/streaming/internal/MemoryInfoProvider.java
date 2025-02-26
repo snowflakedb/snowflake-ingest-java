@@ -6,9 +6,13 @@ package net.snowflake.ingest.streaming.internal;
 
 /** Provider information about available system memory */
 public interface MemoryInfoProvider {
-  /** @return Max memory the JVM can allocate */
+  /**
+   * @return Max memory the JVM can allocate
+   */
   long getMaxMemory();
 
-  /** @return Free JVM memory */
+  /**
+   * @return Free JVM memory
+   */
   long getFreeMemory();
 }
