@@ -11,7 +11,6 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
-import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -38,13 +37,13 @@ import java.util.stream.Collectors;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import net.snowflake.client.jdbc.internal.google.common.util.concurrent.ThreadFactoryBuilder;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 
 /**
  * Responsible for flushing data from client to Snowflake tables. When a flush is triggered, it will
@@ -83,13 +82,13 @@ class FlushService<T> {
   private final SnowflakeStreamingIngestClientInternal<T> owningClient;
 
   // Thread to schedule the flush job
-  @VisibleForTesting ScheduledExecutorService flushWorker;
+  ScheduledExecutorService flushWorker;
 
   // Thread to register the blob
-  @VisibleForTesting ExecutorService registerWorker;
+  ExecutorService registerWorker;
 
   // Threads to build and upload the blob
-  @VisibleForTesting ExecutorService buildUploadWorkers;
+  ExecutorService buildUploadWorkers;
 
   // Reference to the channel cache
   private final ChannelCache<T> channelCache;
@@ -105,9 +104,9 @@ class FlushService<T> {
    * blob is not 1. When max chunk in blob is 1, flush service ignores these variables and uses
    * table level last flush time and need flush flag. See {@link ChannelCache.FlushInfo}.
    */
-  @VisibleForTesting volatile long lastFlushTime;
+  volatile long lastFlushTime;
 
-  @VisibleForTesting volatile boolean isNeedFlush;
+  volatile boolean isNeedFlush;
 
   // Indicates whether it's running as part of the test
   private final boolean isTestMode;
@@ -307,7 +306,7 @@ class FlushService<T> {
   private void createWorkers() {
     // Create thread for checking and scheduling flush job
     ThreadFactory flushThreadFactory =
-        new ThreadFactoryBuilder().setNameFormat("ingest-flush-thread").build();
+        new BasicThreadFactory.Builder().namingPattern("ingest-flush-thread").build();
     this.flushWorker = Executors.newSingleThreadScheduledExecutor(flushThreadFactory);
     this.flushWorker.scheduleWithFixedDelay(
         () -> {
@@ -355,13 +354,13 @@ class FlushService<T> {
 
     // Create thread for registering blobs
     ThreadFactory registerThreadFactory =
-        new ThreadFactoryBuilder().setNameFormat("ingest-register-thread").build();
+        new BasicThreadFactory.Builder().namingPattern("ingest-register-thread").build();
     this.registerWorker = Executors.newSingleThreadExecutor(registerThreadFactory);
 
     // Create threads for building and uploading blobs
     // Size: number of available processors * (1 + IO time/CPU time)
     ThreadFactory buildUploadThreadFactory =
-        new ThreadFactoryBuilder().setNameFormat("ingest-build-upload-thread-%d").build();
+        new BasicThreadFactory.Builder().namingPattern("ingest-build-upload-thread-%d").build();
     int buildUploadThreadCount =
         Math.min(
             Runtime.getRuntime().availableProcessors()

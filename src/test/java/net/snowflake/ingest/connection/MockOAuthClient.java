@@ -6,9 +6,9 @@ package net.snowflake.ingest.connection;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.http.client.utils.URIBuilder;
 
 /** Mock implementation of {@link OAuthClient}, only use for test */
 public class MockOAuthClient extends OAuthClient {

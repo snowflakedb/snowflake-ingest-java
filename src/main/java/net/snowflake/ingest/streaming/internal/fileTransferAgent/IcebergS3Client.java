@@ -4,6 +4,27 @@ import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPI
 import static net.snowflake.client.jdbc.SnowflakeUtil.createDefaultExecutorService;
 import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.Protocol;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.client.builder.ExecutorFactory;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Builder;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.transfer.TransferManager;
+import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
+import com.amazonaws.services.s3.transfer.Upload;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -20,41 +41,21 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.SFSSLConnectionSocketFactory;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
-import net.snowflake.client.jdbc.cloud.storage.S3HttpUtil;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.amazonaws.AmazonClientException;
-import net.snowflake.client.jdbc.internal.amazonaws.AmazonServiceException;
-import net.snowflake.client.jdbc.internal.amazonaws.ClientConfiguration;
-import net.snowflake.client.jdbc.internal.amazonaws.auth.AWSCredentials;
-import net.snowflake.client.jdbc.internal.amazonaws.auth.AWSStaticCredentialsProvider;
-import net.snowflake.client.jdbc.internal.amazonaws.auth.BasicAWSCredentials;
-import net.snowflake.client.jdbc.internal.amazonaws.auth.BasicSessionCredentials;
-import net.snowflake.client.jdbc.internal.amazonaws.client.builder.AwsClientBuilder;
-import net.snowflake.client.jdbc.internal.amazonaws.client.builder.ExecutorFactory;
-import net.snowflake.client.jdbc.internal.amazonaws.regions.Region;
-import net.snowflake.client.jdbc.internal.amazonaws.regions.RegionUtils;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.AmazonS3;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.AmazonS3Builder;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.AmazonS3Client;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.model.AmazonS3Exception;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.model.ObjectMetadata;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.model.PutObjectRequest;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.transfer.TransferManager;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import net.snowflake.client.jdbc.internal.amazonaws.services.s3.transfer.Upload;
-import net.snowflake.client.jdbc.internal.apache.http.HttpStatus;
-import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import net.snowflake.client.jdbc.internal.apache.http.conn.ssl.SSLInitializationException;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.client.util.SFPair;
 import net.snowflake.client.util.Stopwatch;
 import net.snowflake.ingest.utils.Logging;
 import org.apache.commons.io.IOUtils;
+import org.apache.http.HttpStatus;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLInitializationException;
 
 class IcebergS3Client implements IcebergStorageClient {
   private static final Logging logger = new Logging(IcebergS3Client.class);
@@ -142,7 +143,7 @@ class IcebergS3Client implements IcebergStorageClient {
 
     clientConfig.withSignerOverride("AWSS3V4SignerType");
     clientConfig.getApacheHttpClientConfig().setSslSocketFactory(getSSLConnectionSocketFactory());
-    S3HttpUtil.setSessionlessProxyForS3(proxyProperties, clientConfig);
+    setSessionlessProxyForS3(proxyProperties, clientConfig);
     AmazonS3Builder<?, ?> amazonS3Builder =
         AmazonS3Client.builder()
             .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
@@ -554,5 +555,73 @@ class IcebergS3Client implements IcebergStorageClient {
             "Encountered exception during " + operation + ": " + ex.getMessage());
       }
     }
+  }
+
+  /**
+   * Copied from JDBC Driver S3HttpUtil to avoid class definition conflicts with AWS SDK
+   *
+   * @param proxyProperties Proxy Properties
+   * @param clientConfig AWS Client Configuration
+   * @throws SnowflakeSQLException Thrown on configuration parsing failures
+   */
+  private static void setSessionlessProxyForS3(
+      Properties proxyProperties, ClientConfiguration clientConfig) throws SnowflakeSQLException {
+    if (proxyProperties != null
+        && proxyProperties.size() > 0
+        && proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
+      final boolean useProxy =
+          Boolean.parseBoolean(
+              proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()));
+      if (useProxy) {
+        String proxyHost =
+            proxyProperties.getProperty(SFSessionProperty.PROXY_HOST.getPropertyKey());
+
+        int proxyPort;
+        try {
+          proxyPort =
+              Integer.parseInt(
+                  proxyProperties.getProperty(SFSessionProperty.PROXY_PORT.getPropertyKey()));
+        } catch (NullPointerException | NumberFormatException var11) {
+          throw new SnowflakeSQLException(
+              ErrorCode.INVALID_PROXY_PROPERTIES, "Could not parse port number");
+        }
+
+        String proxyUser =
+            proxyProperties.getProperty(SFSessionProperty.PROXY_USER.getPropertyKey());
+        String proxyPassword =
+            proxyProperties.getProperty(SFSessionProperty.PROXY_PASSWORD.getPropertyKey());
+        String nonProxyHosts =
+            proxyProperties.getProperty(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey());
+        String proxyProtocol =
+            proxyProperties.getProperty(SFSessionProperty.PROXY_PROTOCOL.getPropertyKey());
+        Protocol protocolEnum =
+            isNotEmpty(proxyProtocol) && proxyProtocol.equalsIgnoreCase("https")
+                ? Protocol.HTTPS
+                : Protocol.HTTP;
+        clientConfig.setProxyHost(proxyHost);
+        clientConfig.setProxyPort(proxyPort);
+        clientConfig.setNonProxyHosts(nonProxyHosts);
+        clientConfig.setProxyProtocol(protocolEnum);
+        String logMessage =
+            String.format(
+                "Set sessionless S3 proxy. Host: %s, port: %d, non-proxy hosts: %s, protocol: %s",
+                proxyHost, proxyPort, nonProxyHosts, proxyProtocol);
+        if (isNotEmpty(proxyUser) && isNotEmpty(proxyPassword)) {
+          logMessage = String.format("%s, user: %s with password provided", logMessage, proxyUser);
+          clientConfig.setProxyUsername(proxyUser);
+          clientConfig.setProxyPassword(proxyPassword);
+        }
+
+        logger.logDebug(logMessage);
+      } else {
+        logger.logDebug("Omitting sessionless S3 proxy setup as proxy is disabled");
+      }
+    } else {
+      logger.logDebug("Omitting sessionless S3 proxy setup");
+    }
+  }
+
+  private static boolean isNotEmpty(final String string) {
+    return string != null && !string.isEmpty();
   }
 }
