@@ -353,7 +353,7 @@ public class Utils {
 
     Runtime runtime = Runtime.getRuntime();
     logger.logInfo(
-        "Max max runtime memory={}, total runtime memory={}, free runtime" + " memory={}",
+        "Max runtime memory={}, total runtime memory={}, free runtime" + " memory={}",
         runtime.maxMemory(),
         runtime.totalMemory(),
         runtime.freeMemory());
