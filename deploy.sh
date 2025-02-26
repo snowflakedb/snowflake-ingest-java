@@ -78,7 +78,7 @@ MVN_OPTIONS+=(
   "--batch-mode"
 )
 
-mvn install -DskipTests dependency:resolve dependency:resolve-plugins
+mvn clean install ${MVN_OPTIONS[@]} -DskipTests dependency:resolve dependency:resolve-plugins
 
 echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
