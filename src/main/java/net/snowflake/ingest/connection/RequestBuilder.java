@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2023 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.connection;
@@ -110,7 +110,7 @@ public class RequestBuilder {
   // Don't change!
   public static final String CLIENT_NAME = "SnowpipeJavaSDK";
 
-  public static final String DEFAULT_VERSION = "3.0.1";
+  public static final String DEFAULT_VERSION = "3.1.1";
 
   public static final String JAVA_USER_AGENT = "JAVA";
 

@@ -177,6 +177,7 @@ public class Constants {
               name, Arrays.asList(BdecParquetCompression.values())));
     }
   }
+
   // Parameters
   public static final boolean DISABLE_BACKGROUND_FLUSH = false;
   public static final boolean COMPRESS_BLOB_TWICE = false;

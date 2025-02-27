@@ -156,7 +156,7 @@ class IcebergGCSClient implements IcebergStorageClient {
         null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
-        /*session = */ "IcebergGCSClient.upload" + " only works with pre-signed URL.");
+        /* session= */ "IcebergGCSClient.upload" + " only works with pre-signed URL.");
   }
 
   /**

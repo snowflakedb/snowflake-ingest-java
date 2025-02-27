@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2012-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.utils;
@@ -108,7 +108,7 @@ public class HttpUtil {
     if (httpClient == null) {
       synchronized (HttpUtil.class) {
         if (httpClient == null) {
-          initHttpClient(accountName);
+          httpClient = initHttpClient(shouldBypassProxy(accountName));
         }
       }
     }
@@ -120,7 +120,13 @@ public class HttpUtil {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpUtil.class);
 
-  private static void initHttpClient(String accountName) {
+  /**
+   * Initialize http client with default settings
+   *
+   * @param shouldBypassProxy - whether to bypass proxy
+   * @return CloseableHttpClient
+   */
+  public static CloseableHttpClient initHttpClient(boolean shouldBypassProxy) {
 
     Security.setProperty("ocsp.enable", "true");
 
@@ -167,7 +173,7 @@ public class HttpUtil {
             .setDefaultRequestConfig(requestConfig);
 
     // proxy settings
-    if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY)) && !shouldBypassProxy(accountName)) {
+    if ("true".equalsIgnoreCase(System.getProperty(USE_PROXY)) && !shouldBypassProxy) {
       if (System.getProperty(PROXY_PORT) == null) {
         throw new IllegalArgumentException(
             "proxy port number is not provided, please assign proxy port to http.proxyPort option");
@@ -194,7 +200,7 @@ public class HttpUtil {
       }
     }
 
-    httpClient = clientBuilder.build();
+    return clientBuilder.build();
   }
 
   /** Starts a daemon thread to monitor idle connections in http connection manager. */
@@ -455,7 +461,7 @@ public class HttpUtil {
    * need to replace the '.' and '*' characters since those are special regex constructs that mean
    * 'any character,' and 'repeat 0 or more times.'
    */
-  private static Boolean isInNonProxyHosts(String targetHost) {
+  public static Boolean isInNonProxyHosts(String targetHost) {
     String nonProxyHosts =
         System.getProperty(NON_PROXY_HOSTS).replace(".", "\\.").replace("*", ".*");
     String[] nonProxyHostsArray = nonProxyHosts.split("\\|");

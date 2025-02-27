@@ -71,6 +71,7 @@ public class IngestResponseException extends Exception {
 
     // POJO constructor for mapper
     public IngestExceptionBody() {}
+
     // When exception JSON does not match, store message as blob
     IngestExceptionBody(String blob) {
       messageBlob = blob;

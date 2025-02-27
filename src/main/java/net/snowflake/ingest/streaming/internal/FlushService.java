@@ -508,7 +508,11 @@ class FlushService<T> {
             try {
               BlobMetadata blobMetadata =
                   buildAndUpload(
-                      blobPath, blobData, fullyQualifiedTableName, encryptionKeysPerTable);
+                      blobPath,
+                      FileMetadataTestingOverrides.none(),
+                      blobData,
+                      fullyQualifiedTableName,
+                      encryptionKeysPerTable);
               blobMetadata.getBlobStats().setFlushStartMs(flushStartMs);
               return blobMetadata;
             } catch (Throwable e) {
@@ -591,6 +595,8 @@ class FlushService<T> {
    * Builds and uploads blob to cloud storage.
    *
    * @param blobPath Path of the destination blob in cloud storage
+   * @param fileMetadataTestingOverrides Allows setting a custom file ID and SDK version to be
+   *     embedded for all chunks in storage. Used for testing.
    * @param blobData All the data for one blob. Assumes that all ChannelData in the inner List
    *     belongs to the same table. Will error if this is not the case
    * @param fullyQualifiedTableName the table name of the first channel in the blob, only matters in
@@ -599,11 +605,16 @@ class FlushService<T> {
    */
   BlobMetadata buildAndUpload(
       BlobPath blobPath,
+      FileMetadataTestingOverrides fileMetadataTestingOverrides,
       List<List<ChannelData<T>>> blobData,
       String fullyQualifiedTableName,
       Map<FullyQualifiedTableName, EncryptionKey> encryptionKeysPerTable)
-      throws IOException, NoSuchAlgorithmException, InvalidAlgorithmParameterException,
-          NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException,
+      throws IOException,
+          NoSuchAlgorithmException,
+          InvalidAlgorithmParameterException,
+          NoSuchPaddingException,
+          IllegalBlockSizeException,
+          BadPaddingException,
           InvalidKeyException {
     Timer.Context buildContext = Utils.createTimerContext(this.owningClient.buildLatency);
 
@@ -611,6 +622,7 @@ class FlushService<T> {
     BlobBuilder.Blob blob =
         BlobBuilder.constructBlobAndMetadata(
             blobPath.fileRegistrationPath,
+            fileMetadataTestingOverrides,
             blobData,
             bdecVersion,
             this.owningClient.getInternalParameterProvider(),
