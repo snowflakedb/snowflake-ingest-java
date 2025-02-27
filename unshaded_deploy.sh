@@ -80,10 +80,11 @@ echo "[INFO] mvn clean compile
 mvn clean compile ${MVN_OPTIONS[@]}
 
 echo "[INFO] mvn dependency resolve
-mvn dependency:resolve dependency:resolve-plugins -DmanualInclude=org.codehaus.plexus:plexus-utils:jar:3.0.20 ${MVN_OPTIONS[@]} -Dmaven.wagon.http.pool=false
+# mvn dependency:resolve dependency:resolve-plugins -DmanualInclude=org.codehaus.plexus:plexus-utils:jar:3.0.20 ${MVN_OPTIONS[@]} -Dmaven.wagon.http.pool=false
+mvn dependency:resolve dependency:resolve-plugins dependency:go-offline -DmanualInclude=org.codehaus.plexus:plexus-utils:jar:3.0.20 ${MVN_OPTIONS[@]} -Dmaven.wagon.http.pool=false
 
-echo "[INFO] mvn verify
-mvn verify ${MVN_OPTIONS[@]}
+echo "[INFO] mvn test
+mvn test ${MVN_OPTIONS[@]}
 # -DmanualInclude="jakarta.xml.bind:jakarta.xml.bind-api"
 
 echo "[Info] Sign unshaded package and deploy to staging area"
