@@ -76,9 +76,9 @@ MVN_OPTIONS+=(
   "--settings" "$OSSRH_DEPLOY_SETTINGS_XML"
   "--batch-mode"
 )
-# mvn clean compile ${MVN_OPTIONS[@]}
-# mvn dependency:resolve dependency:resolve-plugins ${MVN_OPTIONS[@]}
-# mvn verify ${MVN_OPTIONS[@]}
+mvn clean compile ${MVN_OPTIONS[@]}
+mvn dependency:resolve dependency:resolve-plugins ${MVN_OPTIONS[@]}
+mvn verify ${MVN_OPTIONS[@]}
 # -DmanualInclude="jakarta.xml.bind:jakarta.xml.bind-api"
 
 echo "[Info] Sign unshaded package and deploy to staging area"
