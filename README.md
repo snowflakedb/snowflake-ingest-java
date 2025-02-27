@@ -73,7 +73,7 @@ For use cases, which need to use `snowflake-jdbc-fips` instead of the default `s
 
 - Use the unshaded version of the Ingest SDK.
 - Exclude these transitive dependencies:
-    - `net.snowflake:snowflake-jdbc`
+    - `net.snowflake:snowflake-jdbc-thin`
     - `org.bouncycastle:bcpkix-jdk18on`
     - `org.bouncycastle:bcprov-jdk18on`
 - Add a dependency on `snowflake-jdbc-fips`.
