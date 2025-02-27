@@ -76,8 +76,13 @@ MVN_OPTIONS+=(
   "--settings" "$OSSRH_DEPLOY_SETTINGS_XML"
   "--batch-mode"
 )
+echo "[INFO] mvn clean compile
 mvn clean compile ${MVN_OPTIONS[@]}
+
+echo "[INFO] mvn dependency resolve
 mvn dependency:resolve dependency:resolve-plugins ${MVN_OPTIONS[@]}
+
+echo "[INFO] mvn verify
 mvn verify ${MVN_OPTIONS[@]}
 # -DmanualInclude="jakarta.xml.bind:jakarta.xml.bind-api"
 
@@ -86,6 +91,7 @@ project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.x
 echo "[Info] Project version: $project_version"
 $THIS_DIR/scripts/update_project_version.py pom.xml ${project_version} > generated_public_pom.xml
 
+echo "[INFO] mvn deploy
 mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy 
 
 # echo "[INFO] Close and Release"
