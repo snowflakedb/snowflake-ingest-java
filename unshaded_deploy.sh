@@ -81,7 +81,7 @@ mvn clean compile ${MVN_OPTIONS[@]}
 
 echo "[INFO] mvn dependency resolve
 # mvn dependency:resolve dependency:resolve-plugins -DmanualInclude=org.codehaus.plexus:plexus-utils:jar:3.0.20 ${MVN_OPTIONS[@]} -Dmaven.wagon.http.pool=false
-mvn dependency:resolve dependency:resolve-plugins dependency:go-offline -DmanualInclude=org.codehaus.plexus:plexus-utils:jar:3.0.20 ${MVN_OPTIONS[@]} -Dmaven.wagon.http.pool=false
+mvn dependency:resolve dependency:resolve-plugins dependency:go-offline -DmanualInclude=org.codehaus.plexus:plexus-utils:jar:3.0.20 ${MVN_OPTIONS[@]}
 
 echo "[INFO] mvn test
 mvn test ${MVN_OPTIONS[@]}
@@ -93,7 +93,7 @@ echo "[Info] Project version: $project_version"
 $THIS_DIR/scripts/update_project_version.py pom.xml ${project_version} > generated_public_pom.xml
 
 echo "[INFO] mvn deploy
-mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy 
+mvn deploy ${MVN_OPTIONS[@]} -Dnot-shadeDep -Dossrh-deploy -Dmaven.wagon.http.pool=false
 
 # echo "[INFO] Close and Release"
 # snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \
