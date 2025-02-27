@@ -80,7 +80,7 @@ echo "[INFO] mvn clean compile
 mvn clean compile ${MVN_OPTIONS[@]}
 
 echo "[INFO] mvn dependency resolve
-mvn dependency:resolve dependency:resolve-plugins ${MVN_OPTIONS[@]}
+mvn dependency:resolve dependency:resolve-plugins -DmanualInclude=org.codehaus.plexus:plexus-utils:jar:3.0.20 ${MVN_OPTIONS[@]}
 
 echo "[INFO] mvn verify
 mvn verify ${MVN_OPTIONS[@]}
