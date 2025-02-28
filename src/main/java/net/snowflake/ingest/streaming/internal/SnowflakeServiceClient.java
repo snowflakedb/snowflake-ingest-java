@@ -22,13 +22,13 @@ import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import java.io.IOException;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
+import org.apache.http.impl.client.CloseableHttpClient;
 
 /**
  * The SnowflakeServiceClient class is responsible for making API requests to the Snowflake service.

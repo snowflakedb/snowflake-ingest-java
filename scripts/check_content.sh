@@ -20,6 +20,7 @@ if jar tvf $DIR/../target/snowflake-ingest-sdk.jar  | awk '{print $8}' | \
 
     # Files in the JAR root that are probably required
     grep -v mime.types | \
+    grep -v dependencies.properties | \
     grep -v project.properties | \
     grep -v arrow-git.properties | \
     grep -v core-default.xml | \
@@ -29,6 +30,11 @@ if jar tvf $DIR/../target/snowflake-ingest-sdk.jar  | awk '{print $8}' | \
     grep -v properties.dtd | \
     grep -v parquet.thrift | \
     grep -v assets/org/apache/commons/math3/random/new-joe-kuo-6.1000 | \
+
+    # Ignore proto files
+    grep -v opencensus/proto | \
+    grep -v google/ | \
+    grep -v grpc/ | \
 
     # Native zstd libraries are allowed
     grep -v -E '^darwin' | \

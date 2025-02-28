@@ -4,20 +4,25 @@
 
 package net.snowflake.ingest.utils;
 
-import net.snowflake.client.jdbc.internal.snowflake.common.core.ResourceBundleManager;
+import java.text.MessageFormat;
+import java.util.ResourceBundle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Snowflake exception in the Ingest SDK */
 public class SFException extends RuntimeException {
   static final Logger logger = LoggerFactory.getLogger(SFException.class);
-
-  static final ResourceBundleManager errorResourceBundleManager =
-      ResourceBundleManager.getSingleton(ErrorCode.errorMessageResource);
+  static final ResourceBundle errorMessageBundle =
+      ResourceBundle.getBundle(ErrorCode.errorMessageResource);
 
   private Throwable cause;
   private String vendorCode;
   private Object[] params;
+
+  private static String getErrorMessage(final ErrorCode errorCode, final Object... params) {
+    final String messageTemplate = errorMessageBundle.getString(errorCode.getMessageCode());
+    return MessageFormat.format(messageTemplate, params);
+  }
 
   /**
    * Construct a Snowflake exception from a cause, an error code and message parameters
@@ -27,10 +32,7 @@ public class SFException extends RuntimeException {
    * @param params
    */
   public SFException(Throwable cause, ErrorCode errorCode, Object... params) {
-    super(
-        errorResourceBundleManager.getLocalizedMessage(
-            String.valueOf(errorCode.getMessageCode()), params),
-        cause);
+    super(getErrorMessage(errorCode, params), cause);
 
     this.vendorCode = errorCode.getMessageCode();
     this.params = params;
