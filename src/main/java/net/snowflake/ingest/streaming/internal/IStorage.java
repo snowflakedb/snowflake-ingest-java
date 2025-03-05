@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -20,5 +20,5 @@ interface IStorage {
    * @return The String ETag returned by the upload. Can be null in situations where the underlying
    *     layer does not have an ETag to return.
    */
-  Optional<String> put(BlobPath blobPath, byte[] blob);
+  Optional<IcebergPostUploadMetadata> put(BlobPath blobPath, byte[] blob);
 }
