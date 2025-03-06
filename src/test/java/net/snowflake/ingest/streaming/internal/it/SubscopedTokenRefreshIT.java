@@ -86,10 +86,10 @@ public class SubscopedTokenRefreshIT {
     /*
      * Minimum duration of token for each cloud storage:
      *  - S3: 900 seconds
-     *  - GCS: 600 seconds
+     *  - GCS: 3600 seconds
      *  - Azure: 300 seconds
      */
-    int duration = 900;
+    int duration = 3600;
     int rowCount = 10;
     createIcebergTable(tableName);
     conn.createStatement()
