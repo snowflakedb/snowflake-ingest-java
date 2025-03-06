@@ -36,7 +36,8 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Storage */
-class InternalStage implements IStorage {
+@VisibleForTesting
+public class InternalStage implements IStorage {
   private static final ObjectMapper mapper = new ObjectMapper();
 
   /**
@@ -409,5 +410,11 @@ class InternalStage implements IStorage {
 
   FileLocationInfo getFileLocationInfo() {
     return this.fileLocationInfo;
+  }
+
+  @VisibleForTesting
+  public void setFileTransferMetadataWithAge(
+      SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge) {
+    this.fileTransferMetadataWithAge = fileTransferMetadataWithAge;
   }
 }

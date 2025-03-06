@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -17,7 +17,8 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /** Class to manage multiple external volumes */
-class SubscopedTokenExternalVolumeManager implements IStorageManager {
+@VisibleForTesting
+public class SubscopedTokenExternalVolumeManager implements IStorageManager {
   private static final Logging logger = new Logging(SubscopedTokenExternalVolumeManager.class);
   // Reference to the external volume per table
   private final ConcurrentHashMap<String, InternalStage> externalVolumeMap;

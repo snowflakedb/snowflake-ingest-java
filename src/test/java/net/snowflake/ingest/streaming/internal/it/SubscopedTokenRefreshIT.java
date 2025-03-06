@@ -18,7 +18,9 @@ import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.streaming.internal.SnowflakeFileTransferMetadataWithAge;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
+import net.snowflake.ingest.streaming.internal.SubscopedTokenExternalVolumeManager;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -81,41 +83,10 @@ public class SubscopedTokenRefreshIT {
 
   @Test
   public void testTokenExpire() throws Exception {
-    String tableName = "test_token_expire_table";
-
-    /*
-     * Minimum duration of token for each cloud storage:
-     *  - S3: 900 seconds
-     *  - GCS: 3600 seconds
-     *  - Azure: 300 seconds
-     */
-    int duration = 3600;
+    String tableName = "TEST_TOKEN_EXPIRE_TABLE";
     int rowCount = 10;
+
     createIcebergTable(tableName);
-    conn.createStatement()
-        .execute(
-            String.format(
-                "alter iceberg table %s set"
-                    + " STREAMING_ICEBERG_INGESTION_SUBSCOPED_TOKEN_DURATION_SECONDS_S3=%s",
-                tableName, duration));
-    conn.createStatement()
-        .execute(
-            String.format(
-                "alter iceberg table %s set"
-                    + " STREAMING_ICEBERG_INGESTION_SUBSCOPED_TOKEN_DURATION_SECONDS_GCS=%s",
-                tableName, duration));
-    conn.createStatement()
-        .execute(
-            String.format(
-                "alter iceberg table %s set"
-                    + " STREAMING_ICEBERG_INGESTION_SUBSCOPED_TOKEN_DURATION_SECONDS_AZURE=%s",
-                tableName, duration));
-    conn.createStatement()
-        .execute(
-            String.format(
-                "alter iceberg table %s set"
-                    + " STREAMING_ICEBERG_INGESTION_SUBSCOPED_TOKEN_DURATION_SECONDS_DEFAULT=%s",
-                tableName, duration));
 
     SnowflakeStreamingIngestChannel channel =
         client.openChannel(
@@ -136,8 +107,11 @@ public class SubscopedTokenRefreshIT {
     channel.insertRow(ImmutableMap.of("int_col", 1), "1");
     TestUtils.waitForOffset(channel, "1");
 
-    /* Wait for token to expire */
-    Thread.sleep((duration + 1) * 1000);
+    /* Invalidate the token */
+    ((SubscopedTokenExternalVolumeManager) client.getStorageManager())
+        .getStorage(Utils.getFullyQualifiedTableName(database, schema, tableName))
+        .setFileTransferMetadataWithAge(
+            SnowflakeFileTransferMetadataWithAge.getEmptyIcebergFileTransferMetadataWithAge());
 
     /* Insert rows to trigger token generation */
     for (int i = 2; i <= rowCount; i++) {
