@@ -89,7 +89,7 @@ public class SubscopedTokenRefreshIT {
      *  - GCS: 600 seconds
      *  - Azure: 300 seconds
      */
-    int duration = 60;
+    int duration = 900;
     int rowCount = 10;
     createIcebergTable(tableName);
     conn.createStatement()

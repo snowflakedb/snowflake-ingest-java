@@ -18,7 +18,7 @@ class IcebergPostUploadMetadata {
    * table corruption. By plugging in the etag value instead of the md5 value, we can ensure that
    * the XP scanner can successfully scan the file.
    */
-  private final String etag;
+  private final @Nullable String etag;
 
   /**
    * The updated upload path of the file within the table's external volume. This will be null if
@@ -36,13 +36,13 @@ class IcebergPostUploadMetadata {
    * @param etag The etag of the uploaded file.
    * @param path The updated upload path of the file within the table's external volume.
    */
-  IcebergPostUploadMetadata(String etag, @Nullable BlobPath path) {
+  IcebergPostUploadMetadata(@Nullable String etag, @Nullable BlobPath path) {
     this.etag = etag;
     this.refreshedPath = path;
   }
 
-  String getEtag() {
-    return etag;
+  Optional<String> getEtag() {
+    return Optional.ofNullable(etag);
   }
 
   Optional<BlobPath> getRefreshedPath() {

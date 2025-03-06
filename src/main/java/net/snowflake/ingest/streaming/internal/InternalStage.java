@@ -143,7 +143,7 @@ class InternalStage implements IStorage {
     boolean shouldRefreshMetadata = false;
     int retryCount = 0;
 
-    while (retryCount < maxUploadRetries) {
+    while (retryCount <= maxUploadRetries) {
       try {
         // Proactively refresh the credential if it's going to expire, to avoid the token expiration
         // error from JDBC which confuses customer. Also refresh on the first retry.

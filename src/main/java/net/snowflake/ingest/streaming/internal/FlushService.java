@@ -681,16 +681,13 @@ class FlushService<T> {
     // at this point we know for sure if the BDEC file has data for more than one chunk, i.e.
     // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
-        icebergPostUploadMetadata.isPresent()
-            ? icebergPostUploadMetadata
-                .get()
-                .getRefreshedPath()
-                .orElse(blobPath)
-                .fileRegistrationPath
-            : blobPath.fileRegistrationPath,
-        icebergPostUploadMetadata.isPresent()
-            ? icebergPostUploadMetadata.get().getEtag()
-            : BlobBuilder.computeMD5(blob),
+        icebergPostUploadMetadata
+            .flatMap(IcebergPostUploadMetadata::getRefreshedPath)
+            .orElse(blobPath)
+            .fileRegistrationPath,
+        icebergPostUploadMetadata
+            .flatMap(IcebergPostUploadMetadata::getEtag)
+            .orElse(BlobBuilder.computeMD5(blob)),
         bdecVersion,
         metadata,
         blobStats,
