@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -1098,5 +1098,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // TESTING ONLY - inject the storage manager
   public void setStorageManager(IStorageManager storageManager) {
     this.storageManager = storageManager;
+  }
+
+  @VisibleForTesting
+  public IStorageManager getStorageManager() {
+    return this.storageManager;
   }
 }

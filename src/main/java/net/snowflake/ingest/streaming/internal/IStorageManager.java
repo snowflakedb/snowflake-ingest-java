@@ -1,16 +1,18 @@
 /*
- * Copyright (c) 2024 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2024-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Optional;
 
 /**
  * Interface to manage {@link InternalStage} and {@link PresignedUrlExternalVolume} for {@link
  * FlushService}
  */
-interface IStorageManager {
+@VisibleForTesting
+public interface IStorageManager {
 
   /** Default max upload retries for streaming ingest storage */
   int DEFAULT_MAX_UPLOAD_RETRIES = 5;
