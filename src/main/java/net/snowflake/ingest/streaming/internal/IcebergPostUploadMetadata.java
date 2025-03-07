@@ -7,7 +7,7 @@ package net.snowflake.ingest.streaming.internal;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
-/** Wrapper class of Iceberg post-upload metadata. */
+/** Stores Iceberg post-upload metadata. */
 class IcebergPostUploadMetadata {
   /**
    * With iceberg files, the XP scanner expects the MD5 value to exactly match the etag value in S3.
@@ -17,11 +17,7 @@ class IcebergPostUploadMetadata {
    */
   private final @Nullable String etag;
 
-  /**
-   * The final uploaded blob path of the file within the table's external volume. This is necessary
-   * for file registration because the final blob path may differ from the original one if it's
-   * refreshed after the upload thread has started.
-   */
+  /** The final uploaded blob path of the file within the table's external volume. */
   private final BlobPath blobPath;
 
   /**
@@ -30,7 +26,7 @@ class IcebergPostUploadMetadata {
    * @param etag The etag of the uploaded file.
    * @param blobPath The updated blob path of the file within the table's external volume.
    */
-  IcebergPostUploadMetadata(@Nullable String etag, @Nullable BlobPath blobPath) {
+  IcebergPostUploadMetadata(@Nullable String etag, BlobPath blobPath) {
     this.etag = etag;
     this.blobPath = blobPath;
   }

@@ -142,54 +142,38 @@ public class InternalStage implements IStorage {
     this.fileTransferMetadataWithAge = testMetadata;
   }
 
-  private Optional<IcebergPostUploadMetadata> putRemote(BlobPath blobPath, byte[] data)
-      throws SnowflakeSQLException, IOException {
+  private Optional<IcebergPostUploadMetadata> putRemote(BlobPath blobPath, byte[] data) {
     int retryCount = 0;
 
-    while (retryCount <= maxUploadRetries) {
+    while (true) {
       try {
         // Proactively refresh the credential if it's going to expire, to avoid the token expiration
         // error from JDBC which confuses customer. Also refresh on the first retry.
-        if (Instant.now().isAfter(prevRefresh.plus(refreshDuration)) | retryCount == 1) {
+        if (Instant.now().isAfter(prevRefresh.plus(refreshDuration)) || retryCount == 1) {
           refreshSnowflakeMetadata(false /* force */);
           if (this.useIcebergFileTransferAgent) {
-            BlobPath icebergUploadRefreshedPath =
+            BlobPath refreshedPath =
                 this.owningManager.generateBlobPath(this.tableRef.fullyQualifiedName);
             logger.logInfo(
-                "Refreshed Iceberg file upload path, client={}, tableRef={}, originalFilepath={},"
+                "Refreshed Iceberg file upload path, client={}, tableRef={}, originalPath={},"
                     + " refreshedFilepath={}",
                 clientName,
                 tableRef,
                 blobPath.uploadPath,
-                icebergUploadRefreshedPath.uploadPath);
-            blobPath = icebergUploadRefreshedPath;
+                refreshedPath.uploadPath);
+            blobPath = refreshedPath;
           }
         }
 
-        SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy;
-        if (this.fileTransferMetadataWithAge.fileTransferMetadata.isForOneFile()) {
-          fileTransferMetadataCopy = this.fetchSignedURL(blobPath.uploadPath);
-        } else {
-          // Set file path to be uploaded
-          SnowflakeFileTransferMetadataV1 fileTransferMetadata =
-              fileTransferMetadataWithAge.fileTransferMetadata;
+        /*
+         * Since we can have multiple calls to putRemote in parallel and because the metadata
+         * includes the file path we use a copy for the upload to prevent us from using the wrong
+         * file path.
+         */
+        SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy =
+            copyFileTransferMetadata(
+                this.fileTransferMetadataWithAge.fileTransferMetadata, blobPath.uploadPath);
 
-          RemoteStoreFileEncryptionMaterial encryptionMaterial =
-              fileTransferMetadata.getEncryptionMaterial();
-          /*
-          Since we can have multiple calls to putRemote in parallel and because the metadata includes the file path
-          we use a copy for the upload to prevent us from using the wrong file path.
-           */
-          fileTransferMetadataCopy =
-              new SnowflakeFileTransferMetadataV1(
-                  fileTransferMetadata.getPresignedUrl(),
-                  blobPath.uploadPath,
-                  encryptionMaterial != null ? encryptionMaterial.getQueryStageMasterKey() : null,
-                  encryptionMaterial != null ? encryptionMaterial.getQueryId() : null,
-                  encryptionMaterial != null ? encryptionMaterial.getSmkId() : null,
-                  fileTransferMetadata.getCommandType(),
-                  fileTransferMetadata.getStageInfo());
-        }
         InputStream inStream = new ByteArrayInputStream(data);
 
         if (this.useIcebergFileTransferAgent) {
@@ -243,9 +227,6 @@ public class InternalStage implements IStorage {
         throw new SFException(e, ErrorCode.INTERNAL_ERROR);
       }
     }
-
-    // Should never reach here
-    throw new SFException(ErrorCode.INTERNAL_ERROR, "Unexpected code path reached");
   }
 
   /**
@@ -378,11 +359,7 @@ public class InternalStage implements IStorage {
       putLocal(this.fileTransferMetadataWithAge.localLocation, blobPath.fileRegistrationPath, blob);
       return Optional.empty();
     } else {
-      try {
-        return putRemote(blobPath, blob);
-      } catch (SnowflakeSQLException | IOException e) {
-        throw new SFException(e, ErrorCode.BLOB_UPLOAD_FAILURE);
-      }
+      return putRemote(blobPath, blob);
     }
   }
 
@@ -413,6 +390,27 @@ public class InternalStage implements IStorage {
 
   FileLocationInfo getFileLocationInfo() {
     return this.fileLocationInfo;
+  }
+
+  private SnowflakeFileTransferMetadataV1 copyFileTransferMetadata(
+      SnowflakeFileTransferMetadataV1 fileTransferMetadata, String uploadPath)
+      throws SnowflakeSQLException, IOException {
+    // TODO: SNOW-1969309
+    if (fileTransferMetadata.isForOneFile()) {
+      return this.fetchSignedURL(uploadPath);
+    } else {
+      RemoteStoreFileEncryptionMaterial encryptionMaterial =
+          fileTransferMetadata.getEncryptionMaterial();
+
+      return new SnowflakeFileTransferMetadataV1(
+          fileTransferMetadata.getPresignedUrl(),
+          uploadPath,
+          encryptionMaterial != null ? encryptionMaterial.getQueryStageMasterKey() : null,
+          encryptionMaterial != null ? encryptionMaterial.getQueryId() : null,
+          encryptionMaterial != null ? encryptionMaterial.getSmkId() : null,
+          fileTransferMetadata.getCommandType(),
+          fileTransferMetadata.getStageInfo());
+    }
   }
 
   @VisibleForTesting

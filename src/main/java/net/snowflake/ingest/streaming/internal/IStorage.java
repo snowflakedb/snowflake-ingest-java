@@ -17,8 +17,8 @@ interface IStorage {
    *
    * @param blobPath
    * @param blob
-   * @return The IcebergPostUploadMetadata returned by the upload. Empty if and only if it is a
-   *     non-iceberg table.
+   * @return The IcebergPostUploadMetadata returned by the upload. Present iff and only if the
+   *     implementation is creating Iceberg blobs.
    */
   Optional<IcebergPostUploadMetadata> put(BlobPath blobPath, byte[] blob);
 }
