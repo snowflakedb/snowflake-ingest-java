@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import com.google.common.annotations.VisibleForTesting;
 import java.util.Optional;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 
@@ -12,8 +11,7 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
  * Wrapper class containing SnowflakeFileTransferMetadata and the timestamp at which the metadata
  * was refreshed
  */
-@VisibleForTesting
-public class SnowflakeFileTransferMetadataWithAge {
+class SnowflakeFileTransferMetadataWithAge {
   final SnowflakeFileTransferMetadataV1 fileTransferMetadata;
   final boolean isLocalFS;
   final String localLocation;
@@ -36,12 +34,5 @@ public class SnowflakeFileTransferMetadataWithAge {
     this.fileTransferMetadata = null;
     this.localLocation = localLocation;
     this.timestamp = timestamp;
-  }
-
-  // Test only constructor
-  @VisibleForTesting
-  public static SnowflakeFileTransferMetadataWithAge getEmptyIcebergFileTransferMetadataWithAge() {
-    return new SnowflakeFileTransferMetadataWithAge(
-        (SnowflakeFileTransferMetadataV1) null, Optional.empty());
   }
 }

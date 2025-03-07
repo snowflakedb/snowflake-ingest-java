@@ -660,7 +660,7 @@ class FlushService<T> {
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
 
-    // The returned icebergPostUploadMetadata is non-empty ONLY in case of iceberg uploads.
+    // The returned icebergPostUploadMetadata is non-empty if and only if it's iceberg uploads.
     Optional<IcebergPostUploadMetadata> icebergPostUploadMetadata = storage.put(blobPath, blob);
 
     if (uploadContext != null) {
@@ -682,7 +682,7 @@ class FlushService<T> {
     // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
         icebergPostUploadMetadata
-            .flatMap(IcebergPostUploadMetadata::getRefreshedPath)
+            .map(IcebergPostUploadMetadata::getBlobPath)
             .orElse(blobPath)
             .fileRegistrationPath,
         icebergPostUploadMetadata

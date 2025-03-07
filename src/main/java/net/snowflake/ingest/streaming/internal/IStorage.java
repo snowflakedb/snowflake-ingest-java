@@ -17,8 +17,8 @@ interface IStorage {
    *
    * @param blobPath
    * @param blob
-   * @return The String ETag returned by the upload. Can be null in situations where the underlying
-   *     layer does not have an ETag to return.
+   * @return The IcebergPostUploadMetadata returned by the upload. Empty if and only if it is a
+   *     non-iceberg table.
    */
   Optional<IcebergPostUploadMetadata> put(BlobPath blobPath, byte[] blob);
 }

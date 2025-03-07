@@ -18,7 +18,6 @@ import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
-import net.snowflake.ingest.streaming.internal.SnowflakeFileTransferMetadataWithAge;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.streaming.internal.SubscopedTokenExternalVolumeManager;
 import net.snowflake.ingest.utils.Constants;
@@ -110,8 +109,7 @@ public class SubscopedTokenRefreshIT {
     /* Invalidate the token */
     ((SubscopedTokenExternalVolumeManager) client.getStorageManager())
         .getStorage(Utils.getFullyQualifiedTableName(database, schema, tableName))
-        .setFileTransferMetadataWithAge(
-            SnowflakeFileTransferMetadataWithAge.getEmptyIcebergFileTransferMetadataWithAge());
+        .setEmptyIcebergFileTransferMetadataWithAge();
 
     /* Insert rows to trigger token generation */
     for (int i = 2; i <= rowCount; i++) {
