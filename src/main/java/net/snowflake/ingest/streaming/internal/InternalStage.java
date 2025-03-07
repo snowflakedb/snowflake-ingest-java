@@ -171,8 +171,10 @@ public class InternalStage implements IStorage {
          * file path.
          */
         SnowflakeFileTransferMetadataV1 fileTransferMetadataCopy =
-            copyFileTransferMetadata(
-                this.fileTransferMetadataWithAge.fileTransferMetadata, blobPath.uploadPath);
+            this.fileTransferMetadataWithAge.fileTransferMetadata.isForOneFile()
+                ? this.fetchSignedURL(blobPath.uploadPath)
+                : copyFileTransferMetadata(
+                    this.fileTransferMetadataWithAge.fileTransferMetadata, blobPath.uploadPath);
 
         InputStream inStream = new ByteArrayInputStream(data);
 
@@ -395,22 +397,18 @@ public class InternalStage implements IStorage {
   private SnowflakeFileTransferMetadataV1 copyFileTransferMetadata(
       SnowflakeFileTransferMetadataV1 fileTransferMetadata, String uploadPath)
       throws SnowflakeSQLException, IOException {
-    // TODO: SNOW-1969309
-    if (fileTransferMetadata.isForOneFile()) {
-      return this.fetchSignedURL(uploadPath);
-    } else {
-      RemoteStoreFileEncryptionMaterial encryptionMaterial =
-          fileTransferMetadata.getEncryptionMaterial();
+    // TODO: SNOW-1969309 investigate if this code is thread-safe
+    RemoteStoreFileEncryptionMaterial encryptionMaterial =
+        fileTransferMetadata.getEncryptionMaterial();
 
-      return new SnowflakeFileTransferMetadataV1(
-          fileTransferMetadata.getPresignedUrl(),
-          uploadPath,
-          encryptionMaterial != null ? encryptionMaterial.getQueryStageMasterKey() : null,
-          encryptionMaterial != null ? encryptionMaterial.getQueryId() : null,
-          encryptionMaterial != null ? encryptionMaterial.getSmkId() : null,
-          fileTransferMetadata.getCommandType(),
-          fileTransferMetadata.getStageInfo());
-    }
+    return new SnowflakeFileTransferMetadataV1(
+        fileTransferMetadata.getPresignedUrl(),
+        uploadPath,
+        encryptionMaterial != null ? encryptionMaterial.getQueryStageMasterKey() : null,
+        encryptionMaterial != null ? encryptionMaterial.getQueryId() : null,
+        encryptionMaterial != null ? encryptionMaterial.getSmkId() : null,
+        fileTransferMetadata.getCommandType(),
+        fileTransferMetadata.getStageInfo());
   }
 
   @VisibleForTesting
