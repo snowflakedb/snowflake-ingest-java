@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -660,13 +660,8 @@ class FlushService<T> {
 
     Timer.Context uploadContext = Utils.createTimerContext(this.owningClient.uploadLatency);
 
-    // The returned etag is non-empty ONLY in case of iceberg uploads. With iceberg files, the XP
-    // scanner expects the
-    // MD5 value to exactly match the etag value in S3. This assumption doesn't hold when multipart
-    // upload kicks in,
-    // causing scan time failures and table corruption. By plugging in the etag value instead of the
-    // md5 value,
-    Optional<String> etag = storage.put(blobPath, blob);
+    // The returned icebergPostUploadMetadata is non-empty if and only if it's iceberg uploads.
+    Optional<IcebergPostUploadMetadata> icebergPostUploadMetadata = storage.put(blobPath, blob);
 
     if (uploadContext != null) {
       blobStats.setUploadDurationMs(uploadContext);
@@ -677,17 +672,22 @@ class FlushService<T> {
     }
 
     logger.logInfo(
-        "Finish uploading blob={}, size={}, timeInMillis={}, etag={}",
+        "Finish uploading blob={}, size={}, timeInMillis={}, icebergPostUploadMetadata={}",
         blobPath.fileRegistrationPath,
         blob.length,
         System.currentTimeMillis() - startTime,
-        etag);
+        icebergPostUploadMetadata);
 
     // at this point we know for sure if the BDEC file has data for more than one chunk, i.e.
     // spans mixed tables or not
     return BlobMetadata.createBlobMetadata(
-        blobPath.fileRegistrationPath,
-        etag.isPresent() ? etag.get() : BlobBuilder.computeMD5(blob),
+        icebergPostUploadMetadata
+            .map(IcebergPostUploadMetadata::getBlobPath)
+            .orElse(blobPath)
+            .fileRegistrationPath,
+        icebergPostUploadMetadata
+            .flatMap(IcebergPostUploadMetadata::getEtag)
+            .orElse(BlobBuilder.computeMD5(blob)),
         bdecVersion,
         metadata,
         blobStats,

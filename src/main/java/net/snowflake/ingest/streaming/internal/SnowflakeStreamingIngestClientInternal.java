@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Snowflake Computing Inc. All rights reserved.
+ * Copyright (c) 2021-2025 Snowflake Computing Inc. All rights reserved.
  */
 
 package net.snowflake.ingest.streaming.internal;
@@ -241,14 +241,13 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     this.snowflakeServiceClient = new SnowflakeServiceClient(this.httpClient, this.requestBuilder);
 
-    this.storageManager =
-        parameterProvider.isEnableIcebergStreaming()
-            ? new SubscopedTokenExternalVolumeManager(
-                this.role, this.name, this.snowflakeServiceClient)
-            : new InternalStageManager(
-                isTestMode, this.role, this.name, this.snowflakeServiceClient);
-
     try {
+      this.storageManager =
+          parameterProvider.isEnableIcebergStreaming()
+              ? new SubscopedTokenExternalVolumeManager(
+                  this.role, this.name, this.snowflakeServiceClient)
+              : new InternalStageManager(
+                  isTestMode, this.role, this.name, this.snowflakeServiceClient);
       this.flushService =
           new FlushService<>(this, this.channelCache, this.storageManager, this.isTestMode);
     } catch (Exception e) {
@@ -1099,5 +1098,10 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   // TESTING ONLY - inject the storage manager
   public void setStorageManager(IStorageManager storageManager) {
     this.storageManager = storageManager;
+  }
+
+  @VisibleForTesting
+  public IStorageManager getStorageManager() {
+    return this.storageManager;
   }
 }
