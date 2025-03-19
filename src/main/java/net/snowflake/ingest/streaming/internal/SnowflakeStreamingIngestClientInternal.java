@@ -792,6 +792,17 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
+   * Flush all data in memory across all channels to persistent storage and register with a
+   * Snowflake table. This API is still in beta and not meant for production use.
+   *
+   * @return future which will be complete when the flush the data is registered
+   */
+  @Override
+  public CompletableFuture<Void> flush() {
+    return flush(false);
+  }
+
+  /**
    * Flush all data in memory to persistent storage and register with a Snowflake table
    *
    * @param closing whether the flush is called as part of client closing
