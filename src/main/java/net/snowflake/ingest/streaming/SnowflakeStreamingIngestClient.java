@@ -61,8 +61,8 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
   void setRefreshToken(String refreshToken);
 
   /**
-   * Flush all data in memory across all channels to persistent storage and register with a
-   * Snowflake table. This API is still in beta and not meant for production use.
+   * Flush all data in memory across all channels to persistent storage and registers them to a
+   * Snowflake table. This API is still in beta and may be subject to change.
    *
    * @return future which will be complete when the flush the data is registered
    */
