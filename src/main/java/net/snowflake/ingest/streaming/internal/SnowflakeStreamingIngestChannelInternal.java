@@ -414,6 +414,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     return insertRows(rows, null, offsetToken);
   }
 
+  @Override
+  public InsertValidationResponse validateRows(Iterable<Map<String, Object>> rows) {
+    // We create a shallow copy to protect against concurrent addition/removal of columns, which can
+    // lead to double counting of null values, for example. Individual mutable values may still be
+    // concurrently modified (e.g. byte[]). Before validation and EP calculation, we must make sure
+    // that defensive copies of all mutable objects are created.
+    final List<Map<String, Object>> rowsCopy = new LinkedList<>();
+    rows.forEach(r -> rowsCopy.add(new LinkedHashMap<>(r)));
+    return this.rowBuffer.validateRows(rowsCopy);
+  }
+
   /** Collect the row size from row buffer if required */
   void collectRowSize(float rowSize) {
     if (this.owningClient.inputThroughput != null) {
