@@ -332,7 +332,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       InsertValidationResponse.InsertError error) {
     Object[] indexedRow = new Object[fieldIndex.size()];
 
-    final ParseRowResult parseRow = parseRow(row, insertRowsCurrIndex, error, (colIndex, value) -> indexedRow[colIndex] = value);
+    final ParseRowResult parseRow =
+        parseRow(
+            row, insertRowsCurrIndex, error, (colIndex, value) -> indexedRow[colIndex] = value);
     final float size = parseRow.size;
     final Map<String, RowBufferStats> forkedStatsMap = parseRow.forkedStatsMap;
 
@@ -417,7 +419,11 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
    * @param columnValueConsumer consumer to accept the column index and value
    * @return the {@link ParseRowResult} containing the row size and the forked stats map
    */
-  private ParseRowResult parseRow(Map<String, Object> row, long rowIndex, InsertValidationResponse.InsertError error, BiConsumer<Integer, Object> columnValueConsumer) {
+  private ParseRowResult parseRow(
+      Map<String, Object> row,
+      long rowIndex,
+      InsertValidationResponse.InsertError error,
+      BiConsumer<Integer, Object> columnValueConsumer) {
     // Create new empty stats just for the current row.
     Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
     statsMap.forEach((columnPath, stats) -> forkedStatsMap.put(columnPath, stats.forkEmpty()));
@@ -460,7 +466,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
     int rowIndex = 0;
     for (Map<String, Object> row : rows) {
       InsertValidationResponse.InsertError error =
-              new InsertValidationResponse.InsertError(row, rowIndex);
+          new InsertValidationResponse.InsertError(row, rowIndex);
       try {
         verifyInputColumns(row, error, rowIndex);
         parseRow(row, rowIndex, error, (colIndex, value) -> {});
@@ -479,9 +485,9 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private boolean isActualError(InsertValidationResponse.InsertError insertError) {
     return insertError.getException() != null
-            || containsAnything(insertError.getExtraColNames())
-            || containsAnything(insertError.getMissingNotNullColNames())
-            || containsAnything(insertError.getNullValueForNotNullColNames());
+        || containsAnything(insertError.getExtraColNames())
+        || containsAnything(insertError.getMissingNotNullColNames())
+        || containsAnything(insertError.getNullValueForNotNullColNames());
   }
 
   private static boolean containsAnything(List<?> collection) {

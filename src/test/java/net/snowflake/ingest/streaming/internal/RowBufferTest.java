@@ -396,12 +396,16 @@ public class RowBufferTest {
 
   @Test
   public void testRowIndexWithMultipleRowsWithError_validateRows() {
-    testRowIndexWithMultipleRowsWithErrorHelper((rows) -> this.rowBufferOnErrorContinue.validateRows(rows));
-    testRowIndexWithMultipleRowsWithErrorHelper((rows) -> this.rowBufferOnErrorSkipBatch.validateRows(rows));
-    testRowIndexWithMultipleRowsWithErrorHelper((rows) -> this.rowBufferOnErrorAbort.validateRows(rows));
+    testRowIndexWithMultipleRowsWithErrorHelper(
+        (rows) -> this.rowBufferOnErrorContinue.validateRows(rows));
+    testRowIndexWithMultipleRowsWithErrorHelper(
+        (rows) -> this.rowBufferOnErrorSkipBatch.validateRows(rows));
+    testRowIndexWithMultipleRowsWithErrorHelper(
+        (rows) -> this.rowBufferOnErrorAbort.validateRows(rows));
   }
 
-  public void testRowIndexWithMultipleRowsWithErrorHelper(Function<List<Map<String, Object>>, InsertValidationResponse> action) {
+  public void testRowIndexWithMultipleRowsWithErrorHelper(
+      Function<List<Map<String, Object>>, InsertValidationResponse> action) {
     List<Map<String, Object>> rows = new ArrayList<>();
     Map<String, Object> row = new HashMap<>();
 
@@ -849,7 +853,8 @@ public class RowBufferTest {
     }
   }
 
-  private static Map<String, Object> testE2ETimestampErrorsHelperRowSetup(AbstractRowBuffer<?> innerBuffer) {
+  private static Map<String, Object> testE2ETimestampErrorsHelperRowSetup(
+      AbstractRowBuffer<?> innerBuffer) {
     ColumnMetadata colTimestampLtzSB16 = new ColumnMetadata();
     colTimestampLtzSB16.setOrdinal(1);
     colTimestampLtzSB16.setName("COLTIMESTAMPLTZ_SB16");
@@ -877,8 +882,7 @@ public class RowBufferTest {
 
     Map<String, Object> row = testE2ETimestampErrorsHelperRowSetup(innerBuffer);
 
-    InsertValidationResponse response =
-        innerBuffer.validateRows(Collections.singletonList(row));
+    InsertValidationResponse response = innerBuffer.validateRows(Collections.singletonList(row));
     Assert.assertTrue(response.hasErrors());
     Assert.assertEquals(
         ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
@@ -1389,7 +1393,8 @@ public class RowBufferTest {
     }
   }
 
-  private static Map<String, Object> testNullableCheckerHelperRowSetup(AbstractRowBuffer<?> innerBuffer) {
+  private static Map<String, Object> testNullableCheckerHelperRowSetup(
+      AbstractRowBuffer<?> innerBuffer) {
     ColumnMetadata colBoolean = new ColumnMetadata();
     colBoolean.setOrdinal(1);
     colBoolean.setName("COLBOOLEAN");
@@ -1411,13 +1416,13 @@ public class RowBufferTest {
     testNullableCheckHelper_validateRows(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
-  private void testNullableCheckHelper_validateRows(OpenChannelRequest.OnErrorOption onErrorOption) {
+  private void testNullableCheckHelper_validateRows(
+      OpenChannelRequest.OnErrorOption onErrorOption) {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     Map<String, Object> row = testNullableCheckerHelperRowSetup(innerBuffer);
 
-    InsertValidationResponse response =
-        innerBuffer.validateRows(Collections.singletonList(row));
+    InsertValidationResponse response = innerBuffer.validateRows(Collections.singletonList(row));
     Assert.assertFalse(response.hasErrors());
 
     row.put("COLBOOLEAN", null);
@@ -1463,7 +1468,8 @@ public class RowBufferTest {
     }
   }
 
-  private static Map<String, Object> testMissingColumnCheckHelperRowSetup(AbstractRowBuffer<?> innerBuffer) {
+  private static Map<String, Object> testMissingColumnCheckHelperRowSetup(
+      AbstractRowBuffer<?> innerBuffer) {
     ColumnMetadata colBoolean = new ColumnMetadata();
     colBoolean.setOrdinal(1);
     colBoolean.setName("COLBOOLEAN");
@@ -1493,13 +1499,13 @@ public class RowBufferTest {
     testMissingColumnCheckHelper_validateRows(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
-  private void testMissingColumnCheckHelper_validateRows(OpenChannelRequest.OnErrorOption onErrorOption) {
+  private void testMissingColumnCheckHelper_validateRows(
+      OpenChannelRequest.OnErrorOption onErrorOption) {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     Map<String, Object> row = testMissingColumnCheckHelperRowSetup(innerBuffer);
 
-    InsertValidationResponse response =
-        innerBuffer.validateRows(Collections.singletonList(row));
+    InsertValidationResponse response = innerBuffer.validateRows(Collections.singletonList(row));
     Assert.assertFalse(response.hasErrors());
 
     Map<String, Object> row2 = new HashMap<>();
@@ -1509,8 +1515,7 @@ public class RowBufferTest {
     InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
         ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), error.getException().getVendorCode());
-    Assert.assertEquals(
-        Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
+    Assert.assertEquals(Collections.singletonList("COLBOOLEAN"), error.getMissingNotNullColNames());
   }
 
   @Test
@@ -1528,7 +1533,8 @@ public class RowBufferTest {
     Assert.assertEquals(Arrays.asList("COLBOOLEAN3", "COLBOOLEAN2"), error.getExtraColNames());
   }
 
-  private static Map<String, Object> testExtraColumnsCheckRowSetup(AbstractRowBuffer<?> innerBuffer) {
+  private static Map<String, Object> testExtraColumnsCheckRowSetup(
+      AbstractRowBuffer<?> innerBuffer) {
     ColumnMetadata colBoolean = new ColumnMetadata();
     colBoolean.setOrdinal(1);
     colBoolean.setName("COLBOOLEAN1");
@@ -1552,13 +1558,13 @@ public class RowBufferTest {
     testExtraColumnsCheckHelper_validateRows(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
-  public void testExtraColumnsCheckHelper_validateRows(OpenChannelRequest.OnErrorOption onErrorOption) {
+  public void testExtraColumnsCheckHelper_validateRows(
+      OpenChannelRequest.OnErrorOption onErrorOption) {
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
 
     Map<String, Object> row = testExtraColumnsCheckRowSetup(innerBuffer);
 
-    InsertValidationResponse response =
-        innerBuffer.validateRows(Collections.singletonList(row));
+    InsertValidationResponse response = innerBuffer.validateRows(Collections.singletonList(row));
     Assert.assertTrue(response.hasErrors());
     InsertValidationResponse.InsertError error = response.getInsertErrors().get(0);
     Assert.assertEquals(
@@ -1573,7 +1579,8 @@ public class RowBufferTest {
     testMultipleErrorsCheckHelper_validateRows(OpenChannelRequest.OnErrorOption.SKIP_BATCH);
   }
 
-  public void testMultipleErrorsCheckHelper_validateRows(OpenChannelRequest.OnErrorOption onErrorOption) {
+  public void testMultipleErrorsCheckHelper_validateRows(
+      OpenChannelRequest.OnErrorOption onErrorOption) {
     final String column1 = "COLBOOLEAN1";
 
     AbstractRowBuffer<?> innerBuffer = createTestBuffer(onErrorOption);
@@ -1608,7 +1615,15 @@ public class RowBufferTest {
     typeErrorRow.put(column1, "WHoopsie!");
 
     InsertValidationResponse response =
-            innerBuffer.validateRows(Arrays.asList(extraColumnRow, ordinaryRow, missingColumnRow, ordinaryRow, nullableColumnRow, ordinaryRow, typeErrorRow));
+        innerBuffer.validateRows(
+            Arrays.asList(
+                extraColumnRow,
+                ordinaryRow,
+                missingColumnRow,
+                ordinaryRow,
+                nullableColumnRow,
+                ordinaryRow,
+                typeErrorRow));
     Assert.assertTrue(response.hasErrors());
     List<InsertValidationResponse.InsertError> insertErrors = response.getInsertErrors();
     Assert.assertEquals(4, insertErrors.size());
@@ -1619,18 +1634,23 @@ public class RowBufferTest {
 
     InsertValidationResponse.InsertError extraColumnsError = insertErrors.get(0);
     Assert.assertEquals(
-        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), extraColumnsError.getException().getVendorCode());
+        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
+        extraColumnsError.getException().getVendorCode());
     Assert.assertEquals(Arrays.asList(column3, column2), extraColumnsError.getExtraColNames());
 
     InsertValidationResponse.InsertError missingColumnsError = insertErrors.get(1);
     Assert.assertEquals(
-        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), missingColumnsError.getException().getVendorCode());
-    Assert.assertEquals(Collections.singletonList(column1), missingColumnsError.getMissingNotNullColNames());
+        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
+        missingColumnsError.getException().getVendorCode());
+    Assert.assertEquals(
+        Collections.singletonList(column1), missingColumnsError.getMissingNotNullColNames());
 
     InsertValidationResponse.InsertError nullableColumnsError = insertErrors.get(2);
     Assert.assertEquals(
-        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(), nullableColumnsError.getException().getVendorCode());
-    Assert.assertEquals(Collections.singletonList(column1), nullableColumnsError.getNullValueForNotNullColNames());
+        ErrorCode.INVALID_FORMAT_ROW.getMessageCode(),
+        nullableColumnsError.getException().getVendorCode());
+    Assert.assertEquals(
+        Collections.singletonList(column1), nullableColumnsError.getNullValueForNotNullColNames());
 
     InsertValidationResponse.InsertError typeError = insertErrors.get(3);
     Assert.assertEquals(
