@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
@@ -32,7 +31,6 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.IcebergDataTypeParser;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SubColumnFinder;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.schema.MessageType;
@@ -481,9 +479,13 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
 
   private boolean isActualError(InsertValidationResponse.InsertError insertError) {
     return insertError.getException() != null
-            || !CollectionUtils.isEmpty(insertError.getExtraColNames())
-            || !CollectionUtils.isEmpty(insertError.getMissingNotNullColNames())
-            || !CollectionUtils.isEmpty(insertError.getNullValueForNotNullColNames());
+            || containsAnything(insertError.getExtraColNames())
+            || containsAnything(insertError.getMissingNotNullColNames())
+            || containsAnything(insertError.getNullValueForNotNullColNames());
+  }
+
+  private static boolean containsAnything(List<?> collection) {
+    return collection != null && !collection.isEmpty();
   }
 
   @Override
