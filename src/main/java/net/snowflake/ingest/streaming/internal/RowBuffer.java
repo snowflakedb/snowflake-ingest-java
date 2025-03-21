@@ -34,6 +34,14 @@ interface RowBuffer<T> {
       Iterable<Map<String, Object>> rows, String startOffsetToken, String endOffsetToken);
 
   /**
+   * Validate a batch of rows
+   *
+   * @param rows input rows
+   * @return insert response that possibly contains errors because of validation failures
+   */
+  InsertValidationResponse validateRows(List<Map<String, Object>> rows);
+
+  /**
    * Flush the data in the row buffer by taking the ownership of the old vectors and pass all the
    * required info back to the flush service to build the blob
    *

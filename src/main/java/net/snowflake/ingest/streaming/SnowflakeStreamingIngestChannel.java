@@ -297,6 +297,12 @@ public interface SnowflakeStreamingIngestChannel {
       Iterable<Map<String, Object>> rows, @Nullable String offsetToken);
 
   /**
+   * Validate a batch of rows against the channel, please see {@link
+   * SnowflakeStreamingIngestChannel#insertRows(Iterable, String, String)} for more information.
+   */
+  InsertValidationResponse validateRows(Iterable<Map<String, Object>> rows);
+
+  /**
    * Get the latest committed offset token from Snowflake
    *
    * @return the latest committed offset token

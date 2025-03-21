@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import net.snowflake.client.jdbc.internal.google.common.collect.Sets;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -30,6 +32,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.IcebergDataTypeParser;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SubColumnFinder;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.schema.MessageType;
@@ -330,40 +333,10 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       long insertRowsCurrIndex,
       InsertValidationResponse.InsertError error) {
     Object[] indexedRow = new Object[fieldIndex.size()];
-    float size = 0F;
 
-    // Create new empty stats just for the current row.
-    Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
-    statsMap.forEach((columnPath, stats) -> forkedStatsMap.put(columnPath, stats.forkEmpty()));
-
-    for (Map.Entry<String, Object> entry : row.entrySet()) {
-      String key = entry.getKey();
-      Object value = entry.getValue();
-      String columnName = LiteralQuoteUtils.unquoteColumnName(key);
-      ParquetColumn parquetColumn = fieldIndex.get(columnName);
-      int colIndex = parquetColumn.index;
-      ColumnMetadata column = parquetColumn.columnMetadata;
-      ParquetBufferValue valueWithSize =
-          (clientBufferParameters.isEnableIcebergStreaming()
-              ? IcebergParquetValueParser.parseColumnValueToParquet(
-                  value,
-                  parquetColumn.type,
-                  forkedStatsMap,
-                  subColumnFinder,
-                  defaultTimezone,
-                  insertRowsCurrIndex,
-                  error)
-              : SnowflakeParquetValueParser.parseColumnValueToParquet(
-                  value,
-                  column,
-                  parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
-                  forkedStatsMap.get(columnName),
-                  defaultTimezone,
-                  insertRowsCurrIndex,
-                  clientBufferParameters.isEnableNewJsonParsingLogic()));
-      indexedRow[colIndex] = valueWithSize.getValue();
-      size += valueWithSize.getSize();
-    }
+    final ParseRowResult parseRow = parseRow(row, insertRowsCurrIndex, error, (colIndex, value) -> indexedRow[colIndex] = value);
+    final float size = parseRow.size;
+    final Map<String, RowBufferStats> forkedStatsMap = parseRow.forkedStatsMap;
 
     if (error.getMissingNotNullColNames() != null
         || error.getExtraColNames() != null
@@ -424,6 +397,93 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
       }
     }
     return size;
+  }
+
+  private static class ParseRowResult {
+    private final float size;
+    private final Map<String, RowBufferStats> forkedStatsMap;
+
+    public ParseRowResult(float size, Map<String, RowBufferStats> forkedStatsMap) {
+      this.size = size;
+      this.forkedStatsMap = forkedStatsMap;
+    }
+  }
+
+  /**
+   * Parses a row and writes the values to the columnValueConsumer.
+   *
+   * @param row row to add
+   * @param rowIndex Row index of the input Rows passed in {@link
+   *     net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel#validateRows(Iterable)}
+   * @param error insertion error object to populate if there is an error
+   * @param columnValueConsumer consumer to accept the column index and value
+   * @return the {@link ParseRowResult} containing the row size and the forked stats map
+   */
+  private ParseRowResult parseRow(Map<String, Object> row, long rowIndex, InsertValidationResponse.InsertError error, BiConsumer<Integer, Object> columnValueConsumer) {
+    // Create new empty stats just for the current row.
+    Map<String, RowBufferStats> forkedStatsMap = new HashMap<>();
+    statsMap.forEach((columnPath, stats) -> forkedStatsMap.put(columnPath, stats.forkEmpty()));
+    float size = 0F;
+    for (Map.Entry<String, Object> entry : row.entrySet()) {
+      String key = entry.getKey();
+      Object value = entry.getValue();
+      String columnName = LiteralQuoteUtils.unquoteColumnName(key);
+      ParquetColumn parquetColumn = fieldIndex.get(columnName);
+      int colIndex = parquetColumn.index;
+      ColumnMetadata column = parquetColumn.columnMetadata;
+      ParquetBufferValue valueWithSize =
+          (clientBufferParameters.isEnableIcebergStreaming()
+              ? IcebergParquetValueParser.parseColumnValueToParquet(
+                  value,
+                  parquetColumn.type,
+                  forkedStatsMap,
+                  subColumnFinder,
+                  defaultTimezone,
+                  rowIndex,
+                  error)
+              : SnowflakeParquetValueParser.parseColumnValueToParquet(
+                  value,
+                  column,
+                  parquetColumn.type.asPrimitiveType().getPrimitiveTypeName(),
+                  forkedStatsMap.get(columnName),
+                  defaultTimezone,
+                  rowIndex,
+                  clientBufferParameters.isEnableNewJsonParsingLogic()));
+      columnValueConsumer.accept(colIndex, valueWithSize.getValue());
+      size += valueWithSize.getSize();
+    }
+    return new ParseRowResult(size, forkedStatsMap);
+  }
+
+  @Override
+  public InsertValidationResponse validateRows(List<Map<String, Object>> rows) {
+
+    InsertValidationResponse response = new InsertValidationResponse();
+    int rowIndex = 0;
+    for (Map<String, Object> row : rows) {
+      InsertValidationResponse.InsertError error =
+              new InsertValidationResponse.InsertError(row, rowIndex);
+      try {
+        verifyInputColumns(row, error, rowIndex);
+        parseRow(row, rowIndex, error, (colIndex, value) -> {});
+      } catch (SFException e) {
+        error.setException(e);
+      } catch (Throwable e) {
+        error.setException(new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage()));
+      }
+      if (isActualError(error)) {
+        response.addError(error);
+      }
+      rowIndex++;
+    }
+    return response;
+  }
+
+  private boolean isActualError(InsertValidationResponse.InsertError insertError) {
+    return insertError.getException() != null
+            || !CollectionUtils.isEmpty(insertError.getExtraColNames())
+            || !CollectionUtils.isEmpty(insertError.getMissingNotNullColNames())
+            || !CollectionUtils.isEmpty(insertError.getNullValueForNotNullColNames());
   }
 
   @Override
