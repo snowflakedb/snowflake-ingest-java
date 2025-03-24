@@ -116,7 +116,7 @@ public class IngestTestUtils {
           SQLException,
           NoSuchAlgorithmException,
           InvalidKeySpecException {
-    Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
+    loadDriverClass();
 
     Properties loadedProps = loadProperties();
 
@@ -228,5 +228,14 @@ public class IngestTestUtils {
         .createStatement()
         .execute(String.format(String.format("drop database %s", database)));
     connection.close();
+  }
+
+  private void loadDriverClass() throws ClassNotFoundException {
+    try {
+      Class.forName("net.snowflake.client.jdbc.SnowflakeDriver");
+    } catch (ClassNotFoundException e) {
+      // Fallback to shaded SnowflakeDriver
+      Class.forName("net.snowflake.ingest.internal.net.snowflake.client.jdbc.SnowflakeDriver");
+    }
   }
 }

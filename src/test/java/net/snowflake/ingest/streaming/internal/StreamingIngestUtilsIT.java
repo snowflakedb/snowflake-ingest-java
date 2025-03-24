@@ -9,13 +9,13 @@ import static net.snowflake.ingest.streaming.internal.StreamingIngestUtils.execu
 import static net.snowflake.ingest.utils.Constants.CLIENT_CONFIGURE_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.JWTManager;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SnowflakeURL;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
