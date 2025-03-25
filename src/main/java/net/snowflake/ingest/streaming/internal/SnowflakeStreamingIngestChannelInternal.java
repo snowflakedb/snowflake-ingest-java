@@ -437,6 +437,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
         this.owningClient.getChannelsStatus(Collections.singletonList(this)).getChannels().get(0);
 
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
+      this.channelState.invalidate();
       throw new SFException(ErrorCode.CHANNEL_STATUS_INVALID, getName(), response.getStatusCode());
     }
 
