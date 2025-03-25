@@ -968,6 +968,8 @@ public class SnowflakeStreamingIngestChannelTest {
       Assert.fail("Get offset token should fail");
     } catch (SFException e) {
       Assert.assertEquals(ErrorCode.CHANNEL_STATUS_INVALID.getMessageCode(), e.getVendorCode());
+      // Channel will get invalidated with non-successful response
+      Assert.assertFalse(channel.isValid());
     }
   }
 }
