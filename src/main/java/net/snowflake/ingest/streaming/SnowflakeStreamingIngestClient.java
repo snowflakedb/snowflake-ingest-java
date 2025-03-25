@@ -4,8 +4,10 @@
 
 package net.snowflake.ingest.streaming;
 
+import com.google.common.annotations.Beta;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A class that is the starting point for using the Streaming Ingest client APIs, a single client
@@ -57,6 +59,15 @@ public interface SnowflakeStreamingIngestClient extends AutoCloseable {
    * @param refreshToken the new refresh token
    */
   void setRefreshToken(String refreshToken);
+
+  /**
+   * Flush all data in memory across all channels to persistent storage and registers them to a
+   * Snowflake table. This API is still in beta and may be subject to change.
+   *
+   * @return future which will be complete when the flush the data is registered
+   */
+  @Beta
+  CompletableFuture<Void> flush();
 
   /**
    * Check whether the client is closed or not, if you want to make sure all data are committed

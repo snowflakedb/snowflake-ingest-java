@@ -8,11 +8,11 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import javax.net.ssl.SSLException;
-import net.snowflake.client.jdbc.internal.apache.http.HttpRequest;
-import net.snowflake.client.jdbc.internal.apache.http.NoHttpResponseException;
-import net.snowflake.client.jdbc.internal.apache.http.RequestLine;
-import net.snowflake.client.jdbc.internal.apache.http.client.HttpRequestRetryHandler;
-import net.snowflake.client.jdbc.internal.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.HttpRequest;
+import org.apache.http.NoHttpResponseException;
+import org.apache.http.RequestLine;
+import org.apache.http.client.HttpRequestRetryHandler;
+import org.apache.http.client.protocol.HttpClientContext;
 import org.junit.Test;
 import org.mockito.Mockito;
 

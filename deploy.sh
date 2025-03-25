@@ -78,11 +78,20 @@ MVN_OPTIONS+=(
   "--batch-mode"
 )
 
+echo "[INFO] mvn clean compile"
+mvn clean compile ${MVN_OPTIONS[@]}
+
+echo "[INFO] mvn dependency resolve"
+mvn dependency:resolve dependency:resolve-plugins dependency:go-offline -DmanualInclude=org.apache.maven:maven-archiver:pom:2.5 ${MVN_OPTIONS[@]}
+
+echo "[INFO] mvn test"
+mvn test ${MVN_OPTIONS[@]}
+
 echo "[Info] Sign package and deploy to staging area"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dmaven.wagon.http.pool=false -X -e
+mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dhttp.keepAlive=false
 
 echo "[INFO] Close and Release"
 snowflake_repositories=$(mvn ${MVN_OPTIONS[@]} \

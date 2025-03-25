@@ -53,8 +53,6 @@ import java.util.stream.Collectors;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import net.snowflake.client.core.SFSessionProperty;
-import net.snowflake.client.jdbc.internal.apache.http.client.utils.URIBuilder;
-import net.snowflake.client.jdbc.internal.apache.http.impl.client.CloseableHttpClient;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.OAuthCredential;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -72,6 +70,8 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
 
 /**
@@ -792,7 +792,18 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
-   * Flush all data in memory to persistent storage and register with a Snowflake table
+   * Flush all data in memory across all channels to persistent storage and registers them to a
+   * Snowflake table. This API is still in beta and may be subject to change.
+   *
+   * @return future which will be complete when the flush the data is registered
+   */
+  @Override
+  public CompletableFuture<Void> flush() {
+    return flush(false);
+  }
+
+  /**
+   * Flush all data in memory to persistent storage and registers them to a Snowflake table.
    *
    * @param closing whether the flush is called as part of client closing
    * @return future which will be complete when the flush the data is registered

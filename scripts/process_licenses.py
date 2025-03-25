@@ -27,13 +27,16 @@ from zipfile import ZipFile
 APACHE_LICENSE = "Apache License 2.0"
 BSD_2_CLAUSE_LICENSE = "2-Clause BSD License"
 BSD_3_CLAUSE_LICENSE = "3-Clause BSD License"
+BSD_NEW_LICENSE = "BSD New license"
 EDL_10_LICENSE = "EDL 1.0"
 MIT_LICENSE = "The MIT License"
+MIT_LICENSE_ALT = "MIT License"
 GO_LICENSE = "The Go license"
+GO_LICENSE_ALT = "Go License"
 BOUNCY_CASTLE_LICENSE = "Bouncy Castle Licence <https://www.bouncycastle.org/licence.html>"
 
 # The SDK does not need to include licenses of dependencies, which aren't shaded
-IGNORED_DEPENDENCIES = {"net.snowflake:snowflake-jdbc", "org.slf4j:slf4j-api"}
+IGNORED_DEPENDENCIES = {"net.snowflake:snowflake-jdbc-thin", "org.slf4j:slf4j-api", "org.slf4j:jcl-over-slf4j"}
 
 # List of dependencies, which don't ship with a license file.
 # Only add a new record here after verifying that the dependency JAR does not contain a license!
@@ -50,7 +53,7 @@ ADDITIONAL_LICENSES_MAP = {
     "com.nimbusds:nimbus-jose-jwt": APACHE_LICENSE,
     "com.github.stephenc.jcip:jcip-annotations": APACHE_LICENSE,
     "io.netty:netty-common": APACHE_LICENSE,
-    "com.google.re2j:re2j": GO_LICENSE,
+    "com.google.re2j:re2j": GO_LICENSE_ALT,
     "com.google.protobuf:protobuf-java": BSD_3_CLAUSE_LICENSE,
     "com.google.code.gson:gson": APACHE_LICENSE,
     "org.xerial.snappy:snappy-java": APACHE_LICENSE,
@@ -64,6 +67,84 @@ ADDITIONAL_LICENSES_MAP = {
     "com.thoughtworks.paranamer:paranamer": BSD_2_CLAUSE_LICENSE,
     "org.roaringbitmap:RoaringBitmap": APACHE_LICENSE,
     "org.roaringbitmap:shims": APACHE_LICENSE,
+    "com.amazonaws:aws-java-sdk-core": APACHE_LICENSE,
+    "software.amazon.ion:ion-java": APACHE_LICENSE,
+    "com.amazonaws:aws-java-sdk-kms": APACHE_LICENSE,
+    "com.amazonaws:jmespath-java": APACHE_LICENSE,
+    "com.amazonaws:aws-java-sdk-s3": APACHE_LICENSE,
+    "com.google.api:gax": BSD_3_CLAUSE_LICENSE,
+    "com.google.api:api-common": BSD_3_CLAUSE_LICENSE,
+    "com.google.auth:google-auth-library-credentials": BSD_NEW_LICENSE,
+    "com.google.api.grpc:proto-google-common-protos": APACHE_LICENSE,
+    "io.opencensus:opencensus-api": APACHE_LICENSE,
+    "com.google.auth:google-auth-library-oauth2-http": BSD_NEW_LICENSE,
+    "com.google.cloud:google-cloud-core": APACHE_LICENSE,
+    "com.google.auto.value:auto-value-annotations": APACHE_LICENSE,
+    "com.google.protobuf:protobuf-java-util": BSD_3_CLAUSE_LICENSE,
+    "com.google.api.grpc:proto-google-iam-v1": APACHE_LICENSE,
+    "com.google.cloud:google-cloud-storage": APACHE_LICENSE,
+    "com.google.cloud:google-cloud-monitoring": APACHE_LICENSE,
+    "io.opencensus:opencensus-contrib-http-util": APACHE_LICENSE,
+    "com.google.http-client:google-http-client-jackson2": APACHE_LICENSE,
+    "com.google.api-client:google-api-client": APACHE_LICENSE,
+    "com.google.oauth-client:google-oauth-client": APACHE_LICENSE,
+    "com.google.http-client:google-http-client-apache-v2": APACHE_LICENSE,
+    "com.google.apis:google-api-services-storage": APACHE_LICENSE,
+    "com.google.cloud:google-cloud-core-http": APACHE_LICENSE,
+    "com.google.http-client:google-http-client-appengine": APACHE_LICENSE,
+    "com.google.api:gax-httpjson": BSD_3_CLAUSE_LICENSE,
+    "com.google.cloud:google-cloud-core-grpc": APACHE_LICENSE,
+    "com.google.api:gax-grpc": BSD_3_CLAUSE_LICENSE,
+    "io.grpc:grpc-alts": APACHE_LICENSE,
+    "io.grpc:grpc-grpclb": APACHE_LICENSE,
+    "org.conscrypt:conscrypt-openjdk-uber": APACHE_LICENSE,
+    "io.grpc:grpc-auth": APACHE_LICENSE,
+    "io.grpc:grpc-protobuf": APACHE_LICENSE,
+    "io.grpc:grpc-protobuf-lite": APACHE_LICENSE,
+    "com.google.api.grpc:proto-google-cloud-storage-v2": APACHE_LICENSE,
+    "com.google.api.grpc:grpc-google-cloud-storage-v2": APACHE_LICENSE,
+    "com.google.api.grpc:gapic-google-cloud-storage-v2": APACHE_LICENSE,
+    "com.google.api.grpc:proto-google-cloud-monitoring-v3": APACHE_LICENSE,
+    "io.grpc:grpc-api": APACHE_LICENSE,
+    "io.grpc:grpc-util": APACHE_LICENSE,
+    "io.perfmark:perfmark-api": APACHE_LICENSE,
+    "io.grpc:grpc-core": APACHE_LICENSE,
+    "com.google.android:annotations": APACHE_LICENSE,
+    "org.codehaus.mojo:animal-sniffer-annotations": MIT_LICENSE_ALT,
+    "io.grpc:grpc-stub": APACHE_LICENSE,
+    "io.grpc:grpc-googleapis": APACHE_LICENSE,
+    "io.grpc:grpc-xds": APACHE_LICENSE,
+    "io.opencensus:opencensus-proto": APACHE_LICENSE,
+    "io.grpc:grpc-services": APACHE_LICENSE,
+    "io.grpc:grpc-rls": APACHE_LICENSE,
+    "com.microsoft.azure:azure-storage": APACHE_LICENSE,
+    "com.microsoft.azure:azure-keyvault-core": APACHE_LICENSE,
+    "com.yammer.metrics:metrics-core": APACHE_LICENSE,
+    "com.yammer.metrics:metrics-servlet": APACHE_LICENSE,
+    "net.minidev:json-smart": APACHE_LICENSE,
+    "net.minidev:accessors-smart": APACHE_LICENSE,
+    "org.ow2.asm:asm": BSD_3_CLAUSE_LICENSE,
+    "com.google.flatbuffers:flatbuffers-java": APACHE_LICENSE,
+    "com.google.http-client:google-http-client": APACHE_LICENSE,
+    "com.google.http-client:google-http-client-gson": APACHE_LICENSE,
+    "io.grpc:grpc-context": APACHE_LICENSE,
+    "io.grpc:grpc-inprocess": APACHE_LICENSE,
+    "io.grpc:grpc-opentelemetry": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-api": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-api-incubator": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-context": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-sdk": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-sdk-common": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-sdk-trace": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-sdk-logs": APACHE_LICENSE,
+    "io.opentelemetry:opentelemetry-sdk-metrics": APACHE_LICENSE,
+    "io.opentelemetry.semconv:opentelemetry-semconv": APACHE_LICENSE,
+    "io.opentelemetry.contrib:opentelemetry-gcp-resources": APACHE_LICENSE,
+    "com.google.cloud.opentelemetry:exporter-metrics": APACHE_LICENSE,
+    "com.google.cloud.opentelemetry:shared-resourcemapping": APACHE_LICENSE,
+    "com.google.cloud.opentelemetry:detector-resources-support": APACHE_LICENSE,
+
 }
 
 

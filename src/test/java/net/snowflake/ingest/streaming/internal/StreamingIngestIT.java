@@ -1435,6 +1435,48 @@ public class StreamingIngestIT {
     }
   }
 
+  @Test
+  public void testChannelFlush() throws Exception {
+    Map<String, Object> parameterMap = new HashMap<>();
+    parameterMap.put(ParameterProvider.MAX_CLIENT_LAG, "60 seconds");
+    SnowflakeStreamingIngestClient client =
+        SnowflakeStreamingIngestClientFactory.builder("testChannelFlush")
+            .setProperties(prop)
+            .setParameterOverrides(parameterMap)
+            .build();
+
+    OpenChannelRequest request1 =
+        OpenChannelRequest.builder("CHANNEL")
+            .setDBName(testDb)
+            .setSchemaName(TEST_SCHEMA)
+            .setTableName(TEST_TABLE)
+            .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+            .build();
+
+    // Open a streaming ingest channel from the given client
+    SnowflakeStreamingIngestChannel channel1 = client.openChannel(request1);
+    for (int val = 0; val < 1000; val++) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("c1", Integer.toString(val));
+      verifyInsertValidationResponse(channel1.insertRow(row, Integer.toString(val)));
+    }
+
+    Thread.sleep(5000);
+
+    // Verify that nothing gets committed
+    Assert.assertNull(channel1.getLatestCommittedOffsetToken());
+
+    // Flush the channel
+    client.flush().get();
+    Thread.sleep(5000);
+
+    // Verify that at least something is committed
+    Assert.assertNotNull(channel1.getLatestCommittedOffsetToken());
+
+    // Close the channel to make sure everything is committed
+    channel1.close().get();
+  }
+
   /**
    * Ingests rows into a table and verifies them by querying the table.
    *

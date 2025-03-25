@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -31,14 +32,13 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.internal.apache.commons.io.FileUtils;
-import net.snowflake.client.jdbc.internal.google.cloud.storage.StorageException;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.IcebergFileTransferAgent;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.commons.io.FileUtils;
 
 /** Handles uploading files to the Snowflake Streaming Ingest Storage */
 @VisibleForTesting
@@ -48,13 +48,12 @@ public class InternalStage implements IStorage {
   /**
    * Object mapper for parsing the client/configure response to Jackson version the same as
    * jdbc.internal.fasterxml.jackson. We need two different versions of ObjectMapper because {@link
-   * SnowflakeFileTransferAgent#getFileTransferMetadatas(net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode)}
+   * SnowflakeFileTransferAgent#getFileTransferMetadatas(com.fasterxml.jackson.databind.JsonNode)}
    * expects a different version of json object than {@link StreamingIngestResponse}. TODO:
    * SNOW-1493470 Align Jackson version
    */
-  private static final net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper
-      parseConfigureResponseMapper =
-          new net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.ObjectMapper();
+  private static final com.fasterxml.jackson.databind.ObjectMapper parseConfigureResponseMapper =
+      new com.fasterxml.jackson.databind.ObjectMapper();
 
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
@@ -266,10 +265,7 @@ public class InternalStage implements IStorage {
   }
 
   static SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
-      FileLocationInfo fileLocationInfo)
-      throws JsonProcessingException,
-          net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException,
-          SnowflakeSQLException {
+      FileLocationInfo fileLocationInfo) throws JsonProcessingException, SnowflakeSQLException {
     final SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
 
     if (fileLocationInfo
@@ -332,10 +328,9 @@ public class InternalStage implements IStorage {
     return metadata;
   }
 
-  static net.snowflake.client.jdbc.internal.fasterxml.jackson.databind.JsonNode
-      parseFileLocationInfo(FileLocationInfo fileLocationInfo)
-          throws JsonProcessingException,
-              net.snowflake.client.jdbc.internal.fasterxml.jackson.core.JsonProcessingException {
+  static com.fasterxml.jackson.databind.JsonNode parseFileLocationInfo(
+      FileLocationInfo fileLocationInfo)
+      throws JsonProcessingException, com.fasterxml.jackson.core.JsonProcessingException {
     JsonNode fileLocationInfoNode = mapper.valueToTree(fileLocationInfo);
 
     // Currently there are a few mismatches between the client/configure response and what

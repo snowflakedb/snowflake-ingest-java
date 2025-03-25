@@ -1,13 +1,24 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
-import static net.snowflake.client.core.HttpUtil.setSessionlessProxyForAzure;
 
+import com.microsoft.azure.storage.OperationContext;
+import com.microsoft.azure.storage.StorageCredentials;
+import com.microsoft.azure.storage.StorageCredentialsAnonymous;
+import com.microsoft.azure.storage.StorageCredentialsSharedAccessSignature;
+import com.microsoft.azure.storage.StorageException;
+import com.microsoft.azure.storage.StorageExtendedErrorInformation;
+import com.microsoft.azure.storage.blob.BlobRequestOptions;
+import com.microsoft.azure.storage.blob.CloudBlobClient;
+import com.microsoft.azure.storage.blob.CloudBlobContainer;
+import com.microsoft.azure.storage.blob.CloudBlockBlob;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -16,6 +27,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
@@ -24,16 +37,6 @@ import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.OperationContext;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.StorageCredentials;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.StorageCredentialsAnonymous;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.StorageCredentialsSharedAccessSignature;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.StorageException;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.StorageExtendedErrorInformation;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.blob.BlobRequestOptions;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.blob.CloudBlobClient;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.blob.CloudBlobContainer;
-import net.snowflake.client.jdbc.internal.microsoft.azure.storage.blob.CloudBlockBlob;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.client.util.SFPair;
 import net.snowflake.client.util.Stopwatch;
@@ -473,5 +476,40 @@ class IcebergAzureClient implements IcebergStorageClient {
     }
     sb.append("}");
     return sb.toString();
+  }
+
+  private static void setSessionlessProxyForAzure(
+      final Properties proxyProperties, final OperationContext opContext)
+      throws SnowflakeSQLException {
+    if (proxyProperties != null
+        && !proxyProperties.isEmpty()
+        && proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
+      final boolean useProxy =
+          Boolean.parseBoolean(
+              proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()));
+      if (useProxy) {
+        String proxyHost =
+            proxyProperties.getProperty(SFSessionProperty.PROXY_HOST.getPropertyKey());
+
+        int proxyPort;
+        try {
+          proxyPort =
+              Integer.parseInt(
+                  proxyProperties.getProperty(SFSessionProperty.PROXY_PORT.getPropertyKey()));
+        } catch (NullPointerException | NumberFormatException var6) {
+          throw new SnowflakeSQLException(
+              ErrorCode.INVALID_PROXY_PROPERTIES, "Could not parse port number");
+        }
+
+        Proxy azProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
+        logger.logDebug(
+            "Setting sessionless Azure proxy. Host: {}, port: {}", proxyHost, proxyPort);
+        opContext.setProxy(azProxy);
+      } else {
+        logger.logDebug("Omitting sessionless Azure proxy setup as proxy is disabled");
+      }
+    } else {
+      logger.logDebug("Omitting sessionless Azure proxy setup");
+    }
   }
 }
