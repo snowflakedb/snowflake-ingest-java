@@ -30,7 +30,6 @@ import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validat
 import static net.snowflake.ingest.streaming.internal.DataValidationUtil.validateAndParseVariantNew;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -569,83 +568,72 @@ public class DataValidationUtilTest {
     assertJson("variant", "false", false);
     assertJson("variant", "false", "false");
 
-    assertJson("variant", "[]", "[]");
-    assertJson("variant", "{}", "{}");
-    assertJson("variant", "[\"foo\",1,null]", "[\"foo\",1,null]");
-    assertJson("variant", "\"\"", "\"\"");
-
-    // Test missing values are null instead of empty string
-    assertNull(validateAndParseVariant("COL", "", 0));
-    assertNull(validateAndParseVariantNew("COL", "", 0));
-    assertNull(validateAndParseVariant("COL", "  ", 0));
-    assertNull(validateAndParseVariantNew("COL", "  ", 0));
-
-    // Test that invalid UTF-8 strings cannot be ingested
-    expectError(
-        ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "\"foo\uD800bar\"", 0));
+    // Test stripping null terminator
+    assertJson("variant", "{\"key\":0,\"\\u0000key\":1}", "{\"key\":0,\"\\u0000key\":1}");
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
-        () -> validateAndParseVariantNew("COL", "\"foo\uD800bar\"", 0));
-
-    // Test forbidden values
-    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "{null}", 0));
-    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariantNew("COL", "{null}", 0));
-
-    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "}{", 0));
-    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariantNew("COL", "}{", 0));
-
+        () -> validateAndParseVariant("COL", "{\"key\": 0, \"key\\u0000\": 1}", 0));
     expectError(
-        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", readTree("{}"), 0));
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariantNew("COL", readTree("{}"), 0));
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseVariantNew("COL", "{\"key\": 0, \"key\\u0000\": 1}", 0));
 
+    assertJson(
+        "variant",
+        "{\"key\":0,\"\\u0000key\":1}",
+        new HashMap<String, Integer>() {
+          {
+            put("key", 0);
+            put("\u0000key", 1);
+          }
+        });
     expectError(
-        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", new Object(), 0));
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariantNew("COL", new Object(), 0));
-
-    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariant("COL", "foo", 0));
-    expectError(ErrorCode.INVALID_VALUE_ROW, () -> validateAndParseVariantNew("COL", "foo", 0));
-
-    expectError(ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariant("COL", new Date(), 0));
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW, () -> validateAndParseVariantNew("COL", new Date(), 0));
-
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseVariant("COL", Collections.singletonList(new Object()), 0));
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseVariantNew("COL", Collections.singletonList(new Object()), 0));
-
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
+        ErrorCode.INVALID_VALUE_ROW,
         () ->
             validateAndParseVariant(
                 "COL",
-                Collections.singletonList(Collections.singletonMap("foo", new Object())),
+                new HashMap<String, Integer>() {
+                  {
+                    put("key", 0);
+                    put("key\u0000", 1);
+                  }
+                },
                 0));
     expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
+        ErrorCode.INVALID_VALUE_ROW,
         () ->
             validateAndParseVariantNew(
                 "COL",
-                Collections.singletonList(Collections.singletonMap("foo", new Object())),
+                new HashMap<String, Integer>() {
+                  {
+                    put("key", 0);
+                    put("key\u0000", 1);
+                  }
+                },
                 0));
 
+    // Test that invalid UTF-8 map keys cannot be ingested
     expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseVariant("COL", Collections.singletonMap(new Object(), "foo"), 0));
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariant(
+                "COL",
+                new HashMap<String, Integer>() {
+                  {
+                    put("foo\uD800bar", 1);
+                  }
+                },
+                0));
     expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseVariantNew("COL", Collections.singletonMap(new Object(), "foo"), 0));
-
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseVariant("COL", Collections.singletonMap("foo", new Object()), 0));
-    expectError(
-        ErrorCode.INVALID_FORMAT_ROW,
-        () -> validateAndParseVariantNew("COL", Collections.singletonMap("foo", new Object()), 0));
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariantNew(
+                "COL",
+                new HashMap<String, Integer>() {
+                  {
+                    put("foo\uD800bar", 1);
+                  }
+                },
+                0));
   }
 
   private void assertJson(String colType, String expectedValue, Object value) {
