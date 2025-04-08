@@ -124,17 +124,13 @@ class DataValidationUtil {
       String stringInput = (String) input;
       verifyValidUtf8(stringInput, columnName, snowflakeType, insertRowIndex);
       try {
-        JsonNode result = objectMapper.readTree(stringInput);
-        verifyJsonKey(result, columnName, snowflakeType, insertRowIndex);
-        return result;
+        return objectMapper.readTree(stringInput);
       } catch (JsonProcessingException e) {
         throw valueFormatNotAllowedException(
             columnName, snowflakeType, "Not a valid JSON", insertRowIndex);
       }
     } else if (isAllowedSemiStructuredType(input)) {
-      JsonNode result = objectMapper.valueToTree(input);
-      verifyJsonKey(result, columnName, snowflakeType, insertRowIndex);
-      return result;
+      return objectMapper.valueToTree(input);
     }
 
     throw typeNotAllowedException(
