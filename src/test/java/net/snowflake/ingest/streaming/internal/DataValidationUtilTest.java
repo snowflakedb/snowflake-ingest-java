@@ -646,6 +646,48 @@ public class DataValidationUtilTest {
     expectError(
         ErrorCode.INVALID_FORMAT_ROW,
         () -> validateAndParseVariantNew("COL", Collections.singletonMap("foo", new Object()), 0));
+
+    // Test stripping null terminator
+    assertJson("variant", "{\"key\":0,\"\\u0000key\":1}", "{\"key\":0,\"\\u0000key\":1}", false);
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseVariantNew("COL", "{\"key\": 0, \"key\\u0000\": 1}", 0));
+
+    assertJson(
+        "variant",
+        "{\"key\":0,\"\\u0000key\":1}",
+        new HashMap<String, Integer>() {
+          {
+            put("key", 0);
+            put("\u0000key", 1);
+          }
+        },
+        false);
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariantNew(
+                "COL",
+                new HashMap<String, Integer>() {
+                  {
+                    put("key", 0);
+                    put("key\u0000", 1);
+                  }
+                },
+                0));
+
+    // Test that invalid UTF-8 map keys cannot be ingested
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariantNew(
+                "COL",
+                new HashMap<String, Integer>() {
+                  {
+                    put("foo\uD800bar", 1);
+                  }
+                },
+                0));
   }
 
   private void assertJson(String colType, String expectedValue, Object value) {
