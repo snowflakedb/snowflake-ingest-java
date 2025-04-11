@@ -184,7 +184,10 @@ class DataValidationUtil {
               String strippedFieldName = parser.currentName().replaceAll("\\u0000*$", "");
               if (fieldsByLevel.peek().contains(strippedFieldName)) {
                 throw valueFormatNotAllowedException(
-                    columnName, snowflakeType, "Not a valid JSON: duplicate field", insertRowIndex);
+                    columnName,
+                    snowflakeType,
+                    String.format("Not a valid JSON: duplicate field %s", strippedFieldName),
+                    insertRowIndex);
               }
               fieldsByLevel.peek().add(strippedFieldName);
             }
@@ -1286,7 +1289,10 @@ class DataValidationUtil {
                 String strippedKey = key.replaceAll("\\u0000*$", "");
                 if (keys.contains(strippedKey)) {
                   throw valueFormatNotAllowedException(
-                      columnName, dataType, "Not a valid JSON: duplicate field", insertRowIndex);
+                      columnName,
+                      dataType,
+                      String.format("Not a valid JSON: duplicate field %s", strippedKey),
+                      insertRowIndex);
                 }
                 keys.add(strippedKey);
               });
