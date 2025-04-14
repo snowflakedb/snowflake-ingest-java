@@ -652,6 +652,14 @@ public class DataValidationUtilTest {
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseVariantNew("COL", "{\"key\": 0, \"key\\u0000\": 1}", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () -> validateAndParseVariantNew("COL", "{\"key\": 0, \"key\\u0000\\u0000\": 1}", 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariantNew(
+                "COL", "{\"key\": {\"key\": {\"key\": 0, \"key\\u0000\": 1}}}", 0));
 
     assertJson(
         "variant",
@@ -675,8 +683,20 @@ public class DataValidationUtilTest {
                   }
                 },
                 0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariantNew(
+                "COL",
+                new HashMap<String, Integer>() {
+                  {
+                    put("key", 0);
+                    put("key\u0000\u0000", 1);
+                  }
+                },
+                0));
 
-    // Test that invalid UTF-8 map keys cannot be ingested
+    // Test that invalid UTF-8 map keys or values cannot be ingested
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () ->
@@ -685,6 +705,17 @@ public class DataValidationUtilTest {
                 new HashMap<String, Integer>() {
                   {
                     put("foo\uD800bar", 1);
+                  }
+                },
+                0));
+    expectError(
+        ErrorCode.INVALID_VALUE_ROW,
+        () ->
+            validateAndParseVariantNew(
+                "COL",
+                new HashMap<String, String>() {
+                  {
+                    put("key", "foo\uD800bar");
                   }
                 },
                 0));

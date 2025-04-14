@@ -266,7 +266,13 @@ public class SemiStructuredIT extends AbstractDataTypeTest {
   @Test
   public void testNullTerminator() throws Exception {
     assertVariant("VARIANT", "{ \"a\\u0000\": 0 }", "{\"a\\u0000\":0}", "OBJECT");
+    assertVariant("VARIANT", "{ \"a\\u0000\\u0000\": 0 }", "{\"a\\u0000\\u0000\":0}", "OBJECT");
     assertVariant("VARIANT", Collections.singletonMap("a\u0000", 0), "{\"a\\u0000\":0}", "OBJECT");
+    assertVariant(
+        "VARIANT",
+        Collections.singletonMap("a\u0000\u0000", 0),
+        "{\"a\\u0000\\u0000\":0}",
+        "OBJECT");
     assertVariant(
         "VARIANT", Collections.singletonMap("a\\u0000", 0), "{\"a\\\\u0000\":0}", "OBJECT");
     assertVariant("VARIANT", "{ \"\\u0000a\": 0, \"a\": 0}", "{\"\\u0000a\":0,\"a\":0}", "OBJECT");
