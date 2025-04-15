@@ -2,7 +2,7 @@
  * Copyright (c) 2025 Snowflake Computing Inc. All rights reserved.
  */
 
-package net.snowflake.ingest.streaming.internal;
+package net.snowflake.ingest.streaming.internal.serialization;
 
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonGenerator;

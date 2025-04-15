@@ -43,6 +43,8 @@ import java.util.function.Supplier;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.streaming.internal.serialization.ByteArraySerializer;
+import net.snowflake.ingest.streaming.internal.serialization.DuplicateKeyValidatedObject;
+import net.snowflake.ingest.streaming.internal.serialization.DuplicateKeyValidatingSerializer;
 import net.snowflake.ingest.streaming.internal.serialization.ZonedDateTimeSerializer;
 import net.snowflake.ingest.utils.DuplicateDetector;
 import net.snowflake.ingest.utils.ErrorCode;
