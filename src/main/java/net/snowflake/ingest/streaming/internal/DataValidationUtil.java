@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.google.common.collect.Sets;
@@ -33,7 +34,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,8 +45,10 @@ import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTim
 import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.streaming.internal.serialization.ByteArraySerializer;
 import net.snowflake.ingest.streaming.internal.serialization.ZonedDateTimeSerializer;
+import net.snowflake.ingest.utils.DuplicateDetector;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.output.StringBuilderWriter;
@@ -81,7 +84,9 @@ class DataValidationUtil {
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final JsonFactory factory =
-      new JsonFactory().configure(JsonGenerator.Feature.STRICT_DUPLICATE_DETECTION, true);
+      new JsonFactory()
+          // Handle duplicate fields in JSON objects by ourselves
+          .configure(JsonGenerator.Feature.STRICT_DUPLICATE_DETECTION, false);
 
   // The version of Jackson we are using does not support serialization of date objects from the
   // java.time package. Here we define a module with custom java.time serializers. Additionally, we
@@ -96,8 +101,11 @@ class DataValidationUtil {
     module.addSerializer(LocalDate.class, new ToStringSerializer());
     module.addSerializer(LocalDateTime.class, new ToStringSerializer());
     module.addSerializer(OffsetDateTime.class, new ToStringSerializer());
+    module.addSerializer(DuplicateKeyValidatedObject.class, new DuplicateKeyValidatingSerializer());
     objectMapper.registerModule(module);
   }
+
+  private static final ObjectWriter objectWriter = objectMapper.writer();
 
   // Caching the powers of 10 that are used for checking the range of numbers because computing them
   // on-demand is expensive.
@@ -161,7 +169,7 @@ class DataValidationUtil {
       final String stringInput = (String) input;
       verifyValidUtf8(stringInput, columnName, snowflakeType, insertRowIndex);
       final StringBuilderWriter resultWriter = new StringBuilderWriter(stringInput.length());
-      Stack<Set<String>> fieldsByLevel = new Stack<>();
+      Stack<DuplicateDetector<String>> fieldsByLevel = new Stack<>();
       try (final JsonParser parser = factory.createParser(stringInput);
           final JsonGenerator generator = factory.createGenerator(resultWriter)) {
         while (parser.nextToken() != null) {
@@ -173,25 +181,25 @@ class DataValidationUtil {
             // notation from the user input, so we write the current numer as text.
             generator.writeNumber(parser.getText());
           } else {
-            // Validates duplicate JSON object fields end with \u0000
+            // Validates duplicate JSON object fields
             if (token == JsonToken.START_OBJECT) {
-              fieldsByLevel.push(new HashSet<>());
+              fieldsByLevel.push(new DuplicateDetector<>());
             }
             if (token == JsonToken.END_OBJECT) {
               fieldsByLevel.pop();
             }
             if (token == JsonToken.FIELD_NAME) {
-              String strippedFieldName = parser.currentName().replaceAll("\\u0000*$", "");
-              if (fieldsByLevel.peek().contains(strippedFieldName)) {
+              // We need to strip trailing nulls from the field name to match the behavior of the
+              // server side json parser. See SNOW-1772196 for more details.
+              String strippedFieldName = Utils.stripTrailingNulls(parser.currentName());
+              if (fieldsByLevel.peek().isDuplicate(strippedFieldName)) {
                 throw valueFormatNotAllowedException(
                     columnName,
                     snowflakeType,
                     String.format("Not a valid JSON: duplicate field %s", strippedFieldName),
                     insertRowIndex);
               }
-              fieldsByLevel.peek().add(strippedFieldName);
             }
-
             generator.copyCurrentEvent(parser);
           }
         }
@@ -213,9 +221,14 @@ class DataValidationUtil {
       // We return the minified string from the result writer
       return resultWriter.toString();
     } else if (isAllowedSemiStructuredType(input)) {
-      JsonNode node = objectMapper.valueToTree(input);
-      verifyJsonKey(node, columnName, snowflakeType, insertRowIndex);
-      return node.toString();
+      try {
+        String result = objectWriter.writeValueAsString(new DuplicateKeyValidatedObject(input));
+        verifyValidUtf8(result, columnName, snowflakeType, insertRowIndex);
+        return result;
+      } catch (JsonProcessingException e) {
+        throw valueFormatNotAllowedException(
+            columnName, snowflakeType, e.getMessage(), insertRowIndex);
+      }
     }
 
     throw typeNotAllowedException(
@@ -1280,32 +1293,28 @@ class DataValidationUtil {
   private static void verifyJsonKey(
       JsonNode input, String columnName, String dataType, final long insertRowIndex) {
     if (input.isObject()) {
-      Set<String> keys = new HashSet<>();
-      input
-          .fieldNames()
-          .forEachRemaining(
-              key -> {
-                verifyValidUtf8(key, columnName, dataType, insertRowIndex);
-                String strippedKey = key.replaceAll("\\u0000*$", "");
-                if (keys.contains(strippedKey)) {
-                  throw valueFormatNotAllowedException(
-                      columnName,
-                      dataType,
-                      String.format("Not a valid JSON: duplicate field %s", strippedKey),
-                      insertRowIndex);
-                }
-                keys.add(strippedKey);
-              });
-      input
-          .fields()
-          .forEachRemaining(
-              entry -> verifyJsonKey(entry.getValue(), columnName, dataType, insertRowIndex));
+      // Set<String> keys = new HashSet<>();
+      Iterator<Map.Entry<String, JsonNode>> fields = input.fields();
+
+      while (fields.hasNext()) {
+        Map.Entry<String, JsonNode> field = fields.next();
+        String key = field.getKey();
+        String strippedKey = Utils.stripTrailingNulls(key);
+
+        //        if (!keys.add(strippedKey)) {
+        //          throw valueFormatNotAllowedException(
+        //              columnName,
+        //              dataType,
+        //              String.format("Not a valid JSON: duplicate field %s", strippedKey),
+        //              insertRowIndex);
+        //        }
+
+        verifyJsonKey(field.getValue(), columnName, dataType, insertRowIndex);
+      }
     } else if (input.isArray()) {
-      input
-          .elements()
-          .forEachRemaining(node -> verifyJsonKey(node, columnName, dataType, insertRowIndex));
-    } else if (input.isTextual()) {
-      verifyValidUtf8(input.asText(), columnName, dataType, insertRowIndex);
+      for (JsonNode item : input) {
+        verifyJsonKey(item, columnName, dataType, insertRowIndex);
+      }
     }
   }
 }

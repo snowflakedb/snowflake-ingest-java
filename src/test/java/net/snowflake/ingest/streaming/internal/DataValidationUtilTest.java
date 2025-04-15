@@ -649,6 +649,7 @@ public class DataValidationUtilTest {
 
     // Test stripping null terminator
     assertJson("variant", "{\"key\":0,\"\\u0000key\":1}", "{\"key\":0,\"\\u0000key\":1}", false);
+    assertJson("variant", "{\"key\\u0000\":0}", "{\"key\\u0000\":0}", false);
     expectError(
         ErrorCode.INVALID_VALUE_ROW,
         () -> validateAndParseVariantNew("COL", "{\"key\": 0, \"key\\u0000\": 1}", 0));
