@@ -34,7 +34,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1287,34 +1286,6 @@ class DataValidationUtil {
     if (!input.equals(roundTripStr)) {
       throw valueFormatNotAllowedException(
           columnName, dataType, "Invalid Unicode string", insertRowIndex);
-    }
-  }
-
-  private static void verifyJsonKey(
-      JsonNode input, String columnName, String dataType, final long insertRowIndex) {
-    if (input.isObject()) {
-      // Set<String> keys = new HashSet<>();
-      Iterator<Map.Entry<String, JsonNode>> fields = input.fields();
-
-      while (fields.hasNext()) {
-        Map.Entry<String, JsonNode> field = fields.next();
-        String key = field.getKey();
-        String strippedKey = Utils.stripTrailingNulls(key);
-
-        //        if (!keys.add(strippedKey)) {
-        //          throw valueFormatNotAllowedException(
-        //              columnName,
-        //              dataType,
-        //              String.format("Not a valid JSON: duplicate field %s", strippedKey),
-        //              insertRowIndex);
-        //        }
-
-        verifyJsonKey(field.getValue(), columnName, dataType, insertRowIndex);
-      }
-    } else if (input.isArray()) {
-      for (JsonNode item : input) {
-        verifyJsonKey(item, columnName, dataType, insertRowIndex);
-      }
     }
   }
 }
