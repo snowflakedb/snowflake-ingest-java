@@ -151,10 +151,6 @@ jobs:
             11
             8
           cache: maven
-      - name: Install python2
-        uses: actions/setup-python@v2
-        with:
-          python-version: '2.x'
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
