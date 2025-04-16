@@ -23,7 +23,6 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
-          cache: maven
 
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
