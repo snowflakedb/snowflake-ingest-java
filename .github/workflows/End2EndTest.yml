@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build & Test - JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast
       matrix:
@@ -19,12 +19,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
-
+          cache-dependency-path: '**/pom.xml'
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
@@ -53,11 +53,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
+          cache-dependency-path: '**/pom.xml'
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
@@ -70,7 +71,7 @@ jobs:
           mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
   build-iceberg:
     name: Build & Test Streaming Iceberg - JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast
       matrix:
@@ -80,12 +81,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
-
+          cache-dependency-path: '**/pom.xml'
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
@@ -114,11 +115,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
       - name: Install Java ${{ matrix.java }}
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
+          cache-dependency-path: '**/pom.xml'
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
@@ -131,7 +133,7 @@ jobs:
           mvn -DghActionsIT -Dnot-shadeDep -"Dfailsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
   build-e2e-jar-test:
     name: e2e-jar-test cloud=${{ matrix.snowflake_cloud }} test_type=${{ matrix.test_type }} java=${{ matrix.java_path_env_var }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -151,6 +153,7 @@ jobs:
             11
             8
           cache: maven
+          cache-dependency-path: '**/pom.xml'
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }}
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
