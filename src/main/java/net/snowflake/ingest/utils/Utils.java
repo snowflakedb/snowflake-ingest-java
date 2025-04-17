@@ -469,4 +469,12 @@ public class Utils {
 
     return twoHexChars;
   }
+
+  public static String stripTrailingNulls(String key) {
+    int end = key.length();
+    while (end > 0 && key.charAt(end - 1) == '\u0000') {
+      end--;
+    }
+    return end == key.length() ? key : key.substring(0, end);
+  }
 }
