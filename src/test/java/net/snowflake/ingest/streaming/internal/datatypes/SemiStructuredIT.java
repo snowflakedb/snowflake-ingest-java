@@ -263,6 +263,31 @@ public class SemiStructuredIT extends AbstractDataTypeTest {
         "ARRAY", " [1.234E1\t\n]\n", "[\n" + "  1.234000000000000e+01\n" + "]", "ARRAY");
   }
 
+  @Test
+  public void testNullTerminator() throws Exception {
+    assertVariant("VARIANT", "{ \"a\\u0000\": 0 }", "{\"a\\u0000\":0}", "OBJECT");
+    assertVariant("VARIANT", "{ \"a\\u0000\\u0000\": 0 }", "{\"a\\u0000\\u0000\":0}", "OBJECT");
+    assertVariant("VARIANT", Collections.singletonMap("a\u0000", 0), "{\"a\\u0000\":0}", "OBJECT");
+    assertVariant(
+        "VARIANT",
+        Collections.singletonMap("a\u0000\u0000", 0),
+        "{\"a\\u0000\\u0000\":0}",
+        "OBJECT");
+    assertVariant(
+        "VARIANT", Collections.singletonMap("a\\u0000", 0), "{\"a\\\\u0000\":0}", "OBJECT");
+    assertVariant("VARIANT", "{ \"\\u0000a\": 0, \"a\": 0}", "{\"\\u0000a\":0,\"a\":0}", "OBJECT");
+    assertVariant(
+        "VARIANT",
+        new HashMap<String, Integer>() {
+          {
+            put("\u0000a", 0);
+            put("a", 0);
+          }
+        },
+        "{\"\\u0000a\":0,\"a\":0}",
+        "OBJECT");
+  }
+
   private String createLargeVariantObject(int size) throws JsonProcessingException {
     char[] stringContent = new char[size - 17]; // {"a":"11","b":""}
     Arrays.fill(stringContent, 'c');
