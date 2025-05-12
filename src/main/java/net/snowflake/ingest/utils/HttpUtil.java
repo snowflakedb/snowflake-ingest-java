@@ -301,7 +301,8 @@ public class HttpUtil {
           || exception instanceof javax.net.ssl.SSLException
           || exception instanceof java.net.SocketException
           || exception instanceof java.net.UnknownHostException
-          || exception instanceof java.net.SocketTimeoutException) {
+          || exception instanceof java.net.SocketTimeoutException
+          || exception instanceof org.apache.http.conn.ConnectTimeoutException) {
         LOGGER.info(
             "Retrying request which caused {} with " + "URI:{}, retryCount:{} and maxRetryCount:{}",
             exception.getClass().getName(),
