@@ -1652,6 +1652,10 @@
                   <pattern>org.roaringbitmap</pattern>
                   <shadedPattern>${shadeBase}.org.roaringbitmap</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>com.nimbusds</pattern>
+                  <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
