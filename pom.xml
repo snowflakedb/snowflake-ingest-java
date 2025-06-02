@@ -77,7 +77,7 @@
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.5</snappy.version>
-    <snowjdbc.version>3.22.0</snowjdbc.version>
+    <snowjdbc.version>3.24.2</snowjdbc.version>
     <threetenbp.version>1.7.0</threetenbp.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
@@ -1316,6 +1316,7 @@
                             |The Apache Software License, Version 2.0
                             |Apache-2.0
                             |Apache License, Version 2.0
+                            |Apache License, version 2.0
                             |Apache 2.0
               |Apache License V2.0
               |Apache 2</licenseMerge>
@@ -1658,6 +1659,7 @@
                   <excludes>
                     <exclude>assets/org/apache/commons/math3/exception/util/LocalizedFormats_fr.properties</exclude>
                     <exclude>about.html</exclude>
+                    <exclude>iso3166*properties</exclude>
                     <exclude>mozilla/public-suffix-list.txt</exclude>
                     <exclude>META-INF/ASL2.0</exclude>
                     <exclude>META-INF/FastDoubleParser-LICENSE</exclude>
