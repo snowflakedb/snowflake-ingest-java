@@ -77,7 +77,7 @@
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.5</snappy.version>
-    <snowjdbc.version>3.22.0</snowjdbc.version>
+    <snowjdbc.version>3.24.2</snowjdbc.version>
     <threetenbp.version>1.7.0</threetenbp.version>
     <yetus.version>0.13.0</yetus.version>
   </properties>
