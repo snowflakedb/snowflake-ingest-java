@@ -28,9 +28,7 @@ public class CreateClientRequest {
 
   public CreateClientRequest() {}
 
-  public CreateClientRequest(
-      String clientId,
-      Map<String, String> parameterOverrides) {
+  public CreateClientRequest(String clientId, Map<String, String> parameterOverrides) {
     this.clientId = clientId;
     this.parameterOverrides = parameterOverrides;
   }

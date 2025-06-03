@@ -33,27 +33,23 @@ public class CustomExceptionHandler implements ExceptionHandlerFunction {
   private static final Logger logger = LoggerFactory.getLogger(CustomExceptionHandler.class);
 
   @Override
-  public HttpResponse handleException(
-      ServiceRequestContext ctx, HttpRequest req, Throwable cause) {
+  public HttpResponse handleException(ServiceRequestContext ctx, HttpRequest req, Throwable cause) {
     if (cause instanceof AppServerException) {
       AppServerException ase = (AppServerException) cause;
       logger.error("AppServerException occurred", ase);
       return HttpResponse.ofJson(
-          HttpStatus.valueOf(ase.getHttpStatusCode()),
-          ErrorResponse.fromException(ase));
+          HttpStatus.valueOf(ase.getHttpStatusCode()), ErrorResponse.fromException(ase));
     }
-    
+
     if (cause instanceof SFException) {
       SFException sfe = (SFException) cause;
       logger.error("SFException occurred", sfe);
       return HttpResponse.ofJson(
-          HttpStatus.INTERNAL_SERVER_ERROR,
-          ErrorResponse.fromException(sfe));
+          HttpStatus.INTERNAL_SERVER_ERROR, ErrorResponse.fromException(sfe));
     }
 
     logger.error("Unexpected exception occurred", cause);
     return HttpResponse.ofJson(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        ErrorResponse.fromException(cause));
+        HttpStatus.INTERNAL_SERVER_ERROR, ErrorResponse.fromException(cause));
   }
 }

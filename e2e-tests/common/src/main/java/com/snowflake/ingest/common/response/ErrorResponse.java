@@ -19,12 +19,9 @@ package com.snowflake.ingest.common.response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.snowflake.ingest.common.exception.AppServerException;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import net.snowflake.ingest.utils.SFException;
-import net.snowflake.ingest.utils.ErrorCode;
 import java.io.IOException;
+import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.SFException;
 
 /** Class represents error response from the App server */
 public class ErrorResponse {
@@ -133,10 +130,7 @@ public class ErrorResponse {
     if (cause instanceof SFException) {
       SFException sfException = (SFException) cause;
       return ErrorResponse.of(
-          ErrorSource.SDK,
-          sfException.getVendorCode(),
-          sfException.getMessage(),
-          null);
+          ErrorSource.SDK, sfException.getVendorCode(), sfException.getMessage(), null);
     }
     if (cause instanceof AppServerException) {
       AppServerException appServerException = (AppServerException) cause;
