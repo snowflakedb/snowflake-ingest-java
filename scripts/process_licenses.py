@@ -155,6 +155,10 @@ ADDITIONAL_LICENSES_MAP = {
     "com.google.cloud.opentelemetry:exporter-metrics": APACHE_LICENSE,
     "com.google.cloud.opentelemetry:shared-resourcemapping": APACHE_LICENSE,
     "com.google.cloud.opentelemetry:detector-resources-support": APACHE_LICENSE,
+    "com.amazonaws:aws-java-sdk-sts": APACHE_LICENSE,
+    "com.nimbusds:oauth2-oidc-sdk": APACHE_LICENSE,
+    "com.nimbusds:content-type": APACHE_LICENSE,
+    "com.nimbusds:lang-tag": APACHE_LICENSE,
 
 }
 
