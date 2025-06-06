@@ -52,4 +52,4 @@ public class AppServerException extends RuntimeException {
   public AppErrorCode getErrorCode() {
     return errorCodeName;
   }
-} 
+}

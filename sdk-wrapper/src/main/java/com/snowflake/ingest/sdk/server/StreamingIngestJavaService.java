@@ -25,14 +25,12 @@ import com.linecorp.armeria.server.annotation.Param;
 import com.linecorp.armeria.server.annotation.Post;
 import com.linecorp.armeria.server.annotation.Put;
 import com.linecorp.armeria.server.annotation.RequestObject;
-import com.snowflake.ingest.sdk.server.exception.AppServerException;
 import com.snowflake.ingest.sdk.server.exception.CustomExceptionHandler;
 import com.snowflake.ingest.sdk.server.model.ChannelIdentifier;
 import com.snowflake.ingest.sdk.server.request.CreateClientRequest;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
@@ -41,21 +39,20 @@ import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** 
- * Service that hosts Streaming Ingest SDK APIs as endpoints.
- * This service provides a REST API wrapper around the Snowflake Streaming Ingest SDK,
- * allowing clients to:
- * - Create and manage streaming ingest clients
- * - Open and manage channels
- * - Insert data into Snowflake tables
+/**
+ * Service that hosts Streaming Ingest SDK APIs as endpoints. This service provides a REST API
+ * wrapper around the Snowflake Streaming Ingest SDK, allowing clients to: - Create and manage
+ * streaming ingest clients - Open and manage channels - Insert data into Snowflake tables
  */
 @ExceptionHandler(CustomExceptionHandler.class)
 public class StreamingIngestJavaService {
   private static final Logger logger = LoggerFactory.getLogger(StreamingIngestJavaService.class);
 
   // Client state management
-  private static final Map<String, SnowflakeStreamingIngestClient> clientMap = new ConcurrentHashMap<>();
-  private static final Map<ChannelIdentifier, SnowflakeStreamingIngestChannel> channelsMap = new ConcurrentHashMap<>();
+  private static final Map<String, SnowflakeStreamingIngestClient> clientMap =
+      new ConcurrentHashMap<>();
+  private static final Map<ChannelIdentifier, SnowflakeStreamingIngestChannel> channelsMap =
+      new ConcurrentHashMap<>();
   private static final Map<String, Boolean> clientClosedStateMap = new ConcurrentHashMap<>();
 
   // Default values
@@ -77,25 +74,28 @@ public class StreamingIngestJavaService {
   }
 
   @Put("/clients/{clientId}")
-  public HttpResponse createClient(@Param("clientId") String clientId, @RequestObject CreateClientRequest request) throws Exception {
+  public HttpResponse createClient(
+      @Param("clientId") String clientId, @RequestObject CreateClientRequest request)
+      throws Exception {
     Map<String, String> parameterOverrides = request.getParameterOverrides();
     Properties props = buildClientProperties(parameterOverrides);
     validateRequiredProperties(props);
-    
-    SnowflakeStreamingIngestClient client = createSnowflakeClient(clientId, parameterOverrides, props);
+
+    SnowflakeStreamingIngestClient client =
+        createSnowflakeClient(clientId, parameterOverrides, props);
     registerClient(clientId, client);
-    
+
     logger.info("Successfully created streaming ingest client with id: {}", clientId);
-    return HttpResponse.ofJson(Map.of(
-      "status", "success",
-      "clientId", clientId,
-      "message", "Successfully created streaming ingest client"
-    ));
+    return HttpResponse.ofJson(
+        Map.of(
+            "status", "success",
+            "clientId", clientId,
+            "message", "Successfully created streaming ingest client"));
   }
 
   private Properties buildClientProperties(Map<String, String> overrides) {
     Properties props = new Properties();
-    
+
     // Required properties
     props.put("user", overrides.get("user"));
     props.put("url", overrides.get("url"));
@@ -126,7 +126,9 @@ public class StreamingIngestJavaService {
       "user", "url", "account", "private_key", "host", "schema", "database", "warehouse", "role"
     };
     for (String prop : requiredProps) {
-      if (!props.containsKey(prop) || props.get(prop) == null || props.get(prop).toString().trim().isEmpty()) {
+      if (!props.containsKey(prop)
+          || props.get(prop) == null
+          || props.get(prop).toString().trim().isEmpty()) {
         String msg = "Missing required property: " + prop;
         logger.error(msg);
         throw new IllegalArgumentException(msg);
@@ -152,36 +154,44 @@ public class StreamingIngestJavaService {
     SnowflakeStreamingIngestClient client = getClientOrThrow(clientId);
     client.close();
     clientClosedStateMap.put(clientId, true);
-    
+
     logger.info("Successfully closed client: {}", clientId);
-    return HttpResponse.ofJson(Map.of(
-      "status", "success",
-      "clientId", clientId,
-      "message", "Successfully closed client"
-    ));
+    return HttpResponse.ofJson(
+        Map.of(
+            "status", "success",
+            "clientId", clientId,
+            "message", "Successfully closed client"));
   }
 
   @Put("/clients/{clientId}/channels/{channelName}")
   public HttpResponse openChannel(
       @Param("clientId") String clientId,
       @Param("channelName") String channelName,
-      @RequestObject Map<String, String> request) throws Exception {
+      @RequestObject Map<String, String> request)
+      throws Exception {
     SnowflakeStreamingIngestClient client = getClientOrThrow(clientId);
     OpenChannelRequest channelRequest = buildChannelRequest(channelName, request);
-    
+
     SnowflakeStreamingIngestChannel channel = client.openChannel(channelRequest);
     channelsMap.put(ChannelIdentifier.of(clientId, channelName), channel);
-    
+
     logger.info("Successfully opened channel {} for client {}", channelName, clientId);
-    return HttpResponse.ofJson(Map.of(
-      "status", "success",
-      "clientId", clientId,
-      "channelName", channelName,
-      "database", request.get("database"),
-      "schema", request.get("schema"),
-      "table", request.get("table"),
-      "message", "Successfully opened channel"
-    ));
+    return HttpResponse.ofJson(
+        Map.of(
+            "status",
+            "success",
+            "clientId",
+            clientId,
+            "channelName",
+            channelName,
+            "database",
+            request.get("database"),
+            "schema",
+            request.get("schema"),
+            "table",
+            request.get("table"),
+            "message",
+            "Successfully opened channel"));
   }
 
   private OpenChannelRequest buildChannelRequest(String channelName, Map<String, String> request) {
@@ -189,7 +199,9 @@ public class StreamingIngestJavaService {
         .setDBName(request.get("database"))
         .setSchemaName(request.get("schema"))
         .setTableName(request.get("table"))
-        .setOnErrorOption(OpenChannelRequest.OnErrorOption.valueOf(request.getOrDefault("on_error", DEFAULT_ON_ERROR)))
+        .setOnErrorOption(
+            OpenChannelRequest.OnErrorOption.valueOf(
+                request.getOrDefault("on_error", DEFAULT_ON_ERROR)))
         .build();
   }
 
@@ -198,7 +210,8 @@ public class StreamingIngestJavaService {
       @Param("clientId") String clientId,
       @Param("channelName") String channelName,
       @RequestObject Map<String, Object> row,
-      @Param("offsetToken") String offsetToken) throws Exception {
+      @Param("offsetToken") String offsetToken)
+      throws Exception {
     SnowflakeStreamingIngestChannel channel = getChannelOrThrow(clientId, channelName);
     logger.debug(
         "Inserting row to channel {}/{}, row: {}, offsetToken: {}",
@@ -208,24 +221,24 @@ public class StreamingIngestJavaService {
         offsetToken);
 
     InsertValidationResponse response = channel.insertRow(row, offsetToken);
-    
+
     if (response.hasErrors()) {
       throw response.getInsertErrors().get(0).getException();
     }
 
-    return HttpResponse.ofJson(Map.of(
-        "status", "success",
-        "message", "Successfully inserted row",
-        "clientId", clientId,
-        "channelName", channelName,
-        "offsetToken", offsetToken
-    ));
+    return HttpResponse.ofJson(
+        Map.of(
+            "status", "success",
+            "message", "Successfully inserted row",
+            "clientId", clientId,
+            "channelName", channelName,
+            "offsetToken", offsetToken));
   }
 
   @Get("/clients/{clientId}/channels/{channelName}/offset")
   public HttpResponse getLatestCommittedOffsetToken(
-      @Param("clientId") String clientId, 
-      @Param("channelName") String channelName) throws Exception {
+      @Param("clientId") String clientId, @Param("channelName") String channelName)
+      throws Exception {
     SnowflakeStreamingIngestChannel channel = getChannelOrThrow(clientId, channelName);
     String offsetToken = channel.getLatestCommittedOffsetToken();
     return HttpResponse.ofJson(Map.of("offsetToken", offsetToken));
@@ -233,17 +246,21 @@ public class StreamingIngestJavaService {
 
   @Post("/clients/{clientId}/channels/{channelName}/close")
   public HttpResponse closeChannel(
-      @Param("clientId") String clientId, 
-      @Param("channelName") String channelName) throws Exception {
+      @Param("clientId") String clientId, @Param("channelName") String channelName)
+      throws Exception {
     SnowflakeStreamingIngestChannel channel = getChannelOrThrow(clientId, channelName);
     channel.close().get();
     channelsMap.remove(ChannelIdentifier.of(clientId, channelName));
-    return HttpResponse.ofJson(Map.of(
-      "status", "success",
-      "clientId", clientId,
-      "channelName", channelName,
-      "message", "Successfully closed channel"
-    ));
+    return HttpResponse.ofJson(
+        Map.of(
+            "status",
+            "success",
+            "clientId",
+            clientId,
+            "channelName",
+            channelName,
+            "message",
+            "Successfully closed channel"));
   }
 
   private SnowflakeStreamingIngestClient getClientOrThrow(String clientId) {

@@ -37,4 +37,4 @@ public class BooleanResponse {
   public void setValue(boolean value) {
     this.value = value;
   }
-} 
+}

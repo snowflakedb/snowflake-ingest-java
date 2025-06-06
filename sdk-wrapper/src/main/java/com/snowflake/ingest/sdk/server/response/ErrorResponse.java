@@ -62,4 +62,4 @@ public class ErrorResponse {
   public void setHttpStatusCode(int httpStatusCode) {
     this.httpStatusCode = httpStatusCode;
   }
-} 
+}

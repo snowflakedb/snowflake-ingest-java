@@ -37,4 +37,4 @@ public class StringResponse {
   public void setValue(String value) {
     this.value = value;
   }
-} 
+}

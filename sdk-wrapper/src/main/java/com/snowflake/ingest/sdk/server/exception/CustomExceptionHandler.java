@@ -22,7 +22,6 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.annotation.ExceptionHandlerFunction;
-import com.snowflake.ingest.sdk.server.exception.AppServerException;
 import com.snowflake.ingest.sdk.server.response.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +34,7 @@ public class CustomExceptionHandler implements ExceptionHandlerFunction {
   private static final Logger logger = LoggerFactory.getLogger(CustomExceptionHandler.class);
 
   @Override
-  public HttpResponse handleException(
-      ServiceRequestContext ctx, HttpRequest req, Throwable cause) {
+  public HttpResponse handleException(ServiceRequestContext ctx, HttpRequest req, Throwable cause) {
     logger.error(
         "Unhandled exception in {}, path params: {}, query params: {}, error: {}",
         ctx.path(),

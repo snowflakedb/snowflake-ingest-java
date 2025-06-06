@@ -22,16 +22,13 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.docs.DocService;
 import com.linecorp.armeria.server.logging.AccessLogWriter;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** 
- * Streaming Ingest Server that provides a REST API wrapper around the Snowflake Streaming Ingest SDK.
- * The server can be started on a specified port or a random available port.
+/**
+ * Streaming Ingest Server that provides a REST API wrapper around the Snowflake Streaming Ingest
+ * SDK. The server can be started on a specified port or a random available port.
  */
 public class StreamingIngestJavaServer {
   private static final Logger logger = LoggerFactory.getLogger(StreamingIngestJavaServer.class);
@@ -70,6 +67,7 @@ public class StreamingIngestJavaServer {
     server.closeOnJvmShutdown();
     server.start().join();
 
-    logger.info("Java StreamingIngestServer started successfully on port: {}", server.activeLocalPort());
+    logger.info(
+        "Java StreamingIngestServer started successfully on port: {}", server.activeLocalPort());
   }
-} 
+}

@@ -40,13 +40,17 @@ public class CommandLineArgs {
               Option.builder()
                   .longOpt(CMD_LINE_ARG_PORT)
                   .hasArg()
-                  .desc("Caller-specified port for server to run on. If not specified, the app will choose a random open port.")
+                  .desc(
+                      "Caller-specified port for server to run on. If not specified, the app will"
+                          + " choose a random open port.")
                   .build())
           .addOption(
               Option.builder()
                   .longOpt(CMD_LINE_ACCESS_LOGGING)
                   .hasArg(false)
-                  .desc("Access logging is disabled by default. This option can be used to enable it.")
+                  .desc(
+                      "Access logging is disabled by default. This option can be used to enable"
+                          + " it.")
                   .build());
 
   private final Integer port;
