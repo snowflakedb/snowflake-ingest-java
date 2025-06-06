@@ -9,20 +9,15 @@ This is a standalone server application that wraps the Snowflake Streaming Inges
 The easiest way to build the server is using the provided build script:
 
 ```bash
-# From the java-sdk-app directory
-./build-server.sh
+# From the project root directory
+mvn clean install
 ```
 
-This script will:
-1. Clean up any old SDK installations
-2. Build the SDK from source
-3. Install the SDK with a performance testing version
-4. Build the common module
-5. Build the server application
-
-Note: If the script fails or you want to ensure a completely clean build:
-1. Clean up existing files: `rm -rf ~/.m2/repository/net/snowflake/snowflake-ingest-sdk/`
-2. Run the build script again: `./build-server.sh`
+This will:
+1. Clean the project
+2. Build the SDK
+3. Run tests
+4. Create the executable jar
 
 ### Running the Server
 
@@ -33,15 +28,24 @@ java -jar target/java-sdk-app-1.0-SNAPSHOT.jar [OPTIONS]
 ```
 
 Available options:
-- `--port <number>` : Port to run the server on (default: 8080)
-- `--host <address>` : Host address to bind to (default: 0.0.0.0)
+- `--server.port=<number>` : Port to run the server on. If not specified, the server will choose a random available port.
+- `--enable.access.logging` : Enable access logging (disabled by default)
 
 Example:
 ```bash
 # Run on port 9090
 java -jar target/java-sdk-app-1.0-SNAPSHOT.jar --server.port=9090
 
+# Run with access logging enabled
+java -jar target/java-sdk-app-1.0-SNAPSHOT.jar --enable.access.logging
 
+# Run on random port with access logging
+java -jar target/java-sdk-app-1.0-SNAPSHOT.jar --enable.access.logging
+```
+
+The server will log its port number on startup:
+```
+INFO c.s.i.s.s.StreamingIngestJavaServer - Java StreamingIngestServer started successfully on port: <port_number>
 ```
 
 ## API Endpoints
@@ -84,9 +88,9 @@ Opens a new channel for streaming data.
 Request body:
 ```json
 {
-  "dbName": "your_database",
-  "schemaName": "your_schema",
-  "tableName": "your_table",
+  "database": "your_database",
+  "schema": "your_schema",
+  "table": "your_table",
   "onErrorOption": "CONTINUE"  // or "ABORT"
 }
 ```
