@@ -53,7 +53,6 @@ public class StreamingIngestJavaService {
       new ConcurrentHashMap<>();
   private static final Map<ChannelIdentifier, SnowflakeStreamingIngestChannel> channelsMap =
       new ConcurrentHashMap<>();
-  private static final Map<String, Boolean> clientClosedStateMap = new ConcurrentHashMap<>();
 
   // Default values
   private static final String DEFAULT_PORT = "443";
@@ -146,14 +145,12 @@ public class StreamingIngestJavaService {
 
   private void registerClient(String clientId, SnowflakeStreamingIngestClient client) {
     clientMap.put(clientId, client);
-    clientClosedStateMap.put(clientId, false);
   }
 
   @Post("/clients/{clientId}/close")
   public HttpResponse closeClient(@Param("clientId") String clientId) throws Exception {
     SnowflakeStreamingIngestClient client = getClientOrThrow(clientId);
     client.close();
-    clientClosedStateMap.put(clientId, true);
 
     logger.info("Successfully closed client: {}", clientId);
     return HttpResponse.ofJson(
@@ -267,9 +264,6 @@ public class StreamingIngestJavaService {
     SnowflakeStreamingIngestClient client = clientMap.get(clientId);
     if (client == null) {
       throw new IllegalArgumentException("Client not found: " + clientId);
-    }
-    if (Boolean.TRUE.equals(clientClosedStateMap.get(clientId))) {
-      throw new IllegalStateException("Client is closed: " + clientId);
     }
     return client;
   }

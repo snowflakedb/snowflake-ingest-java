@@ -10,6 +10,7 @@ echo "=== Building Snowflake Streaming Ingest Server ==="
 # Get the absolute path of the script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SDK_ROOT="$SCRIPT_DIR/.."
+echo "SDK_ROOT: $SDK_ROOT"
 
 echo "Cleaning up old SDK installations..."
 rm -rf ~/.m2/repository/net/snowflake/snowflake-ingest-sdk/
@@ -32,4 +33,4 @@ mvn clean package -DskipTests
 
 echo "=== Build Complete ==="
 echo "To run the server:"
-echo "java -jar target/sdk-wrapper-1.0-SNAPSHOT.jar [--port <port>] [--access-logging]" 
+java -jar target/sdk-wrapper-1.0-SNAPSHOT.jar --enable.access.logging
