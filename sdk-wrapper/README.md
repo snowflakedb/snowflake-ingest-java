@@ -6,25 +6,28 @@ This is a standalone server application that wraps the Snowflake Streaming Inges
 
 ### Building the Server
 
-The easiest way to build the server is using the provided build script:
+The server can be built using the provided `build-server.sh` script:
 
 ```bash
-# From the project root directory
-mvn clean install
+# Make the script executable
+chmod +x build-server.sh
+
+# Run the build script
+./build-server.sh
 ```
 
-This will:
-1. Clean the project
-2. Build the SDK
-3. Run tests
-4. Create the executable jar
+This script will:
+1. Clean up any old SDK installations
+2. Build the SDK from source
+3. Install the SDK with perf version
+4. Build the server application
 
 ### Running the Server
 
 To run the server:
 
 ```bash
-java -jar target/java-sdk-app-1.0-SNAPSHOT.jar [OPTIONS]
+java -jar target/sdk-wrapper-1.0-SNAPSHOT.jar [OPTIONS]
 ```
 
 Available options:
@@ -34,13 +37,13 @@ Available options:
 Example:
 ```bash
 # Run on port 9090
-java -jar target/java-sdk-app-1.0-SNAPSHOT.jar --server.port=9090
+java -jar target/sdk-wrapper-1.0-SNAPSHOT.jar --server.port=9090
 
 # Run with access logging enabled
-java -jar target/java-sdk-app-1.0-SNAPSHOT.jar --enable.access.logging
+java -jar target/sdk-wrapper-1.0-SNAPSHOT.jar --enable.access.logging
 
-# Run on random port with access logging
-java -jar target/java-sdk-app-1.0-SNAPSHOT.jar --enable.access.logging
+# Run on specific port with access logging
+java -jar target/sdk-wrapper-1.0-SNAPSHOT.jar --server.port=9090 --enable.access.logging
 ```
 
 The server will log its port number on startup:
