@@ -48,9 +48,9 @@ public class DynamicTablePartitionIT {
 
   private static final String BASE_TABLE_NAME = "base_table_for_dynamic";
   private static final String DYNAMIC_TABLE_NAME = "dynamic_table_partition_test";
+  private static final String DB_NAME = "sdk_dynamic_table_test_db";
   private static final int TEST_ROWS_COUNT = 1000;
 
-  private String dbName;
   private SnowflakeStreamingIngestClient client;
   private Connection connection;
   private SnowflakeStreamingIngestChannel channel;
@@ -63,11 +63,10 @@ public class DynamicTablePartitionIT {
     }
     client = SnowflakeStreamingIngestClientFactory.builder("dynamic_table_test_client").setProperties(props).build();
     connection = TestUtils.getConnection(true);
-    dbName = String.format("sdk_dynamic_table_it_db_%d", System.nanoTime());
 
     // Create database and schema
-    connection.createStatement().execute(String.format("create database %s;", dbName));
-    connection.createStatement().execute(String.format("use database %s;", dbName));
+    connection.createStatement().execute(String.format("create or replace database %s;", DB_NAME));
+    connection.createStatement().execute(String.format("use database %s;", DB_NAME));
     connection.createStatement().execute("create schema if not exists public;");
     connection.createStatement().execute("use schema public;");
 
@@ -78,8 +77,7 @@ public class DynamicTablePartitionIT {
                 + "id int, "
                 + "name varchar(100), "
                 + "category varchar(50), "
-                + "value decimal(10,2), "
-                + "timestamp_col timestamp_ntz"
+                + "value decimal(10,2)"
                 + ");",
             BASE_TABLE_NAME));
 
@@ -96,7 +94,7 @@ public class DynamicTablePartitionIT {
     // Open streaming channel for the base table
     channel = client.openChannel(
         OpenChannelRequest.builder("dynamic_table_test_channel")
-            .setDBName(dbName)
+            .setDBName(DB_NAME)
             .setSchemaName("public")
             .setTableName(BASE_TABLE_NAME)
             .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
@@ -109,7 +107,7 @@ public class DynamicTablePartitionIT {
       channel.close();
     }
     if (connection != null) {
-      connection.createStatement().execute(String.format("drop database if exists %s;", dbName));
+      connection.createStatement().execute(String.format("drop database if exists %s;", DB_NAME));
       connection.close();
     }
     if (client != null) {
@@ -129,7 +127,6 @@ public class DynamicTablePartitionIT {
       row.put("name", "Product_" + i);
       row.put("category", categories[i % categories.length]);
       row.put("value", (i % 100) + 10.50);
-      row.put("timestamp_col", "2024-01-01 10:00:00"); // Using a fixed timestamp for simplicity
       
       String offsetToken = String.valueOf(i);
       TestUtils.verifyInsertValidationResponse(channel.insertRow(row, offsetToken));
@@ -139,7 +136,7 @@ public class DynamicTablePartitionIT {
     TestUtils.waitForOffset(channel, String.valueOf(TEST_ROWS_COUNT - 1));
 
     // Verify base table has the expected number of rows
-    TestUtils.verifyTableRowCount(TEST_ROWS_COUNT, connection, dbName, "public", BASE_TABLE_NAME);
+    TestUtils.verifyTableRowCount(TEST_ROWS_COUNT, connection, DB_NAME, "public", BASE_TABLE_NAME);
 
     // Wait for dynamic table to refresh (may take some time)
     // In a real scenario, you might need to wait longer or trigger a manual refresh
@@ -166,16 +163,16 @@ public class DynamicTablePartitionIT {
   public void testDirectStreamingToDynamicTableShouldFail() throws Exception {
     // This test verifies that direct streaming to a dynamic table should fail
     // as dynamic tables should only be populated through their source tables
-    
+
     try {
       SnowflakeStreamingIngestChannel dynamicTableChannel = client.openChannel(
           OpenChannelRequest.builder("dynamic_table_direct_channel")
-              .setDBName(dbName)
+              .setDBName(DB_NAME)
               .setSchemaName("public")
               .setTableName(DYNAMIC_TABLE_NAME)
               .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
               .build());
-      
+
              // If we reach here, the channel was opened successfully, which might be unexpected
        // Try to insert data and see if it fails
        Map<String, Object> row = new HashMap<>();
@@ -184,13 +181,13 @@ public class DynamicTablePartitionIT {
        row.put("category", "Test");
        row.put("value", 100.0);
        row.put("timestamp_col", "2024-01-01 10:00:00");
-      
+
       // This should fail if dynamic tables don't support direct streaming
       dynamicTableChannel.insertRow(row, "test_offset");
       dynamicTableChannel.close();
-      
+
       System.out.println("⚠️  Direct streaming to dynamic table succeeded - this may be expected behavior");
-      
+
     } catch (Exception e) {
       // Expected behavior - dynamic tables should not support direct streaming
       System.out.println("✓ Direct streaming to dynamic table failed as expected: " + e.getMessage());
@@ -203,7 +200,7 @@ public class DynamicTablePartitionIT {
    */
   private void verifyDynamicTableContent() throws SQLException {
     // Verify dynamic table has the same number of rows as base table
-    TestUtils.verifyTableRowCount(TEST_ROWS_COUNT, connection, dbName, "public", DYNAMIC_TABLE_NAME);
+    TestUtils.verifyTableRowCount(TEST_ROWS_COUNT, connection, DB_NAME, "public", DYNAMIC_TABLE_NAME);
 
     // Do a basic sanity check on the data
     ResultSet rs = connection.createStatement().executeQuery(
@@ -252,7 +249,6 @@ public class DynamicTablePartitionIT {
         "having num > 1;",
         DYNAMIC_TABLE_NAME);
 
-    try {
       ResultSet rs = connection.createStatement().executeQuery(partitionValidationQuery);
 
       // If any results are returned, it means we have duplicate partition names
@@ -267,11 +263,5 @@ public class DynamicTablePartitionIT {
       }
 
       System.out.println("✓ No duplicate PRIMARY_PARTITION_NAME found in dynamic table");
-
-    } catch (SQLException e) {
-      // If the metadata columns don't exist, the dynamic table might not have partitioning metadata
-      System.out.println("Metadata partition columns not available, dynamic table might not be partitioned: " + e.getMessage());
-      System.out.println("✓ Skipping partition name validation - dynamic table appears to not have partition metadata");
-    }
   }
 } 
