@@ -240,13 +240,17 @@ public class StreamingIngestJavaService {
       @Param("offsetToken") String offsetToken)
       throws Exception {
     SnowflakeStreamingIngestChannel channel = getChannelOrThrow(clientId, channelName);
+    
+    logger.debug(
+        "Batch inserting {} rows to channel {}/{}, offsetToken: {}",
+        rows.size(),
+        clientId,
+        channelName,
+        offsetToken);
 
-    // Insert all rows with the same offset token
-    for (Map<String, Object> row : rows) {
-      InsertValidationResponse response = channel.insertRow(row, offsetToken);
-      if (response.hasErrors()) {
+    InsertValidationResponse response = channel.insertRows(rows, offsetToken);
+    if (response.hasErrors()) {
         throw response.getInsertErrors().get(0).getException();
-      }
     }
 
     return HttpResponse.ofJson(
