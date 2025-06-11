@@ -240,7 +240,7 @@ public class StreamingIngestJavaService {
       @Param("offsetToken") String offsetToken)
       throws Exception {
     SnowflakeStreamingIngestChannel channel = getChannelOrThrow(clientId, channelName);
-    
+
     logger.debug(
         "Batch inserting {} rows to channel {}/{}, offsetToken: {}",
         rows.size(),
@@ -250,7 +250,7 @@ public class StreamingIngestJavaService {
 
     InsertValidationResponse response = channel.insertRows(rows, offsetToken);
     if (response.hasErrors()) {
-        throw response.getInsertErrors().get(0).getException();
+      throw response.getInsertErrors().get(0).getException();
     }
 
     return HttpResponse.ofJson(
