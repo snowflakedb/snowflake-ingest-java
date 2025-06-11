@@ -232,6 +232,32 @@ public class StreamingIngestJavaService {
             "offsetToken", offsetToken));
   }
 
+  @Post("/clients/{clientId}/channels/{channelName}/insertRows")
+  public HttpResponse insertRows(
+      @Param("clientId") String clientId,
+      @Param("channelName") String channelName,
+      @RequestObject java.util.List<Map<String, Object>> rows,
+      @Param("offsetToken") String offsetToken)
+      throws Exception {
+    SnowflakeStreamingIngestChannel channel = getChannelOrThrow(clientId, channelName);
+    
+    // Insert all rows with the same offset token
+    for (Map<String, Object> row : rows) {
+      InsertValidationResponse response = channel.insertRow(row, offsetToken);
+      if (response.hasErrors()) {
+        throw response.getInsertErrors().get(0).getException();
+      }
+    }
+    
+    return HttpResponse.ofJson(
+        Map.of(
+            "status", "success",
+            "message", String.format("Successfully inserted %d rows", rows.size()),
+            "clientId", clientId,
+            "channelName", channelName,
+            "offsetToken", offsetToken));
+  }
+
   @Get("/clients/{clientId}/channels/{channelName}/offset")
   public HttpResponse getLatestCommittedOffsetToken(
       @Param("clientId") String clientId, @Param("channelName") String channelName)
