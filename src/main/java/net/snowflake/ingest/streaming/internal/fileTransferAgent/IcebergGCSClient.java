@@ -191,7 +191,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       String stageRegion,
       String presignedUrl)
       throws SnowflakeSQLException {
-    logger.logInfo(
+    logger.logDebug(
         StorageHelper.getStartUploadLog(
             "GCS", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
     final List<FileInputStream> toClose = new ArrayList<>();
@@ -229,12 +229,12 @@ class IcebergGCSClient implements IcebergStorageClient {
     stopwatch.stop();
 
     if (uploadFromStream) {
-      logger.logInfo(
+      logger.logDebug(
           "Uploaded data from input stream to GCS location: {}. It took {} ms",
           remoteStorageLocation,
           stopwatch.elapsedMillis());
     } else {
-      logger.logInfo(
+      logger.logDebug(
           "Uploaded file {} to GCS location: {}. It took {} ms",
           srcFile.getAbsolutePath(),
           remoteStorageLocation,
