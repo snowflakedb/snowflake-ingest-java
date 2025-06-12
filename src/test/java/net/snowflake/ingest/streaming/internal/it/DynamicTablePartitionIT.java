@@ -141,21 +141,11 @@ public class DynamicTablePartitionIT {
     // Verify base table has the expected number of rows
     TestUtils.verifyTableRowCount(TEST_ROWS_COUNT, connection, DB_NAME, "public", BASE_TABLE_NAME);
 
-    // Wait for dynamic table to refresh (may take some time)
-    // In a real scenario, you might need to wait longer or trigger a manual refresh
-    Thread.sleep(5000);
-
     // Try to manually refresh the dynamic table to ensure it's up to date
-    try {
-      connection
-          .createStatement()
-          .execute(String.format("alter dynamic table %s refresh;", DYNAMIC_TABLE_NAME));
-      Thread.sleep(2000); // Wait for refresh to complete
-    } catch (SQLException e) {
-      // Refresh might fail if already in progress, which is okay
-      System.out.println(
-          "Dynamic table refresh failed (might be already in progress): " + e.getMessage());
-    }
+    connection
+        .createStatement()
+        .execute(String.format("alter dynamic table %s refresh;", DYNAMIC_TABLE_NAME));
+    Thread.sleep(2000); // Wait for refresh to complete
 
     // Verify dynamic table has been populated with the same data as base table
     verifyDynamicTableContent();
@@ -168,33 +158,16 @@ public class DynamicTablePartitionIT {
   public void testDirectStreamingToDynamicTableShouldFail() throws Exception {
     // This test verifies that direct streaming to a dynamic table should fail
     // as dynamic tables should only be populated through their source tables
-
     try {
-      SnowflakeStreamingIngestChannel dynamicTableChannel =
-          client.openChannel(
-              OpenChannelRequest.builder("dynamic_table_direct_channel")
-                  .setDBName(DB_NAME)
-                  .setSchemaName("public")
-                  .setTableName(DYNAMIC_TABLE_NAME)
-                  .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
-                  .build());
+      client.openChannel(
+          OpenChannelRequest.builder("dynamic_table_direct_channel")
+              .setDBName(DB_NAME)
+              .setSchemaName("public")
+              .setTableName(DYNAMIC_TABLE_NAME)
+              .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+              .build());
 
-      // If we reach here, the channel was opened successfully, which might be unexpected
-      // Try to insert data and see if it fails
-      Map<String, Object> row = new HashMap<>();
-      row.put("id", 9999);
-      row.put("name", "Test Product");
-      row.put("category", "Test");
-      row.put("value", 100.0);
-      row.put("timestamp_col", "2024-01-01 10:00:00");
-
-      // This should fail if dynamic tables don't support direct streaming
-      dynamicTableChannel.insertRow(row, "test_offset");
-      dynamicTableChannel.close();
-
-      System.out.println(
-          "⚠️  Direct streaming to dynamic table succeeded - this may be expected behavior");
-
+      Assert.fail("open channel on dynamic table should fail.");
     } catch (Exception e) {
       // Expected behavior - dynamic tables should not support direct streaming
       System.out.println(
@@ -236,14 +209,6 @@ public class DynamicTablePartitionIT {
    * the dynamic table's metadata columns.
    */
   private void validateNoDuplicatePartitionNames() throws SQLException {
-    validatePartitionNamesUniqueness();
-  }
-
-  /**
-   * Additional validation to ensure partition names are unique within the dynamic table. Queries
-   * the dynamic table's metadata columns directly to check for duplicate PRIMARY_PARTITION_NAME.
-   */
-  private void validatePartitionNamesUniqueness() throws SQLException {
     // Query the dynamic table directly for duplicate PRIMARY_PARTITION_NAME values
     String partitionValidationQuery =
         String.format(
