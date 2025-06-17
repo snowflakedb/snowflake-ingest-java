@@ -48,28 +48,6 @@ public enum IngestStatus {
   }
 
   /**
-   * description associated to that file Status
-   *
-   * @return IngestStatus description
-   */
-  public String getStatusDesc() {
-    return (this.statusDesc);
-  }
-
-  /**
-   * Search file Status given its id
-   *
-   * @param statusId id of the file Status
-   * @return IngestStatus which has this id or null if that IngestStatus does not exists
-   */
-  public static IngestStatus findByStatusId(int statusId) {
-    for (IngestStatus status : IngestStatus.values()) {
-      if (status.statusId == statusId) return (status);
-    }
-    return (null);
-  }
-
-  /**
    * Given an enum name, find associated IngestStatus
    *
    * @param name Status name
@@ -88,22 +66,4 @@ public enum IngestStatus {
 
   /** description associated to that file Status */
   private final String statusDesc;
-
-  /**
-   * Set to true if the file was successfully loaded.
-   *
-   * @param id Status id
-   */
-  static boolean isSuccess(int id) {
-    return id == IngestStatus.LOADED.getId() || id == IngestStatus.PARTIALLY_LOADED.getId();
-  }
-
-  /**
-   * Set to true if the file was successfully loaded.
-   *
-   * @param status IngestStatus
-   */
-  static boolean isSuccess(IngestStatus status) {
-    return isSuccess(status.getId());
-  }
 }

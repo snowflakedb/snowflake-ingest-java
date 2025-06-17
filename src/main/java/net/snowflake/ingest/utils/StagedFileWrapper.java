@@ -47,15 +47,6 @@ public class StagedFileWrapper {
   }
 
   /**
-   * StagedFileWrapper - just setting the path without a size
-   *
-   * @param filepath the filepath for this file
-   */
-  public StagedFileWrapper(String filepath) {
-    this(filepath, null);
-  }
-
-  /**
    * getPath - returns the path of this file
    *
    * @return the file path
