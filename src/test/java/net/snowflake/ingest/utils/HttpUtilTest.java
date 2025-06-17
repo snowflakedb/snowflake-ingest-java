@@ -1,6 +1,5 @@
 package net.snowflake.ingest.utils;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
@@ -35,15 +34,14 @@ public class HttpUtilTest {
 
     final String message = "Please retry";
     IOException[] retryExceptions = {
-        new NoHttpResponseException(message),
-        new SSLException(message),
-        new SocketException(message),
-        new UnknownHostException(message)
+      new NoHttpResponseException(message),
+      new SSLException(message),
+      new SocketException(message),
+      new UnknownHostException(message)
     };
 
     for (IOException exception : retryExceptions) {
-      assertTrue(
-          httpRequestRetryHandler.retryRequest(exception, 1, httpContextMock));
+      assertTrue(httpRequestRetryHandler.retryRequest(exception, 1, httpContextMock));
     }
 
     // Verify generic IOException is not retried
@@ -72,13 +70,15 @@ public class HttpUtilTest {
     int[] retryStatusCodes = {408, 429, 500, 503};
     for (int statusCode : retryStatusCodes) {
       doReturn(statusCode).when(statusLine).getStatusCode();
-      assertTrue("Expected retry on " + statusCode, retryStrategy.retryRequest(response, 1, context));
+      assertTrue(
+          "Expected retry on " + statusCode, retryStrategy.retryRequest(response, 1, context));
     }
 
     int[] noRetryStatusCodes = {200, 400, 404};
     for (int statusCode : noRetryStatusCodes) {
       doReturn(statusCode).when(statusLine).getStatusCode();
-      assertFalse("Expected no retry on " + statusCode, retryStrategy.retryRequest(response, 1, context));
+      assertFalse(
+          "Expected no retry on " + statusCode, retryStrategy.retryRequest(response, 1, context));
     }
   }
 }

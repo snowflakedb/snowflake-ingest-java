@@ -6,6 +6,7 @@ package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.security.Security;
 import java.time.Duration;
 import java.time.Instant;
@@ -16,8 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
-
-import com.google.common.annotations.VisibleForTesting;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.apache.http.HttpHost;
@@ -66,8 +65,7 @@ public class HttpUtil {
    * value of {@link HttpUtil.TOTAL_RETRY_DURATION} when exponential backoff of up to 4 seconds per
    * retry is used.
    */
-  @VisibleForTesting
-  static final int MAX_RETRIES = 10;
+  @VisibleForTesting static final int MAX_RETRIES = 10;
 
   private static volatile CloseableHttpClient httpClient;
 
