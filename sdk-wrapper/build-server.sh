@@ -27,3 +27,7 @@ mvn install:install-file \
     -Dversion=perf \
     -Dpackaging=jar
 
+echo "Building server application..."
+cd "$SCRIPT_DIR"
+mvn clean package -DskipTests
+
