@@ -66,7 +66,8 @@ public class HttpUtil {
    * value of {@link HttpUtil.TOTAL_RETRY_DURATION} when exponential backoff of up to 4 seconds per
    * retry is used.
    */
-  private static final int MAX_RETRIES = 10;
+  @VisibleForTesting
+  static final int MAX_RETRIES = 10;
 
   private static volatile CloseableHttpClient httpClient;
 
