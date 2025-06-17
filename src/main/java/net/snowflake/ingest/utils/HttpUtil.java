@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
+
+import com.google.common.annotations.VisibleForTesting;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.apache.http.HttpHost;
@@ -224,7 +226,8 @@ public class HttpUtil {
     }
   }
 
-  private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
+  @VisibleForTesting
+  static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
     return new ServiceUnavailableRetryStrategy() {
       final int REQUEST_TIMEOUT = 408;
       final int TOO_MANY_REQUESTS = 429;

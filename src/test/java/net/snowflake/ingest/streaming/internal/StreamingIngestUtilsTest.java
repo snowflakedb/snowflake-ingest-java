@@ -69,7 +69,6 @@ public class StreamingIngestUtilsTest {
   public void testRetries() throws Exception {
     ChannelsStatusResponse response = new ChannelsStatusResponse();
     response.setStatusCode(RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST);
-    //    response.setStatusCode(7L);
 
     response.setMessage("honk");
     response.setChannels(new ArrayList<>());
