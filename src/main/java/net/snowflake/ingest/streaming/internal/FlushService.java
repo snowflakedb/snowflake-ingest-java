@@ -762,12 +762,26 @@ class FlushService<T> {
     boolean throttleOnQueuedTasks = buildAndUpload.getQueue().size() > numProcessors;
     if (throttleOnQueuedTasks) {
       logger.logWarn(
-          "Throttled due too many queue flush tasks (probably because of slow uploading speed),"
+          "Throttled due to too many queue flush tasks (probably because of slow uploading speed),"
               + " client={}, buildUploadWorkers stats={}",
           this.owningClient.getName(),
           this.buildUploadWorkers.toString());
     }
     return throttleOnQueuedTasks;
+  }
+
+  /** Throttle if the number of queued registration blobs is bigger than the max allowed */
+  boolean throttleDueToQueuedRegistrationRequests() {
+    int queueSize = registerService.getBlobsList().size();
+    boolean throttleOnQueueSize =
+        queueSize > this.owningClient.getParameterProvider().getMaxRegistrationQueueSize();
+    if (throttleOnQueueSize) {
+      logger.logWarn(
+          "Throttled due to too many queued registration blobs, client={}, size={}",
+          this.owningClient.getName(),
+          queueSize);
+    }
+    return throttleOnQueueSize;
   }
 
   /** Get whether we're running under test mode */
