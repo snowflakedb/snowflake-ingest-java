@@ -11,6 +11,7 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -787,5 +788,11 @@ class FlushService<T> {
   /** Get whether we're running under test mode */
   boolean isTestMode() {
     return this.isTestMode;
+  }
+
+  /** Get the register service, used for TEST only */
+  @VisibleForTesting
+  RegisterService<T> getRegisterService() {
+    return this.registerService;
   }
 }
