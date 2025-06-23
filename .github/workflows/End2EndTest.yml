@@ -40,7 +40,9 @@ jobs:
           ./scripts/run_gh_actions.sh -Dfailsafe.excludedGroups="net.snowflake.ingest.IcebergIT"
 
       - name: Code Coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
   build-windows:
     name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022
@@ -102,7 +104,9 @@ jobs:
           ./scripts/run_gh_actions.sh -Dfailsafe.groups="net.snowflake.ingest.IcebergIT"
 
       - name: Code Coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
   build-iceberg-windows:
     name: Build & Test - Streaming Iceberg Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022

@@ -6,6 +6,7 @@ package net.snowflake.ingest.utils;
 
 import static net.snowflake.ingest.utils.Utils.isNullOrEmpty;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.security.Security;
 import java.time.Duration;
 import java.time.Instant;
@@ -64,7 +65,7 @@ public class HttpUtil {
    * value of {@link HttpUtil.TOTAL_RETRY_DURATION} when exponential backoff of up to 4 seconds per
    * retry is used.
    */
-  private static final int MAX_RETRIES = 10;
+  @VisibleForTesting static final int MAX_RETRIES = 10;
 
   private static volatile CloseableHttpClient httpClient;
 
@@ -224,7 +225,8 @@ public class HttpUtil {
     }
   }
 
-  private static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
+  @VisibleForTesting
+  static ServiceUnavailableRetryStrategy getServiceUnavailableRetryStrategy() {
     return new ServiceUnavailableRetryStrategy() {
       final int REQUEST_TIMEOUT = 408;
       final int TOO_MANY_REQUESTS = 429;
