@@ -4,7 +4,6 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
@@ -452,15 +451,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   /**
    * Potentially throttles a call to the `insertRow(s)` APIs if needed. Note that throttling applies
-   * to the calling thread by sleeping on the curernt thread and checking whether memory conditions
+   * to the calling thread by sleeping on the current thread and checking whether memory conditions
    * are suitable to accepting the current row.
    */
   void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
-    while ((hasLowRuntimeMemory(memoryInfoProvider)
-            || (this.owningClient.getFlushService() != null
-                && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
-        && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
+    while (hasLowRuntimeMemory(memoryInfoProvider)
+        || (this.owningClient.getFlushService() != null
+            && (this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()
+                || this.owningClient
+                    .getFlushService()
+                    .throttleDueToQueuedRegistrationRequests()))) {
       try {
         Thread.sleep(insertThrottleIntervalInMs);
         retry++;

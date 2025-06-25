@@ -215,7 +215,7 @@ class RegisterService<T> {
   }
 
   /**
-   * Get the blobsList, this is for TEST ONLY, no lock protection
+   * Get the blobsList, used for tests or get estimated size, no lock protection
    *
    * @return the blobsList
    */
