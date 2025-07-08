@@ -456,12 +456,12 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
    */
   void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
+    // Insert will be throttled if we run into low memory or the queued flush tasks in flush service
+    // exceeds the threshold or the queued registration requests exceeds the threshold.
     while (hasLowRuntimeMemory(memoryInfoProvider)
         || (this.owningClient.getFlushService() != null
             && (this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()
-                || this.owningClient
-                    .getFlushService()
-                    .throttleDueToQueuedRegistrationRequests()))) {
+                || this.owningClient.getFlushService().isMaxRegistrationQueueSizeExceeded()))) {
       try {
         Thread.sleep(insertThrottleIntervalInMs);
         retry++;

@@ -1320,28 +1320,28 @@ public class FlushServiceTest {
   }
 
   @Test
-  public void testThrottleDueToQueuedRegistrationRequestsBelowThreshold() {
+  public void testisMaxRegistrationQueueSizeExceeded() {
+    int threshold = 10;
     TestContext<List<List<Object>>> testContext = testContextFactory.create();
     testContext.setParameterOverride(
-        Collections.singletonMap(ParameterProvider.MAX_REGISTRATION_QUEUE_SIZE, 10));
+        Collections.singletonMap(ParameterProvider.MAX_REGISTRATION_QUEUE_SIZE, threshold));
     FlushService fs = testContext.flushService;
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blob =
         new Pair<>(
             new FlushService.BlobData<>("test", null),
             CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, null)));
 
-    int threshold = 10;
     for (int i = 0; i < threshold; i++) {
       fs.getRegisterService().addBlobs(Collections.singletonList(blob));
     }
     Assert.assertFalse(
         "Throttling should not occur when queued requests are below the threshold",
-        fs.throttleDueToQueuedRegistrationRequests());
+        fs.isMaxRegistrationQueueSizeExceeded());
 
     fs.getRegisterService().addBlobs(Collections.singletonList(blob));
     Assert.assertTrue(
-        "Throttling should not occur when queued requests are below the threshold",
-        fs.throttleDueToQueuedRegistrationRequests());
+        "Throttling should occur when queued requests are above the threshold",
+        fs.isMaxRegistrationQueueSizeExceeded());
   }
 
   private Timer setupTimer(long expectedLatencyMs) {

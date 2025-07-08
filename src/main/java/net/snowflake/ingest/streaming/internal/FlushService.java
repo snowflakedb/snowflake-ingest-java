@@ -771,18 +771,18 @@ class FlushService<T> {
     return throttleOnQueuedTasks;
   }
 
-  /** Throttle if the number of queued registration blobs is bigger than the max allowed */
-  boolean throttleDueToQueuedRegistrationRequests() {
-    int queueSize = registerService.getBlobsList().size();
-    boolean throttleOnQueueSize =
+  /** Check if the number of queued registration blobs is bigger than the max allowed */
+  boolean isMaxRegistrationQueueSizeExceeded() {
+    int queueSize = registerService.getBlobsListSize();
+    boolean isQueueSizeExceeded =
         queueSize > this.owningClient.getParameterProvider().getMaxRegistrationQueueSize();
-    if (throttleOnQueueSize) {
+    if (isQueueSizeExceeded) {
       logger.logWarn(
-          "Throttled due to too many queued registration blobs, client={}, size={}",
+          "The number of queued registration blobs exceeds the max allowed threshold, client={}, size={}",
           this.owningClient.getName(),
           queueSize);
     }
-    return throttleOnQueueSize;
+    return isQueueSizeExceeded;
   }
 
   /** Get whether we're running under test mode */
