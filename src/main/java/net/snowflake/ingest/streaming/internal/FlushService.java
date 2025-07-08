@@ -778,7 +778,8 @@ class FlushService<T> {
         queueSize > this.owningClient.getParameterProvider().getMaxRegistrationQueueSize();
     if (isQueueSizeExceeded) {
       logger.logWarn(
-          "The number of queued registration blobs exceeds the max allowed threshold, client={}, size={}",
+          "The number of queued registration blobs exceeds the max allowed threshold, client={},"
+              + " size={}",
           this.owningClient.getName(),
           queueSize);
     }
