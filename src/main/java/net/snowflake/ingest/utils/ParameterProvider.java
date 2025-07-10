@@ -67,9 +67,10 @@ public class ParameterProvider {
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 256 * 1024 * 1024;
-  public static final int MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL_DEFAULT = 75;
+  public static final int MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL_DEFAULT =
+      150; // 10 minutes assuming default retry interval of 4s
   public static final int MAX_REGISTRATION_QUEUE_SIZE_DEFAULT =
-      300; // 5 minutes of no progress assuming 1s flush interval
+      600; // 10 minutes of no progress assuming 1s flush interval
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second

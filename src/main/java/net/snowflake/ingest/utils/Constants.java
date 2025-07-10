@@ -69,6 +69,8 @@ public class Constants {
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;
   public static final int BINARY_COLUMN_MAX_SIZE = 8 * 1024 * 1024;
   public static final int VARCHAR_COLUMN_MAX_SIZE = 16 * 1024 * 1024;
+  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT =
+      900; // 15 minutes with default retry interval
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";

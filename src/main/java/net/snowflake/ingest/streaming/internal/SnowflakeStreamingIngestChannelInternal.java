@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import static net.snowflake.ingest.utils.Constants.INSERT_THROTTLE_MAX_RETRY_COUNT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT;
 
@@ -458,10 +459,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
     int retry = 0;
     // Insert will be throttled if we run into low memory or the queued flush tasks in flush service
     // exceeds the threshold or the queued registration requests exceeds the threshold.
-    while (hasLowRuntimeMemory(memoryInfoProvider)
-        || (this.owningClient.getFlushService() != null
-            && (this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()
-                || this.owningClient.getFlushService().isMaxRegistrationQueueSizeExceeded()))) {
+    while ((hasLowRuntimeMemory(memoryInfoProvider)
+            || (this.owningClient.getFlushService() != null
+                && (this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()
+                    || this.owningClient.getFlushService().isMaxRegistrationQueueSizeExceeded())))
+        && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
       try {
         Thread.sleep(insertThrottleIntervalInMs);
         retry++;
@@ -476,6 +478,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
           retry,
           this.owningClient.getName(),
           getFullyQualifiedName());
+    }
+    // If we exceed the max retry count, we invalidate the channel. An invalid channel exception
+    // will be thrown later.
+    if (retry >= INSERT_THROTTLE_MAX_RETRY_COUNT) {
+      this.invalidate("Insert throttle exceeded max retry", "Insert throttle exceeded max retry");
     }
   }
 
