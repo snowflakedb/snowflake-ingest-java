@@ -83,9 +83,12 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
 
       - name: Unit & Integration Test (Windows)
+        env:
+          MAVEN_OPTS: "-Dmdep.skip=true"
         continue-on-error: false
         run: |
-          mvn -DghActionsIT -Dnot-shadeDep -Dmdep.skip=true -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          # Skipped dependency analysis via MAVEN_OPTS to avoid command-line parsing issues on Windows
+          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for building and testing Iceberg functionality on Ubuntu
   build-iceberg:
@@ -156,10 +159,12 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
 
       - name: Unit & Integration Test (Windows)
+        env:
+          MAVEN_OPTS: "-Dmdep.skip=true"
         continue-on-error: false
         run: |
-          # Corrected the mvn command by removing the erroneous hyphen before -D
-          mvn -DghActionsIT -Dnot-shadeDep -Dmdep.skip=true -D"failsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          # Skipped dependency analysis via MAVEN_OPTS to avoid command-line parsing issues on Windows
+          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for end-to-end testing with different JAR types and Java versions
   build-e2e-jar-test:
