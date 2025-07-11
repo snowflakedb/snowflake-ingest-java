@@ -452,14 +452,17 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
 
   /**
    * Potentially throttles a call to the `insertRow(s)` APIs if needed. Note that throttling applies
-   * to the calling thread by sleeping on the curernt thread and checking whether memory conditions
+   * to the calling thread by sleeping on the current thread and checking whether memory conditions
    * are suitable to accepting the current row.
    */
   void throttleInsertIfNeeded(MemoryInfoProvider memoryInfoProvider) {
     int retry = 0;
+    // Insert will be throttled if we run into low memory or the queued flush tasks in flush service
+    // exceeds the threshold or the queued registration requests exceeds the threshold.
     while ((hasLowRuntimeMemory(memoryInfoProvider)
             || (this.owningClient.getFlushService() != null
-                && this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()))
+                && (this.owningClient.getFlushService().throttleDueToQueuedFlushTasks()
+                    || this.owningClient.getFlushService().isMaxRegistrationQueueSizeExceeded())))
         && retry < INSERT_THROTTLE_MAX_RETRY_COUNT) {
       try {
         Thread.sleep(insertThrottleIntervalInMs);
@@ -475,6 +478,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
           retry,
           this.owningClient.getName(),
           getFullyQualifiedName());
+    }
+    // If we exceed the max retry count, we invalidate the channel. An invalid channel exception
+    // will be thrown later.
+    if (retry >= INSERT_THROTTLE_MAX_RETRY_COUNT) {
+      this.invalidate("Insert throttle exceeded max retry", "Insert throttle exceeded max retry");
     }
   }
 

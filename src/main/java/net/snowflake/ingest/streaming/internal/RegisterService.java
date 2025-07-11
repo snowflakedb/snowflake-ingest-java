@@ -215,11 +215,11 @@ class RegisterService<T> {
   }
 
   /**
-   * Get the blobsList, this is for TEST ONLY, no lock protection
+   * Get the size of the blobsList, no lock protection so it could be an estimated size
    *
-   * @return the blobsList
+   * @return the size of the blobsList
    */
-  List<Pair<FlushService.BlobData<T>, CompletableFuture<BlobMetadata>>> getBlobsList() {
-    return this.blobsList;
+  int getBlobsListSize() {
+    return this.blobsList.size();
   }
 }

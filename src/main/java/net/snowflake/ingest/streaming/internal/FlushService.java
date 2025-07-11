@@ -11,6 +11,7 @@ import static net.snowflake.ingest.utils.Constants.THREAD_SHUTDOWN_TIMEOUT_IN_SE
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
+import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.security.InvalidAlgorithmParameterException;
@@ -762,7 +763,7 @@ class FlushService<T> {
     boolean throttleOnQueuedTasks = buildAndUpload.getQueue().size() > numProcessors;
     if (throttleOnQueuedTasks) {
       logger.logWarn(
-          "Throttled due too many queue flush tasks (probably because of slow uploading speed),"
+          "Throttled due to too many queue flush tasks (probably because of slow uploading speed),"
               + " client={}, buildUploadWorkers stats={}",
           this.owningClient.getName(),
           this.buildUploadWorkers.toString());
@@ -770,8 +771,29 @@ class FlushService<T> {
     return throttleOnQueuedTasks;
   }
 
+  /** Check if the number of queued registration blobs is bigger than the max allowed */
+  boolean isMaxRegistrationQueueSizeExceeded() {
+    int queueSize = registerService.getBlobsListSize();
+    boolean isQueueSizeExceeded =
+        queueSize > this.owningClient.getParameterProvider().getMaxRegistrationQueueSize();
+    if (isQueueSizeExceeded) {
+      logger.logWarn(
+          "The number of queued registration blobs exceeds the max allowed threshold, client={},"
+              + " size={}",
+          this.owningClient.getName(),
+          queueSize);
+    }
+    return isQueueSizeExceeded;
+  }
+
   /** Get whether we're running under test mode */
   boolean isTestMode() {
     return this.isTestMode;
+  }
+
+  /** Get the register service, used for TEST only */
+  @VisibleForTesting
+  RegisterService<T> getRegisterService() {
+    return this.registerService;
   }
 }

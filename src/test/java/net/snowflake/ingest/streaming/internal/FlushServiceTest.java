@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +53,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.Cryptor;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.column.ParquetProperties;
@@ -1315,6 +1317,31 @@ public class FlushServiceTest {
     byte[] decryptedData = Cryptor.decrypt(encryptedData, encryptionKey, diversifier, 0);
 
     Assert.assertArrayEquals(data, decryptedData);
+  }
+
+  @Test
+  public void testisMaxRegistrationQueueSizeExceeded() {
+    int threshold = 10;
+    TestContext<List<List<Object>>> testContext = testContextFactory.create();
+    testContext.setParameterOverride(
+        Collections.singletonMap(ParameterProvider.MAX_REGISTRATION_QUEUE_SIZE, threshold));
+    FlushService fs = testContext.flushService;
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blob =
+        new Pair<>(
+            new FlushService.BlobData<>("test", null),
+            CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, null)));
+
+    for (int i = 0; i < threshold; i++) {
+      fs.getRegisterService().addBlobs(Collections.singletonList(blob));
+    }
+    Assert.assertFalse(
+        "Throttling should not occur when queued requests are below the threshold",
+        fs.isMaxRegistrationQueueSizeExceeded());
+
+    fs.getRegisterService().addBlobs(Collections.singletonList(blob));
+    Assert.assertTrue(
+        "Throttling should occur when queued requests are above the threshold",
+        fs.isMaxRegistrationQueueSizeExceeded());
   }
 
   private Timer setupTimer(long expectedLatencyMs) {

@@ -42,6 +42,8 @@ public class ParameterProviderTest {
     parameterMap.put(ParameterProvider.MAX_MEMORY_LIMIT_IN_BYTES, 1000L);
     parameterMap.put(ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES, 1000000L);
     parameterMap.put(ParameterProvider.BDEC_PARQUET_COMPRESSION_ALGORITHM, "gzip");
+    parameterMap.put(ParameterProvider.MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL, 10);
+    parameterMap.put(ParameterProvider.MAX_REGISTRATION_QUEUE_SIZE, 10);
     return parameterMap;
   }
 
@@ -64,6 +66,8 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         Constants.BdecParquetCompression.GZIP,
         parameterProvider.getBdecParquetCompressionAlgorithm());
+    Assert.assertEquals(10, parameterProvider.getMaxChannelWriteRetryCountOnQueueFull());
+    Assert.assertEquals(10, parameterProvider.getMaxRegistrationQueueSize());
   }
 
   @Test
@@ -170,6 +174,12 @@ public class ParameterProviderTest {
     Assert.assertEquals(
         ParameterProvider.MAX_CHUNKS_IN_REGISTRATION_REQUEST_DEFAULT,
         parameterProvider.getMaxChunksInRegistrationRequest());
+    Assert.assertEquals(
+        ParameterProvider.MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL_DEFAULT,
+        parameterProvider.getMaxChannelWriteRetryCountOnQueueFull());
+    Assert.assertEquals(
+        ParameterProvider.MAX_REGISTRATION_QUEUE_SIZE_DEFAULT,
+        parameterProvider.getMaxRegistrationQueueSize());
   }
 
   @Test

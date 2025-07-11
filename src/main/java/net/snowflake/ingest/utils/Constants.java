@@ -44,7 +44,6 @@ public class Constants {
   public static final long RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL =
       7L; // Don't change, should match server side
   public static final int BLOB_UPLOAD_TIMEOUT_IN_SEC = 20;
-  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT = 60;
   public static final long MAX_BLOB_SIZE_IN_BYTES = 1024 * 1024 * 1024;
   public static final int BLOB_TAG_SIZE_IN_BYTES = 4;
   public static final int BLOB_VERSION_SIZE_IN_BYTES = 1;
@@ -70,6 +69,8 @@ public class Constants {
   public static final int MAX_OAUTH_REFRESH_TOKEN_RETRY = 3;
   public static final int BINARY_COLUMN_MAX_SIZE = 8 * 1024 * 1024;
   public static final int VARCHAR_COLUMN_MAX_SIZE = 16 * 1024 * 1024;
+  public static final int INSERT_THROTTLE_MAX_RETRY_COUNT =
+      900; // 15 minutes with default retry interval
 
   // Channel level constants
   public static final String CHANNEL_STATUS_ENDPOINT = "/v1/streaming/channels/status/";
