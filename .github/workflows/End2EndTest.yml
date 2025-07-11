@@ -85,7 +85,7 @@ jobs:
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: |
-          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          mvn -DghActionsIT -Dnot-shadeDep -Dmdep.skip=true -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for building and testing Iceberg functionality on Ubuntu
   build-iceberg:
@@ -159,7 +159,7 @@ jobs:
         continue-on-error: false
         run: |
           # Corrected the mvn command by removing the erroneous hyphen before -D
-          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          mvn -DghActionsIT -Dnot-shadeDep -Dmdep.skip=true -D"failsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for end-to-end testing with different JAR types and Java versions
   build-e2e-jar-test:
