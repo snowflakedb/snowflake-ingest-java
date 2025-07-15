@@ -38,8 +38,8 @@ cat > $CENTRAL_DEPLOY_SETTINGS_XML << SETTINGS.XML
   <servers>
     <server>
       <id>$MVN_REPOSITORY_ID</id>
-      <username>$NEXUS_USER</username>
-      <password>$NEXUS_PWD</password>
+      <username>$LDAP_USER</username>
+      <password>$LDAP_PWD</password>
     </server>
   </servers>
 </settings>
@@ -54,6 +54,12 @@ echo "[INFO] Deploy to snapshot repository"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dsnapshot-deploy -Dhttp.keepAlive=false
+# Allow disabling auto-publish via environment variable
+AUTO_PUBLISH=${AUTO_PUBLISH:-true}
+mvn deploy ${MVN_OPTIONS[@]} -Dsnapshot-deploy -Dhttp.keepAlive=false -Dauto.publish.central=$AUTO_PUBLISH
+
+if [ "$AUTO_PUBLISH" = "false" ]; then
+  echo "[INFO] Auto-publish is disabled. Please check https://central.sonatype.org/account to manually publish"
+fi
 
 rm $CENTRAL_DEPLOY_SETTINGS_XML
