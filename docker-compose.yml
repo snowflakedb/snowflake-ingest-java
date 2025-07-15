@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  snowflake-streaming-ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: snowflake-streaming-ingest:latest
+    container_name: snowflake-streaming-ingest
+    
+    # Mount the configuration file
+    volumes:
+      - ./profile.json:/app/config/profile.json:ro
+    
+    # Environment variables for JVM tuning
+    environment:
+      - JAVA_OPTS=-Xmx1g -Xms512m
+      - PROFILE_PATH=/app/config/profile.json
+    
+    # Restart policy
+    restart: "no"  # Don't restart as this is a one-time execution
+    
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Health check (optional)
+    healthcheck:
+      test: ["CMD", "java", "-version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Network configuration (if needed)
+    networks:
+      - snowflake-network
+
+networks:
+  snowflake-network:
+    driver: bridge 

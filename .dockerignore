@@ -1,0 +1,57 @@
+# Ignore target directory (will be created during build)
+target/
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore Docker files
+Dockerfile
+.dockerignore
+
+# Ignore test resources that aren't needed
+src/test/
+
+# Ignore CI/CD files
+.github/
+scripts/
+
+# Ignore logs
+*.log
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore Maven wrapper (if not needed)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Ignore backup files
+*.bak
+*.orig
+
+# Ignore editor files
+*~
+.*.swp
+.*.swo
+
+# Ignore documentation
+*.md
+docs/
+
+# Ignore example configs (we'll copy specific ones)
+profile.json
+profile_streaming.json 
