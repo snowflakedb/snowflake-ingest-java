@@ -74,7 +74,7 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
           cache: 'maven'
-
+          cache-dependency-path: '**/pom.xml'
       - name: Decrypt profile.json for Cloud ${{ matrix.snowflake_cloud }} on Windows Powershell
         env:
           DECRYPTION_PASSPHRASE: ${{ secrets.PROFILE_JSON_DECRYPT_PASSPHRASE }}
@@ -83,11 +83,8 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
 
       - name: Unit & Integration Test (Windows)
-        env:
-          MAVEN_OPTS: "-Dmdep.skip=true"
         continue-on-error: false
         run: |
-          # Skipped dependency analysis via MAVEN_OPTS to avoid command-line parsing issues on Windows
           mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for building and testing Iceberg functionality on Ubuntu
@@ -159,11 +156,8 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
 
       - name: Unit & Integration Test (Windows)
-        env:
-          MAVEN_OPTS: "-Dmdep.skip=true"
         continue-on-error: false
         run: |
-          # Skipped dependency analysis via MAVEN_OPTS to avoid command-line parsing issues on Windows
           mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for end-to-end testing with different JAR types and Java versions
