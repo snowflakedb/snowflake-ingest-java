@@ -66,10 +66,10 @@ public class RegisterServiceTest {
             new FlushService.BlobData<>("test", null),
             CompletableFuture.completedFuture(new BlobMetadata("path", "md5", null, null)));
     rs.addBlobs(Collections.singletonList(blobFuture));
-    Assert.assertEquals(1, rs.getBlobsList().size());
+    Assert.assertEquals(1, rs.getBlobsListSize());
     Assert.assertEquals(false, blobFuture.getValue().get().getSpansMixedTables());
     List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
-    Assert.assertEquals(0, rs.getBlobsList().size());
+    Assert.assertEquals(0, rs.getBlobsListSize());
     Assert.assertEquals(0, errorBlobs.size());
   }
 
@@ -95,10 +95,10 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture2 =
         new Pair<>(new FlushService.BlobData<StubChunkData>("fail", new ArrayList<>()), future);
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));
-    Assert.assertEquals(2, rs.getBlobsList().size());
+    Assert.assertEquals(2, rs.getBlobsListSize());
     try {
       List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
-      Assert.assertEquals(0, rs.getBlobsList().size());
+      Assert.assertEquals(0, rs.getBlobsListSize());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getPath());
     } catch (Exception e) {
@@ -129,10 +129,10 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture2 =
         new Pair<>(new FlushService.BlobData<StubChunkData>("fail", new ArrayList<>()), future);
     rs.addBlobs(Arrays.asList(blobFuture1, blobFuture2));
-    Assert.assertEquals(2, rs.getBlobsList().size());
+    Assert.assertEquals(2, rs.getBlobsListSize());
     try {
       List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
-      Assert.assertEquals(0, rs.getBlobsList().size());
+      Assert.assertEquals(0, rs.getBlobsListSize());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getPath());
     } catch (Exception e) {
@@ -149,10 +149,10 @@ public class RegisterServiceTest {
     Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
         new Pair<>(new FlushService.BlobData<>("fail", new ArrayList<>()), future);
     rs.addBlobs(Collections.singletonList(blobFuture));
-    Assert.assertEquals(1, rs.getBlobsList().size());
+    Assert.assertEquals(1, rs.getBlobsListSize());
     try {
       List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
-      Assert.assertEquals(0, rs.getBlobsList().size());
+      Assert.assertEquals(0, rs.getBlobsListSize());
       Assert.assertEquals(1, errorBlobs.size());
       Assert.assertEquals("fail", errorBlobs.get(0).getPath());
     } catch (Exception e) {
