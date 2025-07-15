@@ -85,7 +85,7 @@ jobs:
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: |
-          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for building and testing Iceberg functionality on Ubuntu
   build-iceberg:
@@ -158,7 +158,7 @@ jobs:
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: |
-          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          mvn -DghActionsIT -Dnot-shadeDep -"Dfailsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for end-to-end testing with different JAR types and Java versions
   build-e2e-jar-test:
