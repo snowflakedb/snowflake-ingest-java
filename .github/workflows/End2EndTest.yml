@@ -69,10 +69,9 @@ jobs:
           ./scripts/decrypt_secret_windows.ps1 -SnowflakeDeployment '${{ matrix.snowflake_cloud }}'
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
+        shell: cmd
         run: |
-          # First attempt with dependency analysis
           mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" -U verify --batch-mode || (
-            # If first attempt fails, retry without dependency analysis
             echo "First attempt failed, retrying without dependency analysis..."
             mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" -Dmaven.dependency.analysis.skip=true -U verify --batch-mode
           )
