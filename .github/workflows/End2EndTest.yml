@@ -84,7 +84,6 @@ jobs:
 
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
-        shell: cmd
         run: |
           mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
