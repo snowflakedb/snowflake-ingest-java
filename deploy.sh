@@ -91,10 +91,16 @@ echo "[Info] Deploy to Central Publisher Portal"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
 $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
 
-mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dhttp.keepAlive=false
+# Allow disabling auto-publish via environment variable
+AUTO_PUBLISH=${AUTO_PUBLISH:-true}
+mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dhttp.keepAlive=false -Dauto.publish.central=$AUTO_PUBLISH
 
 echo "[INFO] Publishing to Maven Central via Central Publisher Portal"
-echo "[INFO] The central-publishing-maven-plugin handles publishing automatically"
+if [ "$AUTO_PUBLISH" = "true" ]; then
+  echo "[INFO] The central-publishing-maven-plugin handles publishing automatically"
+else
+  echo "[INFO] Auto-publish is disabled. Please check https://central.sonatype.org/account to manually publish"
+fi
 echo "[INFO] Check https://central.sonatype.org/account for publication status"
 
 rm $CENTRAL_DEPLOY_SETTINGS_XML
