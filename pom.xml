@@ -80,6 +80,8 @@
     <snowjdbc.version>3.24.2</snowjdbc.version>
     <threetenbp.version>1.7.0</threetenbp.version>
     <yetus.version>0.13.0</yetus.version>
+    <version.plugin.buildhelper>3.6.1</version.plugin.buildhelper>
+    <version.plugin.publishing>0.8.0</version.plugin.publishing>
   </properties>
 
   <dependencyManagement>
@@ -1475,6 +1477,14 @@
                   <shadedPattern>${shadeBase}.com.nimbusds</shadedPattern>
                 </relocation>
                 <relocation>
+                  <pattern>net.snowflake.client</pattern>
+                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.snowflake.client.jdbc</pattern>
+                  <shadedPattern>${shadeBase}.com.snowflake.client.jdbc</shadedPattern>
+                </relocation>
+                <relocation>
                   <pattern>org.bouncycastle</pattern>
                   <shadedPattern>${shadeBase}.org.bouncycastle</shadedPattern>
                 </relocation>
@@ -1485,14 +1495,6 @@
                 <relocation>
                   <pattern>net.minidev</pattern>
                   <shadedPattern>${shadeBase}.net.minidev</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>net.snowflake.client</pattern>
-                  <shadedPattern>${shadeBase}.net.snowflake.client</shadedPattern>
-                </relocation>
-                <relocation>
-                  <pattern>com.snowflake.client.jdbc</pattern>
-                  <shadedPattern>${shadeBase}.com.snowflake.client.jdbc</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.fasterxml</pattern>
@@ -1742,27 +1744,36 @@
       <build>
         <plugins>
           <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.6</version>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>${version.plugin.buildhelper}</version>
             <executions>
               <execution>
+                <id>attach-public-pom</id>
                 <goals>
-                  <goal>sign-and-deploy-file</goal>
+                  <goal>attach-artifact</goal>
                 </goals>
-                <phase>deploy</phase>
+                <phase>package</phase>
                 <configuration>
-                  <file>target/${project.artifactId}.jar</file>
-                  <repositoryId>ossrh</repositoryId>
-                  <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-                  <pomFile>generated_public_pom.xml</pomFile>
-                  <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
-                  <sources>target/${project.artifactId}-sources.jar</sources>
-                  <keyname>${env.GPG_KEY_ID}</keyname>
-                  <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
+                  <artifacts>
+                    <artifact>
+                      <file>generated_public_pom.xml</file>
+                      <type>pom</type>
+                    </artifact>
+                  </artifacts>
                 </configuration>
               </execution>
             </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${version.plugin.publishing}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>ossrh</publishingServerId>
+              <autoPublish>true</autoPublish>
+            </configuration>
           </plugin>
         </plugins>
       </build>
@@ -1777,27 +1788,36 @@
       <build>
         <plugins>
           <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.6</version>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>${version.plugin.buildhelper}</version>
             <executions>
               <execution>
+                <id>attach-public-pom</id>
                 <goals>
-                  <goal>sign-and-deploy-file</goal>
+                  <goal>attach-artifact</goal>
                 </goals>
-                <phase>deploy</phase>
+                <phase>package</phase>
                 <configuration>
-                  <file>target/${project.artifactId}.jar</file>
-                  <repositoryId>snapshot</repositoryId>
-                  <url>https://nexus.int.snowflakecomputing.com/repository/Snapshots/</url>
-                  <pomFile>generated_public_pom.xml</pomFile>
-                  <javadoc>target/${project.artifactId}-javadoc.jar</javadoc>
-                  <sources>target/${project.artifactId}-sources.jar</sources>
-                  <keyname>${env.GPG_KEY_ID}</keyname>
-                  <passphrase>${env.GPG_KEY_PASSPHRASE}</passphrase>
+                  <artifacts>
+                    <artifact>
+                      <file>generated_public_pom.xml</file>
+                      <type>pom</type>
+                    </artifact>
+                  </artifacts>
                 </configuration>
               </execution>
             </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${version.plugin.publishing}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>snapshot</publishingServerId>
+              <autoPublish>true</autoPublish>
+            </configuration>
           </plugin>
         </plugins>
       </build>
