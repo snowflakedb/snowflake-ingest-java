@@ -643,12 +643,18 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
                                         // If the chunk queue is full, we wait and retry the chunks
-                                        if ((channelStatus.getStatusCode()
+                                        boolean retryQueueFull =
+                                            channelStatus.getStatusCode()
                                                     == RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL
-                                                || channelStatus.getStatusCode()
-                                                    == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST)
-                                            && executionCount
-                                                < MAX_STREAMING_INGEST_API_CHANNEL_RETRY) {
+                                                && executionCount
+                                                    < parameterProvider
+                                                        .getMaxChannelWriteRetryCountOnQueueFull();
+                                        boolean retryGenericRetryableException =
+                                            channelStatus.getStatusCode()
+                                                    == RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST
+                                                && executionCount
+                                                    < MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
+                                        if (retryQueueFull || retryGenericRetryableException) {
                                           queueFullChunks.add(chunkStatus);
                                         } else {
                                           String errorMessage =
@@ -828,16 +834,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   /** Get whether we're running under test mode */
   boolean isTestMode() {
     return this.isTestMode;
-  }
-
-  /** Get the http client */
-  CloseableHttpClient getHttpClient() {
-    return this.httpClient;
-  }
-
-  /** Get the request builder */
-  RequestBuilder getRequestBuilder() {
-    return this.requestBuilder;
   }
 
   /** Get the channel cache */
