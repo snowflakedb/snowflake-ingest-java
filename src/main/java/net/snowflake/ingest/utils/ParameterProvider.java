@@ -49,6 +49,11 @@ public class ParameterProvider {
 
   public static final String ENABLE_ICEBERG_STREAMING = "ENABLE_ICEBERG_STREAMING".toLowerCase();
 
+  public static final String MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL =
+      "MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL".toLowerCase();
+  public static final String MAX_REGISTRATION_QUEUE_SIZE =
+      "MAX_REGISTRATION_QUEUE_SIZE".toLowerCase();
+
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
   public static final long INSERT_THROTTLE_INTERVAL_IN_MILLIS_DEFAULT = 1000;
@@ -62,6 +67,10 @@ public class ParameterProvider {
   public static final long MAX_MEMORY_LIMIT_IN_BYTES_DEFAULT = -1L;
   public static final long MAX_CHANNEL_SIZE_IN_BYTES_DEFAULT = 64 * 1024 * 1024;
   public static final long MAX_CHUNK_SIZE_IN_BYTES_DEFAULT = 256 * 1024 * 1024;
+  public static final int MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL_DEFAULT =
+      150; // 10 minutes assuming default retry interval of 4s
+  public static final int MAX_REGISTRATION_QUEUE_SIZE_DEFAULT =
+      600; // 10 minutes of no progress assuming 1s flush interval
 
   // Lag related parameters
   public static final long MAX_CLIENT_LAG_DEFAULT = 1000; // 1 second
@@ -270,6 +279,20 @@ public class ParameterProvider {
         props,
         false /* enforceDefault */);
 
+    this.checkAndUpdate(
+        MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL,
+        MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
+
+    this.checkAndUpdate(
+        MAX_REGISTRATION_QUEUE_SIZE,
+        MAX_REGISTRATION_QUEUE_SIZE_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
+
     if (getMaxChunksInBlob() > getMaxChunksInRegistrationRequest()) {
       throw new IllegalArgumentException(
           String.format(
@@ -450,6 +473,33 @@ public class ParameterProvider {
     Object val =
         this.parameterMap.getOrDefault(
             BLOB_UPLOAD_MAX_RETRY_COUNT, BLOB_UPLOAD_MAX_RETRY_COUNT_DEFAULT);
+    if (val instanceof String) {
+      return Integer.parseInt(val.toString());
+    }
+    return (int) val;
+  }
+
+  /**
+   * @return The max number of retries for channel write API before giving up
+   */
+  public int getMaxChannelWriteRetryCountOnQueueFull() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL,
+            MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL_DEFAULT);
+    if (val instanceof String) {
+      return Integer.parseInt(val.toString());
+    }
+    return (int) val;
+  }
+
+  /**
+   * @return The max size of the registration queue in number of chunks before throttling
+   */
+  public int getMaxRegistrationQueueSize() {
+    Object val =
+        this.parameterMap.getOrDefault(
+            MAX_REGISTRATION_QUEUE_SIZE, MAX_REGISTRATION_QUEUE_SIZE_DEFAULT);
     if (val instanceof String) {
       return Integer.parseInt(val.toString());
     }

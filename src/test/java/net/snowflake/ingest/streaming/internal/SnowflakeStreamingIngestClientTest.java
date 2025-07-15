@@ -11,7 +11,7 @@ import static net.snowflake.ingest.utils.Constants.DROP_CHANNEL_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.MAX_STREAMING_INGEST_API_CHANNEL_RETRY;
 import static net.snowflake.ingest.utils.Constants.PRIVATE_KEY;
 import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
-import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL;
+import static net.snowflake.ingest.utils.Constants.RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 import static net.snowflake.ingest.utils.Constants.ROLE;
 import static net.snowflake.ingest.utils.Constants.USER;
@@ -661,12 +661,12 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<ChannelRegisterStatus> channelRegisterStatuses = new ArrayList<>();
     ChannelRegisterStatus status1 = new ChannelRegisterStatus();
-    status1.setStatusCode(RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL);
+    status1.setStatusCode(RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST);
     status1.setChannelName(channelMetadata1.getChannelName());
     status1.setChannelSequencer(channelMetadata1.getClientSequencer());
 
     ChannelRegisterStatus status2 = new ChannelRegisterStatus();
-    status2.setStatusCode(RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL);
+    status2.setStatusCode(RESPONSE_ERR_GENERAL_EXCEPTION_RETRY_REQUEST);
     status2.setChannelName(channelMetadata2.getChannelName());
     status2.setChannelSequencer(channelMetadata2.getClientSequencer());
 
