@@ -49,7 +49,7 @@
     <commonscompress.version>1.27.1</commonscompress.version>
     <commonsconfiguration2.version>2.10.1</commonsconfiguration2.version>
     <commonsio.version>2.17.0</commonsio.version>
-    <commonslang3.version>3.17.0</commonslang3.version>
+    <commonslang3.version>3.18.0</commonslang3.version>
     <commonstext.version>1.13.0</commonstext.version>
     <fasterxml.version>2.18.1</fasterxml.version>
     <google.httpclient.version>1.45.0</google.httpclient.version>
@@ -68,7 +68,7 @@
     <maven.compiler.target>1.8</maven.compiler.target>
     <net.minidev.version>2.5.2</net.minidev.version>
     <netty.version>4.1.119.Final</netty.version>
-    <nimbusds.version>9.48</nimbusds.version>
+    <nimbusds.version>10.0.2</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.14.4</parquet.version>
     <powermock.version>2.0.9</powermock.version>
