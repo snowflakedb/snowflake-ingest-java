@@ -405,6 +405,25 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                     : ParquetProperties.WriterVersion.PARQUET_1_0)
             .build();
 
+    FullyQualifiedTableName fullyQualifiedTableName =
+        new FullyQualifiedTableName(
+            response.getDBName(), response.getSchemaName(), response.getTableName());
+    Long encryptionKeyId = response.getEncryptionKeyId();
+    String encryptionKey = response.getEncryptionKey();
+    if (encryptionKeyId != null && encryptionKey != null && !encryptionKey.isEmpty()) {
+      // If per table key cache already contains an entry, update it because the cached entry may be
+      // stale, and it takes priority over the key stored in SnowflakeStreamingIngestChannel object.
+      encryptionKeysPerTable.computeIfPresent(
+          fullyQualifiedTableName,
+          (table, key) ->
+              new EncryptionKey(
+                  fullyQualifiedTableName.getDatabaseName(),
+                  fullyQualifiedTableName.getSchemaName(),
+                  fullyQualifiedTableName.getTableName(),
+                  encryptionKey,
+                  encryptionKeyId));
+    }
+
     // Setup the row buffer schema
     channel.setupSchema(response.getTableColumns());
 
