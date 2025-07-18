@@ -93,7 +93,7 @@ $THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > ge
 
 # Allow disabling auto-publish via environment variable
 AUTO_PUBLISH=${AUTO_PUBLISH:-true}
-mvn deploy ${MVN_OPTIONS[@]} -Dossrh-deploy -Dhttp.keepAlive=false -Dauto.publish.central=$AUTO_PUBLISH
+mvn deploy ${MVN_OPTIONS[@]} -Dcentral-deploy -Dhttp.keepAlive=false -Dauto.publish.central=$AUTO_PUBLISH
 
 echo "[INFO] Publishing to Maven Central via Central Publisher Portal"
 if [ "$AUTO_PUBLISH" = "true" ]; then
