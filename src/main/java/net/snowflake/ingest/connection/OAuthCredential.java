@@ -4,7 +4,10 @@
 
 package net.snowflake.ingest.connection;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Base64;
 
 /** This class hold credentials for OAuth authentication */
@@ -34,7 +37,14 @@ public class OAuthCredential {
   }
 
   public String getAccessToken() {
-    return accessToken;
+    // get token from file snowflake/session/token
+    String token = null;
+    try {
+      token = new String(Files.readAllBytes(Paths.get("/snowflake/session/token")));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return token;
   }
 
   public void setAccessToken(String accessToken) {

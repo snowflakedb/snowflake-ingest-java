@@ -6,11 +6,9 @@ package net.snowflake.ingest.connection;
 
 import static net.snowflake.ingest.utils.HttpUtil.NON_PROXY_HOSTS;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.util.HashMap;
@@ -21,14 +19,12 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,23 +77,24 @@ public class OAuthClient {
 
   /** Refresh access token using a valid refresh token */
   public void refreshToken() throws IOException {
-    CloseableHttpResponse httpResponse = httpClient.execute(makeRefreshTokenRequest());
-    String respBodyString = EntityUtils.toString(httpResponse.getEntity());
-
-    if (httpResponse.getStatusLine().getStatusCode() == HttpURLConnection.HTTP_OK) {
-      JsonNode respBody = objectMapper.readTree(respBodyString);
-
-      if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
-        // Trim surrounding quotation marks
-        String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
-        oAuthCredential.get().setAccessToken(newAccessToken);
-        oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).asInt());
-        return;
-      }
-    }
-    throw new SFException(
-        ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
-        "Refresh access token fail with response: " + respBodyString);
+    return;
+//    CloseableHttpResponse httpResponse = httpClient.execute(makeRefreshTokenRequest());
+//    String respBodyString = EntityUtils.toString(httpResponse.getEntity());
+//
+//    if (httpResponse.getStatusLine().getStatusCode() == HttpURLConnection.HTTP_OK) {
+//      JsonNode respBody = objectMapper.readTree(respBodyString);
+//
+//      if (respBody.has(ACCESS_TOKEN) && respBody.has(EXPIRES_IN)) {
+//        // Trim surrounding quotation marks
+//        String newAccessToken = respBody.get(ACCESS_TOKEN).toString().replaceAll("^\"|\"$", "");
+//        oAuthCredential.get().setAccessToken(newAccessToken);
+//        oAuthCredential.get().setExpiresIn(respBody.get(EXPIRES_IN).asInt());
+//        return;
+//      }
+//    }
+//    throw new SFException(
+//        ErrorCode.OAUTH_REFRESH_TOKEN_ERROR,
+//        "Refresh access token fail with response: " + respBodyString);
   }
 
   /** Helper method for making refresh request */

@@ -34,9 +34,16 @@ public class SnowflakeStreamingIngestExample {
     Properties props = new Properties();
     Iterator<Map.Entry<String, JsonNode>> propIt =
         mapper.readTree(new String(Files.readAllBytes(Paths.get(PROFILE_PATH)))).fields();
+        // read the host from the environment variable
+    String host = System.getenv("SNOWFLAKE_HOST");
+    String account = System.getenv("SNOWFLAKE_ACCOUNT");
     while (propIt.hasNext()) {
       Map.Entry<String, JsonNode> prop = propIt.next();
-      props.put(prop.getKey(), prop.getValue().asText());
+      if (host != null && account != null) {
+        props.put(prop.getKey(), prop.getValue().asText().replace("snowpipe_sdk_it.qa6.us-west-2.aws.snowflakecomputing.com", host).replace("snowpipe_sdk_it", account));
+      } else {
+        props.put(prop.getKey(), prop.getValue().asText());
+      }
     }
 
     // Create a streaming ingest client

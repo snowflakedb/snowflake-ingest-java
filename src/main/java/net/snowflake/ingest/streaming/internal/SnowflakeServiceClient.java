@@ -22,6 +22,7 @@ import static net.snowflake.ingest.utils.Constants.REGISTER_BLOB_ENDPOINT;
 import static net.snowflake.ingest.utils.Constants.RESPONSE_SUCCESS;
 
 import java.io.IOException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.connection.ServiceResponseHandler;
@@ -41,6 +42,8 @@ class SnowflakeServiceClient {
 
   /** Request builder for building streaming API request */
   private final RequestBuilder requestBuilder;
+
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   /**
    * Default constructor
@@ -68,6 +71,8 @@ class SnowflakeServiceClient {
             CLIENT_CONFIGURE_ENDPOINT,
             "client configure",
             STREAMING_CLIENT_CONFIGURE);
+    String stageLocationJson = objectMapper.writeValueAsString(response.getStageLocation());
+    logger.logInfo("Client configure response: {}", stageLocationJson);
     if (response.getStatusCode() != RESPONSE_SUCCESS) {
       logger.logDebug(
           "Client configure request failed, request={}, message={}",

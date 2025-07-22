@@ -53,5 +53,5 @@ mvnw.cmd
 docs/
 
 # Ignore example configs (we'll copy specific ones)
-profile.json
+# profile.json (commented out to allow embedding in Docker image)
 profile_streaming.json 
