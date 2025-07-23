@@ -5,10 +5,12 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Map;
 
 /** Class used to deserialized volume information response by server */
-class FileLocationInfo {
+@VisibleForTesting
+public class FileLocationInfo {
   /** The stage type */
   @JsonProperty("locationType")
   private String locationType;

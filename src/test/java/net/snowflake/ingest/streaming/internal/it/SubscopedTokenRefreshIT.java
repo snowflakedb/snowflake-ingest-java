@@ -12,14 +12,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.util.Optional;
 import java.util.Properties;
 import net.snowflake.ingest.IcebergIT;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
+import net.snowflake.ingest.streaming.internal.FileLocationInfo;
+import net.snowflake.ingest.streaming.internal.IStorageManager;
 import net.snowflake.ingest.streaming.internal.InternalStage;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
+import net.snowflake.ingest.streaming.internal.TableRef;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.SnowflakeURL;
@@ -128,6 +132,114 @@ public class SubscopedTokenRefreshIT {
     ResultSet result =
         conn.createStatement()
             .executeQuery(String.format("select * from %s order by int_col;", tableName));
+    for (int i = 1; i <= rowCount; i++) {
+      assertThat(result.next()).isTrue();
+      assertThat(result.getInt(1)).isEqualTo(i);
+    }
+  }
+
+  @Test
+  public void testMetadataRefreshAfterBlobPathGeneration() throws Exception {
+    String tableName = "TEST_METADATA_REFRESH_AFTER_BLOB_PATH_GENERATION";
+
+    createIcebergTable(tableName);
+
+    SnowflakeStreamingIngestChannel channel =
+        client.openChannel(
+            OpenChannelRequest.builder("CHANNEL")
+                .setDBName(database)
+                .setSchemaName(schema)
+                .setTableName(tableName)
+                .setOnErrorOption(OpenChannelRequest.OnErrorOption.ABORT)
+                .build());
+
+    IStorageManager storageManager = client.getStorageManager();
+
+    InternalStage stage =
+        (InternalStage)
+            storageManager.getStorage(
+                Utils.getFullyQualifiedTableName(database, schema, tableName));
+
+    /*
+     * Create a race condition test with two threads:
+     * Thread 1: Continuously sets new file location info - simulates concurrent metadata refresh
+     * Thread 2: Performs insertions that trigger putRemote calls
+     * This tests the race condition where metadata is refreshed by another thread
+     * after blob path is generated and passed to putRemote. The possibility of no refresh happens is
+     * 1 / numFileLocationInfos^rowCount which is 1 / 5^10 ~ 1e-7.
+     */
+    final int rowCount = 10;
+    final int numFileLocationInfos = 5;
+    final java.util.concurrent.atomic.AtomicBoolean testRunning =
+        new java.util.concurrent.atomic.AtomicBoolean(true);
+    final java.util.concurrent.atomic.AtomicReference<Exception> threadException =
+        new java.util.concurrent.atomic.AtomicReference<>();
+
+    /* Pre-fetch FileLocationInfo objects using getRefreshedLocation logic */
+    final java.util.List<FileLocationInfo> fileLocationInfos = new java.util.ArrayList<>();
+    final TableRef tableRef = new TableRef(database, schema, tableName);
+    for (int i = 0; i < numFileLocationInfos; i++) {
+      try {
+        fileLocationInfos.add(storageManager.getRefreshedLocation(tableRef, Optional.empty()));
+      } catch (Exception e) {
+        throw new RuntimeException("Failed to pre-fetch FileLocationInfo objects", e);
+      }
+    }
+
+    /* Thread 1: Cycle through the valid FileLocationInfo objects using setFileLocationInfo to mimic concurrent metadata refresh */
+    Thread refreshThread =
+        new Thread(
+            () -> {
+              try {
+                int index = 0;
+                while (testRunning.get()) {
+                  stage.setFileLocationInfo(
+                      fileLocationInfos.get(index++ % fileLocationInfos.size()));
+
+                  Thread.sleep(5);
+                }
+              } catch (Exception e) {
+                threadException.set(e);
+              }
+            });
+
+    /* Thread 2: Upload thread that triggers putRemote calls */
+    Thread uploadThread =
+        new Thread(
+            () -> {
+              try {
+                for (int i = 1; i <= rowCount; i++) {
+                  channel.insertRow(ImmutableMap.of("int_col", i), String.valueOf(i));
+                  TestUtils.waitForOffset(channel, String.valueOf(i));
+                }
+              } catch (Exception e) {
+                threadException.set(e);
+              }
+            });
+
+    refreshThread.start();
+    uploadThread.start();
+
+    uploadThread.join();
+
+    testRunning.set(false);
+    refreshThread.join();
+
+    if (threadException.get() != null) {
+      throw new RuntimeException("Thread failed during race condition test", threadException.get());
+    }
+
+    /*
+     * Verify there's at least one blob path refresh (rowCount + 1),
+     * possibility of no refresh happens is 1 / numFileLocationInfos^rowCount
+     */
+    long finalCount = storageManager.getGenerateBlobPathCount();
+    assertThat(finalCount).isGreaterThan(rowCount);
+
+    /* Verify data integrity */
+    ResultSet result =
+        conn.createStatement()
+            .executeQuery(String.format("select int_col from %s order by int_col;", tableName));
     for (int i = 1; i <= rowCount; i++) {
       assertThat(result.next()).isTrue();
       assertThat(result.getInt(1)).isEqualTo(i);
