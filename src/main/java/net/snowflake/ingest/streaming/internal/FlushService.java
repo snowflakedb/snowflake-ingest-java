@@ -488,7 +488,8 @@ class FlushService<T> {
       String fullyQualifiedTableName =
           blobData.get(0).get(0).getChannelContext().getFullyQualifiedTableName();
 
-      final BlobPath blobPath = this.storageManager.generateBlobPath(fullyQualifiedTableName);
+      final BlobPath blobPath =
+          this.storageManager.generateBlobPath(fullyQualifiedTableName, /*pathOverride*/ null);
 
       long flushStartMs = System.currentTimeMillis();
       if (this.owningClient.flushLatency != null) {

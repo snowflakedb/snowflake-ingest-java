@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.annotation.Nullable;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
@@ -165,7 +166,7 @@ class InternalStageManager implements IStorageManager {
    * @return the generated blob file path
    */
   @Override
-  public BlobPath generateBlobPath(String fullyQualifiedTableName) {
+  public BlobPath generateBlobPath(String fullyQualifiedTableName, @Nullable String pathOverride) {
     // the table name argument is not going to be used in internal stages since we don't have per
     // table paths.
     // For external volumes (in iceberg), the blob path has a per-table element in it, thus the
@@ -213,5 +214,16 @@ class InternalStageManager implements IStorageManager {
   @Override
   public String getClientPrefix() {
     return this.clientPrefix;
+  }
+
+  /**
+   * Get the number of times generateBlobPath has been called, this is used for testing.
+   *
+   * @return the current counter value indicating how many blob paths have been generated
+   */
+  @VisibleForTesting
+  @Override
+  public long getGenerateBlobPathCount() {
+    return this.counter.get();
   }
 }

@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.annotation.Nullable;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -114,13 +115,13 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
   }
 
   @Override
-  public BlobPath generateBlobPath(String fullyQualifiedTableName) {
+  public BlobPath generateBlobPath(String fullyQualifiedTableName, @Nullable String pathOverride) {
     InternalStage volume = getVolumeSafe(fullyQualifiedTableName);
 
     // {nullableTableBasePath}/data/streaming_ingest/{figsId}/snow_{volumeHash}_{figsId}_{workerRank}_1_
     return generateBlobPathFromLocationInfoPath(
         fullyQualifiedTableName,
-        volume.getFileLocationInfo().getPath(),
+        pathOverride == null ? volume.getFilePath() : pathOverride,
         Utils.getTwoHexChars(),
         this.counter.getAndIncrement());
   }
@@ -166,6 +167,17 @@ class SubscopedTokenExternalVolumeManager implements IStorageManager {
   @Override
   public String getClientPrefix() {
     return this.clientPrefix;
+  }
+
+  /**
+   * Get the number of times generateBlobPath has been called, this is used for testing.
+   *
+   * @return the current counter value indicating how many blob paths have been generated
+   */
+  @VisibleForTesting
+  @Override
+  public long getGenerateBlobPathCount() {
+    return this.counter.get();
   }
 
   @Override

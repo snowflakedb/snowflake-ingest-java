@@ -144,7 +144,7 @@ public class InternalStageTest {
             InternalStageManager.NO_TABLE_REF,
             false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
-                originalMetadata, Optional.of(System.currentTimeMillis())),
+                originalMetadata, Optional.of(System.currentTimeMillis()), "test/path"),
             1);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
 
@@ -191,7 +191,7 @@ public class InternalStageTest {
                 InternalStageManager.NO_TABLE_REF,
                 false /* useIcebergFileTransferAgent */,
                 new SnowflakeFileTransferMetadataWithAge(
-                    fullFilePath, Optional.of(System.currentTimeMillis())),
+                    fullFilePath, Optional.of(System.currentTimeMillis()), "test/path"),
                 1));
     Mockito.doReturn(true).when(stage).isLocalFS();
 
@@ -224,7 +224,7 @@ public class InternalStageTest {
             InternalStageManager.NO_TABLE_REF,
             false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
-                originalMetadata, Optional.of(System.currentTimeMillis())),
+                originalMetadata, Optional.of(System.currentTimeMillis()), "test/path"),
             maxUploadRetryCount);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
     SnowflakeSQLException e =
@@ -286,7 +286,7 @@ public class InternalStageTest {
                 InternalStageManager.NO_TABLE_REF,
                 false /* useIcebergFileTransferAgent */,
                 new SnowflakeFileTransferMetadataWithAge(
-                    originalMetadata, Optional.of(System.currentTimeMillis())),
+                    originalMetadata, Optional.of(System.currentTimeMillis()), "test/path"),
                 1));
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
     SnowflakeFileTransferMetadataV1 metaMock = Mockito.mock(SnowflakeFileTransferMetadataV1.class);
@@ -605,7 +605,7 @@ public class InternalStageTest {
             InternalStageManager.NO_TABLE_REF,
             false /* useIcebergFileTransferAgent */,
             new SnowflakeFileTransferMetadataWithAge(
-                originalMetadata, Optional.of(System.currentTimeMillis())),
+                originalMetadata, Optional.of(System.currentTimeMillis()), "test/path"),
             maxUploadRetryCount);
     PowerMockito.mockStatic(SnowflakeFileTransferAgent.class);
     SnowflakeSQLException e =

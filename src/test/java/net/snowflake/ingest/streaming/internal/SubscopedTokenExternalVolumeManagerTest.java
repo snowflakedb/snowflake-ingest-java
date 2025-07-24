@@ -94,7 +94,7 @@ public class SubscopedTokenExternalVolumeManagerTest {
   @Test
   public void testGenerateBlobPathPublic() {
     manager.registerTable(new TableRef("db", "schema", "table"));
-    BlobPath blobPath = manager.generateBlobPath("db.schema.table");
+    BlobPath blobPath = manager.generateBlobPath("db.schema.table", /*pathOverride*/ null);
     assertThat(blobPath).isNotNull();
     assertThat(blobPath.uploadPath).isNotNull().endsWith("/snow_volHash_figsId_1_1_0.parquet");
 
@@ -168,10 +168,10 @@ public class SubscopedTokenExternalVolumeManagerTest {
             timeoutInSeconds,
             () -> {
               for (int i = 0; i < 1000; i++) {
-                manager.generateBlobPath("db.schema.table");
+                manager.generateBlobPath("db.schema.table", /*pathOverride*/ null);
               }
             },
-            () -> manager.generateBlobPath("db.schema.table"));
+            () -> manager.generateBlobPath("db.schema.table", /*pathOverride*/ null));
     for (int i = 0; i < numThreads; i++) {
       BlobPath blobPath = allResults.get(0).get(timeoutInSeconds, TimeUnit.SECONDS);
       assertThat(blobPath).isNotNull();
