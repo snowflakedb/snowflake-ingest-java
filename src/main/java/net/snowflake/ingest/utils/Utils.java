@@ -484,7 +484,7 @@ public class Utils {
    * @param path the file path (e.g., "dir1/dir2/file.txt")
    * @return the file name (e.g., "file.txt") or null if path is null/empty
    */
-  public static String extractFileName(String path) {
+  public static String extractFileShortName(String path) {
     if (path == null || path.isEmpty()) {
       return null;
     }

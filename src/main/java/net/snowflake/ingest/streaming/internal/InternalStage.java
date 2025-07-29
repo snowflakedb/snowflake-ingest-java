@@ -109,7 +109,7 @@ public class InternalStage implements IStorage {
         (SnowflakeFileTransferMetadataWithAge) null,
         maxUploadRetries);
     Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
-    setFileLocationInfo(fileLocationInfo);
+    setMetadataRef(fileLocationInfo);
   }
 
   /**
@@ -159,8 +159,8 @@ public class InternalStage implements IStorage {
          */
         SnowflakeFileTransferMetadataWithAge snowflakeFileTransferMetadataWithAge =
             this.metadataRef.get();
-        if (!isBlobPathUpToDate(blobPath, snowflakeFileTransferMetadataWithAge)
-            && this.useIcebergFileTransferAgent) {
+        if (this.useIcebergFileTransferAgent
+            && !isBlobPathUpToDate(blobPath, snowflakeFileTransferMetadataWithAge)) {
           BlobPath refreshedPath =
               this.owningManager.generateBlobPath(
                   this.tableRef.fullyQualifiedName, snowflakeFileTransferMetadataWithAge.path);
@@ -261,12 +261,12 @@ public class InternalStage implements IStorage {
 
     FileLocationInfo location =
         this.owningManager.getRefreshedLocation(this.tableRef, Optional.empty());
-    setFileLocationInfo(location);
+    setMetadataRef(location);
     return this.metadataRef.get();
   }
 
   @VisibleForTesting
-  public synchronized void setFileLocationInfo(FileLocationInfo fileLocationInfo)
+  public synchronized void setMetadataRef(FileLocationInfo fileLocationInfo)
       throws SnowflakeSQLException, IOException {
     this.metadataRef.set(createFileTransferMetadataWithAge(fileLocationInfo));
   }
@@ -440,10 +440,10 @@ public class InternalStage implements IStorage {
   private static boolean isBlobPathUpToDate(
       BlobPath blobPath, SnowflakeFileTransferMetadataWithAge metadata) {
     String blobFileName =
-        Utils.extractFileName(
+        Utils.extractFileShortName(
             blobPath.uploadPath); // snow_{volumeHash}_{figsId}_{workerRank}_1_{counter}
     String metadataFileName =
-        Utils.extractFileName(metadata.path); // snow_{volumeHash}_{figsId}_{workerRank}_1
+        Utils.extractFileShortName(metadata.path); // snow_{volumeHash}_{figsId}_{workerRank}_1
 
     return blobFileName != null && blobFileName.startsWith(metadataFileName);
   }

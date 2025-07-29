@@ -14,6 +14,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import net.snowflake.ingest.IcebergIT;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
@@ -170,10 +172,8 @@ public class SubscopedTokenRefreshIT {
      */
     final int rowCount = 10;
     final int numFileLocationInfos = 5;
-    final java.util.concurrent.atomic.AtomicBoolean testRunning =
-        new java.util.concurrent.atomic.AtomicBoolean(true);
-    final java.util.concurrent.atomic.AtomicReference<Exception> threadException =
-        new java.util.concurrent.atomic.AtomicReference<>();
+    final AtomicBoolean testRunning = new AtomicBoolean(true);
+    final AtomicReference<Exception> threadException = new AtomicReference<>();
 
     /* Pre-fetch FileLocationInfo objects using getRefreshedLocation logic */
     final java.util.List<FileLocationInfo> fileLocationInfos = new java.util.ArrayList<>();
@@ -193,8 +193,7 @@ public class SubscopedTokenRefreshIT {
               try {
                 int index = 0;
                 while (testRunning.get()) {
-                  stage.setFileLocationInfo(
-                      fileLocationInfos.get(index++ % fileLocationInfos.size()));
+                  stage.setMetadataRef(fileLocationInfos.get(index++ % fileLocationInfos.size()));
 
                   Thread.sleep(5);
                 }
