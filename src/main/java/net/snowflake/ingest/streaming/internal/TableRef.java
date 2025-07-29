@@ -4,6 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import javax.annotation.Nonnull;
 import net.snowflake.ingest.utils.Utils;
 
@@ -12,13 +13,15 @@ import net.snowflake.ingest.utils.Utils;
  * places that used to work with a fullyQualifiedTableName string. Can be used as a key in maps (has
  * equals/hashcode implemented)
  */
-class TableRef {
+@VisibleForTesting
+public class TableRef {
   final String dbName;
   final String schemaName;
   final String tableName;
   final String fullyQualifiedName;
 
-  TableRef(@Nonnull String dbName, @Nonnull String schemaName, @Nonnull String tableName) {
+  @VisibleForTesting
+  public TableRef(@Nonnull String dbName, @Nonnull String schemaName, @Nonnull String tableName) {
     this.dbName = dbName;
     this.schemaName = schemaName;
     this.tableName = tableName;
