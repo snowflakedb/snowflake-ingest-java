@@ -101,6 +101,18 @@ public class SubscopedTokenExternalVolumeManagerTest {
     assertThat(blobPath.fileRegistrationPath)
         .isNotNull()
         .isEqualTo("table/data/streaming_ingest/figsId/" + blobPath.uploadPath);
+
+    blobPath =
+        manager.generateBlobPath(
+            "db.schema.table",
+            "nullableTableBasePath/data/streaming_ingest/overrideFigsId/snow_overrideVolumeHash_overrideFigsId_2_2_");
+    assertThat(blobPath).isNotNull();
+    assertThat(blobPath.uploadPath)
+        .isNotNull()
+        .endsWith("snow_overrideVolumeHash_overrideFigsId_2_2_1.parquet");
+    assertThat(blobPath.fileRegistrationPath)
+        .isNotNull()
+        .startsWith("nullableTableBasePath/data/streaming_ingest/overrideFigsId");
   }
 
   @Test

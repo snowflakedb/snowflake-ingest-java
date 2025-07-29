@@ -12,6 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.common.collect.ImmutableMap;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -176,7 +178,7 @@ public class SubscopedTokenRefreshIT {
     final AtomicReference<Exception> threadException = new AtomicReference<>();
 
     /* Pre-fetch FileLocationInfo objects using getRefreshedLocation logic */
-    final java.util.List<FileLocationInfo> fileLocationInfos = new java.util.ArrayList<>();
+    final List<FileLocationInfo> fileLocationInfos = new ArrayList<>();
     final TableRef tableRef = new TableRef(database, schema, tableName);
     for (int i = 0; i < numFileLocationInfos; i++) {
       try {
