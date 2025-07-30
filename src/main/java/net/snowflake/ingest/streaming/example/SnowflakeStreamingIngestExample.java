@@ -40,7 +40,7 @@ public class SnowflakeStreamingIngestExample {
     while (propIt.hasNext()) {
       Map.Entry<String, JsonNode> prop = propIt.next();
       if (host != null && account != null) {
-        props.put(prop.getKey(), prop.getValue().asText().replace("snowpipe_sdk_it.qa6.us-west-2.aws.snowflakecomputing.com", host).replace("snowpipe_sdk_it", account));
+        props.put(prop.getKey(), prop.getValue().asText().replace("snowpipe_streaming_gcp.gcpqa1.gcp-dev.snowflakecomputing.com", host).replace("snowpipe_streaming_gcp", account));
       } else {
         props.put(prop.getKey(), prop.getValue().asText());
       }
