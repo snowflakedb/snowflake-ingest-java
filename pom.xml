@@ -60,7 +60,7 @@
     <hadoop.version>3.4.1</hadoop.version>
     <iceberg.version>1.6.1</iceberg.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
-    <jacoco.version>0.8.5</jacoco.version>
+    <jacoco.version>0.8.13</jacoco.version>
     <license.processing.dependencyJarsDir>${project.build.directory}/dependency-jars</license.processing.dependencyJarsDir>
     <license.processing.dependencyListFile>${project.build.directory}/dependency-list.txt</license.processing.dependencyListFile>
     <license.processing.resourcesRoot>${project.build.directory}/generated-licenses-info</license.processing.resourcesRoot>
@@ -78,7 +78,7 @@
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
     <snappy.version>1.1.10.5</snappy.version>
-    <snowjdbc.version>3.24.2</snowjdbc.version>
+    <snowjdbc.version>3.25.1</snowjdbc.version>
     <threetenbp.version>1.7.0</threetenbp.version>
     <version.plugin.buildhelper>3.6.1</version.plugin.buildhelper>
     <version.plugin.publishing>0.8.0</version.plugin.publishing>
@@ -1108,6 +1108,8 @@
               <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
               <exclude>**/*SnowflakeIngestBasicExample*</exclude>
               <exclude>**/*IngestExampleHelper*</exclude>
+              <exclude>net/snowflake/client/**</exclude>
+              <exclude>com/snowflake/client/**</exclude>
             </excludes>
           </configuration>
           <executions>
@@ -1860,6 +1862,13 @@
             <version>${jacoco.version}</version>
             <configuration>
               <skip>${jacoco.skip.instrument}</skip>
+              <excludes>
+                <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
+                <exclude>**/*SnowflakeIngestBasicExample*</exclude>
+                <exclude>**/*IngestExampleHelper*</exclude>
+                <exclude>net/snowflake/client/**</exclude>
+                <exclude>com/snowflake/client/**</exclude>
+              </excludes>
             </configuration>
             <executions>
               <execution>
