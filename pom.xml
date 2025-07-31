@@ -1104,12 +1104,14 @@
           <version>${jacoco.version}</version>
           <configuration>
             <skip>${jacoco.skip.instrument}</skip>
+            <includes>
+              <include>net/snowflake/ingest/**</include>
+              <include>org/apache/**</include>
+            </includes>
             <excludes>
               <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
               <exclude>**/*SnowflakeIngestBasicExample*</exclude>
               <exclude>**/*IngestExampleHelper*</exclude>
-              <exclude>net/snowflake/client/**</exclude>
-              <exclude>com/snowflake/client/**</exclude>
             </excludes>
           </configuration>
           <executions>
@@ -1862,13 +1864,6 @@
             <version>${jacoco.version}</version>
             <configuration>
               <skip>${jacoco.skip.instrument}</skip>
-              <excludes>
-                <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
-                <exclude>**/*SnowflakeIngestBasicExample*</exclude>
-                <exclude>**/*IngestExampleHelper*</exclude>
-                <exclude>net/snowflake/client/**</exclude>
-                <exclude>com/snowflake/client/**</exclude>
-              </excludes>
             </configuration>
             <executions>
               <execution>
