@@ -32,7 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IngestTestUtils {
-  private static final String PROFILE_PATH = "/Users/skarlapudi/code/snowflake-ingest-java/profile.json";
+  private static final String PROFILE_PATH = "profile.json";
 
   private final Connection connection;
 
