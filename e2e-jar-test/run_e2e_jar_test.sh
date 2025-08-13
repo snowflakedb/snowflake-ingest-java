@@ -69,7 +69,7 @@ elif [[ "${test_type}" == "fips" ]]; then
   cd e2e-jar-test
 
   echo "Testing FIPS JAR with ${java_path_for_test_execution}"
-  JAVA_HOME="${java_path_for_test_execution}" mvn --show-version clean verify -pl standard -am
+  JAVA_HOME="${java_path_for_test_execution}" mvn --show-version clean verify -pl fips -am
   cd ..
 else
   echo "Unsupported value of \$test_type variable: \"${test_type}\"" >&2
