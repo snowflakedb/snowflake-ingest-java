@@ -53,6 +53,12 @@
       </dependency>
 
       <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcpkix-fips</artifactId>
+        <version>2.0.7</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-simple</artifactId>
         <version>1.7.36</version>

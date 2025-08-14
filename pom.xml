@@ -43,7 +43,7 @@
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
     <auto.publish.central>true</auto.publish.central>
     <avro.version>1.11.4</avro.version>
-    <bouncycastle.version>1.78.1</bouncycastle.version>
+    <bouncycastle.version>1.79</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.18.0</commonscodec.version>
     <commonscollections.version>3.2.2</commonscollections.version>
@@ -461,6 +461,11 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
+        <version>${bouncycastle.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.bouncycastle</groupId>
+        <artifactId>bcutil-jdk18on</artifactId>
         <version>${bouncycastle.version}</version>
       </dependency>
       <dependency>
