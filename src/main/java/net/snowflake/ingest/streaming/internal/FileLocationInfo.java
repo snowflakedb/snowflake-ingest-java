@@ -55,6 +55,10 @@ public class FileLocationInfo {
   @JsonProperty("volumeHash")
   private String volumeHash;
 
+  /** Whether to use virtual URL for the stage, required for GCS stage in SCPS */
+  @JsonProperty("useVirtualUrl")
+  private boolean useVirtualUrl;
+
   String getLocationType() {
     return locationType;
   }
@@ -141,5 +145,13 @@ public class FileLocationInfo {
 
   void setVolumeHash(String volumeHash) {
     this.volumeHash = volumeHash;
+  }
+
+  boolean getUseVirtualUrl() {
+    return this.useVirtualUrl;
+  }
+
+  void setUseVirtualUrl(boolean useVirtualUrl) {
+    this.useVirtualUrl = useVirtualUrl;
   }
 }
