@@ -24,6 +24,14 @@
     <dependencies>
 
       <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>4.1.124.Final</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
         <groupId>com.fasterxml.jackson.core</groupId>
         <artifactId>jackson-databind</artifactId>
         <version>2.18.1</version>
@@ -56,14 +64,6 @@
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-fips</artifactId>
         <version>2.0.7</version>
-      </dependency>
-
-      <dependency>
-        <groupId>io.netty</groupId>
-        <artifactId>netty-bom</artifactId>
-        <version>4.1.124.Final</version>
-        <type>pom</type>
-        <scope>import</scope>
       </dependency>
 
       <dependency>
