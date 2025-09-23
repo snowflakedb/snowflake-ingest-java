@@ -92,6 +92,7 @@ class InternalStageManager implements IStorageManager {
                 NO_TABLE_REF,
                 false /* useIcebergFileTransferAgent */,
                 (SnowflakeFileTransferMetadataWithAge) null,
+                null /* fileLocationInfo */,
                 DEFAULT_MAX_UPLOAD_RETRIES);
       }
     } catch (IngestResponseException | IOException e) {

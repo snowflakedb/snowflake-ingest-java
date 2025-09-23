@@ -37,14 +37,17 @@ class IcebergStorageClientFactory {
   }
 
   /**
-   * Creates a storage client based on the value of stageLocationType
+   * Creates a storage client based on the value of stageLocationType with encryption parameters
    *
    * @param stage the stage properties
    * @param parallel the degree of parallelism to be used by the client
+   * @param volumeEncryptionMode the volume encryption mode (e.g., "SSE_KMS", "SSE_S3")
+   * @param encryptionKmsKeyId the KMS key ID for encryption when using SSE_KMS
    * @return a IcebergStorageClient interface to the instance created
    * @throws SnowflakeSQLException if any error occurs
    */
-  public IcebergStorageClient createClient(StageInfo stage, int parallel)
+  public IcebergStorageClient createClient(
+      StageInfo stage, int parallel, String volumeEncryptionMode, String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     logger.logDebug("Creating storage client. Client type: {}", stage.getStageType().name());
 
@@ -58,7 +61,9 @@ class IcebergStorageClientFactory {
             stage.getRegion(),
             stage.getEndPoint(),
             stage.getIsClientSideEncrypted(),
-            useS3RegionalUrl);
+            useS3RegionalUrl,
+            volumeEncryptionMode,
+            encryptionKmsKeyId);
 
       case AZURE:
         return createAzureClient(stage);
@@ -84,6 +89,8 @@ class IcebergStorageClientFactory {
    * @param stageEndPoint the FIPS endpoint for the stage, if needed
    * @param isClientSideEncrypted whether client-side encryption should be used
    * @param useS3RegionalUrl
+   * @param volumeEncryptionMode the volume encryption mode (e.g., "SSE_KMS", "SSE_S3")
+   * @param encryptionKmsKeyId the KMS key ID for encryption when using SSE_KMS
    * @return the IcebergS3Client instance created
    * @throws SnowflakeSQLException failure to create the S3 client
    */
@@ -94,7 +101,9 @@ class IcebergStorageClientFactory {
       String stageRegion,
       String stageEndPoint,
       boolean isClientSideEncrypted,
-      boolean useS3RegionalUrl)
+      boolean useS3RegionalUrl,
+      String volumeEncryptionMode,
+      String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     final int S3_TRANSFER_MAX_RETRIES = 3;
 
@@ -129,7 +138,9 @@ class IcebergStorageClientFactory {
               stageRegion,
               stageEndPoint,
               isClientSideEncrypted,
-              useS3RegionalUrl);
+              useS3RegionalUrl,
+              volumeEncryptionMode,
+              encryptionKmsKeyId);
     } catch (Exception ex) {
       logger.logDebug("Exception creating s3 client", ex);
       throw ex;
