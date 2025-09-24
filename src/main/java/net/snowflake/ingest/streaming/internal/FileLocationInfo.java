@@ -65,7 +65,8 @@ public class FileLocationInfo {
   @JsonProperty("encryptionKmsKeyId")
   private String encryptionKmsKeyId;
 
-  String getLocationType() {
+  @VisibleForTesting
+  public String getLocationType() {
     return locationType;
   }
 
@@ -161,7 +162,8 @@ public class FileLocationInfo {
     this.useVirtualUrl = useVirtualUrl;
   }
 
-  String getVolumeEncryptionMode() {
+  @VisibleForTesting
+  public String getVolumeEncryptionMode() {
     return this.volumeEncryptionMode;
   }
 
@@ -169,7 +171,8 @@ public class FileLocationInfo {
     this.volumeEncryptionMode = volumeEncryptionMode;
   }
 
-  String getEncryptionKmsKeyId() {
+  @VisibleForTesting
+  public String getEncryptionKmsKeyId() {
     return this.encryptionKmsKeyId;
   }
 

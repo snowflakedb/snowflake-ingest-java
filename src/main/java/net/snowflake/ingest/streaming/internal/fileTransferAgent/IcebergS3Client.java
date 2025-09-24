@@ -67,8 +67,8 @@ class IcebergS3Client implements IcebergStorageClient {
   private static final String EXPIRED_AWS_TOKEN_ERROR_CODE = "ExpiredToken";
 
   // SSE algorithms, should match the values in the server side encryption mode
-  private static final String SSE_KMS = "SSE_KMS";
-  private static final String SSE_S3 = "SSE_S3";
+  private static final String AWS_SSE_KMS = "AWS_SSE_KMS";
+  private static final String AWS_SSE_S3 = "AWS_SSE_S3";
 
   private boolean isUseS3RegionalUrl = false;
   private ClientConfiguration clientConfig = null;
@@ -299,7 +299,7 @@ class IcebergS3Client implements IcebergStorageClient {
                 : new PutObjectRequest(remoteStorageLocation, destFileName, srcFile);
         putRequest.setMetadata(s3Meta);
 
-        if (SSE_KMS.equals(this.volumeEncryptionMode)) {
+        if (AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
           putRequest.setSSEAwsKeyManagementParams(
               new SSEAwsKeyManagementParams(this.encryptionKmsKeyId));
         }
@@ -412,19 +412,19 @@ class IcebergS3Client implements IcebergStorageClient {
     try {
       if (!isClientSideEncrypted) {
         // since we're not client-side encrypting, make sure we're server-side encrypting
-        if (this.volumeEncryptionMode == null || this.volumeEncryptionMode.equals(SSE_S3)) {
+        if (this.volumeEncryptionMode == null || this.volumeEncryptionMode.equals(AWS_SSE_S3)) {
           // Default to SSE-S3 encryption
           meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
-        } else if (this.volumeEncryptionMode.equals(SSE_KMS)) {
+        } else if (this.volumeEncryptionMode.equals(AWS_SSE_KMS)) {
           meta.setSSEAlgorithm(SSEAlgorithm.KMS.getAlgorithm());
         } else {
           throw new IllegalArgumentException(
               "Unexpected volume encryption mode: "
                   + this.volumeEncryptionMode
                   + ". Expected "
-                  + SSE_S3
+                  + AWS_SSE_S3
                   + " or "
-                  + SSE_KMS);
+                  + AWS_SSE_KMS);
         }
       }
 
