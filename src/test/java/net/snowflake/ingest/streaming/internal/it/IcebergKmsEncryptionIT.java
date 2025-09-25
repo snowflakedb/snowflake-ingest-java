@@ -25,18 +25,14 @@ import net.snowflake.ingest.streaming.internal.TableRef;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Integration test for KMS encryption with Iceberg streaming ingest.
- *
- * <p>This test validates: 1. Data can be ingested successfully with KMS encryption 2. Data is
- * correctly committed to Snowflake 3. Files are encrypted with KMS on S3 (when KMS key is
- * configured)
- */
+/** Integration test for KMS encryption with Iceberg streaming ingest. */
+@Ignore("SNOW-2302576 KMS encryption support is not in prod yet, targeting 9.31 release")
 @Category(IcebergIT.class)
 public class IcebergKmsEncryptionIT {
   private static final Logger logger = LoggerFactory.getLogger(IcebergKmsEncryptionIT.class);
@@ -71,7 +67,7 @@ public class IcebergKmsEncryptionIT {
   public void testKmsEncryptionDataIngestion() throws Exception {
     String tableName = "test_kms_encryption_table";
 
-    // Create Iceberg table with external volume
+    // Create Iceberg table with external volume with KMS encryption
     String createTableSql =
         String.format(
             "create or replace iceberg table %s(id int) "
@@ -85,9 +81,9 @@ public class IcebergKmsEncryptionIT {
         .execute(
             String.format(
                 "alter iceberg table %s set ENABLE_FIX_2302576_ICEBERG_VOLUME_KMS_ENCRYPTION ="
-                    + " false",
+                    + " true",
                 tableName));
-    verifyS3Encryption(tableName, false);
+    verifyVolumeEncryption(tableName, true);
 
     OpenChannelRequest request =
         OpenChannelRequest.builder("test_kms_channel")
@@ -118,20 +114,18 @@ public class IcebergKmsEncryptionIT {
     }
     assertThat(rs.next()).isFalse();
 
-    logger.info("Verifying S3 encryption");
-
     conn.createStatement()
         .execute(
             String.format(
                 "alter iceberg table %s set ENABLE_FIX_2302576_ICEBERG_VOLUME_KMS_ENCRYPTION ="
                     + " false",
                 tableName));
-    verifyS3Encryption(tableName, false);
+    verifyVolumeEncryption(tableName, false);
 
     channel.close();
   }
 
-  private void verifyS3Encryption(String tableName, boolean isKmsEncryption) {
+  private void verifyVolumeEncryption(String tableName, boolean isKmsEncryption) {
     SnowflakeStreamingIngestClientInternal<?> internalClient =
         (SnowflakeStreamingIngestClientInternal<?>) client;
     IStorageManager storageManager = internalClient.getStorageManager();

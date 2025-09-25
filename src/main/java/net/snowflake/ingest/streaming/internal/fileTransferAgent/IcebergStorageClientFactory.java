@@ -69,7 +69,7 @@ class IcebergStorageClientFactory {
         return createAzureClient(stage);
 
       case GCS:
-        return createGCSClient(stage);
+        return createGCSClient(stage, volumeEncryptionMode, encryptionKmsKeyId);
 
       default:
         // We don't create a storage client for FS_LOCAL,
@@ -200,13 +200,19 @@ class IcebergStorageClientFactory {
    * Creates a IcebergGCSClient object which encapsulates the GCS Storage client
    *
    * @param stage Stage information
+   * @param volumeEncryptionMode the volume encryption mode (e.g., "GCS_SSE_KMS")
+   * @param encryptionKmsKeyId the KMS key ID for encryption when using GCS_SSE_KMS
    * @return the IcebergGCSClient instance created
    */
-  private IcebergStorageClient createGCSClient(StageInfo stage) throws SnowflakeSQLException {
+  private IcebergStorageClient createGCSClient(
+      StageInfo stage, String volumeEncryptionMode, String encryptionKmsKeyId)
+      throws SnowflakeSQLException {
     IcebergGCSClient gcsClient;
 
     try {
-      gcsClient = IcebergGCSClient.createSnowflakeGCSClient(stage);
+      gcsClient =
+          IcebergGCSClient.createSnowflakeGCSClient(
+              stage, volumeEncryptionMode, encryptionKmsKeyId);
     } catch (Exception ex) {
       logger.logDebug("Exception creating GCS Storage client", ex);
       throw ex;
