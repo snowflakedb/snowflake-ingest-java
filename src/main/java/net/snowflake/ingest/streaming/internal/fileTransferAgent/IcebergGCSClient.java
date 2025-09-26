@@ -8,6 +8,7 @@ import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.Storage.BlobWriteOption;
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.StorageOptions;
 import com.google.common.base.Strings;
@@ -39,21 +40,29 @@ class IcebergGCSClient implements IcebergStorageClient {
   private static final String GCS_STREAMING_INGEST_CLIENT_NAME = "ingestclientname";
   private static final String GCS_STREAMING_INGEST_CLIENT_KEY = "ingestclientkey";
 
+  // SSE algorithms, should match the values in the server side encryption mode
+  private static final String GCS_SSE_KMS = "GCS_SSE_KMS";
+
   private static final Logging logger = new Logging(IcebergGCSClient.class);
   private StageInfo stageInfo;
   private Storage gcsClient = null;
+  private String volumeEncryptionMode = null;
+  private String encryptionKmsKeyId = null;
 
   private IcebergGCSClient() {}
 
   /*
    * Factory method for a SnowflakeGCSClient object
    * @param stage   The stage information that the client will operate on
-   * @param encMat  The encryption material
-   *                required to decrypt/encrypt content in stage
+   * @param volumeEncryptionMode the volume encryption mode (e.g., "GCS_SSE_KMS")
+   * @param encryptionKmsKeyId the KMS key ID for encryption when using GCS_SSE_KMS
    */
-  public static IcebergGCSClient createSnowflakeGCSClient(StageInfo stage)
+  public static IcebergGCSClient createSnowflakeGCSClient(
+      StageInfo stage, String volumeEncryptionMode, String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     IcebergGCSClient sfGcsClient = new IcebergGCSClient();
+    sfGcsClient.volumeEncryptionMode = volumeEncryptionMode;
+    sfGcsClient.encryptionKmsKeyId = encryptionKmsKeyId;
     sfGcsClient.setupGCSClient(stage);
 
     return sfGcsClient;
@@ -278,7 +287,12 @@ class IcebergGCSClient implements IcebergStorageClient {
             .build();
 
     try {
-      return gcsClient.create(blobInfo, content);
+      // Use KMS encryption if specified, otherwise use default GCS encryption
+      return (GCS_SSE_KMS.equals(this.volumeEncryptionMode)
+              && this.encryptionKmsKeyId != null
+              && !this.encryptionKmsKeyId.isEmpty())
+          ? gcsClient.create(blobInfo, content, BlobWriteOption.kmsKeyName(this.encryptionKmsKeyId))
+          : gcsClient.create(blobInfo, content);
     } catch (Exception e) {
       handleStorageException(e, 0, "upload");
       throw e;

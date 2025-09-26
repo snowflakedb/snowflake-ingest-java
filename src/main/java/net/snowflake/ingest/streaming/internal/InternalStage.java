@@ -75,6 +75,7 @@ public class InternalStage implements IStorage {
   // Proxy parameters that we set while calling the Snowflake JDBC to upload the streams
   private final Properties proxyProperties;
   private final boolean useIcebergFileTransferAgent;
+  private final FileLocationInfo fileLocationInfo;
 
   private final AtomicReference<SnowflakeFileTransferMetadataWithAge> metadataRef =
       new AtomicReference<>();
@@ -107,13 +108,15 @@ public class InternalStage implements IStorage {
         tableRef,
         useIcebergFileTransferAgent,
         (SnowflakeFileTransferMetadataWithAge) null,
+        fileLocationInfo,
         maxUploadRetries);
     Utils.assertStringNotNullOrEmpty("client prefix", clientPrefix);
     setMetadataRef(fileLocationInfo);
   }
 
   /**
-   * Constructor for TESTING that takes SnowflakeFileTransferMetadataWithAge as input
+   * Constructor for TESTING that takes SnowflakeFileTransferMetadataWithAge as input with
+   * FileLocationInfo
    *
    * @param owningManager the storage manager owning this storage
    * @param clientName the client name
@@ -121,6 +124,7 @@ public class InternalStage implements IStorage {
    * @param tableRef
    * @param useIcebergFileTransferAgent
    * @param testMetadata SnowflakeFileTransferMetadataWithAge to test with
+   * @param fileLocationInfo the file location info for encryption parameters
    * @param maxUploadRetries the maximum number of retries to attempt
    */
   InternalStage(
@@ -130,6 +134,7 @@ public class InternalStage implements IStorage {
       TableRef tableRef,
       boolean useIcebergFileTransferAgent,
       SnowflakeFileTransferMetadataWithAge testMetadata,
+      FileLocationInfo fileLocationInfo,
       int maxUploadRetries)
       throws SnowflakeSQLException, IOException {
     this.owningManager = owningManager;
@@ -138,6 +143,7 @@ public class InternalStage implements IStorage {
     this.tableRef = tableRef;
     this.maxUploadRetries = maxUploadRetries;
     this.useIcebergFileTransferAgent = useIcebergFileTransferAgent;
+    this.fileLocationInfo = fileLocationInfo;
     this.proxyProperties = generateProxyPropertiesForJDBC();
     this.metadataRef.set(testMetadata);
   }
@@ -184,6 +190,12 @@ public class InternalStage implements IStorage {
         InputStream inStream = new ByteArrayInputStream(data);
 
         if (this.useIcebergFileTransferAgent) {
+          String volumeEncryptionMode =
+              this.fileLocationInfo != null
+                  ? this.fileLocationInfo.getVolumeEncryptionMode()
+                  : null;
+          String encryptionKmsKeyId =
+              this.fileLocationInfo != null ? this.fileLocationInfo.getEncryptionKmsKeyId() : null;
           return Optional.of(
               new IcebergPostUploadMetadata(
                   IcebergFileTransferAgent.uploadWithoutConnection(
@@ -192,7 +204,9 @@ public class InternalStage implements IStorage {
                       proxyProperties,
                       clientName,
                       clientPrefix,
-                      blobPath.uploadPath),
+                      blobPath.uploadPath,
+                      volumeEncryptionMode,
+                      encryptionKmsKeyId),
                   blobPath));
         } else {
           SnowflakeFileTransferAgent.uploadWithoutConnection(
