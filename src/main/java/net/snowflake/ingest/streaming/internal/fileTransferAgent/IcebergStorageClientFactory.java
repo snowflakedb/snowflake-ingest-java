@@ -60,7 +60,8 @@ class IcebergStorageClientFactory {
             stage.getProxyProperties(),
             stage.getRegion(),
             stage.getEndPoint(),
-            stage.getIsClientSideEncrypted(),
+            stage.getIsClientSideEncrypted(), // Ignored - client-side encryption not supported for
+            // Iceberg
             useS3RegionalUrl,
             volumeEncryptionMode,
             encryptionKmsKeyId);
@@ -87,7 +88,8 @@ class IcebergStorageClientFactory {
    * @param parallel degree of parallelism
    * @param stageRegion the region where the stage is located
    * @param stageEndPoint the FIPS endpoint for the stage, if needed
-   * @param isClientSideEncrypted whether client-side encryption should be used
+   * @param isClientSideEncrypted whether client-side encryption should be used (not supported for
+   *     Iceberg tables)
    * @param useS3RegionalUrl
    * @param volumeEncryptionMode the volume encryption mode (e.g., "SSE_KMS", "SSE_S3")
    * @param encryptionKmsKeyId the KMS key ID for encryption when using SSE_KMS
@@ -137,7 +139,7 @@ class IcebergStorageClientFactory {
               proxyProperties,
               stageRegion,
               stageEndPoint,
-              isClientSideEncrypted,
+              isClientSideEncrypted, // Ignored - client-side encryption not supported for Iceberg
               useS3RegionalUrl,
               volumeEncryptionMode,
               encryptionKmsKeyId);
