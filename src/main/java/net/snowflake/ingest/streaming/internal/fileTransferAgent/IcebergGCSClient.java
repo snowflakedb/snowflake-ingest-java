@@ -284,7 +284,9 @@ class IcebergGCSClient implements IcebergStorageClient {
             .setMetadata(metadata)
             .build();
 
-    this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
+    if (this.volumeEncryptionMode != null) {
+      this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
+    }
     try {
       // Use KMS encryption if specified, otherwise use default GCS encryption
       return VolumeEncryptionMode.GCS_SSE_KMS.equals(this.volumeEncryptionMode)

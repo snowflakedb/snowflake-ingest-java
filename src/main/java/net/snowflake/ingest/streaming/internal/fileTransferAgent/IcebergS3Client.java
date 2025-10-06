@@ -296,7 +296,9 @@ class IcebergS3Client implements IcebergStorageClient {
                 : new PutObjectRequest(remoteStorageLocation, destFileName, srcFile);
         putRequest.setMetadata(s3Meta);
 
-        this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
+        if (this.volumeEncryptionMode != null) {
+          this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
+        }
         if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
           putRequest.setSSEAwsKeyManagementParams(
               new SSEAwsKeyManagementParams(this.encryptionKmsKeyId));
