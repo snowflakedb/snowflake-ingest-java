@@ -18,6 +18,7 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
+import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import org.apache.commons.io.IOUtils;
 
@@ -59,7 +60,7 @@ public class IcebergFileTransferAgent {
   }
 
   /**
-   * Static API function to upload data without JDBC session.
+   * Static API function to upload data without JDBC session with encryption support.
    *
    * <p>NOTE: This function is developed based on getUploadFileCallable().
    *
@@ -71,7 +72,9 @@ public class IcebergFileTransferAgent {
       Properties proxyProperties,
       String streamingIngestClientName,
       String streamingIngestClientKey,
-      String fullFilePath)
+      String fullFilePath,
+      VolumeEncryptionMode volumeEncryptionMode,
+      String encryptionKmsKeyId)
       throws Exception {
     OCSPMode ocspMode = OCSPMode.FAIL_OPEN;
     int networkTimeoutInMilli = 0;
@@ -114,7 +117,9 @@ public class IcebergFileTransferAgent {
           destFileName,
           uploadSize);
 
-      IcebergStorageClient initialClient = storageFactory.createClient(stageInfo, 1);
+      IcebergStorageClient initialClient =
+          storageFactory.createClient(
+              stageInfo, 1 /* parallel */, volumeEncryptionMode, encryptionKmsKeyId);
 
       switch (stageInfo.getStageType()) {
         case S3:

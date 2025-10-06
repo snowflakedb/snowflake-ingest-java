@@ -22,6 +22,8 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.SSEAlgorithm;
+import com.amazonaws.services.s3.model.SSEAwsKeyManagementParams;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
@@ -51,6 +53,7 @@ import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.client.util.SFPair;
 import net.snowflake.client.util.Stopwatch;
+import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
@@ -71,6 +74,8 @@ class IcebergS3Client implements IcebergStorageClient {
   private String stageEndPoint = null; // FIPS endpoint, if needed
   private boolean isClientSideEncrypted = true;
   private AmazonS3 amazonClient = null;
+  private VolumeEncryptionMode volumeEncryptionMode = null;
+  private String encryptionKmsKeyId = null;
 
   // socket factory used by s3 client's http client.
   private static SSLConnectionSocketFactory s3ConnectionSocketFactory = null;
@@ -101,9 +106,13 @@ class IcebergS3Client implements IcebergStorageClient {
       String stageRegion,
       String stageEndPoint,
       boolean isClientSideEncrypted,
-      boolean useS3RegionalUrl)
+      boolean useS3RegionalUrl,
+      VolumeEncryptionMode volumeEncryptionMode,
+      String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     this.isUseS3RegionalUrl = useS3RegionalUrl;
+    this.volumeEncryptionMode = volumeEncryptionMode;
+    this.encryptionKmsKeyId = encryptionKmsKeyId;
     setupSnowflakeS3Client(
         stageCredentials,
         clientConfig,
@@ -280,24 +289,22 @@ class IcebergS3Client implements IcebergStorageClient {
                     })
                 .build();
 
-        final Upload myUpload;
+        PutObjectRequest putRequest =
+            uploadStreamInfo.right
+                ? new PutObjectRequest(
+                    remoteStorageLocation, destFileName, uploadStreamInfo.left, s3Meta)
+                : new PutObjectRequest(remoteStorageLocation, destFileName, srcFile);
+        putRequest.setMetadata(s3Meta);
 
-        if (!this.isClientSideEncrypted) {
-          // since we're not client-side encrypting, make sure we're server-side encrypting with
-          // SSE-S3
-          s3Meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+        if (this.volumeEncryptionMode != null) {
+          this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
+        }
+        if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
+          putRequest.setSSEAwsKeyManagementParams(
+              new SSEAwsKeyManagementParams(this.encryptionKmsKeyId));
         }
 
-        if (uploadStreamInfo.right) {
-          myUpload = tx.upload(remoteStorageLocation, destFileName, uploadStreamInfo.left, s3Meta);
-        } else {
-          PutObjectRequest putRequest =
-              new PutObjectRequest(remoteStorageLocation, destFileName, srcFile);
-          putRequest.setMetadata(s3Meta);
-
-          myUpload = tx.upload(putRequest);
-        }
-
+        final Upload myUpload = tx.upload(putRequest);
         myUpload.waitForCompletion();
         stopwatch.stop();
         long uploadMillis = stopwatch.elapsedMillis();
@@ -404,9 +411,22 @@ class IcebergS3Client implements IcebergStorageClient {
     FileInputStream srcFileStream = null;
     try {
       if (!isClientSideEncrypted) {
-        // since we're not client-side encrypting, make sure we're server-side encrypting with
-        // SSE-S3
-        meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+        // since we're not client-side encrypting, make sure we're server-side encrypting
+        if (this.volumeEncryptionMode == null
+            || VolumeEncryptionMode.AWS_SSE_S3.equals(this.volumeEncryptionMode)) {
+          // Default to SSE-S3 encryption
+          meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+        } else if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
+          meta.setSSEAlgorithm(SSEAlgorithm.KMS.getAlgorithm());
+        } else {
+          throw new IllegalArgumentException(
+              "Unexpected volume encryption mode: "
+                  + this.volumeEncryptionMode
+                  + ". Expected "
+                  + VolumeEncryptionMode.AWS_SSE_S3
+                  + " or "
+                  + VolumeEncryptionMode.AWS_SSE_KMS);
+        }
       }
 
       result =
