@@ -53,6 +53,7 @@ import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.client.util.SFPair;
 import net.snowflake.client.util.Stopwatch;
+import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
@@ -66,10 +67,6 @@ class IcebergS3Client implements IcebergStorageClient {
   // expired AWS token error code
   private static final String EXPIRED_AWS_TOKEN_ERROR_CODE = "ExpiredToken";
 
-  // SSE algorithms, should match the values in the server side encryption mode
-  private static final String AWS_SSE_KMS = "AWS_SSE_KMS";
-  private static final String AWS_SSE_S3 = "AWS_SSE_S3";
-
   private boolean isUseS3RegionalUrl = false;
   private ClientConfiguration clientConfig = null;
   private String stageRegion = null;
@@ -77,7 +74,7 @@ class IcebergS3Client implements IcebergStorageClient {
   private String stageEndPoint = null; // FIPS endpoint, if needed
   private boolean isClientSideEncrypted = true;
   private AmazonS3 amazonClient = null;
-  private String volumeEncryptionMode = null;
+  private VolumeEncryptionMode volumeEncryptionMode = null;
   private String encryptionKmsKeyId = null;
 
   // socket factory used by s3 client's http client.
@@ -110,7 +107,7 @@ class IcebergS3Client implements IcebergStorageClient {
       String stageEndPoint,
       boolean isClientSideEncrypted,
       boolean useS3RegionalUrl,
-      String volumeEncryptionMode,
+      VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     this.isUseS3RegionalUrl = useS3RegionalUrl;
@@ -299,7 +296,8 @@ class IcebergS3Client implements IcebergStorageClient {
                 : new PutObjectRequest(remoteStorageLocation, destFileName, srcFile);
         putRequest.setMetadata(s3Meta);
 
-        if (AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
+        this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
+        if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
           putRequest.setSSEAwsKeyManagementParams(
               new SSEAwsKeyManagementParams(this.encryptionKmsKeyId));
         }
@@ -412,19 +410,20 @@ class IcebergS3Client implements IcebergStorageClient {
     try {
       if (!isClientSideEncrypted) {
         // since we're not client-side encrypting, make sure we're server-side encrypting
-        if (this.volumeEncryptionMode == null || this.volumeEncryptionMode.equals(AWS_SSE_S3)) {
+        if (this.volumeEncryptionMode == null
+            || VolumeEncryptionMode.AWS_SSE_S3.equals(this.volumeEncryptionMode)) {
           // Default to SSE-S3 encryption
           meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
-        } else if (this.volumeEncryptionMode.equals(AWS_SSE_KMS)) {
+        } else if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
           meta.setSSEAlgorithm(SSEAlgorithm.KMS.getAlgorithm());
         } else {
           throw new IllegalArgumentException(
               "Unexpected volume encryption mode: "
                   + this.volumeEncryptionMode
                   + ". Expected "
-                  + AWS_SSE_S3
+                  + VolumeEncryptionMode.AWS_SSE_S3
                   + " or "
-                  + AWS_SSE_KMS);
+                  + VolumeEncryptionMode.AWS_SSE_KMS);
         }
       }
 

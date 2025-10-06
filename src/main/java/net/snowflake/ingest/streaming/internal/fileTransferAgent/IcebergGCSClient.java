@@ -33,6 +33,7 @@ import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.client.util.SFPair;
 import net.snowflake.client.util.Stopwatch;
+import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import org.apache.commons.io.IOUtils;
 
@@ -40,13 +41,10 @@ class IcebergGCSClient implements IcebergStorageClient {
   private static final String GCS_STREAMING_INGEST_CLIENT_NAME = "ingestclientname";
   private static final String GCS_STREAMING_INGEST_CLIENT_KEY = "ingestclientkey";
 
-  // SSE algorithms, should match the values in the server side encryption mode
-  private static final String GCS_SSE_KMS = "GCS_SSE_KMS";
-
   private static final Logging logger = new Logging(IcebergGCSClient.class);
   private StageInfo stageInfo;
   private Storage gcsClient = null;
-  private String volumeEncryptionMode = null;
+  private VolumeEncryptionMode volumeEncryptionMode = null;
   private String encryptionKmsKeyId = null;
 
   private IcebergGCSClient() {}
@@ -58,7 +56,7 @@ class IcebergGCSClient implements IcebergStorageClient {
    * @param encryptionKmsKeyId the KMS key ID for encryption when using GCS_SSE_KMS
    */
   public static IcebergGCSClient createSnowflakeGCSClient(
-      StageInfo stage, String volumeEncryptionMode, String encryptionKmsKeyId)
+      StageInfo stage, VolumeEncryptionMode volumeEncryptionMode, String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     IcebergGCSClient sfGcsClient = new IcebergGCSClient();
     sfGcsClient.volumeEncryptionMode = volumeEncryptionMode;
@@ -286,11 +284,10 @@ class IcebergGCSClient implements IcebergStorageClient {
             .setMetadata(metadata)
             .build();
 
+    this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
     try {
       // Use KMS encryption if specified, otherwise use default GCS encryption
-      return (GCS_SSE_KMS.equals(this.volumeEncryptionMode)
-              && this.encryptionKmsKeyId != null
-              && !this.encryptionKmsKeyId.isEmpty())
+      return VolumeEncryptionMode.GCS_SSE_KMS.equals(this.volumeEncryptionMode)
           ? gcsClient.create(blobInfo, content, BlobWriteOption.kmsKeyName(this.encryptionKmsKeyId))
           : gcsClient.create(blobInfo, content);
     } catch (Exception e) {

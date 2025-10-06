@@ -22,6 +22,7 @@ import net.snowflake.ingest.streaming.internal.FileLocationInfo;
 import net.snowflake.ingest.streaming.internal.IStorageManager;
 import net.snowflake.ingest.streaming.internal.SnowflakeStreamingIngestClientInternal;
 import net.snowflake.ingest.streaming.internal.TableRef;
+import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
 import org.junit.Before;
@@ -134,18 +135,18 @@ public class IcebergKmsEncryptionIT {
     FileLocationInfo fileLocationInfo =
         storageManager.getRefreshedLocation(tableRef, Optional.empty());
 
-    String expectedVolumeEncryptionMode = null;
+    VolumeEncryptionMode expectedVolumeEncryptionMode = null;
     if (isKmsEncryption) {
       switch (fileLocationInfo.getLocationType()) {
         case "S3":
-          expectedVolumeEncryptionMode = "AWS_SSE_KMS";
+          expectedVolumeEncryptionMode = VolumeEncryptionMode.AWS_SSE_KMS;
           break;
         case "GCS":
-          expectedVolumeEncryptionMode = "GCS_SSE_KMS";
+          expectedVolumeEncryptionMode = VolumeEncryptionMode.GCS_SSE_KMS;
           break;
         case "AZURE":
           expectedVolumeEncryptionMode =
-              "NONE"; // Snoflake doesn't support kms encryption for Azure
+              VolumeEncryptionMode.NONE; // Snowflake doesn't support kms encryption for Azure
           break;
         default:
           throw new IllegalArgumentException(

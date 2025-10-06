@@ -18,6 +18,7 @@ import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
+import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import org.apache.commons.io.IOUtils;
 
@@ -72,7 +73,7 @@ public class IcebergFileTransferAgent {
       String streamingIngestClientName,
       String streamingIngestClientKey,
       String fullFilePath,
-      String volumeEncryptionMode,
+      VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
       throws Exception {
     OCSPMode ocspMode = OCSPMode.FAIL_OPEN;

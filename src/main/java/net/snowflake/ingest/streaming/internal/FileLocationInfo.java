@@ -60,7 +60,7 @@ public class FileLocationInfo {
   private boolean useVirtualUrl;
 
   @JsonProperty("volumeEncryptionMode")
-  private String volumeEncryptionMode;
+  private VolumeEncryptionMode volumeEncryptionMode;
 
   @JsonProperty("encryptionKmsKeyId")
   private String encryptionKmsKeyId;
@@ -163,11 +163,11 @@ public class FileLocationInfo {
   }
 
   @VisibleForTesting
-  public String getVolumeEncryptionMode() {
+  public VolumeEncryptionMode getVolumeEncryptionMode() {
     return this.volumeEncryptionMode;
   }
 
-  void setVolumeEncryptionMode(String volumeEncryptionMode) {
+  void setVolumeEncryptionMode(VolumeEncryptionMode volumeEncryptionMode) {
     this.volumeEncryptionMode = volumeEncryptionMode;
   }
 

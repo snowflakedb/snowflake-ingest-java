@@ -190,7 +190,7 @@ public class InternalStage implements IStorage {
         InputStream inStream = new ByteArrayInputStream(data);
 
         if (this.useIcebergFileTransferAgent) {
-          String volumeEncryptionMode =
+          VolumeEncryptionMode volumeEncryptionMode =
               this.fileLocationInfo != null
                   ? this.fileLocationInfo.getVolumeEncryptionMode()
                   : null;

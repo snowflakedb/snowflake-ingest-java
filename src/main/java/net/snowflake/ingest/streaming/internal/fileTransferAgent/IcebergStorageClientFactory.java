@@ -7,6 +7,7 @@ import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
+import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 
 /**
@@ -47,7 +48,10 @@ class IcebergStorageClientFactory {
    * @throws SnowflakeSQLException if any error occurs
    */
   public IcebergStorageClient createClient(
-      StageInfo stage, int parallel, String volumeEncryptionMode, String encryptionKmsKeyId)
+      StageInfo stage,
+      int parallel,
+      VolumeEncryptionMode volumeEncryptionMode,
+      String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     logger.logDebug("Creating storage client. Client type: {}", stage.getStageType().name());
 
@@ -104,7 +108,7 @@ class IcebergStorageClientFactory {
       String stageEndPoint,
       boolean isClientSideEncrypted,
       boolean useS3RegionalUrl,
-      String volumeEncryptionMode,
+      VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     final int S3_TRANSFER_MAX_RETRIES = 3;
@@ -202,12 +206,12 @@ class IcebergStorageClientFactory {
    * Creates a IcebergGCSClient object which encapsulates the GCS Storage client
    *
    * @param stage Stage information
-   * @param volumeEncryptionMode the volume encryption mode (e.g., "GCS_SSE_KMS")
-   * @param encryptionKmsKeyId the KMS key ID for encryption when using GCS_SSE_KMS
+   * @param volumeEncryptionMode the volume encryption mode
+   * @param encryptionKmsKeyId the KMS key ID for encryption when using KMS modes
    * @return the IcebergGCSClient instance created
    */
   private IcebergStorageClient createGCSClient(
-      StageInfo stage, String volumeEncryptionMode, String encryptionKmsKeyId)
+      StageInfo stage, VolumeEncryptionMode volumeEncryptionMode, String encryptionKmsKeyId)
       throws SnowflakeSQLException {
     IcebergGCSClient gcsClient;
 
