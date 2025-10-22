@@ -17,8 +17,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.After;
 import org.junit.Assert;
@@ -158,5 +160,38 @@ public class RegisterServiceTest {
     } catch (Exception e) {
       Assert.fail("The exception should be caught in registerBlobs");
     }
+  }
+
+  @Test
+  public void testRegisterServiceDeploymentIdMismatchClosesClient() {
+    RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
+
+    // Simulate blob upload failing with CLIENT_DEPLOYMENT_ID_MISMATCH
+    CompletableFuture<BlobMetadata> future = new CompletableFuture<>();
+    SFException deploymentIdException =
+        new SFException(
+            ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH,
+            "deploymentId1",
+            "deploymentId2",
+            "testClient");
+    future.completeExceptionally(deploymentIdException);
+
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
+        new Pair<>(new FlushService.BlobData<>("fail", new ArrayList<>()), future);
+    rs.addBlobs(Collections.singletonList(blobFuture));
+    Assert.assertEquals(1, rs.getBlobsListSize());
+
+    // Verify client is not closed before registration
+    Assert.assertFalse(client.isClosed());
+
+    // Register blobs
+    List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
+
+    // Verify client was closed due to terminal error
+    Assert.assertTrue(client.isClosed());
+
+    // Verify blobs list was cleared (empty result)
+    Assert.assertEquals(0, rs.getBlobsListSize());
+    Assert.assertEquals(0, errorBlobs.size());
   }
 }
