@@ -661,6 +661,19 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                 .forEach(
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
+                                        if (isTerminalError(channelStatus.getStatusCode())) {
+                                          String errorMessage =
+                                              String.format(
+                                                  "Terminal server error detected: status=%d,"
+                                                      + " channel=%s, message=%s",
+                                                  channelStatus.getStatusCode(),
+                                                  channelStatus.getChannelName(),
+                                                  channelStatus.getMessage());
+                                          logger.logError(errorMessage);
+                                          closeImmediately(errorMessage);
+                                          return;
+                                        }
+
                                         // If the chunk queue is full, we wait and retry the chunks
                                         boolean retryQueueFull =
                                             channelStatus.getStatusCode()
@@ -814,6 +827,28 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       this.flushService.shutdown();
       cleanUpResources();
     }
+  }
+
+  /**
+   * Mark the client as closed due to unrecoverable errors. Once closed, all subsequent API calls
+   * will throw CLOSED_CLIENT error.
+   *
+   * @param reason the reason for closure
+   */
+  void closeImmediately(String reason) {
+    logger.logError("Closing client due to terminal error: {}", reason);
+    isClosed = true;
+  }
+
+  /**
+   * Check if the status code represents a terminal client-level error.
+   *
+   * @param statusCode the server response status code
+   * @return true if terminal error, false otherwise
+   */
+  private static boolean isTerminalError(long statusCode) {
+    return statusCode == StreamingIngestResponseCode.ERR_DEPLOYMENT_ID_MISMATCH.getStatusCode()
+        || statusCode == StreamingIngestResponseCode.ERR_INVALID_ENCRYPTION_KEY.getStatusCode();
   }
 
   /**

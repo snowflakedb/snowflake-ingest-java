@@ -9,6 +9,7 @@ import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -17,8 +18,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /**
@@ -44,6 +47,23 @@ class RegisterService<T> {
 
   // Indicate whether we're under test mode
   private final boolean isTestMode;
+
+  /**
+   * Extract SFException from an exception or its cause (for unwrapping ExecutionException)
+   *
+   * @param e the exception to check
+   * @return SFException if found, null otherwise
+   */
+  private SFException extractSFException(Exception e) {
+    if (e instanceof SFException) {
+      return (SFException) e;
+    }
+    Throwable cause = e.getCause();
+    if (cause instanceof SFException) {
+      return (SFException) cause;
+    }
+    return null;
+  }
 
   /**
    * Construct a RegisterService object
@@ -139,6 +159,16 @@ class RegisterService<T> {
               retry = 0;
               idx++;
             } catch (Exception e) {
+              // Check if blob upload failed with terminal client error
+              SFException sfException = extractSFException(e);
+              if (sfException != null
+                  && sfException.isErrorCode(ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH)) {
+                logger.logError(
+                    "Terminal error detected during blob upload: {}", sfException.getMessage());
+                this.owningClient.closeImmediately(sfException.getMessage());
+                return Collections.emptyList();
+              }
+
               // Don't throw here if the blob upload encounters exceptions, since we still want to
               // continue register the following blobs after the bad one. Note that it's possible
               // that the following blobs contain invalid data from the invalidated channels if the
