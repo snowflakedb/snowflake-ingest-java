@@ -49,23 +49,6 @@ class RegisterService<T> {
   private final boolean isTestMode;
 
   /**
-   * Extract SFException from an exception or its cause (for unwrapping ExecutionException)
-   *
-   * @param e the exception to check
-   * @return SFException if found, null otherwise
-   */
-  private SFException extractSFException(Exception e) {
-    if (e instanceof SFException) {
-      return (SFException) e;
-    }
-    Throwable cause = e.getCause();
-    if (cause instanceof SFException) {
-      return (SFException) cause;
-    }
-    return null;
-  }
-
-  /**
    * Construct a RegisterService object
    *
    * @param client
@@ -160,7 +143,7 @@ class RegisterService<T> {
               idx++;
             } catch (Exception e) {
               // Check if blob upload failed with terminal client error
-              SFException sfException = extractSFException(e);
+              SFException sfException = SFException.extractSFException(e);
               if (sfException != null
                   && sfException.isErrorCode(ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH)) {
                 logger.logError(

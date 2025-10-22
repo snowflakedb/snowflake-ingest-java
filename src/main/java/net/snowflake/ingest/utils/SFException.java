@@ -62,12 +62,29 @@ public class SFException extends RuntimeException {
   }
 
   /**
-   * Check if this exception has the specified error code
+   * Checks if this exception has the specified error code
    *
    * @param errorCode the error code to check
    * @return true if this exception's vendor code matches the given error code
    */
   public boolean isErrorCode(ErrorCode errorCode) {
     return errorCode != null && errorCode.getMessageCode().equals(this.vendorCode);
+  }
+
+  /**
+   * Extracts SFException from an exception or its cause
+   *
+   * @param e the exception to check
+   * @return SFException if found, null otherwise
+   */
+  public static SFException extractSFException(Exception e) {
+    if (e instanceof SFException) {
+      return (SFException) e;
+    }
+    Throwable cause = e.getCause();
+    if (cause instanceof SFException) {
+      return (SFException) cause;
+    }
+    return null;
   }
 }
