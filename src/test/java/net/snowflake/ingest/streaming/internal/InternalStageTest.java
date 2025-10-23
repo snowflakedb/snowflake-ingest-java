@@ -393,14 +393,11 @@ public class InternalStageTest {
         Assert.assertThrows(SFException.class, () -> storage.refreshSnowflakeMetadata(true));
     Assert.assertEquals(
         ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH.getMessageCode(), exception.getVendorCode());
-    Assert.assertEquals(
-        "Deployment ID mismatch, Client was created on: "
-            + deploymentId
-            + ", Got upload location for: "
-            + (deploymentId + 1)
-            + ". Please"
-            + " restart client: clientName.",
-        exception.getMessage());
+    // Verify the error message contains the key parts
+    String errorMessage = exception.getMessage();
+    Assert.assertTrue(errorMessage.contains("expected=" + deploymentId));
+    Assert.assertTrue(errorMessage.contains("actual=" + (deploymentId + 1)));
+    Assert.assertTrue(errorMessage.contains("client=clientName"));
   }
 
   @Test
