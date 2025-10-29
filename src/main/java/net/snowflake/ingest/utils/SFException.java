@@ -70,21 +70,4 @@ public class SFException extends RuntimeException {
   public boolean isErrorCode(ErrorCode errorCode) {
     return errorCode != null && errorCode.getMessageCode().equals(this.vendorCode);
   }
-
-  /**
-   * Extracts SFException from an exception or its cause
-   *
-   * @param e the exception to check
-   * @return SFException if found, null otherwise
-   */
-  public static SFException extractSFException(Exception e) {
-    if (e instanceof SFException) {
-      return (SFException) e;
-    }
-    Throwable cause = e.getCause();
-    if (cause instanceof SFException) {
-      return (SFException) cause;
-    }
-    return null;
-  }
 }
