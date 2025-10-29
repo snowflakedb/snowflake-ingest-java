@@ -71,6 +71,7 @@ import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.HttpStatus;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
 
@@ -624,7 +625,18 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.getName(),
               this.storageManager.getClientPrefix());
       response = snowflakeServiceClient.registerBlob(request, executionCount);
-    } catch (IOException | IngestResponseException e) {
+    } catch (IngestResponseException e) {
+      if (isTerminalRequestError(e)) {
+        logger.logError("Terminal request error: {}", e.getMessage());
+        try {
+          close(false);
+        } catch (Exception ex) {
+          logger.logError("Failed to close client after terminal request error: {}", ex.getMessage());
+        }
+        return;
+      }
+      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
+    } catch (IOException e) {
       throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
     }
 
@@ -661,16 +673,17 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                 .forEach(
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
-                                        if (isTerminalError(channelStatus.getStatusCode())) {
-                                          String errorMessage =
-                                              String.format(
-                                                  "Terminal server error detected: status=%d,"
-                                                      + " channel=%s, message=%s",
-                                                  channelStatus.getStatusCode(),
-                                                  channelStatus.getChannelName(),
-                                                  channelStatus.getMessage());
-                                          logger.logError(errorMessage);
-                                          closeImmediately(errorMessage);
+                                        if (isTerminalChunkError(channelStatus.getStatusCode())) {
+                                          logger.logError(
+                                              "Terminal chunk error: status={}, channel={}, message={}",
+                                              channelStatus.getStatusCode(),
+                                              channelStatus.getChannelName(),
+                                              channelStatus.getMessage());
+                                          try {
+                                            close(false);
+                                          } catch (Exception e) {
+                                            logger.logError("Failed to close client after terminal chunk error: {}", e.getMessage());
+                                          }
                                           return;
                                         }
 
@@ -794,6 +807,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   /** Close the client, which will flush first and then release all the resources */
   @Override
   public void close() throws Exception {
+    close(true);
+  }
+
+  /**
+   * Close the client with option to skip flush
+   *
+   * @param shouldFlush whether to flush remaining data before closing
+   */
+  void close(boolean shouldFlush) throws Exception {
     if (isClosed) {
       return;
     }
@@ -803,7 +825,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     // Flush any remaining rows and cleanup all the resources
     try {
-      this.flush(true).get();
+      if (shouldFlush) {
+        this.flush(true).get();
+      }
 
       // Report telemetry if needed
       reportStreamingIngestTelemetryToSF();
@@ -829,26 +853,35 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     }
   }
 
+
   /**
-   * Mark the client as closed due to unrecoverable errors. Once closed, all subsequent API calls
-   * will throw CLOSED_CLIENT error.
+   * Check if an IngestResponseException represents a terminal request-level error that requires
+   * immediate client shutdown.
    *
-   * @param reason the reason for closure
+   * @param e the exception to check
+   * @return true if this is a terminal request-level error
    */
-  void closeImmediately(String reason) {
-    logger.logError("Closing client due to terminal error: {}", reason);
-    isClosed = true;
+  private static boolean isTerminalRequestError(IngestResponseException e) {
+    return e.getErrorCode() == HttpStatus.SC_BAD_REQUEST
+        && e.getErrorBody() != null
+        && e.getErrorBody().getCode() != null
+        && e.getErrorBody()
+            .getCode()
+            .equals(
+                String.valueOf(
+                    StreamingIngestResponseCode.ERR_INVALID_ENCRYPTION_KEY.getStatusCode()));
   }
 
   /**
-   * Check if the status code represents a terminal client-level error.
+   * Check if a status code represents a terminal blob-level error that requires immediate client
+   * shutdown.
    *
-   * @param statusCode the server response status code
-   * @return true if terminal error, false otherwise
+   * @param statusCode the channel status code
+   * @return true if this is a terminal blob-level error
    */
-  private static boolean isTerminalError(long statusCode) {
-    return statusCode == StreamingIngestResponseCode.ERR_DEPLOYMENT_ID_MISMATCH.getStatusCode()
-        || statusCode == StreamingIngestResponseCode.ERR_INVALID_ENCRYPTION_KEY.getStatusCode();
+  private static boolean isTerminalChunkError(long statusCode) {
+    return statusCode
+        == StreamingIngestResponseCode.ERR_DEPLOYMENT_ID_MISMATCH.getStatusCode();
   }
 
   /**

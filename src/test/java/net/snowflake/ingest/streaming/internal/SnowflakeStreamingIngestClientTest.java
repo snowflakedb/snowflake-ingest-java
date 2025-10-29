@@ -1470,31 +1470,17 @@ public class SnowflakeStreamingIngestClientTest {
     String channelName = "CHANNEL1";
     long channelSequencer = 0;
 
-    // Response with encryption key mismatch error (status code 59)
+    // ERR_INVALID_ENCRYPTION_KEY is a request-level error that returns HTTP 400 BAD_REQUEST
+    // with error code 59 in the response body
     String response =
-        String.format(
-            "{\n"
-                + "  \"status_code\" : 0,\n"
-                + "  \"message\" : \"Success\",\n"
-                + "  \"encryption_keys\": [],\n"
-                + "  \"blobs\" : [ {\n"
-                + "    \"chunks\" : [ {\n"
-                + "      \"database\" : \"%s\",\n"
-                + "      \"schema\" : \"%s\",\n"
-                + "      \"table\" : \"%s\",\n"
-                + "      \"channels\" : [ {\n"
-                + "        \"status_code\" : 59,\n"
-                + "        \"message\" : \"Encryption key mismatch\",\n"
-                + "        \"channel\" : \"%s\",\n"
-                + "        \"client_sequencer\" : %d\n"
-                + "      } ]\n"
-                + "    } ]\n"
-                + "  } ]\n"
-                + "}",
-            dbName, schemaName, tableName, channelName, channelSequencer);
+        "{\n"
+            + "  \"code\" : 59,\n"
+            + "  \"message\" : \"The encryption key is invalid or has changed, client must be reconfigured\",\n"
+            + "  \"success\" : false\n"
+            + "}";
 
     apiOverride.addSerializedJsonOverride(
-        REGISTER_BLOB_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
+        REGISTER_BLOB_ENDPOINT, request -> Pair.of(HttpStatus.SC_BAD_REQUEST, response));
 
     SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
         new SnowflakeStreamingIngestChannelInternal<>(
