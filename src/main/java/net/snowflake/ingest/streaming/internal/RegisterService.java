@@ -146,14 +146,16 @@ class RegisterService<T> {
               SFException sfException = StreamingIngestUtils.extractSFException(e);
               if (sfException != null
                   && sfException.isErrorCode(ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH)) {
-                logger.logError(
-                    "Terminal error detected during blob upload: {}", sfException.getMessage());
+                String errorMessage = sfException.getMessage();
+                logger.logError("Terminal error detected during blob upload: {}", errorMessage);
                 try {
                   this.owningClient.close(false);
                 } catch (Exception ex) {
                   logger.logError("Failed to close client after terminal error: {}", ex.getMessage());
                 }
-                return Collections.emptyList();
+                throw new SFException(
+                    ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH,
+                    errorMessage + ". Client has been closed and must be recreated.");
               }
 
               // Don't throw here if the blob upload encounters exceptions, since we still want to

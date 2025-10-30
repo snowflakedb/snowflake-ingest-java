@@ -1441,7 +1441,17 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
-    clientInternal.registerBlobs(blobs);
+
+    // Register blobs should throw exception with message indicating client was closed
+    try {
+      clientInternal.registerBlobs(blobs);
+      Assert.fail("Expected SFException to be thrown");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.REGISTER_BLOB_FAILURE.getMessageCode(), e.getVendorCode());
+      Assert.assertTrue(
+          "Error message should indicate client was closed",
+          e.getMessage().contains("Client has been closed and must be recreated"));
+    }
 
     // Client should be closed after terminal error
     Assert.assertTrue(clientInternal.isClosed());
@@ -1506,7 +1516,17 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobMetadata> blobs =
         Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
-    clientInternal.registerBlobs(blobs);
+
+    // Register blobs should throw exception with message indicating client was closed
+    try {
+      clientInternal.registerBlobs(blobs);
+      Assert.fail("Expected SFException to be thrown");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.REGISTER_BLOB_FAILURE.getMessageCode(), e.getVendorCode());
+      Assert.assertTrue(
+          "Error message should indicate client was closed",
+          e.getMessage().contains("Client has been closed and must be recreated"));
+    }
 
     // Client should be closed after terminal error
     Assert.assertTrue(clientInternal.isClosed());
