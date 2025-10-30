@@ -9,7 +9,6 @@ import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.codahale.metrics.Timer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -151,7 +150,8 @@ class RegisterService<T> {
                 try {
                   this.owningClient.close(false);
                 } catch (Exception ex) {
-                  logger.logError("Failed to close client after terminal error: {}", ex.getMessage());
+                  logger.logError(
+                      "Failed to close client after terminal error: {}", ex.getMessage());
                 }
                 throw new SFException(
                     ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH,

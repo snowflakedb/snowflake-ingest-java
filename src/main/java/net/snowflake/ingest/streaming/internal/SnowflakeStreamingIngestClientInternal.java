@@ -70,8 +70,8 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
-import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
 
@@ -632,7 +632,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         try {
           close(false);
         } catch (Exception ex) {
-          logger.logError("Failed to close client after terminal request error: {}", ex.getMessage());
+          logger.logError(
+              "Failed to close client after terminal request error: {}", ex.getMessage());
         }
         errorMessage = errorMessage + ". Client has been closed and must be recreated.";
       }
@@ -675,7 +676,8 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                         if (isTerminalChunkError(channelStatus.getStatusCode())) {
                                           String errorMessage =
                                               String.format(
-                                                  "Terminal error: status=%d, channel=%s, message=%s",
+                                                  "Terminal error: status=%d, channel=%s,"
+                                                      + " message=%s",
                                                   channelStatus.getStatusCode(),
                                                   channelStatus.getChannelName(),
                                                   channelStatus.getMessage());
@@ -684,12 +686,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                             close(false);
                                           } catch (Exception e) {
                                             logger.logError(
-                                                "Failed to close client after terminal chunk error: {}",
+                                                "Failed to close client after terminal chunk error:"
+                                                    + " {}",
                                                 e.getMessage());
                                           }
                                           throw new SFException(
                                               ErrorCode.REGISTER_BLOB_FAILURE,
-                                              errorMessage + ". Client has been closed and must be recreated.");
+                                              errorMessage
+                                                  + ". Client has been closed and must be"
+                                                  + " recreated.");
                                         }
 
                                         // If the chunk queue is full, we wait and retry the chunks
@@ -858,7 +863,6 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
     }
   }
 
-
   /**
    * Check if an exception represents a terminal request-level error that requires immediate client
    * shutdown.
@@ -889,8 +893,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
    * @return true if this is a terminal blob-level error
    */
   private static boolean isTerminalChunkError(long statusCode) {
-    return statusCode
-        == StreamingIngestResponseCode.ERR_DEPLOYMENT_ID_MISMATCH.getStatusCode();
+    return statusCode == StreamingIngestResponseCode.ERR_DEPLOYMENT_ID_MISMATCH.getStatusCode();
   }
 
   /**

@@ -1485,7 +1485,8 @@ public class SnowflakeStreamingIngestClientTest {
     String response =
         "{\n"
             + "  \"code\" : 59,\n"
-            + "  \"message\" : \"The encryption key is invalid or has changed, client must be reconfigured\",\n"
+            + "  \"message\" : \"The encryption key is invalid or has changed, client must be"
+            + " reconfigured\",\n"
             + "  \"success\" : false\n"
             + "}";
 
