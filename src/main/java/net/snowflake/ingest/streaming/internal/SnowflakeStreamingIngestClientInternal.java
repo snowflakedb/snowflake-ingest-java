@@ -625,19 +625,18 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.getName(),
               this.storageManager.getClientPrefix());
       response = snowflakeServiceClient.registerBlob(request, executionCount);
-    } catch (IngestResponseException e) {
+    } catch (IOException | IngestResponseException e) {
+      String errorMessage = e.getMessage();
       if (isTerminalRequestError(e)) {
-        logger.logError("Terminal request error: {}", e.getMessage());
+        logger.logError("Terminal request error: {}", errorMessage);
         try {
           close(false);
         } catch (Exception ex) {
           logger.logError("Failed to close client after terminal request error: {}", ex.getMessage());
         }
-        return;
+        errorMessage = errorMessage + ". Client has been closed and must be recreated.";
       }
-      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
-    } catch (IOException e) {
-      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
+      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, errorMessage);
     }
 
     logger.logInfo(
@@ -674,17 +673,23 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
                                         if (isTerminalChunkError(channelStatus.getStatusCode())) {
-                                          logger.logError(
-                                              "Terminal chunk error: status={}, channel={}, message={}",
-                                              channelStatus.getStatusCode(),
-                                              channelStatus.getChannelName(),
-                                              channelStatus.getMessage());
+                                          String errorMessage =
+                                              String.format(
+                                                  "Terminal error: status=%d, channel=%s, message=%s",
+                                                  channelStatus.getStatusCode(),
+                                                  channelStatus.getChannelName(),
+                                                  channelStatus.getMessage());
+                                          logger.logError(errorMessage);
                                           try {
                                             close(false);
                                           } catch (Exception e) {
-                                            logger.logError("Failed to close client after terminal chunk error: {}", e.getMessage());
+                                            logger.logError(
+                                                "Failed to close client after terminal chunk error: {}",
+                                                e.getMessage());
                                           }
-                                          return;
+                                          throw new SFException(
+                                              ErrorCode.REGISTER_BLOB_FAILURE,
+                                              errorMessage + ". Client has been closed and must be recreated.");
                                         }
 
                                         // If the chunk queue is full, we wait and retry the chunks
@@ -855,17 +860,21 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
 
   /**
-   * Check if an IngestResponseException represents a terminal request-level error that requires
-   * immediate client shutdown.
+   * Check if an exception represents a terminal request-level error that requires immediate client
+   * shutdown.
    *
    * @param e the exception to check
    * @return true if this is a terminal request-level error
    */
-  private static boolean isTerminalRequestError(IngestResponseException e) {
-    return e.getErrorCode() == HttpStatus.SC_BAD_REQUEST
-        && e.getErrorBody() != null
-        && e.getErrorBody().getCode() != null
-        && e.getErrorBody()
+  private static boolean isTerminalRequestError(Exception e) {
+    if (!(e instanceof IngestResponseException)) {
+      return false;
+    }
+    IngestResponseException ire = (IngestResponseException) e;
+    return ire.getErrorCode() == HttpStatus.SC_BAD_REQUEST
+        && ire.getErrorBody() != null
+        && ire.getErrorBody().getCode() != null
+        && ire.getErrorBody()
             .getCode()
             .equals(
                 String.valueOf(
