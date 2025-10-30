@@ -189,10 +189,11 @@ public class RegisterServiceTest {
       rs.registerBlobs(null);
       Assert.fail("Expected SFException to be thrown");
     } catch (SFException e) {
-      Assert.assertEquals(ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH.getMessageCode(), e.getVendorCode());
+      Assert.assertEquals(
+          ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH.getMessageCode(), e.getVendorCode());
       Assert.assertTrue(
           "Error message should contain new format with expected/actual",
-          e.getMessage().contains("expected=deploymentId1") 
+          e.getMessage().contains("expected=deploymentId1")
               && e.getMessage().contains("actual=deploymentId2")
               && e.getMessage().contains("client=testClient"));
       Assert.assertTrue(
