@@ -184,14 +184,26 @@ public class RegisterServiceTest {
     // Verify client is not closed before registration
     Assert.assertFalse(client.isClosed());
 
-    // Register blobs
-    List<FlushService.BlobData<StubChunkData>> errorBlobs = rs.registerBlobs(null);
+    // Register blobs should throw exception with closure message
+    try {
+      rs.registerBlobs(null);
+      Assert.fail("Expected SFException to be thrown");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH.getMessageCode(), e.getVendorCode());
+      Assert.assertTrue(
+          "Error message should contain new format with expected/actual",
+          e.getMessage().contains("expected=deploymentId1") 
+              && e.getMessage().contains("actual=deploymentId2")
+              && e.getMessage().contains("client=testClient"));
+      Assert.assertTrue(
+          "Error message should indicate client was closed",
+          e.getMessage().contains("Client has been closed and must be recreated"));
+    }
 
     // Verify client was closed due to terminal error
     Assert.assertTrue(client.isClosed());
 
-    // Verify blobs list was cleared (empty result)
+    // Verify blobs list was cleared
     Assert.assertEquals(0, rs.getBlobsListSize());
-    Assert.assertEquals(0, errorBlobs.size());
   }
 }
