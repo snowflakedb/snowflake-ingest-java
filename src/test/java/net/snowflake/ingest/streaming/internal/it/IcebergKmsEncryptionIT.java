@@ -25,15 +25,14 @@ import net.snowflake.ingest.streaming.internal.TableRef;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Constants;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for KMS encryption with Iceberg streaming ingest. */
-@Ignore("SNOW-2302576 KMS encryption support is not in prod yet, targeting 9.31 release")
+/** Integration test for KMS encryption with Iceberg streaming ingest. Only runs on AWS. */
 @Category(IcebergIT.class)
 public class IcebergKmsEncryptionIT {
   private static final Logger logger = LoggerFactory.getLogger(IcebergKmsEncryptionIT.class);
@@ -48,6 +47,15 @@ public class IcebergKmsEncryptionIT {
     database = String.format("SDK_ICEBERG_KMS_ENCRYPTION_IT_DB_%d", System.nanoTime());
     schema = "PUBLIC";
     conn = TestUtils.getConnection(true);
+
+    // Skip test if not running on AWS
+    ResultSet rs = conn.createStatement().executeQuery("SELECT CURRENT_REGION();");
+    rs.next();
+    String region = rs.getString(1);
+    rs.close();
+    Assume.assumeTrue(
+        "Test only runs on AWS", region != null && region.toUpperCase().contains("AWS"));
+
     client =
         TestUtils.setUp(
             conn, database, schema, true, "ZSTD", Constants.IcebergSerializationPolicy.COMPATIBLE);
@@ -126,6 +134,23 @@ public class IcebergKmsEncryptionIT {
     channel.close();
   }
 
+  @Test
+  public void testNoneEncryptionDataIngestion() throws Exception {
+    String tableName = "test_none_encryption_table";
+
+    // Create Iceberg table with external volume with no encryption
+    String createTableSql =
+        String.format(
+            "create or replace iceberg table %s(id int) "
+                + "catalog = 'SNOWFLAKE' "
+                + "external_volume = 'streaming_ingest_none' "
+                + "base_location = 'SDK_IT/%s/%s';",
+            tableName, database, tableName);
+
+    conn.createStatement().execute(createTableSql);
+    verifyVolumeEncryption(tableName, false);
+  }
+
   private void verifyVolumeEncryption(String tableName, boolean isKmsEncryption) {
     SnowflakeStreamingIngestClientInternal<?> internalClient =
         (SnowflakeStreamingIngestClientInternal<?>) client;
@@ -153,10 +178,11 @@ public class IcebergKmsEncryptionIT {
               "Unexpected location type: " + fileLocationInfo.getLocationType());
       }
       assertThat(fileLocationInfo.getEncryptionKmsKeyId()).isNotNull();
+      assertThat(fileLocationInfo.getVolumeEncryptionMode())
+          .isEqualTo(expectedVolumeEncryptionMode);
     } else {
       assertThat(fileLocationInfo.getEncryptionKmsKeyId()).isNull();
+      assertThat(fileLocationInfo.getVolumeEncryptionMode()).isIn(null, VolumeEncryptionMode.NONE);
     }
-
-    assertThat(fileLocationInfo.getVolumeEncryptionMode()).isEqualTo(expectedVolumeEncryptionMode);
   }
 }
