@@ -1382,4 +1382,176 @@ public class SnowflakeStreamingIngestClientTest {
         .generateStreamingIngestPostRequest(
             objectMapper.writeValueAsString(request), CHANNEL_STATUS_ENDPOINT, "channel status");
   }
+
+  @Test
+  public void testRegisterBlobWithDeploymentIdMismatchClosesClient() throws Exception {
+    String dbName = "DB_STREAMINGINGEST";
+    String schemaName = "PUBLIC";
+    String tableName = "T_STREAMINGINGEST";
+    String channelName = "CHANNEL1";
+    long channelSequencer = 0;
+
+    // Response with deployment ID mismatch error (status code 58)
+    String response =
+        String.format(
+            "{\n"
+                + "  \"status_code\" : 0,\n"
+                + "  \"message\" : \"Success\",\n"
+                + "  \"encryption_keys\": [],\n"
+                + "  \"blobs\" : [ {\n"
+                + "    \"chunks\" : [ {\n"
+                + "      \"database\" : \"%s\",\n"
+                + "      \"schema\" : \"%s\",\n"
+                + "      \"table\" : \"%s\",\n"
+                + "      \"channels\" : [ {\n"
+                + "        \"status_code\" : 58,\n"
+                + "        \"message\" : \"Deployment ID mismatch\",\n"
+                + "        \"channel\" : \"%s\",\n"
+                + "        \"client_sequencer\" : %d\n"
+                + "      } ]\n"
+                + "    } ]\n"
+                + "  } ]\n"
+                + "}",
+            dbName, schemaName, tableName, channelName, channelSequencer);
+
+    apiOverride.addSerializedJsonOverride(
+        REGISTER_BLOB_ENDPOINT, request -> Pair.of(HttpStatus.SC_OK, response));
+
+    SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            channelName,
+            dbName,
+            schemaName,
+            tableName,
+            "0",
+            channelSequencer,
+            0L,
+            clientInternal,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            enableIcebergStreaming
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
+    clientInternal.getChannelCache().addChannel(channel);
+
+    Assert.assertFalse(clientInternal.isClosed());
+
+    List<BlobMetadata> blobs =
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
+
+    // Register blobs should throw exception with message indicating client was closed
+    try {
+      clientInternal.registerBlobs(blobs);
+      Assert.fail("Expected SFException to be thrown");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.REGISTER_BLOB_FAILURE.getMessageCode(), e.getVendorCode());
+      Assert.assertTrue(
+          "Error message should indicate client was closed",
+          e.getMessage().contains("Client has been closed and must be recreated"));
+    }
+
+    // Client should be closed after terminal error
+    Assert.assertTrue(clientInternal.isClosed());
+
+    // Subsequent operations should throw CLOSED_CLIENT
+    try {
+      OpenChannelRequest request =
+          OpenChannelRequest.builder("newChannel")
+              .setDBName(dbName)
+              .setSchemaName(schemaName)
+              .setTableName(tableName)
+              .setOnErrorOption(OpenChannelRequest.OnErrorOption.CONTINUE)
+              .build();
+      clientInternal.openChannel(request);
+      Assert.fail("Expected CLOSED_CLIENT exception");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CLIENT.getMessageCode(), e.getVendorCode());
+    }
+  }
+
+  @Test
+  public void testRegisterBlobWithEncryptionKeyMismatchClosesClient() throws Exception {
+    String dbName = "DB_STREAMINGINGEST";
+    String schemaName = "PUBLIC";
+    String tableName = "T_STREAMINGINGEST";
+    String channelName = "CHANNEL1";
+    long channelSequencer = 0;
+
+    // ERR_INVALID_ENCRYPTION_KEY is a request-level error that returns HTTP 400 BAD_REQUEST
+    // with error code 59 in the response body
+    String response =
+        "{\n"
+            + "  \"code\" : 59,\n"
+            + "  \"message\" : \"The encryption key is invalid or has changed, client must be"
+            + " reconfigured\",\n"
+            + "  \"success\" : false\n"
+            + "}";
+
+    apiOverride.addSerializedJsonOverride(
+        REGISTER_BLOB_ENDPOINT, request -> Pair.of(HttpStatus.SC_BAD_REQUEST, response));
+
+    SnowflakeStreamingIngestChannelInternal<StubChunkData> channel =
+        new SnowflakeStreamingIngestChannelInternal<>(
+            channelName,
+            dbName,
+            schemaName,
+            tableName,
+            "0",
+            channelSequencer,
+            0L,
+            clientInternal,
+            "key",
+            1234L,
+            OpenChannelRequest.OnErrorOption.CONTINUE,
+            UTC,
+            null /* offsetTokenVerificationFunction */,
+            enableIcebergStreaming
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0);
+    clientInternal.getChannelCache().addChannel(channel);
+
+    Assert.assertFalse(clientInternal.isClosed());
+
+    List<BlobMetadata> blobs =
+        Collections.singletonList(new BlobMetadata("path", "md5", new ArrayList<>(), null));
+
+    // Register blobs should throw exception with message indicating client was closed
+    try {
+      clientInternal.registerBlobs(blobs);
+      Assert.fail("Expected SFException to be thrown");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.REGISTER_BLOB_FAILURE.getMessageCode(), e.getVendorCode());
+      Assert.assertTrue(
+          "Error message should indicate client was closed",
+          e.getMessage().contains("Client has been closed and must be recreated"));
+    }
+
+    // Client should be closed after terminal error
+    Assert.assertTrue(clientInternal.isClosed());
+
+    // Test that dropChannel also throws CLOSED_CLIENT
+    try {
+      DropChannelRequest dropRequest =
+          DropChannelRequest.builder(channelName)
+              .setDBName(dbName)
+              .setSchemaName(schemaName)
+              .setTableName(tableName)
+              .build();
+      clientInternal.dropChannel(dropRequest);
+      Assert.fail("Expected CLOSED_CLIENT exception");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CLIENT.getMessageCode(), e.getVendorCode());
+    }
+
+    // Test that flush also throws CLOSED_CLIENT
+    try {
+      clientInternal.flush();
+      Assert.fail("Expected CLOSED_CLIENT exception");
+    } catch (SFException e) {
+      Assert.assertEquals(ErrorCode.CLOSED_CLIENT.getMessageCode(), e.getVendorCode());
+    }
+  }
 }
