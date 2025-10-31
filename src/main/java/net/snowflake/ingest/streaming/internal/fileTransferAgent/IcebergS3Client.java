@@ -413,6 +413,7 @@ class IcebergS3Client implements IcebergStorageClient {
       if (!isClientSideEncrypted) {
         // since we're not client-side encrypting, make sure we're server-side encrypting
         if (this.volumeEncryptionMode == null
+            || VolumeEncryptionMode.NONE.equals(this.volumeEncryptionMode)
             || VolumeEncryptionMode.AWS_SSE_S3.equals(this.volumeEncryptionMode)) {
           // Default to SSE-S3 encryption
           meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
