@@ -65,6 +65,7 @@ public class IcebergDataTypeParserTest {
                 generateFieldId(),
                 Types.IntegerType.get(),
                 Types.StringType.get())));
+    dataTypesToTest.add(new DataTypeInfo("\"variant\"", Types.VariantType.get()));
   }
 
   /** Helper function to generate a unique fieldId for nested types */
