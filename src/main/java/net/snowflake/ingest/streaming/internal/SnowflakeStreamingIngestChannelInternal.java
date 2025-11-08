@@ -376,6 +376,11 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       Iterable<Map<String, Object>> rows,
       @Nullable String startOffsetToken,
       @Nullable String endOffsetToken) {
+
+    if (this.owningClient.isClosed()) {
+      throw new SFException(ErrorCode.CLOSED_CLIENT);
+    }
+
     throttleInsertIfNeeded(memoryInfoProvider);
     checkValidation();
 
