@@ -880,7 +880,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
         && ire.getErrorBody().getCode() != null
         && ire.getErrorBody()
             .getCode()
-            .equals(
+            .equalsIgnoreCase(
                 String.valueOf(
                     StreamingIngestResponseCode.ERR_INVALID_ENCRYPTION_KEY.getStatusCode()));
   }
