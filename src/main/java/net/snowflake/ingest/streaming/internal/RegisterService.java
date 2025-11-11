@@ -17,8 +17,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.Pair;
+import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 
 /**
@@ -139,6 +141,23 @@ class RegisterService<T> {
               retry = 0;
               idx++;
             } catch (Exception e) {
+              // Check if blob upload failed with terminal client error
+              SFException sfException = StreamingIngestUtils.extractSFException(e);
+              if (sfException != null
+                  && sfException.isErrorCode(ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH)) {
+                String errorMessage = sfException.getMessage();
+                logger.logError("Terminal error detected during blob upload: {}", errorMessage);
+                try {
+                  this.owningClient.close(false);
+                } catch (Exception ex) {
+                  logger.logError(
+                      "Failed to close client after terminal error: {}", ex.getMessage());
+                }
+                throw new SFException(
+                    ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH,
+                    errorMessage + ". Client has been closed and must be recreated.");
+              }
+
               // Don't throw here if the blob upload encounters exceptions, since we still want to
               // continue register the following blobs after the bad one. Note that it's possible
               // that the following blobs contain invalid data from the invalidated channels if the

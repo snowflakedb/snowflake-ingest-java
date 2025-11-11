@@ -169,4 +169,21 @@ public class StreamingIngestUtils {
       throw new SFException(e, ErrorCode.BUILD_REQUEST_FAILURE, message);
     }
   }
+
+  /**
+   * Extract SFException from an exception or its cause (for unwrapping ExecutionException)
+   *
+   * @param e the exception to check
+   * @return SFException if found, null otherwise
+   */
+  static SFException extractSFException(Exception e) {
+    if (e instanceof SFException) {
+      return (SFException) e;
+    }
+    Throwable cause = e.getCause();
+    if (cause instanceof SFException) {
+      return (SFException) cause;
+    }
+    return null;
+  }
 }

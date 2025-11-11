@@ -70,6 +70,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SnowflakeURL;
 import net.snowflake.ingest.utils.Utils;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
@@ -625,7 +626,18 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
               this.storageManager.getClientPrefix());
       response = snowflakeServiceClient.registerBlob(request, executionCount);
     } catch (IOException | IngestResponseException e) {
-      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, e.getMessage());
+      String errorMessage = e.getMessage();
+      if (isTerminalRequestError(e)) {
+        logger.logError("Terminal request error: {}", errorMessage);
+        try {
+          close(false);
+        } catch (Exception ex) {
+          logger.logError(
+              "Failed to close client after terminal request error: {}", ex.getMessage());
+        }
+        errorMessage = errorMessage + ". Client has been closed and must be recreated.";
+      }
+      throw new SFException(e, ErrorCode.REGISTER_BLOB_FAILURE, errorMessage);
     }
 
     logger.logInfo(
@@ -661,6 +673,30 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
                                 .forEach(
                                     channelStatus -> {
                                       if (channelStatus.getStatusCode() != RESPONSE_SUCCESS) {
+                                        if (isTerminalChunkError(channelStatus.getStatusCode())) {
+                                          String errorMessage =
+                                              String.format(
+                                                  "Terminal error: status=%d, channel=%s,"
+                                                      + " message=%s",
+                                                  channelStatus.getStatusCode(),
+                                                  channelStatus.getChannelName(),
+                                                  channelStatus.getMessage());
+                                          logger.logError(errorMessage);
+                                          try {
+                                            close(false);
+                                          } catch (Exception e) {
+                                            logger.logError(
+                                                "Failed to close client after terminal chunk error:"
+                                                    + " {}",
+                                                e.getMessage());
+                                          }
+                                          throw new SFException(
+                                              ErrorCode.REGISTER_BLOB_FAILURE,
+                                              errorMessage
+                                                  + ". Client has been closed and must be"
+                                                  + " recreated.");
+                                        }
+
                                         // If the chunk queue is full, we wait and retry the chunks
                                         boolean retryQueueFull =
                                             channelStatus.getStatusCode()
@@ -781,6 +817,15 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   /** Close the client, which will flush first and then release all the resources */
   @Override
   public void close() throws Exception {
+    close(true);
+  }
+
+  /**
+   * Close the client with option to skip flush
+   *
+   * @param shouldFlush whether to flush remaining data before closing
+   */
+  void close(boolean shouldFlush) throws Exception {
     if (isClosed) {
       return;
     }
@@ -790,7 +835,9 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
 
     // Flush any remaining rows and cleanup all the resources
     try {
-      this.flush(true).get();
+      if (shouldFlush) {
+        this.flush(true).get();
+      }
 
       // Report telemetry if needed
       reportStreamingIngestTelemetryToSF();
@@ -814,6 +861,39 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
       this.flushService.shutdown();
       cleanUpResources();
     }
+  }
+
+  /**
+   * Check if an exception represents a terminal request-level error that requires immediate client
+   * shutdown.
+   *
+   * @param e the exception to check
+   * @return true if this is a terminal request-level error
+   */
+  private static boolean isTerminalRequestError(Exception e) {
+    if (!(e instanceof IngestResponseException)) {
+      return false;
+    }
+    IngestResponseException ire = (IngestResponseException) e;
+    return ire.getErrorCode() == HttpStatus.SC_BAD_REQUEST
+        && ire.getErrorBody() != null
+        && ire.getErrorBody().getCode() != null
+        && ire.getErrorBody()
+            .getCode()
+            .equalsIgnoreCase(
+                String.valueOf(
+                    StreamingIngestResponseCode.ERR_INVALID_ENCRYPTION_KEY.getStatusCode()));
+  }
+
+  /**
+   * Check if a status code represents a terminal blob-level error that requires immediate client
+   * shutdown.
+   *
+   * @param statusCode the channel status code
+   * @return true if this is a terminal blob-level error
+   */
+  private static boolean isTerminalChunkError(long statusCode) {
+    return statusCode == StreamingIngestResponseCode.ERR_DEPLOYMENT_ID_MISMATCH.getStatusCode();
   }
 
   /**
