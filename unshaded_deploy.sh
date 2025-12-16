@@ -93,7 +93,7 @@ mvn test ${MVN_OPTIONS[@]} -Dnot-shadeDep
 
 echo "[Info] Deploy to Central Publisher Portal"
 project_version=$($THIS_DIR/scripts/get_project_info_from_pom.py $THIS_DIR/pom.xml version)
-$THIS_DIR/scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
+$THIS_DIR/scripts/update_project_version.py pom.xml $project_version > generated_public_pom.xml
 
 # Allow disabling auto-publish via environment variable
 AUTO_PUBLISH=${AUTO_PUBLISH:-true}

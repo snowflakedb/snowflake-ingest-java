@@ -17,8 +17,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
+import net.snowflake.ingest.utils.SFException;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.After;
 import org.junit.Assert;
@@ -158,5 +160,51 @@ public class RegisterServiceTest {
     } catch (Exception e) {
       Assert.fail("The exception should be caught in registerBlobs");
     }
+  }
+
+  @Test
+  public void testRegisterServiceDeploymentIdMismatchClosesClient() {
+    RegisterService<StubChunkData> rs = new RegisterService<>(client, true);
+
+    // Simulate blob upload failing with CLIENT_DEPLOYMENT_ID_MISMATCH
+    CompletableFuture<BlobMetadata> future = new CompletableFuture<>();
+    SFException deploymentIdException =
+        new SFException(
+            ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH,
+            "deploymentId1",
+            "deploymentId2",
+            "testClient");
+    future.completeExceptionally(deploymentIdException);
+
+    Pair<FlushService.BlobData<StubChunkData>, CompletableFuture<BlobMetadata>> blobFuture =
+        new Pair<>(new FlushService.BlobData<>("fail", new ArrayList<>()), future);
+    rs.addBlobs(Collections.singletonList(blobFuture));
+    Assert.assertEquals(1, rs.getBlobsListSize());
+
+    // Verify client is not closed before registration
+    Assert.assertFalse(client.isClosed());
+
+    // Register blobs should throw exception with closure message
+    try {
+      rs.registerBlobs(null);
+      Assert.fail("Expected SFException to be thrown");
+    } catch (SFException e) {
+      Assert.assertEquals(
+          ErrorCode.CLIENT_DEPLOYMENT_ID_MISMATCH.getMessageCode(), e.getVendorCode());
+      Assert.assertTrue(
+          "Error message should contain new format with expected/actual",
+          e.getMessage().contains("expected=deploymentId1")
+              && e.getMessage().contains("actual=deploymentId2")
+              && e.getMessage().contains("client=testClient"));
+      Assert.assertTrue(
+          "Error message should indicate client was closed",
+          e.getMessage().contains("Client has been closed and must be recreated"));
+    }
+
+    // Verify client was closed due to terminal error
+    Assert.assertTrue(client.isClosed());
+
+    // Verify blobs list was cleared
+    Assert.assertEquals(0, rs.getBlobsListSize());
   }
 }

@@ -9,7 +9,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>4.2.0</version>
+  <version>4.4.0</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -46,7 +46,6 @@
     <bouncycastle.version>1.79</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.18.0</commonscodec.version>
-    <commonscollections.version>3.2.2</commonscollections.version>
     <commonscompress.version>1.27.1</commonscompress.version>
     <commonsconfiguration2.version>2.10.1</commonsconfiguration2.version>
     <commonsio.version>2.17.0</commonsio.version>
@@ -57,7 +56,7 @@
     <grpc.version>1.67.1</grpc.version>
     <gson.version>2.11.0</gson.version>
     <guava.version>33.3.1-jre</guava.version>
-    <hadoop.version>3.4.1</hadoop.version>
+    <hadoop.version>3.4.2</hadoop.version>
     <iceberg.version>1.6.1</iceberg.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.13</jacoco.version>
@@ -142,11 +141,6 @@
         <groupId>commons-codec</groupId>
         <artifactId>commons-codec</artifactId>
         <version>${commonscodec.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>commons-collections</groupId>
-        <artifactId>commons-collections</artifactId>
-        <version>${commonscollections.version}</version>
       </dependency>
       <dependency>
         <groupId>commons-io</groupId>
@@ -265,10 +259,6 @@
           <exclusion>
             <groupId>commons-cli</groupId>
             <artifactId>commons-cli</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>commons-collections</groupId>
-            <artifactId>commons-collections</artifactId>
           </exclusion>
           <exclusion>
             <groupId>commons-logging</groupId>

@@ -59,7 +59,14 @@ public class FileLocationInfo {
   @JsonProperty("useVirtualUrl")
   private boolean useVirtualUrl;
 
-  String getLocationType() {
+  @JsonProperty("volumeEncryptionMode")
+  private VolumeEncryptionMode volumeEncryptionMode;
+
+  @JsonProperty("encryptionKmsKeyId")
+  private String encryptionKmsKeyId;
+
+  @VisibleForTesting
+  public String getLocationType() {
     return locationType;
   }
 
@@ -153,5 +160,23 @@ public class FileLocationInfo {
 
   void setUseVirtualUrl(boolean useVirtualUrl) {
     this.useVirtualUrl = useVirtualUrl;
+  }
+
+  @VisibleForTesting
+  public VolumeEncryptionMode getVolumeEncryptionMode() {
+    return this.volumeEncryptionMode;
+  }
+
+  void setVolumeEncryptionMode(VolumeEncryptionMode volumeEncryptionMode) {
+    this.volumeEncryptionMode = volumeEncryptionMode;
+  }
+
+  @VisibleForTesting
+  public String getEncryptionKmsKeyId() {
+    return this.encryptionKmsKeyId;
+  }
+
+  void setEncryptionKmsKeyId(String encryptionKmsKeyId) {
+    this.encryptionKmsKeyId = encryptionKmsKeyId;
   }
 }

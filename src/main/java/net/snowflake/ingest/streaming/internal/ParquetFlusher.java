@@ -167,6 +167,10 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
         parquetWriter.getExtendedMetadataSize());
   }
 
+  /* This is used to construct a unique row identifier for downstream processing e.g. for Dynamic Tables and Change Tracking.
+   * It has to be unique for each table in the file in the case of interleaved tables.
+   * Changes to how this is constructed should be done with care and need meticulous version management and testing.
+   */
   private void addFileIdToMetadata(
       String filePath, long chunkStartOffset, Map<String, String> metadata) {
     // We insert the filename in the file itself as metadata so that streams can work on replicated

@@ -109,7 +109,10 @@ public enum StreamingIngestResponseCode {
       48, "The request contains invalid column metadata, please contact Snowflake support"),
   ERR_INGESTION_ON_TABLE_NOT_ALLOWED(
       49,
-      "Ingestion into this table is not allowed at this time, please contact Snowflake support");
+      "Ingestion into this table is not allowed at this time, please contact Snowflake support"),
+  ERR_DEPLOYMENT_ID_MISMATCH(58, "Deployment ID mismatch detected, client must be reconfigured"),
+  ERR_INVALID_ENCRYPTION_KEY(
+      59, "The encryption key is invalid or has changed, client must be reconfigured");
 
   public static final String UNKNOWN_STATUS_MESSAGE =
       "Unknown status message. Please contact Snowflake support for further assistance";
