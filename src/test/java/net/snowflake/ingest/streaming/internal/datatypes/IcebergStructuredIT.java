@@ -54,6 +54,18 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
   }
 
   @Test
+  public void testRepeatedColumnsWithNullValues() throws Exception {
+    assertStructuredDataType("map(string, int)", "{\"key1\": null, \"key2\": null}");
+    assertStructuredDataType("array(int)", "[null, null]");
+    assertStructuredDataType(
+        "array(object(a int, b string))",
+        "[{\"a\": null, \"b\": null}, {\"a\": null, \"b\": null}]");
+    assertStructuredDataType(
+        "map(string, array(object(a int, b string)))",
+        "{\"key1\": [{\"a\": null, \"b\": null}, {\"a\": null, \"b\": null}]}");
+  }
+
+  @Test
   public void testStructuredDataType() throws Exception {
     assertStructuredDataType(
         "object(a int, b string, c boolean)", "{\"a\": 1, \"b\": \"test\", \"c\": true}");
@@ -446,6 +458,10 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
         conn.createStatement().executeQuery(String.format("select * from %s", tableName));
     res.next();
     String tmp = res.getString(2);
+    // Replace 'undefined' with 'null' to make it valid JSON
+    if (tmp != null) {
+      tmp = tmp.replaceAll("\\bundefined\\b", "null");
+    }
     JsonNode actualNode = tmp == null ? null : objectMapper.readTree(tmp);
     JsonNode expectedNode = value == null ? null : objectMapper.readTree(value);
     removeNullFields(actualNode);
