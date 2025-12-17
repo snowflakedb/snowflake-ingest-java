@@ -26,6 +26,7 @@ import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -54,6 +55,10 @@ public class IcebergStructuredIT extends AbstractDataTypeTest {
   }
 
   @Test
+  @Ignore(
+      "SNOW-2908295 Enable after"
+          + " ENABLE_FIX_2890719_DISABLE_NULL_COUNT_VALIDATION_FOR_ICEBERG_ARRAY_ELEMENT is set in"
+          + " prod")
   public void testRepeatedColumnsWithNullValues() throws Exception {
     assertStructuredDataType("map(string, int)", "{\"key1\": null, \"key2\": null}");
     assertStructuredDataType("array(int)", "[null, null]");
