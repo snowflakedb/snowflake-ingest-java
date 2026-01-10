@@ -1667,6 +1667,10 @@
                   <pattern>org.roaringbitmap</pattern>
                   <shadedPattern>${shadeBase}.org.roaringbitmap</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>org.jspecify</pattern>
+                  <shadedPattern>${shadeBase}.org.jspecify</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <filter>
