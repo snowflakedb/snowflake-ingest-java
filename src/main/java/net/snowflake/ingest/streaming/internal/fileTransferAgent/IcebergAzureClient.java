@@ -180,7 +180,7 @@ class IcebergAzureClient implements IcebergStorageClient {
       String stageRegion,
       String presignedUrl)
       throws SnowflakeSQLException {
-    logger.logInfo(
+    logger.logDebug(
         StorageHelper.getStartUploadLog(
             "Azure", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
     final List<FileInputStream> toClose = new ArrayList<>();
@@ -224,14 +224,14 @@ class IcebergAzureClient implements IcebergStorageClient {
         stopwatch.stop();
 
         if (uploadFromStream) {
-          logger.logInfo(
+          logger.logDebug(
               "Uploaded data from input stream to Azure location: {}. It took {} ms with {}"
                   + " retries",
               remoteStorageLocation,
               stopwatch.elapsedMillis(),
               retryCount);
         } else {
-          logger.logInfo(
+          logger.logDebug(
               "Uploaded file {} to Azure location: {}. It took {} ms with {} retries",
               srcFile.getAbsolutePath(),
               remoteStorageLocation,
