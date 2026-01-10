@@ -53,9 +53,9 @@
     <commonstext.version>1.13.0</commonstext.version>
     <fasterxml.version>2.18.1</fasterxml.version>
     <google.httpclient.version>1.45.0</google.httpclient.version>
-    <grpc.version>1.67.1</grpc.version>
+    <grpc.version>1.77.0</grpc.version>
     <gson.version>2.11.0</gson.version>
-    <guava.version>33.3.1-jre</guava.version>
+    <guava.version>33.4.8-jre</guava.version>
     <hadoop.version>3.4.2</hadoop.version>
     <iceberg.version>1.6.1</iceberg.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
@@ -67,7 +67,7 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <net.minidev.version>2.5.2</net.minidev.version>
-    <netty.version>4.1.124.Final</netty.version>
+    <netty.version>4.1.127.Final</netty.version>
     <nimbusds.version>10.0.2</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
     <parquet.version>1.14.4</parquet.version>
@@ -95,6 +95,13 @@
         <scope>import</scope>
       </dependency>
       <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-bom</artifactId>
+        <version>${grpc.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
         <version>${netty.version}</version>
@@ -105,6 +112,11 @@
         <groupId>com.google.code.gson</groupId>
         <artifactId>gson</artifactId>
         <version>${gson.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>failureaccess</artifactId>
+        <version>1.0.3</version>
       </dependency>
       <dependency>
         <groupId>com.google.guava</groupId>
@@ -1654,6 +1666,10 @@
                 <relocation>
                   <pattern>org.roaringbitmap</pattern>
                   <shadedPattern>${shadeBase}.org.roaringbitmap</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.jspecify</pattern>
+                  <shadedPattern>${shadeBase}.org.jspecify</shadedPattern>
                 </relocation>
               </relocations>
               <filters>
