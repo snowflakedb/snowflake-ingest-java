@@ -48,6 +48,7 @@ ADDITIONAL_LICENSES_MAP = {
     "com.google.guava:guava": APACHE_LICENSE,
     "com.google.guava:failureaccess": APACHE_LICENSE,
     "com.google.guava:listenablefuture": APACHE_LICENSE,
+    "org.jspecify:jspecify": APACHE_LICENSE,
     "com.google.errorprone:error_prone_annotations": APACHE_LICENSE,
     "com.google.j2objc:j2objc-annotations": APACHE_LICENSE,
     "com.nimbusds:nimbus-jose-jwt": APACHE_LICENSE,
