@@ -77,10 +77,11 @@ class DataValidationUtil {
 
   public static final int BYTES_8_MB = 8 * 1024 * 1024;
   public static final int BYTES_16_MB = 2 * BYTES_8_MB;
+  public static final int BYTES_128_MB = 8 * BYTES_16_MB;
 
   // TODO SNOW-664249: There is a few-byte mismatch between the value sent by the user and its
   // server-side representation. Validation leaves a small buffer for this difference.
-  static final int MAX_SEMI_STRUCTURED_LENGTH = BYTES_16_MB - 64;
+  static final int MAX_SEMI_STRUCTURED_LENGTH = BYTES_128_MB - 64;
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
