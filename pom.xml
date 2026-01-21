@@ -1114,7 +1114,9 @@
             <skip>${jacoco.skip.instrument}</skip>
             <includes>
               <include>net/snowflake/ingest/**</include>
-              <include>org/apache/**</include>
+              <include>org/apache/commons/map/UnmodifiableMap.java</include>
+              <include>org/apache/parquet/hadoop/BdecParquetReader.java</include>
+              <include>org/apache/parquet/hadoop/SnowflakeParquetWriter.java</include>
             </includes>
             <excludes>
               <exclude>**/*SnowflakeStreamingIngestExample*</exclude>
