@@ -1482,6 +1482,10 @@
               </artifactSet>
               <relocations>
                 <relocation>
+                  <pattern>com.google</pattern>
+                  <shadedPattern>${shadeBase}.com.google</shadedPattern>
+                </relocation>
+                <relocation>
                   <pattern>android.annotation</pattern>
                   <shadedPattern>${shadeBase}.android.annotation</shadedPattern>
                 </relocation>
