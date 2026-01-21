@@ -42,7 +42,7 @@
     <apache.httpclient.version>4.5.14</apache.httpclient.version>
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
     <auto.publish.central>true</auto.publish.central>
-    <avro.version>1.11.4</avro.version>
+    <avro.version>1.12.0</avro.version>
     <bouncycastle.version>1.79</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.18.0</commonscodec.version>
@@ -51,13 +51,13 @@
     <commonsio.version>2.17.0</commonsio.version>
     <commonslang3.version>3.18.0</commonslang3.version>
     <commonstext.version>1.13.0</commonstext.version>
-    <fasterxml.version>2.18.1</fasterxml.version>
+    <fasterxml.version>2.19.2</fasterxml.version>
     <google.httpclient.version>1.45.0</google.httpclient.version>
     <grpc.version>1.77.0</grpc.version>
     <gson.version>2.11.0</gson.version>
     <guava.version>33.4.8-jre</guava.version>
     <hadoop.version>3.4.2</hadoop.version>
-    <iceberg.version>1.6.1</iceberg.version>
+    <iceberg.version>1.10.0</iceberg.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.13</jacoco.version>
     <license.processing.dependencyJarsDir>${project.build.directory}/dependency-jars</license.processing.dependencyJarsDir>
@@ -70,13 +70,13 @@
     <netty.version>4.1.127.Final</netty.version>
     <nimbusds.version>10.0.2</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
-    <parquet.version>1.14.4</parquet.version>
+    <parquet.version>1.16.0</parquet.version>
     <powermock.version>2.0.9</powermock.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf.version>4.27.5</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
-    <slf4j.version>1.7.36</slf4j.version>
-    <snappy.version>1.1.10.5</snappy.version>
+    <slf4j.version>2.0.17</slf4j.version>
+    <snappy.version>1.1.10.7</snappy.version>
     <snowjdbc.version>3.25.1</snowjdbc.version>
     <threetenbp.version>1.7.0</threetenbp.version>
     <version.plugin.buildhelper>3.6.1</version.plugin.buildhelper>
@@ -433,6 +433,12 @@
         <groupId>org.apache.parquet</groupId>
         <artifactId>parquet-column</artifactId>
         <version>${parquet.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.locationtech.jts</groupId>
+            <artifactId>jts-core</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.apache.parquet</groupId>
@@ -1318,6 +1324,7 @@
             <includedLicense>BSD 2-Clause License</includedLicense>
             <includedLicense>3-Clause BSD License</includedLicense>
             <includedLicense>The MIT License</includedLicense>
+            <includedLicense>MIT</includedLicense>
             <includedLicense>EDL 1.0</includedLicense>
             <includedLicense>The Go License</includedLicense>
             <includedLicense>Bouncy Castle Licence</includedLicense>
