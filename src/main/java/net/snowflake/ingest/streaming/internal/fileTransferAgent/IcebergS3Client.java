@@ -243,7 +243,7 @@ class IcebergS3Client implements IcebergStorageClient {
       String stageRegion,
       String presignedUrl)
       throws SnowflakeSQLException {
-    logger.logInfo(
+    logger.logDebug(
         StorageHelper.getStartUploadLog(
             "S3", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
 
@@ -315,13 +315,13 @@ class IcebergS3Client implements IcebergStorageClient {
         }
 
         if (uploadFromStream) {
-          logger.logInfo(
+          logger.logDebug(
               "Uploaded data from input stream to S3 location: {}. It took {} ms with {} retries",
               destFileName,
               uploadMillis,
               retryCount);
         } else {
-          logger.logInfo(
+          logger.logDebug(
               "Uploaded file {} to S3 location: {}. It took {} ms with {} retries",
               srcFile.getAbsolutePath(),
               destFileName,
