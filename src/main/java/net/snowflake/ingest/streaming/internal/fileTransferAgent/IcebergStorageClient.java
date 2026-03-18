@@ -3,12 +3,10 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 import java.io.File;
 import java.io.InputStream;
 import net.snowflake.client.core.HttpClientSettingsKey;
-import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 
 interface IcebergStorageClient {
 
@@ -93,7 +91,7 @@ interface IcebergStorageClient {
       throws SnowflakeSQLException {
     throw new SnowflakeSQLLoggedException(
         null,
-        ErrorCode.INTERNAL_ERROR.getMessageCode(),
+        StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         /* session= */ "uploadWithPresignedUrlWithoutConnection"
             + " only works for pre-signed URL.");
