@@ -5,8 +5,12 @@ name: Snowpipe Java SDK
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - '.claude/**'
   pull_request:
     branches: [ '**' ]
+    paths-ignore:
+      - '.claude/**'
 
 jobs:
   # Job for building and testing on Ubuntu
