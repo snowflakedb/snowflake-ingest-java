@@ -13,8 +13,25 @@ on:
       - '.claude/**'
 
 jobs:
+  # Detect whether any non-.claude files changed; all build jobs are gated on this
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - '**'
+              - '!.claude/**'
+
   # Job for building and testing on Ubuntu
   build:
+    needs: [check-changes]
+    if: needs.check-changes.outputs.src == 'true'
     name: Build & Test - JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     # Use a stable LTS version of Ubuntu runner
     runs-on: ubuntu-22.04
@@ -61,6 +78,8 @@ jobs:
 
   # Job for building and testing on Windows
   build-windows:
+    needs: [check-changes]
+    if: needs.check-changes.outputs.src == 'true'
     name: Build & Test - Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022
     strategy:
@@ -93,6 +112,8 @@ jobs:
 
   # Job for building and testing Iceberg functionality on Ubuntu
   build-iceberg:
+    needs: [check-changes]
+    if: needs.check-changes.outputs.src == 'true'
     name: Build & Test Streaming Iceberg - JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: ubuntu-22.04
     strategy:
@@ -133,6 +154,8 @@ jobs:
 
   # Job for building and testing Iceberg functionality on Windows
   build-iceberg-windows:
+    needs: [check-changes]
+    if: needs.check-changes.outputs.src == 'true'
     name: Build & Test - Streaming Iceberg Windows, JDK ${{ matrix.java }}, Cloud ${{ matrix.snowflake_cloud }}
     runs-on: windows-2022
     strategy:
@@ -166,6 +189,8 @@ jobs:
 
   # Job for end-to-end testing with different JAR types and Java versions
   build-e2e-jar-test:
+    needs: [check-changes]
+    if: needs.check-changes.outputs.src == 'true'
     name: e2e-jar-test cloud=${{ matrix.snowflake_cloud }} test_type=${{ matrix.test_type }} java=${{ matrix.java_path_env_var }}
     runs-on: ubuntu-22.04
     strategy:
