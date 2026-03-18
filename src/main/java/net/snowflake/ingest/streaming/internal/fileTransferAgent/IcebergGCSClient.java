@@ -23,14 +23,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import net.snowflake.client.core.HttpClientSettingsKey;
-import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;
@@ -161,7 +159,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       throws SnowflakeSQLException {
     throw new SnowflakeSQLLoggedException(
         null,
-        ErrorCode.INTERNAL_ERROR.getMessageCode(),
+        StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         /* session= */ "IcebergGCSClient.upload" + " only works with pre-signed URL.");
   }
@@ -335,7 +333,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       throw new SnowflakeSQLLoggedException(
           null /* session */,
           SqlState.INTERNAL_ERROR,
-          ErrorCode.INTERNAL_ERROR.getMessageCode(),
+          StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
           "Failed to open input file",
           ex.getMessage());
@@ -344,7 +342,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       throw new SnowflakeSQLLoggedException(
           null /* session */,
           SqlState.INTERNAL_ERROR,
-          ErrorCode.INTERNAL_ERROR.getMessageCode(),
+          StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
           "Failed to open input stream",
           ex.getMessage());
@@ -380,7 +378,7 @@ class IcebergGCSClient implements IcebergStorageClient {
         throw new SnowflakeSQLLoggedException(
             null /* session */,
             SqlState.SYSTEM_ERROR,
-            ErrorCode.GCP_SERVICE_ERROR.getMessageCode(),
+            StorageErrorCode.GCP_SERVICE_ERROR.getMessageCode(),
             se,
             operation,
             se.getCode(),
@@ -415,7 +413,7 @@ class IcebergGCSClient implements IcebergStorageClient {
         throw new SnowflakeSQLLoggedException(
             null /* session */,
             SqlState.SYSTEM_ERROR,
-            ErrorCode.IO_ERROR.getMessageCode(),
+            StorageErrorCode.IO_ERROR.getMessageCode(),
             ex,
             "Encountered exception during " + operation + ": " + ex.getMessage());
       } else {
@@ -429,7 +427,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       throw new SnowflakeSQLLoggedException(
           null /* session */,
           SqlState.SYSTEM_ERROR,
-          ErrorCode.IO_ERROR.getMessageCode(),
+          StorageErrorCode.IO_ERROR.getMessageCode(),
           ex,
           "Encountered exception during " + operation + ": " + ex.getMessage());
     }
