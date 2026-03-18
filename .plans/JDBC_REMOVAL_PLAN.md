@@ -30,6 +30,71 @@ review, diff against the JDBC source, and roll back if needed.
 
 ---
 
+## Replication Verification: Diff Report
+
+After every class is replicated in each phase, Claude must fetch the original source
+from the JDBC repo and emit a structured diff report before the phase PR is opened.
+
+### How to run
+
+For each replicated class:
+
+1. **Fetch the JDBC original** from `snowflakedb/snowflake-jdbc` at tag `v3.25.1`
+   (the pinned version in `pom.xml`) using the GitHub MCP tool:
+   ```
+   repo: snowflakedb/snowflake-jdbc
+   ref:  refs/tags/v3.25.1
+   path: src/main/java/net/snowflake/client/<subpackage>/<ClassName>.java
+   ```
+
+2. **Normalise both sides** before diffing — strip the following expected mechanical
+   differences so they don't obscure real divergence:
+   - `package` declaration (old: `net.snowflake.client.*`, new: `net.snowflake.ingest.*`)
+   - `import` lines that are direct replacements of JDBC types with ingest-owned types
+   - Copyright header year changes (if any)
+
+3. **Diff the normalised bodies** line-by-line. Any remaining difference is a potential
+   functional change and must be explained.
+
+### Report format
+
+Emit one entry per class in the following format:
+
+```
+## <ClassName>
+JDBC source : net/snowflake/client/<subpackage>/<ClassName>.java @ v3.25.1
+Ingest copy : src/main/java/net/snowflake/ingest/<subpackage>/<ClassName>.java
+
+Permitted differences (mechanical):
+  - package declaration changed
+  - <N> import lines substituted (list each old→new pair)
+
+Unexpected differences: NONE
+  — or —
+Unexpected differences:
+  Line <N>: <description of what changed and why it is safe / needs review>
+```
+
+If **any** unexpected difference exists that is not purely mechanical (package/imports),
+it must be flagged for human review before the PR is merged. The diff report must be
+pasted as a comment on the PR so reviewers can verify fidelity at a glance.
+
+### Permitted vs. unexpected differences
+
+| Type of change | Permitted? |
+|---|---|
+| `package` line updated to ingest package | Yes |
+| `import` lines swapped for ingest-owned equivalents | Yes |
+| Copyright year / header text | Yes |
+| Whitespace / blank line normalisation | Yes |
+| Field renamed or reordered | **No — flag for review** |
+| Method body logic changed | **No — flag for review** |
+| Method added or removed | **No — flag for review** |
+| Exception type changed | **No — flag for review** |
+| Constant value changed | **No — flag for review** |
+
+---
+
 ## Why JDBC Is Used
 
 ### 1. File Transfer Infrastructure (heaviest use)
@@ -83,6 +148,7 @@ decoupled with its own S3/Azure/GCS clients — but still depends on:
 | `SFSessionProperty` | `client.core` | `Utils`, `HttpUtil`, `IcebergS3Client`, `IcebergAzureClient`, `SnowflakeStreamingIngestClientInternal` | Low — enum of string keys |
 | `OCSPMode` | `client.core` | `InternalStage`, `IcebergFileTransferAgent` | Low — simple enum |
 | `HttpUtil` (JDBC's) | `client.core` | `IcebergStorageClientFactory`, `IcebergS3Client` (via `isSocksProxyDisabled()`) | Low — single method |
+| `Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED` | `client.core` | `IcebergS3Client`, `IcebergAzureClient` | Low — inline as int constant |
 | `SFSSLConnectionSocketFactory` | `client.core` | `IcebergS3Client` | Medium — SSL socket factory |
 | `HttpClientSettingsKey` | `client.core` | `IcebergFileTransferAgent`, `IcebergGCSClient` | Medium — key object for HTTP settings |
 | `SnowflakeFileTransferAgent` | `client.jdbc` | `InternalStage` | **High** — parse metadata + upload |
@@ -91,7 +157,7 @@ decoupled with its own S3/Azure/GCS clients — but still depends on:
 | `SnowflakeSQLException` | `client.jdbc` | `InternalStage`, storage clients, `InternalStageManager` | Low — extend `SQLException` |
 | `SnowflakeSQLLoggedException` | `client.jdbc` | Storage clients | Low — extend `SnowflakeSQLException` |
 | `FileBackedOutputStream` | `client.jdbc` | `IcebergFileTransferAgent`, `StorageHelper`, storage clients | Medium — Guava-backed stream |
-| `SnowflakeUtil` | `client.jdbc` | `IcebergFileTransferAgent`, `IcebergCommonObjectMetadata`, `IcebergAzureClient` | Medium — utility methods |
+| `SnowflakeUtil` | `client.jdbc` | `IcebergFileTransferAgent`, `IcebergCommonObjectMetadata`, `IcebergS3Client`, `IcebergAzureClient`, `IcebergGCSClient` | Medium — 5 methods: `createCaseInsensitiveMap`, `convertProxyPropertiesToHttpClientKey`, `getRootCause`, `isBlank`, `createDefaultExecutorService` |
 | `ErrorCode` | `client.jdbc` | Storage clients | Low — error code enum |
 | `StageInfo` | `client.jdbc.cloud.storage` | `InternalStage`, `IcebergFileTransferAgent`, storage clients, `IcebergStorageClientFactory` | **High** — rich stage descriptor |
 | `StorageObjectMetadata` | `client.jdbc.cloud.storage` | `IcebergFileTransferAgent`, storage clients, `IcebergStorageClientFactory`, `IcebergCommonObjectMetadata` | Medium — interface |
@@ -147,6 +213,12 @@ The work is split into 4 phases, ordered from least to most complex.
    `DataValidationUtil` are documented as aligned with JDBC values. Inline them with
    a comment explaining the alignment. No import needed.
 
+10. **Inline `Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED`** — A single `int` constant
+    from `client.core.Constants` used in `IcebergS3Client` and `IcebergAzureClient` to
+    detect expired credential errors. Copy the value verbatim into a new constant in
+    `fileTransferAgent/StorageErrorCode.java` (alongside the `ErrorCode` replication
+    from task 6 above).
+
 ---
 
 ### Phase 2 — Replicate Property Keys and Proxy Infrastructure
@@ -183,12 +255,21 @@ The work is split into 4 phases, ordered from least to most complex.
    version directly (already a dependency). Update `IcebergFileTransferAgent`,
    `StorageHelper`, and all storage clients.
 
-2. **`SnowflakeUtil` methods used:**
-   - `createCaseInsensitiveMap(Map)` — Replace with `new TreeMap<>(String.CASE_INSENSITIVE_ORDER);`
-     inline in `IcebergCommonObjectMetadata`.
+2. **`SnowflakeUtil` methods used (5 total):**
+   - `createCaseInsensitiveMap(Map)` — Replace inline in `IcebergCommonObjectMetadata`
+     with `new TreeMap<>(String.CASE_INSENSITIVE_ORDER)`.
    - `convertProxyPropertiesToHttpClientKey(OCSPMode, Properties)` — Returns an
      `HttpClientSettingsKey`. Once `HttpClientSettingsKey` is replicated (see below),
      implement this conversion in ingest's own utility.
+   - `getRootCause(Throwable)` — Used in `IcebergS3Client`, `IcebergAzureClient`,
+     `IcebergGCSClient` to unwrap exception chains. Equivalent to
+     `org.apache.commons.lang3.exception.ExceptionUtils.getRootCause()` (already a dep);
+     replicate as a one-line wrapper to avoid changing call sites.
+   - `isBlank(String)` — Used in `IcebergAzureClient` and `IcebergGCSClient`. Equivalent
+     to `org.apache.commons.lang3.StringUtils.isBlank()` (already a dep); replicate as a
+     one-line wrapper.
+   - `createDefaultExecutorService(...)` — Used in `IcebergS3Client` to create the S3
+     transfer thread pool. Replicate the executor configuration verbatim.
 
 3. **`HttpClientSettingsKey`** — Used by `IcebergFileTransferAgent` (passed to GCS client)
    and `IcebergGCSClient`. Create a simple value class wrapping `OCSPMode` + proxy
@@ -272,9 +353,16 @@ The work is split into 4 phases, ordered from least to most complex.
 
 ### Phase 5 — Remove JDBC Dependency
 
-1. Remove `snowflake-jdbc-thin` from `pom.xml` (dependency + version property).
+1. Change `snowflake-jdbc-thin` scope from `compile` to `test` in `pom.xml` rather than
+   removing it entirely. `TestUtils.java` uses `Class.forName("net.snowflake.client.jdbc.SnowflakeDriver")`
+   to open JDBC connections for IT result verification — the driver must stay on the test
+   classpath. Keeping it `test`-scoped achieves the real goal: jdbc-thin is excluded from
+   the shipped jar and the public pom without introducing any new dependency.
+   Note: `example/IngestExampleHelper.java` also loads `SnowflakeDriver` but the example
+   package is not shipped in the SDK jar and is out of scope for this migration.
 2. Remove the JDBC shade relocation rules from the Maven Shade plugin configuration.
-3. Update `public_pom.xml` if it also references JDBC.
+3. Update `public_pom.xml` to remove the `snowflake-jdbc-thin` reference (it must not
+   appear as a transitive dep for SDK consumers).
 4. Run the full test suite and fix any remaining compilation or runtime failures.
 
 ---
@@ -288,6 +376,7 @@ The work is split into 4 phases, ordered from least to most complex.
 | `utils/Utils.java` | Replace `SFSessionProperty` with own class |
 | `connection/TelemetryService.java` | Replace `TelemetryClient`/`TelemetryUtil` with own HTTP sender |
 | `streaming/internal/InternalStage.java` | Replace JDBC agent + metadata with own classes |
+| `streaming/internal/InternalStageManager.java` | Replace `SnowflakeSQLException` import |
 | `streaming/internal/SnowflakeFileTransferMetadataWithAge.java` | Replace `SnowflakeFileTransferMetadataV1` |
 | `streaming/internal/DataValidationUtil.java` | Replace `Power10` import; inline epoch constants |
 | `streaming/internal/TimestampWrapper.java` | Replace `Power10` import |
@@ -388,7 +477,7 @@ updated in lock-step with the corresponding production class migration:
 
 | Test File | JDBC Imports to Replace |
 |---|---|
-| `streaming/internal/InternalStageTest.java` | `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`, `SnowflakeFileTransferMetadataV1`, `SnowflakeSQLException`, `StageInfo`, `OCSPMode`, `SFSessionProperty` |
+| `streaming/internal/InternalStageTest.java` | `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`, `SnowflakeFileTransferMetadataV1`, `SnowflakeSQLException`, `StageInfo`, `OCSPMode`, `SFSessionProperty`, `HttpUtil` (JDBC's), `CLOUD_STORAGE_CREDENTIALS_EXPIRED` |
 | `streaming/internal/SnowflakeStreamingIngestClientTest.java` | `SFSessionProperty` |
 | `streaming/internal/SnowflakeStreamingIngestChannelTest.java` | `SFSessionProperty` |
 
@@ -410,3 +499,8 @@ updated in lock-step with the corresponding production class migration:
 
 - **Test coverage** — Integration tests (`IcebergIT`, `SimpleIngestIT`) exercise all
   three cloud providers. These must pass before the JDBC removal is complete.
+
+- **IT JDBC connection dependency** — `TestUtils.java` loads `SnowflakeDriver` via
+  reflection to create JDBC connections for querying Snowflake during ITs. Rather than
+  removing `snowflake-jdbc-thin` entirely, Phase 5 demotes it to `test` scope so the
+  driver remains available at IT runtime without being included in the shipped jar.
