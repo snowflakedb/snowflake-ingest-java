@@ -38,9 +38,9 @@ import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
-import net.snowflake.client.util.SFPair;
-import net.snowflake.client.util.Stopwatch;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.SFPair;
+import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.commons.io.IOUtils;
 
 class IcebergAzureClient implements IcebergStorageClient {

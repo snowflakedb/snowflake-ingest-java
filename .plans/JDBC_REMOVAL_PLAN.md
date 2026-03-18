@@ -172,198 +172,163 @@ decoupled with its own S3/Azure/GCS clients — but still depends on:
 
 ---
 
-## Migration Plan
+## Migration Plan — Iterative Removal
 
-The work is split into 4 phases, ordered from least to most complex.
+Replace JDBC classes one at a time, iteratively. At each step, pick a JDBC class
+that can be **fully** removed from all files that use it. The replacement class
+may temporarily depend on other JDBC classes that haven't been replaced yet —
+that's fine. As more JDBC classes get replaced, update earlier replacements to
+use ingest versions.
 
----
+**Naming rule:** Replicated classes keep the same name as in JDBC. Where a name
+collides with an existing ingest class (e.g. `ErrorCode`), use package separation
+— the replicated class goes into the `fileTransferAgent` package.
 
-### Phase 1 — Replicate Simple Utilities and Enums
+**PR size limit:** Each PR should be around 300 lines of production code changes
+(new classes + import swaps). Test code is not counted toward this limit. A step
+may be split across multiple PRs if needed to stay within this budget.
 
-**Target package:** `net.snowflake.ingest.utils` (or sub-packages)
+### Dependency Graph
 
-**Tasks:**
+```
+Independent — can replace any time, no interaction with other JDBC classes:
+  Power10              ← TimestampWrapper, DataValidationUtil
+  SFPair               ← S3, Azure, GCS clients
+  Stopwatch            ← S3, Azure, GCS clients
+  SFSessionProperty    ← HttpUtil, Utils, S3, Azure clients, ClientInternal
+  SqlState             ← S3, Azure, GCS, StorageClient interface
+  ErrorCode (JDBC)     ← S3, Azure, GCS, StorageClient interface
+  CLOUD_STORAGE_CREDENTIALS_EXPIRED ← S3, Azure clients
+  StorageObjectMetadata ← interface; all storage clients, FileTransferAgent
+  FileBackedOutputStream ← all storage clients, FileTransferAgent, StorageHelper
+  HttpUtil (JDBC)       ← isSocksProxyDisabled(); S3, StorageClientFactory
+  SFSSLConnectionSocketFactory ← S3 client only
+  SnowflakeUtil methods ← S3, Azure, GCS, FileTransferAgent
+  SnowflakeSQLException ← thrown by storage clients; caught as SQLException
+  SnowflakeSQLLoggedException ← extends SnowflakeSQLException
+  TelemetryClient/Util  ← TelemetryService only
 
-1. **`Power10`** — Create `net.snowflake.ingest.utils.Power10` with the same `intTable`,
-   `sb16Table`, and `sb16Size` fields. Values are stable and can be copied verbatim.
-   Update `TimestampWrapper` and `DataValidationUtil` imports.
+Can replace — replacement may temporarily import other JDBC classes:
+  OCSPMode             ← IcebergFileTransferAgent, InternalStage*
+  HttpClientSettingsKey ← depends on OCSPMode; FileTransferAgent, GCS, StorageClient
 
-2. **`SFPair<L, R>`** — Create `net.snowflake.ingest.utils.SFPair` as a simple generic
-   pair class. Update S3, Azure, GCS clients.
+Blocked — returned by / passed to SnowflakeFileTransferAgent:
+  StageInfo            ← returned by getFileTransferMetadatas() via metadata.getStageInfo()
+  RemoteStoreFileEncryptionMaterial ← accessed via SnowflakeFileTransferMetadataV1
+  SnowflakeFileTransferMetadataV1 ← returned by / passed to SnowflakeFileTransferAgent
+  SnowflakeFileTransferConfig ← config builder for SnowflakeFileTransferAgent
+  OCSPMode in InternalStage ← passed to SnowflakeFileTransferConfig.setOcspMode()
 
-3. **`Stopwatch`** — Create `net.snowflake.ingest.utils.Stopwatch` wrapping
-   `System.nanoTime()`. Update S3, Azure, GCS clients.
+JDBC entry points — must be replaced to unblock the above:
+  SnowflakeFileTransferAgent:
+    .getFileTransferMetadatas()  → InternalStage (parse configure response)
+    .uploadWithoutConnection()   → InternalStage (non-Iceberg upload)
+    .throwJCEMissingError()      → S3, Azure, GCS clients
+    .throwNoSpaceLeftError()     → S3, Azure, GCS clients
+```
 
-4. **`OCSPMode`** — Create a minimal enum with `FAIL_OPEN` and `FAIL_CLOSED`. Update
-   `InternalStage` and `IcebergFileTransferAgent`.
-
-5. **`SqlState`** — Create a constants class with the SQL state strings actually used.
-   Update storage clients.
-
-6. **`ErrorCode`** (JDBC's) — Replicate only the error codes used in storage clients.
-   Note: ingest already has its own `net.snowflake.ingest.utils.ErrorCode`; use a
-   separate class name if needed (e.g., `JdbcErrorCode`).
-
-7. **`SnowflakeSQLException`** — Create `net.snowflake.ingest.utils.SnowflakeSQLException`
-   extending `java.sql.SQLException`. Replicate the constructors used.
-
-8. **`SnowflakeSQLLoggedException`** — Extend the above. Update all storage clients.
-
-9. **Inline `SnowflakeDateTimeFormat` constants** — The three epoch-limit constants in
-   `DataValidationUtil` are documented as aligned with JDBC values. Inline them with
-   a comment explaining the alignment. No import needed.
-
-10. **Inline `Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED`** — A single `int` constant
-    from `client.core.Constants` used in `IcebergS3Client` and `IcebergAzureClient` to
-    detect expired credential errors. Copy the value verbatim into a new constant in
-    `fileTransferAgent/StorageErrorCode.java` (alongside the `ErrorCode` replication
-    from task 6 above).
-
----
-
-### Phase 2 — Replicate Property Keys and Proxy Infrastructure
-
-**Tasks:**
-
-1. **`SFSessionProperty`** — Create `net.snowflake.ingest.utils.SFSessionProperty` (or
-   `ProxyProperties`) as an enum/constants class exposing the string property keys that
-   are used:
-   - `PRIVATE_KEY`, `USE_PROXY`, `PROXY_HOST`, `PROXY_PORT`, `PROXY_USER`,
-     `PROXY_PASSWORD`, `NON_PROXY_HOSTS`, `PROXY_PROTOCOL`, `ALLOW_UNDERSCORES_IN_HOST`
-
-   The key string values must match JDBC's values exactly (e.g. `"privateKey"`,
-   `"useProxy"`, etc.) since they are also consumed by JDBC in the non-Iceberg upload
-   path. Once JDBC is fully removed the key names just need to be internally consistent.
-
-2. **`HttpUtil.isSocksProxyDisabled()`** — Used from JDBC's `HttpUtil` by
-   `IcebergStorageClientFactory` and `IcebergS3Client`. Add this static method to the
-   ingest's own `net.snowflake.ingest.utils.HttpUtil`. The implementation checks the
-   `socksNonProxyHosts` / socks proxy system property.
-
-3. **Rename `generateProxyPropertiesForJDBC()`** — Once `SFSessionProperty` is replaced,
-   rename this method to `generateProxyProperties()` since it no longer generates
-   JDBC-specific keys.
+*`InternalStage` passes `OCSPMode` to `SnowflakeFileTransferConfig.setOcspMode()`.
+The `OCSPMode` swap in `InternalStage` is blocked until `SnowflakeFileTransferAgent`
+is replaced.
 
 ---
 
-### Phase 3 — Replicate Data and Metadata Classes
+### Step 1 — Simple utilities ✅
 
-**Tasks:**
+`Power10`, `SFPair`, `Stopwatch`. Swap imports.
 
-1. **`FileBackedOutputStream`** — JDBC's `FileBackedOutputStream` is itself based on
-   Guava's `com.google.common.io.FileBackedOutputStream`. Replace usages with Guava's
-   version directly (already a dependency). Update `IcebergFileTransferAgent`,
-   `StorageHelper`, and all storage clients.
-
-2. **`SnowflakeUtil` methods used (5 total):**
-   - `createCaseInsensitiveMap(Map)` — Replace inline in `IcebergCommonObjectMetadata`
-     with `new TreeMap<>(String.CASE_INSENSITIVE_ORDER)`.
-   - `convertProxyPropertiesToHttpClientKey(OCSPMode, Properties)` — Returns an
-     `HttpClientSettingsKey`. Once `HttpClientSettingsKey` is replicated (see below),
-     implement this conversion in ingest's own utility.
-   - `getRootCause(Throwable)` — Used in `IcebergS3Client`, `IcebergAzureClient`,
-     `IcebergGCSClient` to unwrap exception chains. Equivalent to
-     `org.apache.commons.lang3.exception.ExceptionUtils.getRootCause()` (already a dep);
-     replicate as a one-line wrapper to avoid changing call sites.
-   - `isBlank(String)` — Used in `IcebergAzureClient` and `IcebergGCSClient`. Equivalent
-     to `org.apache.commons.lang3.StringUtils.isBlank()` (already a dep); replicate as a
-     one-line wrapper.
-   - `createDefaultExecutorService(...)` — Used in `IcebergS3Client` to create the S3
-     transfer thread pool. Replicate the executor configuration verbatim.
-
-3. **`HttpClientSettingsKey`** — Used by `IcebergFileTransferAgent` (passed to GCS client)
-   and `IcebergGCSClient`. Create a simple value class wrapping `OCSPMode` + proxy
-   properties. The GCS client uses it to configure the HTTP connection.
-
-4. **`SFSSLConnectionSocketFactory`** — Used in `IcebergS3Client` to set up an SSL socket
-   factory. Replace with Apache HttpClient's `SSLConnectionSocketFactory` (already
-   used in ingest's own `HttpUtil`).
-
-5. **`RemoteStoreFileEncryptionMaterial`** — Simple data holder with `queryStageMasterKey`,
-   `queryId`, and `smkId` fields. Create
-   `net.snowflake.ingest.streaming.internal.RemoteStoreFileEncryptionMaterial`.
-   Update `InternalStage`.
-
-6. **`StorageObjectMetadata` interface** — Define own interface in
-   `net.snowflake.ingest.streaming.internal.fileTransferAgent`. `IcebergCommonObjectMetadata`
-   and `IcebergS3ObjectMetadata` already implement the interface; just change the
-   `implements` clause.
-
-7. **`StageInfo`** — This is the most significant data class. Create own
-   `net.snowflake.ingest.streaming.internal.fileTransferAgent.StageInfo` with:
-   - `StageType` enum: `S3`, `AZURE`, `GCS`, `LOCAL_FS`
-   - Fields: `stageType`, `location`, `credentials`, `region`, `endPoint`,
-     `isClientSideEncrypted`, `useS3RegionalUrl`, `presignedUrl`, `proxyProperties`
-   - Parse from JDBC-format JSON (the `stageInfo` node in the configure response)
-
-   This impacts `InternalStage.createFileTransferMetadataWithAge()`,
-   `InternalStage.parseFileLocationInfo()`, and all storage clients.
+**Files fully freed of JDBC imports:** `DataValidationUtil`, `TimestampWrapper`
 
 ---
 
-### Phase 4 — Replace `SnowflakeFileTransferAgent`, `SnowflakeFileTransferMetadataV1`, and Telemetry
+### Step 2 — Enums, constants, proxy utils
 
-**Tasks:**
+- `SFSessionProperty` — enum with 9 property keys, swap all imports
+- `SqlState` — SQL state constants (same package, no import needed)
+- `ErrorCode` (in `fileTransferAgent` package) + `CLOUD_STORAGE_CREDENTIALS_EXPIRED`
+- `OCSPMode` — enum, swap in `IcebergFileTransferAgent` (keep JDBC import in
+  `InternalStage` — blocked by `SnowflakeFileTransferConfig`)
+- `HttpUtil.isSocksProxyDisabled()` — add to ingest's HttpUtil, swap import
+- Rename `generateProxyPropertiesForJDBC()` → `generateProxyProperties()`
 
-1. **`SnowflakeFileTransferMetadataV1`** — Own data class holding:
-   - `presignedUrl`, `presignedUrlFileName`
-   - `commandType` (UPLOAD/DOWNLOAD enum)
-   - `stageInfo` (own `StageInfo`)
-   - `encryptionMaterial` (own `RemoteStoreFileEncryptionMaterial`)
-
-   Update `InternalStage`, `SnowflakeFileTransferMetadataWithAge`,
-   `IcebergFileTransferAgent`, and tests.
-
-2. **`SnowflakeFileTransferAgent.getFileTransferMetadatas(JsonNode)`** — Used to parse
-   the stage configure response into a list of `SnowflakeFileTransferMetadataV1`. Replace
-   with own JSON parser in `InternalStage.parseFileLocationInfo()` that:
-   - Reads `stageInfo` from the response
-   - Constructs own `StageInfo` and `SnowflakeFileTransferMetadataV1`
-   - Eliminates the Jackson version workaround (SNOW-1493470) since we own both sides
-
-3. **`SnowflakeFileTransferAgent.uploadWithoutConnection(config)`** — Used in the
-   **non-Iceberg** upload path only. Two options:
-
-   **Option A (recommended):** Migrate the non-Iceberg path to use the same
-   `IcebergFileTransferAgent` infrastructure (S3/Azure/GCS clients already exist).
-   The non-Iceberg path still needs file encryption, which the Iceberg path currently
-   skips — this would require adding client-side encryption support to the Iceberg
-   storage clients.
-
-   **Option B:** Implement own `SnowflakeFileTransferAgent`-equivalent class covering
-   the subset of functionality used: parse stage info, apply encryption, upload to
-   S3/Azure/GCS. More work but a clean cut.
-
-4. **`SnowflakeFileTransferConfig`** — Used only with `SnowflakeFileTransferAgent`.
-   Eliminated once Phase 4.3 is complete.
-
-5. **`TelemetryClient` / `TelemetryUtil`** — `TelemetryService` uses:
-   - `TelemetryClient.createSessionlessTelemetry(httpClient, url)` — creates a client
-     that POSTs telemetry to `<url>/telemetry/send`.
-   - `telemetry.addLogToBatch(TelemetryData)` — batches a log entry.
-   - `TelemetryUtil.buildJobData(ObjectNode)` — wraps a JSON object into a `TelemetryData`.
-   - `telemetry.close()` — flushes and closes.
-   - `telemetry.refreshToken(token)` — updates the JWT for the HTTP client.
-
-   Replace by implementing a simple `TelemetryService` that directly POSTs JSON to the
-   telemetry endpoint using the existing `CloseableHttpClient`. No external dependency
-   needed.
+**Files fully freed:** `Utils`, `HttpUtil`, `SnowflakeStreamingIngestClientInternal`
 
 ---
 
-### Phase 5 — Remove JDBC Dependency
+### Step 3 — Storage data types + utils
 
-1. Change `snowflake-jdbc-thin` scope from `compile` to `test` in `pom.xml` rather than
-   removing it entirely. `TestUtils.java` uses `Class.forName("net.snowflake.client.jdbc.SnowflakeDriver")`
-   to open JDBC connections for IT result verification — the driver must stay on the test
-   classpath. Keeping it `test`-scoped achieves the real goal: jdbc-thin is excluded from
-   the shipped jar and the public pom without introducing any new dependency.
-   Note: `example/IngestExampleHelper.java` also loads `SnowflakeDriver` but the example
-   package is not shipped in the SDK jar and is out of scope for this migration.
-2. Remove the JDBC shade relocation rules from the Maven Shade plugin configuration.
-3. Update `public_pom.xml` to remove the `snowflake-jdbc-thin` reference (it must not
-   appear as a transitive dep for SDK consumers).
-4. Run the full test suite and fix any remaining compilation or runtime failures.
+- `StorageObjectMetadata` — own interface (same package)
+- `FileBackedOutputStream` — own class (same package)
+- `SnowflakeUtil` → `StorageClientUtil` (`getRootCause`, `isBlank`,
+  `createCaseInsensitiveMap`)
+
+**Files fully freed:** `IcebergCommonObjectMetadata`, `IcebergS3ObjectMetadata`,
+`StorageHelper`
+
+---
+
+### Step 4 — HTTP settings + SSL factory
+
+- `HttpClientSettingsKey` — value class (may temporarily import JDBC's `OCSPMode`,
+  or use ingest's `OCSPMode` if Step 2 is done first)
+- `SFSSLConnectionSocketFactory` replacement
+- `StorageClientUtil` additions: `convertProxyPropertiesToHttpClientKey`,
+  `createDefaultExecutorService`
+
+**JDBC imports removed:** `HttpClientSettingsKey`, `SFSSLConnectionSocketFactory`,
+`SnowflakeUtil`, `HttpUtil` (JDBC)
+
+---
+
+### Step 5 — Exceptions
+
+- `SnowflakeSQLException` / `SnowflakeSQLLoggedException` — own classes
+- These never leak to public API (always caught and wrapped in `SFException`)
+- JDBC's `SnowflakeFileTransferAgent` also throws JDBC's `SnowflakeSQLException`,
+  but catch sites already use `catch (SQLException ...)` which catches both
+
+**JDBC imports removed:** All `SnowflakeSQLException`/`SnowflakeSQLLoggedException`
+imports from storage clients
+
+---
+
+### Step 6 — Telemetry (independent, can be done in parallel)
+
+- Replace `TelemetryClient`/`TelemetryUtil` with own HTTP sender
+
+**Files fully freed:** `TelemetryService`
+
+---
+
+### Step 7 — Replace SnowflakeFileTransferAgent (unblocks remaining types)
+
+- Inline `throwJCEMissingError()` / `throwNoSpaceLeftError()` in storage clients
+- Replace `getFileTransferMetadatas()` → own JSON parser in `InternalStage`
+- Replace `uploadWithoutConnection()` → use `IcebergFileTransferAgent` path
+- Remove `SnowflakeFileTransferConfig`
+
+**JDBC imports removed:** `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`
+
+---
+
+### Step 8 — Replace blocked types (now unblocked after Step 7)
+
+- `StageInfo` — own data class with `StageType` enum
+- `RemoteStoreFileEncryptionMaterial` — simple data holder
+- `SnowflakeFileTransferMetadataV1` — own data class
+- Swap `OCSPMode` in `InternalStage` (no longer passed to JDBC)
+
+**JDBC imports removed:** All remaining JDBC imports
+
+---
+
+### Step 9 — Remove JDBC Dependency
+
+1. Change `snowflake-jdbc-thin` scope to `test` in `pom.xml` (`TestUtils.java` needs
+   `SnowflakeDriver` for IT result verification)
+2. Remove JDBC shade relocation rules from Maven Shade plugin
+3. Remove `snowflake-jdbc-thin` from `public_pom.xml`
+4. Run full test suite
 
 ---
 
@@ -413,7 +378,7 @@ The work is split into 4 phases, ordered from least to most complex.
 | `utils/SnowflakeSQLException.java` | Checked exception extending `SQLException` |
 | `utils/SnowflakeSQLLoggedException.java` | Extends `SnowflakeSQLException` |
 | `fileTransferAgent/SqlState.java` | SQL state string constants |
-| `fileTransferAgent/StorageErrorCode.java` | Error codes for storage clients |
+| `fileTransferAgent/ErrorCode.java` | Error codes for storage clients (same name as JDBC, different package from `utils.ErrorCode`) |
 | `fileTransferAgent/HttpClientSettingsKey.java` | HTTP client settings key |
 | `fileTransferAgent/StorageObjectMetadata.java` | Own interface (replaces JDBC interface) |
 | `fileTransferAgent/StageInfo.java` | Cloud stage descriptor + `StageType` enum |
