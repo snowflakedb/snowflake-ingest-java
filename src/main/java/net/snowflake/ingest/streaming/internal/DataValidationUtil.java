@@ -40,14 +40,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 import java.util.function.Supplier;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SnowflakeDateTimeFormat;
-import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
 import net.snowflake.ingest.streaming.internal.serialization.ByteArraySerializer;
 import net.snowflake.ingest.streaming.internal.serialization.DuplicateKeyValidatedObject;
 import net.snowflake.ingest.streaming.internal.serialization.DuplicateKeyValidatingSerializer;
 import net.snowflake.ingest.streaming.internal.serialization.ZonedDateTimeSerializer;
 import net.snowflake.ingest.utils.DuplicateDetector;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.Power10;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.codec.DecoderException;
@@ -59,19 +58,19 @@ class DataValidationUtil {
 
   /**
    * Seconds limit used for integer-stored timestamp scale guessing. Value needs to be aligned with
-   * the value from {@link SnowflakeDateTimeFormat#parse}
+   * the value from SnowflakeDateTimeFormat#parse (JDBC)
    */
   private static final long SECONDS_LIMIT_FOR_EPOCH = 31536000000L;
 
   /**
    * Milliseconds limit used for integer-stored timestamp scale guessing. Value needs to be aligned
-   * with the value from {@link SnowflakeDateTimeFormat#parse}
+   * with the value from SnowflakeDateTimeFormat#parse (JDBC)
    */
   private static final long MILLISECONDS_LIMIT_FOR_EPOCH = SECONDS_LIMIT_FOR_EPOCH * 1000L;
 
   /**
    * Microseconds limit used for integer-stored timestamp scale guessing. Value needs to be aligned
-   * with the value from {@link SnowflakeDateTimeFormat#parse}
+   * with the value from SnowflakeDateTimeFormat#parse (JDBC)
    */
   private static final long MICROSECONDS_LIMIT_FOR_EPOCH = SECONDS_LIMIT_FOR_EPOCH * 1000000L;
 
