@@ -1,6 +1,6 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageErrorCode.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 
 import com.microsoft.azure.storage.OperationContext;
 import com.microsoft.azure.storage.StorageCredentials;
@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.core.SFSessionProperty;
-import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
@@ -37,7 +36,6 @@ import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;
 import net.snowflake.ingest.utils.Stopwatch;
@@ -254,7 +252,7 @@ class IcebergAzureClient implements IcebergStorageClient {
           throw new SnowflakeSQLException(
               ex,
               SqlState.SYSTEM_ERROR,
-              ErrorCode.IO_ERROR.getMessageCode(),
+              StorageErrorCode.IO_ERROR.getMessageCode(),
               "Encountered exception during upload: "
                   + ex.getMessage()
                   + "\nCannot retry upload from stream.");
@@ -278,7 +276,7 @@ class IcebergAzureClient implements IcebergStorageClient {
 
     throw new SnowflakeSQLException(
         SqlState.INTERNAL_ERROR,
-        ErrorCode.INTERNAL_ERROR.getMessageCode(),
+        StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
         "Unexpected: upload unsuccessful without exception!");
   }
 
@@ -319,7 +317,7 @@ class IcebergAzureClient implements IcebergStorageClient {
       throw new SnowflakeSQLLoggedException(
           null /* session */,
           SqlState.INTERNAL_ERROR,
-          ErrorCode.INTERNAL_ERROR.getMessageCode(),
+          StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
           "Failed to open input file",
           ex.getMessage());
@@ -328,7 +326,7 @@ class IcebergAzureClient implements IcebergStorageClient {
       throw new SnowflakeSQLLoggedException(
           null /* session */,
           SqlState.INTERNAL_ERROR,
-          ErrorCode.INTERNAL_ERROR.getMessageCode(),
+          StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
           "Failed to open input stream",
           ex.getMessage());
@@ -385,7 +383,7 @@ class IcebergAzureClient implements IcebergStorageClient {
         throw new SnowflakeSQLLoggedException(
             null /* session */,
             SqlState.SYSTEM_ERROR,
-            ErrorCode.AZURE_SERVICE_ERROR.getMessageCode(),
+            StorageErrorCode.AZURE_SERVICE_ERROR.getMessageCode(),
             se,
             operation,
             se.getErrorCode(),
@@ -422,7 +420,7 @@ class IcebergAzureClient implements IcebergStorageClient {
           throw new SnowflakeSQLLoggedException(
               null /* session */,
               SqlState.SYSTEM_ERROR,
-              ErrorCode.IO_ERROR.getMessageCode(),
+              StorageErrorCode.IO_ERROR.getMessageCode(),
               ex,
               "Encountered exception during " + operation + ": " + ex.getMessage());
         } else {
@@ -436,7 +434,7 @@ class IcebergAzureClient implements IcebergStorageClient {
         throw new SnowflakeSQLLoggedException(
             null /* session */,
             SqlState.SYSTEM_ERROR,
-            ErrorCode.IO_ERROR.getMessageCode(),
+            StorageErrorCode.IO_ERROR.getMessageCode(),
             ex,
             "Encountered exception during " + operation + ": " + ex.getMessage());
       }
@@ -498,7 +496,9 @@ class IcebergAzureClient implements IcebergStorageClient {
                   proxyProperties.getProperty(SFSessionProperty.PROXY_PORT.getPropertyKey()));
         } catch (NullPointerException | NumberFormatException var6) {
           throw new SnowflakeSQLException(
-              ErrorCode.INVALID_PROXY_PROPERTIES, "Could not parse port number");
+              StorageErrorCode.INVALID_PROXY_PROPERTIES.getSqlState(),
+              StorageErrorCode.INVALID_PROXY_PROPERTIES.getMessageCode(),
+              "Could not parse port number");
         }
 
         Proxy azProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
