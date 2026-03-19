@@ -14,7 +14,7 @@ import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nullable;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
+import java.sql.SQLException;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
@@ -97,7 +97,7 @@ class InternalStageManager implements IStorageManager {
       }
     } catch (IngestResponseException | IOException e) {
       throw new SFException(e, ErrorCode.CLIENT_CONFIGURE_FAILURE, e.getMessage());
-    } catch (SnowflakeSQLException e) {
+    } catch (SQLException e) {
       throw new SFException(e, ErrorCode.UNABLE_TO_CONNECT_TO_STAGE, e.getMessage());
     }
   }
