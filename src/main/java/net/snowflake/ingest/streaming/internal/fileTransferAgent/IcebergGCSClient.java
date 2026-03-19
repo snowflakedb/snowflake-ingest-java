@@ -30,7 +30,6 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;

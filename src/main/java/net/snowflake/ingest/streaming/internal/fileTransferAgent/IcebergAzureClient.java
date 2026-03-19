@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
@@ -37,9 +36,9 @@ import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;
+import net.snowflake.ingest.utils.SFSessionProperty;
 import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.commons.io.IOUtils;
 
