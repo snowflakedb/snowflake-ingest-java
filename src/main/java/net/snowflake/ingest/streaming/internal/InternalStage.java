@@ -31,7 +31,6 @@ import net.snowflake.client.core.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.IcebergFileTransferAgent;
@@ -100,7 +99,7 @@ public class InternalStage implements IStorage {
       boolean useIcebergFileTransferAgent,
       FileLocationInfo fileLocationInfo,
       int maxUploadRetries)
-      throws SnowflakeSQLException, IOException {
+      throws SQLException, IOException {
     this(
         owningManager,
         clientName,
@@ -136,7 +135,7 @@ public class InternalStage implements IStorage {
       SnowflakeFileTransferMetadataWithAge testMetadata,
       FileLocationInfo fileLocationInfo,
       int maxUploadRetries)
-      throws SnowflakeSQLException, IOException {
+      throws SQLException, IOException {
     this.owningManager = owningManager;
     this.clientName = clientName;
     this.clientPrefix = clientPrefix;
@@ -256,11 +255,11 @@ public class InternalStage implements IStorage {
    *
    * @param force if true will ignore REFRESH_THRESHOLD and force metadata refresh
    * @return refreshed metadata
-   * @throws SnowflakeSQLException
+   * @throws SQLException
    * @throws IOException
    */
   synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force)
-      throws SnowflakeSQLException, IOException {
+      throws SQLException, IOException {
     SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge = metadataRef.get();
     if (!force
         && fileTransferMetadataWithAge != null
@@ -281,12 +280,12 @@ public class InternalStage implements IStorage {
 
   @VisibleForTesting
   public synchronized void setMetadataRef(FileLocationInfo fileLocationInfo)
-      throws SnowflakeSQLException, IOException {
+      throws SQLException, IOException {
     this.metadataRef.set(createFileTransferMetadataWithAge(fileLocationInfo));
   }
 
   static SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
-      FileLocationInfo fileLocationInfo) throws JsonProcessingException, SnowflakeSQLException {
+      FileLocationInfo fileLocationInfo) throws JsonProcessingException, SQLException {
     final SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
 
     if (fileLocationInfo
@@ -333,11 +332,10 @@ public class InternalStage implements IStorage {
   /**
    * GCS requires a signed url per file. We need to fetch this from the server for each put
    *
-   * @throws SnowflakeSQLException
+   * @throws SQLException
    * @throws IOException
    */
-  SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
-      throws SnowflakeSQLException, IOException {
+  SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName) throws SQLException, IOException {
 
     FileLocationInfo location =
         this.owningManager.getRefreshedLocation(this.tableRef, Optional.of(fileName));
@@ -414,7 +412,7 @@ public class InternalStage implements IStorage {
 
   private SnowflakeFileTransferMetadataV1 copyFileTransferMetadata(
       SnowflakeFileTransferMetadataV1 fileTransferMetadata, String uploadPath)
-      throws SnowflakeSQLException, IOException {
+      throws SQLException, IOException {
     // TODO: SNOW-1969309 investigate if this code is thread-safe
     RemoteStoreFileEncryptionMaterial encryptionMaterial =
         fileTransferMetadata.getEncryptionMaterial();

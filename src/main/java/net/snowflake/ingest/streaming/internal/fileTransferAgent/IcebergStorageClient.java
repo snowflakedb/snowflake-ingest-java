@@ -2,10 +2,9 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.io.File;
 import java.io.InputStream;
+import java.sql.SQLException;
 import net.snowflake.client.core.HttpClientSettingsKey;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 
 interface IcebergStorageClient {
@@ -41,7 +40,7 @@ interface IcebergStorageClient {
    * @param meta object meta data
    * @param region region name where the stage persists
    * @param presignedUrl presigned URL for upload. Used by GCP.
-   * @throws SnowflakeSQLException if upload failed even after retry
+   * @throws SQLException if upload failed even after retry
    */
   String upload(
       int parallel,
@@ -54,7 +53,7 @@ interface IcebergStorageClient {
       StorageObjectMetadata meta,
       String region,
       String presignedUrl)
-      throws SnowflakeSQLException;
+      throws SQLException;
 
   /**
    * Upload a file (-stream) to remote storage with Pre-signed URL without JDBC connection.
@@ -73,7 +72,7 @@ interface IcebergStorageClient {
    * @param meta object meta data
    * @param stageRegion region name where the stage persists
    * @param presignedUrl presigned URL for upload. Used by GCP.
-   * @throws SnowflakeSQLException if upload failed even after retry
+   * @throws SQLException if upload failed even after retry
    */
   default String uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
@@ -88,13 +87,11 @@ interface IcebergStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SQLException {
     throw new SnowflakeSQLLoggedException(
-        null,
         StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
-        /* session= */ "uploadWithPresignedUrlWithoutConnection"
-            + " only works for pre-signed URL.");
+        "uploadWithPresignedUrlWithoutConnection" + " only works for pre-signed URL.");
   }
 
   /**
