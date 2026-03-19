@@ -4,6 +4,8 @@ name: Run semgrep checks
 on:
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '.claude/**'
 
 permissions:
   contents: read
