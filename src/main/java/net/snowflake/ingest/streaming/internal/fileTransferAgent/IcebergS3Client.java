@@ -2,6 +2,7 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static net.snowflake.client.jdbc.SnowflakeUtil.createDefaultExecutorService;
 import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageErrorCode.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 
 import com.amazonaws.AmazonClientException;

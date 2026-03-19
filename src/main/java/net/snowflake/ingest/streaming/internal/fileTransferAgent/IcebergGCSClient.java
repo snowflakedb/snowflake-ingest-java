@@ -2,6 +2,8 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
 import static net.snowflake.client.jdbc.SnowflakeUtil.isBlank;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.isBlank;
 
 import com.google.api.gax.rpc.FixedHeaderProvider;
 import com.google.cloud.storage.Blob;
