@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.sql.SQLException;
 import net.snowflake.client.core.HttpClientSettingsKey;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 
 interface IcebergStorageClient {
 

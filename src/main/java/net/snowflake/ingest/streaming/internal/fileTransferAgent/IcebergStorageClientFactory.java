@@ -5,7 +5,6 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
