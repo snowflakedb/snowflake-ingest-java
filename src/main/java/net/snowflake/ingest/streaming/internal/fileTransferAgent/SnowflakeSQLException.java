@@ -1,6 +1,7 @@
 /*
  * Replicated from snowflake-jdbc: net.snowflake.client.jdbc.SnowflakeSQLException
  * Tag: v3.25.1
+ * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeSQLException.java
  *
  * Only the constructors used by the ingest storage clients are included.
  * The ResourceBundleManager look-up is preserved to maintain message-format parity.

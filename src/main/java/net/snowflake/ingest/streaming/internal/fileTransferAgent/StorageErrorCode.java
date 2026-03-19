@@ -1,6 +1,7 @@
 /*
  * Replicated from snowflake-jdbc: net.snowflake.client.jdbc.ErrorCode
  * Tag: v3.25.1
+ * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/ErrorCode.java
  *
  * Only the error codes used by the ingest storage clients are included.
  * Named StorageErrorCode to avoid collision with the existing ingest ErrorCode.

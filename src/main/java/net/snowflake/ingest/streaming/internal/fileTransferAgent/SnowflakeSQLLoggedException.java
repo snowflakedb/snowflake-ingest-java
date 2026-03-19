@@ -1,6 +1,7 @@
 /*
  * Replicated from snowflake-jdbc: net.snowflake.client.jdbc.SnowflakeSQLLoggedException
  * Tag: v3.25.1
+ * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeSQLLoggedException.java
  *
  * The JDBC original sends OOB/in-band telemetry on construction. That behaviour
  * is stripped because all callers in the ingest SDK pass null for the session

@@ -1,6 +1,7 @@
 /*
  * Replicated from snowflake-jdbc: net.snowflake.client.core.HttpClientSettingsKey
  * Tag: v3.25.1
+ * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/core/HttpClientSettingsKey.java
  *
  * Value class wrapping OCSPMode and proxy properties. Used as a key for HTTP
  * client connection pooling in JDBC; in the ingest SDK it is primarily passed

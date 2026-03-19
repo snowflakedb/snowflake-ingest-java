@@ -1,6 +1,7 @@
 /*
  * Replicated from snowflake-jdbc: net.snowflake.client.core.SFSSLConnectionSocketFactory
  * Tag: v3.25.1
+ * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/core/SFSSLConnectionSocketFactory.java
  *
  * Simplified SSL socket factory that optionally disables SOCKS proxy.
  * The JDBC original also handles OCSP via TrustManagers; in the ingest SDK

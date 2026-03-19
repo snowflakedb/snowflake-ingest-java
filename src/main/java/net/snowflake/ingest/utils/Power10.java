@@ -1,6 +1,7 @@
 /*
  * Replicated from snowflake-jdbc: net.snowflake.client.jdbc.internal.snowflake.common.util.Power10
  * Tag: v3.25.1
+ * Source: shaded from snowflake-common into snowflake-jdbc-thin (no direct repo URL)
  */
 
 package net.snowflake.ingest.utils;

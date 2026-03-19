@@ -2,6 +2,7 @@
  * Replicated from snowflake-jdbc:
  *   net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState
  * Tag: v3.25.1
+ * Source: shaded from net.snowflake:snowflake-common into snowflake-jdbc-thin
  *
  * Only the SQL state constants used by the ingest storage clients are included.
  */

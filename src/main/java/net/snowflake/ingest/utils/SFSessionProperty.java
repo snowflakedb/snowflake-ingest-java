@@ -1,6 +1,7 @@
 /*
  * Replicated from snowflake-jdbc: net.snowflake.client.core.SFSessionProperty
  * Tag: v3.25.1
+ * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/core/SFSessionProperty.java
  *
  * Only the property keys used by the ingest SDK are included.
  * The string values must match JDBC exactly since they are used as property-map
