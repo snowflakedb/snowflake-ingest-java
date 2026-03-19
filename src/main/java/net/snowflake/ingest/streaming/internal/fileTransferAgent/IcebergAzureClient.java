@@ -29,13 +29,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.jdbc.ErrorCode;
-import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
-import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;
 import net.snowflake.ingest.utils.SFSessionProperty;
@@ -61,7 +58,7 @@ class IcebergAzureClient implements IcebergStorageClient {
   /** Adds digest metadata to the StorageObjectMetadata object */
   @Override
   public void addDigestMetadata(StorageObjectMetadata meta, String digest) {
-    if (!SnowflakeUtil.isBlank(digest)) {
+    if (!StorageClientUtil.isBlank(digest)) {
       // Azure doesn't allow hyphens in the name of a metadata field.
       meta.addUserMetadata("sfcdigest", digest);
     }
@@ -360,7 +357,7 @@ class IcebergAzureClient implements IcebergStorageClient {
 
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
-    if (SnowflakeUtil.getRootCause(ex) instanceof IOException) {
+    if (StorageClientUtil.getRootCause(ex) instanceof IOException) {
       SnowflakeFileTransferAgent.throwNoSpaceLeftError(
           null /* session */, operation, ex, null /* queryId */);
     }
@@ -416,7 +413,7 @@ class IcebergAzureClient implements IcebergStorageClient {
       }
     } else {
       if (ex instanceof InterruptedException
-          || SnowflakeUtil.getRootCause(ex) instanceof SocketTimeoutException) {
+          || StorageClientUtil.getRootCause(ex) instanceof SocketTimeoutException) {
         if (retryCount > azClient.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
               null /* session */,

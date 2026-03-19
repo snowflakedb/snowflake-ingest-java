@@ -12,13 +12,23 @@ eliminate the JDBC dependency entirely.
 
 **This project is a pure mechanical migration. There must be no functional changes.**
 
-- Copy JDBC classes verbatim into this repo. Do not refactor, simplify, rename fields,
-  change method signatures, or improve logic — even where improvements seem obvious.
+- Copy JDBC classes verbatim into this repo. Compare against the actual source file
+  in the JDBC repo (not decompiled output). Do not refactor, simplify, rename fields,
+  change method signatures, strip comments/Javadoc, or improve logic — even where
+  improvements seem obvious.
+- **Replicate recursively:** If a replicated class depends on another JDBC class
+  (e.g. `SFLogger`, `FileUtil`, `ArgSupplier`), replicate that dependency too rather
+  than replacing it with an alternative. This keeps the replicated files identical to
+  the JDBC source (only the `package` line changes).
 - Do not change the runtime behavior of any existing feature. The before and after must
   be functionally identical from the perspective of callers.
 - Do not fix bugs encountered in JDBC code during the migration. If a bug is found,
   file a separate ticket and replicate the buggy behavior as-is for now.
 - Do not add new functionality, new configuration options, or new error handling paths.
+- The only permitted changes to replicated classes are:
+  1. `package` line (different package).
+  2. `@SnowflakeJdbcInternalApi` annotation removed (JDBC-internal marker).
+  3. Formatting differences enforced by `./format.sh` (google-java-format).
 - The only permitted changes to the surrounding ingest code are:
   1. Updating `import` statements to point to the new ingest-owned classes.
   2. Removing the JDBC dependency from `pom.xml` and the shade plugin configuration.
@@ -283,12 +293,14 @@ with exceptions, see Step 5).
 
 ---
 
-### Step 3 — Storage data types + utils
+### Step 3 — Storage data types + utils ✅ (PR #1110)
 
+**Done:**
 - `StorageObjectMetadata` — own interface (same package)
-- `FileBackedOutputStream` — own class (same package)
-- `SnowflakeUtil` → `StorageClientUtil` (`getRootCause`, `isBlank`,
-  `createCaseInsensitiveMap`)
+- `FileBackedOutputStream` — verbatim copy (zero diff from JDBC source)
+- `FileUtil` — `logFileUsage` method replicated
+- `StorageClientUtil` — `getRootCause`, `isBlank`, `createCaseInsensitiveMap`,
+  `systemGetProperty`, `isNullOrEmpty`, `isWindows`
 
 **Files fully freed:** `IcebergCommonObjectMetadata`, `IcebergS3ObjectMetadata`,
 `StorageHelper`
