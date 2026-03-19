@@ -2,7 +2,7 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageErrorCode.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.client.jdbc.SnowflakeUtil.createDefaultExecutorService;
-import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
@@ -46,7 +46,6 @@ import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.client.core.SFSSLConnectionSocketFactory;
 import net.snowflake.ingest.utils.SFSessionProperty;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.ingest.utils.SFPair;
 import net.snowflake.ingest.utils.Stopwatch;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
