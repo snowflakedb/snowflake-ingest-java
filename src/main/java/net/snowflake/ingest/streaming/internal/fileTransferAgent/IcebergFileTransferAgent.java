@@ -11,9 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.Properties;
-import net.snowflake.client.core.HttpClientSettingsKey;
-import net.snowflake.client.jdbc.SnowflakeUtil;
-import net.snowflake.client.core.OCSPMode;
+import net.snowflake.ingest.utils.OCSPMode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
@@ -79,7 +77,7 @@ public class IcebergFileTransferAgent {
 
     // Create HttpClient key
     HttpClientSettingsKey key =
-        SnowflakeUtil.convertProxyPropertiesToHttpClientKey(ocspMode, proxyProperties);
+        StorageClientUtil.convertProxyPropertiesToHttpClientKey(ocspMode, proxyProperties);
 
     StageInfo stageInfo = metadata.getStageInfo();
     stageInfo.setProxyProperties(proxyProperties);
