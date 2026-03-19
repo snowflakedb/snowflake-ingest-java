@@ -24,7 +24,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import net.snowflake.client.core.HttpClientSettingsKey;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;

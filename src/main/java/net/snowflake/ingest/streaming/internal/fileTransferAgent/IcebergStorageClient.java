@@ -3,7 +3,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 import java.io.File;
 import java.io.InputStream;
 import java.sql.SQLException;
-import net.snowflake.client.core.HttpClientSettingsKey;
 
 interface IcebergStorageClient {
 
