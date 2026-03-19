@@ -2,9 +2,13 @@ name: GoogleJavaFormat
 
 on:
   pull_request:
+    paths-ignore:
+      - '.claude/**'
   push:
     branches:
       - master
+    paths-ignore:
+      - '.claude/**'
 
 jobs:
   formatting:
