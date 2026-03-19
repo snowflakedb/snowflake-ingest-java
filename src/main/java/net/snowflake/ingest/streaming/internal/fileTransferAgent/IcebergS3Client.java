@@ -46,6 +46,7 @@ import net.snowflake.client.core.SFSSLConnectionSocketFactory;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
+import net.snowflake.common.core.SqlState;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
