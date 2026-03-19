@@ -45,7 +45,6 @@ import java.util.concurrent.ExecutorService;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.client.core.SFSSLConnectionSocketFactory;
 import net.snowflake.ingest.utils.SFSessionProperty;
-import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.ingest.utils.SFPair;
