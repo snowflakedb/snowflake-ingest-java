@@ -4,7 +4,7 @@
 
 package net.snowflake.ingest.streaming.internal;
 
-import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
+import static net.snowflake.ingest.utils.HttpUtil.generateProxyProperties;
 import static net.snowflake.ingest.utils.Utils.getStackTrace;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -143,7 +143,7 @@ public class InternalStage implements IStorage {
     this.maxUploadRetries = maxUploadRetries;
     this.useIcebergFileTransferAgent = useIcebergFileTransferAgent;
     this.fileLocationInfo = fileLocationInfo;
-    this.proxyProperties = generateProxyPropertiesForJDBC();
+    this.proxyProperties = generateProxyProperties();
     this.metadataRef.set(testMetadata);
   }
 

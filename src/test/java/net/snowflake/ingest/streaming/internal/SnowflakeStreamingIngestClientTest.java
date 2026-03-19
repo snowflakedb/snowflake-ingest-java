@@ -39,7 +39,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import net.snowflake.client.core.SFSessionProperty;
+import net.snowflake.ingest.utils.SFSessionProperty;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.streaming.DropChannelRequest;
