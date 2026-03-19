@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.io.File;
 import java.io.InputStream;
-import net.snowflake.client.core.HttpClientSettingsKey;
 import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
