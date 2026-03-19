@@ -1,10 +1,10 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import com.amazonaws.ClientConfiguration;
+import java.sql.SQLException;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
@@ -45,14 +45,14 @@ class IcebergStorageClientFactory {
    * @param volumeEncryptionMode the volume encryption mode (e.g., "SSE_KMS", "SSE_S3")
    * @param encryptionKmsKeyId the KMS key ID for encryption when using SSE_KMS
    * @return a IcebergStorageClient interface to the instance created
-   * @throws SnowflakeSQLException if any error occurs
+   * @throws SQLException if any error occurs
    */
   public IcebergStorageClient createClient(
       StageInfo stage,
       int parallel,
       VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logDebug("Creating storage client. Client type: {}", stage.getStageType().name());
 
     switch (stage.getStageType()) {
@@ -98,7 +98,7 @@ class IcebergStorageClientFactory {
    * @param volumeEncryptionMode the volume encryption mode (e.g., "SSE_KMS", "SSE_S3")
    * @param encryptionKmsKeyId the KMS key ID for encryption when using SSE_KMS
    * @return the IcebergS3Client instance created
-   * @throws SnowflakeSQLException failure to create the S3 client
+   * @throws SQLException failure to create the S3 client
    */
   private IcebergStorageClient createS3Client(
       Map<?, ?> stageCredentials,
@@ -110,7 +110,7 @@ class IcebergStorageClientFactory {
       boolean useS3RegionalUrl,
       VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
-      throws SnowflakeSQLException {
+      throws SQLException {
     final int S3_TRANSFER_MAX_RETRIES = 3;
 
     IcebergS3Client s3Client;
@@ -188,7 +188,7 @@ class IcebergStorageClientFactory {
    * @param stage Stage information
    * @return the SnowflakeAzureClientObject instance created
    */
-  private IcebergStorageClient createAzureClient(StageInfo stage) throws SnowflakeSQLException {
+  private IcebergStorageClient createAzureClient(StageInfo stage) throws SQLException {
     IcebergAzureClient azureClient;
 
     try {
@@ -212,7 +212,7 @@ class IcebergStorageClientFactory {
    */
   private IcebergStorageClient createGCSClient(
       StageInfo stage, VolumeEncryptionMode volumeEncryptionMode, String encryptionKmsKeyId)
-      throws SnowflakeSQLException {
+      throws SQLException {
     IcebergGCSClient gcsClient;
 
     try {

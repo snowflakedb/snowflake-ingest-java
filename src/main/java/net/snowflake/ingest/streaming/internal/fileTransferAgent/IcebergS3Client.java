@@ -36,6 +36,7 @@ import java.net.SocketTimeoutException;
 import java.security.InvalidKeyException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,8 +47,6 @@ import net.snowflake.client.core.SFSSLConnectionSocketFactory;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
@@ -107,7 +106,7 @@ class IcebergS3Client implements IcebergStorageClient {
       boolean useS3RegionalUrl,
       VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
-      throws SnowflakeSQLException {
+      throws SQLException {
     this.isUseS3RegionalUrl = useS3RegionalUrl;
     this.volumeEncryptionMode = volumeEncryptionMode;
     this.encryptionKmsKeyId = encryptionKmsKeyId;
@@ -127,7 +126,7 @@ class IcebergS3Client implements IcebergStorageClient {
       String stageRegion,
       String stageEndPoint,
       boolean isClientSideEncrypted)
-      throws SnowflakeSQLException {
+      throws SQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the AWS client. We won't save the awsCredentials since
     // we will be refreshing that, every time we reset the AWS client
@@ -226,7 +225,7 @@ class IcebergS3Client implements IcebergStorageClient {
    * @param meta object meta data
    * @param stageRegion region name where the stage persists
    * @param presignedUrl Not used in S3
-   * @throws SnowflakeSQLException if upload failed even after retry
+   * @throws SQLException if upload failed even after retry
    */
   @Override
   public String upload(
@@ -240,7 +239,7 @@ class IcebergS3Client implements IcebergStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logInfo(
         StorageHelper.getStartUploadLog(
             "S3", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -362,7 +361,6 @@ class IcebergS3Client implements IcebergStorageClient {
     }
 
     throw new SnowflakeSQLLoggedException(
-        null,
         StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         "Unexpected: upload unsuccessful without exception!");
@@ -395,7 +393,7 @@ class IcebergS3Client implements IcebergStorageClient {
       ObjectMetadata meta,
       long originalContentLength,
       List<FileInputStream> toClose)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logDebug(
         "createUploadStream({}, {}, {}, {}, {}, {}, {})",
         this,
@@ -439,7 +437,6 @@ class IcebergS3Client implements IcebergStorageClient {
     } catch (FileNotFoundException ex) {
       logger.logError("Failed to open input file", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -448,7 +445,6 @@ class IcebergS3Client implements IcebergStorageClient {
     } catch (IOException ex) {
       logger.logError("Failed to open input stream", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -461,7 +457,7 @@ class IcebergS3Client implements IcebergStorageClient {
 
   private static void handleS3Exception(
       Exception ex, int retryCount, String operation, IcebergS3Client s3Client)
-      throws SnowflakeSQLException {
+      throws SQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
@@ -493,7 +489,6 @@ class IcebergS3Client implements IcebergStorageClient {
           // does not return the ExpiredToken error code.
           // If session is null we cannot renew the token so throw the exception
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               StorageErrorCode.S3_OPERATION_ERROR.getMessageCode(),
               ex1,
@@ -505,7 +500,6 @@ class IcebergS3Client implements IcebergStorageClient {
               extendedRequestId);
         } else {
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               StorageErrorCode.AWS_CLIENT_ERROR.getMessageCode(),
               ex,
@@ -553,7 +547,6 @@ class IcebergS3Client implements IcebergStorageClient {
           || getRootCause(ex) instanceof SocketTimeoutException) {
         if (retryCount > s3Client.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               StorageErrorCode.IO_ERROR.getMessageCode(),
               ex,
@@ -567,7 +560,6 @@ class IcebergS3Client implements IcebergStorageClient {
         }
       } else {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             StorageErrorCode.IO_ERROR.getMessageCode(),
             ex,
@@ -581,10 +573,10 @@ class IcebergS3Client implements IcebergStorageClient {
    *
    * @param proxyProperties Proxy Properties
    * @param clientConfig AWS Client Configuration
-   * @throws SnowflakeSQLException Thrown on configuration parsing failures
+   * @throws SQLException Thrown on configuration parsing failures
    */
   private static void setSessionlessProxyForS3(
-      Properties proxyProperties, ClientConfiguration clientConfig) throws SnowflakeSQLException {
+      Properties proxyProperties, ClientConfiguration clientConfig) throws SQLException {
     if (proxyProperties != null
         && proxyProperties.size() > 0
         && proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {

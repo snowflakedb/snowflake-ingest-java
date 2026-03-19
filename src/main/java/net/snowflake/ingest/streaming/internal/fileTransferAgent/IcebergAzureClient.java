@@ -23,6 +23,7 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,8 +32,6 @@ import java.util.Properties;
 import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
@@ -49,8 +48,7 @@ class IcebergAzureClient implements IcebergStorageClient {
   private CloudBlobClient azStorageClient;
   private OperationContext opContext;
 
-  public static IcebergAzureClient createSnowflakeAzureClient(StageInfo stage)
-      throws SnowflakeSQLException {
+  public static IcebergAzureClient createSnowflakeAzureClient(StageInfo stage) throws SQLException {
     IcebergAzureClient azureClient = new IcebergAzureClient();
     azureClient.setupAzureClient(stage);
 
@@ -106,8 +104,7 @@ class IcebergAzureClient implements IcebergStorageClient {
    *                required to decrypt/encrypt content in stage
    * @throws IllegalArgumentException when invalid credentials are used
    */
-  private void setupAzureClient(StageInfo stage)
-      throws IllegalArgumentException, SnowflakeSQLException {
+  private void setupAzureClient(StageInfo stage) throws IllegalArgumentException, SQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the Azure client.
     this.stageInfo = stage;
@@ -163,7 +160,7 @@ class IcebergAzureClient implements IcebergStorageClient {
    * @param meta object meta data
    * @param stageRegion region name where the stage persists
    * @param presignedUrl Unused in Azure
-   * @throws SnowflakeSQLException if upload failed even after retry
+   * @throws SQLException if upload failed even after retry
    */
   @Override
   public String upload(
@@ -177,7 +174,7 @@ class IcebergAzureClient implements IcebergStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logInfo(
         StorageHelper.getStartUploadLog(
             "Azure", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -288,7 +285,7 @@ class IcebergAzureClient implements IcebergStorageClient {
       long originalContentLength,
       FileBackedOutputStream fileBackedOutputStream,
       List<FileInputStream> toClose)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logDebug(
         "createUploadStream({}, {}, {}, {}, {}, {})",
         this,
@@ -315,7 +312,6 @@ class IcebergAzureClient implements IcebergStorageClient {
     } catch (FileNotFoundException ex) {
       logger.logError("Failed to open input file", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -324,7 +320,6 @@ class IcebergAzureClient implements IcebergStorageClient {
     } catch (IOException ex) {
       logger.logError("Failed to open input stream", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           StorageErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -344,11 +339,11 @@ class IcebergAzureClient implements IcebergStorageClient {
    * @param operation string that indicates the function/operation that was taking place, when the
    *     exception was raised, for example "upload"
    * @param azClient the current Snowflake Azure client object
-   * @throws SnowflakeSQLException exceptions not handled
+   * @throws SQLException exceptions not handled
    */
   private static void handleAzureException(
       Exception ex, int retryCount, String operation, IcebergAzureClient azClient)
-      throws SnowflakeSQLException {
+      throws SQLException {
 
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
@@ -381,7 +376,6 @@ class IcebergAzureClient implements IcebergStorageClient {
       if (retryCount > azClient.getMaxRetries()
           || ((StorageException) ex).getHttpStatusCode() == 404) {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             StorageErrorCode.AZURE_SERVICE_ERROR.getMessageCode(),
             se,
@@ -418,7 +412,6 @@ class IcebergAzureClient implements IcebergStorageClient {
           || SnowflakeUtil.getRootCause(ex) instanceof SocketTimeoutException) {
         if (retryCount > azClient.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               StorageErrorCode.IO_ERROR.getMessageCode(),
               ex,
@@ -432,7 +425,6 @@ class IcebergAzureClient implements IcebergStorageClient {
         }
       } else {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             StorageErrorCode.IO_ERROR.getMessageCode(),
             ex,
@@ -477,8 +469,7 @@ class IcebergAzureClient implements IcebergStorageClient {
   }
 
   private static void setSessionlessProxyForAzure(
-      final Properties proxyProperties, final OperationContext opContext)
-      throws SnowflakeSQLException {
+      final Properties proxyProperties, final OperationContext opContext) throws SQLException {
     if (proxyProperties != null
         && !proxyProperties.isEmpty()
         && proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
