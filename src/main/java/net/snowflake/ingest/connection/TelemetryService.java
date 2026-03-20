@@ -16,8 +16,8 @@ import com.google.common.util.concurrent.RateLimiter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import net.snowflake.client.jdbc.telemetry.TelemetryClient;
-import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
+import net.snowflake.ingest.connection.telemetry.TelemetryClient;
+import net.snowflake.ingest.connection.telemetry.TelemetryUtil;
 import net.snowflake.ingest.utils.Logging;
 import org.apache.http.impl.client.CloseableHttpClient;
 
