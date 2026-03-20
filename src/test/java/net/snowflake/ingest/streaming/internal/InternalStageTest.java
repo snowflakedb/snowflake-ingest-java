@@ -12,7 +12,7 @@ import static net.snowflake.ingest.utils.HttpUtil.NON_PROXY_HOSTS;
 import static net.snowflake.ingest.utils.HttpUtil.PROXY_HOST;
 import static net.snowflake.ingest.utils.HttpUtil.PROXY_PORT;
 import static net.snowflake.ingest.utils.HttpUtil.USE_PROXY;
-import static net.snowflake.ingest.utils.HttpUtil.generateProxyPropertiesForJDBC;
+import static net.snowflake.ingest.utils.HttpUtil.generateProxyProperties;
 import static net.snowflake.ingest.utils.HttpUtil.shouldBypassProxy;
 import static org.mockito.Mockito.times;
 
@@ -33,7 +33,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.OCSPMode;
-import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
@@ -43,6 +42,7 @@ import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.SFSessionProperty;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
@@ -525,7 +525,7 @@ public class InternalStageTest {
 
     try {
       // Test empty properties when USE_PROXY is NOT set;
-      Properties props = generateProxyPropertiesForJDBC();
+      Properties props = generateProxyProperties();
       Assert.assertTrue(props.isEmpty());
 
       System.setProperty(USE_PROXY, "true");
@@ -536,7 +536,7 @@ public class InternalStageTest {
       System.setProperty(NON_PROXY_HOSTS, nonProxyHosts);
 
       // Verify that properties are set
-      props = generateProxyPropertiesForJDBC();
+      props = generateProxyProperties();
       Assert.assertEquals("true", props.get(SFSessionProperty.USE_PROXY.getPropertyKey()));
       Assert.assertEquals(proxyHost, props.get(SFSessionProperty.PROXY_HOST.getPropertyKey()));
       Assert.assertEquals(proxyPort, props.get(SFSessionProperty.PROXY_PORT.getPropertyKey()));

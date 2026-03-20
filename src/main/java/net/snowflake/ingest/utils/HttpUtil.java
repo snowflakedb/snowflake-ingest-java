@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
-import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.ingest.streaming.internal.StreamingIngestUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -331,7 +330,7 @@ public class HttpUtil {
    *
    * @return proxy parameters that could be used by JDBC
    */
-  public static Properties generateProxyPropertiesForJDBC() {
+  public static Properties generateProxyProperties() {
     Properties proxyProperties = new Properties();
     if (Boolean.parseBoolean(System.getProperty(USE_PROXY))) {
       if (isNullOrEmpty(System.getProperty(PROXY_PORT))) {
@@ -365,6 +364,21 @@ public class HttpUtil {
       }
     }
     return proxyProperties;
+  }
+
+  /**
+   * Replicated from snowflake-jdbc: net.snowflake.client.core.HttpUtil.isSocksProxyDisabled().
+   * Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/core/HttpUtil.java
+   */
+  private static boolean socksProxyDisabled = false;
+
+  public static boolean isSocksProxyDisabled() {
+    return socksProxyDisabled;
+  }
+
+  public static void setSocksProxyDisabled(boolean disabled) {
+    socksProxyDisabled = disabled;
   }
 
   /** Thread to monitor expired and idle connection, if found clear it and return it back to pool */

@@ -180,33 +180,43 @@ may temporarily depend on other JDBC classes that haven't been replaced yet —
 that's fine. As more JDBC classes get replaced, update earlier replacements to
 use ingest versions.
 
+**Key constraint:** A JDBC class can only be replaced when **no call site passes
+it to another JDBC method**. If our `ErrorCode` is passed to JDBC's
+`SnowflakeSQLException(ErrorCode, ...)`, we must replace `SnowflakeSQLException`
+first (or replace both together). Otherwise we'd have to change behavior at the
+call site, which violates the replication-only principle.
+
 **Naming rule:** Replicated classes keep the same name as in JDBC. Where a name
 collides with an existing ingest class (e.g. `ErrorCode`), use package separation
 — the replicated class goes into the `fileTransferAgent` package.
 
-**PR size limit:** Each PR should be around 300 lines of production code changes
-(new classes + import swaps). Test code is not counted toward this limit. A step
-may be split across multiple PRs if needed to stay within this budget.
+**PR size limit:** Each PR should target around 200 lines of production code
+changes (new classes + import swaps). Test code is not counted toward this limit.
+Exception: if a single replicated class is larger than 200 lines, it's OK to
+exceed the limit. A step may be split across multiple PRs if needed.
 
 ### Dependency Graph
 
 ```
-Independent — can replace any time, no interaction with other JDBC classes:
+Independent — can replace any time, not passed to any JDBC method:
   Power10              ← TimestampWrapper, DataValidationUtil
   SFPair               ← S3, Azure, GCS clients
   Stopwatch            ← S3, Azure, GCS clients
   SFSessionProperty    ← HttpUtil, Utils, S3, Azure clients, ClientInternal
   SqlState             ← S3, Azure, GCS, StorageClient interface
-  ErrorCode (JDBC)     ← S3, Azure, GCS, StorageClient interface
   CLOUD_STORAGE_CREDENTIALS_EXPIRED ← S3, Azure clients
   StorageObjectMetadata ← interface; all storage clients, FileTransferAgent
   FileBackedOutputStream ← all storage clients, FileTransferAgent, StorageHelper
   HttpUtil (JDBC)       ← isSocksProxyDisabled(); S3, StorageClientFactory
   SFSSLConnectionSocketFactory ← S3 client only
-  SnowflakeUtil methods ← S3, Azure, GCS, FileTransferAgent
-  SnowflakeSQLException ← thrown by storage clients; caught as SQLException
-  SnowflakeSQLLoggedException ← extends SnowflakeSQLException
+  SnowflakeUtil methods ← S3, Azure, GCS, FileTransferAgent (except
+                           convertProxyPropertiesToHttpClientKey — see below)
   TelemetryClient/Util  ← TelemetryService only
+
+Must replace together — passed to each other's JDBC constructors:
+  ErrorCode (JDBC)     ← passed to SnowflakeSQLException(ErrorCode, ...) constructor
+  SnowflakeSQLException ← constructor takes JDBC ErrorCode; thrown by storage clients
+  SnowflakeSQLLoggedException ← extends SnowflakeSQLException
 
 Can replace — replacement may temporarily import other JDBC classes:
   OCSPMode             ← IcebergFileTransferAgent, InternalStage*
@@ -233,23 +243,26 @@ is replaced.
 
 ---
 
-### Step 1 — Simple utilities ✅
+### Step 1 — Simple utilities ✅ MERGED
 
-`Power10`, `SFPair`, `Stopwatch`. Swap imports.
+**Done:** `Power10`, `SFPair`, `Stopwatch`. Swap imports.
 
 **Files fully freed of JDBC imports:** `DataValidationUtil`, `TimestampWrapper`
 
 ---
 
-### Step 2 — Enums, constants, proxy utils
+### Step 2 — Enums, constants, proxy utils ✅ (PR #1109)
 
+**Done:**
 - `SFSessionProperty` — enum with 9 property keys, swap all imports
 - `SqlState` — SQL state constants (same package, no import needed)
-- `ErrorCode` (in `fileTransferAgent` package) + `CLOUD_STORAGE_CREDENTIALS_EXPIRED`
-- `OCSPMode` — enum, swap in `IcebergFileTransferAgent` (keep JDBC import in
-  `InternalStage` — blocked by `SnowflakeFileTransferConfig`)
+- `OCSPMode` — enum class created (swap blocked — see Step 4)
 - `HttpUtil.isSocksProxyDisabled()` — add to ingest's HttpUtil, swap import
 - Rename `generateProxyPropertiesForJDBC()` → `generateProxyProperties()`
+
+**Left for later:** `ErrorCode` + `CLOUD_STORAGE_CREDENTIALS_EXPIRED` (passed as
+type to JDBC's `SnowflakeSQLException(ErrorCode, ...)` — must replace together
+with exceptions, see Step 5).
 
 **Files fully freed:** `Utils`, `HttpUtil`, `SnowflakeStreamingIngestClientInternal`
 
@@ -280,15 +293,18 @@ is replaced.
 
 ---
 
-### Step 5 — Exceptions
+### Step 5 — Exceptions + ErrorCode (must replace together)
 
+- `ErrorCode` (in `fileTransferAgent` package) + `CLOUD_STORAGE_CREDENTIALS_EXPIRED`
 - `SnowflakeSQLException` / `SnowflakeSQLLoggedException` — own classes
-- These never leak to public API (always caught and wrapped in `SFException`)
+- These must be replaced together because `ErrorCode` is passed as a type to
+  JDBC's `SnowflakeSQLException(ErrorCode, ...)` constructor
+- Exceptions never leak to public API (always caught and wrapped in `SFException`)
 - JDBC's `SnowflakeFileTransferAgent` also throws JDBC's `SnowflakeSQLException`,
   but catch sites already use `catch (SQLException ...)` which catches both
 
-**JDBC imports removed:** All `SnowflakeSQLException`/`SnowflakeSQLLoggedException`
-imports from storage clients
+**JDBC imports removed:** `ErrorCode`, `CLOUD_STORAGE_CREDENTIALS_EXPIRED`,
+`SnowflakeSQLException`, `SnowflakeSQLLoggedException` from storage clients
 
 ---
 
