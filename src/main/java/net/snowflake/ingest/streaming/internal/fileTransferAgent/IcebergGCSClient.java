@@ -19,13 +19,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.security.InvalidKeyException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import net.snowflake.client.jdbc.ErrorCode;
-import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
@@ -53,7 +50,7 @@ class IcebergGCSClient implements IcebergStorageClient {
    */
   public static IcebergGCSClient createSnowflakeGCSClient(
       StageInfo stage, VolumeEncryptionMode volumeEncryptionMode, String encryptionKmsKeyId)
-      throws SnowflakeSQLException {
+      throws SQLException {
     IcebergGCSClient sfGcsClient = new IcebergGCSClient();
     sfGcsClient.volumeEncryptionMode = volumeEncryptionMode;
     sfGcsClient.encryptionKmsKeyId = encryptionKmsKeyId;
@@ -154,7 +151,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       StorageObjectMetadata meta,
       String region,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SQLException {
     throw new SnowflakeSQLLoggedException(
         null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
@@ -177,7 +174,7 @@ class IcebergGCSClient implements IcebergStorageClient {
    * @param meta object meta data
    * @param stageRegion region name where the stage persists
    * @param presignedUrl presigned URL for upload. Used by GCP.
-   * @throws SnowflakeSQLException if upload failed
+   * @throws SQLException if upload failed
    */
   @Override
   public String uploadWithPresignedUrlWithoutConnection(
@@ -193,7 +190,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logInfo(
         StorageHelper.getStartUploadLog(
             "GCS", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -271,7 +268,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       String contentEncoding,
       Map<String, String> metadata,
       InputStream content)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logDebug("Uploading file {} to bucket {}", destFileName, remoteStorageLocation);
     BlobId blobId = BlobId.of(remoteStorageLocation, destFileName);
     BlobInfo blobInfo =
@@ -302,7 +299,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       long originalContentLength,
       FileBackedOutputStream fileBackedOutputStream,
       List<FileInputStream> toClose)
-      throws SnowflakeSQLException {
+      throws SQLException {
     logger.logDebug(
         "createUploadStream({}, {}, {}, {}, {}, {})",
         this,
@@ -350,19 +347,18 @@ class IcebergGCSClient implements IcebergStorageClient {
   }
 
   private void handleStorageException(Exception ex, int retryCount, String operation)
-      throws SnowflakeSQLException {
+      throws SQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
       // Log the error and throw a message that explains the cause
-      SnowflakeFileTransferAgent.throwJCEMissingError(operation, ex, null /* queryId */);
+      StorageClientUtil.throwJCEMissingError(operation, ex);
     }
 
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
     if (getRootCause(ex) instanceof IOException) {
-      SnowflakeFileTransferAgent.throwNoSpaceLeftError(
-          null /* session */, operation, ex, null /* queryId */);
+      StorageClientUtil.throwNoSpaceLeftError(operation, ex);
     }
 
     if (ex instanceof StorageException) {
