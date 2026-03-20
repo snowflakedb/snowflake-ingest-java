@@ -268,6 +268,21 @@ with exceptions, see Step 5).
 
 ---
 
+### Step 2b — SFLogger infrastructure ✅ (PR #1112)
+
+**Done:** Replicated 17 logging classes recursively so replicated classes use
+`SFLogger`/`SFLoggerFactory` verbatim:
+- Core: `SFLogger`, `SFLoggerFactory`, `SLF4JLogger`, `JDK14Logger`, `ArgSupplier`
+- JDK14 deps: `SFFormatter`, `StdOutConsoleHandler`,
+  `StdErrOutThresholdAwareConsoleHandler`, `UnknownJavaUtilLoggingLevelException`
+- Event/security: `SecretDetector`, `EventHandler`, `EventUtil`, `Event`,
+  `BasicEvent`, `UUIDUtils`
+- Helpers: `LogUtil` (replaces `SnowflakeUtil.systemGetProperty`/`isNullOrEmpty`)
+- `IncidentUtil` stubbed to constants (full class requires `javax.servlet`)
+- Added `json-smart` as direct dependency (used by `SecretDetector`)
+
+---
+
 ### Step 3 — Storage data types + utils
 
 - `StorageObjectMetadata` — own interface (same package)

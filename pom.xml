@@ -860,13 +860,17 @@
       <groupId>net.bytebuddy</groupId>
       <artifactId>byte-buddy-agent</artifactId>
     </dependency>
+
+    <!-- Transitive dependency; declared here to use a specific version -->
+    <dependency>
+      <groupId>net.minidev</groupId>
+      <artifactId>json-smart</artifactId>
+    </dependency>
     <!-- Snowflake JDBC used to connect to the service-->
     <dependency>
       <groupId>net.snowflake</groupId>
       <artifactId>snowflake-jdbc-thin</artifactId>
     </dependency>
-
-    <!-- Transitive dependency; declared here to use a specific version -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
