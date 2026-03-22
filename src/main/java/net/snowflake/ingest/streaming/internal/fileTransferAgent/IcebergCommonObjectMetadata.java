@@ -5,8 +5,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.util.Map;
 import java.util.TreeMap;
-import net.snowflake.client.jdbc.SnowflakeUtil;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 
 /**
  * Implements platform-independent interface Azure BLOB and GCS object metadata
@@ -33,7 +31,7 @@ public class IcebergCommonObjectMetadata implements StorageObjectMetadata {
       long contentLength, String contentEncoding, Map<String, String> userDefinedMetadata) {
     this.contentEncoding = contentEncoding;
     this.contentLength = contentLength;
-    this.userDefinedMetadata = SnowflakeUtil.createCaseInsensitiveMap(userDefinedMetadata);
+    this.userDefinedMetadata = StorageClientUtil.createCaseInsensitiveMap(userDefinedMetadata);
   }
 
   /**

@@ -6,8 +6,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import java.util.Map;
-import net.snowflake.client.jdbc.SnowflakeUtil;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 
 /**
  * s3 implementation of platform independent StorageObjectMetadata interface, wraps an S3
@@ -31,7 +29,7 @@ public class IcebergS3ObjectMetadata implements StorageObjectMetadata {
 
   @Override
   public Map<String, String> getUserMetadata() {
-    return SnowflakeUtil.createCaseInsensitiveMap(objectMetadata.getUserMetadata());
+    return StorageClientUtil.createCaseInsensitiveMap(objectMetadata.getUserMetadata());
   }
 
   @Override

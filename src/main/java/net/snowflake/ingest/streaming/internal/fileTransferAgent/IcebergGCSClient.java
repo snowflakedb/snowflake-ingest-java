@@ -1,7 +1,7 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
-import static net.snowflake.client.jdbc.SnowflakeUtil.isBlank;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.isBlank;
 
 import com.google.api.gax.rpc.FixedHeaderProvider;
 import com.google.cloud.storage.Blob;
@@ -24,12 +24,10 @@ import java.util.List;
 import java.util.Map;
 import net.snowflake.client.core.HttpClientSettingsKey;
 import net.snowflake.client.jdbc.ErrorCode;
-import net.snowflake.client.jdbc.FileBackedOutputStream;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;
