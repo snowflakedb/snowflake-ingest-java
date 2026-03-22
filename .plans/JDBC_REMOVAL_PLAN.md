@@ -307,31 +307,41 @@ with exceptions, see Step 5).
 
 ---
 
-### Step 4 — HTTP settings + SSL factory
+### Step 4 — HTTP settings + SSL factory ✅ (PR #1111)
 
-- `HttpClientSettingsKey` — value class (may temporarily import JDBC's `OCSPMode`,
-  or use ingest's `OCSPMode` if Step 2 is done first)
-- `SFSSLConnectionSocketFactory` replacement
-- `StorageClientUtil` additions: `convertProxyPropertiesToHttpClientKey`,
+**Done:**
+- `HttpClientSettingsKey` — verbatim copy with `isNullOrEmpty` from
+  `StorageClientUtil`
+- `HttpProtocol` — enum replicated
+- `IngestSSLConnectionSocketFactory` — replicated (renamed from
+  `SFSSLConnectionSocketFactory`)
+- `StorageClientUtil` additions: `convertProxyPropertiesToHttpClientKey`
+  (temporarily throws JDBC's `SnowflakeSQLException`),
   `createDefaultExecutorService`
+- Swapped `OCSPMode` in `IcebergFileTransferAgent`
+
+**Left:** `StorageClientUtil.convertProxyPropertiesToHttpClientKey` still throws
+JDBC's `SnowflakeSQLException` — will be updated when exceptions are replaced.
 
 **JDBC imports removed:** `HttpClientSettingsKey`, `SFSSLConnectionSocketFactory`,
-`SnowflakeUtil`, `HttpUtil` (JDBC)
+`SnowflakeUtil`, `HttpUtil` (JDBC), `OCSPMode` (in `IcebergFileTransferAgent`)
 
 ---
 
-### Step 5 — Exceptions + ErrorCode (must replace together)
+### Step 5 — Exceptions + ErrorCode ⏸️ DEFERRED
 
-- `ErrorCode` (in `fileTransferAgent` package) + `CLOUD_STORAGE_CREDENTIALS_EXPIRED`
-- `SnowflakeSQLException` / `SnowflakeSQLLoggedException` — own classes
-- These must be replaced together because `ErrorCode` is passed as a type to
-  JDBC's `SnowflakeSQLException(ErrorCode, ...)` constructor
-- Exceptions never leak to public API (always caught and wrapped in `SFException`)
-- JDBC's `SnowflakeFileTransferAgent` also throws JDBC's `SnowflakeSQLException`,
-  but catch sites already use `catch (SQLException ...)` which catches both
+**Blocked:** `SnowflakeSQLLoggedException` depends on JDBC telemetry/session
+classes (`SFBaseSession`, `SFSession`, `Telemetry`, `TelemetryService`,
+`ObjectMapperFactory`, `SnowflakeDriver`, etc.) — replicating recursively would
+be thousands of lines. `ErrorCode` must be replaced together with
+`SnowflakeSQLException` (passed to its constructor). `SnowflakeSQLException`
+depends on `ResourceBundleManager` + `SFException` from JDBC.
 
-**JDBC imports removed:** `ErrorCode`, `CLOUD_STORAGE_CREDENTIALS_EXPIRED`,
-`SnowflakeSQLException`, `SnowflakeSQLLoggedException` from storage clients
+**Decision:** Keep JDBC dependency on all three classes for now. Exceptions never
+leak to the public API (always caught and wrapped in `SFException`). They will be
+addressed after Step 7 removes `SnowflakeFileTransferAgent`, at which point the
+exceptions are only thrown by our own code and can potentially be simplified to
+plain `SQLException`.
 
 ---
 
@@ -360,6 +370,8 @@ with exceptions, see Step 5).
 - `RemoteStoreFileEncryptionMaterial` — simple data holder
 - `SnowflakeFileTransferMetadataV1` — own data class
 - Swap `OCSPMode` in `InternalStage` (no longer passed to JDBC)
+- Revisit Step 5: replace `ErrorCode`, `SnowflakeSQLException`,
+  `SnowflakeSQLLoggedException` (or simplify to `SQLException`)
 
 **JDBC imports removed:** All remaining JDBC imports
 

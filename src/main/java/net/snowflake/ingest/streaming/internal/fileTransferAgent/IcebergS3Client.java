@@ -1,7 +1,7 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
-import static net.snowflake.client.jdbc.SnowflakeUtil.createDefaultExecutorService;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.createDefaultExecutorService;
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
 
 import com.amazonaws.AmazonClientException;
@@ -41,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
-import net.snowflake.client.core.SFSSLConnectionSocketFactory;
 import net.snowflake.client.jdbc.ErrorCode;
 import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
@@ -85,7 +84,7 @@ class IcebergS3Client implements IcebergStorageClient {
             // trust manager is set to null, which will use default ones
             // instead of SFTrustManager (which enables ocsp checking)
             s3ConnectionSocketFactory =
-                new SFSSLConnectionSocketFactory(null, HttpUtil.isSocksProxyDisabled());
+                new IngestSSLConnectionSocketFactory(null, HttpUtil.isSocksProxyDisabled());
           } catch (KeyManagementException | NoSuchAlgorithmException e) {
             throw new SSLInitializationException(e.getMessage(), e);
           }

@@ -10,9 +10,15 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
+import net.snowflake.ingest.utils.OCSPMode;
+import net.snowflake.ingest.utils.SFSessionProperty;
 
 final class StorageClientUtil {
   private static final SFLogger logger = SFLoggerFactory.getLogger(StorageClientUtil.class);
@@ -80,5 +86,66 @@ final class StorageClientUtil {
       detectedOS = operSys != null ? operSys.toLowerCase() : "";
     }
     return detectedOS.contains("win");
+  }
+
+  /**
+   * Replicated from SnowflakeUtil.convertProxyPropertiesToHttpClientKey.
+   *
+   * <p>Note: JDBC version throws SnowflakeSQLException on bad proxy port. We use the same JDBC
+   * SnowflakeSQLException here temporarily until Step 5 replaces it.
+   */
+  static HttpClientSettingsKey convertProxyPropertiesToHttpClientKey(OCSPMode mode, Properties info)
+      throws net.snowflake.client.jdbc.SnowflakeSQLException {
+    if (info != null
+        && info.size() > 0
+        && info.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
+      Boolean useProxy =
+          Boolean.valueOf(info.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()));
+      if (useProxy) {
+        String proxyHost = info.getProperty(SFSessionProperty.PROXY_HOST.getPropertyKey());
+        int proxyPort;
+        try {
+          proxyPort =
+              Integer.parseInt(info.getProperty(SFSessionProperty.PROXY_PORT.getPropertyKey()));
+        } catch (NumberFormatException | NullPointerException e) {
+          throw new net.snowflake.client.jdbc.SnowflakeSQLException(
+              net.snowflake.client.jdbc.ErrorCode.INVALID_PROXY_PROPERTIES,
+              "Could not parse port number");
+        }
+        String proxyUser = info.getProperty(SFSessionProperty.PROXY_USER.getPropertyKey());
+        String proxyPassword = info.getProperty(SFSessionProperty.PROXY_PASSWORD.getPropertyKey());
+        String nonProxyHosts = info.getProperty(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey());
+        String proxyProtocol = info.getProperty(SFSessionProperty.PROXY_PROTOCOL.getPropertyKey());
+        // userAgentSuffix and gzipDisabled are not set by the ingest SDK
+        return new HttpClientSettingsKey(
+            mode,
+            proxyHost,
+            proxyPort,
+            nonProxyHosts,
+            proxyUser,
+            proxyPassword,
+            proxyProtocol,
+            null,
+            false);
+      }
+    }
+    return new HttpClientSettingsKey(mode);
+  }
+
+  /** Replicated from SnowflakeUtil.createDefaultExecutorService */
+  static ThreadPoolExecutor createDefaultExecutorService(
+      final String threadNamePrefix, int parallel) {
+    ThreadFactory threadFactory =
+        new ThreadFactory() {
+          private int threadCount = 1;
+
+          @Override
+          public Thread newThread(Runnable r) {
+            Thread thread = new Thread(r);
+            thread.setName(threadNamePrefix + threadCount++);
+            return thread;
+          }
+        };
+    return (ThreadPoolExecutor) Executors.newFixedThreadPool(parallel, threadFactory);
   }
 }
