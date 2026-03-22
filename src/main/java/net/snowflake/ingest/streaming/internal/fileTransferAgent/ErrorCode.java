@@ -124,6 +124,12 @@ public enum ErrorCode {
     return sqlState;
   }
 
+  /**
+   * From net.snowflake.client.core.Constants. Included here so storage clients can import it from
+   * the same package.
+   */
+  public static final int CLOUD_STORAGE_CREDENTIALS_EXPIRED = 240001;
+
   @Override
   public String toString() {
     return "ErrorCode{" + "messageCode=" + messageCode + ", sqlState=" + sqlState + '}';

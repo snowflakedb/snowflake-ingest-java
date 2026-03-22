@@ -328,20 +328,33 @@ JDBC's `SnowflakeSQLException` — will be updated when exceptions are replaced.
 
 ---
 
-### Step 5 — Exceptions + ErrorCode ⏸️ DEFERRED
+### Step 5a — ErrorCode, ResourceBundleManager ✅ (PR #1113)
 
-**Blocked:** `SnowflakeSQLLoggedException` depends on JDBC telemetry/session
-classes (`SFBaseSession`, `SFSession`, `Telemetry`, `TelemetryService`,
-`ObjectMapperFactory`, `SnowflakeDriver`, etc.) — replicating recursively would
-be thousands of lines. `ErrorCode` must be replaced together with
-`SnowflakeSQLException` (passed to its constructor). `SnowflakeSQLException`
-depends on `ResourceBundleManager` + `SFException` from JDBC.
+**Done:**
+- `ErrorCode` — full enum with all 69 error codes (verbatim copy). `SqlState`
+  import temporarily uses JDBC shaded path. `errorMessageResource` path updated.
+- `ResourceBundleManager` — from snowflake-common (decompiled, no public source)
+- `jdbc_error_messages.properties` — error message templates from JDBC
 
-**Decision:** Keep JDBC dependency on all three classes for now. Exceptions never
-leak to the public API (always caught and wrapped in `SFException`). They will be
-addressed after Step 7 removes `SnowflakeFileTransferAgent`, at which point the
-exceptions are only thrown by our own code and can potentially be simplified to
-plain `SQLException`.
+No import swaps — storage clients still import JDBC's `ErrorCode` (explicit import
+takes precedence over same-package class).
+
+---
+
+### Step 5b — SnowflakeSQLException, SnowflakeSQLLoggedException ✅ (PR #1114)
+
+**Done:**
+- `SnowflakeSQLException` — verbatim copy. `SFException` import kept from JDBC
+  temporarily (one constructor, never called by ingest).
+- `SnowflakeSQLLoggedException` — verbatim copy. JDBC telemetry/session imports
+  kept temporarily (all callers pass null for session).
+- `CLOUD_STORAGE_CREDENTIALS_EXPIRED` constant added to `ErrorCode`.
+
+**Left for Step 7:** Import swaps in storage clients deferred — swapping would
+require widening `throws SnowflakeSQLException` to `throws SQLException` because
+`SnowflakeFileTransferAgent` still throws JDBC's version. Once Step 7 replaces
+`SnowflakeFileTransferAgent`, nothing throws JDBC's exception and the swap can be
+done cleanly.
 
 ---
 
@@ -353,14 +366,19 @@ plain `SQLException`.
 
 ---
 
-### Step 7 — Replace SnowflakeFileTransferAgent (unblocks remaining types)
+### Step 7 — Replace SnowflakeFileTransferAgent (unblocks exception swap)
 
 - Inline `throwJCEMissingError()` / `throwNoSpaceLeftError()` in storage clients
 - Replace `getFileTransferMetadatas()` → own JSON parser in `InternalStage`
 - Replace `uploadWithoutConnection()` → use `IcebergFileTransferAgent` path
 - Remove `SnowflakeFileTransferConfig`
+- Swap `ErrorCode`, `SnowflakeSQLException`, `SnowflakeSQLLoggedException`,
+  `CLOUD_STORAGE_CREDENTIALS_EXPIRED` imports in storage clients (now safe —
+  nothing throws JDBC's exception anymore)
 
-**JDBC imports removed:** `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`
+**JDBC imports removed:** `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`,
+`ErrorCode`, `SnowflakeSQLException`, `SnowflakeSQLLoggedException`,
+`CLOUD_STORAGE_CREDENTIALS_EXPIRED`
 
 ---
 
@@ -370,8 +388,6 @@ plain `SQLException`.
 - `RemoteStoreFileEncryptionMaterial` — simple data holder
 - `SnowflakeFileTransferMetadataV1` — own data class
 - Swap `OCSPMode` in `InternalStage` (no longer passed to JDBC)
-- Revisit Step 5: replace `ErrorCode`, `SnowflakeSQLException`,
-  `SnowflakeSQLLoggedException` (or simplify to `SQLException`)
 
 **JDBC imports removed:** All remaining JDBC imports
 
