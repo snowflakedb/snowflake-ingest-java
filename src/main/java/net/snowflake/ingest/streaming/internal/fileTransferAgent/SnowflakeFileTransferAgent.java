@@ -8,8 +8,8 @@
  *
  * Permitted differences: package, SFLogger uses ingest's replicated version,
  * SnowflakeUtil.isNullOrEmpty/systemGetProperty replaced with StorageClientUtil versions,
- * ErrorCode/SqlState/SnowflakeSQLException use ingest versions,
- * CommandType extracted to top-level enum.
+ * ErrorCode/SqlState/SnowflakeSQLException use ingest versions.
+ * CommandType inner enum kept (originally from SFBaseFileTransferAgent parent class).
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
@@ -33,7 +33,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import net.snowflake.client.core.ObjectMapperFactory;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.jdbc.SFBaseFileTransferAgent;
 import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
@@ -42,12 +41,15 @@ import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 
-/**
- * Static parsing methods replicated from JDBC's SnowflakeFileTransferAgent. Used by InternalStage
- * to parse the configure response into file transfer metadata.
- */
-public class IngestFileTransferAgent {
-  private static final SFLogger logger = SFLoggerFactory.getLogger(IngestFileTransferAgent.class);
+/** Class for uploading/downloading files */
+public class SnowflakeFileTransferAgent {
+  private static final SFLogger logger =
+      SFLoggerFactory.getLogger(SnowflakeFileTransferAgent.class);
+
+  public enum CommandType {
+    UPLOAD,
+    DOWNLOAD
+  }
 
   private static final ObjectMapper mapper = ObjectMapperFactory.getObjectMapper();
 
@@ -343,11 +345,10 @@ public class IngestFileTransferAgent {
 
     for (String sourceFilePath : sourceFiles) {
       String sourceFileName = sourceFilePath.substring(sourceFilePath.lastIndexOf("/") + 1);
-      // Convert ingest CommandType to JDBC's CommandType for the SnowflakeFileTransferMetadataV1
-      // constructor. This temporary bridge will be removed when SnowflakeFileTransferMetadataV1
-      // is replicated in Step 8.
-      SFBaseFileTransferAgent.CommandType jdbcCommandType =
-          SFBaseFileTransferAgent.CommandType.valueOf(commandType.name());
+      // Bridge to JDBC's CommandType for SnowflakeFileTransferMetadataV1 constructor.
+      // Temporary until SnowflakeFileTransferMetadataV1 is replicated in Step 8.
+      net.snowflake.client.jdbc.SFBaseFileTransferAgent.CommandType jdbcCommandType =
+          net.snowflake.client.jdbc.SFBaseFileTransferAgent.CommandType.valueOf(commandType.name());
       result.add(
           new SnowflakeFileTransferMetadataV1(
               stageInfo.getPresignedUrl(),
@@ -436,7 +437,7 @@ public class IngestFileTransferAgent {
         // Normal flow will never hit here. This is only for testing purposes
         if (isInjectedFileTransferExceptionEnabled()
             && injectedFileTransferException instanceof Exception) {
-          throw (Exception) IngestFileTransferAgent.injectedFileTransferException;
+          throw (Exception) SnowflakeFileTransferAgent.injectedFileTransferException;
         }
         // The following currently ignore sub directories
         File[] filesMatchingPattern =
