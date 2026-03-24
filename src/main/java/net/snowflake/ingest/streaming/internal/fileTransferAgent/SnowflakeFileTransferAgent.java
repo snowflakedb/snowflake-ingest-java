@@ -9,7 +9,7 @@
  * Permitted differences: package, SFLogger uses ingest's replicated version,
  * SnowflakeUtil.isNullOrEmpty/systemGetProperty replaced with StorageClientUtil versions,
  * ErrorCode/SqlState/SnowflakeSQLException use ingest versions.
- * CommandType inner enum kept (originally from SFBaseFileTransferAgent parent class).
+ * CommandType inherited from SFBaseFileTransferAgent parent class.
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
@@ -42,14 +42,9 @@ import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFac
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 
 /** Class for uploading/downloading files */
-public class SnowflakeFileTransferAgent {
+public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
   private static final SFLogger logger =
       SFLoggerFactory.getLogger(SnowflakeFileTransferAgent.class);
-
-  public enum CommandType {
-    UPLOAD,
-    DOWNLOAD
-  }
 
   private static final ObjectMapper mapper = ObjectMapperFactory.getObjectMapper();
 
