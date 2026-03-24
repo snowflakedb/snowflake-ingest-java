@@ -373,19 +373,31 @@ done cleanly.
 
 ---
 
-### Step 7 — Replace SnowflakeFileTransferAgent (unblocks exception swap)
+### Step 7a — Inline error helpers, swap exception imports ✅ (PR #1116)
 
-- Inline `throwJCEMissingError()` / `throwNoSpaceLeftError()` in storage clients
+**Done:**
+- Inlined `throwJCEMissingError()`/`throwNoSpaceLeftError()` from
+  `SnowflakeFileTransferAgent` into `StorageClientUtil`
+- Swapped `ErrorCode`, `SnowflakeSQLException`, `SnowflakeSQLLoggedException`,
+  `CLOUD_STORAGE_CREDENTIALS_EXPIRED` imports in storage clients
+- Widened `throws` clauses to `SQLException` (covers both JDBC and ingest
+  exception types during transition)
+- Removed `SnowflakeFileTransferAgent` import from all storage clients
+
+**JDBC imports removed from storage clients:** `SnowflakeFileTransferAgent`,
+`ErrorCode`, `SnowflakeSQLException`, `SnowflakeSQLLoggedException`,
+`CLOUD_STORAGE_CREDENTIALS_EXPIRED`
+
+---
+
+### Step 7b — Replace SnowflakeFileTransferAgent in InternalStage
+
 - Replace `getFileTransferMetadatas()` → own JSON parser in `InternalStage`
 - Replace `uploadWithoutConnection()` → use `IcebergFileTransferAgent` path
 - Remove `SnowflakeFileTransferConfig`
-- Swap `ErrorCode`, `SnowflakeSQLException`, `SnowflakeSQLLoggedException`,
-  `CLOUD_STORAGE_CREDENTIALS_EXPIRED` imports in storage clients (now safe —
-  nothing throws JDBC's exception anymore)
 
-**JDBC imports removed:** `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`,
-`ErrorCode`, `SnowflakeSQLException`, `SnowflakeSQLLoggedException`,
-`CLOUD_STORAGE_CREDENTIALS_EXPIRED`
+**JDBC imports removed:** `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`
+from `InternalStage`
 
 ---
 
