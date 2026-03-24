@@ -36,7 +36,6 @@ import java.net.SocketTimeoutException;
 import java.security.InvalidKeyException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +101,7 @@ class IcebergS3Client implements IcebergStorageClient {
       boolean useS3RegionalUrl,
       VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
-      throws SQLException {
+      throws SnowflakeSQLException {
     this.isUseS3RegionalUrl = useS3RegionalUrl;
     this.volumeEncryptionMode = volumeEncryptionMode;
     this.encryptionKmsKeyId = encryptionKmsKeyId;
@@ -122,7 +121,7 @@ class IcebergS3Client implements IcebergStorageClient {
       String stageRegion,
       String stageEndPoint,
       boolean isClientSideEncrypted)
-      throws SQLException {
+      throws SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the AWS client. We won't save the awsCredentials since
     // we will be refreshing that, every time we reset the AWS client
@@ -221,7 +220,7 @@ class IcebergS3Client implements IcebergStorageClient {
    * @param meta object meta data
    * @param stageRegion region name where the stage persists
    * @param presignedUrl Not used in S3
-   * @throws SQLException if upload failed even after retry
+   * @throws SnowflakeSQLException if upload failed even after retry
    */
   @Override
   public String upload(
@@ -235,7 +234,7 @@ class IcebergS3Client implements IcebergStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SQLException {
+      throws SnowflakeSQLException {
     logger.logInfo(
         StorageHelper.getStartUploadLog(
             "S3", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -390,7 +389,7 @@ class IcebergS3Client implements IcebergStorageClient {
       ObjectMetadata meta,
       long originalContentLength,
       List<FileInputStream> toClose)
-      throws SQLException {
+      throws SnowflakeSQLException {
     logger.logDebug(
         "createUploadStream({}, {}, {}, {}, {}, {}, {})",
         this,
@@ -456,7 +455,7 @@ class IcebergS3Client implements IcebergStorageClient {
 
   private static void handleS3Exception(
       Exception ex, int retryCount, String operation, IcebergS3Client s3Client)
-      throws SQLException {
+      throws SnowflakeSQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
@@ -575,10 +574,10 @@ class IcebergS3Client implements IcebergStorageClient {
    *
    * @param proxyProperties Proxy Properties
    * @param clientConfig AWS Client Configuration
-   * @throws SQLException Thrown on configuration parsing failures
+   * @throws SnowflakeSQLException Thrown on configuration parsing failures
    */
   private static void setSessionlessProxyForS3(
-      Properties proxyProperties, ClientConfiguration clientConfig) throws SQLException {
+      Properties proxyProperties, ClientConfiguration clientConfig) throws SnowflakeSQLException {
     if (proxyProperties != null
         && proxyProperties.size() > 0
         && proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {

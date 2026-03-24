@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.io.File;
 import java.io.InputStream;
-import java.sql.SQLException;
 
 interface IcebergStorageClient {
 
@@ -37,7 +36,7 @@ interface IcebergStorageClient {
    * @param meta object meta data
    * @param region region name where the stage persists
    * @param presignedUrl presigned URL for upload. Used by GCP.
-   * @throws SQLException if upload failed even after retry
+   * @throws SnowflakeSQLException if upload failed even after retry
    */
   String upload(
       int parallel,
@@ -50,7 +49,7 @@ interface IcebergStorageClient {
       StorageObjectMetadata meta,
       String region,
       String presignedUrl)
-      throws SQLException;
+      throws SnowflakeSQLException;
 
   /**
    * Upload a file (-stream) to remote storage with Pre-signed URL without JDBC connection.
@@ -69,7 +68,7 @@ interface IcebergStorageClient {
    * @param meta object meta data
    * @param stageRegion region name where the stage persists
    * @param presignedUrl presigned URL for upload. Used by GCP.
-   * @throws SQLException if upload failed even after retry
+   * @throws SnowflakeSQLException if upload failed even after retry
    */
   default String uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
@@ -84,7 +83,7 @@ interface IcebergStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SQLException {
+      throws SnowflakeSQLException {
     throw new SnowflakeSQLLoggedException(
         null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
