@@ -390,18 +390,54 @@ done cleanly.
 
 ---
 
-### Step 7b — Replace SnowflakeFileTransferAgent in InternalStage
+### Step 7b — Replicate getFileTransferMetadatas ⬜ TODO
 
-- Replace `getFileTransferMetadatas()` → own JSON parser in `InternalStage`
-- Replace `uploadWithoutConnection()` → use `IcebergFileTransferAgent` path
-- Remove `SnowflakeFileTransferConfig`
+Replicate the static parsing methods from `SnowflakeFileTransferAgent` that
+`InternalStage` uses to convert the configure response JSON into
+`SnowflakeFileTransferMetadataV1`. Verbatim copy of JDBC source.
 
-**JDBC imports removed:** `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`
-from `InternalStage`
+**Methods to replicate:**
+- `getFileTransferMetadatas(JsonNode)` — 1-arg wrapper
+- `getFileTransferMetadatas(JsonNode, String)` — main parser
+- `getStageInfo(JsonNode, SFSession)` — extracts StageInfo from JSON
+- `extractStageCreds(JsonNode, String)` — parses credentials
+- `getEncryptionMaterial(CommandType, JsonNode)` — parses encryption material
+- `expandFileNames(String[], String)` — resolves file path globs
+- `setupUseRegionalUrl(JsonNode, StageInfo)` — sets regional URL flag
+- `setupUseVirtualUrl(JsonNode, StageInfo)` — sets virtual URL flag
+
+**Also replicate:**
+- `CommandType` enum (from `SFBaseFileTransferAgent`)
+- `SnowflakeFileTransferMetadata` interface (return type)
+
+**Swap in `InternalStage`:** `SnowflakeFileTransferAgent.getFileTransferMetadatas()` →
+ingest's replicated version.
+
+**JDBC imports removed from `InternalStage`:** `SnowflakeFileTransferAgent` (partially —
+`uploadWithoutConnection` still uses JDBC, see Step 7c)
 
 ---
 
-### Step 8 — Replace blocked types (now unblocked after Step 7)
+### Step 7c — Replicate uploadWithoutConnection ⬜ TODO
+
+Replicate the non-Iceberg upload path. `SnowflakeFileTransferAgent.uploadWithoutConnection`
+calls JDBC's own `StorageClientFactory` → `SnowflakeStorageClient` (S3/Azure/GCS). These
+are already replicated as `IcebergStorageClientFactory` → `IcebergStorageClient`
+(S3/Azure/GCS) which were created before this project as local copies of the JDBC upload
+stack.
+
+- Route non-Iceberg `uploadWithoutConnection` through `IcebergFileTransferAgent`
+  (justified: `IcebergFileTransferAgent` IS the verbatim replication of the JDBC upload
+  path, using the already-replicated Iceberg storage clients)
+- Remove `SnowflakeFileTransferConfig`
+- Remove `parseConfigureResponseMapper` (Jackson version mismatch workaround)
+
+**JDBC imports removed from `InternalStage`:** `SnowflakeFileTransferAgent` (fully),
+`SnowflakeFileTransferConfig`, JDBC `OCSPMode`
+
+---
+
+### Step 8 — Replace blocked types (now unblocked after Step 7) ⬜ TODO
 
 - `StageInfo` — own data class with `StageType` enum
 - `RemoteStoreFileEncryptionMaterial` — simple data holder
@@ -412,7 +448,7 @@ from `InternalStage`
 
 ---
 
-### Step 9 — Remove JDBC Dependency
+### Step 9 — Remove JDBC Dependency ⬜ TODO
 
 1. Change `snowflake-jdbc-thin` scope to `test` in `pom.xml` (`TestUtils.java` needs
    `SnowflakeDriver` for IT result verification)
