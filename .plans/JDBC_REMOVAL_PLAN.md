@@ -358,9 +358,16 @@ done cleanly.
 
 ---
 
-### Step 6 — Telemetry (independent, can be done in parallel)
+### Step 6 — Telemetry ✅ (PR #1115)
 
-- Replace `TelemetryClient`/`TelemetryUtil` with own HTTP sender
+**Done:** Replicated 5 JDBC telemetry classes into
+`net.snowflake.ingest.connection.telemetry`:
+- `TelemetryClient` — batches and sends telemetry via HTTP POST. JDBC imports
+  kept temporarily (`HttpUtil`, `ObjectMapperFactory`, `SFSession`,
+  `SnowflakeConnectionV1`, `SnowflakeSQLException`, `TelemetryThreadPool`).
+- `TelemetryUtil`, `Telemetry` (interface), `TelemetryData`, `TelemetryField`
+
+`TelemetryService` now imports from ingest telemetry package.
 
 **Files fully freed:** `TelemetryService`
 
