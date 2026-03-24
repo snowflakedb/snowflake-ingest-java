@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.security.InvalidKeyException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +49,7 @@ class IcebergGCSClient implements IcebergStorageClient {
    */
   public static IcebergGCSClient createSnowflakeGCSClient(
       StageInfo stage, VolumeEncryptionMode volumeEncryptionMode, String encryptionKmsKeyId)
-      throws SQLException {
+      throws SnowflakeSQLException {
     IcebergGCSClient sfGcsClient = new IcebergGCSClient();
     sfGcsClient.volumeEncryptionMode = volumeEncryptionMode;
     sfGcsClient.encryptionKmsKeyId = encryptionKmsKeyId;
@@ -151,7 +150,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       StorageObjectMetadata meta,
       String region,
       String presignedUrl)
-      throws SQLException {
+      throws SnowflakeSQLException {
     throw new SnowflakeSQLLoggedException(
         null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
@@ -174,7 +173,7 @@ class IcebergGCSClient implements IcebergStorageClient {
    * @param meta object meta data
    * @param stageRegion region name where the stage persists
    * @param presignedUrl presigned URL for upload. Used by GCP.
-   * @throws SQLException if upload failed
+   * @throws SnowflakeSQLException if upload failed
    */
   @Override
   public String uploadWithPresignedUrlWithoutConnection(
@@ -190,7 +189,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SQLException {
+      throws SnowflakeSQLException {
     logger.logInfo(
         StorageHelper.getStartUploadLog(
             "GCS", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -268,7 +267,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       String contentEncoding,
       Map<String, String> metadata,
       InputStream content)
-      throws SQLException {
+      throws SnowflakeSQLException {
     logger.logDebug("Uploading file {} to bucket {}", destFileName, remoteStorageLocation);
     BlobId blobId = BlobId.of(remoteStorageLocation, destFileName);
     BlobInfo blobInfo =
@@ -299,7 +298,7 @@ class IcebergGCSClient implements IcebergStorageClient {
       long originalContentLength,
       FileBackedOutputStream fileBackedOutputStream,
       List<FileInputStream> toClose)
-      throws SQLException {
+      throws SnowflakeSQLException {
     logger.logDebug(
         "createUploadStream({}, {}, {}, {}, {}, {})",
         this,
@@ -347,7 +346,7 @@ class IcebergGCSClient implements IcebergStorageClient {
   }
 
   private void handleStorageException(Exception ex, int retryCount, String operation)
-      throws SQLException {
+      throws SnowflakeSQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
