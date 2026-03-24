@@ -1,6 +1,6 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.ErrorCode.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.createDefaultExecutorService;
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
 
@@ -41,10 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
-import net.snowflake.client.jdbc.ErrorCode;
-import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
@@ -464,14 +460,13 @@ class IcebergS3Client implements IcebergStorageClient {
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
       // Log the error and throw a message that explains the cause
-      SnowflakeFileTransferAgent.throwJCEMissingError(operation, ex, null /* queryId */);
+      StorageClientUtil.throwJCEMissingError(operation, ex);
     }
 
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
     if (getRootCause(ex) instanceof IOException) {
-      SnowflakeFileTransferAgent.throwNoSpaceLeftError(
-          null /* session */, operation, ex, null /* queryId */);
+      StorageClientUtil.throwNoSpaceLeftError(operation, ex);
     }
 
     // Don't retry if max retries has been reached or the error code is 404/400

@@ -22,10 +22,6 @@ import java.security.InvalidKeyException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import net.snowflake.client.jdbc.ErrorCode;
-import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
@@ -355,14 +351,13 @@ class IcebergGCSClient implements IcebergStorageClient {
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
       // Log the error and throw a message that explains the cause
-      SnowflakeFileTransferAgent.throwJCEMissingError(operation, ex, null /* queryId */);
+      StorageClientUtil.throwJCEMissingError(operation, ex);
     }
 
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
     if (getRootCause(ex) instanceof IOException) {
-      SnowflakeFileTransferAgent.throwNoSpaceLeftError(
-          null /* session */, operation, ex, null /* queryId */);
+      StorageClientUtil.throwNoSpaceLeftError(operation, ex);
     }
 
     if (ex instanceof StorageException) {

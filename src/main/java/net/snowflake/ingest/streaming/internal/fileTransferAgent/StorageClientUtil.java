@@ -9,6 +9,7 @@
 
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
@@ -147,5 +148,55 @@ final class StorageClientUtil {
           }
         };
     return (ThreadPoolExecutor) Executors.newFixedThreadPool(parallel, threadFactory);
+  }
+
+  private static final String NO_SPACE_LEFT_ON_DEVICE_ERR = "No space left on device";
+
+  /**
+   * Replicated from SnowflakeFileTransferAgent.throwJCEMissingError. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   */
+  static void throwJCEMissingError(String operation, Exception ex) throws SnowflakeSQLException {
+    // Most likely cause: Unlimited strength policy files not installed
+    String msg =
+        "Strong encryption with Java JRE requires JCE "
+            + "Unlimited Strength Jurisdiction Policy files. "
+            + "Follow JDBC client installation instructions "
+            + "provided by Snowflake or contact Snowflake Support.";
+
+    logger.error(
+        "JCE Unlimited Strength policy files missing: {}. {}.",
+        ex.getMessage(),
+        ex.getCause().getMessage());
+
+    String bootLib = systemGetProperty("sun.boot.library.path");
+    if (bootLib != null) {
+      msg +=
+          " The target directory on your system is: " + Paths.get(bootLib, "security").toString();
+      logger.error(msg);
+    }
+    throw new SnowflakeSQLException(
+        ex,
+        net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState.SYSTEM_ERROR,
+        ErrorCode.AWS_CLIENT_ERROR.getMessageCode(),
+        operation,
+        msg);
+  }
+
+  /**
+   * Replicated from SnowflakeFileTransferAgent.throwNoSpaceLeftError. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   */
+  static void throwNoSpaceLeftError(String operation, Exception ex)
+      throws SnowflakeSQLLoggedException {
+    String exMessage = getRootCause(ex).getMessage();
+    if (exMessage != null && exMessage.equals(NO_SPACE_LEFT_ON_DEVICE_ERR)) {
+      throw new SnowflakeSQLLoggedException(
+          null,
+          net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState.SYSTEM_ERROR,
+          ErrorCode.IO_ERROR.getMessageCode(),
+          ex,
+          "Encountered exception during " + operation + ": " + ex.getMessage());
+    }
   }
 }
