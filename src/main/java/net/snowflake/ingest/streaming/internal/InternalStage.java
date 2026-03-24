@@ -35,6 +35,7 @@ import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.IcebergFileTransferAgent;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.IngestFileTransferAgent;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
@@ -100,7 +101,9 @@ public class InternalStage implements IStorage {
       boolean useIcebergFileTransferAgent,
       FileLocationInfo fileLocationInfo,
       int maxUploadRetries)
-      throws SnowflakeSQLException, IOException {
+      throws SnowflakeSQLException,
+          net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException,
+          IOException {
     this(
         owningManager,
         clientName,
@@ -260,7 +263,9 @@ public class InternalStage implements IStorage {
    * @throws IOException
    */
   synchronized SnowflakeFileTransferMetadataWithAge refreshSnowflakeMetadata(boolean force)
-      throws SnowflakeSQLException, IOException {
+      throws SnowflakeSQLException,
+          net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException,
+          IOException {
     SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge = metadataRef.get();
     if (!force
         && fileTransferMetadataWithAge != null
@@ -281,12 +286,17 @@ public class InternalStage implements IStorage {
 
   @VisibleForTesting
   public synchronized void setMetadataRef(FileLocationInfo fileLocationInfo)
-      throws SnowflakeSQLException, IOException {
+      throws SnowflakeSQLException,
+          net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException,
+          IOException {
     this.metadataRef.set(createFileTransferMetadataWithAge(fileLocationInfo));
   }
 
   static SnowflakeFileTransferMetadataWithAge createFileTransferMetadataWithAge(
-      FileLocationInfo fileLocationInfo) throws JsonProcessingException, SnowflakeSQLException {
+      FileLocationInfo fileLocationInfo)
+      throws JsonProcessingException,
+          SnowflakeSQLException,
+          net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException {
     final SnowflakeFileTransferMetadataWithAge fileTransferMetadataWithAge;
 
     if (fileLocationInfo
@@ -307,7 +317,7 @@ public class InternalStage implements IStorage {
       fileTransferMetadataWithAge =
           new SnowflakeFileTransferMetadataWithAge(
               (SnowflakeFileTransferMetadataV1)
-                  SnowflakeFileTransferAgent.getFileTransferMetadatas(
+                  IngestFileTransferAgent.getFileTransferMetadatas(
                           parseFileLocationInfo(fileLocationInfo))
                       .get(0),
               Optional.of(System.currentTimeMillis()),
@@ -337,14 +347,16 @@ public class InternalStage implements IStorage {
    * @throws IOException
    */
   SnowflakeFileTransferMetadataV1 fetchSignedURL(String fileName)
-      throws SnowflakeSQLException, IOException {
+      throws SnowflakeSQLException,
+          net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException,
+          IOException {
 
     FileLocationInfo location =
         this.owningManager.getRefreshedLocation(this.tableRef, Optional.of(fileName));
 
     SnowflakeFileTransferMetadataV1 metadata =
         (SnowflakeFileTransferMetadataV1)
-            SnowflakeFileTransferAgent.getFileTransferMetadatas(parseFileLocationInfo(location))
+            IngestFileTransferAgent.getFileTransferMetadatas(parseFileLocationInfo(location))
                 .get(0);
     // Transfer agent trims path for fileName
     metadata.setPresignedUrlFileName(fileName);
