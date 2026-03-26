@@ -467,4 +467,15 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
     return result;
   }
+
+  /**
+   * Renew expired token. Stub — session-dependent path, never called from streaming ingest (session
+   * is always null). Will be fully replicated if needed.
+   */
+  static void renewExpiredToken(
+      net.snowflake.client.core.SFSession session, String command, SnowflakeStorageClient client)
+      throws SnowflakeSQLException {
+    throw new SnowflakeSQLException(
+        ErrorCode.INTERNAL_ERROR, "renewExpiredToken not supported without JDBC session");
+  }
 }

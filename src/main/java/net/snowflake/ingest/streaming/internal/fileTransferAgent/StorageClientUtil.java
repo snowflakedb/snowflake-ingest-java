@@ -9,6 +9,8 @@
 
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
+import static java.util.Arrays.stream;
+
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Properties;
@@ -16,10 +18,13 @@ import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.OCSPMode;
 import net.snowflake.ingest.utils.SFSessionProperty;
+import org.apache.http.Header;
+import org.apache.http.NameValuePair;
 
 final class StorageClientUtil {
   private static final SFLogger logger = SFLoggerFactory.getLogger(StorageClientUtil.class);
@@ -55,6 +60,17 @@ final class StorageClientUtil {
     }
 
     return true;
+  }
+
+  /** Replicated from SnowflakeUtil.createCaseInsensitiveMap(Header[]) */
+  static Map<String, String> createCaseInsensitiveMap(Header[] headers) {
+    if (headers != null) {
+      return createCaseInsensitiveMap(
+          stream(headers)
+              .collect(Collectors.toMap(NameValuePair::getName, NameValuePair::getValue)));
+    } else {
+      return new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    }
   }
 
   /** Replicated from SnowflakeUtil.systemGetProperty */
@@ -148,6 +164,18 @@ final class StorageClientUtil {
           }
         };
     return (ThreadPoolExecutor) Executors.newFixedThreadPool(parallel, threadFactory);
+  }
+
+  /**
+   * Replicated from SnowflakeUtil.convertSystemPropertyToBooleanValue (JDBC). Reads a system
+   * property and returns it as a boolean.
+   */
+  static boolean convertSystemPropertyToBooleanValue(String systemProperty, boolean defaultValue) {
+    String val = systemGetProperty(systemProperty);
+    if (val != null) {
+      return Boolean.parseBoolean(val);
+    }
+    return defaultValue;
   }
 
   private static final String NO_SPACE_LEFT_ON_DEVICE_ERR = "No space left on device";

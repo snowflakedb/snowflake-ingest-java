@@ -30,10 +30,15 @@ public class S3HttpUtil {
    * @param key key to HttpClient map containing OCSP and proxy info
    * @param clientConfig the configuration needed by S3 to set the proxy
    */
-  public static void setProxyForS3(HttpClientSettingsKey key, ClientConfiguration clientConfig) {
+  // Parameter uses JDBC's HttpClientSettingsKey because session.getHttpClientKey() returns it.
+  // This path is only used when session != null (never from streaming ingest).
+  public static void setProxyForS3(
+      net.snowflake.client.core.HttpClientSettingsKey key, ClientConfiguration clientConfig) {
     if (key != null && key.usesProxy()) {
       clientConfig.setProxyProtocol(
-          key.getProxyHttpProtocol() == HttpProtocol.HTTPS ? Protocol.HTTPS : Protocol.HTTP);
+          key.getProxyHttpProtocol() == net.snowflake.client.core.HttpProtocol.HTTPS
+              ? Protocol.HTTPS
+              : Protocol.HTTP);
       clientConfig.setProxyHost(key.getProxyHost());
       clientConfig.setProxyPort(key.getProxyPort());
       clientConfig.setNonProxyHosts(key.getNonProxyHosts());

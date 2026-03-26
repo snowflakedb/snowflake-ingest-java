@@ -722,7 +722,10 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
           meta.getUserMetadata(),
           uploadStreamInfo.left,
           presignedUrl,
-          session.getHttpClientKey(),
+          // Session path only — session.getHttpClientKey() returns JDBC's HttpClientSettingsKey
+          // which is incompatible with ingest's. This path is never executed from streaming
+          // ingest (session always null). Pass null as a placeholder.
+          (HttpClientSettingsKey) null,
           queryId);
       stopwatch.stop();
       logger.debug("Upload successful", false);
@@ -918,8 +921,14 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       InputStreamEntity contentEntity = new InputStreamEntity(content, -1);
       httpRequest.setEntity(contentEntity);
 
-      CloseableHttpClient httpClient =
-          HttpUtil.getHttpClient(ocspAndProxyKey, session.getHttpHeadersCustomizers());
+      // Convert ingest HttpClientSettingsKey to JDBC's for JDBC HttpUtil.getHttpClient().
+      // This bridge will be removed when JDBC HttpUtil is replaced.
+      net.snowflake.client.core.HttpClientSettingsKey jdbcKey =
+          new net.snowflake.client.core.HttpClientSettingsKey(
+              ocspAndProxyKey.getOcspMode() == net.snowflake.ingest.utils.OCSPMode.FAIL_OPEN
+                  ? net.snowflake.client.core.OCSPMode.FAIL_OPEN
+                  : net.snowflake.client.core.OCSPMode.FAIL_CLOSED);
+      CloseableHttpClient httpClient = HttpUtil.getHttpClient(jdbcKey);
 
       // Put the file on storage using the presigned url
       HttpResponse response =
