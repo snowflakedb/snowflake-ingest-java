@@ -171,7 +171,11 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
     clientConfig.withSignerOverride("AWSS3V4SignerType");
     clientConfig.getApacheHttpClientConfig().setSslSocketFactory(getSSLConnectionSocketFactory());
     if (session != null) {
-      S3HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
+      try {
+        S3HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
+      } catch (net.snowflake.client.jdbc.SnowflakeSQLException e) {
+        throw new SnowflakeSQLException(e, e.getMessage());
+      }
     } else {
       S3HttpUtil.setSessionlessProxyForS3(proxyProperties, clientConfig);
     }
@@ -235,8 +239,11 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
     amazonS3Builder.withPathStyleAccessEnabled(false);
 
     if (session instanceof SFSession) {
+      // Session path only — never executed from streaming ingest.
+      // Uses JDBC's HttpHeadersCustomizer type since session returns it.
+      @SuppressWarnings("unchecked")
       List<HttpHeadersCustomizer> headersCustomizers =
-          ((SFSession) session).getHttpHeadersCustomizers();
+          (List<HttpHeadersCustomizer>) (List<?>) ((SFSession) session).getHttpHeadersCustomizers();
       if (headersCustomizers != null && !headersCustomizers.isEmpty()) {
         amazonS3Builder.withRequestHandlers(
             new HeaderCustomizerHttpRequestInterceptor(headersCustomizers));
