@@ -20,25 +20,33 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.io.ByteStreams;
+import com.google.common.io.CountingOutputStream;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.DigestOutputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
-import net.snowflake.client.core.ObjectMapperFactory;
+import java.util.zip.GZIPOutputStream;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
-import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
 import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 
 /** Class for uploading/downloading files */
@@ -47,6 +55,10 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
       SFLoggerFactory.getLogger(SnowflakeFileTransferAgent.class);
 
   private static final ObjectMapper mapper = ObjectMapperFactory.getObjectMapper();
+
+  // We will allow buffering of upto 128M data before spilling to disk during
+  // compression and digest computation
+  static final int MAX_BUFFER_SIZE = 1 << 27;
 
   private static final String localFSFileSep = systemGetProperty("file.separator");
 
@@ -260,8 +272,8 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
     return stageCredentials;
   }
 
-  public static List<net.snowflake.client.jdbc.SnowflakeFileTransferMetadata>
-      getFileTransferMetadatas(JsonNode jsonNode) throws SnowflakeSQLException {
+  public static List<SnowflakeFileTransferMetadata> getFileTransferMetadatas(JsonNode jsonNode)
+      throws SnowflakeSQLException {
     return getFileTransferMetadatas(jsonNode, null);
   }
 
@@ -277,8 +289,8 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
    * @return The file transfer metadatas for to-be-transferred files.
    * @throws SnowflakeSQLException if any error occurs
    */
-  public static List<net.snowflake.client.jdbc.SnowflakeFileTransferMetadata>
-      getFileTransferMetadatas(JsonNode jsonNode, String queryId) throws SnowflakeSQLException {
+  public static List<SnowflakeFileTransferMetadata> getFileTransferMetadatas(
+      JsonNode jsonNode, String queryId) throws SnowflakeSQLException {
     CommandType commandType =
         !jsonNode.path("data").path("command").isMissingNode()
             ? CommandType.valueOf(jsonNode.path("data").path("command").asText())
@@ -328,7 +340,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
     StageInfo stageInfo = getStageInfo(jsonNode, null /*SFSession*/);
 
-    List<net.snowflake.client.jdbc.SnowflakeFileTransferMetadata> result = new ArrayList<>();
+    List<SnowflakeFileTransferMetadata> result = new ArrayList<>();
     if (stageInfo.getStageType() != StageInfo.StageType.GCS
         && stageInfo.getStageType() != StageInfo.StageType.AZURE
         && stageInfo.getStageType() != StageInfo.StageType.S3) {
@@ -340,10 +352,6 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
     for (String sourceFilePath : sourceFiles) {
       String sourceFileName = sourceFilePath.substring(sourceFilePath.lastIndexOf("/") + 1);
-      // Bridge to JDBC's CommandType for SnowflakeFileTransferMetadataV1 constructor.
-      // Temporary until SnowflakeFileTransferMetadataV1 is replicated in Step 8.
-      net.snowflake.client.jdbc.SFBaseFileTransferAgent.CommandType jdbcCommandType =
-          net.snowflake.client.jdbc.SFBaseFileTransferAgent.CommandType.valueOf(commandType.name());
       result.add(
           new SnowflakeFileTransferMetadataV1(
               stageInfo.getPresignedUrl(),
@@ -353,7 +361,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
                   : null,
               encryptionMaterial.get(0) != null ? encryptionMaterial.get(0).getQueryId() : null,
               encryptionMaterial.get(0) != null ? encryptionMaterial.get(0).getSmkId() : null,
-              jdbcCommandType,
+              commandType,
               stageInfo));
     }
 
@@ -477,5 +485,457 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
       throws SnowflakeSQLException {
     throw new SnowflakeSQLException(
         ErrorCode.INTERNAL_ERROR, "renewExpiredToken not supported without JDBC session");
+  }
+
+  // ---- Inner classes and methods replicated from JDBC for uploadWithoutConnection ----
+
+  static class InputStreamWithMetadata {
+    long size;
+    String digest;
+    FileBackedOutputStream fileBackedOutputStream;
+
+    InputStreamWithMetadata(
+        long size, String digest, FileBackedOutputStream fileBackedOutputStream) {
+      this.size = size;
+      this.digest = digest;
+      this.fileBackedOutputStream = fileBackedOutputStream;
+    }
+  }
+
+  private static class remoteLocation {
+    String location;
+    String path;
+
+    public remoteLocation(String remoteStorageLocation, String remotePath) {
+      location = remoteStorageLocation;
+      path = remotePath;
+    }
+  }
+
+  public static remoteLocation extractLocationAndPath(String stageLocationPath) {
+    String location = stageLocationPath;
+    String path = "";
+
+    // split stage location as location name and path
+    if (stageLocationPath.contains("/")) {
+      location = stageLocationPath.substring(0, stageLocationPath.indexOf("/"));
+      path = stageLocationPath.substring(stageLocationPath.indexOf("/") + 1);
+    }
+
+    return new remoteLocation(location, path);
+  }
+
+  private static InputStreamWithMetadata compressStreamWithGZIP(
+      InputStream inputStream, net.snowflake.client.core.SFBaseSession session, String queryId)
+      throws SnowflakeSQLException {
+    FileBackedOutputStream tempStream = new FileBackedOutputStream(MAX_BUFFER_SIZE, true);
+
+    try {
+      DigestOutputStream digestStream =
+          new DigestOutputStream(tempStream, MessageDigest.getInstance("SHA-256"));
+
+      CountingOutputStream countingStream = new CountingOutputStream(digestStream);
+
+      // construct a gzip stream with sync_flush mode
+      GZIPOutputStream gzipStream;
+
+      gzipStream = new GZIPOutputStream(countingStream, true);
+
+      IOUtils.copy(inputStream, gzipStream);
+
+      inputStream.close();
+
+      gzipStream.finish();
+      gzipStream.flush();
+
+      countingStream.flush();
+
+      // Normal flow will never hit here. This is only for testing purposes
+      if (isInjectedFileTransferExceptionEnabled()
+          && SnowflakeFileTransferAgent.injectedFileTransferException
+              instanceof NoSuchAlgorithmException) {
+        throw (NoSuchAlgorithmException) SnowflakeFileTransferAgent.injectedFileTransferException;
+      }
+
+      return new InputStreamWithMetadata(
+          countingStream.getCount(),
+          Base64.getEncoder().encodeToString(digestStream.getMessageDigest().digest()),
+          tempStream);
+
+    } catch (IOException | NoSuchAlgorithmException ex) {
+      logger.error("Exception compressing input stream", ex);
+
+      throw new SnowflakeSQLLoggedException(
+          queryId,
+          session,
+          SqlState.INTERNAL_ERROR,
+          ErrorCode.INTERNAL_ERROR.getMessageCode(),
+          ex,
+          "error encountered for compression");
+    }
+  }
+
+  @Deprecated
+  private static InputStreamWithMetadata compressStreamWithGZIPNoDigest(
+      InputStream inputStream, net.snowflake.client.core.SFBaseSession session, String queryId)
+      throws SnowflakeSQLException {
+    try {
+      FileBackedOutputStream tempStream = new FileBackedOutputStream(MAX_BUFFER_SIZE, true);
+
+      CountingOutputStream countingStream = new CountingOutputStream(tempStream);
+
+      // construct a gzip stream with sync_flush mode
+      GZIPOutputStream gzipStream;
+
+      gzipStream = new GZIPOutputStream(countingStream, true);
+
+      IOUtils.copy(inputStream, gzipStream);
+
+      inputStream.close();
+
+      gzipStream.finish();
+      gzipStream.flush();
+
+      countingStream.flush();
+
+      // Normal flow will never hit here. This is only for testing purposes
+      if (isInjectedFileTransferExceptionEnabled()) {
+        throw (IOException) SnowflakeFileTransferAgent.injectedFileTransferException;
+      }
+      return new InputStreamWithMetadata(countingStream.getCount(), null, tempStream);
+
+    } catch (IOException ex) {
+      logger.error("Exception compressing input stream", ex);
+
+      throw new SnowflakeSQLLoggedException(
+          queryId,
+          session,
+          SqlState.INTERNAL_ERROR,
+          ErrorCode.INTERNAL_ERROR.getMessageCode(),
+          ex,
+          "error encountered for compression");
+    }
+  }
+
+  private static InputStreamWithMetadata computeDigest(InputStream is, boolean resetStream)
+      throws NoSuchAlgorithmException, IOException {
+    MessageDigest md = MessageDigest.getInstance("SHA-256");
+    if (resetStream) {
+      FileBackedOutputStream tempStream = new FileBackedOutputStream(MAX_BUFFER_SIZE, true);
+
+      CountingOutputStream countingOutputStream = new CountingOutputStream(tempStream);
+
+      DigestOutputStream digestStream = new DigestOutputStream(countingOutputStream, md);
+
+      IOUtils.copy(is, digestStream);
+
+      return new InputStreamWithMetadata(
+          countingOutputStream.getCount(),
+          Base64.getEncoder().encodeToString(digestStream.getMessageDigest().digest()),
+          tempStream);
+    } else {
+      CountingOutputStream countingOutputStream =
+          new CountingOutputStream(ByteStreams.nullOutputStream());
+
+      DigestOutputStream digestStream = new DigestOutputStream(countingOutputStream, md);
+      IOUtils.copy(is, digestStream);
+      return new InputStreamWithMetadata(
+          countingOutputStream.getCount(),
+          Base64.getEncoder().encodeToString(digestStream.getMessageDigest().digest()),
+          null);
+    }
+  }
+
+  public static void uploadWithoutConnection(SnowflakeFileTransferConfig config) throws Exception {
+    logger.trace("Entering uploadWithoutConnection...");
+
+    SnowflakeFileTransferMetadataV1 metadata =
+        (SnowflakeFileTransferMetadataV1) config.getSnowflakeFileTransferMetadata();
+    InputStream uploadStream = config.getUploadStream();
+    boolean requireCompress = config.getRequireCompress();
+    int networkTimeoutInMilli = config.getNetworkTimeoutInMilli();
+    net.snowflake.ingest.utils.OCSPMode ocspMode = config.getOcspMode();
+    Properties proxyProperties = config.getProxyProperties();
+    String streamingIngestClientName = config.getStreamingIngestClientName();
+    String streamingIngestClientKey = config.getStreamingIngestClientKey();
+
+    // Create HttpClient key
+    HttpClientSettingsKey key =
+        StorageClientUtil.convertProxyPropertiesToHttpClientKey(ocspMode, proxyProperties);
+
+    StageInfo stageInfo = metadata.getStageInfo();
+    stageInfo.setProxyProperties(proxyProperties);
+    String destFileName = metadata.getPresignedUrlFileName();
+
+    logger.debug("Begin upload data for " + destFileName);
+
+    long uploadSize;
+    File fileToUpload = null;
+    String digest = null;
+
+    // Temp file that needs to be cleaned up when upload was successful
+    FileBackedOutputStream fileBackedOutputStream = null;
+
+    RemoteStoreFileEncryptionMaterial encMat = metadata.getEncryptionMaterial();
+    if (encMat.getQueryId() == null
+        && encMat.getQueryStageMasterKey() == null
+        && encMat.getSmkId() == null) {
+      encMat = null;
+    }
+    // SNOW-16082: we should capture exception if we fail to compress or
+    // calculate digest.
+    try {
+      if (requireCompress) {
+        InputStreamWithMetadata compressedSizeAndStream =
+            (encMat == null
+                ? compressStreamWithGZIPNoDigest(uploadStream, /* session= */ null, null)
+                : compressStreamWithGZIP(uploadStream, /* session= */ null, encMat.getQueryId()));
+
+        fileBackedOutputStream = compressedSizeAndStream.fileBackedOutputStream;
+
+        // update the size
+        uploadSize = compressedSizeAndStream.size;
+        digest = compressedSizeAndStream.digest;
+
+        if (compressedSizeAndStream.fileBackedOutputStream.getFile() != null) {
+          fileToUpload = compressedSizeAndStream.fileBackedOutputStream.getFile();
+        }
+
+        logger.debug("New size after compression: {}", uploadSize);
+      } else {
+        // If it's not local_fs, we store our digest in the metadata
+        // In local_fs, we don't need digest, and if we turn it on,
+        // we will consume whole uploadStream, which local_fs uses.
+        InputStreamWithMetadata result = computeDigest(uploadStream, true);
+        digest = result.digest;
+        fileBackedOutputStream = result.fileBackedOutputStream;
+        uploadSize = result.size;
+
+        if (result.fileBackedOutputStream.getFile() != null) {
+          fileToUpload = result.fileBackedOutputStream.getFile();
+        }
+      }
+
+      logger.debug(
+          "Started copying file to {}:{} destName: {} compressed ? {} size={}",
+          stageInfo.getStageType().name(),
+          stageInfo.getLocation(),
+          destFileName,
+          (requireCompress ? "yes" : "no"),
+          uploadSize);
+
+      SnowflakeStorageClient initialClient =
+          StorageClientFactory.getFactory().createClient(stageInfo, 1, encMat, /* session= */ null);
+
+      // Normal flow will never hit here. This is only for testing purposes
+      if (isInjectedFileTransferExceptionEnabled()) {
+        throw (Exception) SnowflakeFileTransferAgent.injectedFileTransferException;
+      }
+
+      String queryId = encMat != null && encMat.getQueryId() != null ? encMat.getQueryId() : null;
+      switch (stageInfo.getStageType()) {
+        case S3:
+        case AZURE:
+          pushFileToRemoteStore(
+              metadata.getStageInfo(),
+              destFileName,
+              uploadStream,
+              fileBackedOutputStream,
+              uploadSize,
+              digest,
+              (requireCompress ? FileCompressionType.GZIP : null),
+              initialClient,
+              config.getSession(),
+              config.getCommand(),
+              1,
+              fileToUpload,
+              (fileToUpload == null),
+              encMat,
+              streamingIngestClientName,
+              streamingIngestClientKey,
+              queryId);
+          break;
+        case GCS:
+          // If the down-scoped token is used to upload file, one metadata may be used to upload
+          // multiple files, so use the dest file name in config.
+          destFileName =
+              metadata.isForOneFile()
+                  ? metadata.getPresignedUrlFileName()
+                  : config.getDestFileName();
+
+          pushFileToRemoteStoreWithPresignedUrl(
+              metadata.getStageInfo(),
+              destFileName,
+              uploadStream,
+              fileBackedOutputStream,
+              uploadSize,
+              digest,
+              (requireCompress ? FileCompressionType.GZIP : null),
+              initialClient,
+              networkTimeoutInMilli,
+              key,
+              1,
+              null,
+              true,
+              encMat,
+              metadata.getPresignedUrl(),
+              streamingIngestClientName,
+              streamingIngestClientKey,
+              queryId);
+          break;
+      }
+    } catch (Exception ex) {
+      if (!config.isSilentException()) {
+        logger.error("Exception encountered during file upload in uploadWithoutConnection", ex);
+      }
+      throw ex;
+    } finally {
+      if (fileBackedOutputStream != null) {
+        try {
+          fileBackedOutputStream.reset();
+        } catch (IOException ex) {
+          logger.debug("Failed to clean up temp file: {}", ex);
+        }
+      }
+    }
+  }
+
+  private static void pushFileToRemoteStore(
+      StageInfo stage,
+      String destFileName,
+      InputStream inputStream,
+      FileBackedOutputStream fileBackedOutStr,
+      long uploadSize,
+      String digest,
+      FileCompressionType compressionType,
+      SnowflakeStorageClient initialClient,
+      net.snowflake.client.core.SFSession session,
+      String command,
+      int parallel,
+      File srcFile,
+      boolean uploadFromStream,
+      RemoteStoreFileEncryptionMaterial encMat,
+      String streamingIngestClientName,
+      String streamingIngestClientKey,
+      String queryId)
+      throws SQLException, IOException {
+    remoteLocation remoteLocation = extractLocationAndPath(stage.getLocation());
+
+    String origDestFileName = destFileName;
+    if (remoteLocation.path != null && !remoteLocation.path.isEmpty()) {
+      destFileName =
+          remoteLocation.path + (!remoteLocation.path.endsWith("/") ? "/" : "") + destFileName;
+    }
+
+    logger.debug(
+        "Upload object. Location: {}, key: {}, srcFile: {}",
+        remoteLocation.location,
+        destFileName,
+        srcFile);
+
+    StorageObjectMetadata meta =
+        StorageClientFactory.getFactory().createStorageMetadataObj(stage.getStageType());
+    meta.setContentLength(uploadSize);
+    if (digest != null) {
+      initialClient.addDigestMetadata(meta, digest);
+    }
+
+    if (compressionType != null && compressionType.isSupported()) {
+      meta.setContentEncoding(compressionType.name().toLowerCase());
+    }
+
+    if (streamingIngestClientName != null && streamingIngestClientKey != null) {
+      initialClient.addStreamingIngestMetadata(
+          meta, streamingIngestClientName, streamingIngestClientKey);
+    }
+
+    try {
+      String presignedUrl = "";
+      initialClient.upload(
+          session,
+          command,
+          parallel,
+          uploadFromStream,
+          remoteLocation.location,
+          srcFile,
+          destFileName,
+          inputStream,
+          fileBackedOutStr,
+          meta,
+          stage.getRegion(),
+          presignedUrl,
+          queryId);
+    } finally {
+      if (uploadFromStream && inputStream != null) {
+        inputStream.close();
+      }
+    }
+  }
+
+  private static void pushFileToRemoteStoreWithPresignedUrl(
+      StageInfo stage,
+      String destFileName,
+      InputStream inputStream,
+      FileBackedOutputStream fileBackedOutStr,
+      long uploadSize,
+      String digest,
+      FileCompressionType compressionType,
+      SnowflakeStorageClient initialClient,
+      int networkTimeoutInMilli,
+      HttpClientSettingsKey ocspModeAndProxyKey,
+      int parallel,
+      File srcFile,
+      boolean uploadFromStream,
+      RemoteStoreFileEncryptionMaterial encMat,
+      String presignedUrl,
+      String streamingIngestClientName,
+      String streamingIngestClientKey,
+      String queryId)
+      throws SQLException, IOException {
+    remoteLocation remoteLocation = extractLocationAndPath(stage.getLocation());
+
+    if (remoteLocation.path != null && !remoteLocation.path.isEmpty()) {
+      destFileName =
+          remoteLocation.path + (!remoteLocation.path.endsWith("/") ? "/" : "") + destFileName;
+    }
+
+    logger.debug("Upload object. Location: {}, key: {}", remoteLocation.location, destFileName);
+
+    StorageObjectMetadata meta =
+        StorageClientFactory.getFactory().createStorageMetadataObj(stage.getStageType());
+    meta.setContentLength(uploadSize);
+    if (digest != null) {
+      initialClient.addDigestMetadata(meta, digest);
+    }
+
+    if (compressionType != null && compressionType.isSupported()) {
+      meta.setContentEncoding(compressionType.name().toLowerCase());
+    }
+
+    if (streamingIngestClientName != null && streamingIngestClientKey != null) {
+      initialClient.addStreamingIngestMetadata(
+          meta, streamingIngestClientName, streamingIngestClientKey);
+    }
+
+    try {
+      initialClient.uploadWithPresignedUrlWithoutConnection(
+          networkTimeoutInMilli,
+          ocspModeAndProxyKey,
+          parallel,
+          uploadFromStream,
+          remoteLocation.location,
+          srcFile,
+          destFileName,
+          inputStream,
+          fileBackedOutStr,
+          meta,
+          stage.getRegion(),
+          presignedUrl,
+          queryId);
+    } finally {
+      if (uploadFromStream && inputStream != null) {
+        inputStream.close();
+      }
+    }
   }
 }
