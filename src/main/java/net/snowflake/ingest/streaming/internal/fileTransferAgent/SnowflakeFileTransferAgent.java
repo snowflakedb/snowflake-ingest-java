@@ -660,8 +660,9 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
     String streamingIngestClientKey = config.getStreamingIngestClientKey();
 
     // Create HttpClient key
-    HttpClientSettingsKey key =
-        StorageClientUtil.convertProxyPropertiesToHttpClientKey(ocspMode, proxyProperties);
+    net.snowflake.client.core.HttpClientSettingsKey key =
+        net.snowflake.client.jdbc.SnowflakeUtil.convertProxyPropertiesToHttpClientKey(
+            net.snowflake.client.core.OCSPMode.FAIL_OPEN, proxyProperties);
 
     StageInfo stageInfo = metadata.getStageInfo();
     stageInfo.setProxyProperties(proxyProperties);
@@ -882,7 +883,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
       FileCompressionType compressionType,
       SnowflakeStorageClient initialClient,
       int networkTimeoutInMilli,
-      HttpClientSettingsKey ocspModeAndProxyKey,
+      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
       int parallel,
       File srcFile,
       boolean uploadFromStream,

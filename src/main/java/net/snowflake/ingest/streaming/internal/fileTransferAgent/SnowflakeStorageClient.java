@@ -213,7 +213,7 @@ public interface SnowflakeStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     upload(
         connection,
         command,
@@ -262,7 +262,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * @deprecated
@@ -270,7 +270,7 @@ public interface SnowflakeStorageClient {
   @Deprecated
   default void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      HttpClientSettingsKey ocspModeAndProxyKey,
+      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
@@ -305,7 +305,7 @@ public interface SnowflakeStorageClient {
    */
   default void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      HttpClientSettingsKey ocspModeAndProxyKey,
+      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
