@@ -235,14 +235,12 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
     amazonS3Builder.withPathStyleAccessEnabled(false);
 
     if (session instanceof SFSession) {
-      // Session path only — never executed from streaming ingest.
-      // Uses JDBC's HttpHeadersCustomizer type since session returns it.
-      @SuppressWarnings("unchecked")
-      List<HttpHeadersCustomizer> headersCustomizers =
-          (List<HttpHeadersCustomizer>) (List<?>) ((SFSession) session).getHttpHeadersCustomizers();
+      List<net.snowflake.client.jdbc.HttpHeadersCustomizer> headersCustomizers =
+          ((SFSession) session).getHttpHeadersCustomizers();
       if (headersCustomizers != null && !headersCustomizers.isEmpty()) {
         amazonS3Builder.withRequestHandlers(
-            new HeaderCustomizerHttpRequestInterceptor(headersCustomizers));
+            new net.snowflake.client.core.HeaderCustomizerHttpRequestInterceptor(
+                headersCustomizers));
       }
     }
 
