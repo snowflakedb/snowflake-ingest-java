@@ -390,29 +390,126 @@ done cleanly.
 
 ---
 
-### Step 7b — Replace SnowflakeFileTransferAgent in InternalStage
+### Step 7b — Replicate getFileTransferMetadatas ⬜ TODO
 
-- Replace `getFileTransferMetadatas()` → own JSON parser in `InternalStage`
-- Replace `uploadWithoutConnection()` → use `IcebergFileTransferAgent` path
-- Remove `SnowflakeFileTransferConfig`
+Replicate the static parsing methods from `SnowflakeFileTransferAgent` that
+`InternalStage` uses to convert the configure response JSON into
+`SnowflakeFileTransferMetadataV1`. Verbatim copy of JDBC source.
 
-**JDBC imports removed:** `SnowflakeFileTransferAgent`, `SnowflakeFileTransferConfig`
-from `InternalStage`
+**Methods to replicate:**
+- `getFileTransferMetadatas(JsonNode)` — 1-arg wrapper
+- `getFileTransferMetadatas(JsonNode, String)` — main parser
+- `getStageInfo(JsonNode, SFSession)` — extracts StageInfo from JSON
+- `extractStageCreds(JsonNode, String)` — parses credentials
+- `getEncryptionMaterial(CommandType, JsonNode)` — parses encryption material
+- `expandFileNames(String[], String)` — resolves file path globs
+- `setupUseRegionalUrl(JsonNode, StageInfo)` — sets regional URL flag
+- `setupUseVirtualUrl(JsonNode, StageInfo)` — sets virtual URL flag
+
+**Also replicate:**
+- `CommandType` enum (from `SFBaseFileTransferAgent`)
+- `SnowflakeFileTransferMetadata` interface (return type)
+
+**Swap in `InternalStage`:** `SnowflakeFileTransferAgent.getFileTransferMetadatas()` →
+ingest's replicated version.
+
+**JDBC imports removed from `InternalStage`:** `SnowflakeFileTransferAgent` (partially —
+`uploadWithoutConnection` still uses JDBC, see Step 7c)
 
 ---
 
-### Step 8 — Replace blocked types (now unblocked after Step 7)
+### Step 8a — Replicate StageInfo, RemoteStoreFileEncryptionMaterial ⬜ TODO
 
-- `StageInfo` — own data class with `StageType` enum
-- `RemoteStoreFileEncryptionMaterial` — simple data holder
-- `SnowflakeFileTransferMetadataV1` — own data class
-- Swap `OCSPMode` in `InternalStage` (no longer passed to JDBC)
+Replicate the two data types that are used across the most files.
 
-**JDBC imports removed:** All remaining JDBC imports
+- `StageInfo` (~229 lines) — stage descriptor with `StageType` enum, credentials,
+  region, endpoint, presigned URL. Used in 6 files.
+- `RemoteStoreFileEncryptionMaterial` (~40 lines) — simple data holder with
+  `queryStageMasterKey`, `queryId`, `smkId`. From snowflake-common (decompiled).
+
+Swap imports in: `IcebergFileTransferAgent`, `IcebergS3Client`, `IcebergAzureClient`,
+`IcebergGCSClient`, `IcebergStorageClientFactory`, replicated `SnowflakeFileTransferAgent`.
+
+**Not swapped yet in `InternalStage`** — depends on `SnowflakeFileTransferMetadataV1`
+which still returns JDBC's `StageInfo` from `getStageInfo()`.
 
 ---
 
-### Step 9 — Remove JDBC Dependency
+### Step 8b — Replicate SnowflakeFileTransferMetadataV1, ObjectMapperFactory ⬜ TODO
+
+- `SnowflakeFileTransferMetadataV1` (~109 lines) — file transfer metadata.
+  Depends on `StageInfo`, `RemoteStoreFileEncryptionMaterial` (from 8a),
+  `CommandType` (from 7b).
+- `ObjectMapperFactory` (~38 lines) — singleton `ObjectMapper` factory.
+  Used in 5 files (replicated `SnowflakeFileTransferAgent`, `TelemetryClient`,
+  `TelemetryUtil`, `TelemetryData`, `SnowflakeSQLLoggedException`).
+
+Swap imports everywhere. Now `InternalStage` can use ingest's types throughout.
+
+**Also swap in `InternalStage`:**
+- `getFileTransferMetadatas()` → ingest's replicated version (deferred from 7b)
+- `SnowflakeSQLException` → ingest's version
+- `OCSPMode` → ingest's version
+- Remove `parseConfigureResponseMapper` / `parseFileLocationInfo` (Jackson workaround)
+
+**Also swap:** `SnowflakeSQLException` in `InternalStageManager`,
+`SnowflakeFileTransferMetadataV1` in `SnowflakeFileTransferMetadataWithAge`.
+
+---
+
+### Step 8c — Route uploadWithoutConnection through IcebergFileTransferAgent ⬜ TODO
+
+Replace the non-Iceberg upload path. `IcebergFileTransferAgent` IS the
+already-existing verbatim replication of JDBC's upload stack (using
+`IcebergStorageClient` implementations instead of JDBC's `SnowflakeStorageClient`).
+
+- Route non-Iceberg `uploadWithoutConnection` through `IcebergFileTransferAgent`
+- Remove `SnowflakeFileTransferConfig`, JDBC `SnowflakeFileTransferAgent` import
+
+**InternalStage now fully free of JDBC imports.**
+
+---
+
+### Step 9a — Clean up replicated classes' JDBC imports ⬜ TODO
+
+Remove JDBC imports from the replicated classes themselves:
+
+- `SqlState` in `ErrorCode`, `SnowflakeFileTransferAgent` → already replicated
+  in same package, just swap import
+- `SFSession` parameter in `SnowflakeFileTransferAgent.getStageInfo()` → always
+  null from our callers, replace parameter type with stub or remove
+- `SFException` in `SnowflakeSQLException` → used in one constructor never called
+  by ingest; remove constructor or stub
+- `SecretDetector` in `TelemetryData` → already replicated (Step 2b)
+
+---
+
+### Step 9b — Clean up SnowflakeSQLLoggedException JDBC telemetry ⬜ TODO
+
+`SnowflakeSQLLoggedException` has 12 JDBC imports for OOB/IB telemetry.
+All ingest callers pass `null` for session, so the in-band telemetry path
+is never taken. The OOB telemetry path uses JDBC's `TelemetryService`
+singleton.
+
+Options (to be decided):
+- Stub out `sendTelemetryData()` to no-op (ingest has its own telemetry)
+- Or replicate the OOB telemetry classes
+
+---
+
+### Step 9c — Clean up TelemetryClient JDBC imports ⬜ TODO
+
+`TelemetryClient` has 6 JDBC imports. The session-based constructor and
+`createTelemetry(Connection)` are never used by ingest (only sessionless).
+
+- `HttpUtil` → ingest already has its own `HttpUtil`
+- `TelemetryThreadPool` → replace with own executor
+- Remove session-based constructors/methods (or stub with `SFSession` parameter)
+- `SnowflakeConnectionV1`, `SnowflakeSQLException` → only in session path
+
+---
+
+### Step 10 — Remove JDBC Dependency ⬜ TODO
 
 1. Change `snowflake-jdbc-thin` scope to `test` in `pom.xml` (`TestUtils.java` needs
    `SnowflakeDriver` for IT result verification)
