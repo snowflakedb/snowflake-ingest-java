@@ -87,7 +87,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    */
   public static SnowflakeAzureClient createSnowflakeAzureClient(
       StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession sfSession)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug(
         "Initializing Snowflake Azure client with encryption: {}",
         encMat != null ? "true" : "false");
@@ -109,7 +109,9 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    */
   private void setupAzureClient(
       StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession sfSession)
-      throws IllegalArgumentException, SnowflakeSQLException {
+      throws IllegalArgumentException,
+          SnowflakeSQLException,
+          net.snowflake.client.jdbc.SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the Azure client.
     this.stageInfo = stage;
@@ -149,17 +151,9 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       this.azStorageClient = new CloudBlobClient(storageEndpoint, azCreds);
       opContext = new OperationContext();
       if (session != null) {
-        try {
-          setProxyForAzure(session.getHttpClientKey(), opContext);
-        } catch (net.snowflake.client.jdbc.SnowflakeSQLException e) {
-          throw new SnowflakeSQLException(e, e.getMessage());
-        }
+        setProxyForAzure(session.getHttpClientKey(), opContext);
       } else {
-        try {
-          setSessionlessProxyForAzure(stage.getProxyProperties(), opContext);
-        } catch (net.snowflake.client.jdbc.SnowflakeSQLException e) {
-          throw new SnowflakeSQLException(e, e.getMessage());
-        }
+        setSessionlessProxyForAzure(stage.getProxyProperties(), opContext);
       }
     } catch (URISyntaxException ex) {
       throw new IllegalArgumentException("invalid_azure_credentials");
@@ -214,7 +208,8 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    * @throws SnowflakeSQLException failure to renew the client
    */
   @Override
-  public void renew(Map<?, ?> stageCredentials) throws SnowflakeSQLException {
+  public void renew(Map<?, ?> stageCredentials)
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Renewing the Azure client");
     stageInfo.setCredentials(stageCredentials);
     setupAzureClient(stageInfo, encMat, session);

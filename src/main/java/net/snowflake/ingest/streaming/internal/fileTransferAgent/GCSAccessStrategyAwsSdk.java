@@ -44,7 +44,8 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
   private static final SFLogger logger = SFLoggerFactory.getLogger(GCSAccessStrategyAwsSdk.class);
   private final AmazonS3 amazonClient;
 
-  GCSAccessStrategyAwsSdk(StageInfo stage, SFBaseSession session) throws SnowflakeSQLException {
+  GCSAccessStrategyAwsSdk(StageInfo stage, SFBaseSession session)
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     String accessToken = (String) stage.getCredentials().get("GCS_ACCESS_TOKEN");
 
     Optional<String> oEndpoint = stage.gcsCustomEndpoint();
@@ -76,11 +77,7 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
         .getApacheHttpClientConfig()
         .setSslSocketFactory(SnowflakeS3Client.getSSLConnectionSocketFactory());
     if (session != null) {
-      try {
-        S3HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
-      } catch (net.snowflake.client.jdbc.SnowflakeSQLException e) {
-        throw new SnowflakeSQLException(e, e.getMessage());
-      }
+      S3HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
     } else {
       S3HttpUtil.setSessionlessProxyForS3(stage.getProxyProperties(), clientConfig);
     }

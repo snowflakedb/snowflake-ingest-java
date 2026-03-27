@@ -55,7 +55,7 @@ public class StorageClientFactory {
    */
   public SnowflakeStorageClient createClient(
       StageInfo stage, int parallel, RemoteStoreFileEncryptionMaterial encMat, SFSession session)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Creating storage client. Client type: {}", stage.getStageType().name());
 
     switch (stage.getStageType()) {
@@ -114,7 +114,7 @@ public class StorageClientFactory {
       boolean isClientSideEncrypted,
       SFBaseSession session,
       boolean useS3RegionalUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     final int S3_TRANSFER_MAX_RETRIES = 3;
 
     logger.debug("Creating S3 client with encryption: {}", (encMat == null ? "no" : "yes"));
@@ -198,7 +198,7 @@ public class StorageClientFactory {
    */
   private SnowflakeAzureClient createAzureClient(
       StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFBaseSession session)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Creating Azure client with encryption: {}", (encMat == null ? "no" : "yes"));
 
     SnowflakeAzureClient azureClient;
@@ -223,7 +223,7 @@ public class StorageClientFactory {
    */
   private SnowflakeGCSClient createGCSClient(
       StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFSession session)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Creating GCS client with encryption: {}", (encMat == null ? "no" : "yes"));
 
     SnowflakeGCSClient gcsClient;
