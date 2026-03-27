@@ -31,10 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import net.snowflake.client.core.HeaderCustomizerHttpRequestInterceptor;
 import net.snowflake.client.core.SFBaseSession;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.jdbc.HttpHeadersCustomizer;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.SFPair;
@@ -83,11 +81,12 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
     }
 
     if (session instanceof SFSession) {
-      List<HttpHeadersCustomizer> headersCustomizers =
+      List<net.snowflake.client.jdbc.HttpHeadersCustomizer> headersCustomizers =
           ((SFSession) session).getHttpHeadersCustomizers();
       if (headersCustomizers != null && !headersCustomizers.isEmpty()) {
         amazonS3Builder.withRequestHandlers(
-            new HeaderCustomizerHttpRequestInterceptor(headersCustomizers));
+            new net.snowflake.client.core.HeaderCustomizerHttpRequestInterceptor(
+                headersCustomizers));
       }
     }
 
