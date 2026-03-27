@@ -43,7 +43,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.zip.GZIPOutputStream;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import org.apache.commons.io.IOUtils;

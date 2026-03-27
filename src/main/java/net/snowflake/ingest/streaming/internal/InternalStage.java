@@ -27,16 +27,16 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import net.snowflake.client.core.OCSPMode;
-import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
-import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.cloud.storage.StageInfo;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.RemoteStoreFileEncryptionMaterial;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.IcebergFileTransferAgent;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.RemoteStoreFileEncryptionMaterial;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeFileTransferAgent;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeFileTransferConfig;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeFileTransferMetadataV1;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.StageInfo;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.OCSPMode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.commons.io.FileUtils;
@@ -45,16 +45,6 @@ import org.apache.commons.io.FileUtils;
 @VisibleForTesting
 public class InternalStage implements IStorage {
   private static final ObjectMapper mapper = new ObjectMapper();
-
-  /**
-   * Object mapper for parsing the client/configure response to Jackson version the same as
-   * jdbc.internal.fasterxml.jackson. We need two different versions of ObjectMapper because {@link
-   * SnowflakeFileTransferAgent#getFileTransferMetadatas(com.fasterxml.jackson.databind.JsonNode)}
-   * expects a different version of json object than {@link StreamingIngestResponse}. TODO:
-   * SNOW-1493470 Align Jackson version
-   */
-  private static final com.fasterxml.jackson.databind.ObjectMapper parseConfigureResponseMapper =
-      new com.fasterxml.jackson.databind.ObjectMapper();
 
   private static final long REFRESH_THRESHOLD_IN_MS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
@@ -356,21 +346,15 @@ public class InternalStage implements IStorage {
       throws JsonProcessingException, com.fasterxml.jackson.core.JsonProcessingException {
     JsonNode fileLocationInfoNode = mapper.valueToTree(fileLocationInfo);
 
-    // Currently there are a few mismatches between the client/configure response and what
-    // SnowflakeFileTransferAgent expects
-
     ObjectNode node = mapper.createObjectNode();
     node.putObject("data");
     ObjectNode dataNode = (ObjectNode) node.get("data");
     dataNode.set("stageInfo", fileLocationInfoNode);
 
-    // JDBC expects this field which maps to presignedFileUrlName.  We will set this later
+    // SnowflakeFileTransferAgent expects this field which maps to presignedFileUrlName
     dataNode.putArray("src_locations").add("placeholder");
 
-    // use String as intermediate object to avoid Jackson version mismatch
-    // TODO: SNOW-1493470 Align Jackson version
-    String responseString = mapper.writeValueAsString(node);
-    return parseConfigureResponseMapper.readTree(responseString);
+    return node;
   }
 
   /** Upload file to internal stage */

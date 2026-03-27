@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;
 import net.snowflake.ingest.utils.SFSessionProperty;
