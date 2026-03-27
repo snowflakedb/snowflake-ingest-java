@@ -837,13 +837,13 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
       // Log the error and throw a message that explains the cause
-      StorageClientUtil.throwJCEMissingError(operation, ex);
+      StorageClientUtil.throwJCEMissingError(operation, ex, queryId);
     }
 
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
     if (getRootCause(ex) instanceof IOException) {
-      StorageClientUtil.throwNoSpaceLeftError(operation, ex);
+      StorageClientUtil.throwNoSpaceLeftError(session, operation, ex, queryId);
     }
 
     // Don't retry if max retries has been reached or the error code is 404/400

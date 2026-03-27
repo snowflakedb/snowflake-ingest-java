@@ -466,7 +466,7 @@ class IcebergS3Client implements IcebergStorageClient {
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
     if (getRootCause(ex) instanceof IOException) {
-      StorageClientUtil.throwNoSpaceLeftError(operation, ex);
+      StorageClientUtil.throwNoSpaceLeftError(null, operation, ex);
     }
 
     // Don't retry if max retries has been reached or the error code is 404/400

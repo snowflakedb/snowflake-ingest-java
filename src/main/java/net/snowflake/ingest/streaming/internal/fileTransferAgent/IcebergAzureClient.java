@@ -354,7 +354,7 @@ class IcebergAzureClient implements IcebergStorageClient {
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
     if (StorageClientUtil.getRootCause(ex) instanceof IOException) {
-      StorageClientUtil.throwNoSpaceLeftError(operation, ex);
+      StorageClientUtil.throwNoSpaceLeftError(null, operation, ex);
     }
 
     if (ex instanceof StorageException) {
