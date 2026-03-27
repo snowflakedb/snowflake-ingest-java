@@ -477,14 +477,115 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
   }
 
   /**
-   * Renew expired token. Stub — session-dependent path, never called from streaming ingest (session
-   * is always null). Will be fully replicated if needed.
+   * Replicated from SnowflakeFileTransferAgent.parseCommandInGS. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
    */
-  static void renewExpiredToken(
+  private static com.fasterxml.jackson.databind.JsonNode parseCommandInGS(
+      net.snowflake.client.core.SFStatement statement, String command)
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+    Object result = null;
+    // send the command to GS
+    try {
+      result =
+          statement.executeHelper(
+              command,
+              "application/json",
+              null, // bindValues
+              false, // describeOnly
+              false, // internal
+              false, // async
+              new net.snowflake.client.core
+                  .ExecTimeTelemetryData()); // OOB telemetry timing queries
+    } catch (net.snowflake.client.core.SFException ex) {
+      throw new SnowflakeSQLException(
+          ex.getQueryId(), ex, ex.getSqlState(), ex.getVendorCode(), ex.getParams());
+    }
+
+    com.fasterxml.jackson.databind.JsonNode jsonNode =
+        (com.fasterxml.jackson.databind.JsonNode) result;
+
+    logger.debug(
+        "Response: {}", net.snowflake.client.util.SecretDetector.maskSecrets(jsonNode.toString()));
+
+    net.snowflake.client.jdbc.SnowflakeUtil.checkErrorAndThrowException(jsonNode);
+    return jsonNode;
+  }
+
+  /**
+   * Replicated from SnowflakeFileTransferAgent.getLocalFilePathFromCommand. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   */
+  private static String getLocalFilePathFromCommand(String command, boolean unescape) {
+    if (command == null) {
+      logger.error("null command", false);
+      return null;
+    }
+
+    if (command.indexOf(FILE_PROTOCOL) < 0) {
+      logger.error("file:// prefix not found in command: {}", command);
+      return null;
+    }
+
+    int localFilePathBeginIdx = command.indexOf(FILE_PROTOCOL) + FILE_PROTOCOL.length();
+    boolean isLocalFilePathQuoted =
+        (localFilePathBeginIdx > FILE_PROTOCOL.length())
+            && (command.charAt(localFilePathBeginIdx - 1 - FILE_PROTOCOL.length()) == '\'');
+
+    // the ending index is exclusive
+    int localFilePathEndIdx = 0;
+    String localFilePath = "";
+
+    if (isLocalFilePathQuoted) {
+      // look for the matching quote
+      localFilePathEndIdx = command.indexOf("'", localFilePathBeginIdx);
+      if (localFilePathEndIdx > localFilePathBeginIdx) {
+        localFilePath = command.substring(localFilePathBeginIdx, localFilePathEndIdx);
+      }
+      // unescape backslashes to match the file name from GS
+      if (unescape) {
+        localFilePath = localFilePath.replaceAll("\\\\\\\\", "\\\\");
+      }
+    } else {
+      // look for the first space or new line or semi colon
+      java.util.List<Integer> indexList = new java.util.ArrayList<>();
+      char[] delimiterChars = {' ', '\n', ';'};
+      for (int i = 0; i < delimiterChars.length; i++) {
+        int charIndex = command.indexOf(delimiterChars[i], localFilePathBeginIdx);
+        if (charIndex != -1) {
+          indexList.add(charIndex);
+        }
+      }
+
+      localFilePathEndIdx = indexList.isEmpty() ? -1 : java.util.Collections.min(indexList);
+
+      if (localFilePathEndIdx > localFilePathBeginIdx) {
+        localFilePath = command.substring(localFilePathBeginIdx, localFilePathEndIdx);
+      } else if (localFilePathEndIdx == -1) {
+        localFilePath = command.substring(localFilePathBeginIdx);
+      }
+    }
+
+    return localFilePath;
+  }
+
+  private static final String FILE_PROTOCOL = "file://";
+
+  /**
+   * Replicated from SnowflakeFileTransferAgent.renewExpiredToken. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   */
+  public static void renewExpiredToken(
       net.snowflake.client.core.SFSession session, String command, SnowflakeStorageClient client)
-      throws SnowflakeSQLException {
-    throw new SnowflakeSQLException(
-        ErrorCode.INTERNAL_ERROR, "renewExpiredToken not supported without JDBC session");
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+    net.snowflake.client.core.SFStatement statement =
+        new net.snowflake.client.core.SFStatement(session);
+    com.fasterxml.jackson.databind.JsonNode jsonNode = parseCommandInGS(statement, command);
+    String queryId = jsonNode.path("data").path("queryId").asText();
+    java.util.Map<?, ?> stageCredentials = extractStageCreds(jsonNode, queryId);
+
+    // renew client with the fresh token
+    logger.debug("Renewing expired access token");
+    client.renew(stageCredentials);
   }
 
   // ---- Inner classes and methods replicated from JDBC for uploadWithoutConnection ----
@@ -829,10 +930,12 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
     }
 
     logger.debug(
-        "Upload object. Location: {}, key: {}, srcFile: {}",
+        "Upload object. Location: {}, key: {}, srcFile: {}, encryption: {}",
         remoteLocation.location,
         destFileName,
-        srcFile);
+        srcFile,
+        (net.snowflake.ingest.streaming.internal.fileTransferAgent.log.ArgSupplier)
+            () -> (encMat == null ? "NULL" : encMat.getSmkId() + "|" + encMat.getQueryId()));
 
     StorageObjectMetadata meta =
         StorageClientFactory.getFactory().createStorageMetadataObj(stage.getStageType());
@@ -852,6 +955,20 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
     try {
       String presignedUrl = "";
+      if (initialClient.requirePresignedUrl()) {
+        // need to replace file://mypath/myfile?.csv with file://mypath/myfile1.csv.gz
+        String localFilePath = getLocalFilePathFromCommand(command, false);
+        String commandWithExactPath = command.replace(localFilePath, origDestFileName);
+        // then hand that to GS to get the actual presigned URL we'll use
+        net.snowflake.client.core.SFStatement statement =
+            new net.snowflake.client.core.SFStatement(session);
+        com.fasterxml.jackson.databind.JsonNode jsonNode =
+            parseCommandInGS(statement, commandWithExactPath);
+
+        if (!jsonNode.path("data").path("stageInfo").path("presignedUrl").isMissingNode()) {
+          presignedUrl = jsonNode.path("data").path("stageInfo").path("presignedUrl").asText();
+        }
+      }
       initialClient.upload(
           session,
           command,
