@@ -89,7 +89,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
    */
   public static SnowflakeGCSClient createSnowflakeGCSClient(
       StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFSession session)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug(
         "Initializing Snowflake GCS client with encryption: {}", encMat != null ? "true" : "false");
     SnowflakeGCSClient sfGcsClient = new SnowflakeGCSClient();
@@ -150,7 +150,8 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   }
 
   @Override
-  public void renew(Map<?, ?> stageCredentials) throws SnowflakeSQLException {
+  public void renew(Map<?, ?> stageCredentials)
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Renewing the Snowflake GCS client");
     stageInfo.setCredentials(stageCredentials);
     setupGCSClient(stageInfo, encMat, session);
@@ -1224,7 +1225,9 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
    */
   private void setupGCSClient(
       StageInfo stage, RemoteStoreFileEncryptionMaterial encMat, SFSession session)
-      throws IllegalArgumentException, SnowflakeSQLException {
+      throws IllegalArgumentException,
+          SnowflakeSQLException,
+          net.snowflake.client.jdbc.SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the GCS client.
     this.stageInfo = stage;

@@ -116,7 +116,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       boolean isClientSideEncrypted,
       SFBaseSession session,
       boolean useS3RegionalUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug(
         "Initializing Snowflake S3 client with encryption: {}, client side encrypted: {}",
         encMat != null,
@@ -143,7 +143,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageEndPoint,
       boolean isClientSideEncrypted,
       SFBaseSession session)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the AWS client. We won't save the awsCredentials since
     // we will be refreshing that, every time we reset the AWS client
@@ -171,11 +171,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
     clientConfig.withSignerOverride("AWSS3V4SignerType");
     clientConfig.getApacheHttpClientConfig().setSslSocketFactory(getSSLConnectionSocketFactory());
     if (session != null) {
-      try {
-        S3HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
-      } catch (net.snowflake.client.jdbc.SnowflakeSQLException e) {
-        throw new SnowflakeSQLException(e, e.getMessage());
-      }
+      S3HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
     } else {
       S3HttpUtil.setSessionlessProxyForS3(proxyProperties, clientConfig);
     }
@@ -300,7 +296,8 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
    * @throws SnowflakeSQLException if any error occurs
    */
   @Override
-  public void renew(Map<?, ?> stageCredentials) throws SnowflakeSQLException {
+  public void renew(Map<?, ?> stageCredentials)
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Renewing the Snowflake S3 client");
     // We renew the client with fresh credentials and with its original parameters
     setupSnowflakeS3Client(
