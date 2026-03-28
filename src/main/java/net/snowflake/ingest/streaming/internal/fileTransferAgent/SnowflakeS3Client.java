@@ -358,7 +358,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     Stopwatch stopwatch = new Stopwatch();
     stopwatch.start();
     String localFilePath = localLocation + localFileSep + destFileName;
@@ -484,7 +484,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Staring download of file from S3 stage path: {} to input stream", stageFilePath);
     Stopwatch stopwatch = new Stopwatch();
     stopwatch.start();
@@ -585,7 +585,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.info(
         StorageHelper.getStartUploadLog(
             "S3", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -815,7 +815,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       SFSession session,
       String command,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     handleS3Exception(ex, retryCount, operation, session, command, this, queryId);
   }
 
@@ -827,7 +827,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String command,
       SnowflakeS3Client s3Client,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed

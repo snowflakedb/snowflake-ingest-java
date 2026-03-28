@@ -323,7 +323,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     Stopwatch stopwatch = new Stopwatch();
     stopwatch.start();
     String localFilePath = localLocation + localFileSep + destFileName;
@@ -443,7 +443,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug(
         "Staring download of file from Azure stage path: {} to input stream", stageFilePath);
     Stopwatch stopwatch = new Stopwatch();
@@ -560,7 +560,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.info(
         StorageHelper.getStartUploadLog(
             "Azure", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -687,7 +687,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       SFSession session,
       String command,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     handleAzureException(ex, retryCount, operation, session, command, this, queryId);
   }
 
@@ -798,7 +798,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String command,
       SnowflakeAzureClient azClient,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
 
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {

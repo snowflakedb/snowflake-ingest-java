@@ -241,7 +241,7 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
       String command,
       String queryId,
       SnowflakeGCSClient gcsClient)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     if (ex instanceof AmazonClientException) {
       logger.debug("GCSAccessStrategyAwsSdk: " + ex.getMessage());
 

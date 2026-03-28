@@ -211,7 +211,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     String localFilePath = localLocation + localFileSep + destFileName;
     logger.debug(
         "Staring download of file from GCS stage path: {} to {}", stageFilePath, localFilePath);
@@ -402,7 +402,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Staring download of file from GCS stage path: {} to input stream", stageFilePath);
     int retryCount = 0;
     Stopwatch stopwatch = new Stopwatch();
@@ -587,7 +587,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.info(
         StorageHelper.getStartUploadLog(
             "GCS", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -843,7 +843,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       long contentLength,
       InputStream content,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     logger.debug("Uploading file {} to bucket {}", destFileName, remoteStorageLocation);
     try {
       this.gcsAccessStrategy.uploadWithDownScopedToken(
@@ -895,7 +895,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String presignedUrl,
       net.snowflake.client.core.HttpClientSettingsKey ocspAndProxyKey,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     try {
       URIBuilder uriBuilder = new URIBuilder(presignedUrl);
 
@@ -1078,7 +1078,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       SFSession session,
       String command,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed

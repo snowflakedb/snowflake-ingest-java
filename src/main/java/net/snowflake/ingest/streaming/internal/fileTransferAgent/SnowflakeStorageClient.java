@@ -105,7 +105,7 @@ public interface SnowflakeStorageClient {
       String stageFilePath,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     download(
         connection,
         command,
@@ -145,7 +145,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * @deprecated
@@ -159,7 +159,7 @@ public interface SnowflakeStorageClient {
       String stageFilePath,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     return downloadToStream(
         connection,
         command,
@@ -194,7 +194,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * @deprecated
@@ -281,7 +281,7 @@ public interface SnowflakeStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     uploadWithPresignedUrlWithoutConnection(
         networkTimeoutInMilli,
         ocspModeAndProxyKey,
@@ -317,7 +317,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     if (!requirePresignedUrl()) {
       throw new SnowflakeSQLLoggedException(
           queryId,
@@ -337,7 +337,7 @@ public interface SnowflakeStorageClient {
   @Deprecated
   default void handleStorageException(
       Exception ex, int retryCount, String operation, SFSession connection, String command)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     handleStorageException(ex, retryCount, operation, connection, command, null);
   }
 
@@ -360,7 +360,7 @@ public interface SnowflakeStorageClient {
       SFSession connection,
       String command,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * Returns the material descriptor key
