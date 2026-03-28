@@ -11,6 +11,8 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static java.util.Arrays.stream;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Properties;
@@ -254,6 +256,34 @@ final class StorageClientUtil {
           ErrorCode.IO_ERROR.getMessageCode(),
           ex,
           "Encountered exception during " + operation + ":" + ex.getMessage());
+    }
+  }
+
+  /** Replicated from SnowflakeUtil.assureOnlyUserAccessibleFilePermissions */
+  static void assureOnlyUserAccessibleFilePermissions(
+      File file, boolean isOwnerOnlyStageFilePermissionsEnabled) throws IOException {
+    if (isWindows()) {
+      return;
+    }
+    if (!isOwnerOnlyStageFilePermissionsEnabled) {
+      return;
+    }
+    boolean disableUserPermissions =
+        file.setReadable(false, false)
+            && file.setWritable(false, false)
+            && file.setExecutable(false, false);
+    boolean setOwnerPermissionsOnly = file.setReadable(true, true) && file.setWritable(true, true);
+
+    if (disableUserPermissions && setOwnerPermissionsOnly) {
+      logger.info("Successfuly set OwnerOnly permission for {}. ", file.getAbsolutePath());
+    } else {
+      file.delete();
+      logger.error(
+          "Failed to set OwnerOnly permission for {}. Failed to download", file.getAbsolutePath());
+      throw new IOException(
+          String.format(
+              "Failed to set OwnerOnly permission for %s. Failed to download",
+              file.getAbsolutePath()));
     }
   }
 }

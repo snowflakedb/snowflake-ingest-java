@@ -9,8 +9,6 @@
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
-
 /** Internal JDBC driver error codes */
 public enum ErrorCode {
 
