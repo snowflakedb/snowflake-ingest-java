@@ -17,6 +17,7 @@ import com.amazonaws.Protocol;
 import java.util.Properties;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerUtil;
 import net.snowflake.ingest.utils.SFSessionProperty;
 
 public class S3HttpUtil {
@@ -55,7 +56,7 @@ public class S3HttpUtil {
             ", user: "
                 + key.getProxyUser()
                 + ", password is "
-                + (isNullOrEmpty(key.getProxyPassword()) ? "not provided" : "provided");
+                + SFLoggerUtil.isVariableProvided(key.getProxyPassword());
         clientConfig.setProxyUsername(key.getProxyUser());
         clientConfig.setProxyPassword(key.getProxyPassword());
       }
