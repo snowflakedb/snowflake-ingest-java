@@ -3,10 +3,6 @@
  * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/cloud/storage/StorageObjectSummaryCollection.java
  *
  * Permitted differences: package.
- * Note: Iterator classes (S3ObjectSummariesIterator, AzureObjectSummariesIterator,
- * GcsObjectSummariesIterator) are from JDBC and not replicated here. This class
- * is only needed for the SnowflakeStorageClient interface — the iterator()
- * method is not called by the streaming ingest upload path.
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
@@ -53,8 +49,15 @@ public class StorageObjectSummaryCollection implements Iterable<StorageObjectSum
 
   @Override
   public Iterator<StorageObjectSummary> iterator() {
-    // Iterator classes not replicated — this method is not called by the streaming ingest path.
-    throw new UnsupportedOperationException(
-        "StorageObjectSummaryCollection.iterator() not supported in ingest SDK");
+    switch (sType) {
+      case S3:
+        return new S3ObjectSummariesIterator(s3ObjSummariesList);
+      case AZURE:
+        return new AzureObjectSummariesIterator(azCLoudBlobIterable);
+      case GCS:
+        return new GcsObjectSummariesIterator(this.gcsIterablePage);
+      default:
+        throw new IllegalArgumentException("Unspecified storage provider");
+    }
   }
 }
