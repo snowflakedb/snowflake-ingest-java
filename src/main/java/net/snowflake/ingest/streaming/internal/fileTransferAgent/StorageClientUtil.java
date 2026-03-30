@@ -14,12 +14,14 @@ import static java.util.Arrays.stream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
@@ -290,5 +292,17 @@ final class StorageClientUtil {
               "Failed to set OwnerOnly permission for %s. Failed to download",
               file.getAbsolutePath()));
     }
+  }
+
+  /**
+   * Replicated from SnowflakeUtil.getEpochTimeInMicroSeconds. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeUtil.java
+   */
+  static long getEpochTimeInMicroSeconds() {
+    Instant timestamp = Instant.now();
+    long micros =
+        TimeUnit.SECONDS.toMicros(timestamp.getEpochSecond())
+            + TimeUnit.NANOSECONDS.toMicros(timestamp.getNano());
+    return micros;
   }
 }
