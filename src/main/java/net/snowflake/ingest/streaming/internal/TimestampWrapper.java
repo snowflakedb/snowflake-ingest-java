@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-import net.snowflake.client.jdbc.internal.snowflake.common.util.Power10;
+import net.snowflake.ingest.utils.Power10;
 
 /**
  * This class represents the outcome of timestamp parsing and validation. It contains methods needed

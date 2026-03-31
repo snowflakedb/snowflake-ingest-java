@@ -1,8 +1,8 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import static net.snowflake.client.core.Constants.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
-import static net.snowflake.client.jdbc.SnowflakeUtil.createDefaultExecutorService;
-import static net.snowflake.client.jdbc.SnowflakeUtil.getRootCause;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.ErrorCode.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.createDefaultExecutorService;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
 
 import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
@@ -41,20 +41,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
-import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.core.SFSSLConnectionSocketFactory;
-import net.snowflake.client.core.SFSessionProperty;
-import net.snowflake.client.jdbc.ErrorCode;
-import net.snowflake.client.jdbc.FileBackedOutputStream;
-import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.SnowflakeSQLLoggedException;
-import net.snowflake.client.jdbc.cloud.storage.StorageObjectMetadata;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
-import net.snowflake.client.util.SFPair;
-import net.snowflake.client.util.Stopwatch;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
+import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.SFPair;
+import net.snowflake.ingest.utils.SFSessionProperty;
+import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
@@ -88,7 +80,7 @@ class IcebergS3Client implements IcebergStorageClient {
             // trust manager is set to null, which will use default ones
             // instead of SFTrustManager (which enables ocsp checking)
             s3ConnectionSocketFactory =
-                new SFSSLConnectionSocketFactory(null, HttpUtil.isSocksProxyDisabled());
+                new IngestSSLConnectionSocketFactory(null, HttpUtil.isSocksProxyDisabled());
           } catch (KeyManagementException | NoSuchAlgorithmException e) {
             throw new SSLInitializationException(e.getMessage(), e);
           }
@@ -468,14 +460,13 @@ class IcebergS3Client implements IcebergStorageClient {
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
       // Log the error and throw a message that explains the cause
-      SnowflakeFileTransferAgent.throwJCEMissingError(operation, ex, null /* queryId */);
+      StorageClientUtil.throwJCEMissingError(operation, ex);
     }
 
     // If there is no space left in the download location, java.io.IOException is thrown.
     // Don't retry.
     if (getRootCause(ex) instanceof IOException) {
-      SnowflakeFileTransferAgent.throwNoSpaceLeftError(
-          null /* session */, operation, ex, null /* queryId */);
+      StorageClientUtil.throwNoSpaceLeftError(operation, ex);
     }
 
     // Don't retry if max retries has been reached or the error code is 404/400

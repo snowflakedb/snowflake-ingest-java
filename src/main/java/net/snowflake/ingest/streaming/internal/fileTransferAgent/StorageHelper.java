@@ -2,7 +2,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.io.File;
 import java.io.InputStream;
-import net.snowflake.client.jdbc.FileBackedOutputStream;
 
 public class StorageHelper {
   static String getStartUploadLog(

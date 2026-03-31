@@ -29,10 +29,11 @@ public class IcebergDataTypeParser {
   public static final String ELEMENT = "element";
   public static final String KEY = "key";
   public static final String VALUE = "value";
+  public static final String LIST = "list";
+  public static final String MAP_REPEATED_NAME = "key_value";
+  public static final String MAP = "map";
   private static final String TYPE = "type";
   private static final String STRUCT = "struct";
-  private static final String LIST = "list";
-  private static final String MAP = "map";
   private static final String FIELDS = "fields";
   private static final String DOC = "doc";
   private static final String NAME = "name";

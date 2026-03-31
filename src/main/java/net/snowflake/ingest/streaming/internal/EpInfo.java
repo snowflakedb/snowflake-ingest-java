@@ -5,7 +5,9 @@ import static net.snowflake.ingest.utils.Constants.EP_NDV_UNKNOWN;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.IcebergDataTypeParser;
 import net.snowflake.ingest.utils.SFException;
+import net.snowflake.ingest.utils.Utils;
 
 /** Class used to serialize/deserialize EP information */
 class EpInfo {
@@ -33,7 +35,16 @@ class EpInfo {
       String colName = entry.getKey();
       FileColumnProperties colEp = entry.getValue();
       // Make sure the null count should always smaller than the total row count
-      if (colEp.getNullCount() > rowCount) {
+      // Only check the null count for non-repeated descendents columns
+      if (!(colName.contains(
+                  Utils.concatDotPath(IcebergDataTypeParser.LIST, IcebergDataTypeParser.ELEMENT))
+              || colName.contains(
+                  Utils.concatDotPath(
+                      IcebergDataTypeParser.MAP_REPEATED_NAME, IcebergDataTypeParser.KEY))
+              || colName.contains(
+                  Utils.concatDotPath(
+                      IcebergDataTypeParser.MAP_REPEATED_NAME, IcebergDataTypeParser.VALUE)))
+          && colEp.getNullCount() > rowCount) {
         throw new SFException(
             ErrorCode.INTERNAL_ERROR,
             String.format(
