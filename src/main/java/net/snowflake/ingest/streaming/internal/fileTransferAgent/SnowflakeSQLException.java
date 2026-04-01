@@ -8,7 +8,6 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.sql.SQLException;
-import net.snowflake.client.core.SFException;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 
