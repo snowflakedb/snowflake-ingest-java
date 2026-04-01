@@ -9,6 +9,8 @@
 
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
+import static java.util.Arrays.stream;
+
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Properties;
@@ -16,10 +18,13 @@ import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.stream.Collectors;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.OCSPMode;
 import net.snowflake.ingest.utils.SFSessionProperty;
+import org.apache.http.Header;
+import org.apache.http.NameValuePair;
 
 final class StorageClientUtil {
   private static final SFLogger logger = SFLoggerFactory.getLogger(StorageClientUtil.class);
@@ -55,6 +60,17 @@ final class StorageClientUtil {
     }
 
     return true;
+  }
+
+  /** Replicated from SnowflakeUtil.createCaseInsensitiveMap(Header[]) */
+  static Map<String, String> createCaseInsensitiveMap(Header[] headers) {
+    if (headers != null) {
+      return createCaseInsensitiveMap(
+          stream(headers)
+              .collect(Collectors.toMap(NameValuePair::getName, NameValuePair::getValue)));
+    } else {
+      return new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    }
   }
 
   /** Replicated from SnowflakeUtil.systemGetProperty */
@@ -150,13 +166,37 @@ final class StorageClientUtil {
     return (ThreadPoolExecutor) Executors.newFixedThreadPool(parallel, threadFactory);
   }
 
+  /**
+   * Replicated from SnowflakeUtil.convertSystemPropertyToBooleanValue (JDBC). Reads a system
+   * property and returns it as a boolean.
+   */
+  static boolean convertSystemPropertyToBooleanValue(String systemProperty, boolean defaultValue) {
+    String val = systemGetProperty(systemProperty);
+    if (val != null) {
+      return Boolean.parseBoolean(val);
+    }
+    return defaultValue;
+  }
+
   private static final String NO_SPACE_LEFT_ON_DEVICE_ERR = "No space left on device";
 
   /**
    * Replicated from SnowflakeFileTransferAgent.throwJCEMissingError. Source:
    * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   *
+   * @deprecated use {@link #throwJCEMissingError(String, Exception, String)}
    */
+  @Deprecated
   static void throwJCEMissingError(String operation, Exception ex) throws SnowflakeSQLException {
+    throwJCEMissingError(operation, ex, null);
+  }
+
+  /**
+   * Replicated from SnowflakeFileTransferAgent.throwJCEMissingError. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   */
+  static void throwJCEMissingError(String operation, Exception ex, String queryId)
+      throws SnowflakeSQLException {
     // Most likely cause: Unlimited strength policy files not installed
     String msg =
         "Strong encryption with Java JRE requires JCE "
@@ -176,8 +216,9 @@ final class StorageClientUtil {
       logger.error(msg);
     }
     throw new SnowflakeSQLException(
+        queryId,
         ex,
-        net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState.SYSTEM_ERROR,
+        SqlState.SYSTEM_ERROR,
         ErrorCode.AWS_CLIENT_ERROR.getMessageCode(),
         operation,
         msg);
@@ -186,17 +227,33 @@ final class StorageClientUtil {
   /**
    * Replicated from SnowflakeFileTransferAgent.throwNoSpaceLeftError. Source:
    * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   *
+   * @deprecated use {@link #throwNoSpaceLeftError(net.snowflake.client.core.SFSession, String,
+   *     Exception, String)}
    */
-  static void throwNoSpaceLeftError(String operation, Exception ex)
+  @Deprecated
+  static void throwNoSpaceLeftError(
+      net.snowflake.client.core.SFSession session, String operation, Exception ex)
+      throws SnowflakeSQLLoggedException {
+    throwNoSpaceLeftError(session, operation, ex, null);
+  }
+
+  /**
+   * Replicated from SnowflakeFileTransferAgent.throwNoSpaceLeftError. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   */
+  static void throwNoSpaceLeftError(
+      net.snowflake.client.core.SFSession session, String operation, Exception ex, String queryId)
       throws SnowflakeSQLLoggedException {
     String exMessage = getRootCause(ex).getMessage();
     if (exMessage != null && exMessage.equals(NO_SPACE_LEFT_ON_DEVICE_ERR)) {
       throw new SnowflakeSQLLoggedException(
-          null,
-          net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState.SYSTEM_ERROR,
+          queryId,
+          session,
+          SqlState.SYSTEM_ERROR,
           ErrorCode.IO_ERROR.getMessageCode(),
           ex,
-          "Encountered exception during " + operation + ": " + ex.getMessage());
+          "Encountered exception during " + operation + ":" + ex.getMessage());
     }
   }
 }

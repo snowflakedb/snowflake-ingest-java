@@ -59,7 +59,8 @@ public interface SnowflakeStorageClient {
    * @param stageCredentials a Map (as returned by GS) which contains the new credential properties
    * @throws SnowflakeSQLException failure to renew the storage client
    */
-  void renew(Map<?, ?> stageCredentials) throws SnowflakeSQLException;
+  void renew(Map<?, ?> stageCredentials)
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /** shuts down the client */
   void shutdown();
@@ -104,7 +105,7 @@ public interface SnowflakeStorageClient {
       String stageFilePath,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     download(
         connection,
         command,
@@ -144,7 +145,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * @deprecated
@@ -158,7 +159,7 @@ public interface SnowflakeStorageClient {
       String stageFilePath,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     return downloadToStream(
         connection,
         command,
@@ -193,7 +194,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * @deprecated
@@ -212,7 +213,7 @@ public interface SnowflakeStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     upload(
         connection,
         command,
@@ -261,7 +262,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * @deprecated
@@ -269,7 +270,7 @@ public interface SnowflakeStorageClient {
   @Deprecated
   default void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      HttpClientSettingsKey ocspModeAndProxyKey,
+      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
@@ -280,7 +281,7 @@ public interface SnowflakeStorageClient {
       StorageObjectMetadata meta,
       String stageRegion,
       String presignedUrl)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     uploadWithPresignedUrlWithoutConnection(
         networkTimeoutInMilli,
         ocspModeAndProxyKey,
@@ -304,7 +305,7 @@ public interface SnowflakeStorageClient {
    */
   default void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      HttpClientSettingsKey ocspModeAndProxyKey,
+      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
@@ -316,7 +317,7 @@ public interface SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     if (!requirePresignedUrl()) {
       throw new SnowflakeSQLLoggedException(
           queryId,
@@ -336,7 +337,7 @@ public interface SnowflakeStorageClient {
   @Deprecated
   default void handleStorageException(
       Exception ex, int retryCount, String operation, SFSession connection, String command)
-      throws SnowflakeSQLException {
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     handleStorageException(ex, retryCount, operation, connection, command, null);
   }
 
@@ -359,7 +360,7 @@ public interface SnowflakeStorageClient {
       SFSession connection,
       String command,
       String queryId)
-      throws SnowflakeSQLException;
+      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
    * Returns the material descriptor key
