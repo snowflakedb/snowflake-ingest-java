@@ -253,7 +253,7 @@ is replaced.
 
 ---
 
-### Progress Summary (updated 2026-03-30)
+### Progress Summary (updated 2026-04-01)
 
 | Step | Status | PR |
 |---|---|---|
@@ -269,16 +269,20 @@ is replaced.
 | Step 7b — Replicate getFileTransferMetadatas | ✅ MERGED | #1119 |
 | Step 8a — Replicate StageInfo, RemoteStoreFileEncryptionMaterial | ✅ MERGED | #1120 |
 | Step 8b — Replicate MetadataV1, ObjectMapperFactory, SqlState | ✅ MERGED | #1121 |
-| Step 8c — Replicate storage helpers + interface | ✅ Open | #1123 |
-| Step 8d — Replicate storage client implementations | ✅ Open | #1124 |
-| Step 8e — Swap ALL imports at once | ✅ Open | #1127 |
-| Step 9a — Mechanical import swaps in replicated classes | ✅ Open | #1128 |
-| Step 9b — Replicate OOB telemetry infrastructure | ⬜ TODO | — |
-| Step 9c — Swap telemetry imports in SnowflakeSQLLoggedException + TelemetryClient | ⬜ TODO | — |
-| Step 10 — Remove JDBC dependency | ⬜ TODO | — |
+| Step 8c — Replicate storage helpers + interface | ✅ MERGED | #1123 |
+| Step 8d — Replicate storage client implementations | ✅ MERGED | #1124 |
+| Step 8e — Swap ALL imports (pure import swaps) | ✅ MERGED | #1127 |
+| Step 9a — Mechanical import swaps in replicated classes | ✅ MERGED | #1128 |
+| Step 9b-prep — Replicate OOB telemetry deps | ✅ MERGED | #1129 |
+| Step 9b — Replicate TelemetryEvent + TelemetryService | ✅ Open | #1130 |
+| Step 9c — Swap telemetry imports | ✅ Open | #1131 |
+| Step 10a — Replicate SFException, ExecTimeTelemetryData, etc. | ✅ Open | #1132 |
+| Step 10b — Swap SFException imports | ✅ Open | #1134 |
+| Step 10c — Remove SFSession/SFBaseSession | ⬜ TODO | — |
+| Step 10d — Demote JDBC to test scope | ⬜ TODO | — |
 
 **Closed PRs:** #1117 (reverted 7b approach), #1122 (reverted 8c approach)
-**Other PRs:** #1118 (error/exception tests on master)
+**Other PRs:** #1118 (error/exception tests on master), #1133 (Maven retry config)
 
 ---
 
@@ -561,73 +565,85 @@ imports.**
 
 ---
 
-### Step 9b — Replicate OOB telemetry infrastructure ⬜ TODO
+### Step 9b — Replicate OOB telemetry infrastructure ✅ (PRs #1129, #1130)
 
-Replicate the OOB (out-of-band) telemetry classes that
-`SnowflakeSQLLoggedException` depends on. Verbatim replication — no stubs,
-no logic changes.
+**Done (PR #1129 — prep, MERGED):**
+- `TelemetryThreadPool` (61 lines) — singleton thread pool
+- `SFTimestamp` (20 lines) — UTC timestamp formatter
+- `SnowflakeConnectString` (256 lines) — connection string parser
+- `SnowflakeDriverConstants` — constants from LoginInfoDTO/SnowflakeDriver
 
-**Classes to replicate (~1170 lines total):**
-- `TelemetryThreadPool` (61 lines) — singleton thread pool for async telemetry.
-  No JDBC deps beyond package.
-- `SFTimestamp` (20 lines) — UTC timestamp formatter. No JDBC deps.
-- `SnowflakeConnectString` (256 lines) — connection string parser. Deps:
-  `SFSessionProperty` (already replicated), `SecretDetector` (already
-  replicated), `SFLogger` (already replicated).
-- `TelemetryEvent` (182 lines) — telemetry event builder. Deps:
-  `SFException` (JDBC, kept temporarily), `UUIDUtils` (already replicated),
-  `SFTimestamp` (replicated above), `SecretDetector` (already replicated),
-  `ResourceBundleManager` (already replicated).
-- `TelemetryService` (651 lines) — OOB telemetry singleton. Deps:
-  `SnowflakeConnectString` (replicated above), `SecretDetector` (already
-  replicated), `Stopwatch` (already replicated), `TelemetryThreadPool`
-  (replicated above).
-
-**Also add constants:**
-- `LoginInfoDTO.SF_JDBC_APP_ID` = `"JDBC"` (from snowflake-common)
-- `SnowflakeDriver.implementVersion` = `"3.25.1"` (version string)
-
-**Suggested PR split (~200 lines production code per PR):**
-- PR 1: `TelemetryThreadPool`, `SFTimestamp`, `SnowflakeConnectString`,
-  constants (~340 lines)
-- PR 2: `TelemetryEvent`, `TelemetryService` (~830 lines — single class
-  exceeds 200-line limit, OK per plan rules)
+**Done (PR #1130 — main, Open):**
+- `TelemetryEvent` (182 lines) — telemetry event builder
+- `TelemetryService` (651 lines) — OOB telemetry singleton
+- `version.properties` — resource bundle for driver version
 
 ---
 
-### Step 9c — Swap telemetry imports in SnowflakeSQLLoggedException + TelemetryClient ⬜ TODO
+### Step 9c — Swap telemetry imports ✅ Open (PR #1131)
 
-Mechanical import swaps only — no logic changes, no method removal:
-- `SnowflakeSQLLoggedException`: swap all 12 JDBC telemetry imports to
-  ingest replicated versions (from Step 9b). Full `sendTelemetryData()`
-  body preserved verbatim.
-- `TelemetryClient`: swap `TelemetryThreadPool` to ingest version
-  (from Step 9b). Remaining JDBC imports (`HttpUtil`, `SFSession`,
-  `SnowflakeConnectionV1`, `SnowflakeSQLException`) kept until Step 10.
+**Done:** Mechanical import swaps only:
+- `SnowflakeSQLLoggedException`: swapped 6 of 12 JDBC imports
+  (ObjectMapperFactory, SqlState, TelemetryEvent, TelemetryService,
+  LoginInfoDTO→SnowflakeDriverConstants, SnowflakeDriver→SnowflakeDriverConstants).
+  Kept 6: SFBaseSession, SFSession (parameter types), Telemetry,
+  TelemetryField, TelemetryUtil (interact with session.getTelemetryClient()).
+- `TelemetryClient`: swapped TelemetryThreadPool. Kept 4: HttpUtil,
+  SFSession, SnowflakeConnectionV1, SnowflakeSQLException.
 
 ---
 
-### Step 10 — Remove JDBC Dependency ⬜ TODO
+### Step 10a — Replicate remaining small JDBC classes ✅ Open (PR #1132)
 
-Remaining JDBC imports after Step 9c (all in `fileTransferAgent/`):
-- `SFSession`/`SFBaseSession` (15 imports) — always null from callers.
-  Need stubs or parameter type changes.
-- `SFException` (2 imports) — used in one `SnowflakeSQLException` constructor
-  (never called) and caught in `parseCommandInGS` (calls JDBC's `SFStatement`).
-- `SnowflakeConnectionV1`, `SnowflakeSQLException` in `TelemetryClient`
-  — session-based code path, never used by ingest.
-- `HttpUtil` in `TelemetryClient` — `executeGeneralRequest` for both
-  session and sessionless paths.
-- GCS HTTP types (4 imports) — `ExecTimeTelemetryData`, `HttpResponseContextDto`,
-  `HttpUtil`, `RestRequest` in `SnowflakeGCSClient`.
+**Done:** Verbatim replication of self-contained classes:
+- `SFException` (127 lines) — exception type
+- `HttpResponseContextDto` (54 lines) — HTTP response context
+- `TimeMeasurement` (53 lines) — epoch microsecond timer
+- `ExecTimeTelemetryData` (199 lines) — execution time telemetry
+- `ThrowingCallable` (9 lines) — functional interface
+- `StorageClientUtil`: added `getEpochTimeInMicroSeconds`
+
+---
+
+### Step 10b — Swap SFException imports ✅ Open (PR #1134)
+
+**Done:** Removed `SFException` JDBC imports from 3 files where the
+replicated `SFException` is now in the same package:
+- `SnowflakeSQLException`, `SnowflakeSQLLoggedException`, `TelemetryEvent`
+
+`ExecTimeTelemetryData`/`HttpResponseContextDto` in `SnowflakeGCSClient`
+NOT swapped — they interact with JDBC's `RestRequest.executeWithRetries()`.
+
+---
+
+### Step 10c — Remove SFSession/SFBaseSession ⬜ TODO
+
+SFSession/SFBaseSession are always null from ingest callers. Not feasible
+to replicate (1498+1404 lines, 156-class transitive closure = 40K lines).
+Need to remove these parameter types.
+
+---
+
+### Step 10d — Demote JDBC to test scope ⬜ TODO
+
+Remaining 27 JDBC imports after Step 10b (all unreplicable due to massive
+dependency chains):
+- `SFSession`/`SFBaseSession` (15) — parameter types, always null
+- `HttpUtil` (2) — GCS client + TelemetryClient
+- `RestRequest` (1) — GCS client
+- `SnowflakeConnectionV1` (1) — TelemetryClient session path
+- `SnowflakeSQLException` (JDBC's, 1) — TelemetryClient
+- `ExecTimeTelemetryData`/`HttpResponseContextDto` (2) — GCS client
+  (replicated but interact with JDBC RestRequest)
+- IB `Telemetry`/`TelemetryField`/`TelemetryUtil` (3) —
+  interact with session.getTelemetryClient()
+- `SFSession` in `SnowflakeSQLLoggedException` (2) — parameter types
 
 Then:
-1. Create `SFSession`/`SFBaseSession` stubs or change parameter types
-2. Replace remaining JDBC HTTP utilities with direct Apache HttpClient
-3. Change `snowflake-jdbc-thin` scope to `test` in `pom.xml`
-4. Remove JDBC shade relocation rules from Maven Shade plugin
-5. Remove `snowflake-jdbc-thin` from `public_pom.xml`
-6. Run full test suite
+1. Demote `snowflake-jdbc-thin` to `test` scope in `pom.xml`
+2. Remove JDBC shade relocation rules from Maven Shade plugin
+3. Remove `snowflake-jdbc-thin` from `public_pom.xml`
+4. Run full test suite
 
 ---
 
