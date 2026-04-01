@@ -42,13 +42,12 @@ import net.snowflake.client.core.ExecTimeTelemetryData;
 import net.snowflake.client.core.HttpResponseContextDto;
 import net.snowflake.client.core.HttpUtil;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.core.SFSessionProperty;
 import net.snowflake.client.jdbc.RestRequest;
-import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.ArgSupplier;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.SFPair;
+import net.snowflake.ingest.utils.SFSessionProperty;
 import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -271,7 +270,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
               outStream.flush();
               outStream.close();
               bodyStream.close();
-              SnowflakeUtil.assureOnlyUserAccessibleFilePermissions(
+              StorageClientUtil.assureOnlyUserAccessibleFilePermissions(
                   localFile, session.isOwnerOnlyStageFilePermissionsEnabled());
               if (isEncrypting()) {
                 Map<String, String> userDefinedHeaders =
@@ -301,7 +300,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
           Map<String, String> userDefinedMetadata =
               this.gcsAccessStrategy.download(
                   parallelism, remoteStorageLocation, stageFilePath, localFile);
-          SnowflakeUtil.assureOnlyUserAccessibleFilePermissions(
+          StorageClientUtil.assureOnlyUserAccessibleFilePermissions(
               localFile, session.isOwnerOnlyStageFilePermissionsEnabled());
           stopwatch.stop();
           downloadMillis = stopwatch.elapsedMillis();

@@ -19,7 +19,8 @@ public enum SFSessionProperty {
   PROXY_PASSWORD("proxyPassword"),
   NON_PROXY_HOSTS("nonProxyHosts"),
   PROXY_PROTOCOL("proxyProtocol"),
-  ALLOW_UNDERSCORES_IN_HOST("allowUnderscoresInHost");
+  ALLOW_UNDERSCORES_IN_HOST("allowUnderscoresInHost"),
+  PUT_GET_MAX_RETRIES("putGetMaxRetries");
 
   private final String propertyKey;
 

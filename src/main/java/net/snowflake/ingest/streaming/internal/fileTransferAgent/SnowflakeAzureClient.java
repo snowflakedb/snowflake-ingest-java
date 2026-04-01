@@ -52,11 +52,10 @@ import java.util.List;
 import java.util.Map;
 import net.snowflake.client.core.SFBaseSession;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.core.SFSessionProperty;
-import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.SFPair;
+import net.snowflake.ingest.utils.SFSessionProperty;
 import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.commons.io.IOUtils;
 
@@ -340,7 +339,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
         transferOptions.setConcurrentRequestCount(parallelism);
 
         blob.downloadToFile(localFilePath, null, transferOptions, opContext);
-        SnowflakeUtil.assureOnlyUserAccessibleFilePermissions(
+        StorageClientUtil.assureOnlyUserAccessibleFilePermissions(
             localFile, session.isOwnerOnlyStageFilePermissionsEnabled());
 
         stopwatch.stop();
