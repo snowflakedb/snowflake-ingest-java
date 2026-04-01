@@ -3,13 +3,13 @@
  * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferConfig.java
  *
  * Permitted differences: package, OCSPMode uses ingest version,
- * SFSession replaced with Object (always null from ingest callers),
- * @SnowflakeOrgInternalApi removed.
+ * @SnowflakeOrgInternalApi removed. SFSession kept from JDBC temporarily.
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.io.InputStream;
 import java.util.Properties;
+import net.snowflake.client.core.SFSession;
 import net.snowflake.ingest.utils.OCSPMode;
 
 /**
@@ -24,7 +24,7 @@ public class SnowflakeFileTransferConfig {
   private Properties proxyProperties;
   private String prefix;
   private String destFileName;
-  private Object session; // Optional, added for S3 and Azure (always null from ingest callers)
+  private SFSession session; // Optional, added for S3 and Azure (always null from ingest callers)
   private String command; // Optional, added for S3 and Azure
   private boolean useS3RegionalUrl; // only for S3 us-east-1 private link deployments
   private String streamingIngestClientName;
@@ -80,7 +80,7 @@ public class SnowflakeFileTransferConfig {
     return destFileName;
   }
 
-  public Object getSession() {
+  public SFSession getSession() {
     return session;
   }
 
@@ -114,7 +114,7 @@ public class SnowflakeFileTransferConfig {
     private Properties proxyProperties = null;
     private String prefix = null;
     private String destFileName = null;
-    private Object session = null;
+    private SFSession session = null;
     private String command = null;
     private boolean useS3RegionalUrl = false; // only for S3 us-east-1 private link deployments
     private String streamingIngestClientName;
@@ -185,7 +185,7 @@ public class SnowflakeFileTransferConfig {
       return this;
     }
 
-    public Builder setSFSession(Object session) {
+    public Builder setSFSession(SFSession session) {
       this.session = session;
       return this;
     }

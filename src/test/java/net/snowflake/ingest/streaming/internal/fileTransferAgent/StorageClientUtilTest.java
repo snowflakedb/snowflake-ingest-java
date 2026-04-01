@@ -21,7 +21,8 @@ public class StorageClientUtilTest {
 
   @Test
   public void testCreateCaseInsensitiveMapNull() {
-    Map<String, String> result = StorageClientUtil.createCaseInsensitiveMap(null);
+    Map<String, String> nullMap = null;
+    Map<String, String> result = StorageClientUtil.createCaseInsensitiveMap(nullMap);
     assertTrue(result.isEmpty());
   }
 

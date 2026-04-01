@@ -253,6 +253,35 @@ is replaced.
 
 ---
 
+### Progress Summary (updated 2026-03-26)
+
+| Step | Status | PR |
+|---|---|---|
+| Step 1 — Simple utilities | ✅ MERGED | #1100 |
+| Step 2 — Enums, constants, proxy utils | ✅ MERGED | #1109 |
+| Step 2b — SFLogger infrastructure | ✅ MERGED | #1112 |
+| Step 3 — Storage data types + utils | ✅ MERGED | #1110 |
+| Step 4 — HTTP settings + SSL factory | ✅ MERGED | #1111 |
+| Step 5a — ErrorCode, ResourceBundleManager | ✅ MERGED | #1113 |
+| Step 5b — SnowflakeSQLException, SnowflakeSQLLoggedException | ✅ MERGED | #1114 |
+| Step 6 — Telemetry | ✅ MERGED | #1115 |
+| Step 7a — Inline error helpers, swap exceptions | ✅ Open | #1116 |
+| Step 7b — Replicate getFileTransferMetadatas | ✅ Open | #1119 |
+| Step 8a — Replicate StageInfo, RemoteStoreFileEncryptionMaterial | ✅ Open | #1120 |
+| Step 8b — Replicate MetadataV1, ObjectMapperFactory, SqlState | ✅ Open | #1121 |
+| Step 8c — Replicate storage helpers + interface | ✅ Open | #1123 |
+| Step 8d — Replicate storage client implementations | ⬜ TODO | — |
+| Step 8e — Swap ALL imports at once | ⬜ TODO | — |
+| Step 9a — Clean up replicated classes' JDBC imports | ⬜ TODO | — |
+| Step 9b — Clean up SnowflakeSQLLoggedException telemetry | ⬜ TODO | — |
+| Step 9c — Clean up TelemetryClient JDBC imports | ⬜ TODO | — |
+| Step 10 — Remove JDBC dependency | ⬜ TODO | — |
+
+**Closed PRs:** #1117 (reverted 7b approach), #1122 (reverted 8c approach)
+**Other PRs:** #1118 (error/exception tests on master)
+
+---
+
 ### Step 1 — Simple utilities ✅ MERGED
 
 **Done:** `Power10`, `SFPair`, `Stopwatch`. Swap imports.
@@ -457,14 +486,60 @@ Swap imports everywhere. Now `InternalStage` can use ingest's types throughout.
 
 ---
 
-### Step 8c — Route uploadWithoutConnection through IcebergFileTransferAgent ⬜ TODO
+### Step 8c — Replicate storage helper classes and interface ✅ OPEN (PR #1123)
 
-Replace the non-Iceberg upload path. `IcebergFileTransferAgent` IS the
-already-existing verbatim replication of JDBC's upload stack (using
-`IcebergStorageClient` implementations instead of JDBC's `SnowflakeStorageClient`).
+**Done:** Verbatim replication of JDBC storage infrastructure:
+- `SnowflakeFileTransferConfig` (237 lines) — config builder
+- `SnowflakeStorageClient` (452 lines) — storage client interface
+- `MatDesc` (101 lines) — encryption material descriptor
+- `EncryptionProvider` (214 lines) — AES CBC encryption
+- `GcmEncryptionProvider` (254 lines) — AES GCM encryption
+- `StorageProviderException` (51 lines) — storage error wrapper
+- `StorageObjectSummary` (161 lines) — storage object properties
+- `StorageObjectSummaryCollection` (60 lines) — iterator (stubbed)
 
-- Route non-Iceberg `uploadWithoutConnection` through `IcebergFileTransferAgent`
-- Remove `SnowflakeFileTransferConfig`, JDBC `SnowflakeFileTransferAgent` import
+---
+
+### Step 8d — Replicate storage client implementations ⬜ TODO
+
+Replicate the three cloud storage client classes and their factory verbatim
+from JDBC. These implement `SnowflakeStorageClient` (from 8c) and provide
+the upload/download operations for each cloud provider.
+
+**Classes to replicate:**
+- `StorageClientFactory` (~234 lines) — creates cloud-specific clients
+- `SnowflakeS3Client` (~1038 lines) — S3 upload/download with encryption
+- `SnowflakeAzureClient` (~1055 lines) — Azure Blob upload/download
+- `SnowflakeGCSClient` (~1282 lines) — GCS upload/download with presigned URLs
+- `S3ObjectMetadata` / `CommonObjectMetadata` — `StorageObjectMetadata` impls
+  used by `StorageClientFactory.createStorageMetadataObj()`
+- `HttpHeadersCustomizer` interface + `HeaderCustomizerHttpRequestInterceptor`
+  — HTTP header customization for S3
+
+**Also add to replicated `SnowflakeFileTransferAgent`:**
+- `uploadWithoutConnection(SnowflakeFileTransferConfig)` — main upload method
+- `pushFileToRemoteStore(...)` — S3/Azure upload helper
+- `pushFileToRemoteStoreWithPresignedUrl(...)` — GCS upload helper
+- `computeDigest(...)`, `compressStreamWithGZIP(...)`,
+  `compressStreamWithGZIPNoDigest(...)` — stream processing helpers
+
+**Note:** Both Iceberg clients and replicated Snowflake clients will coexist.
+`SFSession` references kept temporarily (always null from callers).
+
+---
+
+### Step 8e — Swap ALL imports at once ⬜ TODO
+
+Now that the full JDBC storage stack is replicated (Steps 8a–8d), swap all
+remaining JDBC imports to ingest versions in a single step:
+
+- `InternalStage`: swap all 6 JDBC imports, use replicated
+  `SnowflakeFileTransferAgent.uploadWithoutConnection` and
+  `getFileTransferMetadatas`, remove `parseConfigureResponseMapper`
+- `InternalStageManager`: swap `SnowflakeSQLException`
+- `SnowflakeFileTransferMetadataWithAge`: swap `SnowflakeFileTransferMetadataV1`
+- All `fileTransferAgent` files: remove JDBC imports (now same-package)
+- `InternalStageTest`: update imports
 
 **InternalStage now fully free of JDBC imports.**
 
@@ -476,11 +551,13 @@ Remove JDBC imports from the replicated classes themselves:
 
 - `SqlState` in `ErrorCode`, `SnowflakeFileTransferAgent` → already replicated
   in same package, just swap import
-- `SFSession` parameter in `SnowflakeFileTransferAgent.getStageInfo()` → always
-  null from our callers, replace parameter type with stub or remove
+- `SFSession` parameter in `SnowflakeFileTransferAgent.getStageInfo()` and
+  storage clients → always null from our callers, replace with stub or remove
 - `SFException` in `SnowflakeSQLException` → used in one constructor never called
   by ingest; remove constructor or stub
 - `SecretDetector` in `TelemetryData` → already replicated (Step 2b)
+- `HttpUtil.isSocksProxyDisabled()` in `StorageClientFactory` → already in
+  ingest's `HttpUtil`
 
 ---
 
