@@ -517,7 +517,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   @Override
   public void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
+      HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
@@ -830,7 +830,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       Map<String, String> metadata,
       InputStream content,
       String presignedUrl,
-      net.snowflake.client.core.HttpClientSettingsKey ocspAndProxyKey,
+      HttpClientSettingsKey ocspAndProxyKey,
       String queryId)
       throws SnowflakeSQLException {
     try {

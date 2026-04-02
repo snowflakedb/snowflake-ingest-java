@@ -234,12 +234,10 @@ final class StorageClientUtil {
    * Replicated from SnowflakeFileTransferAgent.throwNoSpaceLeftError. Source:
    * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
    *
-   * @deprecated use {@link #throwNoSpaceLeftError(net.snowflake.client.core.SFSession, String,
-   *     Exception, String)}
+   * @deprecated use {@link #throwNoSpaceLeftError(Object, String, Exception, String)}
    */
   @Deprecated
-  static void throwNoSpaceLeftError(
-      net.snowflake.client.core.SFSession session, String operation, Exception ex)
+  static void throwNoSpaceLeftError(Object session, String operation, Exception ex)
       throws SnowflakeSQLLoggedException {
     throwNoSpaceLeftError(session, operation, ex, null);
   }
@@ -247,9 +245,10 @@ final class StorageClientUtil {
   /**
    * Replicated from SnowflakeFileTransferAgent.throwNoSpaceLeftError. Source:
    * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
+   *
+   * <p>Note: session parameter is always null from ingest callers. Kept for API shape.
    */
-  static void throwNoSpaceLeftError(
-      net.snowflake.client.core.SFSession session, String operation, Exception ex, String queryId)
+  static void throwNoSpaceLeftError(Object session, String operation, Exception ex, String queryId)
       throws SnowflakeSQLLoggedException {
     String exMessage = getRootCause(ex).getMessage();
     if (exMessage != null && exMessage.equals(NO_SPACE_LEFT_ON_DEVICE_ERR)) {

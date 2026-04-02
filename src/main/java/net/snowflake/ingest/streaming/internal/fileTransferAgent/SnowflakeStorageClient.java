@@ -256,7 +256,7 @@ public interface SnowflakeStorageClient {
   @Deprecated
   default void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
+      HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
@@ -291,7 +291,7 @@ public interface SnowflakeStorageClient {
    */
   default void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
+      HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
