@@ -151,7 +151,6 @@ class IcebergGCSClient implements IcebergStorageClient {
       String presignedUrl)
       throws SnowflakeSQLException {
     throw new SnowflakeSQLLoggedException(
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         /* session= */ "IcebergGCSClient.upload" + " only works with pre-signed URL.");
@@ -324,7 +323,6 @@ class IcebergGCSClient implements IcebergStorageClient {
     } catch (FileNotFoundException ex) {
       logger.logError("Failed to open input file", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -333,7 +331,6 @@ class IcebergGCSClient implements IcebergStorageClient {
     } catch (IOException ex) {
       logger.logError("Failed to open input stream", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -368,7 +365,6 @@ class IcebergGCSClient implements IcebergStorageClient {
       // If we have exceeded the max number of retries, propagate the error
       if (retryCount > getMaxRetries()) {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             ErrorCode.GCP_SERVICE_ERROR.getMessageCode(),
             se,
@@ -403,7 +399,6 @@ class IcebergGCSClient implements IcebergStorageClient {
         || getRootCause(ex) instanceof SocketTimeoutException) {
       if (retryCount > getMaxRetries()) {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             ErrorCode.IO_ERROR.getMessageCode(),
             ex,
@@ -417,7 +412,6 @@ class IcebergGCSClient implements IcebergStorageClient {
       }
     } else {
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.SYSTEM_ERROR,
           ErrorCode.IO_ERROR.getMessageCode(),
           ex,

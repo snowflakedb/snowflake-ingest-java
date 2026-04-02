@@ -253,7 +253,6 @@ final class StorageClientUtil {
     if (exMessage != null && exMessage.equals(NO_SPACE_LEFT_ON_DEVICE_ERR)) {
       throw new SnowflakeSQLLoggedException(
           queryId,
-          session,
           SqlState.SYSTEM_ERROR,
           ErrorCode.IO_ERROR.getMessageCode(),
           ex,

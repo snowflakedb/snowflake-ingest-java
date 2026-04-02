@@ -308,7 +308,6 @@ class IcebergAzureClient implements IcebergStorageClient {
     } catch (FileNotFoundException ex) {
       logger.logError("Failed to open input file", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -317,7 +316,6 @@ class IcebergAzureClient implements IcebergStorageClient {
     } catch (IOException ex) {
       logger.logError("Failed to open input stream", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -373,7 +371,6 @@ class IcebergAzureClient implements IcebergStorageClient {
       if (retryCount > azClient.getMaxRetries()
           || ((StorageException) ex).getHttpStatusCode() == 404) {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             ErrorCode.AZURE_SERVICE_ERROR.getMessageCode(),
             se,
@@ -410,7 +407,6 @@ class IcebergAzureClient implements IcebergStorageClient {
           || StorageClientUtil.getRootCause(ex) instanceof SocketTimeoutException) {
         if (retryCount > azClient.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               ErrorCode.IO_ERROR.getMessageCode(),
               ex,
@@ -424,7 +420,6 @@ class IcebergAzureClient implements IcebergStorageClient {
         }
       } else {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             ErrorCode.IO_ERROR.getMessageCode(),
             ex,
