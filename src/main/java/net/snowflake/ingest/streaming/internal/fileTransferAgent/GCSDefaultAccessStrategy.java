@@ -19,7 +19,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.util.Map;
-import net.snowflake.client.core.SFSession;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.SFPair;
@@ -28,7 +27,7 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
   private static final SFLogger logger = SFLoggerFactory.getLogger(GCSDefaultAccessStrategy.class);
   private Storage gcsClient = null;
 
-  GCSDefaultAccessStrategy(StageInfo stage, SFSession session) {
+  GCSDefaultAccessStrategy(StageInfo stage) {
     String accessToken = (String) stage.getCredentials().get("GCS_ACCESS_TOKEN");
 
     if (accessToken != null) {
@@ -36,7 +35,7 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
       StorageOptions.Builder builder = StorageOptions.newBuilder();
       overrideHost(stage, builder);
 
-      if (SnowflakeGCSClient.areDisabledGcsDefaultCredentials(session)) {
+      if (SnowflakeGCSClient.areDisabledGcsDefaultCredentials()) {
         logger.debug(
             "Adding explicit credentials to avoid default credential lookup by the GCS client");
         builder.setCredentials(GoogleCredentials.create(new AccessToken(accessToken, null)));
@@ -176,7 +175,6 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
       Exception ex,
       int retryCount,
       String operation,
-      SFSession session,
       String command,
       String queryId,
       SnowflakeGCSClient gcsClient)
@@ -191,7 +189,7 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
       if (retryCount > gcsClient.getMaxRetries()) {
         throw new SnowflakeSQLLoggedException(
             queryId,
-            session,
+            null,
             SqlState.SYSTEM_ERROR,
             ErrorCode.GCP_SERVICE_ERROR.getMessageCode(),
             se,
@@ -223,17 +221,11 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
         }
 
         if (se.getCode() == 401 && command != null) {
-          if (session != null) {
-            // A 401 indicates that the access token has expired,
-            // we need to refresh the GCS client with the new token
-            SnowflakeFileTransferAgent.renewExpiredToken(session, command, gcsClient);
-          } else {
-            throw new SnowflakeSQLException(
-                queryId,
-                se.getMessage(),
-                CLOUD_STORAGE_CREDENTIALS_EXPIRED,
-                "GCS credentials have expired");
-          }
+          throw new SnowflakeSQLException(
+              queryId,
+              se.getMessage(),
+              CLOUD_STORAGE_CREDENTIALS_EXPIRED,
+              "GCS credentials have expired");
         }
       }
       return true;
