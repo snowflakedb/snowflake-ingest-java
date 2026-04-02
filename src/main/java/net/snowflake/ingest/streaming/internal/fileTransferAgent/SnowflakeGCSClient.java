@@ -38,10 +38,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import net.snowflake.client.core.ExecTimeTelemetryData;
-import net.snowflake.client.core.HttpResponseContextDto;
-import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.jdbc.RestRequest;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.ArgSupplier;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
@@ -55,6 +51,7 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 
 /** Encapsulates the GCS Storage client and all GCS operations and logic */
@@ -221,26 +218,11 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
           logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
 
-          CloseableHttpClient httpClient = HttpUtil.getHttpClientWithoutDecompression(null, null);
+          CloseableHttpClient httpClient =
+              HttpClientBuilder.create().disableContentCompression().build();
 
           // Get the file on storage using the presigned url
-          HttpResponseContextDto responseDto =
-              RestRequest.executeWithRetries(
-                  httpClient,
-                  httpRequest,
-                  0, // retry timeout (dead code path, session was always null)
-                  0,
-                  0, // socket timeout (dead code path, session was always null)
-                  getMaxRetries(),
-                  0, // no socket timeout injection
-                  null, // no canceling
-                  false, // no cookie
-                  false, // no retry
-                  false, // no request_guid
-                  true, // retry on HTTP 403
-                  false,
-                  new ExecTimeTelemetryData());
-          HttpResponse response = responseDto.getHttpResponse();
+          HttpResponse response = httpClient.execute(httpRequest);
 
           logger.debug(
               "Call returned for URL: {}",
@@ -402,26 +384,11 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
           logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
 
-          CloseableHttpClient httpClient = HttpUtil.getHttpClientWithoutDecompression(null, null);
+          CloseableHttpClient httpClient =
+              HttpClientBuilder.create().disableContentCompression().build();
 
           // Put the file on storage using the presigned url
-          HttpResponse response =
-              RestRequest.executeWithRetries(
-                      httpClient,
-                      httpRequest,
-                      0, // retry timeout (dead code path, session was always null)
-                      0,
-                      0, // socket timeout (dead code path, session was always null)
-                      getMaxRetries(),
-                      0, // no socket timeout injection
-                      null, // no canceling
-                      false, // no cookie
-                      false, // no retry
-                      false, // no request_guid
-                      true, // retry on HTTP 403
-                      false,
-                      new ExecTimeTelemetryData())
-                  .getHttpResponse();
+          HttpResponse response = httpClient.execute(httpRequest);
 
           logger.debug(
               "Call returned for URL: {}",
@@ -602,12 +569,11 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
       uploadWithPresignedUrl(
           networkTimeoutInMilli,
-          (int) HttpUtil.getSocketTimeout().toMillis(),
+          300000,
           meta.getContentEncoding(),
           meta.getUserMetadata(),
           uploadStreamInfo.left,
           presignedUrl,
-          ocspModeAndProxyKey,
           queryId);
       logger.debug("Upload successfully with presigned url");
     }
@@ -696,7 +662,6 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
           meta.getUserMetadata(),
           uploadStreamInfo.left,
           presignedUrl,
-          null, // dead code path, session was always null
           queryId);
       stopwatch.stop();
       logger.debug("Upload successful", false);
@@ -853,7 +818,6 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
    * @param metadata Custom metadata to be uploaded with the object
    * @param content File content
    * @param presignedUrl Credential to upload the object
-   * @param ocspAndProxyKey OCSP mode and proxy settings for httpclient
    * @throws SnowflakeSQLException
    */
   private void uploadWithPresignedUrl(
@@ -863,7 +827,6 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       Map<String, String> metadata,
       InputStream content,
       String presignedUrl,
-      net.snowflake.client.core.HttpClientSettingsKey ocspAndProxyKey,
       String queryId)
       throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     try {
@@ -889,26 +852,10 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       InputStreamEntity contentEntity = new InputStreamEntity(content, -1);
       httpRequest.setEntity(contentEntity);
 
-      CloseableHttpClient httpClient = HttpUtil.getHttpClient(ocspAndProxyKey, null);
+      CloseableHttpClient httpClient = HttpClientBuilder.create().build();
 
       // Put the file on storage using the presigned url
-      HttpResponse response =
-          RestRequest.executeWithRetries(
-                  httpClient,
-                  httpRequest,
-                  networkTimeoutInMilli / 1000, // retry timeout
-                  0,
-                  httpClientSocketTimeout, // socket timeout in ms
-                  getMaxRetries(),
-                  0, // no socket timeout injection
-                  null, // no canceling
-                  false, // no cookie
-                  false, // no url retry query parameters
-                  false, // no request_guid
-                  true, // retry on HTTP 403
-                  true, // disable retry
-                  new ExecTimeTelemetryData())
-              .getHttpResponse();
+      HttpResponse response = httpClient.execute(httpRequest);
 
       logger.debug(
           "Call returned for URL: {}",
