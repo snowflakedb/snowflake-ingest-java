@@ -133,7 +133,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
         if (encryptionKeySize != 128 && encryptionKeySize != 192 && encryptionKeySize != 256) {
           throw new SnowflakeSQLLoggedException(
               QueryIdHelper.queryIdFromEncMatOr(encMat, null),
-              null,
               ErrorCode.INTERNAL_ERROR.getMessageCode(),
               SqlState.INTERNAL_ERROR,
               "unsupported key size",
@@ -336,7 +335,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
           if (!userDefinedMetadata.containsKey(AZ_ENCRYPTIONDATAPROP)) {
             throw new SnowflakeSQLLoggedException(
                 queryId,
-                null,
                 ErrorCode.INTERNAL_ERROR.getMessageCode(),
                 SqlState.INTERNAL_ERROR,
                 "Encryption data not found in the metadata of a file being downloaded");
@@ -350,7 +348,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
           if (key == null || iv == null) {
             throw new SnowflakeSQLLoggedException(
                 queryId,
-                null,
                 ErrorCode.INTERNAL_ERROR.getMessageCode(),
                 SqlState.INTERNAL_ERROR,
                 "File metadata incomplete");
@@ -392,7 +389,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
 
     throw new SnowflakeSQLLoggedException(
         queryId,
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         "Unexpected: download unsuccessful without exception!");
@@ -443,7 +439,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
           if (!userDefinedMetadata.containsKey(AZ_ENCRYPTIONDATAPROP)) {
             throw new SnowflakeSQLLoggedException(
                 queryId,
-                null,
                 ErrorCode.INTERNAL_ERROR.getMessageCode(),
                 SqlState.INTERNAL_ERROR,
                 "Encryption data not found in the metadata of a file being downloaded");
@@ -456,7 +451,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
           if (key == null || iv == null) {
             throw new SnowflakeSQLLoggedException(
                 queryId,
-                null,
                 ErrorCode.INTERNAL_ERROR.getMessageCode(),
                 SqlState.INTERNAL_ERROR,
                 "File metadata incomplete");
@@ -498,7 +492,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
 
     throw new SnowflakeSQLLoggedException(
         queryId,
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         "Unexpected: download unsuccessful without exception!");
@@ -701,7 +694,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
           logger.error("Failed to encrypt input", ex);
           throw new SnowflakeSQLLoggedException(
               queryId,
-              null,
               SqlState.INTERNAL_ERROR,
               ErrorCode.INTERNAL_ERROR.getMessageCode(),
               ex,
@@ -725,7 +717,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       logger.error("Failed to open input file", ex);
       throw new SnowflakeSQLLoggedException(
           queryId,
-          null,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -735,7 +726,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       logger.error("Failed to open input stream", ex);
       throw new SnowflakeSQLLoggedException(
           queryId,
-          null,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -798,7 +788,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
           || ((StorageException) ex).getHttpStatusCode() == 404) {
         throw new SnowflakeSQLLoggedException(
             queryId,
-            null,
             SqlState.SYSTEM_ERROR,
             ErrorCode.AZURE_SERVICE_ERROR.getMessageCode(),
             se,
@@ -846,7 +835,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
         if (retryCount > azClient.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
               queryId,
-              null,
               SqlState.SYSTEM_ERROR,
               ErrorCode.IO_ERROR.getMessageCode(),
               ex,
@@ -861,7 +849,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       } else {
         throw new SnowflakeSQLLoggedException(
             queryId,
-            null,
             SqlState.SYSTEM_ERROR,
             ErrorCode.IO_ERROR.getMessageCode(),
             ex,
@@ -956,7 +943,6 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
     } catch (Exception ex) {
       throw new SnowflakeSQLLoggedException(
           queryId,
-          null,
           SqlState.SYSTEM_ERROR,
           ErrorCode.IO_ERROR.getMessageCode(),
           ex,

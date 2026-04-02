@@ -8,15 +8,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
-import java.rmi.UnexpectedException;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.concurrent.Future;
 import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.core.SFSession;
-import net.snowflake.client.jdbc.SnowflakeConnectionV1;
 import net.snowflake.client.jdbc.SnowflakeSQLException;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.ObjectMapperFactory;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.TelemetryThreadPool;
@@ -32,7 +27,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 public class TelemetryClient implements Telemetry {
   private static final SFLogger logger = SFLoggerFactory.getLogger(TelemetryClient.class);
 
-  private static final String SF_PATH_TELEMETRY = "/telemetry/send";
   private static final String SF_PATH_TELEMETRY_SESSIONLESS = "/telemetry/send/sessionless";
 
   // if the number of cached logs is larger than this threshold,
@@ -44,7 +38,6 @@ public class TelemetryClient implements Telemetry {
   private final String serverUrl;
   private final String telemetryUrl;
 
-  private final SFSession session;
   private LinkedList<TelemetryData> logBatch;
   private static final ObjectMapper mapper = ObjectMapperFactory.getObjectMapper();
 
@@ -67,23 +60,6 @@ public class TelemetryClient implements Telemetry {
   // Retry timeout for the HTTP request
   private static final int TELEMETRY_HTTP_RETRY_TIMEOUT_IN_SEC = 1000;
 
-  private TelemetryClient(SFSession session, int flushSize) {
-    this.session = session;
-    this.serverUrl = session.getUrl();
-    this.httpClient = null;
-
-    if (this.serverUrl.endsWith("/")) {
-      this.telemetryUrl =
-          this.serverUrl.substring(0, this.serverUrl.length() - 1) + SF_PATH_TELEMETRY;
-    } else {
-      this.telemetryUrl = this.serverUrl + SF_PATH_TELEMETRY;
-    }
-
-    this.logBatch = new LinkedList<>();
-    this.isClosed = false;
-    this.forceFlushSize = flushSize;
-  }
-
   /**
    * Constructor for creating a sessionless telemetry client
    *
@@ -94,7 +70,6 @@ public class TelemetryClient implements Telemetry {
    */
   private TelemetryClient(
       CloseableHttpClient httpClient, String serverUrl, String authType, int flushSize) {
-    this.session = null;
     this.serverUrl = serverUrl;
     this.httpClient = httpClient;
 
@@ -127,62 +102,13 @@ public class TelemetryClient implements Telemetry {
    * @return whether client is enabled
    */
   public boolean isTelemetryEnabled() {
-    return (this.session == null || this.session.isClientTelemetryEnabled())
-        && this.isTelemetryServiceAvailable;
+    return this.isTelemetryServiceAvailable;
   }
 
   /** Disable any use of the client to add/send metrics */
   public void disableTelemetry() {
     logger.debug("Disabling telemetry");
     this.isTelemetryServiceAvailable = false;
-  }
-
-  /**
-   * Initialize the telemetry connector
-   *
-   * @param conn connection with the session to use for the connector
-   * @param flushSize maximum size of telemetry batch before flush
-   * @return a telemetry connector
-   */
-  public static Telemetry createTelemetry(Connection conn, int flushSize) {
-    try {
-      return createTelemetry(
-          (SFSession) conn.unwrap(SnowflakeConnectionV1.class).getSFBaseSession(), flushSize);
-    } catch (SQLException ex) {
-      logger.debug("Input connection is not a SnowflakeConnection", false);
-      return null;
-    }
-  }
-
-  /**
-   * Initialize the telemetry connector
-   *
-   * @param conn connection with the session to use for the connector
-   * @return a telemetry connector
-   */
-  public static Telemetry createTelemetry(Connection conn) {
-    return createTelemetry(conn, DEFAULT_FORCE_FLUSH_SIZE);
-  }
-
-  /**
-   * Initialize the telemetry connector
-   *
-   * @param session session to use for telemetry dumps
-   * @return a telemetry connector
-   */
-  public static Telemetry createTelemetry(SFSession session) {
-    return createTelemetry(session, DEFAULT_FORCE_FLUSH_SIZE);
-  }
-
-  /**
-   * Initialize the telemetry connector
-   *
-   * @param session session to use for telemetry dumps
-   * @param flushSize maximum size of telemetry batch before flush
-   * @return a telemetry connector
-   */
-  public static Telemetry createTelemetry(SFSession session, int flushSize) {
-    return new TelemetryClient(session, flushSize);
   }
 
   /**
@@ -330,14 +256,9 @@ public class TelemetryClient implements Telemetry {
       this.logBatch = new LinkedList<>();
     }
 
-    if (this.session != null && this.session.isClosed()) {
-      throw new UnexpectedException("Session is closed when sending log");
-    }
-
     if (!tmpList.isEmpty()) {
       Stopwatch stopwatch = new Stopwatch();
       stopwatch.start();
-      // session shared with JDBC
       String payload = logsToString(tmpList);
 
       logger.debugNoMask("Payload of telemetry is : " + payload);
@@ -346,35 +267,21 @@ public class TelemetryClient implements Telemetry {
       post.setEntity(new StringEntity(payload));
       post.setHeader("Content-type", "application/json");
 
-      if (this.session == null) {
-        post.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + this.token);
-        post.setHeader("X-Snowflake-Authorization-Token-Type", this.authType);
-        post.setHeader(HttpHeaders.ACCEPT, "application/json");
-      } else {
-        post.setHeader(
-            HttpHeaders.AUTHORIZATION,
-            "Snowflake Token=\"" + this.session.getSessionToken() + "\"");
-      }
+      post.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + this.token);
+      post.setHeader("X-Snowflake-Authorization-Token-Type", this.authType);
+      post.setHeader(HttpHeaders.ACCEPT, "application/json");
 
       String response = null;
 
       try {
         response =
-            this.session == null
-                ? HttpUtil.executeGeneralRequest(
-                    post,
-                    TELEMETRY_HTTP_RETRY_TIMEOUT_IN_SEC,
-                    0,
-                    (int) HttpUtil.getSocketTimeout().toMillis(),
-                    0,
-                    this.httpClient)
-                : HttpUtil.executeGeneralRequest(
-                    post,
-                    TELEMETRY_HTTP_RETRY_TIMEOUT_IN_SEC,
-                    0,
-                    this.session.getHttpClientSocketTimeout(),
-                    0,
-                    this.session.getHttpClientKey());
+            HttpUtil.executeGeneralRequest(
+                post,
+                TELEMETRY_HTTP_RETRY_TIMEOUT_IN_SEC,
+                0,
+                (int) HttpUtil.getSocketTimeout().toMillis(),
+                0,
+                this.httpClient);
         stopwatch.stop();
         logger.debug(
             "Sending telemetry took {} ms. Batch size: {}",
