@@ -11,14 +11,14 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.concurrent.Future;
-import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.HttpRequestHelper;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.ObjectMapperFactory;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.TelemetryThreadPool;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -56,9 +56,6 @@ public class TelemetryClient implements Telemetry {
 
   // false if meet any error when sending metrics
   private boolean isTelemetryServiceAvailable = true;
-
-  // Retry timeout for the HTTP request
-  private static final int TELEMETRY_HTTP_RETRY_TIMEOUT_IN_SEC = 1000;
 
   /**
    * Constructor for creating a sessionless telemetry client
@@ -271,27 +268,26 @@ public class TelemetryClient implements Telemetry {
       post.setHeader("X-Snowflake-Authorization-Token-Type", this.authType);
       post.setHeader(HttpHeaders.ACCEPT, "application/json");
 
-      String response = null;
-
       try {
-        response =
-            HttpUtil.executeGeneralRequest(
-                post,
-                TELEMETRY_HTTP_RETRY_TIMEOUT_IN_SEC,
-                0,
-                (int) HttpUtil.getSocketTimeout().toMillis(),
-                0,
-                this.httpClient);
+        HttpResponse response = HttpRequestHelper.execute(this.httpClient, post);
+        int statusCode = response.getStatusLine().getStatusCode();
         stopwatch.stop();
+        if (statusCode < 200 || statusCode >= 300) {
+          disableTelemetry(); // when got error like 404 or bad request, disable telemetry in this
+          // telemetry instance
+          logger.error(
+              "Telemetry request failed, HTTP status: {}, reason: {}",
+              statusCode,
+              response.getStatusLine().getReasonPhrase());
+          return false;
+        }
         logger.debug(
             "Sending telemetry took {} ms. Batch size: {}",
             stopwatch.elapsedMillis(),
             tmpList.size());
-      } catch (SnowflakeSQLException e) {
-        disableTelemetry(); // when got error like 404 or bad request, disable telemetry in this
-        // telemetry instance
-        logger.error(
-            "Telemetry request failed, response: {}, exception: {}", response, e.getMessage());
+      } catch (IOException e) {
+        disableTelemetry();
+        logger.error("Telemetry request failed, exception: {}", e.getMessage());
         return false;
       }
     }
