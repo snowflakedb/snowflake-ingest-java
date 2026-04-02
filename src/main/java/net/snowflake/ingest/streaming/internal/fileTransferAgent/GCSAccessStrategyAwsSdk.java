@@ -27,12 +27,9 @@ import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import com.amazonaws.services.s3.transfer.Upload;
 import java.io.File;
 import java.io.InputStream;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import net.snowflake.client.core.SFBaseSession;
-import net.snowflake.client.core.SFSession;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.SFPair;
@@ -42,7 +39,7 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
   private static final SFLogger logger = SFLoggerFactory.getLogger(GCSAccessStrategyAwsSdk.class);
   private final AmazonS3 amazonClient;
 
-  GCSAccessStrategyAwsSdk(StageInfo stage, SFBaseSession session)
+  GCSAccessStrategyAwsSdk(StageInfo stage)
       throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     String accessToken = (String) stage.getCredentials().get("GCS_ACCESS_TOKEN");
 
@@ -74,21 +71,7 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
     clientConfig
         .getApacheHttpClientConfig()
         .setSslSocketFactory(SnowflakeS3Client.getSSLConnectionSocketFactory());
-    if (session != null) {
-      S3HttpUtil.setProxyForS3(session.getHttpClientKey(), clientConfig);
-    } else {
-      S3HttpUtil.setSessionlessProxyForS3(stage.getProxyProperties(), clientConfig);
-    }
-
-    if (session instanceof SFSession) {
-      List<net.snowflake.client.jdbc.HttpHeadersCustomizer> headersCustomizers =
-          ((SFSession) session).getHttpHeadersCustomizers();
-      if (headersCustomizers != null && !headersCustomizers.isEmpty()) {
-        amazonS3Builder.withRequestHandlers(
-            new net.snowflake.client.core.HeaderCustomizerHttpRequestInterceptor(
-                headersCustomizers));
-      }
-    }
+    S3HttpUtil.setSessionlessProxyForS3(stage.getProxyProperties(), clientConfig);
 
     if (accessToken != null) {
       amazonS3Builder.withCredentials(
@@ -237,7 +220,6 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
       Exception ex,
       int retryCount,
       String operation,
-      SFSession session,
       String command,
       String queryId,
       SnowflakeGCSClient gcsClient)
@@ -256,30 +238,23 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
         if (ex instanceof AmazonServiceException) {
           AmazonServiceException ex1 = (AmazonServiceException) ex;
 
-          // The AWS credentials might have expired when server returns error 400 and
-          // does not return the ExpiredToken error code.
-          // If session is null we cannot renew the token so throw the exception
-          if (ex1.getStatusCode() == HttpStatus.SC_BAD_REQUEST && session != null) {
-            SnowflakeFileTransferAgent.renewExpiredToken(session, command, gcsClient);
-          } else {
-            throw new SnowflakeSQLLoggedException(
-                queryId,
-                session,
-                SqlState.SYSTEM_ERROR,
-                ErrorCode.S3_OPERATION_ERROR.getMessageCode(),
-                ex1,
-                operation,
-                ex1.getErrorType().toString(),
-                ex1.getErrorCode(),
-                ex1.getMessage(),
-                ex1.getRequestId(),
-                extendedRequestId);
-          }
+          throw new SnowflakeSQLLoggedException(
+              queryId,
+              null,
+              SqlState.SYSTEM_ERROR,
+              ErrorCode.S3_OPERATION_ERROR.getMessageCode(),
+              ex1,
+              operation,
+              ex1.getErrorType().toString(),
+              ex1.getErrorCode(),
+              ex1.getMessage(),
+              ex1.getRequestId(),
+              extendedRequestId);
 
         } else {
           throw new SnowflakeSQLLoggedException(
               queryId,
-              session,
+              null,
               SqlState.SYSTEM_ERROR,
               ErrorCode.AWS_CLIENT_ERROR.getMessageCode(),
               ex,
@@ -314,16 +289,11 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
         if (ex instanceof AmazonS3Exception) {
           AmazonS3Exception s3ex = (AmazonS3Exception) ex;
           if (s3ex.getErrorCode().equalsIgnoreCase(EXPIRED_AWS_TOKEN_ERROR_CODE)) {
-            // If session is null we cannot renew the token so throw the ExpiredToken exception
-            if (session != null) {
-              SnowflakeFileTransferAgent.renewExpiredToken(session, command, gcsClient);
-            } else {
-              throw new SnowflakeSQLException(
-                  queryId,
-                  s3ex.getErrorCode(),
-                  CLOUD_STORAGE_CREDENTIALS_EXPIRED,
-                  "S3 credentials have expired");
-            }
+            throw new SnowflakeSQLException(
+                queryId,
+                s3ex.getErrorCode(),
+                CLOUD_STORAGE_CREDENTIALS_EXPIRED,
+                "S3 credentials have expired");
           }
         }
       }

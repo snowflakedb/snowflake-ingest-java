@@ -42,7 +42,6 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.zip.GZIPOutputStream;
-import net.snowflake.client.core.SFSession;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import org.apache.commons.io.IOUtils;
@@ -97,7 +96,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
     return encryptionMaterial;
   }
 
-  static StageInfo getStageInfo(JsonNode jsonNode, SFSession session) throws SnowflakeSQLException {
+  static StageInfo getStageInfo(JsonNode jsonNode) throws SnowflakeSQLException {
     String queryId = jsonNode.path("data").path("queryId").asText();
 
     // more parameters common to upload/download
@@ -201,20 +200,13 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
     setupUseVirtualUrl(jsonNode, stageInfo);
 
     if (stageInfo.getStageType() == StageInfo.StageType.S3) {
-      if (session == null) {
-        // This node's value is set if PUT is used without Session. (For Snowpipe Streaming, we rely
-        // on a response from a server to have this field set to use S3RegionalURL)
-        JsonNode useS3RegionalURLNode =
-            jsonNode.path("data").path("stageInfo").path("useS3RegionalUrl");
-        if (!useS3RegionalURLNode.isMissingNode()) {
-          boolean useS3RegionalUrl = useS3RegionalURLNode.asBoolean(false);
-          stageInfo.setUseS3RegionalUrl(useS3RegionalUrl);
-        }
-      } else {
-        // Update StageInfo to reflect use of S3 regional URL.
-        // This is required for connecting to S3 over privatelink when the
-        // target stage is in us-east-1
-        stageInfo.setUseS3RegionalUrl(session.getUseRegionalS3EndpointsForPresignedURL());
+      // This node's value is set if PUT is used without Session. (For Snowpipe Streaming, we rely
+      // on a response from a server to have this field set to use S3RegionalURL)
+      JsonNode useS3RegionalURLNode =
+          jsonNode.path("data").path("stageInfo").path("useS3RegionalUrl");
+      if (!useS3RegionalURLNode.isMissingNode()) {
+        boolean useS3RegionalUrl = useS3RegionalURLNode.asBoolean(false);
+        stageInfo.setUseS3RegionalUrl(useS3RegionalUrl);
       }
     }
 
@@ -337,7 +329,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
     final Set<String> sourceFiles = expandFileNames(srcLocations, queryId);
 
-    StageInfo stageInfo = getStageInfo(jsonNode, null /*SFSession*/);
+    StageInfo stageInfo = getStageInfo(jsonNode);
 
     List<SnowflakeFileTransferMetadata> result = new ArrayList<>();
     if (stageInfo.getStageType() != StageInfo.StageType.GCS
@@ -475,117 +467,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
     return result;
   }
 
-  /**
-   * Replicated from SnowflakeFileTransferAgent.parseCommandInGS. Source:
-   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
-   */
-  private static com.fasterxml.jackson.databind.JsonNode parseCommandInGS(
-      net.snowflake.client.core.SFStatement statement, String command)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
-    Object result = null;
-    // send the command to GS
-    try {
-      result =
-          statement.executeHelper(
-              command,
-              "application/json",
-              null, // bindValues
-              false, // describeOnly
-              false, // internal
-              false, // async
-              new net.snowflake.client.core
-                  .ExecTimeTelemetryData()); // OOB telemetry timing queries
-    } catch (net.snowflake.client.core.SFException ex) {
-      throw new SnowflakeSQLException(
-          ex.getQueryId(), ex, ex.getSqlState(), ex.getVendorCode(), ex.getParams());
-    }
-
-    com.fasterxml.jackson.databind.JsonNode jsonNode =
-        (com.fasterxml.jackson.databind.JsonNode) result;
-
-    logger.debug(
-        "Response: {}", net.snowflake.client.util.SecretDetector.maskSecrets(jsonNode.toString()));
-
-    net.snowflake.client.jdbc.SnowflakeUtil.checkErrorAndThrowException(jsonNode);
-    return jsonNode;
-  }
-
-  /**
-   * Replicated from SnowflakeFileTransferAgent.getLocalFilePathFromCommand. Source:
-   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
-   */
-  private static String getLocalFilePathFromCommand(String command, boolean unescape) {
-    if (command == null) {
-      logger.error("null command", false);
-      return null;
-    }
-
-    if (command.indexOf(FILE_PROTOCOL) < 0) {
-      logger.error("file:// prefix not found in command: {}", command);
-      return null;
-    }
-
-    int localFilePathBeginIdx = command.indexOf(FILE_PROTOCOL) + FILE_PROTOCOL.length();
-    boolean isLocalFilePathQuoted =
-        (localFilePathBeginIdx > FILE_PROTOCOL.length())
-            && (command.charAt(localFilePathBeginIdx - 1 - FILE_PROTOCOL.length()) == '\'');
-
-    // the ending index is exclusive
-    int localFilePathEndIdx = 0;
-    String localFilePath = "";
-
-    if (isLocalFilePathQuoted) {
-      // look for the matching quote
-      localFilePathEndIdx = command.indexOf("'", localFilePathBeginIdx);
-      if (localFilePathEndIdx > localFilePathBeginIdx) {
-        localFilePath = command.substring(localFilePathBeginIdx, localFilePathEndIdx);
-      }
-      // unescape backslashes to match the file name from GS
-      if (unescape) {
-        localFilePath = localFilePath.replaceAll("\\\\\\\\", "\\\\");
-      }
-    } else {
-      // look for the first space or new line or semi colon
-      java.util.List<Integer> indexList = new java.util.ArrayList<>();
-      char[] delimiterChars = {' ', '\n', ';'};
-      for (int i = 0; i < delimiterChars.length; i++) {
-        int charIndex = command.indexOf(delimiterChars[i], localFilePathBeginIdx);
-        if (charIndex != -1) {
-          indexList.add(charIndex);
-        }
-      }
-
-      localFilePathEndIdx = indexList.isEmpty() ? -1 : java.util.Collections.min(indexList);
-
-      if (localFilePathEndIdx > localFilePathBeginIdx) {
-        localFilePath = command.substring(localFilePathBeginIdx, localFilePathEndIdx);
-      } else if (localFilePathEndIdx == -1) {
-        localFilePath = command.substring(localFilePathBeginIdx);
-      }
-    }
-
-    return localFilePath;
-  }
-
   private static final String FILE_PROTOCOL = "file://";
-
-  /**
-   * Replicated from SnowflakeFileTransferAgent.renewExpiredToken. Source:
-   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
-   */
-  public static void renewExpiredToken(
-      net.snowflake.client.core.SFSession session, String command, SnowflakeStorageClient client)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
-    net.snowflake.client.core.SFStatement statement =
-        new net.snowflake.client.core.SFStatement(session);
-    com.fasterxml.jackson.databind.JsonNode jsonNode = parseCommandInGS(statement, command);
-    String queryId = jsonNode.path("data").path("queryId").asText();
-    java.util.Map<?, ?> stageCredentials = extractStageCreds(jsonNode, queryId);
-
-    // renew client with the fresh token
-    logger.debug("Renewing expired access token");
-    client.renew(stageCredentials);
-  }
 
   // ---- Inner classes and methods replicated from JDBC for uploadWithoutConnection ----
 
@@ -626,8 +508,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
   }
 
   private static InputStreamWithMetadata compressStreamWithGZIP(
-      InputStream inputStream, net.snowflake.client.core.SFBaseSession session, String queryId)
-      throws SnowflakeSQLException {
+      InputStream inputStream, String queryId) throws SnowflakeSQLException {
     FileBackedOutputStream tempStream = new FileBackedOutputStream(MAX_BUFFER_SIZE, true);
 
     try {
@@ -667,7 +548,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
       throw new SnowflakeSQLLoggedException(
           queryId,
-          session,
+          null,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -677,8 +558,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
   @Deprecated
   private static InputStreamWithMetadata compressStreamWithGZIPNoDigest(
-      InputStream inputStream, net.snowflake.client.core.SFBaseSession session, String queryId)
-      throws SnowflakeSQLException {
+      InputStream inputStream, String queryId) throws SnowflakeSQLException {
     try {
       FileBackedOutputStream tempStream = new FileBackedOutputStream(MAX_BUFFER_SIZE, true);
 
@@ -709,7 +589,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
       throw new SnowflakeSQLLoggedException(
           queryId,
-          session,
+          null,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -789,8 +669,8 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
       if (requireCompress) {
         InputStreamWithMetadata compressedSizeAndStream =
             (encMat == null
-                ? compressStreamWithGZIPNoDigest(uploadStream, /* session= */ null, null)
-                : compressStreamWithGZIP(uploadStream, /* session= */ null, encMat.getQueryId()));
+                ? compressStreamWithGZIPNoDigest(uploadStream, null)
+                : compressStreamWithGZIP(uploadStream, encMat.getQueryId()));
 
         fileBackedOutputStream = compressedSizeAndStream.fileBackedOutputStream;
 
@@ -826,7 +706,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
           uploadSize);
 
       SnowflakeStorageClient initialClient =
-          StorageClientFactory.getFactory().createClient(stageInfo, 1, encMat, /* session= */ null);
+          StorageClientFactory.getFactory().createClient(stageInfo, 1, encMat);
 
       // Normal flow will never hit here. This is only for testing purposes
       if (isInjectedFileTransferExceptionEnabled()) {
@@ -846,7 +726,6 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
               digest,
               (requireCompress ? FileCompressionType.GZIP : null),
               initialClient,
-              config.getSession(),
               config.getCommand(),
               1,
               fileToUpload,
@@ -910,7 +789,6 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
       String digest,
       FileCompressionType compressionType,
       SnowflakeStorageClient initialClient,
-      net.snowflake.client.core.SFSession session,
       String command,
       int parallel,
       File srcFile,
@@ -954,22 +832,7 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
     try {
       String presignedUrl = "";
-      if (initialClient.requirePresignedUrl()) {
-        // need to replace file://mypath/myfile?.csv with file://mypath/myfile1.csv.gz
-        String localFilePath = getLocalFilePathFromCommand(command, false);
-        String commandWithExactPath = command.replace(localFilePath, origDestFileName);
-        // then hand that to GS to get the actual presigned URL we'll use
-        net.snowflake.client.core.SFStatement statement =
-            new net.snowflake.client.core.SFStatement(session);
-        com.fasterxml.jackson.databind.JsonNode jsonNode =
-            parseCommandInGS(statement, commandWithExactPath);
-
-        if (!jsonNode.path("data").path("stageInfo").path("presignedUrl").isMissingNode()) {
-          presignedUrl = jsonNode.path("data").path("stageInfo").path("presignedUrl").asText();
-        }
-      }
       initialClient.upload(
-          session,
           command,
           parallel,
           uploadFromStream,

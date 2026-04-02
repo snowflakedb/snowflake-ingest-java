@@ -3,13 +3,12 @@
  * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferConfig.java
  *
  * Permitted differences: package, OCSPMode uses ingest version,
- * @SnowflakeOrgInternalApi removed. SFSession kept from JDBC temporarily.
+ * @SnowflakeOrgInternalApi removed. SFSession removed (always null from callers).
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.io.InputStream;
 import java.util.Properties;
-import net.snowflake.client.core.SFSession;
 import net.snowflake.ingest.utils.OCSPMode;
 
 /**
@@ -24,7 +23,6 @@ public class SnowflakeFileTransferConfig {
   private Properties proxyProperties;
   private String prefix;
   private String destFileName;
-  private SFSession session; // Optional, added for S3 and Azure (always null from ingest callers)
   private String command; // Optional, added for S3 and Azure
   private boolean useS3RegionalUrl; // only for S3 us-east-1 private link deployments
   private String streamingIngestClientName;
@@ -40,7 +38,6 @@ public class SnowflakeFileTransferConfig {
     this.proxyProperties = builder.proxyProperties;
     this.prefix = builder.prefix;
     this.destFileName = builder.destFileName;
-    this.session = builder.session;
     this.command = builder.command;
     this.useS3RegionalUrl = builder.useS3RegionalUrl;
     this.streamingIngestClientKey = builder.streamingIngestClientKey;
@@ -80,10 +77,6 @@ public class SnowflakeFileTransferConfig {
     return destFileName;
   }
 
-  public SFSession getSession() {
-    return session;
-  }
-
   public String getCommand() {
     return command;
   }
@@ -114,7 +107,6 @@ public class SnowflakeFileTransferConfig {
     private Properties proxyProperties = null;
     private String prefix = null;
     private String destFileName = null;
-    private SFSession session = null;
     private String command = null;
     private boolean useS3RegionalUrl = false; // only for S3 us-east-1 private link deployments
     private String streamingIngestClientName;
@@ -182,11 +174,6 @@ public class SnowflakeFileTransferConfig {
 
     public Builder setDestFileName(String destFileName) {
       this.destFileName = destFileName;
-      return this;
-    }
-
-    public Builder setSFSession(SFSession session) {
-      this.session = session;
       return this;
     }
 
