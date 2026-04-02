@@ -548,7 +548,6 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
       throw new SnowflakeSQLLoggedException(
           queryId,
-          null,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -589,7 +588,6 @@ public class SnowflakeFileTransferAgent extends SFBaseFileTransferAgent {
 
       throw new SnowflakeSQLLoggedException(
           queryId,
-          null,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,

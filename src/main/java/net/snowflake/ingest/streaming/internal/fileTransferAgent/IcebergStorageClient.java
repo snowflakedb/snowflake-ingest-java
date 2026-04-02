@@ -85,7 +85,6 @@ interface IcebergStorageClient {
       String presignedUrl)
       throws SnowflakeSQLException {
     throw new SnowflakeSQLLoggedException(
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         /* session= */ "uploadWithPresignedUrlWithoutConnection"

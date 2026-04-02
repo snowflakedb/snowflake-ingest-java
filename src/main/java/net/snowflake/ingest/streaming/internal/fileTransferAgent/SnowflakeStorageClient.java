@@ -308,7 +308,6 @@ public interface SnowflakeStorageClient {
     if (!requirePresignedUrl()) {
       throw new SnowflakeSQLLoggedException(
           queryId,
-          null,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           SqlState.INTERNAL_ERROR,
           /* session= */ "uploadWithPresignedUrlWithoutConnection"

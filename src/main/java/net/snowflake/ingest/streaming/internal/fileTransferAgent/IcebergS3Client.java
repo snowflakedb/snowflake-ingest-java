@@ -356,7 +356,6 @@ class IcebergS3Client implements IcebergStorageClient {
     }
 
     throw new SnowflakeSQLLoggedException(
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         "Unexpected: upload unsuccessful without exception!");
@@ -433,7 +432,6 @@ class IcebergS3Client implements IcebergStorageClient {
     } catch (FileNotFoundException ex) {
       logger.logError("Failed to open input file", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -442,7 +440,6 @@ class IcebergS3Client implements IcebergStorageClient {
     } catch (IOException ex) {
       logger.logError("Failed to open input stream", ex);
       throw new SnowflakeSQLLoggedException(
-          null /* session */,
           SqlState.INTERNAL_ERROR,
           ErrorCode.INTERNAL_ERROR.getMessageCode(),
           ex,
@@ -486,7 +483,6 @@ class IcebergS3Client implements IcebergStorageClient {
           // does not return the ExpiredToken error code.
           // If session is null we cannot renew the token so throw the exception
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               ErrorCode.S3_OPERATION_ERROR.getMessageCode(),
               ex1,
@@ -498,7 +494,6 @@ class IcebergS3Client implements IcebergStorageClient {
               extendedRequestId);
         } else {
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               ErrorCode.AWS_CLIENT_ERROR.getMessageCode(),
               ex,
@@ -546,7 +541,6 @@ class IcebergS3Client implements IcebergStorageClient {
           || getRootCause(ex) instanceof SocketTimeoutException) {
         if (retryCount > s3Client.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
-              null /* session */,
               SqlState.SYSTEM_ERROR,
               ErrorCode.IO_ERROR.getMessageCode(),
               ex,
@@ -560,7 +554,6 @@ class IcebergS3Client implements IcebergStorageClient {
         }
       } else {
         throw new SnowflakeSQLLoggedException(
-            null /* session */,
             SqlState.SYSTEM_ERROR,
             ErrorCode.IO_ERROR.getMessageCode(),
             ex,
