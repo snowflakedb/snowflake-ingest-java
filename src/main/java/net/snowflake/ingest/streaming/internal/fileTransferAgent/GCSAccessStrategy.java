@@ -2,7 +2,7 @@
  * Replicated from snowflake-jdbc (v3.25.1)
  * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/cloud/storage/GCSAccessStrategy.java
  *
- * Permitted differences: package, SFSession kept from JDBC temporarily,
+ * Permitted differences: package, SFSession removed (always null from callers),
  * SFPair uses ingest version, all storage types use ingest versions (same package).
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
@@ -10,7 +10,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Map;
-import net.snowflake.client.core.SFSession;
 import net.snowflake.ingest.utils.SFPair;
 
 interface GCSAccessStrategy {
@@ -40,7 +39,6 @@ interface GCSAccessStrategy {
       Exception ex,
       int retryCount,
       String operation,
-      SFSession session,
       String command,
       String queryId,
       SnowflakeGCSClient gcsClient)
