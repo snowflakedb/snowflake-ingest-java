@@ -110,7 +110,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageEndPoint,
       boolean isClientSideEncrypted,
       boolean useS3RegionalUrl)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.debug(
         "Initializing Snowflake S3 client with encryption: {}, client side encrypted: {}",
         encMat != null,
@@ -134,7 +134,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageRegion,
       String stageEndPoint,
       boolean isClientSideEncrypted)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the AWS client. We won't save the awsCredentials since
     // we will be refreshing that, every time we reset the AWS client
@@ -263,8 +263,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
    * @throws SnowflakeSQLException if any error occurs
    */
   @Override
-  public void renew(Map<?, ?> stageCredentials)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+  public void renew(Map<?, ?> stageCredentials) throws SnowflakeSQLException {
     logger.debug("Renewing the Snowflake S3 client");
     // We renew the client with fresh credentials and with its original parameters
     setupSnowflakeS3Client(
@@ -324,7 +323,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     Stopwatch stopwatch = new Stopwatch();
     stopwatch.start();
     String localFilePath = localLocation + localFileSep + destFileName;
@@ -445,7 +444,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.debug("Staring download of file from S3 stage path: {} to input stream", stageFilePath);
     Stopwatch stopwatch = new Stopwatch();
     stopwatch.start();
@@ -542,7 +541,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.info(
         StorageHelper.getStartUploadLog(
             "S3", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -763,7 +762,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
   @Override
   public void handleStorageException(
       Exception ex, int retryCount, String operation, String command, String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     handleS3Exception(ex, retryCount, operation, command, this, queryId);
   }
 
@@ -774,7 +773,7 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       String command,
       SnowflakeS3Client s3Client,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed

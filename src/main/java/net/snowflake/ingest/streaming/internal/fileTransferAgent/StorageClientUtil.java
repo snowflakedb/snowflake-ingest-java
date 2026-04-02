@@ -11,8 +11,11 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static java.util.Arrays.stream;
 
+import com.microsoft.azure.storage.OperationContext;
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Map;
@@ -116,7 +119,7 @@ final class StorageClientUtil {
    * SnowflakeSQLException here temporarily until Step 5 replaces it.
    */
   static HttpClientSettingsKey convertProxyPropertiesToHttpClientKey(OCSPMode mode, Properties info)
-      throws net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     if (info != null
         && info.size() > 0
         && info.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
@@ -129,9 +132,8 @@ final class StorageClientUtil {
           proxyPort =
               Integer.parseInt(info.getProperty(SFSessionProperty.PROXY_PORT.getPropertyKey()));
         } catch (NumberFormatException | NullPointerException e) {
-          throw new net.snowflake.client.jdbc.SnowflakeSQLException(
-              net.snowflake.client.jdbc.ErrorCode.INVALID_PROXY_PROPERTIES,
-              "Could not parse port number");
+          throw new SnowflakeSQLException(
+              ErrorCode.INVALID_PROXY_PROPERTIES, "Could not parse port number");
         }
         String proxyUser = info.getProperty(SFSessionProperty.PROXY_USER.getPropertyKey());
         String proxyPassword = info.getProperty(SFSessionProperty.PROXY_PASSWORD.getPropertyKey());
@@ -303,5 +305,40 @@ final class StorageClientUtil {
         TimeUnit.SECONDS.toMicros(timestamp.getEpochSecond())
             + TimeUnit.NANOSECONDS.toMicros(timestamp.getNano());
     return micros;
+  }
+
+  /**
+   * Replicated from HttpUtil.setSessionlessProxyForAzure. Source:
+   * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/core/HttpUtil.java
+   */
+  static void setSessionlessProxyForAzure(Properties proxyProperties, OperationContext opContext)
+      throws SnowflakeSQLException {
+    if (proxyProperties != null
+        && proxyProperties.size() > 0
+        && proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
+      Boolean useProxy =
+          Boolean.valueOf(
+              proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()));
+      if (useProxy) {
+        String proxyHost =
+            proxyProperties.getProperty(SFSessionProperty.PROXY_HOST.getPropertyKey());
+        int proxyPort;
+        try {
+          proxyPort =
+              Integer.parseInt(
+                  proxyProperties.getProperty(SFSessionProperty.PROXY_PORT.getPropertyKey()));
+        } catch (NumberFormatException | NullPointerException e) {
+          throw new SnowflakeSQLException(
+              ErrorCode.INVALID_PROXY_PROPERTIES, "Could not parse port number");
+        }
+        Proxy azProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
+        logger.debug("Setting sessionless Azure proxy. Host: {}, port: {}", proxyHost, proxyPort);
+        opContext.setProxy(azProxy);
+      } else {
+        logger.debug("Omitting sessionless Azure proxy setup as proxy is disabled");
+      }
+    } else {
+      logger.debug("Omitting sessionless Azure proxy setup");
+    }
   }
 }
