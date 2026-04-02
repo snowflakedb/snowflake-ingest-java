@@ -6,8 +6,8 @@ package net.snowflake.ingest.connection.telemetry;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import net.snowflake.client.core.ObjectMapperFactory;
-import net.snowflake.client.util.SecretDetector;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.ObjectMapperFactory;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SecretDetector;
 
 public class TelemetryData {
   // message is a json node

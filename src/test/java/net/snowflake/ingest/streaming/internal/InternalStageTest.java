@@ -31,16 +31,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.core.OCSPMode;
-import net.snowflake.client.jdbc.SnowflakeFileTransferAgent;
-import net.snowflake.client.jdbc.SnowflakeFileTransferConfig;
-import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
-import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.TestUtils;
 import net.snowflake.ingest.connection.RequestBuilder;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeFileTransferAgent;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeFileTransferConfig;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeFileTransferMetadataV1;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.StageInfo;
 import net.snowflake.ingest.utils.ErrorCode;
+import net.snowflake.ingest.utils.OCSPMode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SFSessionProperty;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -59,7 +58,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({TestUtils.class, HttpUtil.class, SnowflakeFileTransferAgent.class})
+@PrepareForTest({TestUtils.class, SnowflakeFileTransferAgent.class})
 public class InternalStageTest {
 
   private final String prefix = "EXAMPLE_PREFIX";
@@ -120,7 +119,6 @@ public class InternalStageTest {
           + " \"endPoint\": null}}";
 
   private void setupMocksForRefresh() throws Exception {
-    PowerMockito.mockStatic(HttpUtil.class);
     PowerMockito.mockStatic(TestUtils.class);
   }
 

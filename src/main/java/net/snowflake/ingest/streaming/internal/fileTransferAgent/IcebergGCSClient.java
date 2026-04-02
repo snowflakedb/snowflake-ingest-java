@@ -22,7 +22,6 @@ import java.security.InvalidKeyException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;

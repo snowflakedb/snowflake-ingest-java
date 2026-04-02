@@ -253,7 +253,7 @@ is replaced.
 
 ---
 
-### Progress Summary (updated 2026-03-26)
+### Progress Summary (updated 2026-03-30)
 
 | Step | Status | PR |
 |---|---|---|
@@ -265,16 +265,16 @@ is replaced.
 | Step 5a — ErrorCode, ResourceBundleManager | ✅ MERGED | #1113 |
 | Step 5b — SnowflakeSQLException, SnowflakeSQLLoggedException | ✅ MERGED | #1114 |
 | Step 6 — Telemetry | ✅ MERGED | #1115 |
-| Step 7a — Inline error helpers, swap exceptions | ✅ Open | #1116 |
-| Step 7b — Replicate getFileTransferMetadatas | ✅ Open | #1119 |
-| Step 8a — Replicate StageInfo, RemoteStoreFileEncryptionMaterial | ✅ Open | #1120 |
-| Step 8b — Replicate MetadataV1, ObjectMapperFactory, SqlState | ✅ Open | #1121 |
+| Step 7a — Inline error helpers, swap exceptions | ✅ MERGED | #1116 |
+| Step 7b — Replicate getFileTransferMetadatas | ✅ MERGED | #1119 |
+| Step 8a — Replicate StageInfo, RemoteStoreFileEncryptionMaterial | ✅ MERGED | #1120 |
+| Step 8b — Replicate MetadataV1, ObjectMapperFactory, SqlState | ✅ MERGED | #1121 |
 | Step 8c — Replicate storage helpers + interface | ✅ Open | #1123 |
-| Step 8d — Replicate storage client implementations | ⬜ TODO | — |
-| Step 8e — Swap ALL imports at once | ⬜ TODO | — |
-| Step 9a — Clean up replicated classes' JDBC imports | ⬜ TODO | — |
-| Step 9b — Clean up SnowflakeSQLLoggedException telemetry | ⬜ TODO | — |
-| Step 9c — Clean up TelemetryClient JDBC imports | ⬜ TODO | — |
+| Step 8d — Replicate storage client implementations | ✅ Open | #1124 |
+| Step 8e — Swap ALL imports at once | ✅ Open | #1127 |
+| Step 9a — Mechanical import swaps in replicated classes | ✅ Open | #1128 |
+| Step 9b — Replicate OOB telemetry infrastructure | ⬜ TODO | — |
+| Step 9c — Swap telemetry imports in SnowflakeSQLLoggedException + TelemetryClient | ⬜ TODO | — |
 | Step 10 — Remove JDBC dependency | ⬜ TODO | — |
 
 **Closed PRs:** #1117 (reverted 7b approach), #1122 (reverted 8c approach)
@@ -496,103 +496,138 @@ Swap imports everywhere. Now `InternalStage` can use ingest's types throughout.
 - `GcmEncryptionProvider` (254 lines) — AES GCM encryption
 - `StorageProviderException` (51 lines) — storage error wrapper
 - `StorageObjectSummary` (161 lines) — storage object properties
-- `StorageObjectSummaryCollection` (60 lines) — iterator (stubbed)
+- `StorageObjectSummaryCollection` (60 lines) — collection with iterator
+- `S3ObjectSummariesIterator` (41 lines) — S3 summary iterator
+- `AzureObjectSummariesIterator` (58 lines) — Azure summary iterator
+- `GcsObjectSummariesIterator` (28 lines) — GCS summary iterator
+- Added `aws-java-sdk-kms` dependency (for iterator exception type)
 
 ---
 
-### Step 8d — Replicate storage client implementations ⬜ TODO
+### Step 8d — Replicate storage client implementations ✅ OPEN (PR #1124)
 
-Replicate the three cloud storage client classes and their factory verbatim
-from JDBC. These implement `SnowflakeStorageClient` (from 8c) and provide
-the upload/download operations for each cloud provider.
-
-**Classes to replicate:**
+**Done:** Verbatim replication of JDBC storage client implementations:
 - `StorageClientFactory` (~234 lines) — creates cloud-specific clients
 - `SnowflakeS3Client` (~1038 lines) — S3 upload/download with encryption
 - `SnowflakeAzureClient` (~1055 lines) — Azure Blob upload/download
 - `SnowflakeGCSClient` (~1282 lines) — GCS upload/download with presigned URLs
 - `S3ObjectMetadata` / `CommonObjectMetadata` — `StorageObjectMetadata` impls
-  used by `StorageClientFactory.createStorageMetadataObj()`
 - `HttpHeadersCustomizer` interface + `HeaderCustomizerHttpRequestInterceptor`
-  — HTTP header customization for S3
+- `FileCompressionType` — file compression type enum
+- `GCSAccessStrategy`, `GCSAccessStrategyAwsSdk`, `GCSDefaultAccessStrategy`
+- `S3HttpUtil` — S3-specific HTTP/proxy configuration
+- `uploadWithoutConnection`, `pushFileToRemoteStore`,
+  `pushFileToRemoteStoreWithPresignedUrl`, `renewExpiredToken`,
+  `parseCommandInGS`, `getLocalFilePathFromCommand` added to
+  replicated `SnowflakeFileTransferAgent`
 
-**Also add to replicated `SnowflakeFileTransferAgent`:**
-- `uploadWithoutConnection(SnowflakeFileTransferConfig)` — main upload method
-- `pushFileToRemoteStore(...)` — S3/Azure upload helper
-- `pushFileToRemoteStoreWithPresignedUrl(...)` — GCS upload helper
-- `computeDigest(...)`, `compressStreamWithGZIP(...)`,
-  `compressStreamWithGZIPNoDigest(...)` — stream processing helpers
-
-**Note:** Both Iceberg clients and replicated Snowflake clients will coexist.
+Both Iceberg clients and replicated Snowflake clients coexist.
 `SFSession` references kept temporarily (always null from callers).
 
 ---
 
-### Step 8e — Swap ALL imports at once ⬜ TODO
+### Step 8e — Swap ALL imports at once ✅ OPEN (PR #1127)
 
-Now that the full JDBC storage stack is replicated (Steps 8a–8d), swap all
-remaining JDBC imports to ingest versions in a single step:
+**Done:**
+- `InternalStage`: swapped all 7 JDBC imports, removed
+  `parseConfigureResponseMapper` (no longer needed — replicated agent uses
+  same Jackson version), simplified `parseFileLocationInfo` →
+  `createFileTransferNode`
+- `InternalStageManager`: swapped `SnowflakeSQLException`
+- `SnowflakeFileTransferMetadataWithAge`: swapped `SnowflakeFileTransferMetadataV1`
+- Iceberg clients: removed `StageInfo`, `MetadataV1` imports (same package)
+- `InternalStageTest`: updated all JDBC imports
 
-- `InternalStage`: swap all 6 JDBC imports, use replicated
-  `SnowflakeFileTransferAgent.uploadWithoutConnection` and
-  `getFileTransferMetadatas`, remove `parseConfigureResponseMapper`
-- `InternalStageManager`: swap `SnowflakeSQLException`
-- `SnowflakeFileTransferMetadataWithAge`: swap `SnowflakeFileTransferMetadataV1`
-- All `fileTransferAgent` files: remove JDBC imports (now same-package)
-- `InternalStageTest`: update imports
-
-**InternalStage now fully free of JDBC imports.**
-
----
-
-### Step 9a — Clean up replicated classes' JDBC imports ⬜ TODO
-
-Remove JDBC imports from the replicated classes themselves:
-
-- `SqlState` in `ErrorCode`, `SnowflakeFileTransferAgent` → already replicated
-  in same package, just swap import
-- `SFSession` parameter in `SnowflakeFileTransferAgent.getStageInfo()` and
-  storage clients → always null from our callers, replace with stub or remove
-- `SFException` in `SnowflakeSQLException` → used in one constructor never called
-  by ingest; remove constructor or stub
-- `SecretDetector` in `TelemetryData` → already replicated (Step 2b)
-- `HttpUtil.isSocksProxyDisabled()` in `StorageClientFactory` → already in
-  ingest's `HttpUtil`
+**InternalStage and all `streaming/internal/` files now fully free of JDBC
+imports.**
 
 ---
 
-### Step 9b — Clean up SnowflakeSQLLoggedException JDBC telemetry ⬜ TODO
+### Step 9a — Mechanical import swaps in replicated classes ✅ OPEN (PR #1128)
 
-`SnowflakeSQLLoggedException` has 12 JDBC imports for OOB/IB telemetry.
-All ingest callers pass `null` for session, so the in-band telemetry path
-is never taken. The OOB telemetry path uses JDBC's `TelemetryService`
-singleton.
-
-Options (to be decided):
-- Stub out `sendTelemetryData()` to no-op (ingest has its own telemetry)
-- Or replicate the OOB telemetry classes
+**Done:** Mechanical import swaps only — no logic changes:
+- `SqlState` in `ErrorCode`, `SnowflakeFileTransferAgent` → removed (same package)
+- `ObjectMapperFactory` in `TelemetryClient`, `TelemetryData`, `TelemetryUtil` →
+  swapped to ingest's replicated version
+- `SecretDetector` in `TelemetryData` → swapped to ingest's replicated version
+- `SFLoggerUtil.isVariableProvided` in `S3HttpUtil` → inlined (semantically
+  equivalent ternary, avoids replicating SFLoggerUtil for one trivial method)
+- `SnowflakeUtil` in S3/Azure/GCS clients → `StorageClientUtil` (added
+  `assureOnlyUserAccessibleFilePermissions` verbatim from JDBC)
+- `SFSessionProperty` in S3/Azure/GCS clients → ingest version (added
+  `PUT_GET_MAX_RETRIES` to ingest `SFSessionProperty`)
+- `SnowflakeUtil.createCaseInsensitiveMap` in `GCSDefaultAccessStrategy` →
+  `StorageClientUtil`
 
 ---
 
-### Step 9c — Clean up TelemetryClient JDBC imports ⬜ TODO
+### Step 9b — Replicate OOB telemetry infrastructure ⬜ TODO
 
-`TelemetryClient` has 6 JDBC imports. The session-based constructor and
-`createTelemetry(Connection)` are never used by ingest (only sessionless).
+Replicate the OOB (out-of-band) telemetry classes that
+`SnowflakeSQLLoggedException` depends on. Verbatim replication — no stubs,
+no logic changes.
 
-- `HttpUtil` → ingest already has its own `HttpUtil`
-- `TelemetryThreadPool` → replace with own executor
-- Remove session-based constructors/methods (or stub with `SFSession` parameter)
-- `SnowflakeConnectionV1`, `SnowflakeSQLException` → only in session path
+**Classes to replicate (~1170 lines total):**
+- `TelemetryThreadPool` (61 lines) — singleton thread pool for async telemetry.
+  No JDBC deps beyond package.
+- `SFTimestamp` (20 lines) — UTC timestamp formatter. No JDBC deps.
+- `SnowflakeConnectString` (256 lines) — connection string parser. Deps:
+  `SFSessionProperty` (already replicated), `SecretDetector` (already
+  replicated), `SFLogger` (already replicated).
+- `TelemetryEvent` (182 lines) — telemetry event builder. Deps:
+  `SFException` (JDBC, kept temporarily), `UUIDUtils` (already replicated),
+  `SFTimestamp` (replicated above), `SecretDetector` (already replicated),
+  `ResourceBundleManager` (already replicated).
+- `TelemetryService` (651 lines) — OOB telemetry singleton. Deps:
+  `SnowflakeConnectString` (replicated above), `SecretDetector` (already
+  replicated), `Stopwatch` (already replicated), `TelemetryThreadPool`
+  (replicated above).
+
+**Also add constants:**
+- `LoginInfoDTO.SF_JDBC_APP_ID` = `"JDBC"` (from snowflake-common)
+- `SnowflakeDriver.implementVersion` = `"3.25.1"` (version string)
+
+**Suggested PR split (~200 lines production code per PR):**
+- PR 1: `TelemetryThreadPool`, `SFTimestamp`, `SnowflakeConnectString`,
+  constants (~340 lines)
+- PR 2: `TelemetryEvent`, `TelemetryService` (~830 lines — single class
+  exceeds 200-line limit, OK per plan rules)
+
+---
+
+### Step 9c — Swap telemetry imports in SnowflakeSQLLoggedException + TelemetryClient ⬜ TODO
+
+Mechanical import swaps only — no logic changes, no method removal:
+- `SnowflakeSQLLoggedException`: swap all 12 JDBC telemetry imports to
+  ingest replicated versions (from Step 9b). Full `sendTelemetryData()`
+  body preserved verbatim.
+- `TelemetryClient`: swap `TelemetryThreadPool` to ingest version
+  (from Step 9b). Remaining JDBC imports (`HttpUtil`, `SFSession`,
+  `SnowflakeConnectionV1`, `SnowflakeSQLException`) kept until Step 10.
 
 ---
 
 ### Step 10 — Remove JDBC Dependency ⬜ TODO
 
-1. Change `snowflake-jdbc-thin` scope to `test` in `pom.xml` (`TestUtils.java` needs
-   `SnowflakeDriver` for IT result verification)
-2. Remove JDBC shade relocation rules from Maven Shade plugin
-3. Remove `snowflake-jdbc-thin` from `public_pom.xml`
-4. Run full test suite
+Remaining JDBC imports after Step 9c (all in `fileTransferAgent/`):
+- `SFSession`/`SFBaseSession` (15 imports) — always null from callers.
+  Need stubs or parameter type changes.
+- `SFException` (2 imports) — used in one `SnowflakeSQLException` constructor
+  (never called) and caught in `parseCommandInGS` (calls JDBC's `SFStatement`).
+- `SnowflakeConnectionV1`, `SnowflakeSQLException` in `TelemetryClient`
+  — session-based code path, never used by ingest.
+- `HttpUtil` in `TelemetryClient` — `executeGeneralRequest` for both
+  session and sessionless paths.
+- GCS HTTP types (4 imports) — `ExecTimeTelemetryData`, `HttpResponseContextDto`,
+  `HttpUtil`, `RestRequest` in `SnowflakeGCSClient`.
+
+Then:
+1. Create `SFSession`/`SFBaseSession` stubs or change parameter types
+2. Replace remaining JDBC HTTP utilities with direct Apache HttpClient
+3. Change `snowflake-jdbc-thin` scope to `test` in `pom.xml`
+4. Remove JDBC shade relocation rules from Maven Shade plugin
+5. Remove `snowflake-jdbc-thin` from `public_pom.xml`
+6. Run full test suite
 
 ---
 

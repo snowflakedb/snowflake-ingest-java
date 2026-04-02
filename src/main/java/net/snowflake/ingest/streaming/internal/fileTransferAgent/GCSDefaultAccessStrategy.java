@@ -20,7 +20,6 @@ import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.util.Map;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.jdbc.SnowflakeUtil;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.utils.SFPair;
@@ -128,7 +127,7 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
     blob.downloadTo(localFile.toPath(), Blob.BlobSourceOption.shouldReturnRawInputStream(true));
 
     // Get the user-defined BLOB metadata
-    return SnowflakeUtil.createCaseInsensitiveMap(blob.getMetadata());
+    return StorageClientUtil.createCaseInsensitiveMap(blob.getMetadata());
   }
 
   @Override
@@ -146,7 +145,7 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
     Map<String, String> userDefinedMetadata = null;
     if (isEncrypting) {
       // Get the user-defined BLOB metadata
-      userDefinedMetadata = SnowflakeUtil.createCaseInsensitiveMap(blob.getMetadata());
+      userDefinedMetadata = StorageClientUtil.createCaseInsensitiveMap(blob.getMetadata());
     }
 
     return SFPair.of(inputStream, userDefinedMetadata);

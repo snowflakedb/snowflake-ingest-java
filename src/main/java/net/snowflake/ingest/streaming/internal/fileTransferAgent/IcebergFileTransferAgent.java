@@ -11,8 +11,6 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.Base64;
 import java.util.Properties;
-import net.snowflake.client.jdbc.SnowflakeFileTransferMetadataV1;
-import net.snowflake.client.jdbc.cloud.storage.StageInfo;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.OCSPMode;
