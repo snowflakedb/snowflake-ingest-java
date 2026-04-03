@@ -12,6 +12,8 @@ eliminate the JDBC dependency entirely.
 
 **This project is a pure mechanical migration. There must be no functional changes.**
 
+- **Always replicate** — no matter how many dependencies, replicate the JDBC original
+  verbatim. Never create "simplified replacements" or "minimal viable alternatives."
 - Copy JDBC classes verbatim into this repo. Compare against the actual source file
   in the JDBC repo (not decompiled output). Do not refactor, simplify, rename fields,
   change method signatures, strip comments/Javadoc, or improve logic — even where
