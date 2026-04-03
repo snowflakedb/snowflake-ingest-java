@@ -6,8 +6,8 @@
  * @SnowflakeJdbcInternalApi annotation removed.
  * SnowflakeUtil.isNullOrEmpty -> StorageClientUtil.isNullOrEmpty (already in package).
  * SnowflakeUtil.logResponseDetails -> FQN net.snowflake.client.jdbc.SnowflakeUtil.logResponseDetails.
- * SessionUtil.isNewRetryStrategyRequest -> FQN net.snowflake.client.core.SessionUtil.isNewRetryStrategyRequest.
- * HttpUtil references kept as FQN net.snowflake.client.core.HttpUtil (to be replicated in next PR).
+ * SessionUtil.isNewRetryStrategyRequest -> JdbcHttpUtil.isNewRetryStrategyRequest.
+ * HttpUtil references swapped to JdbcHttpUtil (replicated in same package).
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
@@ -388,7 +388,7 @@ public class RestRequest {
       String requestIdStr,
       long authTimeoutInMilli) {
     if (withoutCookies) {
-      httpRequest.setConfig(net.snowflake.client.core.HttpUtil.getRequestConfigWithoutCookies());
+      httpRequest.setConfig(JdbcHttpUtil.getRequestConfigWithoutCookies());
     }
 
     // For first call, simulate a socket timeout by setting socket timeout
@@ -400,7 +400,7 @@ public class RestRequest {
           requestIdStr,
           injectSocketTimeout);
       httpRequest.setConfig(
-          net.snowflake.client.core.HttpUtil.getDefaultRequestConfigWithSocketTimeout(
+          JdbcHttpUtil.getDefaultRequestConfigWithSocketTimeout(
               injectSocketTimeout, withoutCookies));
     }
 
@@ -411,7 +411,7 @@ public class RestRequest {
       logger.debug(
           "{}Setting auth timeout as the socket timeout: {} ms", requestIdStr, authTimeoutInMilli);
       httpRequest.setConfig(
-          net.snowflake.client.core.HttpUtil.getDefaultRequestConfigWithSocketAndConnectTimeout(
+          JdbcHttpUtil.getDefaultRequestConfigWithSocketAndConnectTimeout(
               requestSocketAndConnectTimeout, withoutCookies));
     }
   }
@@ -564,8 +564,7 @@ public class RestRequest {
             .retryHTTP403(retryHTTP403)
             .noRetry(noRetry)
             .unpackResponse(unpackResponse)
-            .loginRequest(
-                net.snowflake.client.core.SessionUtil.isNewRetryStrategyRequest(httpRequest))
+            .loginRequest(JdbcHttpUtil.isNewRetryStrategyRequest(httpRequest))
             .build();
     return executeWithRetries(httpClient, httpRequest, context, execTimeTelemetryData, null);
   }
@@ -663,7 +662,7 @@ public class RestRequest {
             && httpExecutingContext.getRetryCount() == 0) {
           // test code path
           httpRequest.setConfig(
-              net.snowflake.client.core.HttpUtil.getDefaultRequestConfigWithSocketTimeout(
+              JdbcHttpUtil.getDefaultRequestConfigWithSocketTimeout(
                   httpExecutingContext.getOrigSocketTimeout(),
                   httpExecutingContext.isWithoutCookies()));
         }
@@ -991,11 +990,11 @@ public class RestRequest {
       // if the request took more than socket timeout log a warning
       long currentMillis = System.currentTimeMillis();
       if ((currentMillis - httpExecutingContext.getStartTimePerRequest())
-          > net.snowflake.client.core.HttpUtil.getSocketTimeout().toMillis()) {
+          > JdbcHttpUtil.getSocketTimeout().toMillis()) {
         logger.warn(
             "{}HTTP request took longer than socket timeout {} ms: {} ms",
             httpExecutingContext.getRequestId(),
-            net.snowflake.client.core.HttpUtil.getSocketTimeout().toMillis(),
+            JdbcHttpUtil.getSocketTimeout().toMillis(),
             (currentMillis - httpExecutingContext.getStartTimePerRequest()));
       }
       StringWriter sw = new StringWriter();

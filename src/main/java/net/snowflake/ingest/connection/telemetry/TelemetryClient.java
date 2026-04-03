@@ -11,9 +11,9 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.concurrent.Future;
-import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.jdbc.SnowflakeSQLException;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.JdbcHttpUtil;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.ObjectMapperFactory;
+import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.TelemetryThreadPool;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
@@ -275,11 +275,11 @@ public class TelemetryClient implements Telemetry {
 
       try {
         response =
-            HttpUtil.executeGeneralRequest(
+            JdbcHttpUtil.executeGeneralRequest(
                 post,
                 TELEMETRY_HTTP_RETRY_TIMEOUT_IN_SEC,
                 0,
-                (int) HttpUtil.getSocketTimeout().toMillis(),
+                (int) JdbcHttpUtil.getSocketTimeout().toMillis(),
                 0,
                 this.httpClient);
         stopwatch.stop();
