@@ -11,15 +11,17 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import javax.annotation.Nonnull;
 import org.apache.iceberg.parquet.TypeToMessageType;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.JsonUtil;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 /**
- * This class is used to Iceberg data type (include primitive types and nested types) serialization
- * and deserialization.
+ * This class is used to Iceberg data type (include primitive types, variant, and nested types)
+ * serialization and deserialization.
  *
  * <p>This code is modified from
  * GlobalServices/modules/data-lake/datalake-api/src/main/java/com/snowflake/metadata/iceberg
@@ -73,6 +75,8 @@ public class IcebergDataTypeParser {
     if (icebergType.isPrimitiveType()) {
       parquetType =
           typeToMessageType.primitive(icebergType.asPrimitiveType(), repetition, id, name);
+    } else if (icebergType.isVariantType()) {
+      parquetType = typeToMessageType.variant(repetition, id, name);
     } else {
       switch (icebergType.typeId()) {
         case LIST:
@@ -119,6 +123,10 @@ public class IcebergDataTypeParser {
    */
   public static Type getTypeFromJson(@Nonnull JsonNode jsonNode) {
     if (jsonNode.isTextual()) {
+      if (jsonNode.asText().toLowerCase(Locale.ROOT).equals(Types.VariantType.get().toString())) {
+        return Types.VariantType.get();
+      }
+
       return Types.fromPrimitiveString(jsonNode.asText());
     } else if (jsonNode.isObject()) {
       if (!jsonNode.has(TYPE)) {
@@ -253,7 +261,22 @@ public class IcebergDataTypeParser {
           .id(parquetType.getId().intValue())
           .length(parquetType.asPrimitiveType().getTypeLength())
           .named(fieldName);
+    } else if (parquetType.getLogicalTypeAnnotation()
+        instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
+      /* rename field name */
+      org.apache.parquet.schema.Types.GroupBuilder<org.apache.parquet.schema.GroupType> builder =
+          org.apache.parquet.schema.Types.buildGroup(parquetType.getRepetition());
+
+      for (org.apache.parquet.schema.Type type : parquetType.asGroupType().getFields()) {
+        builder.addField(type);
+      }
+
+      return builder
+          .as(parquetType.getLogicalTypeAnnotation())
+          .id(parquetType.getId().intValue())
+          .named(fieldName);
     }
+
     org.apache.parquet.schema.Types.GroupBuilder<org.apache.parquet.schema.GroupType> builder =
         org.apache.parquet.schema.Types.buildGroup(parquetType.getRepetition());
     for (org.apache.parquet.schema.Type parquetFieldType : parquetType.asGroupType().getFields()) {
