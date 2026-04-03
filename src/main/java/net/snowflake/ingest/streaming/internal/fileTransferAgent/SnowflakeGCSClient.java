@@ -38,10 +38,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import net.snowflake.client.core.ExecTimeTelemetryData;
-import net.snowflake.client.core.HttpResponseContextDto;
-import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.jdbc.RestRequest;
+// ExecTimeTelemetryData, HttpResponseContextDto, RestRequest all in same package
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.ArgSupplier;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
@@ -84,8 +81,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
    *                required to decrypt/encrypt content in stage
    */
   public static SnowflakeGCSClient createSnowflakeGCSClient(
-      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat) throws SnowflakeSQLException {
     logger.debug(
         "Initializing Snowflake GCS client with encryption: {}", encMat != null ? "true" : "false");
     SnowflakeGCSClient sfGcsClient = new SnowflakeGCSClient();
@@ -140,8 +136,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   }
 
   @Override
-  public void renew(Map<?, ?> stageCredentials)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+  public void renew(Map<?, ?> stageCredentials) throws SnowflakeSQLException {
     logger.debug("Renewing the Snowflake GCS client");
     stageInfo.setCredentials(stageCredentials);
     setupGCSClient(stageInfo, encMat);
@@ -199,7 +194,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     String localFilePath = localLocation + localFileSep + destFileName;
     logger.debug(
         "Staring download of file from GCS stage path: {} to {}", stageFilePath, localFilePath);
@@ -221,7 +216,8 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
           logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
 
-          CloseableHttpClient httpClient = HttpUtil.getHttpClientWithoutDecompression(null, null);
+          CloseableHttpClient httpClient =
+              JdbcHttpUtil.getHttpClientWithoutDecompression(null, null);
 
           // Get the file on storage using the presigned url
           HttpResponseContextDto responseDto =
@@ -381,7 +377,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.debug("Staring download of file from GCS stage path: {} to input stream", stageFilePath);
     int retryCount = 0;
     Stopwatch stopwatch = new Stopwatch();
@@ -402,7 +398,8 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
           logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
 
-          CloseableHttpClient httpClient = HttpUtil.getHttpClientWithoutDecompression(null, null);
+          CloseableHttpClient httpClient =
+              JdbcHttpUtil.getHttpClientWithoutDecompression(null, null);
 
           // Put the file on storage using the presigned url
           HttpResponse response =
@@ -550,7 +547,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   @Override
   public void uploadWithPresignedUrlWithoutConnection(
       int networkTimeoutInMilli,
-      net.snowflake.client.core.HttpClientSettingsKey ocspModeAndProxyKey,
+      HttpClientSettingsKey ocspModeAndProxyKey,
       int parallelism,
       boolean uploadFromStream,
       String remoteStorageLocation,
@@ -562,7 +559,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.info(
         StorageHelper.getStartUploadLog(
             "GCS", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -602,7 +599,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
       uploadWithPresignedUrl(
           networkTimeoutInMilli,
-          (int) HttpUtil.getSocketTimeout().toMillis(),
+          (int) JdbcHttpUtil.getSocketTimeout().toMillis(),
           meta.getContentEncoding(),
           meta.getUserMetadata(),
           uploadStreamInfo.left,
@@ -663,7 +660,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.info(
         StorageHelper.getStartUploadLog(
             "GCS", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -814,7 +811,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       long contentLength,
       InputStream content,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.debug("Uploading file {} to bucket {}", destFileName, remoteStorageLocation);
     try {
       this.gcsAccessStrategy.uploadWithDownScopedToken(
@@ -863,9 +860,9 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       Map<String, String> metadata,
       InputStream content,
       String presignedUrl,
-      net.snowflake.client.core.HttpClientSettingsKey ocspAndProxyKey,
+      HttpClientSettingsKey ocspAndProxyKey,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     try {
       URIBuilder uriBuilder = new URIBuilder(presignedUrl);
 
@@ -889,7 +886,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       InputStreamEntity contentEntity = new InputStreamEntity(content, -1);
       httpRequest.setEntity(contentEntity);
 
-      CloseableHttpClient httpClient = HttpUtil.getHttpClient(ocspAndProxyKey, null);
+      CloseableHttpClient httpClient = JdbcHttpUtil.getHttpClient(ocspAndProxyKey, null);
 
       // Put the file on storage using the presigned url
       HttpResponse response =
@@ -1037,7 +1034,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   @Override
   public void handleStorageException(
       Exception ex, int retryCount, String operation, String command, String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
       // Most likely cause is that the unlimited strength policy files are not installed
@@ -1172,9 +1169,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
    * @throws IllegalArgumentException when invalid credentials are used
    */
   private void setupGCSClient(StageInfo stage, RemoteStoreFileEncryptionMaterial encMat)
-      throws IllegalArgumentException,
-          SnowflakeSQLException,
-          net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws IllegalArgumentException, SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the GCS client.
     this.stageInfo = stage;

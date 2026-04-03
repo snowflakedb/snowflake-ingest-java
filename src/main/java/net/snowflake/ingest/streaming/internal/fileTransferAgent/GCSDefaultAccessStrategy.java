@@ -178,7 +178,7 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
       String command,
       String queryId,
       SnowflakeGCSClient gcsClient)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     if (ex instanceof StorageException) {
       // NOTE: this code path only handle Access token based operation,
       // presigned URL is not covered. Presigned Url do not raise
