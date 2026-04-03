@@ -42,7 +42,7 @@ interface GCSAccessStrategy {
       String command,
       String queryId,
       SnowflakeGCSClient gcsClient)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
+      throws SnowflakeSQLException;
 
   void shutdown();
 }
