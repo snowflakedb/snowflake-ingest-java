@@ -116,7 +116,7 @@ final class StorageClientUtil {
    * SnowflakeSQLException here temporarily until Step 5 replaces it.
    */
   static HttpClientSettingsKey convertProxyPropertiesToHttpClientKey(OCSPMode mode, Properties info)
-      throws net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     if (info != null
         && info.size() > 0
         && info.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
@@ -129,9 +129,8 @@ final class StorageClientUtil {
           proxyPort =
               Integer.parseInt(info.getProperty(SFSessionProperty.PROXY_PORT.getPropertyKey()));
         } catch (NumberFormatException | NullPointerException e) {
-          throw new net.snowflake.client.jdbc.SnowflakeSQLException(
-              net.snowflake.client.jdbc.ErrorCode.INVALID_PROXY_PROPERTIES,
-              "Could not parse port number");
+          throw new SnowflakeSQLException(
+              ErrorCode.INVALID_PROXY_PROPERTIES, "Could not parse port number");
         }
         String proxyUser = info.getProperty(SFSessionProperty.PROXY_USER.getPropertyKey());
         String proxyPassword = info.getProperty(SFSessionProperty.PROXY_PASSWORD.getPropertyKey());
@@ -232,12 +231,10 @@ final class StorageClientUtil {
    * Replicated from SnowflakeFileTransferAgent.throwNoSpaceLeftError. Source:
    * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
    *
-   * @deprecated use {@link #throwNoSpaceLeftError(net.snowflake.client.core.SFSession, String,
-   *     Exception, String)}
+   * @deprecated use {@link #throwNoSpaceLeftError(Object, String, Exception, String)}
    */
   @Deprecated
-  static void throwNoSpaceLeftError(
-      net.snowflake.client.core.SFSession session, String operation, Exception ex)
+  static void throwNoSpaceLeftError(Object session, String operation, Exception ex)
       throws SnowflakeSQLLoggedException {
     throwNoSpaceLeftError(session, operation, ex, null);
   }
@@ -246,8 +243,7 @@ final class StorageClientUtil {
    * Replicated from SnowflakeFileTransferAgent.throwNoSpaceLeftError. Source:
    * https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeFileTransferAgent.java
    */
-  static void throwNoSpaceLeftError(
-      net.snowflake.client.core.SFSession session, String operation, Exception ex, String queryId)
+  static void throwNoSpaceLeftError(Object session, String operation, Exception ex, String queryId)
       throws SnowflakeSQLLoggedException {
     String exMessage = getRootCause(ex).getMessage();
     if (exMessage != null && exMessage.equals(NO_SPACE_LEFT_ON_DEVICE_ERR)) {
