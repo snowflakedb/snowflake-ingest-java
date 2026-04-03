@@ -92,6 +92,19 @@ final class StorageClientUtil {
     return str == null || str.isEmpty();
   }
 
+  /** Replicated from SnowflakeUtil.systemGetEnv */
+  static String systemGetEnv(String name) {
+    try {
+      return System.getenv(name);
+    } catch (SecurityException ex) {
+      logger.debug(
+          "Failed to get environment variable {}. Security exception raised: {}",
+          name,
+          ex.getMessage());
+      return null;
+    }
+  }
+
   /**
    * Replicated from SnowflakeUtil.isWindows, which delegates to Constants.getOS(). The OS detection
    * logic from Constants is inlined here to avoid replicating the full Constants class.

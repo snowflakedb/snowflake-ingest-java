@@ -21,8 +21,7 @@ import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerUti
 import net.snowflake.ingest.utils.SFSessionProperty;
 
 public class S3HttpUtil {
-  private static final SFLogger logger =
-      SFLoggerFactory.getLogger(net.snowflake.ingest.utils.HttpUtil.class);
+  private static final SFLogger logger = SFLoggerFactory.getLogger(JdbcHttpUtil.class);
 
   /**
    * A static function to set S3 proxy params when there is a valid session
