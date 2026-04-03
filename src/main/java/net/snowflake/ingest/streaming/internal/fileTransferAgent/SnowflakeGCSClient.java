@@ -886,8 +886,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       InputStreamEntity contentEntity = new InputStreamEntity(content, -1);
       httpRequest.setEntity(contentEntity);
 
-      CloseableHttpClient httpClient =
-          JdbcHttpUtil.getHttpClient(toIngestKey(ocspAndProxyKey), null);
+      CloseableHttpClient httpClient = JdbcHttpUtil.getHttpClient(ocspAndProxyKey, null);
 
       // Put the file on storage using the presigned url
       HttpResponse response =
@@ -1170,7 +1169,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
    * @throws IllegalArgumentException when invalid credentials are used
    */
   private void setupGCSClient(StageInfo stage, RemoteStoreFileEncryptionMaterial encMat)
-      throws IllegalArgumentException, SnowflakeSQLException, SnowflakeSQLException {
+      throws IllegalArgumentException, SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the GCS client.
     this.stageInfo = stage;
@@ -1232,37 +1231,5 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   @Override
   public String getStreamingIngestClientKey(StorageObjectMetadata meta) {
     return meta.getUserMetadata().get(GCS_STREAMING_INGEST_CLIENT_KEY);
-  }
-
-  /**
-   * Convert JDBC's HttpClientSettingsKey to the ingest-replicated version. This adapter is needed
-   * during the JDBC removal transition because the SnowflakeStorageClient interface methods still
-   * use JDBC's HttpClientSettingsKey type. Will be removed once the full storage stack import swap
-   * is complete.
-   */
-  private static HttpClientSettingsKey toIngestKey(HttpClientSettingsKey jdbcKey) {
-    if (jdbcKey == null) {
-      return null;
-    }
-    if (jdbcKey.usesProxy()) {
-      return new HttpClientSettingsKey(
-          jdbcKey.getOcspMode() != null
-              ? net.snowflake.ingest.utils.OCSPMode.valueOf(jdbcKey.getOcspMode().name())
-              : null,
-          jdbcKey.getProxyHost(),
-          jdbcKey.getProxyPort(),
-          jdbcKey.getNonProxyHosts(),
-          jdbcKey.getProxyUser(),
-          jdbcKey.getProxyPassword(),
-          jdbcKey.getProxyHttpProtocol() != null
-              ? jdbcKey.getProxyHttpProtocol().getScheme()
-              : null,
-          jdbcKey.getUserAgentSuffix(),
-          jdbcKey.getGzipDisabled());
-    }
-    return new HttpClientSettingsKey(
-        jdbcKey.getOcspMode() != null
-            ? net.snowflake.ingest.utils.OCSPMode.valueOf(jdbcKey.getOcspMode().name())
-            : null);
   }
 }
