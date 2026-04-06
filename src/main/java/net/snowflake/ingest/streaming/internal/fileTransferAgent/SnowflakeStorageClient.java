@@ -5,7 +5,7 @@
  * Permitted differences: package, @SnowflakeJdbcInternalApi removed,
  * ErrorCode/SqlState/SnowflakeSQLException/SnowflakeSQLLoggedException/MatDesc/
  * FileBackedOutputStream/StorageObjectMetadata/HttpClientSettingsKey use ingest versions
- * (same package). SFSession kept from JDBC temporarily (always null from callers).
+ * (same package). SFSession/SFBaseSession removed (always null from callers).
  * StorageObjectSummary/StorageObjectSummaryCollection/StorageProviderException use ingest versions.
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
@@ -13,7 +13,6 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 import java.io.File;
 import java.io.InputStream;
 import java.util.Map;
-import net.snowflake.client.core.SFSession;
 
 /** Interface for storage client provider implementations */
 public interface SnowflakeStorageClient {
@@ -91,12 +90,11 @@ public interface SnowflakeStorageClient {
   /**
    * Download a file from remote storage.
    *
-   * @deprecated use {@link #download(SFSession, String, String, String, int, String, String,
-   *     String, String, String)}
+   * @deprecated use {@link #download(String, String, String, int, String, String, String, String,
+   *     String)}
    */
   @Deprecated
   default void download(
-      SFSession connection,
       String command,
       String localLocation,
       String destFileName,
@@ -107,7 +105,6 @@ public interface SnowflakeStorageClient {
       String presignedUrl)
       throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     download(
-        connection,
         command,
         localLocation,
         destFileName,
@@ -122,7 +119,6 @@ public interface SnowflakeStorageClient {
   /**
    * Download a file from remote storage.
    *
-   * @param connection connection object
    * @param command command to download file
    * @param localLocation local file path
    * @param destFileName destination file name
@@ -135,7 +131,6 @@ public interface SnowflakeStorageClient {
    * @throws SnowflakeSQLException download failure
    */
   void download(
-      SFSession connection,
       String command,
       String localLocation,
       String destFileName,
@@ -152,7 +147,6 @@ public interface SnowflakeStorageClient {
    */
   @Deprecated
   default InputStream downloadToStream(
-      SFSession connection,
       String command,
       int parallelism,
       String remoteStorageLocation,
@@ -161,7 +155,6 @@ public interface SnowflakeStorageClient {
       String presignedUrl)
       throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     return downloadToStream(
-        connection,
         command,
         parallelism,
         remoteStorageLocation,
@@ -174,7 +167,6 @@ public interface SnowflakeStorageClient {
   /**
    * Download a file from remote storage
    *
-   * @param connection connection object
    * @param command command to download file
    * @param parallelism number of threads for parallel downloading
    * @param remoteStorageLocation remote storage location, i.e. bucket for s3
@@ -186,7 +178,6 @@ public interface SnowflakeStorageClient {
    * @throws SnowflakeSQLException when download failure
    */
   InputStream downloadToStream(
-      SFSession connection,
       String command,
       int parallelism,
       String remoteStorageLocation,
@@ -201,7 +192,6 @@ public interface SnowflakeStorageClient {
    */
   @Deprecated
   default void upload(
-      SFSession connection,
       String command,
       int parallelism,
       boolean uploadFromStream,
@@ -215,7 +205,6 @@ public interface SnowflakeStorageClient {
       String presignedUrl)
       throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
     upload(
-        connection,
         command,
         parallelism,
         uploadFromStream,
@@ -233,7 +222,6 @@ public interface SnowflakeStorageClient {
   /**
    * Upload a file (-stream) to remote storage
    *
-   * @param connection connection object
    * @param command upload command
    * @param parallelism number of threads do parallel uploading
    * @param uploadFromStream true if upload source is stream
@@ -249,7 +237,6 @@ public interface SnowflakeStorageClient {
    * @throws SnowflakeSQLException if upload failed even after retry
    */
   void upload(
-      SFSession connection,
       String command,
       int parallelism,
       boolean uploadFromStream,
@@ -336,9 +323,9 @@ public interface SnowflakeStorageClient {
    */
   @Deprecated
   default void handleStorageException(
-      Exception ex, int retryCount, String operation, SFSession connection, String command)
+      Exception ex, int retryCount, String operation, String command)
       throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
-    handleStorageException(ex, retryCount, operation, connection, command, null);
+    handleStorageException(ex, retryCount, operation, command, null);
   }
 
   /**
@@ -348,18 +335,12 @@ public interface SnowflakeStorageClient {
    * @param retryCount current number of retries, incremented by the caller before each call
    * @param operation string that indicates the function/operation that was taking place, when the
    *     exception was raised, for example "upload"
-   * @param connection the current SFSession object used by the client
    * @param command the command attempted at the time of the exception
    * @param queryId last query id
    * @throws SnowflakeSQLException exceptions not handled
    */
   void handleStorageException(
-      Exception ex,
-      int retryCount,
-      String operation,
-      SFSession connection,
-      String command,
-      String queryId)
+      Exception ex, int retryCount, String operation, String command, String queryId)
       throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException;
 
   /**
