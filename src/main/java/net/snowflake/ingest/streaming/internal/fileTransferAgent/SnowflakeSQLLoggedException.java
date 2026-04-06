@@ -3,7 +3,12 @@
  * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/SnowflakeSQLLoggedException.java
  *
  * Permitted differences: package, SFLogger/isNullOrEmpty/ErrorCode/SnowflakeSQLException use
- * ingest versions. JDBC telemetry/session imports kept temporarily.
+ * ingest versions. OOB telemetry imports swapped to ingest replicated versions:
+ * ObjectMapperFactory/SqlState/TelemetryEvent/TelemetryService use ingest versions (same package).
+ * LoginInfoDTO.SF_JDBC_APP_ID/SnowflakeDriver.implementVersion → SnowflakeDriverConstants.
+ * IB telemetry imports (Telemetry/TelemetryField/TelemetryUtil) kept from JDBC — they interact
+ * with session.getTelemetryClient() which returns JDBC types.
+ * SFBaseSession/SFSession/SFException kept from JDBC temporarily (parameter types).
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
@@ -21,18 +26,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import net.minidev.json.JSONObject;
-import net.snowflake.client.core.ObjectMapperFactory;
 import net.snowflake.client.core.SFBaseSession;
-import net.snowflake.client.core.SFException;
 import net.snowflake.client.core.SFSession;
-import net.snowflake.client.jdbc.SnowflakeDriver;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.LoginInfoDTO;
-import net.snowflake.client.jdbc.internal.snowflake.common.core.SqlState;
 import net.snowflake.client.jdbc.telemetry.Telemetry;
 import net.snowflake.client.jdbc.telemetry.TelemetryField;
 import net.snowflake.client.jdbc.telemetry.TelemetryUtil;
-import net.snowflake.client.jdbc.telemetryOOB.TelemetryEvent;
-import net.snowflake.client.jdbc.telemetryOOB.TelemetryService;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 
@@ -139,8 +137,8 @@ public class SnowflakeSQLLoggedException extends SnowflakeSQLException {
   static JSONObject createOOBValue(String queryId, String SQLState, int vendorCode) {
     JSONObject oobValue = new JSONObject();
     oobValue.put("type", TelemetryField.SQL_EXCEPTION.toString());
-    oobValue.put("DriverType", LoginInfoDTO.SF_JDBC_APP_ID);
-    oobValue.put("DriverVersion", SnowflakeDriver.implementVersion);
+    oobValue.put("DriverType", SnowflakeDriverConstants.SF_JDBC_APP_ID);
+    oobValue.put("DriverVersion", SnowflakeDriverConstants.implementVersion);
     if (!isNullOrEmpty(queryId)) {
       oobValue.put("QueryID", queryId);
     }
@@ -164,8 +162,8 @@ public class SnowflakeSQLLoggedException extends SnowflakeSQLException {
   static ObjectNode createIBValue(String queryId, String SQLState, int vendorCode) {
     ObjectNode ibValue = mapper.createObjectNode();
     ibValue.put("type", TelemetryField.SQL_EXCEPTION.toString());
-    ibValue.put("DriverType", LoginInfoDTO.SF_JDBC_APP_ID);
-    ibValue.put("DriverVersion", SnowflakeDriver.implementVersion);
+    ibValue.put("DriverType", SnowflakeDriverConstants.SF_JDBC_APP_ID);
+    ibValue.put("DriverVersion", SnowflakeDriverConstants.implementVersion);
     if (!isNullOrEmpty(queryId)) {
       ibValue.put("QueryID", queryId);
     }
