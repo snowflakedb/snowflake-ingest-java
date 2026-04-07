@@ -21,8 +21,7 @@ import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerUti
 import net.snowflake.ingest.utils.SFSessionProperty;
 
 public class S3HttpUtil {
-  private static final SFLogger logger =
-      SFLoggerFactory.getLogger(net.snowflake.ingest.utils.HttpUtil.class);
+  private static final SFLogger logger = SFLoggerFactory.getLogger(JdbcHttpUtil.class);
 
   /**
    * A static function to set S3 proxy params when there is a valid session
@@ -32,13 +31,10 @@ public class S3HttpUtil {
    */
   // Parameter uses JDBC's HttpClientSettingsKey because session.getHttpClientKey() returns it.
   // This path is only used when session != null (never from streaming ingest).
-  public static void setProxyForS3(
-      net.snowflake.client.core.HttpClientSettingsKey key, ClientConfiguration clientConfig) {
+  public static void setProxyForS3(HttpClientSettingsKey key, ClientConfiguration clientConfig) {
     if (key != null && key.usesProxy()) {
       clientConfig.setProxyProtocol(
-          key.getProxyHttpProtocol() == net.snowflake.client.core.HttpProtocol.HTTPS
-              ? Protocol.HTTPS
-              : Protocol.HTTP);
+          key.getProxyHttpProtocol() == HttpProtocol.HTTPS ? Protocol.HTTPS : Protocol.HTTP);
       clientConfig.setProxyHost(key.getProxyHost());
       clientConfig.setProxyPort(key.getProxyPort());
       clientConfig.setNonProxyHosts(key.getNonProxyHosts());

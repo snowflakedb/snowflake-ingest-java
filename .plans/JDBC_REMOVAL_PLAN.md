@@ -255,7 +255,7 @@ is replaced.
 
 ---
 
-### Progress Summary (updated 2026-04-01)
+### Progress Summary (updated 2026-04-06)
 
 | Step | Status | PR |
 |---|---|---|
@@ -276,18 +276,20 @@ is replaced.
 | Step 8e — Swap ALL imports (pure import swaps) | ✅ MERGED | #1127 |
 | Step 9a — Mechanical import swaps in replicated classes | ✅ MERGED | #1128 |
 | Step 9b-prep — Replicate OOB telemetry deps | ✅ MERGED | #1129 |
-| Step 9b — Replicate TelemetryEvent + TelemetryService | ✅ Open | #1130 |
-| Step 9c — Swap telemetry imports | ✅ Open | #1131 |
-| Step 10a — Replicate SFException, ExecTimeTelemetryData, etc. | ✅ Open | #1132 |
-| Step 10b — Swap SFException imports | ✅ Open | #1134 |
+| Step 9b — Replicate TelemetryEvent + TelemetryService | ✅ MERGED | #1130 |
+| Step 9c — Swap telemetry imports | ✅ MERGED | #1131 |
+| Step 10a — Replicate SFException, ExecTimeTelemetryData, etc. | ✅ MERGED | #1132 |
+| Step 10b — Swap SFException imports | ✅ MERGED | #1134 |
 | Step 10c — Remove SFSession from storage stack | ✅ Open | #1135 |
 | Step 10c2 — Remove SFSession from exceptions + telemetry | ✅ Open | #1136 |
-| Step 11a — Replace JDBC HTTP calls with HttpRequestHelper | ⬜ TODO | — |
-| Step 11b — Remove FQN SnowflakeSQLException from throws | ⬜ TODO | — |
-| Step 11c — Clean up remaining FQN JDBC references | ⬜ TODO | — |
-| Step 11d — Demote JDBC to test scope | ⬜ TODO | — |
+| Step 11a — Replicate RestRequest and HTTP retry infrastructure | ✅ Open | #1143 |
+| Step 11a-p2 — Replicate HttpUtil, swap callers | ✅ Open | #1144 |
+| Step 11b — Clean up remaining FQN JDBC references | ✅ Open | #1145 |
+| Step 11d — Demote JDBC to test scope | ✅ Open | #1146 |
 
-**Closed PRs:** #1117 (reverted 7b approach), #1122 (reverted 8c approach)
+**Closed PRs:** #1117 (reverted 7b approach), #1122 (reverted 8c approach),
+#1137 (superseded 10d), #1138 (superseded 11a), #1139-#1141 (superseded 11b-d),
+#1142 (combined 11a-d, split into #1143-#1146)
 **Other PRs:** #1118 (error/exception tests on master), #1133 (Maven retry config)
 
 ---

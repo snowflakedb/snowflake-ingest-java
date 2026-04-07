@@ -6,7 +6,6 @@
  * (to avoid collision with ingest's net.snowflake.ingest.utils.HttpUtil),
  * import swaps for already-replicated classes,
  * @SnowflakeJdbcInternalApi annotations removed,
- * SFTrustManager replaced with null (ingest does not use OCSP trust manager),
  * SFSSLConnectionSocketFactory -> IngestSSLConnectionSocketFactory,
  * SystemUtil.convertSystemPropertyToIntValue inlined,
  * SnowflakeDriver.implementVersion -> SnowflakeDriverConstants.implementVersion,
@@ -25,11 +24,14 @@ import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageC
 import static org.apache.http.client.config.CookieSpecs.DEFAULT;
 import static org.apache.http.client.config.CookieSpecs.IGNORE_COOKIES;
 
+import com.amazonaws.ClientConfiguration;
 import com.google.common.annotations.VisibleForTesting;
 import com.microsoft.azure.storage.OperationContext;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.Socket;
@@ -50,6 +52,7 @@ import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerUtil;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SecretDetector;
+import net.snowflake.ingest.utils.OCSPMode;
 import net.snowflake.ingest.utils.SFSessionProperty;
 import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.http.HttpHost;
@@ -160,9 +163,34 @@ public class JdbcHttpUtil {
     }
   }
 
-  // Note: setProxyForS3 and setSessionlessProxyForS3 deprecated wrappers from JDBC's HttpUtil
-  // are omitted because S3HttpUtil can be called directly. They also have a type mismatch
-  // (JDBC's HttpClientSettingsKey vs ingest's version) that will be resolved in a later step.
+  /**
+   * A static function to set S3 proxy params when there is a valid session
+   *
+   * @param key key to HttpClient map containing OCSP and proxy info
+   * @param clientConfig the configuration needed by S3 to set the proxy
+   * @deprecated Use {@link S3HttpUtil#setProxyForS3(HttpClientSettingsKey, ClientConfiguration)}
+   *     instead
+   */
+  @Deprecated
+  public static void setProxyForS3(HttpClientSettingsKey key, ClientConfiguration clientConfig) {
+    S3HttpUtil.setProxyForS3(key, clientConfig);
+  }
+
+  /**
+   * A static function to set S3 proxy params for sessionless connections using the proxy params
+   * from the StageInfo
+   *
+   * @param proxyProperties proxy properties
+   * @param clientConfig the configuration needed by S3 to set the proxy
+   * @throws SnowflakeSQLException when exception encountered
+   * @deprecated Use {@link S3HttpUtil#setSessionlessProxyForS3(Properties, ClientConfiguration)}
+   *     instead
+   */
+  @Deprecated
+  public static void setSessionlessProxyForS3(
+      Properties proxyProperties, ClientConfiguration clientConfig) throws SnowflakeSQLException {
+    S3HttpUtil.setSessionlessProxyForS3(proxyProperties, clientConfig);
+  }
 
   /**
    * A static function to set Azure proxy params for sessionless connections using the proxy params
@@ -310,15 +338,33 @@ public class JdbcHttpUtil {
       initDefaultRequestConfig(connectTimeout, socketTimeout);
     }
 
-    // Note: SFTrustManager is not replicated in ingest SDK.
-    // OCSP checks are not used in the ingest upload path (credentials are short-lived presigned
-    // URLs or tokens). TrustManagers is always null here.
     TrustManager[] trustManagers = null;
-    if (key != null && key.getOcspMode() != null) {
+    if (key != null && key.getOcspMode() != OCSPMode.DISABLE_OCSP_CHECKS) {
+      // A custom TrustManager is required only if disableOCSPChecks is disabled,
+      // which is by default in the production. disableOCSPChecks can be enabled
+      // 1) OCSP service is down for reasons, 2) PowerMock test that doesn't
+      // care OCSP checks.
+      // OCSP FailOpen is ON by default
+      try {
+        if (ocspCacheFile == null) {
+          logger.debug("Instantiating trust manager with default ocsp cache file");
+        } else {
+          logger.debug("Instantiating trust manager with ocsp cache file: {}", ocspCacheFile);
+        }
+        TrustManager[] tm = {new SFTrustManager(key, ocspCacheFile)};
+        trustManagers = tm;
+      } catch (Exception | Error err) {
+        // dump error stack
+        StringWriter errors = new StringWriter();
+        err.printStackTrace(new PrintWriter(errors));
+        logger.error(errors.toString(), true);
+        throw new RuntimeException(err); // rethrow the exception
+      }
+    } else if (key != null) {
       logger.debug(
-          "OCSP mode is set to {} but SFTrustManager is not available in ingest SDK. "
-              + "Skipping custom trust manager instantiation.",
-          key.getOcspMode());
+          "Omitting trust manager instantiation as OCSP mode is set to {}", key.getOcspMode());
+    } else {
+      logger.debug("Omitting trust manager instantiation as configuration is not provided");
     }
     try {
       logger.debug(
@@ -888,12 +934,7 @@ public class JdbcHttpUtil {
       ExecTimeTelemetryData execTimeData,
       RetryContextManager retryContextManager)
       throws SnowflakeSQLException, IOException {
-    boolean ocspEnabled =
-        ocspAndProxyKey != null
-            && ocspAndProxyKey.getOcspMode() != null
-            && !(ocspAndProxyKey
-                .getOcspMode()
-                .equals(net.snowflake.ingest.utils.OCSPMode.DISABLE_OCSP_CHECKS));
+    boolean ocspEnabled = !(ocspAndProxyKey.getOcspMode().equals(OCSPMode.DISABLE_OCSP_CHECKS));
     logger.debug("Executing request with OCSP enabled: {}", ocspEnabled);
     execTimeData.setOCSPStatus(ocspEnabled);
     return executeRequestInternal(
@@ -1129,8 +1170,8 @@ public class JdbcHttpUtil {
     String SF_PATH_LOGIN_REQUEST = "/session/v1/login-request";
     String SF_PATH_AUTHENTICATOR_REQUEST = "/session/authenticator-request";
     String SF_PATH_TOKEN_REQUEST = "/session/token-request";
-    String SF_PATH_OKTA_TOKEN_REQUEST_SUFFIX = "/sso/oauth/token";
-    String SF_PATH_OKTA_SSO_REQUEST_SUFFIX = "/sso/saml/SSO";
+    String SF_PATH_OKTA_TOKEN_REQUEST_SUFFIX = "/api/v1/authn";
+    String SF_PATH_OKTA_SSO_REQUEST_SUFFIX = "/sso/saml";
 
     URI requestURI = request.getURI();
     String requestPath = requestURI.getPath();
