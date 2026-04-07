@@ -1246,6 +1246,8 @@
                 <ignoredDependency>org.apache.commons:commons-compress</ignoredDependency>
                 <ignoredDependency>org.apache.commons:commons-configuration2</ignoredDependency>
                 <ignoredDependency>io.grpc:grpc-netty</ignoredDependency>
+                <!-- JDBC unused in production after FQN cleanup, demoted to test in Step 11d -->
+                <ignoredDependency>net.snowflake:snowflake-jdbc-thin</ignoredDependency>
               </ignoredDependencies>
             </configuration>
           </execution>
