@@ -75,7 +75,10 @@ class IngestSSLConnectionSocketFactory extends SSLConnectionSocketFactory {
 
     // cipher suites need to be picked up in code explicitly for jdk 1.7
     // https://stackoverflow.com/questions/44378970/
-    logger.trace("Cipher suites used: {}", Arrays.toString(cipherSuites));
+    logger.trace(
+        "Cipher suites used: {}",
+        (net.snowflake.ingest.streaming.internal.fileTransferAgent.log.ArgSupplier)
+            () -> Arrays.toString(cipherSuites));
 
     return cipherSuites;
   }

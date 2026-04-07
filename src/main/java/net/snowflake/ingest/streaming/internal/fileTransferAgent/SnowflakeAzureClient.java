@@ -10,8 +10,8 @@
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import static net.snowflake.client.core.HttpUtil.setSessionlessProxyForAzure;
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.ErrorCode.CLOUD_STORAGE_CREDENTIALS_EXPIRED;
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.JdbcHttpUtil.setSessionlessProxyForAzure;
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.systemGetProperty;
 
 import com.fasterxml.jackson.core.JsonFactory;

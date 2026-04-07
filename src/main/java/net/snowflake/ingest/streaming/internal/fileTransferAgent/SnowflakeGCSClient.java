@@ -38,10 +38,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import net.snowflake.client.core.ExecTimeTelemetryData;
-import net.snowflake.client.core.HttpResponseContextDto;
-import net.snowflake.client.core.HttpUtil;
-import net.snowflake.client.jdbc.RestRequest;
+// ExecTimeTelemetryData, HttpResponseContextDto, RestRequest all in same package
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.ArgSupplier;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLoggerFactory;
@@ -221,7 +218,8 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
           logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
 
-          CloseableHttpClient httpClient = HttpUtil.getHttpClientWithoutDecompression(null, null);
+          CloseableHttpClient httpClient =
+              JdbcHttpUtil.getHttpClientWithoutDecompression(null, null);
 
           // Get the file on storage using the presigned url
           HttpResponseContextDto responseDto =
@@ -402,7 +400,8 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
           logger.debug("Fetching result: {}", scrubPresignedUrl(presignedUrl));
 
-          CloseableHttpClient httpClient = HttpUtil.getHttpClientWithoutDecompression(null, null);
+          CloseableHttpClient httpClient =
+              JdbcHttpUtil.getHttpClientWithoutDecompression(null, null);
 
           // Put the file on storage using the presigned url
           HttpResponse response =
@@ -602,7 +601,7 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
 
       uploadWithPresignedUrl(
           networkTimeoutInMilli,
-          (int) HttpUtil.getSocketTimeout().toMillis(),
+          (int) JdbcHttpUtil.getSocketTimeout().toMillis(),
           meta.getContentEncoding(),
           meta.getUserMetadata(),
           uploadStreamInfo.left,
@@ -889,7 +888,8 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
       InputStreamEntity contentEntity = new InputStreamEntity(content, -1);
       httpRequest.setEntity(contentEntity);
 
-      CloseableHttpClient httpClient = HttpUtil.getHttpClient(ocspAndProxyKey, null);
+      CloseableHttpClient httpClient =
+          JdbcHttpUtil.getHttpClient(toIngestKey(ocspAndProxyKey), null);
 
       // Put the file on storage using the presigned url
       HttpResponse response =
@@ -1236,5 +1236,38 @@ public class SnowflakeGCSClient implements SnowflakeStorageClient {
   @Override
   public String getStreamingIngestClientKey(StorageObjectMetadata meta) {
     return meta.getUserMetadata().get(GCS_STREAMING_INGEST_CLIENT_KEY);
+  }
+
+  /**
+   * Convert JDBC's HttpClientSettingsKey to the ingest-replicated version. This adapter is needed
+   * during the JDBC removal transition because the SnowflakeStorageClient interface methods still
+   * use JDBC's HttpClientSettingsKey type. Will be removed once the full storage stack import swap
+   * is complete.
+   */
+  private static HttpClientSettingsKey toIngestKey(
+      net.snowflake.client.core.HttpClientSettingsKey jdbcKey) {
+    if (jdbcKey == null) {
+      return null;
+    }
+    if (jdbcKey.usesProxy()) {
+      return new HttpClientSettingsKey(
+          jdbcKey.getOcspMode() != null
+              ? net.snowflake.ingest.utils.OCSPMode.valueOf(jdbcKey.getOcspMode().name())
+              : null,
+          jdbcKey.getProxyHost(),
+          jdbcKey.getProxyPort(),
+          jdbcKey.getNonProxyHosts(),
+          jdbcKey.getProxyUser(),
+          jdbcKey.getProxyPassword(),
+          jdbcKey.getProxyHttpProtocol() != null
+              ? jdbcKey.getProxyHttpProtocol().getScheme()
+              : null,
+          jdbcKey.getUserAgentSuffix(),
+          jdbcKey.getGzipDisabled());
+    }
+    return new HttpClientSettingsKey(
+        jdbcKey.getOcspMode() != null
+            ? net.snowflake.ingest.utils.OCSPMode.valueOf(jdbcKey.getOcspMode().name())
+            : null);
   }
 }

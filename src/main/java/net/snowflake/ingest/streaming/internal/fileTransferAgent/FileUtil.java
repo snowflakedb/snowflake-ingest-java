@@ -14,6 +14,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Arrays;
 import java.util.Collection;
@@ -82,6 +84,127 @@ class FileUtil {
 
   private static String getContextStr(String context) {
     return StorageClientUtil.isNullOrEmpty(context) ? "" : context + ": ";
+  }
+
+  public static void logFileUsage(String stringPath, String context, boolean logReadAccess) {
+    Path path = Paths.get(stringPath);
+    logFileUsage(path, context, logReadAccess);
+  }
+
+  public static boolean isWritable(String path) {
+    File file = new File(path);
+    if (!file.canWrite()) {
+      logger.debug("File/directory not writeable: {}", path);
+      return false;
+    }
+    return true;
+  }
+
+  public static void handleWhenParentDirectoryPermissionsWiderThanUserOnly(
+      File file, String context) {
+    handleWhenDirectoryPermissionsWiderThanUserOnly(file.getParentFile(), context);
+  }
+
+  public static void handleWhenFilePermissionsWiderThanUserOnly(File file, String context) {
+    if (Files.isSymbolicLink(file.toPath())) {
+      throw new SecurityException("Symbolic link is not allowed for file cache: " + file);
+    }
+    handleWhenPermissionsWiderThanUserOnly(file.toPath(), context, false);
+  }
+
+  public static void handleWhenDirectoryPermissionsWiderThanUserOnly(File file, String context) {
+    handleWhenPermissionsWiderThanUserOnly(file.toPath(), context, true);
+  }
+
+  public static void handleWhenPermissionsWiderThanUserOnly(
+      Path filePath, String context, boolean isDirectory) {
+    // we do not check the permissions for Windows
+    if (isWindows()) {
+      return;
+    }
+
+    try {
+      Collection<PosixFilePermission> filePermissions = Files.getPosixFilePermissions(filePath);
+      boolean isWritableByOthers = isPermPresent(filePermissions, WRITE_BY_OTHERS);
+      boolean isReadableByOthers = isPermPresent(filePermissions, READ_BY_OTHERS);
+      boolean isExecutable = isPermPresent(filePermissions, EXECUTABLE);
+
+      boolean permissionsTooOpen;
+      if (isDirectory) {
+        permissionsTooOpen = isWritableByOthers || isReadableByOthers;
+      } else {
+        permissionsTooOpen = isWritableByOthers || isReadableByOthers || isExecutable;
+      }
+      if (permissionsTooOpen) {
+        logger.debug(
+            "{}File/directory {} access rights: {}",
+            getContextStr(context),
+            filePath,
+            filePermissions);
+        String message =
+            String.format(
+                "Access to file or directory %s is wider than allowed. Remove cache file/directory"
+                    + " and re-run the driver.",
+                filePath);
+        if (isDirectory) {
+          logger.warn(message);
+        } else {
+          throw new SecurityException(message);
+        }
+      } else {
+        if (!isDirectory && Files.isSymbolicLink(filePath)) {
+          throw new SecurityException("Symbolic link is not allowed for file cache: " + filePath);
+        }
+      }
+    } catch (IOException e) {
+      String message =
+          String.format(
+              "%s Unable to access the file/directory to check the permissions. Error: %s",
+              filePath, e);
+      if (isDirectory) {
+        logger.warn(message);
+      } else {
+        throw new SecurityException(message);
+      }
+    }
+  }
+
+  public static void throwWhenOwnerDifferentThanCurrentUser(File file, String context) {
+    // we do not check the permissions for Windows
+    if (isWindows()) {
+      return;
+    }
+
+    Path filePath = Paths.get(file.getPath());
+
+    try {
+      String fileOwnerName = getFileOwnerName(filePath);
+      String currentUser = System.getProperty("user.name");
+      if (!currentUser.equalsIgnoreCase(fileOwnerName)) {
+        logger.debug(
+            "The file owner: {} is different than current user: {}", fileOwnerName, currentUser);
+        throw new SecurityException("The file owner is different than current user");
+      }
+    } catch (IOException e) {
+      logger.warn(
+          "{}Unable to access the file to check the owner: {}. Error: {}",
+          getContextStr(context),
+          filePath,
+          e);
+    }
+  }
+
+  static String getFileOwnerName(Path filePath) throws IOException {
+    FileOwnerAttributeView ownerAttributeView =
+        Files.getFileAttributeView(filePath, FileOwnerAttributeView.class);
+    return ownerAttributeView.getOwner().getName();
+  }
+
+  public static boolean exists(File file) {
+    if (file == null) {
+      return false;
+    }
+    return file.exists();
   }
 
   private static boolean isWindows() {
