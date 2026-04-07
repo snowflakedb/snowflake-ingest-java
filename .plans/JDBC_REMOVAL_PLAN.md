@@ -278,8 +278,12 @@ is replaced.
 | Step 9c — Swap telemetry imports | ✅ Open | #1131 |
 | Step 10a — Replicate SFException, ExecTimeTelemetryData, etc. | ✅ Open | #1132 |
 | Step 10b — Swap SFException imports | ✅ Open | #1134 |
-| Step 10c — Remove SFSession/SFBaseSession | ⬜ TODO | — |
-| Step 10d — Demote JDBC to test scope | ⬜ TODO | — |
+| Step 10c — Remove SFSession from storage stack | ✅ Open | #1135 |
+| Step 10c2 — Remove SFSession from exceptions + telemetry | ✅ Open | #1136 |
+| Step 11a — Replace JDBC HTTP calls with HttpRequestHelper | ⬜ TODO | — |
+| Step 11b — Remove FQN SnowflakeSQLException from throws | ⬜ TODO | — |
+| Step 11c — Clean up remaining FQN JDBC references | ⬜ TODO | — |
+| Step 11d — Demote JDBC to test scope | ⬜ TODO | — |
 
 **Closed PRs:** #1117 (reverted 7b approach), #1122 (reverted 8c approach)
 **Other PRs:** #1118 (error/exception tests on master), #1133 (Maven retry config)
@@ -616,34 +620,74 @@ NOT swapped — they interact with JDBC's `RestRequest.executeWithRetries()`.
 
 ---
 
-### Step 10c — Remove SFSession/SFBaseSession ⬜ TODO
+### Step 10c — Remove SFSession from storage stack ✅ Open (PR #1135)
 
-SFSession/SFBaseSession are always null from ingest callers. Not feasible
-to replicate (1498+1404 lines, 156-class transitive closure = 40K lines).
-Need to remove these parameter types.
+**Done:** Remove SFSession/SFBaseSession parameters and dead session-based
+code from storage clients, interface, strategies, factory, agent, config.
+Session was always null from ingest callers. -336 lines.
 
 ---
 
-### Step 10d — Demote JDBC to test scope ⬜ TODO
+### Step 10c2 — Remove SFSession from exceptions + telemetry ✅ Open (PR #1136)
 
-Remaining 27 JDBC imports after Step 10b (all unreplicable due to massive
-dependency chains):
-- `SFSession`/`SFBaseSession` (15) — parameter types, always null
-- `HttpUtil` (2) — GCS client + TelemetryClient
-- `RestRequest` (1) — GCS client
-- `SnowflakeConnectionV1` (1) — TelemetryClient session path
-- `SnowflakeSQLException` (JDBC's, 1) — TelemetryClient
-- `ExecTimeTelemetryData`/`HttpResponseContextDto` (2) — GCS client
-  (replicated but interact with JDBC RestRequest)
-- IB `Telemetry`/`TelemetryField`/`TelemetryUtil` (3) —
-  interact with session.getTelemetryClient()
-- `SFSession` in `SnowflakeSQLLoggedException` (2) — parameter types
+**Done:** Remove SFSession/SFBaseSession from SnowflakeSQLLoggedException
+(all 15 constructors) and TelemetryClient (session-based code). Remove IB
+telemetry dead code. Update all callers (~12 files). -339 lines.
 
-Then:
+After 10c2: 6 JDBC imports remain + ~70 FQN JDBC references in throws/params.
+
+---
+
+### Step 11a — Replace JDBC HTTP calls with HttpRequestHelper ⬜ TODO
+
+Create `HttpRequestHelper` utility with retry logic (replaces JDBC's
+`RestRequest.executeWithRetries` and `HttpUtil.executeGeneralRequest`).
+Replace the 6 remaining JDBC imports:
+
+- `TelemetryClient`: replace `HttpUtil.executeGeneralRequest()` +
+  `SnowflakeSQLException` catch
+- `SnowflakeGCSClient`: replace `HttpUtil.getHttpClientWithoutDecompression()`,
+  `HttpUtil.getHttpClient()`, `RestRequest.executeWithRetries()`,
+  `HttpUtil.getSocketTimeout()`. Remove `ExecTimeTelemetryData`,
+  `HttpResponseContextDto`, `RestRequest` imports.
+
+---
+
+### Step 11b — Remove FQN SnowflakeSQLException from throws ⬜ TODO
+
+Mechanical removal of `, net.snowflake.client.jdbc.SnowflakeSQLException`
+from ~47 throws clauses across all replicated storage clients, interface,
+strategies, factory, and GCS client.
+
+---
+
+### Step 11c — Clean up remaining FQN JDBC references ⬜ TODO
+
+Swap remaining FQN JDBC type references to ingest versions:
+- `net.snowflake.client.core.HttpClientSettingsKey` → `HttpClientSettingsKey`
+  (same package, 8 occurrences in S3HttpUtil, SnowflakeFileTransferAgent,
+  SnowflakeGCSClient, SnowflakeStorageClient)
+- `net.snowflake.client.core.HttpProtocol` → `HttpProtocol` (same package,
+  1 occurrence in S3HttpUtil)
+- `net.snowflake.client.core.OCSPMode` → `net.snowflake.ingest.utils.OCSPMode`
+  (2 occurrences in SnowflakeFileTransferAgent)
+- `net.snowflake.client.jdbc.SnowflakeUtil.convertProxyPropertiesToHttpClientKey`
+  → `StorageClientUtil.convertProxyPropertiesToHttpClientKey` (2 occurrences
+  in SnowflakeFileTransferAgent)
+- `static import net.snowflake.client.core.HttpUtil.setSessionlessProxyForAzure`
+  → replicate method in StorageClientUtil (4 occurrences in SnowflakeAzureClient)
+- `net.snowflake.client.jdbc.cloud.storage.AwsSdkGCPSigner` — JDBC class
+  reference in GCSAccessStrategyAwsSdk (string constant + class reference,
+  3 occurrences)
+
+---
+
+### Step 11d — Demote JDBC to test scope ⬜ TODO
+
+After all FQN references are cleaned up:
 1. Demote `snowflake-jdbc-thin` to `test` scope in `pom.xml`
 2. Remove JDBC shade relocation rules from Maven Shade plugin
-3. Remove `snowflake-jdbc-thin` from `public_pom.xml`
-4. Run full test suite
+3. Run full test suite
 
 ---
 
