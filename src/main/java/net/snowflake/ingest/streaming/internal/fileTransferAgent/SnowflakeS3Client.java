@@ -188,7 +188,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       } else {
         throw new SnowflakeSQLLoggedException(
             QueryIdHelper.queryIdFromEncMatOr(encMat, null),
-            null,
             ErrorCode.INTERNAL_ERROR.getMessageCode(),
             SqlState.INTERNAL_ERROR,
             "unsupported key size",
@@ -373,7 +372,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
           if (key == null || iv == null) {
             throw new SnowflakeSQLLoggedException(
                 queryId,
-                null,
                 ErrorCode.INTERNAL_ERROR.getMessageCode(),
                 SqlState.INTERNAL_ERROR,
                 "File metadata incomplete");
@@ -420,7 +418,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
 
     throw new SnowflakeSQLLoggedException(
         queryId,
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         "Unexpected: download unsuccessful without exception!");
@@ -471,7 +468,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
           if (key == null || iv == null) {
             throw new SnowflakeSQLLoggedException(
                 queryId,
-                null,
                 ErrorCode.INTERNAL_ERROR.getMessageCode(),
                 SqlState.INTERNAL_ERROR,
                 "File metadata incomplete");
@@ -510,7 +506,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
 
     throw new SnowflakeSQLLoggedException(
         queryId,
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         "Unexpected: download unsuccessful without exception!");
@@ -673,7 +668,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
 
     throw new SnowflakeSQLLoggedException(
         queryId,
-        null,
         ErrorCode.INTERNAL_ERROR.getMessageCode(),
         SqlState.INTERNAL_ERROR,
         "Unexpected: upload unsuccessful without exception!");
@@ -721,7 +715,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
         logger.error("Failed to encrypt input", ex);
         throw new SnowflakeSQLLoggedException(
             queryId,
-            null,
             SqlState.INTERNAL_ERROR,
             ErrorCode.INTERNAL_ERROR.getMessageCode(),
             ex,
@@ -748,7 +741,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
         logger.error("Failed to open input file", ex);
         throw new SnowflakeSQLLoggedException(
             queryId,
-            null,
             SqlState.INTERNAL_ERROR,
             ErrorCode.INTERNAL_ERROR.getMessageCode(),
             ex,
@@ -758,7 +750,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
         logger.error("Failed to open input stream", ex);
         throw new SnowflakeSQLLoggedException(
             queryId,
-            null,
             SqlState.INTERNAL_ERROR,
             ErrorCode.INTERNAL_ERROR.getMessageCode(),
             ex,
@@ -813,7 +804,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
 
           throw new SnowflakeSQLLoggedException(
               queryId,
-              null,
               SqlState.SYSTEM_ERROR,
               ErrorCode.S3_OPERATION_ERROR.getMessageCode(),
               ex1,
@@ -827,7 +817,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
         } else {
           throw new SnowflakeSQLLoggedException(
               queryId,
-              null,
               SqlState.SYSTEM_ERROR,
               ErrorCode.AWS_CLIENT_ERROR.getMessageCode(),
               ex,
@@ -876,7 +865,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
         if (retryCount > s3Client.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
               queryId,
-              null,
               SqlState.SYSTEM_ERROR,
               ErrorCode.IO_ERROR.getMessageCode(),
               ex,
@@ -891,7 +879,6 @@ public class SnowflakeS3Client implements SnowflakeStorageClient {
       } else {
         throw new SnowflakeSQLLoggedException(
             queryId,
-            null,
             SqlState.SYSTEM_ERROR,
             ErrorCode.IO_ERROR.getMessageCode(),
             ex,

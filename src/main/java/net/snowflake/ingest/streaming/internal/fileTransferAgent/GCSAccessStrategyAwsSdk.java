@@ -240,7 +240,6 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
 
           throw new SnowflakeSQLLoggedException(
               queryId,
-              null,
               SqlState.SYSTEM_ERROR,
               ErrorCode.S3_OPERATION_ERROR.getMessageCode(),
               ex1,
@@ -254,7 +253,6 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
         } else {
           throw new SnowflakeSQLLoggedException(
               queryId,
-              null,
               SqlState.SYSTEM_ERROR,
               ErrorCode.AWS_CLIENT_ERROR.getMessageCode(),
               ex,

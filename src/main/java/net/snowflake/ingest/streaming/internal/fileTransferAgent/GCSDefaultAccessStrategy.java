@@ -189,7 +189,6 @@ class GCSDefaultAccessStrategy implements GCSAccessStrategy {
       if (retryCount > gcsClient.getMaxRetries()) {
         throw new SnowflakeSQLLoggedException(
             queryId,
-            null,
             SqlState.SYSTEM_ERROR,
             ErrorCode.GCP_SERVICE_ERROR.getMessageCode(),
             se,
