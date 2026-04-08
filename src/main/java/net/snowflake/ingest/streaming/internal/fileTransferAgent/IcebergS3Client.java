@@ -4,53 +4,48 @@ import static net.snowflake.ingest.streaming.internal.fileTransferAgent.ErrorCod
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.createDefaultExecutorService;
 import static net.snowflake.ingest.streaming.internal.fileTransferAgent.StorageClientUtil.getRootCause;
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.Protocol;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.BasicSessionCredentials;
-import com.amazonaws.client.builder.AwsClientBuilder;
-import com.amazonaws.client.builder.ExecutorFactory;
-import com.amazonaws.regions.Region;
-import com.amazonaws.regions.RegionUtils;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Builder;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.AmazonS3Exception;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.SSEAlgorithm;
-import com.amazonaws.services.s3.model.SSEAwsKeyManagementParams;
-import com.amazonaws.services.s3.transfer.TransferManager;
-import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import com.amazonaws.services.s3.transfer.Upload;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.security.InvalidKeyException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
-import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFPair;
 import net.snowflake.ingest.utils.SFSessionProperty;
 import net.snowflake.ingest.utils.Stopwatch;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLInitializationException;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.core.exception.SdkServiceException;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
+import software.amazon.awssdk.http.nio.netty.ProxyConfiguration;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.S3AsyncClientBuilder;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
+import software.amazon.awssdk.transfer.s3.S3TransferManager;
+import software.amazon.awssdk.transfer.s3.model.CompletedUpload;
+import software.amazon.awssdk.transfer.s3.model.Upload;
+import software.amazon.awssdk.transfer.s3.model.UploadRequest;
 
 class IcebergS3Client implements IcebergStorageClient {
   private static final Logging logger = new Logging(IcebergS3Client.class);
@@ -59,41 +54,23 @@ class IcebergS3Client implements IcebergStorageClient {
   // expired AWS token error code
   private static final String EXPIRED_AWS_TOKEN_ERROR_CODE = "ExpiredToken";
 
+  // Multipart upload threshold: 16 MB
+  private static final long MULTIPART_THRESHOLD_BYTES = 16L * 1024 * 1024;
+
   private boolean isUseS3RegionalUrl = false;
-  private ClientConfiguration clientConfig = null;
+  private int maxConnections = 0;
+  private ProxyConfiguration proxyConfig = null;
   private String stageRegion = null;
   private Properties proxyProperties = null;
   private String stageEndPoint = null; // FIPS endpoint, if needed
   private boolean isClientSideEncrypted = true;
-  private AmazonS3 amazonClient = null;
+  private S3AsyncClient amazonClient = null;
   private VolumeEncryptionMode volumeEncryptionMode = null;
   private String encryptionKmsKeyId = null;
 
-  // socket factory used by s3 client's http client.
-  private static SSLConnectionSocketFactory s3ConnectionSocketFactory = null;
-
-  private static SSLConnectionSocketFactory getSSLConnectionSocketFactory() {
-    if (s3ConnectionSocketFactory == null) {
-      synchronized (IcebergS3Client.class) {
-        if (s3ConnectionSocketFactory == null) {
-          try {
-            // trust manager is set to null, which will use default ones
-            // instead of SFTrustManager (which enables ocsp checking)
-            s3ConnectionSocketFactory =
-                new IngestSSLConnectionSocketFactory(null, HttpUtil.isSocksProxyDisabled());
-          } catch (KeyManagementException | NoSuchAlgorithmException e) {
-            throw new SSLInitializationException(e.getMessage(), e);
-          }
-        }
-      }
-    }
-
-    return s3ConnectionSocketFactory;
-  }
-
   public IcebergS3Client(
       Map<?, ?> stageCredentials,
-      ClientConfiguration clientConfig,
+      int maxConnections,
       Properties proxyProperties,
       String stageRegion,
       String stageEndPoint,
@@ -107,7 +84,7 @@ class IcebergS3Client implements IcebergStorageClient {
     this.encryptionKmsKeyId = encryptionKmsKeyId;
     setupSnowflakeS3Client(
         stageCredentials,
-        clientConfig,
+        maxConnections,
         proxyProperties,
         stageRegion,
         stageEndPoint,
@@ -116,7 +93,7 @@ class IcebergS3Client implements IcebergStorageClient {
 
   private void setupSnowflakeS3Client(
       Map<?, ?> stageCredentials,
-      ClientConfiguration clientConfig,
+      int maxConnections,
       Properties proxyProperties,
       String stageRegion,
       String stageEndPoint,
@@ -125,7 +102,7 @@ class IcebergS3Client implements IcebergStorageClient {
     // Save the client creation parameters so that we can reuse them,
     // to reset the AWS client. We won't save the awsCredentials since
     // we will be refreshing that, every time we reset the AWS client
-    this.clientConfig = clientConfig;
+    this.maxConnections = maxConnections;
     this.stageRegion = stageRegion;
     this.proxyProperties = proxyProperties;
     this.stageEndPoint = stageEndPoint; // FIPS endpoint, if needed
@@ -137,38 +114,46 @@ class IcebergS3Client implements IcebergStorageClient {
     String awsToken = (String) stageCredentials.get("AWS_TOKEN");
 
     // initialize aws credentials
-    AWSCredentials awsCredentials =
+    AwsCredentials awsCredentials =
         (awsToken != null)
-            ? new BasicSessionCredentials(awsID, awsKey, awsToken)
-            : new BasicAWSCredentials(awsID, awsKey);
+            ? AwsSessionCredentials.create(awsID, awsKey, awsToken)
+            : AwsBasicCredentials.create(awsID, awsKey);
 
-    clientConfig.withSignerOverride("AWSS3V4SignerType");
-    clientConfig.getApacheHttpClientConfig().setSslSocketFactory(getSSLConnectionSocketFactory());
-    setSessionlessProxyForS3(proxyProperties, clientConfig);
-    AmazonS3Builder<?, ?> amazonS3Builder =
-        AmazonS3Client.builder()
-            .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-            .withClientConfiguration(clientConfig);
+    this.proxyConfig = buildProxyConfiguration(proxyProperties);
 
-    Region region = RegionUtils.getRegion(stageRegion);
+    NettyNioAsyncHttpClient.Builder httpClientBuilder =
+        NettyNioAsyncHttpClient.builder().maxConcurrency(maxConnections);
+    if (this.proxyConfig != null) {
+      httpClientBuilder.proxyConfiguration(this.proxyConfig);
+    }
+
+    S3AsyncClientBuilder s3Builder =
+        S3AsyncClient.builder()
+            .credentialsProvider(StaticCredentialsProvider.create(awsCredentials))
+            .httpClientBuilder(httpClientBuilder)
+            .forcePathStyle(false)
+            .multipartEnabled(true)
+            .multipartConfiguration(
+                software.amazon.awssdk.services.s3.multipart.MultipartConfiguration.builder()
+                    .thresholdInBytes(MULTIPART_THRESHOLD_BYTES)
+                    .build());
+
+    Region region = Region.of(stageRegion);
     if (this.stageEndPoint != null && this.stageEndPoint != "" && this.stageEndPoint != "null") {
-      amazonS3Builder.withEndpointConfiguration(
-          new AwsClientBuilder.EndpointConfiguration(this.stageEndPoint, region.getName()));
+      s3Builder.endpointOverride(URI.create(this.stageEndPoint));
+      s3Builder.region(region);
     } else {
-      if (region != null) {
+      if (stageRegion != null) {
         if (this.isUseS3RegionalUrl) {
-          String domainSuffixForRegionalUrl = getDomainSuffixForRegionalUrl(region.getName());
-          amazonS3Builder.withEndpointConfiguration(
-              new AwsClientBuilder.EndpointConfiguration(
-                  "s3." + region.getName() + "." + domainSuffixForRegionalUrl, region.getName()));
-        } else {
-          amazonS3Builder.withRegion(region.getName());
+          String domainSuffixForRegionalUrl = getDomainSuffixForRegionalUrl(stageRegion);
+          s3Builder.endpointOverride(
+              URI.create("https://s3." + stageRegion + "." + domainSuffixForRegionalUrl));
         }
+        s3Builder.region(region);
       }
     }
-    // Explicitly force to use virtual address style
-    amazonS3Builder.withPathStyleAccessEnabled(false);
-    amazonClient = (AmazonS3) amazonS3Builder.build();
+
+    amazonClient = s3Builder.build();
   }
 
   /* Adds digest metadata to the StorageObjectMetadata object */
@@ -241,24 +226,25 @@ class IcebergS3Client implements IcebergStorageClient {
 
     final long originalContentLength = meta.getContentLength();
     final List<FileInputStream> toClose = new ArrayList<>();
+
+    IcebergS3ObjectMetadata s3Meta;
+    if (meta instanceof IcebergS3ObjectMetadata) {
+      s3Meta = (IcebergS3ObjectMetadata) meta;
+    } else {
+      throw new IllegalArgumentException("Unexpected metadata object type");
+    }
+
     SFPair<InputStream, Boolean> uploadStreamInfo =
         createUploadStream(
             srcFile,
             uploadFromStream,
             inputStream,
             fileBackedOutputStream,
-            ((IcebergS3ObjectMetadata) meta).getS3ObjectMetadata(),
+            s3Meta,
             originalContentLength,
             toClose);
 
-    ObjectMetadata s3Meta;
-    if (meta instanceof IcebergS3ObjectMetadata) {
-      s3Meta = ((IcebergS3ObjectMetadata) meta).getS3ObjectMetadata();
-    } else {
-      throw new IllegalArgumentException("Unexpected metadata object type");
-    }
-
-    TransferManager tx = null;
+    S3TransferManager tx = null;
     int retryCount = 0;
     Stopwatch stopwatch = new Stopwatch();
     stopwatch.start();
@@ -267,37 +253,51 @@ class IcebergS3Client implements IcebergStorageClient {
         logger.logDebug(
             "Creating executor service for transfer" + "manager with {} threads", parallelism);
 
-        // upload files to s3
-        tx =
-            TransferManagerBuilder.standard()
-                .withS3Client(amazonClient)
-                .withExecutorFactory(
-                    new ExecutorFactory() {
-                      @Override
-                      public ExecutorService newExecutor() {
-                        return createDefaultExecutorService(
-                            "s3-transfer-manager-uploader-", parallelism);
-                      }
-                    })
-                .build();
+        ExecutorService executor =
+            createDefaultExecutorService("s3-transfer-manager-uploader-", parallelism);
 
-        PutObjectRequest putRequest =
-            uploadStreamInfo.right
-                ? new PutObjectRequest(
-                    remoteStorageLocation, destFileName, uploadStreamInfo.left, s3Meta)
-                : new PutObjectRequest(remoteStorageLocation, destFileName, srcFile);
-        putRequest.setMetadata(s3Meta);
+        // upload files to s3
+        tx = S3TransferManager.builder().s3Client(amazonClient).executor(executor).build();
+
+        // Build the PutObjectRequest
+        PutObjectRequest.Builder putBuilder =
+            PutObjectRequest.builder()
+                .bucket(remoteStorageLocation)
+                .key(destFileName)
+                .metadata(s3Meta.getRawUserMetadata())
+                .contentLength(originalContentLength);
 
         if (this.volumeEncryptionMode != null) {
           this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
         }
         if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
-          putRequest.setSSEAwsKeyManagementParams(
-              new SSEAwsKeyManagementParams(this.encryptionKmsKeyId));
+          putBuilder.serverSideEncryption(ServerSideEncryption.AWS_KMS);
+          putBuilder.ssekmsKeyId(this.encryptionKmsKeyId);
+        } else if (s3Meta.getSSEAlgorithm() != null) {
+          // Apply SSE-S3 (AES256) if set in metadata
+          putBuilder.serverSideEncryption(ServerSideEncryption.AES256);
         }
 
-        final Upload myUpload = tx.upload(putRequest);
-        myUpload.waitForCompletion();
+        PutObjectRequest putRequest = putBuilder.build();
+
+        // Wrap the stream with BufferedInputStream to work around CipherInputStream bug
+        InputStream uploadStream = uploadStreamInfo.left;
+        AsyncRequestBody requestBody;
+        if (uploadStreamInfo.right) {
+          requestBody =
+              AsyncRequestBody.fromInputStream(
+                  new BufferedInputStream(uploadStream), originalContentLength, executor);
+        } else {
+          requestBody = AsyncRequestBody.fromFile(srcFile.toPath());
+        }
+
+        Upload myUpload =
+            tx.upload(
+                UploadRequest.builder()
+                    .putObjectRequest(putRequest)
+                    .requestBody(requestBody)
+                    .build());
+        CompletedUpload result = myUpload.completionFuture().join();
         stopwatch.stop();
         long uploadMillis = stopwatch.elapsedMillis();
 
@@ -320,9 +320,7 @@ class IcebergS3Client implements IcebergStorageClient {
               uploadMillis,
               retryCount);
         }
-        // -------------------------NEW LOGIC HERE START -----------------------------------------
-        return myUpload.waitForUploadResult().getETag();
-        // -------------------------NEW LOGIC HERE END -----------------------------------------
+        return result.response().eTag();
       } catch (Exception ex) {
 
         handleS3Exception(ex, ++retryCount, "upload", this);
@@ -346,7 +344,7 @@ class IcebergS3Client implements IcebergStorageClient {
                 toClose);
       } finally {
         if (tx != null) {
-          tx.shutdownNow(false);
+          tx.close();
         }
       }
     } while (retryCount <= getMaxRetries());
@@ -372,10 +370,10 @@ class IcebergS3Client implements IcebergStorageClient {
    * @return true if it's a 400 or 404 status code
    */
   public boolean isClientException400Or404(Exception ex) {
-    if (ex instanceof AmazonServiceException) {
-      AmazonServiceException asEx = (AmazonServiceException) (ex);
-      return asEx.getStatusCode() == HttpStatus.SC_NOT_FOUND
-          || asEx.getStatusCode() == HttpStatus.SC_BAD_REQUEST;
+    if (ex instanceof SdkServiceException) {
+      SdkServiceException ssEx = (SdkServiceException) ex;
+      return ssEx.statusCode() == HttpStatus.SC_NOT_FOUND
+          || ssEx.statusCode() == HttpStatus.SC_BAD_REQUEST;
     }
     return false;
   }
@@ -385,7 +383,7 @@ class IcebergS3Client implements IcebergStorageClient {
       boolean uploadFromStream,
       InputStream inputStream,
       FileBackedOutputStream fileBackedOutputStream,
-      ObjectMetadata meta,
+      IcebergS3ObjectMetadata meta,
       long originalContentLength,
       List<FileInputStream> toClose)
       throws SnowflakeSQLException {
@@ -406,10 +404,10 @@ class IcebergS3Client implements IcebergStorageClient {
         if (this.volumeEncryptionMode == null
             || VolumeEncryptionMode.NONE.equals(this.volumeEncryptionMode)
             || VolumeEncryptionMode.AWS_SSE_S3.equals(this.volumeEncryptionMode)) {
-          // Default to SSE-S3 encryption
-          meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+          // Default to SSE-S3 encryption (AES256)
+          meta.setSSEAlgorithm("AES256");
         } else if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
-          meta.setSSEAlgorithm(SSEAlgorithm.KMS.getAlgorithm());
+          meta.setSSEAlgorithm("aws:kms");
         } else {
           throw new IllegalArgumentException(
               "Unexpected volume encryption mode: "
@@ -467,30 +465,39 @@ class IcebergS3Client implements IcebergStorageClient {
     }
 
     // Don't retry if max retries has been reached or the error code is 404/400
-    if (ex instanceof AmazonClientException) {
-      logger.logDebug("AmazonClientException: " + ex.getMessage());
+    if (ex instanceof SdkException) {
+      logger.logDebug("SdkException: " + ex.getMessage());
       if (retryCount > s3Client.getMaxRetries() || s3Client.isClientException400Or404(ex)) {
         String extendedRequestId = "none";
 
-        if (ex instanceof AmazonS3Exception) {
-          AmazonS3Exception ex1 = (AmazonS3Exception) ex;
-          extendedRequestId = ex1.getExtendedRequestId();
+        if (ex instanceof S3Exception) {
+          S3Exception s3ex = (S3Exception) ex;
+          extendedRequestId = s3ex.extendedRequestId() != null ? s3ex.extendedRequestId() : "none";
         }
 
-        if (ex instanceof AmazonServiceException) {
-          AmazonServiceException ex1 = (AmazonServiceException) ex;
+        if (ex instanceof SdkServiceException) {
+          SdkServiceException ex1 = (SdkServiceException) ex;
           // The AWS credentials might have expired when server returns error 400 and
           // does not return the ExpiredToken error code.
           // If session is null we cannot renew the token so throw the exception
+          String errorCode = "Unknown";
+          String errorType = "Unknown";
+          if (ex instanceof S3Exception) {
+            S3Exception s3ex = (S3Exception) ex;
+            if (s3ex.awsErrorDetails() != null) {
+              errorCode = s3ex.awsErrorDetails().errorCode();
+              errorType = s3ex.awsErrorDetails().errorMessage();
+            }
+          }
           throw new SnowflakeSQLLoggedException(
               SqlState.SYSTEM_ERROR,
               ErrorCode.S3_OPERATION_ERROR.getMessageCode(),
               ex1,
               operation,
-              ex1.getErrorType().toString(),
-              ex1.getErrorCode(),
+              errorType,
+              errorCode,
               ex1.getMessage(),
-              ex1.getRequestId(),
+              ex1.requestId() != null ? ex1.requestId() : "none",
               extendedRequestId);
         } else {
           throw new SnowflakeSQLLoggedException(
@@ -525,12 +532,14 @@ class IcebergS3Client implements IcebergStorageClient {
 
         // If the exception indicates that the AWS token has expired,
         // we need to refresh our S3 client with the new token
-        if (ex instanceof AmazonS3Exception) {
-          AmazonS3Exception s3ex = (AmazonS3Exception) ex;
-          if (s3ex.getErrorCode().equalsIgnoreCase(EXPIRED_AWS_TOKEN_ERROR_CODE)) {
+        if (ex instanceof S3Exception) {
+          S3Exception s3ex = (S3Exception) ex;
+          if (s3ex.awsErrorDetails() != null
+              && EXPIRED_AWS_TOKEN_ERROR_CODE.equalsIgnoreCase(
+                  s3ex.awsErrorDetails().errorCode())) {
             // If session is null we cannot renew the token so throw the ExpiredToken exception
             throw new SnowflakeSQLException(
-                s3ex.getErrorCode(),
+                s3ex.awsErrorDetails().errorCode(),
                 CLOUD_STORAGE_CREDENTIALS_EXPIRED,
                 "S3 credentials have expired");
           }
@@ -563,14 +572,14 @@ class IcebergS3Client implements IcebergStorageClient {
   }
 
   /**
-   * Copied from JDBC Driver S3HttpUtil to avoid class definition conflicts with AWS SDK
+   * Builds a ProxyConfiguration from proxy properties, or returns null if no proxy is configured.
    *
    * @param proxyProperties Proxy Properties
-   * @param clientConfig AWS Client Configuration
+   * @return ProxyConfiguration or null
    * @throws SnowflakeSQLException Thrown on configuration parsing failures
    */
-  private static void setSessionlessProxyForS3(
-      Properties proxyProperties, ClientConfiguration clientConfig) throws SnowflakeSQLException {
+  private static ProxyConfiguration buildProxyConfiguration(Properties proxyProperties)
+      throws SnowflakeSQLException {
     if (proxyProperties != null
         && proxyProperties.size() > 0
         && proxyProperties.getProperty(SFSessionProperty.USE_PROXY.getPropertyKey()) != null) {
@@ -597,33 +606,41 @@ class IcebergS3Client implements IcebergStorageClient {
             proxyProperties.getProperty(SFSessionProperty.PROXY_PASSWORD.getPropertyKey());
         String nonProxyHosts =
             proxyProperties.getProperty(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey());
-        String proxyProtocol =
-            proxyProperties.getProperty(SFSessionProperty.PROXY_PROTOCOL.getPropertyKey());
-        Protocol protocolEnum =
-            isNotEmpty(proxyProtocol) && proxyProtocol.equalsIgnoreCase("https")
-                ? Protocol.HTTPS
-                : Protocol.HTTP;
-        clientConfig.setProxyHost(proxyHost);
-        clientConfig.setProxyPort(proxyPort);
-        clientConfig.setNonProxyHosts(nonProxyHosts);
-        clientConfig.setProxyProtocol(protocolEnum);
-        String logMessage =
-            String.format(
-                "Set sessionless S3 proxy. Host: %s, port: %d, non-proxy hosts: %s, protocol: %s",
-                proxyHost, proxyPort, nonProxyHosts, proxyProtocol);
+
+        ProxyConfiguration.Builder proxyBuilder =
+            ProxyConfiguration.builder().host(proxyHost).port(proxyPort);
+
         if (isNotEmpty(proxyUser) && isNotEmpty(proxyPassword)) {
-          logMessage = String.format("%s, user: %s with password provided", logMessage, proxyUser);
-          clientConfig.setProxyUsername(proxyUser);
-          clientConfig.setProxyPassword(proxyPassword);
+          proxyBuilder.username(proxyUser).password(proxyPassword);
         }
 
+        if (isNotEmpty(nonProxyHosts)) {
+          Set<String> nonProxyHostSet = new HashSet<>();
+          for (String host : nonProxyHosts.split("\\|")) {
+            if (!host.isEmpty()) {
+              nonProxyHostSet.add(host);
+            }
+          }
+          proxyBuilder.nonProxyHosts(nonProxyHostSet);
+        }
+
+        String logMessage =
+            String.format(
+                "Set sessionless S3 proxy. Host: %s, port: %d, non-proxy hosts: %s",
+                proxyHost, proxyPort, nonProxyHosts);
+        if (isNotEmpty(proxyUser) && isNotEmpty(proxyPassword)) {
+          logMessage = String.format("%s, user: %s with password provided", logMessage, proxyUser);
+        }
         logger.logDebug(logMessage);
+
+        return proxyBuilder.build();
       } else {
         logger.logDebug("Omitting sessionless S3 proxy setup as proxy is disabled");
       }
     } else {
       logger.logDebug("Omitting sessionless S3 proxy setup");
     }
+    return null;
   }
 
   private static boolean isNotEmpty(final String string) {
