@@ -4,63 +4,75 @@
 
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import com.amazonaws.services.s3.model.ObjectMetadata;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
- * s3 implementation of platform independent StorageObjectMetadata interface, wraps an S3
- * ObjectMetadata class
+ * S3 implementation of platform independent StorageObjectMetadata interface. Uses plain Map-based
+ * storage (AWS SDK v2 does not have an ObjectMetadata class; metadata is passed directly on the
+ * PutObjectRequest builder).
  *
  * <p>It only supports a limited set of metadata properties currently used by the JDBC client
  *
  * @author lgiakoumakis
  */
 public class IcebergS3ObjectMetadata implements StorageObjectMetadata {
-  private ObjectMetadata objectMetadata;
+  private long contentLength;
+  private final Map<String, String> userMetadata;
+  private String contentEncoding;
+
+  // SSE algorithm to apply (e.g. "AES256", "aws:kms")
+  private String sseAlgorithm;
 
   IcebergS3ObjectMetadata() {
-    objectMetadata = new ObjectMetadata();
-  }
-
-  // Construct from an AWS S3 ObjectMetadata object
-  IcebergS3ObjectMetadata(ObjectMetadata meta) {
-    objectMetadata = meta;
+    userMetadata = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
   }
 
   @Override
   public Map<String, String> getUserMetadata() {
-    return StorageClientUtil.createCaseInsensitiveMap(objectMetadata.getUserMetadata());
+    return StorageClientUtil.createCaseInsensitiveMap(userMetadata);
+  }
+
+  /**
+   * Returns the raw (mutable) user metadata map. Used internally by IcebergS3Client to build the
+   * PutObjectRequest.
+   */
+  Map<String, String> getRawUserMetadata() {
+    return userMetadata;
   }
 
   @Override
   public long getContentLength() {
-    return objectMetadata.getContentLength();
+    return contentLength;
   }
 
   @Override
   public void setContentLength(long contentLength) {
-    objectMetadata.setContentLength(contentLength);
+    this.contentLength = contentLength;
   }
 
   @Override
   public void addUserMetadata(String key, String value) {
-    objectMetadata.addUserMetadata(key, value);
+    userMetadata.put(key, value);
   }
 
   @Override
   public void setContentEncoding(String encoding) {
-    objectMetadata.setContentEncoding(encoding);
+    this.contentEncoding = encoding;
   }
 
   @Override
   public String getContentEncoding() {
-    return objectMetadata.getContentEncoding();
+    return contentEncoding;
   }
 
-  /**
-   * @return Returns the encapsulated AWS S3 metadata object
-   */
-  ObjectMetadata getS3ObjectMetadata() {
-    return objectMetadata;
+  /** Sets the server-side encryption algorithm (e.g. "AES256", "aws:kms"). */
+  void setSSEAlgorithm(String algorithm) {
+    this.sseAlgorithm = algorithm;
+  }
+
+  /** Returns the server-side encryption algorithm, or null if not set. */
+  String getSSEAlgorithm() {
+    return sseAlgorithm;
   }
 }
