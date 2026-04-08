@@ -101,7 +101,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    * @throws IllegalArgumentException when invalid credentials are used
    */
   private void setupAzureClient(StageInfo stage, RemoteStoreFileEncryptionMaterial encMat)
-      throws IllegalArgumentException, SnowflakeSQLException, SnowflakeSQLException {
+      throws IllegalArgumentException, SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the Azure client.
     this.stageInfo = stage;
