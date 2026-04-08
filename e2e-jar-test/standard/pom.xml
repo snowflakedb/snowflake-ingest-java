@@ -28,6 +28,10 @@
       <artifactId>snowflake-ingest-sdk</artifactId>
     </dependency>
     <dependency>
+      <groupId>net.snowflake</groupId>
+      <artifactId>snowflake-jdbc-thin</artifactId>
+    </dependency>
+    <dependency>
       <groupId>net.snowflake.snowflake-ingest-java-e2e-jar-test</groupId>
       <artifactId>core</artifactId>
     </dependency>

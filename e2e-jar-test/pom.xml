@@ -48,6 +48,12 @@
         <artifactId>snowflake-jdbc-fips</artifactId>
         <version>3.22.0</version>
       </dependency>
+      <!-- JDBC is no longer bundled in the SDK jar; needed by e2e tests for JDBC connections -->
+      <dependency>
+        <groupId>net.snowflake</groupId>
+        <artifactId>snowflake-jdbc-thin</artifactId>
+        <version>3.25.1</version>
+      </dependency>
       <dependency>
         <groupId>net.snowflake.snowflake-ingest-java-e2e-jar-test</groupId>
         <artifactId>core</artifactId>
