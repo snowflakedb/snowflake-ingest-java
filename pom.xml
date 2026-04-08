@@ -43,6 +43,7 @@
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
     <auto.publish.central>true</auto.publish.central>
     <avro.version>1.11.4</avro.version>
+    <awssdk.version>2.37.5</awssdk.version>
     <bouncycastle.version>1.79</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.18.0</commonscodec.version>
@@ -105,6 +106,13 @@
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
         <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${awssdk.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -996,6 +1004,45 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>
+    <!-- AWS SDK v2 for S3 operations (replacing v1 com.amazonaws) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>auth</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>http-auth-aws</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>aws-crt</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>netty-nio-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>aws-crt</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3-transfer-manager</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk</groupId>
+          <artifactId>aws-crt</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <dependency>
       <groupId>com.github.luben</groupId>
       <artifactId>zstd-jni</artifactId>
@@ -1639,6 +1686,18 @@
                 <relocation>
                   <pattern>com.amazonaws</pattern>
                   <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>software.amazon.awssdk</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon.awssdk</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>software.amazon.eventstream</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon.eventstream</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.reactivestreams</pattern>
+                  <shadedPattern>${shadeBase}.org.reactivestreams</shadedPattern>
                 </relocation>
                 <relocation>
                   <pattern>com.google.api.gax</pattern>
