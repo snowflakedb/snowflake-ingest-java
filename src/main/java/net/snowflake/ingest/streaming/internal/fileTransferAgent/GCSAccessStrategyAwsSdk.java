@@ -39,8 +39,7 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
   private static final SFLogger logger = SFLoggerFactory.getLogger(GCSAccessStrategyAwsSdk.class);
   private final AmazonS3 amazonClient;
 
-  GCSAccessStrategyAwsSdk(StageInfo stage)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+  GCSAccessStrategyAwsSdk(StageInfo stage) throws SnowflakeSQLException {
     String accessToken = (String) stage.getCredentials().get("GCS_ACCESS_TOKEN");
 
     Optional<String> oEndpoint = stage.gcsCustomEndpoint();
@@ -64,9 +63,10 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
     ClientConfiguration clientConfig = new ClientConfiguration();
 
     SignerFactory.registerSigner(
-        "net.snowflake.client.jdbc.cloud.storage.AwsSdkGCPSigner",
-        net.snowflake.client.jdbc.cloud.storage.AwsSdkGCPSigner.class);
-    clientConfig.setSignerOverride("net.snowflake.client.jdbc.cloud.storage.AwsSdkGCPSigner");
+        "net.snowflake.ingest.streaming.internal.fileTransferAgent.AwsSdkGCPSigner",
+        net.snowflake.ingest.streaming.internal.fileTransferAgent.AwsSdkGCPSigner.class);
+    clientConfig.setSignerOverride(
+        "net.snowflake.ingest.streaming.internal.fileTransferAgent.AwsSdkGCPSigner");
 
     clientConfig
         .getApacheHttpClientConfig()
@@ -223,7 +223,7 @@ class GCSAccessStrategyAwsSdk implements GCSAccessStrategy {
       String command,
       String queryId,
       SnowflakeGCSClient gcsClient)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     if (ex instanceof AmazonClientException) {
       logger.debug("GCSAccessStrategyAwsSdk: " + ex.getMessage());
 

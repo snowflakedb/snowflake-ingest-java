@@ -1,5 +1,5 @@
 /*
- * Replicated from snowflake-jdbc: net.snowflake.client.core.HttpClientSettingsKey
+ * Replicated from snowflake-jdbc: HttpClientSettingsKey
  * Tag: v3.25.1
  * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/core/HttpClientSettingsKey.java
  *

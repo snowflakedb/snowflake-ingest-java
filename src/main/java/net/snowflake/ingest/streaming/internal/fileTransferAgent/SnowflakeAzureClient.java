@@ -80,8 +80,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    *                required to decrypt/encrypt content in stage
    */
   public static SnowflakeAzureClient createSnowflakeAzureClient(
-      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      StageInfo stage, RemoteStoreFileEncryptionMaterial encMat) throws SnowflakeSQLException {
     logger.debug(
         "Initializing Snowflake Azure client with encryption: {}",
         encMat != null ? "true" : "false");
@@ -102,9 +101,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    * @throws IllegalArgumentException when invalid credentials are used
    */
   private void setupAzureClient(StageInfo stage, RemoteStoreFileEncryptionMaterial encMat)
-      throws IllegalArgumentException,
-          SnowflakeSQLException,
-          net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws IllegalArgumentException, SnowflakeSQLException, SnowflakeSQLException {
     // Save the client creation parameters so that we can reuse them,
     // to reset the Azure client.
     this.stageInfo = stage;
@@ -189,8 +186,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
    * @throws SnowflakeSQLException failure to renew the client
    */
   @Override
-  public void renew(Map<?, ?> stageCredentials)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+  public void renew(Map<?, ?> stageCredentials) throws SnowflakeSQLException {
     logger.debug("Renewing the Azure client");
     stageInfo.setCredentials(stageCredentials);
     setupAzureClient(stageInfo, encMat);
@@ -302,7 +298,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     Stopwatch stopwatch = new Stopwatch();
     stopwatch.start();
     String localFilePath = localLocation + localFileSep + destFileName;
@@ -416,7 +412,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.debug(
         "Staring download of file from Azure stage path: {} to input stream", stageFilePath);
     Stopwatch stopwatch = new Stopwatch();
@@ -528,7 +524,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String stageRegion,
       String presignedUrl,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     logger.info(
         StorageHelper.getStartUploadLog(
             "Azure", uploadFromStream, inputStream, fileBackedOutputStream, srcFile, destFileName));
@@ -649,7 +645,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
   @Override
   public void handleStorageException(
       Exception ex, int retryCount, String operation, String command, String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
     handleAzureException(ex, retryCount, operation, command, this, queryId);
   }
 
@@ -755,7 +751,7 @@ public class SnowflakeAzureClient implements SnowflakeStorageClient {
       String command,
       SnowflakeAzureClient azClient,
       String queryId)
-      throws SnowflakeSQLException, net.snowflake.client.jdbc.SnowflakeSQLException {
+      throws SnowflakeSQLException {
 
     // no need to retry if it is invalid key exception
     if (ex.getCause() instanceof InvalidKeyException) {
