@@ -135,44 +135,51 @@ File: `snowflake-jdbc/parent-pom.xml`
 
 ## Migration Steps
 
-### Step 1: Update dependencies
+### Step 1+2: Add v2 deps + Migrate IcebergS3Client (PR #1149) — DONE
 
-Replace v1 deps with v2 in `pom.xml`:
+Add v2 deps **alongside** v1 (v1 still used by SnowflakeS3Client, GCS clients):
 
 ```xml
-<!-- Remove -->
+<!-- Keep v1 (still used) -->
 <dependency>com.amazonaws:aws-java-sdk-core:1.12.655</dependency>
 <dependency>com.amazonaws:aws-java-sdk-kms:1.12.655</dependency>
 <dependency>com.amazonaws:aws-java-sdk-s3:1.12.655</dependency>
 
-<!-- Add -->
+<!-- Add v2 -->
+<dependency>software.amazon.awssdk:bom:2.37.5 (type=pom, scope=import)</dependency>
 <dependency>software.amazon.awssdk:s3</dependency>
 <dependency>software.amazon.awssdk:s3-transfer-manager</dependency>
 <dependency>software.amazon.awssdk:netty-nio-client</dependency>
 <dependency>software.amazon.awssdk:auth</dependency>
-<dependency>software.amazon.awssdk:regions</dependency>
-<!-- BOM for version management -->
-<dependency>software.amazon.awssdk:bom:2.37.5 (type=pom, scope=import)</dependency>
+<dependency>software.amazon.awssdk:http-auth-aws</dependency>
 ```
 
-Exclude `aws-crt` from all v2 deps. Update shade rules:
-`com.amazonaws` → `software.amazon.awssdk`.
+Exclude `aws-crt` (groupId `software.amazon.awssdk.crt`) from `s3`, `s3-transfer-manager`,
+`http-auth-aws`. Add shade rules for `software.amazon.awssdk`, `software.amazon.eventstream`,
+`org.reactivestreams`.
 
-### Step 2: Migrate IcebergS3Client (lowest risk)
-
-Start here because it has NO client-side encryption (avoids Risk 1).
-
-**Changes:**
+**IcebergS3Client changes (lowest risk — no client-side encryption):**
 - `AmazonS3ClientBuilder` → `S3AsyncClient.builder()`
 - `BasicAWSCredentials`/`BasicSessionCredentials` → `AwsBasicCredentials`/`AwsSessionCredentials`
 - `AWSStaticCredentialsProvider` → `StaticCredentialsProvider`
-- `ClientConfiguration` → `NettyNioAsyncHttpClient.builder()` with `ProxyConfiguration`
+- v1 `ClientConfiguration` → v2 `ClientConfiguration` inner class (matching JDBC's
+  `SnowflakeS3Client.ClientConfiguration`) with `maxConnections`, `maxErrorRetry`,
+  `connectionTimeout`, `socketTimeout`
+- `NettyNioAsyncHttpClient` configured with `connectionAcquisitionTimeout(60s)`,
+  `connectionTimeout`, `readTimeout`, `writeTimeout` (matching JDBC)
 - `TransferManager` → `S3TransferManager`
-- `ObjectMetadata` → `PutObjectRequest.builder()` metadata
-- `SSEAwsKeyManagementParams` → `ServerSideEncryption.AWS_KMS` + `ssekmsKeyId()`
+- `ObjectMetadata` → `IcebergS3ObjectMetadata` with `getS3PutObjectRequest()` builder
+  (matching JDBC's `S3ObjectMetadata`) including `ChecksumAlgorithm.CRC32`
+- `SSEAwsKeyManagementParams` → `ServerSideEncryption.fromValue()` + `ssekmsKeyId()`
 - Set multipart threshold to 16MB (Risk 2)
 - Null-check `awsErrorDetails()` in error handler (Risk 3)
+- Exception handler checks `ex.getCause()` for `SdkException` — `CompletableFuture.join()`
+  wraps in `CompletionException` (matching JDBC)
+- `CompletionException` handling for non-SDK async failures
 - `Region`/`RegionUtils` → `software.amazon.awssdk.regions.Region`
+- Proxy: `ProxyConfiguration` with `.scheme()` (proxy protocol), `.useEnvironmentVariableValues(false)`,
+  `.useSystemPropertyValues(false)` (matching JDBC's `CloudStorageProxyFactory`)
+- `SSLConnectionSocketFactory` removed (v2 Netty handles TLS natively)
 
 ### Step 3: Migrate SnowflakeS3Client (high risk — encryption)
 
@@ -205,15 +212,21 @@ Same as Step 2, plus:
 - `StorageObjectSummary`/`StorageObjectSummaryCollection` → adapt to v2 types
 - `StorageProviderException` → catch `SdkException` (v2 base exception)
 
-### Step 6: Update shade plugin
+### Step 6: Update shade plugin + remove v1 deps
 
-```xml
-<!-- Remove -->
-<pattern>com.amazonaws</pattern>
-<!-- Add -->
-<pattern>software.amazon.awssdk</pattern>
-<shadedPattern>${shadeBase}.software.amazon.awssdk</shadedPattern>
-```
+Shade rules for `software.amazon.awssdk`, `software.amazon.eventstream`,
+`org.reactivestreams` already added in Step 1. Remaining work:
+
+- Remove v1 `com.amazonaws` deps and shade rules
+- **Patch `execution.interceptors` after shading** — JDBC patches
+  `software/amazon/awssdk/global/handlers/execution.interceptors` file contents
+  because the shade plugin relocates the file path but not the class names inside
+  it. We need the same antrun `replace` task:
+  ```xml
+  <replace file="...execution.interceptors"
+    token="software.amazon.awssdk"
+    value="${shadeBase}.software.amazon.awssdk"/>
+  ```
 
 ### Step 7: Update tests
 
@@ -227,14 +240,13 @@ Update all test files that reference v1 types. Verify:
 
 ## PR Strategy
 
-| PR | Content | Risk Level |
-|---|---|---|
-| PR 1 | Add v2 deps alongside v1, update shade rules | Low |
-| PR 2 | Migrate `IcebergS3Client` + `IcebergStorageClientFactory` | Medium |
-| PR 3 | Migrate `SnowflakeS3Client` + `StorageClientFactory` (encryption path) | **High** |
-| PR 4 | Migrate `AwsSdkGCPSigner` + `GCSAccessStrategyAwsSdk` | Medium |
-| PR 5 | Migrate support classes (metadata, iterators, interceptor, proxy) | Low |
-| PR 6 | Remove v1 deps, clean up shade rules | Low |
+| PR | Content | Risk Level | Status |
+|---|---|---|---|
+| PR 1 (#1149) | Add v2 deps + migrate `IcebergS3Client` | Medium | **Open** |
+| PR 2 | Migrate `SnowflakeS3Client` + `StorageClientFactory` (encryption path) | **High** | |
+| PR 3 | Migrate `AwsSdkGCPSigner` + `GCSAccessStrategyAwsSdk` | Medium | |
+| PR 4 | Migrate support classes (metadata, iterators, interceptor, proxy) | Low | |
+| PR 5 | Remove v1 deps, shade cleanup, `execution.interceptors` patching | Low | |
 
 ---
 
@@ -255,14 +267,21 @@ Key JDBC files to reference during migration (at `snowflakedb/snowflake-jdbc` ma
 
 ## Verification
 
-- [ ] `mvn compiler:compile` passes
+### Step 1+2 (IcebergS3Client)
+- [x] `mvn compiler:compile` passes
+- [x] `aws-crt` properly excluded from dependency tree
 - [ ] All unit tests pass
-- [ ] Integration tests pass on S3, Azure, GCS
-- [ ] Encryption round-trip verified (upload encrypted → download → decrypt → matches original)
+- [ ] Integration tests pass on S3 (Iceberg path)
+- [ ] SSE-S3 uploads (Iceberg path) work
+- [ ] SSE-KMS uploads (Iceberg path) work
 - [ ] Multipart uploads > 16MB work correctly
 - [ ] Uploads < 16MB use single-part (not multipart)
-- [ ] GCS uploads via S3-compatible API work
-- [ ] SSE-KMS uploads (Iceberg path) work
 - [ ] Proxy configuration works
+
+### Full migration (after all PRs)
+- [ ] Integration tests pass on S3, Azure, GCS
+- [ ] Encryption round-trip verified (upload encrypted → download → decrypt → matches original)
+- [ ] GCS uploads via S3-compatible API work
 - [ ] Shaded jar contains no `com.amazonaws` classes
+- [ ] `execution.interceptors` patched correctly in shaded jar
 - [ ] e2e-jar-test passes (shaded + unshaded)

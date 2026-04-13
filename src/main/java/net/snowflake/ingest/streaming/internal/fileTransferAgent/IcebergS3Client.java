@@ -277,12 +277,11 @@ class IcebergS3Client implements IcebergStorageClient {
         if (this.volumeEncryptionMode != null) {
           this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
         }
+        if (s3Meta.getSSEAlgorithm() != null) {
+          putBuilder.serverSideEncryption(ServerSideEncryption.fromValue(s3Meta.getSSEAlgorithm()));
+        }
         if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
-          putBuilder.serverSideEncryption(ServerSideEncryption.AWS_KMS);
           putBuilder.ssekmsKeyId(this.encryptionKmsKeyId);
-        } else if (s3Meta.getSSEAlgorithm() != null) {
-          // Apply SSE-S3 (AES256) if set in metadata
-          putBuilder.serverSideEncryption(ServerSideEncryption.AES256);
         }
 
         PutObjectRequest putRequest = putBuilder.build();
@@ -412,9 +411,9 @@ class IcebergS3Client implements IcebergStorageClient {
             || VolumeEncryptionMode.NONE.equals(this.volumeEncryptionMode)
             || VolumeEncryptionMode.AWS_SSE_S3.equals(this.volumeEncryptionMode)) {
           // Default to SSE-S3 encryption (AES256)
-          meta.setSSEAlgorithm("AES256");
+          meta.setSSEAlgorithm(ServerSideEncryption.AES256.toString());
         } else if (VolumeEncryptionMode.AWS_SSE_KMS.equals(this.volumeEncryptionMode)) {
-          meta.setSSEAlgorithm("aws:kms");
+          meta.setSSEAlgorithm(ServerSideEncryption.AWS_KMS.toString());
         } else {
           throw new IllegalArgumentException(
               "Unexpected volume encryption mode: "
