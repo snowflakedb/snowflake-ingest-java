@@ -13,12 +13,14 @@ import java.io.InputStream;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.security.InvalidKeyException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
 import net.snowflake.ingest.utils.Logging;
@@ -58,7 +60,7 @@ class IcebergS3Client implements IcebergStorageClient {
   private static final long MULTIPART_THRESHOLD_BYTES = 16L * 1024 * 1024;
 
   private boolean isUseS3RegionalUrl = false;
-  private int maxConnections = 0;
+  private ClientConfiguration clientConfig = null;
   private ProxyConfiguration proxyConfig = null;
   private String stageRegion = null;
   private Properties proxyProperties = null;
@@ -70,7 +72,7 @@ class IcebergS3Client implements IcebergStorageClient {
 
   public IcebergS3Client(
       Map<?, ?> stageCredentials,
-      int maxConnections,
+      ClientConfiguration clientConfig,
       Properties proxyProperties,
       String stageRegion,
       String stageEndPoint,
@@ -84,7 +86,7 @@ class IcebergS3Client implements IcebergStorageClient {
     this.encryptionKmsKeyId = encryptionKmsKeyId;
     setupSnowflakeS3Client(
         stageCredentials,
-        maxConnections,
+        clientConfig,
         proxyProperties,
         stageRegion,
         stageEndPoint,
@@ -93,7 +95,7 @@ class IcebergS3Client implements IcebergStorageClient {
 
   private void setupSnowflakeS3Client(
       Map<?, ?> stageCredentials,
-      int maxConnections,
+      ClientConfiguration clientConfig,
       Properties proxyProperties,
       String stageRegion,
       String stageEndPoint,
@@ -102,7 +104,7 @@ class IcebergS3Client implements IcebergStorageClient {
     // Save the client creation parameters so that we can reuse them,
     // to reset the AWS client. We won't save the awsCredentials since
     // we will be refreshing that, every time we reset the AWS client
-    this.maxConnections = maxConnections;
+    this.clientConfig = clientConfig;
     this.stageRegion = stageRegion;
     this.proxyProperties = proxyProperties;
     this.stageEndPoint = stageEndPoint; // FIPS endpoint, if needed
@@ -122,7 +124,12 @@ class IcebergS3Client implements IcebergStorageClient {
     this.proxyConfig = buildProxyConfiguration(proxyProperties);
 
     NettyNioAsyncHttpClient.Builder httpClientBuilder =
-        NettyNioAsyncHttpClient.builder().maxConcurrency(maxConnections);
+        NettyNioAsyncHttpClient.builder()
+            .maxConcurrency(clientConfig.getMaxConnections())
+            .connectionAcquisitionTimeout(Duration.ofSeconds(60))
+            .connectionTimeout(Duration.ofMillis(clientConfig.getConnectionTimeout()))
+            .readTimeout(Duration.ofMillis(clientConfig.getSocketTimeout()))
+            .writeTimeout(Duration.ofMillis(clientConfig.getSocketTimeout()));
     if (this.proxyConfig != null) {
       httpClientBuilder.proxyConfiguration(this.proxyConfig);
     }
@@ -139,7 +146,9 @@ class IcebergS3Client implements IcebergStorageClient {
                     .build());
 
     Region region = Region.of(stageRegion);
-    if (this.stageEndPoint != null && this.stageEndPoint != "" && this.stageEndPoint != "null") {
+    if (this.stageEndPoint != null
+        && !this.stageEndPoint.isEmpty()
+        && !"null".equals(this.stageEndPoint)) {
       s3Builder.endpointOverride(URI.create(this.stageEndPoint));
       s3Builder.region(region);
     } else {
@@ -259,13 +268,11 @@ class IcebergS3Client implements IcebergStorageClient {
         // upload files to s3
         tx = S3TransferManager.builder().s3Client(amazonClient).executor(executor).build();
 
-        // Build the PutObjectRequest
+        // Build the PutObjectRequest from metadata (includes CRC32 checksum)
         PutObjectRequest.Builder putBuilder =
-            PutObjectRequest.builder()
+            s3Meta.getS3PutObjectRequest().toBuilder()
                 .bucket(remoteStorageLocation)
-                .key(destFileName)
-                .metadata(s3Meta.getRawUserMetadata())
-                .contentLength(originalContentLength);
+                .key(destFileName);
 
         if (this.volumeEncryptionMode != null) {
           this.volumeEncryptionMode.validateKmsKeyId(this.encryptionKmsKeyId);
@@ -369,7 +376,7 @@ class IcebergS3Client implements IcebergStorageClient {
    * @param ex exception
    * @return true if it's a 400 or 404 status code
    */
-  public boolean isClientException400Or404(Exception ex) {
+  public boolean isClientException400Or404(Throwable ex) {
     if (ex instanceof SdkServiceException) {
       SdkServiceException ssEx = (SdkServiceException) ex;
       return ssEx.statusCode() == HttpStatus.SC_NOT_FOUND
@@ -465,25 +472,27 @@ class IcebergS3Client implements IcebergStorageClient {
     }
 
     // Don't retry if max retries has been reached or the error code is 404/400
-    if (ex instanceof SdkException) {
+    // Check ex.getCause() because CompletableFuture.join() wraps in CompletionException
+    Throwable cause = ex.getCause();
+    if (cause instanceof SdkException) {
       logger.logDebug("SdkException: " + ex.getMessage());
-      if (retryCount > s3Client.getMaxRetries() || s3Client.isClientException400Or404(ex)) {
+      if (retryCount > s3Client.getMaxRetries() || s3Client.isClientException400Or404(cause)) {
         String extendedRequestId = "none";
 
-        if (ex instanceof S3Exception) {
-          S3Exception s3ex = (S3Exception) ex;
+        if (cause instanceof S3Exception) {
+          S3Exception s3ex = (S3Exception) cause;
           extendedRequestId = s3ex.extendedRequestId() != null ? s3ex.extendedRequestId() : "none";
         }
 
-        if (ex instanceof SdkServiceException) {
-          SdkServiceException ex1 = (SdkServiceException) ex;
+        if (cause instanceof SdkServiceException) {
+          SdkServiceException ex1 = (SdkServiceException) cause;
           // The AWS credentials might have expired when server returns error 400 and
           // does not return the ExpiredToken error code.
           // If session is null we cannot renew the token so throw the exception
           String errorCode = "Unknown";
           String errorType = "Unknown";
-          if (ex instanceof S3Exception) {
-            S3Exception s3ex = (S3Exception) ex;
+          if (cause instanceof S3Exception) {
+            S3Exception s3ex = (S3Exception) cause;
             if (s3ex.awsErrorDetails() != null) {
               errorCode = s3ex.awsErrorDetails().errorCode();
               errorType = s3ex.awsErrorDetails().errorMessage();
@@ -532,8 +541,8 @@ class IcebergS3Client implements IcebergStorageClient {
 
         // If the exception indicates that the AWS token has expired,
         // we need to refresh our S3 client with the new token
-        if (ex instanceof S3Exception) {
-          S3Exception s3ex = (S3Exception) ex;
+        if (cause instanceof S3Exception) {
+          S3Exception s3ex = (S3Exception) cause;
           if (s3ex.awsErrorDetails() != null
               && EXPIRED_AWS_TOKEN_ERROR_CODE.equalsIgnoreCase(
                   s3ex.awsErrorDetails().errorCode())) {
@@ -547,7 +556,8 @@ class IcebergS3Client implements IcebergStorageClient {
       }
     } else {
       if (ex instanceof InterruptedException
-          || getRootCause(ex) instanceof SocketTimeoutException) {
+          || getRootCause(ex) instanceof SocketTimeoutException
+          || ex instanceof CompletionException) {
         if (retryCount > s3Client.getMaxRetries()) {
           throw new SnowflakeSQLLoggedException(
               SqlState.SYSTEM_ERROR,
@@ -645,5 +655,36 @@ class IcebergS3Client implements IcebergStorageClient {
 
   private static boolean isNotEmpty(final String string) {
     return string != null && !string.isEmpty();
+  }
+
+  public static class ClientConfiguration {
+    private final int maxConnections;
+    private final int maxErrorRetry;
+    private final int connectionTimeout;
+    private final int socketTimeout;
+
+    public ClientConfiguration(
+        int maxConnections, int maxErrorRetry, int connectionTimeout, int socketTimeout) {
+      this.maxConnections = maxConnections;
+      this.maxErrorRetry = maxErrorRetry;
+      this.connectionTimeout = connectionTimeout;
+      this.socketTimeout = socketTimeout;
+    }
+
+    public int getMaxConnections() {
+      return maxConnections;
+    }
+
+    public int getMaxErrorRetry() {
+      return maxErrorRetry;
+    }
+
+    public int getConnectionTimeout() {
+      return connectionTimeout;
+    }
+
+    public int getSocketTimeout() {
+      return socketTimeout;
+    }
   }
 }

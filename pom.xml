@@ -1014,7 +1014,7 @@
       <artifactId>http-auth-aws</artifactId>
       <exclusions>
         <exclusion>
-          <groupId>software.amazon.awssdk</groupId>
+          <groupId>software.amazon.awssdk.crt</groupId>
           <artifactId>aws-crt</artifactId>
         </exclusion>
       </exclusions>
@@ -1028,7 +1028,7 @@
       <artifactId>s3</artifactId>
       <exclusions>
         <exclusion>
-          <groupId>software.amazon.awssdk</groupId>
+          <groupId>software.amazon.awssdk.crt</groupId>
           <artifactId>aws-crt</artifactId>
         </exclusion>
       </exclusions>
@@ -1038,7 +1038,7 @@
       <artifactId>s3-transfer-manager</artifactId>
       <exclusions>
         <exclusion>
-          <groupId>software.amazon.awssdk</groupId>
+          <groupId>software.amazon.awssdk.crt</groupId>
           <artifactId>aws-crt</artifactId>
         </exclusion>
       </exclusions>

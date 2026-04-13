@@ -106,17 +106,30 @@ class IcebergStorageClientFactory {
       VolumeEncryptionMode volumeEncryptionMode,
       String encryptionKmsKeyId)
       throws SnowflakeSQLException {
+    final int S3_TRANSFER_MAX_RETRIES = 3;
+
     IcebergS3Client s3Client;
 
-    int maxConnections = parallel + 1;
+    IcebergS3Client.ClientConfiguration clientConfig =
+        new IcebergS3Client.ClientConfiguration(
+            parallel + 1,
+            S3_TRANSFER_MAX_RETRIES,
+            (int) JdbcHttpUtil.getConnectionTimeout().toMillis(),
+            (int) JdbcHttpUtil.getSocketTimeout().toMillis());
 
-    logger.logDebug("S3 client configuration: maxConnections: {}", maxConnections);
+    logger.logDebug(
+        "S3 client configuration: maxConnection: {}, connectionTimeout: {}, "
+            + "socketTimeout: {}, maxErrorRetry: {}",
+        clientConfig.getMaxConnections(),
+        clientConfig.getConnectionTimeout(),
+        clientConfig.getSocketTimeout(),
+        clientConfig.getMaxErrorRetry());
 
     try {
       s3Client =
           new IcebergS3Client(
               stageCredentials,
-              maxConnections,
+              clientConfig,
               proxyProperties,
               stageRegion,
               stageEndPoint,

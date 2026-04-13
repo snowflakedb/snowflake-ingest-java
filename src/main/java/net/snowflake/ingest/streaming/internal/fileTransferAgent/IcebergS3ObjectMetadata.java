@@ -6,6 +6,8 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.util.Map;
 import java.util.TreeMap;
+import software.amazon.awssdk.services.s3.model.ChecksumAlgorithm;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
  * S3 implementation of platform independent StorageObjectMetadata interface. Uses plain Map-based
@@ -74,5 +76,17 @@ public class IcebergS3ObjectMetadata implements StorageObjectMetadata {
   /** Returns the server-side encryption algorithm, or null if not set. */
   String getSSEAlgorithm() {
     return sseAlgorithm;
+  }
+
+  /**
+   * @return Returns the encapsulated AWS S3 PutObjectRequest
+   */
+  PutObjectRequest getS3PutObjectRequest() {
+    return PutObjectRequest.builder()
+        .metadata(userMetadata)
+        .contentLength(contentLength)
+        .contentEncoding(contentEncoding)
+        .checksumAlgorithm(ChecksumAlgorithm.CRC32)
+        .build();
   }
 }
