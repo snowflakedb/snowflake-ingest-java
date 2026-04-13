@@ -616,9 +616,18 @@ class IcebergS3Client implements IcebergStorageClient {
             proxyProperties.getProperty(SFSessionProperty.PROXY_PASSWORD.getPropertyKey());
         String nonProxyHosts =
             proxyProperties.getProperty(SFSessionProperty.NON_PROXY_HOSTS.getPropertyKey());
+        String proxyProtocol =
+            proxyProperties.getProperty(SFSessionProperty.PROXY_PROTOCOL.getPropertyKey());
+        String scheme =
+            isNotEmpty(proxyProtocol) && proxyProtocol.equalsIgnoreCase("https") ? "https" : "http";
 
         ProxyConfiguration.Builder proxyBuilder =
-            ProxyConfiguration.builder().host(proxyHost).port(proxyPort);
+            ProxyConfiguration.builder()
+                .scheme(scheme)
+                .host(proxyHost)
+                .port(proxyPort)
+                .useEnvironmentVariableValues(false)
+                .useSystemPropertyValues(false);
 
         if (isNotEmpty(proxyUser) && isNotEmpty(proxyPassword)) {
           proxyBuilder.username(proxyUser).password(proxyPassword);
@@ -636,8 +645,8 @@ class IcebergS3Client implements IcebergStorageClient {
 
         String logMessage =
             String.format(
-                "Set sessionless S3 proxy. Host: %s, port: %d, non-proxy hosts: %s",
-                proxyHost, proxyPort, nonProxyHosts);
+                "Set sessionless S3 proxy. Host: %s, port: %d, protocol: %s, non-proxy hosts: %s",
+                proxyHost, proxyPort, scheme, nonProxyHosts);
         if (isNotEmpty(proxyUser) && isNotEmpty(proxyPassword)) {
           logMessage = String.format("%s, user: %s with password provided", logMessage, proxyUser);
         }
