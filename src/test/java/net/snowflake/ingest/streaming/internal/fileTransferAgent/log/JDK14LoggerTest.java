@@ -1,0 +1,34 @@
+// Ported from snowflake-jdbc: net.snowflake.client.log.JDK14LoggerTest
+package net.snowflake.ingest.streaming.internal.fileTransferAgent.log;
+
+import static net.snowflake.ingest.streaming.internal.fileTransferAgent.log.LogUtil.systemGetProperty;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.logging.Level;
+import org.junit.Ignore;
+import org.junit.Test;
+
+public class JDK14LoggerTest {
+
+  @Test
+  @Ignore
+  public void testLegacyLoggerInit() throws IOException {
+    System.setProperty("snowflake.jdbc.log.size", "100000");
+    System.setProperty("snowflake.jdbc.log.count", "3");
+    System.setProperty("net.snowflake.jdbc.loggerImpl", "net.snowflake.client.log.JDK14Logger");
+
+    JDK14Logger logger = new JDK14Logger(JDK14LoggerTest.class.getName());
+    assertFalse(logger.isDebugEnabled());
+    assertTrue(logger.isInfoEnabled());
+
+    String level = "all";
+    Level tracingLevel = Level.parse(level.toUpperCase());
+    String logOutputPath =
+        Paths.get(systemGetProperty("java.io.tmpdir"), "snowflake_jdbc.log").toString();
+    JDK14Logger.instantiateLogger(tracingLevel, logOutputPath);
+    assertTrue(logger.isDebugEnabled());
+  }
+}
