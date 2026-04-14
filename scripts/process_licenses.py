@@ -81,6 +81,7 @@ ADDITIONAL_LICENSES_MAP = {
     "com.amazonaws:aws-java-sdk-core": APACHE_LICENSE,
     "software.amazon.ion:ion-java": APACHE_LICENSE,
     "software.amazon.eventstream:eventstream": APACHE_LICENSE,
+    "org.reactivestreams:reactive-streams": MIT_LICENSE,
     "com.amazonaws:aws-java-sdk-kms": APACHE_LICENSE,
     "com.amazonaws:jmespath-java": APACHE_LICENSE,
     "com.amazonaws:aws-java-sdk-s3": APACHE_LICENSE,

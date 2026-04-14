@@ -1430,7 +1430,7 @@
                             |Apache 2</licenseMerge>
             <licenseMerge>BSD 2-Clause License
                             |The BSD License |BSD</licenseMerge>
-            <licenseMerge>The MIT License|MIT License|MIT license</licenseMerge>
+            <licenseMerge>The MIT License|MIT License|MIT license|MIT-0</licenseMerge>
             <licenseMerge>3-Clause BSD License|BSD-3-Clause</licenseMerge>
             <licenseMerge>The Go License|Go License</licenseMerge>
           </licenseMerges>
