@@ -1011,17 +1011,19 @@
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
-      <artifactId>http-auth-aws</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>software.amazon.awssdk.crt</groupId>
-          <artifactId>aws-crt</artifactId>
-        </exclusion>
-      </exclusions>
+      <artifactId>aws-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>http-client-spi</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>netty-nio-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>regions</artifactId>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
@@ -1042,6 +1044,10 @@
           <artifactId>aws-crt</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sdk-core</artifactId>
     </dependency>
     <dependency>
       <groupId>com.github.luben</groupId>
