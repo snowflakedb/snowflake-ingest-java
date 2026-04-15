@@ -63,6 +63,7 @@ ADDITIONAL_LICENSES_MAP = {
     "io.netty:netty-handler-proxy": APACHE_LICENSE,
     "io.netty:netty-resolver": APACHE_LICENSE,
     "io.netty:netty-transport": APACHE_LICENSE,
+    "io.netty:netty-transport-classes-epoll": APACHE_LICENSE,
     "io.netty:netty-transport-native-unix-common": APACHE_LICENSE,
     "com.google.re2j:re2j": GO_LICENSE_ALT,
     "com.google.protobuf:protobuf-java": BSD_3_CLAUSE_LICENSE,
