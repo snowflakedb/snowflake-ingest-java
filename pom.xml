@@ -1801,6 +1801,7 @@
                     <exclude>LICENSE</exclude>
                     <exclude>NOTICE</exclude>
                     <exclude>iceberg-build.properties</exclude>
+                    <exclude>VersionInfo.java</exclude>
                     <exclude>google/protobuf/**/*.proto</exclude>
                     <exclude>THIRD-PARTY.txt</exclude>
                   </excludes>
