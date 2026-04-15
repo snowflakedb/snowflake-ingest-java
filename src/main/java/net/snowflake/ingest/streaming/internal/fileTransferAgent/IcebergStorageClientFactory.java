@@ -1,10 +1,8 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
-import com.amazonaws.ClientConfiguration;
 import java.util.Map;
 import java.util.Properties;
 import net.snowflake.ingest.streaming.internal.VolumeEncryptionMode;
-import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
 
 /**
@@ -112,17 +110,12 @@ class IcebergStorageClientFactory {
 
     IcebergS3Client s3Client;
 
-    ClientConfiguration clientConfig = new ClientConfiguration();
-    clientConfig.setMaxConnections(parallel + 1);
-    clientConfig.setMaxErrorRetry(S3_TRANSFER_MAX_RETRIES);
-    clientConfig.setDisableSocketProxy(HttpUtil.isSocksProxyDisabled());
-
-    // If proxy is set via connection properties or JVM settings these will be overridden later.
-    // This is to prevent the aws client builder from reading proxy environment variables.
-    clientConfig.setProxyHost("");
-    clientConfig.setProxyPort(0);
-    clientConfig.setProxyUsername("");
-    clientConfig.setProxyPassword("");
+    IcebergS3Client.ClientConfiguration clientConfig =
+        new IcebergS3Client.ClientConfiguration(
+            parallel + 1,
+            S3_TRANSFER_MAX_RETRIES,
+            (int) JdbcHttpUtil.getConnectionTimeout().toMillis(),
+            (int) JdbcHttpUtil.getSocketTimeout().toMillis());
 
     logger.logDebug(
         "S3 client configuration: maxConnection: {}, connectionTimeout: {}, "

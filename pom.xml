@@ -43,6 +43,7 @@
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
     <auto.publish.central>true</auto.publish.central>
     <avro.version>1.11.4</avro.version>
+    <awssdk.version>2.37.5</awssdk.version>
     <bouncycastle.version>1.79</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
     <commonscodec.version>1.18.0</commonscodec.version>
@@ -105,6 +106,13 @@
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
         <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${awssdk.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -996,6 +1004,51 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>
+    <!-- AWS SDK v2 for S3 operations (replacing v1 com.amazonaws) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>auth</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>aws-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>http-client-spi</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>netty-nio-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>regions</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk.crt</groupId>
+          <artifactId>aws-crt</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3-transfer-manager</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>software.amazon.awssdk.crt</groupId>
+          <artifactId>aws-crt</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sdk-core</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.github.luben</groupId>
       <artifactId>zstd-jni</artifactId>
@@ -1383,7 +1436,7 @@
                             |Apache 2</licenseMerge>
             <licenseMerge>BSD 2-Clause License
                             |The BSD License |BSD</licenseMerge>
-            <licenseMerge>The MIT License|MIT License|MIT license</licenseMerge>
+            <licenseMerge>The MIT License|MIT License|MIT license|MIT-0</licenseMerge>
             <licenseMerge>3-Clause BSD License|BSD-3-Clause</licenseMerge>
             <licenseMerge>The Go License|Go License</licenseMerge>
           </licenseMerges>
@@ -1641,6 +1694,18 @@
                   <shadedPattern>${shadeBase}.com.amazonaws</shadedPattern>
                 </relocation>
                 <relocation>
+                  <pattern>software.amazon.awssdk</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon.awssdk</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>software.amazon.eventstream</pattern>
+                  <shadedPattern>${shadeBase}.software.amazon.eventstream</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>org.reactivestreams</pattern>
+                  <shadedPattern>${shadeBase}.org.reactivestreams</shadedPattern>
+                </relocation>
+                <relocation>
                   <pattern>com.google.api.gax</pattern>
                   <shadedPattern>${shadeBase}.com.google.api.gax</shadedPattern>
                 </relocation>
@@ -1736,6 +1801,7 @@
                     <exclude>LICENSE</exclude>
                     <exclude>NOTICE</exclude>
                     <exclude>iceberg-build.properties</exclude>
+                    <exclude>VersionInfo.java</exclude>
                     <exclude>google/protobuf/**/*.proto</exclude>
                     <exclude>THIRD-PARTY.txt</exclude>
                   </excludes>
