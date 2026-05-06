@@ -39,7 +39,7 @@ cat > $CENTRAL_DEPLOY_SETTINGS_XML << SETTINGS.XML
     <mirror>
       <id>snowflake-artifactory</id>
       <name>Snowflake Internal Artifactory</name>
-      <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+      <url>https://artifactory.ci1.us-west-2.aws-dev.app.snowflake.com/artifactory/development-maven-virtual</url>
       <mirrorOf>*,!ossrh,!snapshot</mirrorOf>
     </mirror>
   </mirrors>
