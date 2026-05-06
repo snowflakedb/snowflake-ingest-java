@@ -35,6 +35,14 @@ cat > $CENTRAL_DEPLOY_SETTINGS_XML << SETTINGS.XML
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>snowflake-artifactory</id>
+      <name>Snowflake Internal Artifactory</name>
+      <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
+      <mirrorOf>*,!ossrh,!snapshot</mirrorOf>
+    </mirror>
+  </mirrors>
   <servers>
     <server>
       <id>$MVN_REPOSITORY_ID</id>
