@@ -35,35 +35,14 @@ cat > $CENTRAL_DEPLOY_SETTINGS_XML << SETTINGS.XML
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
      xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-  <profiles>
-    <profile>
-      <id>internal-maven</id>
-      <repositories>
-        <repository>
-          <id>central</id>
-          <n>Internal Maven Repository</n>
-          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
-        </repository>
-        <repository>
-          <id>deployment</id>
-          <n>Internal Releases</n>
-          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
-        </repository>
-      </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>central</id>
-          <n>Internal Maven Repository</n>
-          <url>https://artifactory.int.snowflakecomputing.com/artifactory/development-maven-virtual</url>
-        </pluginRepository>
-        <pluginRepository>
-          <id>deployment</id>
-          <n>Internal Releases</n>
-          <url>https://nexus.int.snowflakecomputing.com/repository/Releases/</url>
-        </pluginRepository>
-      </pluginRepositories>
-    </profile>
-  </profiles>
+  <mirrors>
+    <mirror>
+      <id>snowflake-artifactory</id>
+      <name>Snowflake Internal Artifactory</name>
+      <url>https://artifactory.ci1.us-west-2.aws-dev.app.snowflake.com/artifactory/development-maven-virtual</url>
+      <mirrorOf>*,!ossrh,!snapshot</mirrorOf>
+    </mirror>
+  </mirrors>
   <servers>
     <server>
       <id>$MVN_REPOSITORY_ID</id>
@@ -71,9 +50,6 @@ cat > $CENTRAL_DEPLOY_SETTINGS_XML << SETTINGS.XML
       <password>$SONATYPE_PWD</password>
     </server>
   </servers>
-  <activeProfiles>
-    <activeProfile>internal-maven</activeProfile>
-  </activeProfiles>
 </settings>
 SETTINGS.XML
 
