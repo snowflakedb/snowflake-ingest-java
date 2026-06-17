@@ -61,6 +61,7 @@ ADDITIONAL_LICENSES_MAP = {
     "org.bouncycastle:bcpkix-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcutil-jdk18on": BOUNCY_CASTLE_LICENSE,
     "org.bouncycastle:bcprov-jdk18on": BOUNCY_CASTLE_LICENSE,
+    "org.locationtech.jts:jts-core": EDL_10_LICENSE,
 }
 
 
