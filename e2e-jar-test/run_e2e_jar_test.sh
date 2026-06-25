@@ -2,6 +2,14 @@
 
 set -euo pipefail
 
+# Resolve dependencies via the Google-hosted Maven Central mirror (see
+# mvn_settings_ci.xml) to avoid repo.maven.apache.org rate-limiting on the CI
+# runners. Written to the default user settings location so every mvn call below
+# (including those run from the e2e-jar-test subdirectory) picks it up.
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null && pwd )"
+mkdir -p "$HOME/.m2"
+cp "$ROOT/mvn_settings_ci.xml" "$HOME/.m2/settings.xml"
+
 maven_repo_dir=$(mvn help:evaluate -Dexpression=settings.localRepository -q -DforceStdout)
 sdk_repo_dir="${maven_repo_dir}/net/snowflake/snowflake-ingest-sdk"
 
@@ -29,12 +37,12 @@ if [[ "${test_type}" == "shaded" ]]; then
   project_version=$(./scripts/get_project_info_from_pom.py pom.xml version)
   ./scripts/update_project_version.py public_pom.xml $project_version > generated_public_pom.xml
 
-  # Build shaded SDK always with Java 8
+  # Build shaded SDK always with Java 17
   echo "Building shaded SDK"
-  JAVA_HOME="${JAVA_HOME_8_X64}" mvn clean package -DskipTests=true --batch-mode --show-version
+  JAVA_HOME="${JAVA_HOME_17_X64}" mvn clean package -DskipTests=true --batch-mode --show-version
 
   # Install shaded SDK JARs into local maven repository
-  JAVA_HOME="${JAVA_HOME_8_X64}" mvn install:install-file -Dfile=target/snowflake-ingest-sdk.jar -DpomFile=generated_public_pom.xml
+  JAVA_HOME="${JAVA_HOME_17_X64}" mvn install:install-file -Dfile=target/snowflake-ingest-sdk.jar -DpomFile=generated_public_pom.xml
 
   # Run e2e tests with all supported LTS Java versions
   cd e2e-jar-test
@@ -47,9 +55,9 @@ elif [[ "${test_type}" == "unshaded" ]]; then
   echo "# TEST UNSHADED JAR #"
   echo "#####################"
 
-  # Install unshaded SDK into local maven repository with Java 8
+  # Install unshaded SDK into local maven repository with Java 17
   echo "Building unshaded SDK"
-  JAVA_HOME="${JAVA_HOME_8_X64}" mvn clean install -Dnot-shadeDep -DskipTests=true --batch-mode --show-version
+  JAVA_HOME="${JAVA_HOME_17_X64}" mvn clean install -Dnot-shadeDep -DskipTests=true --batch-mode --show-version
 
   # Run e2e tests with all supported LTS Java versions
   cd e2e-jar-test
@@ -63,7 +71,7 @@ elif [[ "${test_type}" == "fips" ]]; then
   echo "##############"
   # Install unshaded SDK into local maven repository with Java
   echo "Building unshaded SDK for FIPS"
-  JAVA_HOME="${JAVA_HOME_8_X64}" mvn clean install -Dnot-shadeDep -DskipTests=true --batch-mode --show-version
+  JAVA_HOME="${JAVA_HOME_17_X64}" mvn clean install -Dnot-shadeDep -DskipTests=true --batch-mode --show-version
 
   # Run e2e tests on the FIPS module with all supported LTS Java versions
   cd e2e-jar-test

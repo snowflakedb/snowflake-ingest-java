@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CI-only Maven settings. Routes Maven Central resolution through Google's
+  public, GCS-backed mirror of Central instead of repo.maven.apache.org, which
+  rate-limits the GitHub-hosted CI runners (HTTP 429 / read timeouts) and
+  intermittently fails artifact resolution. The Google mirror is reachable from
+  the runners, not rate-limited, and anonymous. It mirrors Maven Central only,
+  so mirrorOf="central" (the build uses no other repositories).
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>google-maven-central</id>
+      <name>Google Maven Central mirror</name>
+      <url>https://maven-central.storage-download.googleapis.com/maven2</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>

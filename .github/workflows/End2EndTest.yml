@@ -39,7 +39,7 @@ jobs:
       # Don't cancel other jobs in the matrix if one fails
       fail-fast: false
       matrix:
-        java: [ 8 ]
+        java: [ 17 ]
         snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
     steps:
       # Use the latest stable version of the checkout action (v4)
@@ -85,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ 8 ]
+        java: [ 17 ]
         snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
     steps:
       - name: Checkout Code
@@ -108,7 +108,7 @@ jobs:
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: |
-          mvn -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          mvn --settings mvn_settings_ci.xml -DghActionsIT -Dnot-shadeDep -D"failsafe.excludedGroups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for building and testing Iceberg functionality on Ubuntu
   build-iceberg:
@@ -119,7 +119,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ 8 ]
+        java: [ 17 ]
         snowflake_cloud: [ 'AWS', 'AZURE' ]
     steps:
       - name: Checkout Code
@@ -161,7 +161,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ 8 ]
+        java: [ 17 ]
         snowflake_cloud: [ 'AWS', 'AZURE' ]
     steps:
       - name: Checkout Code
@@ -185,7 +185,7 @@ jobs:
       - name: Unit & Integration Test (Windows)
         continue-on-error: false
         run: |
-          mvn -DghActionsIT -Dnot-shadeDep -"Dfailsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
+          mvn --settings mvn_settings_ci.xml -DghActionsIT -Dnot-shadeDep -"Dfailsafe.groups"="net.snowflake.ingest.IcebergIT" verify --batch-mode
 
   # Job for end-to-end testing with different JAR types and Java versions
   build-e2e-jar-test:
@@ -198,7 +198,7 @@ jobs:
       matrix:
         snowflake_cloud: [ 'AWS', 'AZURE', 'GCP' ]
         test_type: [ 'shaded', 'unshaded', 'fips' ]
-        java_path_env_var: [ "JAVA_HOME_8_X64", "JAVA_HOME_11_X64", "JAVA_HOME_17_X64", "JAVA_HOME_21_X64" ]
+        java_path_env_var: [ "JAVA_HOME_17_X64", "JAVA_HOME_21_X64" ]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
