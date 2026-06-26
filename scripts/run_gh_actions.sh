@@ -6,17 +6,10 @@
 
 set -o pipefail
 
-# Resolve dependencies via the Google-hosted Maven Central mirror (see
-# mvn_settings_ci.xml) to avoid repo.maven.apache.org rate-limiting (HTTP 429 /
-# read timeouts) on the CI runners.
-THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-CI_SETTINGS="$THIS_DIR/../mvn_settings_ci.xml"
-
 # Build and install shaded JAR first. check_content.sh runs here.
-mvn --settings "$CI_SETTINGS" install -PcheckShadedContent -DskipTests=true --batch-mode --show-version
+mvn install -PcheckShadedContent -DskipTests=true --batch-mode --show-version
 
 PARAMS=()
-PARAMS+=("--settings" "$CI_SETTINGS")
 PARAMS+=("-DghActionsIT")
 # testing will not need shade dep. otherwise codecov cannot work
 PARAMS+=("-Dnot-shadeDep")
