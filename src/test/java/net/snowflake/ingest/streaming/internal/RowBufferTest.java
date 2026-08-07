@@ -2638,7 +2638,7 @@ public class RowBufferTest {
     corrupted.write(bytes);
 
     try {
-      flusher.verifyReadBack(corrupted);
+      flusher.verifyReadBack(corrupted, data.getRowCount());
       Assert.fail("Expected SFException for corrupt parquet data");
     } catch (SFException e) {
       Assert.assertTrue(e.isErrorCode(ErrorCode.INTERNAL_ERROR));

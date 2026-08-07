@@ -161,7 +161,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
     this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
     if (enableParquetInternalReadbackVerification) {
-      verifyReadBack(mergedData);
+      verifyReadBack(mergedData, rowCount);
     }
 
     return new SerializationResult(
@@ -288,9 +288,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     }
   }
 
-  void verifyReadBack(ByteArrayOutputStream mergedData) {
+  void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
     try {
-      BdecParquetReader.verify(mergedData.toByteArray());
+      BdecParquetReader.verify(mergedData.toByteArray(), expectedRowCount);
     } catch (IOException e) {
       throw new SFException(
           e, ErrorCode.INTERNAL_ERROR, "Parquet read-back verification failed: " + e.getMessage());

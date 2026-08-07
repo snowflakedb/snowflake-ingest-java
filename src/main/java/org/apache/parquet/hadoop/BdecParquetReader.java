@@ -83,12 +83,21 @@ public class BdecParquetReader implements AutoCloseable {
    * this happens in standalone jar tests but not in Snowflake's production environment where the
    * full Hadoop stack is present.
    */
-  public static void verify(byte[] data) throws IOException {
+  public static void verify(byte[] data, long expectedRowCount) throws IOException {
     try {
       BdecParquetReader reader = new BdecParquetReader(data);
-      while (reader.read() != null) {}
+      long actualRowCount = 0;
+      while (reader.read() != null) {
+        actualRowCount++;
+      }
+      if (actualRowCount != expectedRowCount) {
+        throw new IOException(
+            String.format(
+                "Row count mismatch: expected %d, got %d", expectedRowCount, actualRowCount));
+      }
     } catch (NoClassDefFoundError e) {
-      throw new IOException("hadoop-mapreduce-client-core not available for parquet verification", e);
+      throw new IOException(
+          "hadoop-mapreduce-client-core not available for parquet verification", e);
     }
   }
 
