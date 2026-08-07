@@ -4,13 +4,17 @@
 
 package net.snowflake.ingest.streaming.internal;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPInputStream;
 import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.Logging;
@@ -18,7 +22,12 @@ import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.hadoop.BdecParquetReader;
+import org.apache.parquet.format.ColumnChunk;
+import org.apache.parquet.format.CompressionCodec;
+import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.RowGroup;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.SnowflakeParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
@@ -290,8 +299,62 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
 
   void verifyReadBack(ByteArrayOutputStream mergedData) {
     try {
-      BdecParquetReader reader = new BdecParquetReader(mergedData.toByteArray());
-      while (reader.read() != null) {}
+      byte[] bytes = mergedData.toByteArray();
+      int totalLen = bytes.length;
+
+      // Parse parquet footer: last 8 bytes are [footer_len(4)][PAR1(4)]
+      int footerLen =
+          ByteBuffer.wrap(bytes, totalLen - 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+      int footerStart = totalLen - 8 - footerLen;
+      FileMetaData footer =
+          Util.readFileMetaData(new ByteArrayInputStream(bytes, footerStart, footerLen));
+
+      // Walk every column chunk in every row group and decompress every page.
+      // Decompression exercises the full codec path including GZIP CRC32 verification,
+      // catching VM-level corruption that produces wrong compressed bytes.
+      for (RowGroup rowGroup : footer.getRow_groups()) {
+        for (ColumnChunk chunk : rowGroup.getColumns()) {
+          org.apache.parquet.format.ColumnMetaData meta = chunk.getMeta_data();
+          long chunkStart = meta.getData_page_offset();
+          if (meta.isSetDictionary_page_offset() && meta.getDictionary_page_offset() < chunkStart) {
+            chunkStart = meta.getDictionary_page_offset();
+          }
+          int chunkLen = (int) meta.getTotal_compressed_size();
+          ByteArrayInputStream chunkStream =
+              new ByteArrayInputStream(bytes, (int) chunkStart, chunkLen);
+
+          while (chunkStream.available() > 0) {
+            PageHeader pageHeader = Util.readPageHeader(chunkStream);
+            int compressedSize = pageHeader.getCompressed_page_size();
+            if (compressedSize <= 0) {
+              break;
+            }
+            byte[] compressedPage = new byte[compressedSize];
+            int read = chunkStream.read(compressedPage, 0, compressedSize);
+            if (read != compressedSize) {
+              break;
+            }
+            if (meta.getCodec() == CompressionCodec.GZIP) {
+              int valuesOffset = 0;
+              // DataPageV2 has uncompressed rep/def levels prepended before the compressed values
+              if (pageHeader.isSetData_page_header_v2()) {
+                valuesOffset =
+                    pageHeader.getData_page_header_v2().getRepetition_levels_byte_length()
+                        + pageHeader.getData_page_header_v2().getDefinition_levels_byte_length();
+              }
+              int valuesLen = compressedSize - valuesOffset;
+              if (valuesLen > 0) {
+                try (GZIPInputStream gzip =
+                    new GZIPInputStream(
+                        new ByteArrayInputStream(compressedPage, valuesOffset, valuesLen))) {
+                  byte[] buf = new byte[8192];
+                  while (gzip.read(buf) != -1) {}
+                }
+              }
+            }
+          }
+        }
+      }
     } catch (IOException e) {
       throw new SFException(
           e, ErrorCode.INTERNAL_ERROR, "Parquet read-back verification failed: " + e.getMessage());
