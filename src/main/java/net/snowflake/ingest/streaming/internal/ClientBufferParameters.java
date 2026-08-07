@@ -106,9 +106,7 @@ public class ClientBufferParameters {
             && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
     this.enableParquetInternalReadbackVerification =
         clientInternal != null
-            ? clientInternal
-                .getParameterProvider()
-                .isEnableParquetInternalReadbackVerification()
+            ? clientInternal.getParameterProvider().isEnableParquetInternalReadbackVerification()
             : ParameterProvider.ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT;
   }
 

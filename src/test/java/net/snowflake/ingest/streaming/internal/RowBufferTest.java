@@ -2618,8 +2618,7 @@ public class RowBufferTest {
     loadData(buffer, Collections.singletonMap("C1", "hello"));
 
     ChannelData<ParquetChunkData> data = buffer.flush();
-    data.setChannelContext(
-        new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
 
     ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
     Flusher.SerializationResult result =
