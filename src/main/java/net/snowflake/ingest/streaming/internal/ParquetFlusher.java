@@ -18,6 +18,7 @@ import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.hadoop.BdecParquetReader;
 import org.apache.parquet.hadoop.SnowflakeParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
@@ -35,6 +36,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final ParquetProperties.WriterVersion parquetWriterVersion;
   private final boolean enableDictionaryEncoding;
   private final boolean enableIcebergStreaming;
+  private final boolean enableParquetInternalReadbackVerification;
 
   /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
@@ -44,7 +46,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       Constants.BdecParquetCompression bdecParquetCompression,
       ParquetProperties.WriterVersion parquetWriterVersion,
       boolean enableDictionaryEncoding,
-      boolean enableIcebergStreaming) {
+      boolean enableIcebergStreaming,
+      boolean enableParquetInternalReadbackVerification) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
@@ -52,6 +55,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     this.parquetWriterVersion = parquetWriterVersion;
     this.enableDictionaryEncoding = enableDictionaryEncoding;
     this.enableIcebergStreaming = enableIcebergStreaming;
+    this.enableParquetInternalReadbackVerification = enableParquetInternalReadbackVerification;
   }
 
   @Override
@@ -156,6 +160,9 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     parquetWriter.close();
 
     this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
+    if (enableParquetInternalReadbackVerification) {
+      verifyReadBack(mergedData);
+    }
 
     return new SerializationResult(
         channelsMetadataList,
@@ -278,6 +285,16 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               channelsCountInMetadata,
               javaSerializationTotalRowCount,
               channelNames));
+    }
+  }
+
+  void verifyReadBack(ByteArrayOutputStream mergedData) {
+    try {
+      BdecParquetReader reader = new BdecParquetReader(mergedData.toByteArray());
+      while (reader.read() != null) {}
+    } catch (IOException e) {
+      throw new SFException(
+          e, ErrorCode.INTERNAL_ERROR, "Parquet read-back verification failed: " + e.getMessage());
     }
   }
 }

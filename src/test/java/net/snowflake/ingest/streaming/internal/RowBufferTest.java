@@ -12,6 +12,7 @@ import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYT
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -2598,5 +2599,50 @@ public class RowBufferTest {
 
   private static String getColumnType(final ChannelData<ParquetChunkData> chunkData, int columnId) {
     return chunkData.getVectors().metadata.get(Integer.toString(columnId));
+  }
+
+  @Test
+  public void testParquetReadBackVerificationCatchesCorruption() throws IOException {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(
+        new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "corruption_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    // Corrupt bytes in the middle of the compressed data region to simulate VM-level
+    // GZip compression corruption (reproduces FDC case 01415855 / SNOW-3837078)
+    byte[] bytes = result.chunkData.toByteArray();
+    int midpoint = bytes.length / 2;
+    bytes[midpoint] ^= 0xFF;
+    bytes[midpoint + 1] ^= 0xFF;
+    ByteArrayOutputStream corrupted = new ByteArrayOutputStream();
+    corrupted.write(bytes);
+
+    try {
+      flusher.verifyReadBack(corrupted);
+      Assert.fail("Expected SFException for corrupt parquet data");
+    } catch (SFException e) {
+      Assert.assertTrue(e.isErrorCode(ErrorCode.INTERNAL_ERROR));
+    }
   }
 }
