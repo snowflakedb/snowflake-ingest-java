@@ -87,9 +87,8 @@ public class BdecParquetReader implements AutoCloseable {
     try {
       BdecParquetReader reader = new BdecParquetReader(data);
       while (reader.read() != null) {}
-    } catch (NoClassDefFoundError ignored) {
-      // hadoop-mapreduce-client-core is test-scoped and absent from the production jar in some
-      // environments (e.g. e2e-jar-test). Skip verification rather than fail.
+    } catch (NoClassDefFoundError e) {
+      throw new IOException("hadoop-mapreduce-client-core not available for parquet verification", e);
     }
   }
 
