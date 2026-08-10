@@ -93,7 +93,7 @@ public class BdecParquetReader implements AutoCloseable {
       if (actualRowCount != expectedRowCount) {
         throw new IOException(
             String.format(
-                "Row count mismatch: expected %d, got %d", expectedRowCount, actualRowCount));
+                "Compression Row count mismatch: expected %d , got %d", expectedRowCount, actualRowCount));
       }
     } catch (NoClassDefFoundError e) {
       throw new IOException(
