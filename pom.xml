@@ -449,6 +449,11 @@
       </dependency>
       <dependency>
         <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-format-structures</artifactId>
+        <version>${parquet.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
         <artifactId>parquet-hadoop</artifactId>
         <version>${parquet.version}</version>
         <exclusions>
@@ -974,6 +979,10 @@
           <artifactId>javax.annotation-api</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-format-structures</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
