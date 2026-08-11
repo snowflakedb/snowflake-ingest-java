@@ -95,8 +95,7 @@ public class BdecParquetReader implements AutoCloseable {
    */
   public static void verify(byte[] data, long expectedRowCount) throws IOException {
     int totalLen = data.length;
-    int footerLen =
-        ByteBuffer.wrap(data, totalLen - 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+    int footerLen = ByteBuffer.wrap(data, totalLen - 8, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
     int footerStart = totalLen - 8 - footerLen;
     FileMetaData footer =
         Util.readFileMetaData(new ByteArrayInputStream(data, footerStart, footerLen));
@@ -115,12 +114,12 @@ public class BdecParquetReader implements AutoCloseable {
                   : codecFactory.getDecompressor(codecName);
 
           long chunkStart = meta.getData_page_offset();
-          if (meta.isSetDictionary_page_offset()
-              && meta.getDictionary_page_offset() < chunkStart) {
+          if (meta.isSetDictionary_page_offset() && meta.getDictionary_page_offset() < chunkStart) {
             chunkStart = meta.getDictionary_page_offset();
           }
           ByteArrayInputStream chunkStream =
-              new ByteArrayInputStream(data, (int) chunkStart, (int) meta.getTotal_compressed_size());
+              new ByteArrayInputStream(
+                  data, (int) chunkStart, (int) meta.getTotal_compressed_size());
 
           while (chunkStream.available() > 0) {
             PageHeader pageHeader = Util.readPageHeader(chunkStream);
