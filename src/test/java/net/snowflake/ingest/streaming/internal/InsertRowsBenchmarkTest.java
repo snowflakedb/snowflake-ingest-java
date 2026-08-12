@@ -8,6 +8,7 @@ import static java.time.ZoneOffset.UTC;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -20,8 +21,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Mode;
@@ -37,20 +36,19 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 @State(Scope.Thread)
-@RunWith(Parameterized.class)
 public class InsertRowsBenchmarkTest {
-  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
-  public static Object[] enableIcebergStreaming() {
-    return new Object[] {false, true};
-  }
+  @Param({"false", "true"})
+  public boolean enableIcebergStreaming;
 
-  @Parameterized.Parameter public boolean enableIcebergStreaming;
-
-  private SnowflakeStreamingIngestChannelInternal<?> channel;
+  // package-private so FlushFixture can access it
+  SnowflakeStreamingIngestChannelInternal<?> channel;
   private SnowflakeStreamingIngestClientInternal<?> client;
 
   @Param({"100000"})
   private int numRows;
+
+  @Param({"false", "true"})
+  public boolean enableReadbackVerification;
 
   @Setup(Level.Trial)
   public void setUpBeforeAll() {
@@ -61,6 +59,9 @@ public class InsertRowsBenchmarkTest {
     Properties prop = new Properties();
     prop.setProperty(
         ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
+    prop.setProperty(
+        ParameterProvider.ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION,
+        String.valueOf(enableReadbackVerification));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client_PARQUET", null, prop, httpClient, true, requestBuilder, new HashMap<>());
@@ -94,6 +95,10 @@ public class InsertRowsBenchmarkTest {
     col.setScale(0);
 
     channel.setupSchema(Collections.singletonList(col));
+    // Register channel so ChannelCache.setNeedFlush works when buffer threshold is reached
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    ChannelCache rawCache = client.getChannelCache();
+    rawCache.addChannel(channel);
     assert Utils.getProvider() != null;
   }
 
@@ -101,6 +106,42 @@ public class InsertRowsBenchmarkTest {
   public void tearDownAfterAll() throws Exception {
     channel.close();
     client.close();
+  }
+
+  /**
+   * Auxiliary state that pre-fills the buffer before each testFlushRows invocation only.
+   * Using a separate @State class ensures fillBuffer does NOT run before testInsertRow.
+   */
+  @State(Scope.Thread)
+  public static class FlushFixture {
+    @Setup(Level.Invocation)
+    public void fillBuffer(InsertRowsBenchmarkTest benchmark) {
+      Map<String, Object> row = new HashMap<>();
+      row.put("col", 1);
+      for (int i = 0; i < 100000; i++) {
+        benchmark.channel.insertRow(row, String.valueOf(i));
+      }
+    }
+  }
+
+  /**
+   * Benchmarks the full serialize+verify pipeline. Run with enableReadbackVerification=false vs
+   * true to measure the cost of readback verification.
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  @Benchmark
+  public void testFlushRows(FlushFixture fixture) throws Exception {
+    RowBuffer buffer = channel.getRowBuffer();
+    ChannelData data = buffer.flush();
+    if (data != null) {
+      data.setChannelContext(new ChannelFlushContext("ch", "db", "schema", "table", 1L, "key", 0L));
+      Flusher flusher = buffer.createFlusher();
+      flusher.serialize(
+          (List<ChannelData>) (List<?>) Collections.singletonList(data),
+          "bench.bdec",
+          0,
+          FileMetadataTestingOverrides.none());
+    }
   }
 
   @Benchmark
