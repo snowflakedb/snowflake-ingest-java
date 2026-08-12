@@ -2602,6 +2602,41 @@ public class RowBufferTest {
   }
 
   @Test
+  public void testParquetReadBackVerificationCatchesRowCountMismatch() throws IOException {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "rowcount_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    try {
+      flusher.verifyReadBack(result.chunkData, data.getRowCount() + 1);
+      Assert.fail("Expected SFException for row count mismatch");
+    } catch (SFException e) {
+      Assert.assertTrue(e.isErrorCode(ErrorCode.INTERNAL_ERROR));
+    }
+  }
+
+  @Test
   public void testParquetReadBackVerificationCatchesCorruption() throws IOException {
     ParquetRowBuffer buffer =
         (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);

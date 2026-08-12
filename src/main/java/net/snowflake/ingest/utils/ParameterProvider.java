@@ -96,7 +96,7 @@ public class ParameterProvider {
 
   public static final boolean ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT = true;
 
-  public static final boolean ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT = true;
+  public static final boolean ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT = false;
 
   public static final boolean ENABLE_ICEBERG_STREAMING_DEFAULT = false;
 
