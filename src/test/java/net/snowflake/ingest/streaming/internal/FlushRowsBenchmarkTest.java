@@ -60,8 +60,7 @@ public class FlushRowsBenchmarkTest {
         String.valueOf(enableReadbackVerification));
     // Prevent insertRow from signaling the FlushService during buffer pre-fill;
     // the benchmark controls flushing directly via buffer.flush()
-    prop.setProperty(
-        ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES, String.valueOf(Long.MAX_VALUE));
+    prop.setProperty(ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES, String.valueOf(Long.MAX_VALUE));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client_PARQUET", null, prop, httpClient, true, requestBuilder, new HashMap<>());
@@ -119,8 +118,7 @@ public class FlushRowsBenchmarkTest {
     RowBuffer buffer = channel.getRowBuffer();
     ChannelData data = buffer.flush();
     if (data != null) {
-      data.setChannelContext(
-          new ChannelFlushContext("ch", "db", "schema", "table", 1L, "key", 0L));
+      data.setChannelContext(new ChannelFlushContext("ch", "db", "schema", "table", 1L, "key", 0L));
       Flusher flusher = buffer.createFlusher();
       flusher.serialize(
           (List<ChannelData>) (List<?>) Collections.singletonList(data),
