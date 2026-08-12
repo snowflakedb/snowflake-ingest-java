@@ -1724,6 +1724,19 @@
                 </relocation>
               </relocations>
               <filters>
+                <!-- Only bundle RecordReader and peer types; exclude resource files and hdfs classes -->
+                <filter>
+                  <artifact>org.apache.hadoop:hadoop-mapreduce-client-core</artifact>
+                  <includes>
+                    <include>org/apache/hadoop/mapreduce/*.class</include>
+                  </includes>
+                </filter>
+                <filter>
+                  <artifact>org.apache.hadoop:hadoop-hdfs-client</artifact>
+                  <excludes>
+                    <exclude>**</exclude>
+                  </excludes>
+                </filter>
                 <filter>
                   <artifact>*:*</artifact>
                   <excludes>
