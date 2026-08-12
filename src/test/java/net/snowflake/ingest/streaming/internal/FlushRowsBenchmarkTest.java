@@ -8,20 +8,17 @@ import static java.time.ZoneOffset.UTC;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import net.snowflake.ingest.connection.RequestBuilder;
-import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
-import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Mode;
@@ -37,30 +34,34 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 @State(Scope.Thread)
-@RunWith(Parameterized.class)
-public class InsertRowsBenchmarkTest {
-  @Parameterized.Parameters(name = "enableIcebergStreaming: {0}")
-  public static Object[] enableIcebergStreaming() {
-    return new Object[] {false, true};
-  }
+public class FlushRowsBenchmarkTest {
+  @Param({"false", "true"})
+  public boolean enableIcebergStreaming;
 
-  @Parameterized.Parameter public boolean enableIcebergStreaming;
+  @Param({"false", "true"})
+  public boolean enableReadbackVerification;
+
+  @Param({"1000", "10000", "100000"})
+  public int numRows;
 
   private SnowflakeStreamingIngestChannelInternal<?> channel;
   private SnowflakeStreamingIngestClientInternal<?> client;
 
-  @Param({"100000"})
-  private int numRows;
-
   @Setup(Level.Trial)
   public void setUpBeforeAll() {
-    // SNOW-1490151: Testing gaps
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient();
     RequestBuilder requestBuilder =
         MockSnowflakeServiceClient.createRequestBuilder(httpClient, enableIcebergStreaming);
     Properties prop = new Properties();
     prop.setProperty(
         ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
+    prop.setProperty(
+        ParameterProvider.ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION,
+        String.valueOf(enableReadbackVerification));
+    // Prevent insertRow from signaling the FlushService during buffer pre-fill;
+    // the benchmark controls flushing directly via buffer.flush()
+    prop.setProperty(
+        ParameterProvider.MAX_CHANNEL_SIZE_IN_BYTES, String.valueOf(Long.MAX_VALUE));
     client =
         new SnowflakeStreamingIngestClientInternal<>(
             "client_PARQUET", null, prop, httpClient, true, requestBuilder, new HashMap<>());
@@ -83,7 +84,7 @@ public class InsertRowsBenchmarkTest {
             enableIcebergStreaming
                 ? ParquetProperties.WriterVersion.PARQUET_2_0
                 : ParquetProperties.WriterVersion.PARQUET_1_0);
-    // Setup column fields and vectors
+
     ColumnMetadata col = new ColumnMetadata();
     col.setOrdinal(1);
     col.setName("COL");
@@ -103,38 +104,37 @@ public class InsertRowsBenchmarkTest {
     client.close();
   }
 
-  @Benchmark
-  public void testInsertRow() {
+  @Setup(Level.Invocation)
+  public void fillBufferForFlush() {
     Map<String, Object> row = new HashMap<>();
     row.put("col", 1);
-
     for (int i = 0; i < numRows; i++) {
-      InsertValidationResponse response = channel.insertRow(row, String.valueOf(i));
-      Assert.assertFalse(response.hasErrors());
+      channel.insertRow(row, String.valueOf(i));
     }
   }
 
-  @Test
-  public void insertRow() throws Exception {
-    setUpBeforeAll();
-    Map<String, Object> row = new HashMap<>();
-    row.put("col", 1);
-
-    for (int i = 0; i < 1000000; i++) {
-      InsertValidationResponse response = channel.insertRow(row, String.valueOf(i));
-      Assert.assertFalse(response.hasErrors());
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  @Benchmark
+  public void testFlushRows() throws Exception {
+    RowBuffer buffer = channel.getRowBuffer();
+    ChannelData data = buffer.flush();
+    if (data != null) {
+      data.setChannelContext(
+          new ChannelFlushContext("ch", "db", "schema", "table", 1L, "key", 0L));
+      Flusher flusher = buffer.createFlusher();
+      flusher.serialize(
+          (List<ChannelData>) (List<?>) Collections.singletonList(data),
+          "bench.bdec",
+          0,
+          FileMetadataTestingOverrides.none());
     }
-    tearDownAfterAll();
   }
 
   @Test
   public void launchBenchmark() throws RunnerException {
     Options opt =
         new OptionsBuilder()
-            // Specify which benchmarks to run.
-            // You can be more specific if you'd like to run only one benchmark per test.
             .include(this.getClass().getName() + ".*")
-            // Set the following options as needed
             .mode(Mode.AverageTime)
             .timeUnit(TimeUnit.MICROSECONDS)
             .warmupTime(TimeValue.seconds(1))
@@ -145,8 +145,6 @@ public class InsertRowsBenchmarkTest {
             .forks(1)
             .shouldFailOnError(true)
             .shouldDoGC(true)
-            // .jvmArgs("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintInlining")
-            // .addProfiler(WinPerfAsmProfiler.class)
             .build();
 
     new Runner(opt).run();
