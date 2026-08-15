@@ -492,6 +492,11 @@
       </dependency>
       <dependency>
         <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-format-structures</artifactId>
+        <version>${parquet.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
         <artifactId>parquet-hadoop</artifactId>
         <version>${parquet.version}</version>
         <exclusions>
@@ -1040,6 +1045,11 @@
     <dependency>
       <groupId>net.snowflake</groupId>
       <artifactId>snowflake-jdbc-thin</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-format-structures</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
