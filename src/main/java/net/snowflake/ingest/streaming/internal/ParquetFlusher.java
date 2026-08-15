@@ -36,7 +36,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final ParquetProperties.WriterVersion parquetWriterVersion;
   private final boolean enableDictionaryEncoding;
   private final boolean enableIcebergStreaming;
-  private final boolean enableParquetInternalReadbackVerification;
+  private final boolean enableParquetReadbackVerification;
 
   /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
@@ -47,7 +47,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       ParquetProperties.WriterVersion parquetWriterVersion,
       boolean enableDictionaryEncoding,
       boolean enableIcebergStreaming,
-      boolean enableParquetInternalReadbackVerification) {
+      boolean enableParquetReadbackVerification) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
@@ -55,7 +55,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     this.parquetWriterVersion = parquetWriterVersion;
     this.enableDictionaryEncoding = enableDictionaryEncoding;
     this.enableIcebergStreaming = enableIcebergStreaming;
-    this.enableParquetInternalReadbackVerification = enableParquetInternalReadbackVerification;
+    this.enableParquetReadbackVerification = enableParquetReadbackVerification;
   }
 
   @Override
@@ -81,7 +81,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
-    SnowflakeParquetWriter parquetWriter;
+    SnowflakeParquetWriter parquetWriter = null;
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
@@ -145,23 +145,47 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     addFileIdToMetadata(filePath, chunkStartOffset, metadata);
     overrideMetadataForTesting(metadata, fileMetadataTestingOverrides);
-    parquetWriter =
-        new SnowflakeParquetWriter(
-            mergedData,
-            schema,
-            metadata,
-            firstChannelFullyQualifiedTableName,
-            maxChunkSizeInBytes,
-            maxRowGroups,
-            bdecParquetCompression,
-            parquetWriterVersion,
-            enableDictionaryEncoding);
-    rows.forEach(parquetWriter::writeRow);
-    parquetWriter.close();
 
-    this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
-    if (enableParquetInternalReadbackVerification) {
-      verifyReadBack(mergedData, rowCount);
+    IOException lastVerifyException = null;
+    int maxAttempts = enableParquetReadbackVerification ? 3 : 1;
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        mergedData.reset();
+      }
+      parquetWriter =
+          new SnowflakeParquetWriter(
+              mergedData,
+              schema,
+              metadata,
+              firstChannelFullyQualifiedTableName,
+              maxChunkSizeInBytes,
+              maxRowGroups,
+              bdecParquetCompression,
+              parquetWriterVersion,
+              enableDictionaryEncoding);
+      rows.forEach(parquetWriter::writeRow);
+      parquetWriter.close();
+
+      this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
+
+      if (!enableParquetReadbackVerification) {
+        break;
+      }
+      try {
+        verifyReadBack(mergedData, rowCount);
+        lastVerifyException = null;
+        break;
+      } catch (IOException e) {
+        lastVerifyException = e;
+        logger.logWarn(
+            "Parquet readback verification attempt {}/{} failed: {}",
+            attempt + 1,
+            maxAttempts,
+            e.getMessage());
+      }
+    }
+    if (lastVerifyException != null) {
+      throw lastVerifyException;
     }
 
     return new SerializationResult(
@@ -288,12 +312,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     }
   }
 
-  void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
-    try {
-      BdecParquetReader.verify(mergedData.toByteArray(), expectedRowCount);
-    } catch (IOException e) {
-      throw new SFException(
-          e, ErrorCode.INTERNAL_ERROR, "Parquet read-back verification failed: " + e.getMessage());
-    }
+  void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) throws IOException {
+    BdecParquetReader.verify(mergedData.toByteArray(), expectedRowCount);
   }
 }

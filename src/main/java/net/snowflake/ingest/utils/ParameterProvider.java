@@ -54,8 +54,8 @@ public class ParameterProvider {
   public static final String MAX_REGISTRATION_QUEUE_SIZE =
       "MAX_REGISTRATION_QUEUE_SIZE".toLowerCase();
 
-  public static final String ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION =
-      "ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION".toLowerCase();
+  public static final String ENABLE_PARQUET_READBACK_VERIFICATION =
+      "ENABLE_PARQUET_READBACK_VERIFICATION".toLowerCase();
 
   // Default values
   public static final long BUFFER_FLUSH_CHECK_INTERVAL_IN_MILLIS_DEFAULT = 100;
@@ -96,7 +96,7 @@ public class ParameterProvider {
 
   public static final boolean ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT = true;
 
-  public static final boolean ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT = false;
+  public static final boolean ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT = false;
 
   public static final boolean ENABLE_ICEBERG_STREAMING_DEFAULT = false;
 
@@ -285,8 +285,8 @@ public class ParameterProvider {
         false /* enforceDefault */);
 
     this.checkAndUpdate(
-        ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION,
-        ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT,
+        ENABLE_PARQUET_READBACK_VERIFICATION,
+        ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT,
         parameterOverrides,
         props,
         false /* enforceDefault */);
@@ -603,11 +603,10 @@ public class ParameterProvider {
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
-  public boolean isEnableParquetInternalReadbackVerification() {
+  public boolean isEnableParquetReadbackVerification() {
     Object val =
         this.parameterMap.getOrDefault(
-            ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION,
-            ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT);
+            ENABLE_PARQUET_READBACK_VERIFICATION, ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT);
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 

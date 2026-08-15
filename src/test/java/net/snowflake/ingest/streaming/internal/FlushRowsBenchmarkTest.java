@@ -56,7 +56,7 @@ public class FlushRowsBenchmarkTest {
     prop.setProperty(
         ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
     prop.setProperty(
-        ParameterProvider.ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION,
+        ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION,
         String.valueOf(enableReadbackVerification));
     // Prevent insertRow from signaling the FlushService during buffer pre-fill;
     // the benchmark controls flushing directly via buffer.flush()

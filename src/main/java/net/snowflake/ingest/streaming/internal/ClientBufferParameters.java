@@ -32,7 +32,7 @@ public class ClientBufferParameters {
 
   private boolean enableDictionaryEncoding;
 
-  private final boolean enableParquetInternalReadbackVerification;
+  private final boolean enableParquetReadbackVerification;
 
   /**
    * Private constructor used for test methods
@@ -50,7 +50,7 @@ public class ClientBufferParameters {
       boolean enableIcebergStreaming,
       boolean enableDistinctValuesCount,
       boolean enableValuesCount,
-      boolean enableParquetInternalReadbackVerification) {
+      boolean enableParquetReadbackVerification) {
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
@@ -60,7 +60,7 @@ public class ClientBufferParameters {
     this.enableDistinctValuesCount = enableDistinctValuesCount;
     this.enableValuesCount = enableValuesCount;
     this.enableDictionaryEncoding = enableIcebergStreaming;
-    this.enableParquetInternalReadbackVerification = enableParquetInternalReadbackVerification;
+    this.enableParquetReadbackVerification = enableParquetReadbackVerification;
   }
 
   /**
@@ -104,10 +104,10 @@ public class ClientBufferParameters {
     this.enableDictionaryEncoding =
         enableIcebergStreaming
             && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
-    this.enableParquetInternalReadbackVerification =
+    this.enableParquetReadbackVerification =
         clientInternal != null
-            ? clientInternal.getParameterProvider().isEnableParquetInternalReadbackVerification()
-            : ParameterProvider.ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT;
+            ? clientInternal.getParameterProvider().isEnableParquetReadbackVerification()
+            : ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT;
   }
 
   /**
@@ -134,7 +134,7 @@ public class ClientBufferParameters {
         enableIcebergStreaming,
         enableDistinctValuesCount,
         enableValuesCount,
-        ParameterProvider.ENABLE_PARQUET_INTERNAL_READBACK_VERIFICATION_DEFAULT);
+        ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT);
   }
 
   public long getMaxChunkSizeInBytes() {
@@ -177,7 +177,7 @@ public class ClientBufferParameters {
     return enableDictionaryEncoding;
   }
 
-  public boolean isEnableParquetInternalReadbackVerification() {
-    return enableParquetInternalReadbackVerification;
+  public boolean isEnableParquetReadbackVerification() {
+    return enableParquetReadbackVerification;
   }
 }

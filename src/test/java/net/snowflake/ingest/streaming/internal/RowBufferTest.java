@@ -12,6 +12,7 @@ import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYT
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -37,7 +38,10 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.BdecParquetReader;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
@@ -2630,9 +2634,9 @@ public class RowBufferTest {
 
     try {
       flusher.verifyReadBack(result.chunkData, data.getRowCount() + 1);
-      Assert.fail("Expected SFException for row count mismatch");
-    } catch (SFException e) {
-      Assert.assertTrue(e.isErrorCode(ErrorCode.INTERNAL_ERROR));
+      Assert.fail("Expected IOException for row count mismatch");
+    } catch (IOException e) {
+      Assert.assertTrue(e.getMessage().contains("Row count mismatch"));
     }
   }
 
@@ -2674,9 +2678,80 @@ public class RowBufferTest {
 
     try {
       flusher.verifyReadBack(corrupted, data.getRowCount());
-      Assert.fail("Expected SFException for corrupt parquet data");
-    } catch (SFException e) {
-      Assert.assertTrue(e.isErrorCode(ErrorCode.INTERNAL_ERROR));
+      Assert.fail("Expected IOException for corrupt parquet data");
+    } catch (IOException e) {
+      Assert.assertNotNull(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testParquetPageHeaderNumValuesCorruptionCaughtByRowCountCheck() throws Exception {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "num_values_corruption_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    byte[] bytes = result.chunkData.toByteArray();
+
+    // Find the byte offset of the first data page header
+    long pageOffset;
+    try (ParquetFileReader pfr =
+        ParquetFileReader.open(new BdecParquetReader.BdecInputFile(bytes))) {
+      pageOffset = pfr.getFooter().getBlocks().get(0).getColumns().get(0).getFirstDataPageOffset();
+    }
+
+    // Deserialize the Thrift-compact page header
+    ByteArrayInputStream headerIn =
+        new ByteArrayInputStream(bytes, (int) pageOffset, bytes.length - (int) pageOffset);
+    PageHeader pageHeader = Util.readPageHeader(headerIn);
+    int originalHeaderSize = (bytes.length - (int) pageOffset) - headerIn.available();
+
+    // Simulate SNOW-3903306: bit-flip corrupts num_values to 0 in the page header.
+    // Parquet v1 pages use data_page_header; Parquet v2 (Iceberg) uses data_page_header_v2.
+    if (pageHeader.data_page_header != null) {
+      pageHeader.data_page_header.num_values = 0;
+    } else {
+      pageHeader.data_page_header_v2.num_values = 0;
+    }
+
+    // Re-serialize the header with corrupted num_values and reassemble the file
+    ByteArrayOutputStream modifiedHeader = new ByteArrayOutputStream();
+    Util.writePageHeader(pageHeader, modifiedHeader);
+    ByteArrayOutputStream patched = new ByteArrayOutputStream();
+    patched.write(bytes, 0, (int) pageOffset);
+    patched.write(modifiedHeader.toByteArray());
+    patched.write(
+        bytes,
+        (int) pageOffset + originalHeaderSize,
+        bytes.length - (int) pageOffset - originalHeaderSize);
+
+    // verify() catches the corruption — the reader encounters an error processing the
+    // corrupted page header and throws IOException before or during row count validation
+    try {
+      BdecParquetReader.verify(patched.toByteArray(), data.getRowCount());
+      Assert.fail("Expected IOException for num_values corruption");
+    } catch (IOException e) {
+      Assert.assertNotNull(e.getMessage());
     }
   }
 }
