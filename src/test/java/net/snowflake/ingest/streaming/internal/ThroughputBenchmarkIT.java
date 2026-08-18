@@ -29,9 +29,9 @@ import org.junit.Test;
 /**
  * Manual E2E latency benchmark comparing ENABLE_PARQUET_READBACK_VERIFICATION on vs off.
  *
- * <p>Runs two schema configurations (17-column narrow, 1151-column LexisNexis approximation).
- * Each schema is benchmarked NUM_RUNS times. Per-flush build latency is read directly from the
- * {@code buildLatency} Codahale timer on the client internals after each pass. Results are written
+ * <p>Runs two schema configurations (17-column narrow, 1151-column LexisNexis approximation). Each
+ * schema is benchmarked NUM_RUNS times. Per-flush build latency is read directly from the {@code
+ * buildLatency} Codahale timer on the client internals after each pass. Results are written
  * incrementally to RESULTS_CSV_PATH in CSV format (Excel-compatible).
  *
  * <p>Remove @Ignore and provide profile.json pointing at a quiet preprod6 account to run.
@@ -248,7 +248,8 @@ public class ThroughputBenchmarkIT {
 
   // ---------- console reporting ----------
 
-  private static void printComparison(int run, SchemaConfig schema, Result baseline, Result measured) {
+  private static void printComparison(
+      int run, SchemaConfig schema, Result baseline, Result measured) {
     System.out.printf(
         "%n--- Run %d  %s (%d cols)  verify=false vs verify=true ---%n",
         run, schema.tableName, schema.totalColumns());
@@ -258,8 +259,7 @@ public class ThroughputBenchmarkIT {
     printStat("Build latency p95  (ms)", baseline.buildP95Ms, measured.buildP95Ms);
     printStat("Flush drain time   (ms)", baseline.drainMs, measured.drainMs);
     printStat("CPU usage          (ms)", baseline.cpuMs, measured.cpuMs);
-    System.out.printf(
-        "%-32s %10d %10d%n", "Flush count", baseline.flushCount, measured.flushCount);
+    System.out.printf("%-32s %10d %10d%n", "Flush count", baseline.flushCount, measured.flushCount);
   }
 
   private static void printStat(String label, long baseline, long measured) {
@@ -290,10 +290,22 @@ public class ThroughputBenchmarkIT {
         schema.tableName,
         schema.totalColumns(),
         run,
-        b.rowCount, b.insertRowsPerSec(), b.drainMs, b.cpuMs,
-        b.flushCount, b.buildMeanMs, b.buildP50Ms, b.buildP95Ms,
-        v.rowCount, v.insertRowsPerSec(), v.drainMs, v.cpuMs,
-        v.flushCount, v.buildMeanMs, v.buildP50Ms, v.buildP95Ms,
+        b.rowCount,
+        b.insertRowsPerSec(),
+        b.drainMs,
+        b.cpuMs,
+        b.flushCount,
+        b.buildMeanMs,
+        b.buildP50Ms,
+        b.buildP95Ms,
+        v.rowCount,
+        v.insertRowsPerSec(),
+        v.drainMs,
+        v.cpuMs,
+        v.flushCount,
+        v.buildMeanMs,
+        v.buildP50Ms,
+        v.buildP95Ms,
         delta(b.buildMeanMs, v.buildMeanMs),
         delta(b.buildP50Ms, v.buildP50Ms),
         delta(b.buildP95Ms, v.buildP95Ms),
