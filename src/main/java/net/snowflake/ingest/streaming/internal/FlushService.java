@@ -535,7 +535,10 @@ class FlushService<T> {
                     .reportClientFailure(this.getClass().getSimpleName(), errorMessage);
               }
 
-              if (e instanceof NoSuchAlgorithmException) {
+              if (e instanceof IOException) {
+                invalidateAllChannelsInBlob(blobData, errorMessage);
+                return null;
+              } else if (e instanceof NoSuchAlgorithmException) {
                 throw new SFException(e, ErrorCode.MD5_HASHING_NOT_AVAILABLE);
               } else if (e instanceof InvalidAlgorithmParameterException
                   | e instanceof NoSuchPaddingException
@@ -544,8 +547,7 @@ class FlushService<T> {
                   | e instanceof InvalidKeyException) {
                 throw new SFException(e, ErrorCode.ENCRYPTION_FAILURE);
               } else {
-                invalidateAllChannelsInBlob(blobData, errorMessage);
-                return null;
+                throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
               }
             }
           };
